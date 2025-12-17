@@ -1,0 +1,173 @@
+<?php
+if (!defined('ABSPATH')) {
+    exit;
+}
+?>
+<div class="wrap aips-wrap">
+    <h1>
+        <?php esc_html_e('Post Templates', 'ai-post-scheduler'); ?>
+        <button class="page-title-action aips-add-template-btn"><?php esc_html_e('Add New', 'ai-post-scheduler'); ?></button>
+    </h1>
+    
+    <div class="aips-templates-container">
+        <div class="aips-templates-list">
+            <?php if (!empty($templates)): ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
+                        <th class="column-status"><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></th>
+                        <th class="column-category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></th>
+                        <th class="column-active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
+                        <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($templates as $template): ?>
+                    <tr data-template-id="<?php echo esc_attr($template->id); ?>">
+                        <td class="column-name">
+                            <strong><?php echo esc_html($template->name); ?></strong>
+                        </td>
+                        <td class="column-status">
+                            <?php echo esc_html(ucfirst($template->post_status)); ?>
+                        </td>
+                        <td class="column-category">
+                            <?php 
+                            if ($template->post_category) {
+                                $cat = get_category($template->post_category);
+                                echo esc_html($cat ? $cat->name : '-');
+                            } else {
+                                echo '-';
+                            }
+                            ?>
+                        </td>
+                        <td class="column-active">
+                            <span class="aips-status aips-status-<?php echo $template->is_active ? 'active' : 'inactive'; ?>">
+                                <?php echo $template->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?>
+                            </span>
+                        </td>
+                        <td class="column-actions">
+                            <button class="button aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>">
+                                <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+                            </button>
+                            <button class="button aips-run-now" data-id="<?php echo esc_attr($template->id); ?>">
+                                <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
+                            </button>
+                            <button class="button button-link-delete aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>">
+                                <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
+                            </button>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php else: ?>
+            <div class="aips-empty-state">
+                <span class="dashicons dashicons-media-document"></span>
+                <h3><?php esc_html_e('No Templates Yet', 'ai-post-scheduler'); ?></h3>
+                <p><?php esc_html_e('Create your first template to start generating AI posts.', 'ai-post-scheduler'); ?></p>
+                <button class="button button-primary button-large aips-add-template-btn">
+                    <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
+                </button>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+    
+    <div id="aips-template-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content">
+            <div class="aips-modal-header">
+                <h2 id="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
+                <button class="aips-modal-close">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <form id="aips-template-form">
+                    <input type="hidden" name="template_id" id="template_id" value="">
+                    
+                    <div class="aips-form-row">
+                        <label for="template_name"><?php esc_html_e('Template Name', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
+                        <input type="text" id="template_name" name="name" required class="regular-text">
+                    </div>
+                    
+                    <div class="aips-form-row">
+                        <label for="prompt_template"><?php esc_html_e('Content Prompt', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
+                        <textarea id="prompt_template" name="prompt_template" rows="6" required class="large-text" placeholder="<?php esc_attr_e('Write a detailed blog post about...', 'ai-post-scheduler'); ?>"></textarea>
+                        <p class="description">
+                            <?php esc_html_e('Available variables: {{date}}, {{year}}, {{month}}, {{day}}, {{time}}, {{site_name}}, {{site_description}}, {{random_number}}', 'ai-post-scheduler'); ?>
+                        </p>
+                    </div>
+                    
+                    <div class="aips-form-row">
+                        <label for="title_prompt"><?php esc_html_e('Title Prompt (Optional)', 'ai-post-scheduler'); ?></label>
+                        <input type="text" id="title_prompt" name="title_prompt" class="regular-text" placeholder="<?php esc_attr_e('Leave empty to auto-generate from content prompt', 'ai-post-scheduler'); ?>">
+                    </div>
+                    
+                    <div class="aips-form-columns">
+                        <div class="aips-form-row">
+                            <label for="post_status"><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></label>
+                            <select id="post_status" name="post_status">
+                                <option value="draft"><?php esc_html_e('Draft', 'ai-post-scheduler'); ?></option>
+                                <option value="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></option>
+                                <option value="publish"><?php esc_html_e('Published', 'ai-post-scheduler'); ?></option>
+                            </select>
+                        </div>
+                        
+                        <div class="aips-form-row">
+                            <label for="post_category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></label>
+                            <select id="post_category" name="post_category">
+                                <option value="0"><?php esc_html_e('Select Category', 'ai-post-scheduler'); ?></option>
+                                <?php foreach ($categories as $cat): ?>
+                                <option value="<?php echo esc_attr($cat->term_id); ?>"><?php echo esc_html($cat->name); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="aips-form-row">
+                        <label for="post_tags"><?php esc_html_e('Tags', 'ai-post-scheduler'); ?></label>
+                        <input type="text" id="post_tags" name="post_tags" class="regular-text" placeholder="<?php esc_attr_e('tag1, tag2, tag3', 'ai-post-scheduler'); ?>">
+                        <p class="description"><?php esc_html_e('Comma-separated list of tags', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    
+                    <div class="aips-form-row">
+                        <label for="post_author"><?php esc_html_e('Author', 'ai-post-scheduler'); ?></label>
+                        <select id="post_author" name="post_author">
+                            <?php foreach ($users as $user): ?>
+                            <option value="<?php echo esc_attr($user->ID); ?>" <?php selected($user->ID, get_current_user_id()); ?>>
+                                <?php echo esc_html($user->display_name); ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="aips-form-row">
+                        <label class="aips-checkbox-label">
+                            <input type="checkbox" id="is_active" name="is_active" value="1" checked>
+                            <?php esc_html_e('Template is active', 'ai-post-scheduler'); ?>
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="aips-modal-footer">
+                <button type="button" class="button aips-test-template"><?php esc_html_e('Test Generate', 'ai-post-scheduler'); ?></button>
+                <button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+                <button type="button" class="button button-primary aips-save-template"><?php esc_html_e('Save Template', 'ai-post-scheduler'); ?></button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="aips-test-result-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content aips-modal-large">
+            <div class="aips-modal-header">
+                <h2><?php esc_html_e('Test Generation Result', 'ai-post-scheduler'); ?></h2>
+                <button class="aips-modal-close">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <div id="aips-test-content"></div>
+            </div>
+            <div class="aips-modal-footer">
+                <button type="button" class="button aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
