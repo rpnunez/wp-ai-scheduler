@@ -7,9 +7,49 @@ class AIPS_Generator {
     
     private $ai_engine;
     private $logger;
+    private $generation_log;
     
     public function __construct() {
         $this->logger = new AIPS_Logger();
+        $this->reset_generation_log();
+    }
+    
+    private function reset_generation_log() {
+        $this->generation_log = array(
+            'started_at' => null,
+            'completed_at' => null,
+            'template' => null,
+            'voice' => null,
+            'ai_calls' => array(),
+            'errors' => array(),
+            'result' => null,
+        );
+    }
+    
+    private function log_ai_call($type, $prompt, $response, $options = array(), $error = null) {
+        $call_log = array(
+            'type' => $type,
+            'timestamp' => current_time('mysql'),
+            'request' => array(
+                'prompt' => $prompt,
+                'options' => $options,
+            ),
+            'response' => array(
+                'success' => $error === null,
+                'content' => $response,
+                'error' => $error,
+            ),
+        );
+        
+        $this->generation_log['ai_calls'][] = $call_log;
+        
+        if ($error) {
+            $this->generation_log['errors'][] = array(
+                'type' => $type,
+                'timestamp' => current_time('mysql'),
+                'message' => $error,
+            );
+        }
     }
     
     private function get_ai_engine() {
@@ -26,11 +66,13 @@ class AIPS_Generator {
         return $this->get_ai_engine() !== null;
     }
     
-    public function generate_content($prompt, $options = array()) {
+    public function generate_content($prompt, $options = array(), $log_type = 'content') {
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
-            $this->logger->log('AI Engine not available', 'error');
+            $error_msg = 'AI Engine not available';
+            $this->logger->log($error_msg, 'error');
+            $this->log_ai_call($log_type, $prompt, null, $options, $error_msg);
             return new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
         }
         
@@ -66,15 +108,20 @@ class AIPS_Generator {
                     'prompt_length' => strlen($prompt),
                     'response_length' => strlen($response->result)
                 ));
+                $this->log_ai_call($log_type, $prompt, $response->result, $options);
                 return $response->result;
             }
             
-            $this->logger->log('Empty response from AI Engine', 'error');
+            $error_msg = 'Empty response from AI Engine';
+            $this->logger->log($error_msg, 'error');
+            $this->log_ai_call($log_type, $prompt, null, $options, $error_msg);
             return new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
             
         } catch (Exception $e) {
-            $this->logger->log('AI generation failed: ' . $e->getMessage(), 'error');
-            return new WP_Error('generation_failed', $e->getMessage());
+            $error_msg = $e->getMessage();
+            $this->logger->log('AI generation failed: ' . $error_msg, 'error');
+            $this->log_ai_call($log_type, $prompt, null, $options, $error_msg);
+            return new WP_Error('generation_failed', $error_msg);
         }
     }
     
@@ -87,7 +134,7 @@ class AIPS_Generator {
         
         $options['max_tokens'] = 100;
         
-        $result = $this->generate_content($title_prompt, $options);
+        $result = $this->generate_content($title_prompt, $options, 'title');
         
         if (is_wp_error($result)) {
             return $result;
@@ -112,7 +159,7 @@ class AIPS_Generator {
         
         $options['max_tokens'] = 150;
         
-        $result = $this->generate_content($excerpt_prompt, $options);
+        $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
         
         if (is_wp_error($result)) {
             return '';
@@ -126,6 +173,33 @@ class AIPS_Generator {
     
     public function generate_post($template, $voice = null) {
         global $wpdb;
+        
+        $this->reset_generation_log();
+        $this->generation_log['started_at'] = current_time('mysql');
+        
+        $this->generation_log['template'] = array(
+            'id' => $template->id,
+            'name' => $template->name,
+            'prompt_template' => $template->prompt_template,
+            'title_prompt' => $template->title_prompt,
+            'post_status' => $template->post_status,
+            'post_category' => $template->post_category,
+            'post_tags' => $template->post_tags,
+            'post_author' => $template->post_author,
+            'post_quantity' => $template->post_quantity,
+            'generate_featured_image' => $template->generate_featured_image,
+            'image_prompt' => $template->image_prompt,
+        );
+        
+        if ($voice) {
+            $this->generation_log['voice'] = array(
+                'id' => $voice->id,
+                'name' => $voice->name,
+                'title_prompt' => $voice->title_prompt,
+                'content_instructions' => $voice->content_instructions,
+                'excerpt_instructions' => $voice->excerpt_instructions,
+            );
+        }
         
         $history_table = $wpdb->prefix . 'aips_history';
         
@@ -151,18 +225,25 @@ class AIPS_Generator {
         
         $processed_prompt .= "\n\nOutput the content in HTML format with proper semantic tags (use <p>, <h2>, <h3>, <ul>, <li>, <blockquote>, etc. as appropriate).";
         
-        $content = $this->generate_content($processed_prompt);
+        $content = $this->generate_content($processed_prompt, array(), 'content');
         
         if (is_wp_error($content)) {
+            $this->generation_log['completed_at'] = current_time('mysql');
+            $this->generation_log['result'] = array(
+                'success' => false,
+                'error' => $content->get_error_message(),
+            );
+            
             $wpdb->update(
                 $history_table,
                 array(
                     'status' => 'failed',
                     'error_message' => $content->get_error_message(),
+                    'generation_log' => wp_json_encode($this->generation_log),
                     'completed_at' => current_time('mysql'),
                 ),
                 array('id' => $history_id),
-                array('%s', '%s', '%s'),
+                array('%s', '%s', '%s', '%s'),
                 array('%d')
             );
             
@@ -210,6 +291,15 @@ class AIPS_Generator {
         $post_id = wp_insert_post($post_data, true);
         
         if (is_wp_error($post_id)) {
+            $this->generation_log['completed_at'] = current_time('mysql');
+            $this->generation_log['result'] = array(
+                'success' => false,
+                'error' => $post_id->get_error_message(),
+                'generated_title' => $title,
+                'generated_content' => $content,
+                'generated_excerpt' => $excerpt,
+            );
+            
             $wpdb->update(
                 $history_table,
                 array(
@@ -217,10 +307,11 @@ class AIPS_Generator {
                     'error_message' => $post_id->get_error_message(),
                     'generated_title' => $title,
                     'generated_content' => $content,
+                    'generation_log' => wp_json_encode($this->generation_log),
                     'completed_at' => current_time('mysql'),
                 ),
                 array('id' => $history_id),
-                array('%s', '%s', '%s', '%s', '%s'),
+                array('%s', '%s', '%s', '%s', '%s', '%s'),
                 array('%d')
             );
             
@@ -232,14 +323,25 @@ class AIPS_Generator {
             wp_set_post_tags($post_id, $tags);
         }
         
+        $featured_image_id = null;
         if ($template->generate_featured_image && !empty($template->image_prompt)) {
             $image_prompt = $this->process_template_variables($template->image_prompt);
-            $attachment_id = $this->generate_and_upload_featured_image($image_prompt, $title);
+            $featured_image_id = $this->generate_and_upload_featured_image($image_prompt, $title);
             
-            if ($attachment_id) {
-                set_post_thumbnail($post_id, $attachment_id);
+            if ($featured_image_id) {
+                set_post_thumbnail($post_id, $featured_image_id);
             }
         }
+        
+        $this->generation_log['completed_at'] = current_time('mysql');
+        $this->generation_log['result'] = array(
+            'success' => true,
+            'post_id' => $post_id,
+            'generated_title' => $title,
+            'generated_content' => $content,
+            'generated_excerpt' => $excerpt,
+            'featured_image_id' => $featured_image_id,
+        );
         
         $wpdb->update(
             $history_table,
@@ -248,10 +350,11 @@ class AIPS_Generator {
                 'status' => 'completed',
                 'generated_title' => $title,
                 'generated_content' => $content,
+                'generation_log' => wp_json_encode($this->generation_log),
                 'completed_at' => current_time('mysql'),
             ),
             array('id' => $history_id),
-            array('%d', '%s', '%s', '%s', '%s'),
+            array('%d', '%s', '%s', '%s', '%s', '%s'),
             array('%d')
         );
         
@@ -287,7 +390,9 @@ class AIPS_Generator {
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
-            $this->logger->log('AI Engine not available for image generation', 'error');
+            $error_msg = 'AI Engine not available for image generation';
+            $this->logger->log($error_msg, 'error');
+            $this->log_ai_call('featured_image', $image_prompt, null, array(), $error_msg);
             return false;
         }
         
@@ -296,13 +401,11 @@ class AIPS_Generator {
             $response = $ai->run_query($query);
             
             if (!$response || empty($response->result)) {
-                $this->logger->log('Empty response from AI Engine for image generation', 'error');
+                $error_msg = 'Empty response from AI Engine for image generation';
+                $this->logger->log($error_msg, 'error');
+                $this->log_ai_call('featured_image', $image_prompt, null, array(), $error_msg);
                 return false;
             }
-            
-            require_once(ABSPATH . 'wp-admin/includes/image.php');
-            require_once(ABSPATH . 'wp-admin/includes/file.php');
-            require_once(ABSPATH . 'wp-admin/includes/media.php');
             
             $image_url = $response->result;
             
@@ -310,14 +413,27 @@ class AIPS_Generator {
                 $image_url = $image_url[0];
             }
             
+            $this->log_ai_call('featured_image', $image_prompt, $image_url, array());
+            
             if (empty($image_url)) {
-                $this->logger->log('No image URL in AI response', 'error');
+                $error_msg = 'No image URL in AI response';
+                $this->logger->log($error_msg, 'error');
                 return false;
             }
             
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
+            require_once(ABSPATH . 'wp-admin/includes/media.php');
+            
             $response_object = wp_remote_get($image_url);
             if (is_wp_error($response_object)) {
-                $this->logger->log('Failed to fetch image: ' . $response_object->get_error_message(), 'error');
+                $error_msg = 'Failed to fetch image: ' . $response_object->get_error_message();
+                $this->logger->log($error_msg, 'error');
+                $this->generation_log['errors'][] = array(
+                    'type' => 'image_download',
+                    'timestamp' => current_time('mysql'),
+                    'message' => $error_msg,
+                );
                 return false;
             }
             
@@ -329,7 +445,13 @@ class AIPS_Generator {
             $file_path = $upload_dir['path'] . '/' . $filename;
             
             if (!file_put_contents($file_path, $image_data)) {
-                $this->logger->log('Failed to write image file: ' . $file_path, 'error');
+                $error_msg = 'Failed to write image file: ' . $file_path;
+                $this->logger->log($error_msg, 'error');
+                $this->generation_log['errors'][] = array(
+                    'type' => 'image_save',
+                    'timestamp' => current_time('mysql'),
+                    'message' => $error_msg,
+                );
                 return false;
             }
             
@@ -345,7 +467,13 @@ class AIPS_Generator {
             $attachment_id = wp_insert_attachment($attachment, $file_path);
             
             if (is_wp_error($attachment_id)) {
-                $this->logger->log('Failed to insert attachment: ' . $attachment_id->get_error_message(), 'error');
+                $error_msg = 'Failed to insert attachment: ' . $attachment_id->get_error_message();
+                $this->logger->log($error_msg, 'error');
+                $this->generation_log['errors'][] = array(
+                    'type' => 'image_attachment',
+                    'timestamp' => current_time('mysql'),
+                    'message' => $error_msg,
+                );
                 return false;
             }
             
@@ -360,7 +488,9 @@ class AIPS_Generator {
             return $attachment_id;
             
         } catch (Exception $e) {
-            $this->logger->log('Image generation error: ' . $e->getMessage(), 'error');
+            $error_msg = 'Image generation error: ' . $e->getMessage();
+            $this->logger->log($error_msg, 'error');
+            $this->log_ai_call('featured_image', $image_prompt, null, array(), $e->getMessage());
             return false;
         }
     }

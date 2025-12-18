@@ -84,6 +84,9 @@ if (!defined('ABSPATH')) {
                         <?php esc_html_e('View', 'ai-post-scheduler'); ?>
                     </a>
                     <?php endif; ?>
+                    <button class="button button-small aips-view-details" data-id="<?php echo esc_attr($item->id); ?>">
+                        <?php esc_html_e('Details', 'ai-post-scheduler'); ?>
+                    </button>
                     <?php if ($item->status === 'failed' && $item->template_id): ?>
                     <button class="button button-small aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>">
                         <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
@@ -144,4 +147,45 @@ if (!defined('ABSPATH')) {
         <p><?php esc_html_e('Generated posts will appear here.', 'ai-post-scheduler'); ?></p>
     </div>
     <?php endif; ?>
+</div>
+
+<div id="aips-details-modal" class="aips-modal" style="display: none;">
+    <div class="aips-modal-content aips-modal-large">
+        <div class="aips-modal-header">
+            <h2 id="aips-details-title"><?php esc_html_e('Generation Details', 'ai-post-scheduler'); ?></h2>
+            <button class="aips-modal-close">&times;</button>
+        </div>
+        <div class="aips-modal-body">
+            <div id="aips-details-loading" class="aips-loading">
+                <span class="spinner is-active"></span>
+                <?php esc_html_e('Loading details...', 'ai-post-scheduler'); ?>
+            </div>
+            <div id="aips-details-content" style="display: none;">
+                <div class="aips-details-section">
+                    <h3><?php esc_html_e('Summary', 'ai-post-scheduler'); ?></h3>
+                    <div id="aips-details-summary"></div>
+                </div>
+                
+                <div class="aips-details-section">
+                    <h3><?php esc_html_e('Template Configuration', 'ai-post-scheduler'); ?></h3>
+                    <div id="aips-details-template"></div>
+                </div>
+                
+                <div class="aips-details-section" id="aips-details-voice-section" style="display: none;">
+                    <h3><?php esc_html_e('Voice Configuration', 'ai-post-scheduler'); ?></h3>
+                    <div id="aips-details-voice"></div>
+                </div>
+                
+                <div class="aips-details-section">
+                    <h3><?php esc_html_e('AI Calls', 'ai-post-scheduler'); ?></h3>
+                    <div id="aips-details-ai-calls"></div>
+                </div>
+                
+                <div class="aips-details-section" id="aips-details-errors-section" style="display: none;">
+                    <h3><?php esc_html_e('Errors', 'ai-post-scheduler'); ?></h3>
+                    <div id="aips-details-errors"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

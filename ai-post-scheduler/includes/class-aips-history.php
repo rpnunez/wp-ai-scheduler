@@ -13,6 +13,7 @@ class AIPS_History {
         
         add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
         add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
+        add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
     }
     
     public function get_history($args = array()) {
@@ -142,6 +143,49 @@ class AIPS_History {
             'message' => __('Post regenerated successfully!', 'ai-post-scheduler'),
             'post_id' => $result
         ));
+    }
+    
+    public function ajax_get_history_details() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+        
+        global $wpdb;
+        
+        $history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+        
+        if (!$history_id) {
+            wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
+        }
+        
+        $history_item = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$this->table_name} WHERE id = %d",
+            $history_id
+        ));
+        
+        if (!$history_item) {
+            wp_send_json_error(array('message' => __('History item not found.', 'ai-post-scheduler')));
+        }
+        
+        $generation_log = array();
+        if (!empty($history_item->generation_log)) {
+            $generation_log = json_decode($history_item->generation_log, true);
+        }
+        
+        $response = array(
+            'id' => $history_item->id,
+            'status' => $history_item->status,
+            'created_at' => $history_item->created_at,
+            'completed_at' => $history_item->completed_at,
+            'generated_title' => $history_item->generated_title,
+            'post_id' => $history_item->post_id,
+            'error_message' => $history_item->error_message,
+            'generation_log' => $generation_log,
+        );
+        
+        wp_send_json_success($response);
     }
     
     public function render_page() {

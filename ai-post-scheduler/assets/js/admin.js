@@ -29,6 +29,7 @@
             $(document).on('click', '.aips-clear-history', this.clearHistory);
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
+            $(document).on('click', '.aips-view-details', this.viewDetails);
 
             $(document).on('click', '.aips-modal-close', this.closeModal);
             $(document).on('click', '.aips-modal', function(e) {
@@ -549,6 +550,149 @@
         toggleImagePrompt: function(e) {
             var isChecked = $(this).is(':checked');
             $('#image_prompt').prop('disabled', !isChecked);
+        },
+
+        viewDetails: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            
+            $btn.prop('disabled', true);
+            $('#aips-details-loading').show();
+            $('#aips-details-content').hide();
+            $('#aips-details-modal').show();
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_history_details',
+                    nonce: aipsAjax.nonce,
+                    history_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.renderDetails(response.data);
+                    } else {
+                        alert(response.data.message);
+                        $('#aips-details-modal').hide();
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    $('#aips-details-modal').hide();
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                    $('#aips-details-loading').hide();
+                }
+            });
+        },
+
+        renderDetails: function(data) {
+            var log = data.generation_log || {};
+            
+            var summaryHtml = '<table class="aips-details-table">';
+            summaryHtml += '<tr><th>Status:</th><td><span class="aips-status aips-status-' + data.status + '">' + data.status.charAt(0).toUpperCase() + data.status.slice(1) + '</span></td></tr>';
+            summaryHtml += '<tr><th>Title:</th><td>' + (data.generated_title || '-') + '</td></tr>';
+            if (data.post_id) {
+                summaryHtml += '<tr><th>Post ID:</th><td>' + data.post_id + '</td></tr>';
+            }
+            summaryHtml += '<tr><th>Started:</th><td>' + (log.started_at || data.created_at) + '</td></tr>';
+            summaryHtml += '<tr><th>Completed:</th><td>' + (log.completed_at || data.completed_at || '-') + '</td></tr>';
+            if (data.error_message) {
+                summaryHtml += '<tr><th>Error:</th><td class="aips-error-text">' + data.error_message + '</td></tr>';
+            }
+            summaryHtml += '</table>';
+            $('#aips-details-summary').html(summaryHtml);
+            
+            if (log.template) {
+                var templateHtml = '<table class="aips-details-table">';
+                templateHtml += '<tr><th>Name:</th><td>' + (log.template.name || '-') + '</td></tr>';
+                templateHtml += '<tr><th>Prompt Template:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.prompt_template || '') + '</pre></td></tr>';
+                if (log.template.title_prompt) {
+                    templateHtml += '<tr><th>Title Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.title_prompt) + '</pre></td></tr>';
+                }
+                templateHtml += '<tr><th>Post Status:</th><td>' + (log.template.post_status || 'draft') + '</td></tr>';
+                templateHtml += '<tr><th>Post Quantity:</th><td>' + (log.template.post_quantity || 1) + '</td></tr>';
+                if (log.template.generate_featured_image) {
+                    templateHtml += '<tr><th>Image Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.image_prompt || '') + '</pre></td></tr>';
+                }
+                templateHtml += '</table>';
+                $('#aips-details-template').html(templateHtml);
+            } else {
+                $('#aips-details-template').html('<p>No template data available.</p>');
+            }
+            
+            if (log.voice) {
+                var voiceHtml = '<table class="aips-details-table">';
+                voiceHtml += '<tr><th>Name:</th><td>' + (log.voice.name || '-') + '</td></tr>';
+                voiceHtml += '<tr><th>Title Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.title_prompt || '') + '</pre></td></tr>';
+                voiceHtml += '<tr><th>Content Instructions:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.content_instructions || '') + '</pre></td></tr>';
+                if (log.voice.excerpt_instructions) {
+                    voiceHtml += '<tr><th>Excerpt Instructions:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.excerpt_instructions) + '</pre></td></tr>';
+                }
+                voiceHtml += '</table>';
+                $('#aips-details-voice').html(voiceHtml);
+                $('#aips-details-voice-section').show();
+            } else {
+                $('#aips-details-voice-section').hide();
+            }
+            
+            if (log.ai_calls && log.ai_calls.length > 0) {
+                var callsHtml = '';
+                log.ai_calls.forEach(function(call, index) {
+                    var statusClass = call.response.success ? 'aips-call-success' : 'aips-call-error';
+                    callsHtml += '<div class="aips-ai-call ' + statusClass + '">';
+                    callsHtml += '<div class="aips-call-header">';
+                    callsHtml += '<strong>Call #' + (index + 1) + ' - ' + call.type.charAt(0).toUpperCase() + call.type.slice(1) + '</strong>';
+                    callsHtml += '<span class="aips-call-time">' + call.timestamp + '</span>';
+                    callsHtml += '</div>';
+                    callsHtml += '<div class="aips-call-section">';
+                    callsHtml += '<h4>Request</h4>';
+                    callsHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(call.request.prompt || '') + '</pre>';
+                    if (call.request.options && Object.keys(call.request.options).length > 0) {
+                        callsHtml += '<p><small>Options: ' + JSON.stringify(call.request.options) + '</small></p>';
+                    }
+                    callsHtml += '</div>';
+                    callsHtml += '<div class="aips-call-section">';
+                    callsHtml += '<h4>Response</h4>';
+                    if (call.response.success) {
+                        callsHtml += '<pre class="aips-response-text">' + AIPS.escapeHtml(call.response.content || '') + '</pre>';
+                    } else {
+                        callsHtml += '<p class="aips-error-text">Error: ' + AIPS.escapeHtml(call.response.error || 'Unknown error') + '</p>';
+                    }
+                    callsHtml += '</div>';
+                    callsHtml += '</div>';
+                });
+                $('#aips-details-ai-calls').html(callsHtml);
+            } else {
+                $('#aips-details-ai-calls').html('<p>No AI call data available for this entry.</p>');
+            }
+            
+            if (log.errors && log.errors.length > 0) {
+                var errorsHtml = '<ul class="aips-errors-list">';
+                log.errors.forEach(function(error) {
+                    errorsHtml += '<li>';
+                    errorsHtml += '<strong>' + error.type + '</strong> at ' + error.timestamp + '<br>';
+                    errorsHtml += '<span class="aips-error-text">' + AIPS.escapeHtml(error.message) + '</span>';
+                    errorsHtml += '</li>';
+                });
+                errorsHtml += '</ul>';
+                $('#aips-details-errors').html(errorsHtml);
+                $('#aips-details-errors-section').show();
+            } else {
+                $('#aips-details-errors-section').hide();
+            }
+            
+            $('#aips-details-content').show();
+        },
+
+        escapeHtml: function(text) {
+            if (!text) return '';
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         },
 
         closeModal: function() {

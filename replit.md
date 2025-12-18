@@ -126,8 +126,20 @@ The plugin uses a **WordPress-native upgrade system** for automatic database man
 1. `migration-1.0-initial.php` - Creates all base tables (history, templates, schedule, voices)
 2. `migration-1.1-add-voices.php` - Adds voice_id and post_quantity columns to templates
 3. `migration-1.2-add-featured-images.php` - Adds image_prompt and generate_featured_image columns
+4. `migration-1.3-add-generation-log.php` - Adds generation_log column to history table
 
-**Current Version:** 1.2.0
+**Current Version:** 1.3.0
+
+## Generation Details (History)
+
+The History page includes a "Details" button for each entry that opens a modal showing:
+- **Summary**: Status, title, post ID, timestamps, errors
+- **Template Configuration**: Complete template settings used for generation
+- **Voice Configuration**: Voice details if a Voice was used
+- **AI Calls**: Complete request/response log for each AI call (content, title, excerpt, featured image)
+- **Errors**: Any errors that occurred during generation
+
+This detailed logging helps administrators understand exactly how each post was generated and debug issues with unexpected results.
 
 ## Dependencies
 
