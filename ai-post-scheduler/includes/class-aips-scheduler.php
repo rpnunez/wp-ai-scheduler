@@ -282,9 +282,10 @@ class AIPS_Scheduler {
         // Bulk delete completed one-time schedules
         if (!empty($schedules_to_delete)) {
             $ids_placeholder = implode(',', array_fill(0, count($schedules_to_delete), '%d'));
+            // Use array unpacking with spread operator to pass individual parameters
             $wpdb->query($wpdb->prepare(
                 "DELETE FROM {$this->schedule_table} WHERE id IN ($ids_placeholder)",
-                $schedules_to_delete
+                ...$schedules_to_delete
             ));
         }
         

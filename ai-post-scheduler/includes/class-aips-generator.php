@@ -372,12 +372,13 @@ class AIPS_Generator {
     private function process_template_variables($template, $topic = null) {
         // Use static variable to cache non-random values when called multiple times
         static $cache = null;
+        static $cached_topic = '__UNSET__'; // Use sentinel value to distinguish null from unset
         
         // Reset cache if this is a new template processing (when topic changes)
-        // Handle all edge cases: null cache, missing _topic key, or different topic value
-        if ($cache === null || !isset($cache['_topic']) || $cache['_topic'] !== $topic) {
+        // Handle all edge cases including null topic values
+        if ($cache === null || $cached_topic !== $topic) {
+            $cached_topic = $topic;
             $cache = array(
-                '_topic' => $topic,
                 '{{date}}' => date('F j, Y'),
                 '{{year}}' => date('Y'),
                 '{{month}}' => date('F'),
