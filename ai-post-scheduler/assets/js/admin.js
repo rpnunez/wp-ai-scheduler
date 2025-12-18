@@ -31,6 +31,11 @@
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
+            // Template Search
+            $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
+            $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
+            $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
+
             $(document).on('click', '.aips-modal-close', this.closeModal);
             $(document).on('click', '.aips-modal', function(e) {
                 if ($(e.target).hasClass('aips-modal')) {
@@ -550,6 +555,47 @@
         toggleImagePrompt: function(e) {
             var isChecked = $(this).is(':checked');
             $('#image_prompt').prop('disabled', !isChecked);
+        },
+
+        filterTemplates: function() {
+            var term = $('#aips-template-search').val().toLowerCase().trim();
+            var $rows = $('.aips-templates-list tbody tr');
+            var $noResults = $('#aips-template-search-no-results');
+            var $table = $('.aips-templates-list table');
+            var $clearBtn = $('#aips-template-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                var name = $row.find('.column-name').text().toLowerCase();
+                var category = $row.find('.column-category').text().toLowerCase();
+
+                if (name.indexOf(term) > -1 || category.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearTemplateSearch: function(e) {
+            e.preventDefault();
+            $('#aips-template-search').val('').trigger('keyup');
         },
 
         viewDetails: function(e) {
