@@ -106,13 +106,28 @@ Templates can automatically generate and set AI-generated featured images:
 6. Create Templates to define content generation
 7. Set up Schedules for automated generation
 
-## Database Migrations
+## Database Migrations & Upgrade System
 
-See `MIGRATIONS.md` for information about upgrading from version 1.0 to 1.1 (adds Voices feature and batch generation).
+The plugin uses a **WordPress-native upgrade system** for automatic database management:
+
+**How it works:**
+- Each version increment checks the stored `aips_db_version` against `AIPS_VERSION`
+- If an upgrade is needed, all pending migrations are executed in sequence
+- Migration files are stored in `migrations/` directory (e.g., `migration-1.2-add-featured-images.php`)
+- Upgrades run automatically on:
+  - Plugin activation (register_activation_hook)
+  - Every page load (plugins_loaded hook) - to catch cases where activation may fail
 
 **For existing installations:**
-- Simply reactivate the updated plugin - it automatically applies database changes
-- OR manually apply the SQL migration in `migrations/001-add-voices-feature.sql`
+- Simply reactivate or update the plugin - upgrades apply automatically
+- Check plugin logs (if enabled) to verify successful upgrades
+
+**Current Migration Chain:**
+1. `migration-1.0-initial.php` - Creates all base tables (history, templates, schedule, voices)
+2. `migration-1.1-add-voices.php` - Adds voice_id and post_quantity columns to templates
+3. `migration-1.2-add-featured-images.php` - Adds image_prompt and generate_featured_image columns
+
+**Current Version:** 1.2.0
 
 ## Dependencies
 
