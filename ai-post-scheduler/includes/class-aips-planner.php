@@ -93,14 +93,11 @@ class AIPS_Planner {
         $base_time = strtotime($start_date);
 
         // Determine interval in seconds
-        $interval = 86400; // default daily
-        switch ($frequency) {
-            case 'hourly': $interval = 3600; break;
-            case 'every_4_hours': $interval = 14400; break;
-            case 'every_6_hours': $interval = 21600; break;
-            case 'every_12_hours': $interval = 43200; break;
-            case 'daily': $interval = 86400; break;
-            case 'weekly': $interval = 604800; break;
+        $intervals = $scheduler->get_intervals();
+        $interval = 86400; // default fallback
+
+        if (isset($intervals[$frequency])) {
+            $interval = $intervals[$frequency]['interval'];
         }
 
         global $wpdb;
