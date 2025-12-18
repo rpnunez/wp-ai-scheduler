@@ -295,12 +295,25 @@ class AIPS_Scheduler {
             $next_run_cases = array();
             
             foreach ($schedules_to_update as $update_data) {
-                $ids[] = (int) $update_data['id'];
-                $last_run_cases[] = $wpdb->prepare('WHEN %d THEN %s', $update_data['id'], $update_data['last_run']);
-                $next_run_cases[] = $wpdb->prepare('WHEN %d THEN %s', $update_data['id'], $update_data['next_run']);
+                // Ensure ID is an integer for security
+                $id = (int) $update_data['id'];
+                $ids[] = $id;
+                
+                // Build CASE clauses with properly escaped values
+                $last_run_cases[] = sprintf(
+                    'WHEN %d THEN %s',
+                    $id,
+                    $wpdb->prepare('%s', $update_data['last_run'])
+                );
+                $next_run_cases[] = sprintf(
+                    'WHEN %d THEN %s',
+                    $id,
+                    $wpdb->prepare('%s', $update_data['next_run'])
+                );
             }
             
             if (!empty($ids)) {
+                // IDs are already cast to integers, safe to use directly
                 $ids_list = implode(',', $ids);
                 $last_run_case = implode(' ', $last_run_cases);
                 $next_run_case = implode(' ', $next_run_cases);
