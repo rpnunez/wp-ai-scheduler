@@ -120,7 +120,6 @@ final class AI_Post_Scheduler {
         }
         
         new AIPS_Scheduler();
-        new AIPS_Logger();
     }
 }
 
