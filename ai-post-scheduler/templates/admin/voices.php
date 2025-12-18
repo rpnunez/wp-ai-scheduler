@@ -86,6 +86,12 @@ if (!defined('ABSPATH')) {
                     </div>
                     
                     <div class="aips-form-row">
+                        <label for="voice_excerpt_instructions"><?php esc_html_e('Excerpt Instructions (Optional)', 'ai-post-scheduler'); ?></label>
+                        <textarea id="voice_excerpt_instructions" name="excerpt_instructions" rows="3" class="large-text" placeholder="<?php esc_attr_e('e.g., Write a compelling summary. Use an engaging tone. Keep the excerpt concise.', 'ai-post-scheduler'); ?>"></textarea>
+                        <p class="description"><?php esc_html_e('Optional. These instructions will influence excerpt generation for posts using this voice.', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    
+                    <div class="aips-form-row">
                         <label class="aips-checkbox-label">
                             <input type="checkbox" id="voice_is_active" name="is_active" value="1" checked>
                             <?php esc_html_e('Voice is active', 'ai-post-scheduler'); ?>

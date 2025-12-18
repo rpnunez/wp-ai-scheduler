@@ -11,6 +11,7 @@ This migration adds the **Voices feature** and **batch post generation support**
 - **name** (varchar 255): Voice name
 - **title_prompt** (text): Instructions for generating post titles
 - **content_instructions** (text): Pre-prompt instructions for content generation
+- **excerpt_instructions** (text): Optional instructions for excerpt generation
 - **is_active** (tinyint): Active/inactive status
 - **created_at** (datetime): Timestamp
 

@@ -24,3 +24,7 @@ ALTER TABLE `{wp_prefix}aips_templates` ADD COLUMN `voice_id` bigint(20) DEFAULT
 -- Add post_quantity column to templates table if it doesn't exist
 -- If column already exists, this will be safely ignored
 ALTER TABLE `{wp_prefix}aips_templates` ADD COLUMN `post_quantity` int DEFAULT 1 AFTER `voice_id`;
+
+-- Add excerpt_instructions column to voices table if it doesn't exist
+-- If column already exists, this will be safely ignored
+ALTER TABLE `{wp_prefix}aips_voices` ADD COLUMN `excerpt_instructions` text AFTER `content_instructions`;

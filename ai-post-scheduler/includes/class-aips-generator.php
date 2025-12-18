@@ -99,6 +99,31 @@ class AIPS_Generator {
         return $title;
     }
     
+    public function generate_excerpt($title, $content, $voice_excerpt_instructions = null, $options = array()) {
+        $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 characters. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
+        
+        if ($voice_excerpt_instructions) {
+            $excerpt_prompt .= $voice_excerpt_instructions . "\n\n";
+        }
+        
+        $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
+        $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
+        $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
+        
+        $options['max_tokens'] = 150;
+        
+        $result = $this->generate_content($excerpt_prompt, $options);
+        
+        if (is_wp_error($result)) {
+            return '';
+        }
+        
+        $excerpt = trim($result);
+        $excerpt = preg_replace('/^["\'"]|["\'"]$/', '', $excerpt);
+        
+        return substr($excerpt, 0, 160);
+    }
+    
     public function generate_post($template, $voice = null) {
         global $wpdb;
         
@@ -123,6 +148,8 @@ class AIPS_Generator {
             $voice_instructions = $this->process_template_variables($voice->content_instructions);
             $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
         }
+        
+        $processed_prompt .= "\n\nOutput the content in HTML format with proper semantic tags (use <p>, <h2>, <h3>, <ul>, <li>, <blockquote>, etc. as appropriate).";
         
         $content = $this->generate_content($processed_prompt);
         
@@ -158,9 +185,17 @@ class AIPS_Generator {
             $title = __('AI Generated Post', 'ai-post-scheduler') . ' - ' . date('Y-m-d H:i:s');
         }
         
+        $voice_excerpt_instructions = null;
+        if ($voice && !empty($voice->excerpt_instructions)) {
+            $voice_excerpt_instructions = $this->process_template_variables($voice->excerpt_instructions);
+        }
+        
+        $excerpt = $this->generate_excerpt($title, $processed_prompt, $voice_excerpt_instructions);
+        
         $post_data = array(
             'post_title' => $title,
             'post_content' => $content,
+            'post_excerpt' => $excerpt,
             'post_status' => $template->post_status ?: get_option('aips_default_post_status', 'draft'),
             'post_author' => $template->post_author ?: get_current_user_id(),
             'post_type' => 'post',

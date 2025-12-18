@@ -147,6 +147,7 @@ final class AI_Post_Scheduler {
             name varchar(255) NOT NULL,
             title_prompt text NOT NULL,
             content_instructions text NOT NULL,
+            excerpt_instructions text,
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id)

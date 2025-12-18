@@ -293,6 +293,7 @@
                         $('#voice_name').val(v.name);
                         $('#voice_title_prompt').val(v.title_prompt);
                         $('#voice_content_instructions').val(v.content_instructions);
+                        $('#voice_excerpt_instructions').val(v.excerpt_instructions || '');
                         $('#voice_is_active').prop('checked', v.is_active == 1);
                         $('#aips-voice-modal-title').text('Edit Voice');
                         $('#aips-voice-modal').show();
@@ -345,6 +346,7 @@
                     name: $('#voice_name').val(),
                     title_prompt: $('#voice_title_prompt').val(),
                     content_instructions: $('#voice_content_instructions').val(),
+                    excerpt_instructions: $('#voice_excerpt_instructions').val(),
                     is_active: $('#voice_is_active').is(':checked') ? 1 : 0
                 },
                 success: function(response) {

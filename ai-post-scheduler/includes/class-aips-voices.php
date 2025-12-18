@@ -36,6 +36,7 @@ class AIPS_Voices {
             'name' => sanitize_text_field($data['name']),
             'title_prompt' => wp_kses_post($data['title_prompt']),
             'content_instructions' => wp_kses_post($data['content_instructions']),
+            'excerpt_instructions' => isset($data['excerpt_instructions']) ? wp_kses_post($data['excerpt_instructions']) : '',
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         
@@ -44,7 +45,7 @@ class AIPS_Voices {
                 $this->table_name,
                 $voice_data,
                 array('id' => absint($data['id'])),
-                array('%s', '%s', '%s', '%d'),
+                array('%s', '%s', '%s', '%s', '%d'),
                 array('%d')
             );
             return absint($data['id']);
@@ -52,7 +53,7 @@ class AIPS_Voices {
             $wpdb->insert(
                 $this->table_name,
                 $voice_data,
-                array('%s', '%s', '%s', '%d')
+                array('%s', '%s', '%s', '%s', '%d')
             );
             return $wpdb->insert_id;
         }
@@ -75,11 +76,12 @@ class AIPS_Voices {
             'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
             'title_prompt' => isset($_POST['title_prompt']) ? wp_kses_post($_POST['title_prompt']) : '',
             'content_instructions' => isset($_POST['content_instructions']) ? wp_kses_post($_POST['content_instructions']) : '',
+            'excerpt_instructions' => isset($_POST['excerpt_instructions']) ? wp_kses_post($_POST['excerpt_instructions']) : '',
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
         
         if (empty($data['name']) || empty($data['title_prompt']) || empty($data['content_instructions'])) {
-            wp_send_json_error(array('message' => __('All fields are required.', 'ai-post-scheduler')));
+            wp_send_json_error(array('message' => __('Name, Title Prompt, and Content Instructions are required.', 'ai-post-scheduler')));
         }
         
         $id = $this->save($data);

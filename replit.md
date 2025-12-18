@@ -58,11 +58,20 @@ A "Voice" allows you to establish a consistent tone and style for AI-generated c
 **Voice Fields:**
 - **Title Prompt**: Instructions for generating compelling post titles
 - **Content Instructions**: Pre-prompt instructions prepended to all content generation
+- **Excerpt Instructions** (Optional): Custom instructions for excerpt generation
 
 **Usage:**
 - Select a Voice when creating or editing a Template
-- If a Voice is selected, the Voice's Title Prompt and Content Instructions are used
+- If a Voice is selected, its Title Prompt and Content Instructions are used
 - If no Voice is selected, the Template's Title Prompt (if provided) or default title generation is used
+- If Excerpt Instructions are provided, they influence the AI's excerpt generation
+
+## Post Generation Features
+
+**Content Output:**
+- Post content is generated in **HTML format** with proper semantic tags (<p>, <h2>, <h3>, <ul>, <li>, <blockquote>, etc.)
+- Posts automatically include a **generated excerpt** (40-60 characters) saved to the post's excerpt field
+- Excerpts can be influenced by Voice "Excerpt Instructions" if a Voice is selected
 
 ## Template Variables
 
