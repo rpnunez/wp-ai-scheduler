@@ -58,6 +58,11 @@ class AIPS_Scheduler {
             'display' => __('Monthly', 'ai-post-scheduler')
         );
 
+        $schedules['once'] = array(
+            'interval' => 86400, // Default to daily interval, but handled specially
+            'display' => __('Once', 'ai-post-scheduler')
+        );
+
         $days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
         foreach ($days as $day) {
             $schedules['every_' . strtolower($day)] = array(
@@ -201,7 +206,8 @@ class AIPS_Scheduler {
         foreach ($due_schedules as $schedule) {
             $logger->log('Processing schedule: ' . $schedule->id, 'info', array(
                 'template_id' => $schedule->template_id,
-                'template_name' => $schedule->name
+                'template_name' => $schedule->name,
+                'topic' => isset($schedule->topic) ? $schedule->topic : ''
             ));
             
             $template = (object) array(
@@ -213,22 +219,33 @@ class AIPS_Scheduler {
                 'post_category' => $schedule->post_category,
                 'post_tags' => $schedule->post_tags,
                 'post_author' => $schedule->post_author,
+                'post_quantity' => 1, // Schedules always run one at a time per interval
+                'generate_featured_image' => isset($schedule->generate_featured_image) ? $schedule->generate_featured_image : 0,
+                'image_prompt' => isset($schedule->image_prompt) ? $schedule->image_prompt : '',
             );
             
-            $result = $generator->generate_post($template);
+            $topic = isset($schedule->topic) ? $schedule->topic : null;
+            $result = $generator->generate_post($template, null, $topic);
             
-            $next_run = $this->calculate_next_run($schedule->frequency);
-            
-            $wpdb->update(
-                $this->schedule_table,
-                array(
-                    'last_run' => current_time('mysql'),
-                    'next_run' => $next_run,
-                ),
-                array('id' => $schedule->id),
-                array('%s', '%s'),
-                array('%d')
-            );
+            if ($schedule->frequency === 'once' && !is_wp_error($result)) {
+                // If it's a one-time schedule and successful, delete it
+                $wpdb->delete($this->schedule_table, array('id' => $schedule->id), array('%d'));
+                $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->id));
+            } else {
+                // Otherwise calculate next run
+                $next_run = $this->calculate_next_run($schedule->frequency);
+
+                $wpdb->update(
+                    $this->schedule_table,
+                    array(
+                        'last_run' => current_time('mysql'),
+                        'next_run' => $next_run,
+                    ),
+                    array('id' => $schedule->id),
+                    array('%s', '%s'),
+                    array('%d')
+                );
+            }
             
             if (is_wp_error($result)) {
                 $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
