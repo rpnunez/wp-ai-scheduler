@@ -370,7 +370,7 @@ class AIPS_Generator {
     }
     
     private function process_template_variables($template, $topic = null) {
-        // Use static variable to cache generated values when called multiple times
+        // Use static variable to cache non-random values when called multiple times
         static $cache = null;
         
         // Reset cache if this is a new template processing (when topic changes)
@@ -384,7 +384,6 @@ class AIPS_Generator {
                 '{{time}}' => current_time('H:i'),
                 '{{site_name}}' => get_bloginfo('name'),
                 '{{site_description}}' => get_bloginfo('description'),
-                '{{random_number}}' => rand(1, 1000),
                 '{{topic}}' => $topic ? $topic : '',
                 '{{title}}' => $topic ? $topic : '', // Alias for topic if user prefers
             );
@@ -392,8 +391,12 @@ class AIPS_Generator {
             $cache = apply_filters('aips_template_variables', $cache);
         }
         
+        // Random number must be generated fresh each time to ensure uniqueness
+        $variables = $cache;
+        $variables['{{random_number}}'] = rand(1, 1000);
+        
         // Use strtr instead of str_replace for better performance with multiple replacements
-        return strtr($template, $cache);
+        return strtr($template, $variables);
     }
     
     private function generate_and_upload_featured_image($image_prompt, $post_title) {

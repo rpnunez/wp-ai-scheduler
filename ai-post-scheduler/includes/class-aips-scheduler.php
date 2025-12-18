@@ -288,19 +288,30 @@ class AIPS_Scheduler {
             ));
         }
         
-        // Bulk update recurring schedules
+        // Bulk update recurring schedules using CASE statement for true bulk update
         if (!empty($schedules_to_update)) {
+            $ids = array();
+            $last_run_cases = array();
+            $next_run_cases = array();
+            
             foreach ($schedules_to_update as $update_data) {
-                $wpdb->update(
-                    $this->schedule_table,
-                    array(
-                        'last_run' => $update_data['last_run'],
-                        'next_run' => $update_data['next_run'],
-                    ),
-                    array('id' => $update_data['id']),
-                    array('%s', '%s'),
-                    array('%d')
-                );
+                $ids[] = (int) $update_data['id'];
+                $last_run_cases[] = $wpdb->prepare('WHEN %d THEN %s', $update_data['id'], $update_data['last_run']);
+                $next_run_cases[] = $wpdb->prepare('WHEN %d THEN %s', $update_data['id'], $update_data['next_run']);
+            }
+            
+            if (!empty($ids)) {
+                $ids_list = implode(',', $ids);
+                $last_run_case = implode(' ', $last_run_cases);
+                $next_run_case = implode(' ', $next_run_cases);
+                
+                $wpdb->query("
+                    UPDATE {$this->schedule_table}
+                    SET 
+                        last_run = CASE id {$last_run_case} END,
+                        next_run = CASE id {$next_run_case} END
+                    WHERE id IN ($ids_list)
+                ");
             }
         }
     }
