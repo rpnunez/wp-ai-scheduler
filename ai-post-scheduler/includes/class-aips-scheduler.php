@@ -299,17 +299,13 @@ class AIPS_Scheduler {
                 $id = (int) $update_data['id'];
                 $ids[] = $id;
                 
+                // Escape values using esc_sql for use in CASE statements
+                $last_run_escaped = esc_sql($update_data['last_run']);
+                $next_run_escaped = esc_sql($update_data['next_run']);
+                
                 // Build CASE clauses with properly escaped values
-                $last_run_cases[] = sprintf(
-                    'WHEN %d THEN %s',
-                    $id,
-                    $wpdb->prepare('%s', $update_data['last_run'])
-                );
-                $next_run_cases[] = sprintf(
-                    'WHEN %d THEN %s',
-                    $id,
-                    $wpdb->prepare('%s', $update_data['next_run'])
-                );
+                $last_run_cases[] = sprintf("WHEN %d THEN '%s'", $id, $last_run_escaped);
+                $next_run_cases[] = sprintf("WHEN %d THEN '%s'", $id, $next_run_escaped);
             }
             
             if (!empty($ids)) {
