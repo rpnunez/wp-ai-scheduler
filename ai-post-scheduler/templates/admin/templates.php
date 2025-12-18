@@ -12,6 +12,12 @@ if (!defined('ABSPATH')) {
     <div class="aips-templates-container">
         <div class="aips-templates-list">
             <?php if (!empty($templates)): ?>
+            <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+                <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
+                <input type="search" id="aips-template-search" class="regular-text" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
+                <button type="button" id="aips-template-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+            </div>
+
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
@@ -61,6 +67,14 @@ if (!defined('ABSPATH')) {
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            <div id="aips-template-search-no-results" class="aips-empty-state" style="display: none;">
+                <span class="dashicons dashicons-search"></span>
+                <h3><?php esc_html_e('No Templates Found', 'ai-post-scheduler'); ?></h3>
+                <p><?php esc_html_e('No templates match your search criteria.', 'ai-post-scheduler'); ?></p>
+                <button type="button" class="button button-primary aips-clear-search-btn">
+                    <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+                </button>
+            </div>
             <?php else: ?>
             <div class="aips-empty-state">
                 <span class="dashicons dashicons-media-document"></span>
