@@ -223,9 +223,9 @@ class AIPS_Generator {
             $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
         }
         
-        $processed_prompt .= "\n\nOutput the content in HTML format with proper semantic tags (use <p>, <h2>, <h3>, <ul>, <li>, <blockquote>, etc. as appropriate).";
+        $content_prompt = $processed_prompt . "\n\nOutput the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.";
         
-        $content = $this->generate_content($processed_prompt, array(), 'content');
+        $content = $this->generate_content($content_prompt, array(), 'content');
         
         if (is_wp_error($content)) {
             $this->generation_log['completed_at'] = current_time('mysql');
