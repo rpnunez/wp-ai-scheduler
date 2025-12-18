@@ -208,7 +208,7 @@ class AIPS_Scheduler {
         $logger->log('Starting scheduled post generation', 'info');
         
         $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT s.*, t.* 
+            SELECT s.id AS schedule_id, s.*, t.*
             FROM {$this->schedule_table} s 
             INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
             WHERE s.is_active = 1 
@@ -225,7 +225,7 @@ class AIPS_Scheduler {
         $generator = new AIPS_Generator();
         
         foreach ($due_schedules as $schedule) {
-            $logger->log('Processing schedule: ' . $schedule->id, 'info', array(
+            $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
                 'template_id' => $schedule->template_id,
                 'template_name' => $schedule->name,
                 'topic' => isset($schedule->topic) ? $schedule->topic : ''
@@ -262,7 +262,7 @@ class AIPS_Scheduler {
                         'last_run' => current_time('mysql'),
                         'next_run' => $next_run,
                     ),
-                    array('id' => $schedule->id),
+                    array('id' => $schedule->schedule_id),
                     array('%s', '%s'),
                     array('%d')
                 );
@@ -270,11 +270,11 @@ class AIPS_Scheduler {
             
             if (is_wp_error($result)) {
                 $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
-                    'schedule_id' => $schedule->id
+                    'schedule_id' => $schedule->schedule_id
                 ));
             } else {
                 $logger->log('Schedule completed successfully', 'info', array(
-                    'schedule_id' => $schedule->id,
+                    'schedule_id' => $schedule->schedule_id,
                     'post_id' => $result
                 ));
             }
