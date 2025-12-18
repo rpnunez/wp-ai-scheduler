@@ -6,6 +6,7 @@ if (!defined('ABSPATH')) {
 class AIPS_Templates {
     
     private $table_name;
+    private $cache = array(); // Add cache for template data
     
     public function __construct() {
         global $wpdb;
@@ -20,13 +21,39 @@ class AIPS_Templates {
     public function get_all($active_only = false) {
         global $wpdb;
         
+        // Use cache key based on active_only parameter
+        $cache_key = 'all_' . ($active_only ? 'active' : 'all');
+        
+        if (isset($this->cache[$cache_key])) {
+            return $this->cache[$cache_key];
+        }
+        
         $where = $active_only ? "WHERE is_active = 1" : "";
-        return $wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
+        $results = $wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
+        
+        // Cache the results
+        $this->cache[$cache_key] = $results;
+        
+        return $results;
     }
     
     public function get($id) {
         global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $id));
+        
+        // Check cache first
+        $cache_key = 'template_' . $id;
+        if (isset($this->cache[$cache_key])) {
+            return $this->cache[$cache_key];
+        }
+        
+        $result = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $id));
+        
+        // Cache the result
+        if ($result) {
+            $this->cache[$cache_key] = $result;
+        }
+        
+        return $result;
     }
     
     public function save($data) {
@@ -46,6 +73,9 @@ class AIPS_Templates {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
+        
+        // Clear cache on save
+        $this->cache = array();
         
         if (!empty($data['id'])) {
             $wpdb->update(
@@ -68,6 +98,10 @@ class AIPS_Templates {
     
     public function delete($id) {
         global $wpdb;
+        
+        // Clear cache on delete
+        $this->cache = array();
+        
         return $wpdb->delete($this->table_name, array('id' => $id), array('%d'));
     }
     

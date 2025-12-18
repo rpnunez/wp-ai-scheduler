@@ -370,22 +370,30 @@ class AIPS_Generator {
     }
     
     private function process_template_variables($template, $topic = null) {
-        $variables = array(
-            '{{date}}' => date('F j, Y'),
-            '{{year}}' => date('Y'),
-            '{{month}}' => date('F'),
-            '{{day}}' => date('l'),
-            '{{time}}' => current_time('H:i'),
-            '{{site_name}}' => get_bloginfo('name'),
-            '{{site_description}}' => get_bloginfo('description'),
-            '{{random_number}}' => rand(1, 1000),
-            '{{topic}}' => $topic ? $topic : '',
-            '{{title}}' => $topic ? $topic : '', // Alias for topic if user prefers
-        );
+        // Use static variable to cache generated values when called multiple times
+        static $cache = null;
         
-        $variables = apply_filters('aips_template_variables', $variables);
+        // Reset cache if this is a new template processing (when topic changes)
+        if ($cache === null || (isset($cache['_topic']) && $cache['_topic'] !== $topic)) {
+            $cache = array(
+                '_topic' => $topic,
+                '{{date}}' => date('F j, Y'),
+                '{{year}}' => date('Y'),
+                '{{month}}' => date('F'),
+                '{{day}}' => date('l'),
+                '{{time}}' => current_time('H:i'),
+                '{{site_name}}' => get_bloginfo('name'),
+                '{{site_description}}' => get_bloginfo('description'),
+                '{{random_number}}' => rand(1, 1000),
+                '{{topic}}' => $topic ? $topic : '',
+                '{{title}}' => $topic ? $topic : '', // Alias for topic if user prefers
+            );
+            
+            $cache = apply_filters('aips_template_variables', $cache);
+        }
         
-        return str_replace(array_keys($variables), array_values($variables), $template);
+        // Use strtr instead of str_replace for better performance with multiple replacements
+        return strtr($template, $cache);
     }
     
     private function generate_and_upload_featured_image($image_prompt, $post_title) {

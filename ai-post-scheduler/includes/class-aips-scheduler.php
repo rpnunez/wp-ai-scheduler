@@ -223,6 +223,11 @@ class AIPS_Scheduler {
         }
         
         $generator = new AIPS_Generator();
+        $current_time = current_time('mysql');
+        
+        // Batch arrays for bulk operations
+        $schedules_to_delete = array();
+        $schedules_to_update = array();
         
         foreach ($due_schedules as $schedule) {
             $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
@@ -249,22 +254,16 @@ class AIPS_Scheduler {
             $result = $generator->generate_post($template, null, $topic);
             
             if ($schedule->frequency === 'once' && !is_wp_error($result)) {
-                // If it's a one-time schedule and successful, delete it
-                $wpdb->delete($this->schedule_table, array('id' => $schedule->id), array('%d'));
-                $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->id));
+                // Mark for deletion
+                $schedules_to_delete[] = $schedule->schedule_id;
+                $logger->log('One-time schedule completed and marked for deletion', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
-                // Otherwise calculate next run
+                // Calculate next run and mark for update
                 $next_run = $this->calculate_next_run($schedule->frequency);
-
-                $wpdb->update(
-                    $this->schedule_table,
-                    array(
-                        'last_run' => current_time('mysql'),
-                        'next_run' => $next_run,
-                    ),
-                    array('id' => $schedule->schedule_id),
-                    array('%s', '%s'),
-                    array('%d')
+                $schedules_to_update[] = array(
+                    'id' => $schedule->schedule_id,
+                    'last_run' => $current_time,
+                    'next_run' => $next_run
                 );
             }
             
@@ -277,6 +276,31 @@ class AIPS_Scheduler {
                     'schedule_id' => $schedule->schedule_id,
                     'post_id' => $result
                 ));
+            }
+        }
+        
+        // Bulk delete completed one-time schedules
+        if (!empty($schedules_to_delete)) {
+            $ids_placeholder = implode(',', array_fill(0, count($schedules_to_delete), '%d'));
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM {$this->schedule_table} WHERE id IN ($ids_placeholder)",
+                $schedules_to_delete
+            ));
+        }
+        
+        // Bulk update recurring schedules
+        if (!empty($schedules_to_update)) {
+            foreach ($schedules_to_update as $update_data) {
+                $wpdb->update(
+                    $this->schedule_table,
+                    array(
+                        'last_run' => $update_data['last_run'],
+                        'next_run' => $update_data['next_run'],
+                    ),
+                    array('id' => $update_data['id']),
+                    array('%s', '%s'),
+                    array('%d')
+                );
             }
         }
     }
