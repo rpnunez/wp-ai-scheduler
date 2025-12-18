@@ -81,12 +81,20 @@ Set the "Number of Posts to Generate" (1-20) in a Template to generate multiple 
 ## Installation
 
 1. Copy the `ai-post-scheduler` folder to WordPress `/wp-content/plugins/`
-2. Activate the plugin in WordPress admin
+2. Activate the plugin in WordPress admin (automatically creates/updates database tables)
 3. Ensure Meow Apps AI Engine is installed and configured
 4. Navigate to "AI Post Scheduler" in the admin menu
 5. Create Voices (optional) to establish consistent tone
 6. Create Templates to define content generation
 7. Set up Schedules for automated generation
+
+## Database Migrations
+
+See `MIGRATIONS.md` for information about upgrading from version 1.0 to 1.1 (adds Voices feature and batch generation).
+
+**For existing installations:**
+- Simply reactivate the updated plugin - it automatically applies database changes
+- OR manually apply the SQL migration in `migrations/001-add-voices-feature.sql`
 
 ## Dependencies
 
