@@ -374,7 +374,8 @@ class AIPS_Generator {
         static $cache = null;
         
         // Reset cache if this is a new template processing (when topic changes)
-        if ($cache === null || (isset($cache['_topic']) && $cache['_topic'] !== $topic)) {
+        // Handle all edge cases: null cache, missing _topic key, or different topic value
+        if ($cache === null || !isset($cache['_topic']) || $cache['_topic'] !== $topic) {
             $cache = array(
                 '_topic' => $topic,
                 '{{date}}' => date('F j, Y'),
