@@ -28,3 +28,8 @@ ALTER TABLE `{wp_prefix}aips_templates` ADD COLUMN `post_quantity` int DEFAULT 1
 -- Add excerpt_instructions column to voices table if it doesn't exist
 -- If column already exists, this will be safely ignored
 ALTER TABLE `{wp_prefix}aips_voices` ADD COLUMN `excerpt_instructions` text AFTER `content_instructions`;
+
+-- Add image_prompt and generate_featured_image columns to templates table
+-- If columns already exist, this will be safely ignored
+ALTER TABLE `{wp_prefix}aips_templates` ADD COLUMN `image_prompt` text AFTER `post_quantity`;
+ALTER TABLE `{wp_prefix}aips_templates` ADD COLUMN `generate_featured_image` tinyint(1) DEFAULT 0 AFTER `image_prompt`;

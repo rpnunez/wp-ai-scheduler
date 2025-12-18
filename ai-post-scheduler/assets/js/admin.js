@@ -13,6 +13,7 @@
             $(document).on('click', '.aips-save-template', this.saveTemplate);
             $(document).on('click', '.aips-test-template', this.testTemplate);
             $(document).on('click', '.aips-run-now', this.runNow);
+            $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
             $(document).on('keyup', '#voice_search', this.searchVoices);
 
             $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
@@ -73,6 +74,9 @@
                         $('#template_name').val(t.name);
                         $('#prompt_template').val(t.prompt_template);
                         $('#title_prompt').val(t.title_prompt);
+                        $('#post_quantity').val(t.post_quantity || 1);
+                        $('#generate_featured_image').prop('checked', t.generate_featured_image == 1);
+                        $('#image_prompt').val(t.image_prompt || '').prop('disabled', t.generate_featured_image != 1);
                         $('#post_status').val(t.post_status);
                         $('#post_category').val(t.post_category);
                         $('#post_tags').val(t.post_tags);
@@ -149,6 +153,8 @@
                     title_prompt: $('#title_prompt').val(),
                     voice_id: $('#voice_id').val(),
                     post_quantity: $('#post_quantity').val(),
+                    generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
+                    image_prompt: $('#image_prompt').val(),
                     post_status: $('#post_status').val(),
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
@@ -538,6 +544,11 @@
             url.searchParams.delete('paged');
             
             window.location.href = url.toString();
+        },
+
+        toggleImagePrompt: function(e) {
+            var isChecked = $(this).is(':checked');
+            $('#image_prompt').prop('disabled', !isChecked);
         },
 
         closeModal: function() {

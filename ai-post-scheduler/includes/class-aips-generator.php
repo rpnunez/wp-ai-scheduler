@@ -232,6 +232,15 @@ class AIPS_Generator {
             wp_set_post_tags($post_id, $tags);
         }
         
+        if ($template->generate_featured_image && !empty($template->image_prompt)) {
+            $image_prompt = $this->process_template_variables($template->image_prompt);
+            $attachment_id = $this->generate_and_upload_featured_image($image_prompt, $title);
+            
+            if ($attachment_id) {
+                set_post_thumbnail($post_id, $attachment_id);
+            }
+        }
+        
         $wpdb->update(
             $history_table,
             array(
@@ -272,5 +281,87 @@ class AIPS_Generator {
         $variables = apply_filters('aips_template_variables', $variables);
         
         return str_replace(array_keys($variables), array_values($variables), $template);
+    }
+    
+    private function generate_and_upload_featured_image($image_prompt, $post_title) {
+        $ai = $this->get_ai_engine();
+        
+        if (!$ai) {
+            $this->logger->log('AI Engine not available for image generation', 'error');
+            return false;
+        }
+        
+        try {
+            $query = new Meow_MWAI_Query_Image($image_prompt);
+            $response = $ai->run_query($query);
+            
+            if (!$response || empty($response->result)) {
+                $this->logger->log('Empty response from AI Engine for image generation', 'error');
+                return false;
+            }
+            
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
+            require_once(ABSPATH . 'wp-admin/includes/media.php');
+            
+            $image_url = $response->result;
+            
+            if (is_array($image_url) && !empty($image_url[0])) {
+                $image_url = $image_url[0];
+            }
+            
+            if (empty($image_url)) {
+                $this->logger->log('No image URL in AI response', 'error');
+                return false;
+            }
+            
+            $response_object = wp_remote_get($image_url);
+            if (is_wp_error($response_object)) {
+                $this->logger->log('Failed to fetch image: ' . $response_object->get_error_message(), 'error');
+                return false;
+            }
+            
+            $image_data = wp_remote_retrieve_body($response_object);
+            $post_slug = sanitize_title($post_title);
+            $filename = $post_slug . '.jpg';
+            
+            $upload_dir = wp_upload_dir();
+            $file_path = $upload_dir['path'] . '/' . $filename;
+            
+            if (!file_put_contents($file_path, $image_data)) {
+                $this->logger->log('Failed to write image file: ' . $file_path, 'error');
+                return false;
+            }
+            
+            $file_type = wp_check_filetype($filename);
+            
+            $attachment = array(
+                'post_mime_type' => $file_type['type'],
+                'post_title' => preg_replace('/\.[^.]+$/', '', $filename),
+                'post_content' => '',
+                'post_status' => 'inherit'
+            );
+            
+            $attachment_id = wp_insert_attachment($attachment, $file_path);
+            
+            if (is_wp_error($attachment_id)) {
+                $this->logger->log('Failed to insert attachment: ' . $attachment_id->get_error_message(), 'error');
+                return false;
+            }
+            
+            $attach_data = wp_generate_attachment_metadata($attachment_id, $file_path);
+            wp_update_attachment_metadata($attachment_id, $attach_data);
+            
+            $this->logger->log('Featured image generated and uploaded', 'info', array(
+                'attachment_id' => $attachment_id,
+                'filename' => $filename
+            ));
+            
+            return $attachment_id;
+            
+        } catch (Exception $e) {
+            $this->logger->log('Image generation error: ' . $e->getMessage(), 'error');
+            return false;
+        }
     }
 }

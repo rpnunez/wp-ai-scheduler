@@ -87,6 +87,15 @@ Set the "Number of Posts to Generate" (1-20) in a Template to generate multiple 
 - All posts use the same template but generate unique content each time
 - Useful for batch content creation workflows
 
+## Featured Image Generation
+
+Templates can automatically generate and set AI-generated featured images:
+- Enable "Generate Featured Image?" checkbox in template settings
+- Provide an "Image Prompt" describing the desired image
+- Image is generated using Meow Apps AI Engine, uploaded to Media Library
+- Media item is named as the slug version of the post title
+- Image is automatically set as the featured image for each generated post
+
 ## Installation
 
 1. Copy the `ai-post-scheduler` folder to WordPress `/wp-content/plugins/`

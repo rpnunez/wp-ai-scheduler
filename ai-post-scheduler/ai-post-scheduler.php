@@ -119,6 +119,8 @@ final class AI_Post_Scheduler {
             title_prompt text,
             voice_id bigint(20) DEFAULT NULL,
             post_quantity int DEFAULT 1,
+            image_prompt text,
+            generate_featured_image tinyint(1) DEFAULT 0,
             post_status varchar(50) DEFAULT 'draft',
             post_category bigint(20) DEFAULT NULL,
             post_tags text,

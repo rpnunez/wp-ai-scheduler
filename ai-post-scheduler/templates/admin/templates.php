@@ -119,6 +119,20 @@ if (!defined('ABSPATH')) {
                         <p class="description"><?php esc_html_e('Generate 1-20 posts when running this template. Useful for batch generation.', 'ai-post-scheduler'); ?></p>
                     </div>
                     
+                    <div class="aips-form-row">
+                        <label class="aips-checkbox-label">
+                            <input type="checkbox" id="generate_featured_image" name="generate_featured_image" value="1">
+                            <?php esc_html_e('Generate Featured Image?', 'ai-post-scheduler'); ?>
+                        </label>
+                        <p class="description"><?php esc_html_e('If checked, an AI-generated image will be created and set as the featured image.', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    
+                    <div class="aips-form-row">
+                        <label for="image_prompt"><?php esc_html_e('Image Prompt', 'ai-post-scheduler'); ?></label>
+                        <textarea id="image_prompt" name="image_prompt" rows="3" class="large-text" placeholder="<?php esc_attr_e('Describe the image you want generated...', 'ai-post-scheduler'); ?>" disabled></textarea>
+                        <p class="description"><?php esc_html_e('Enable "Generate Featured Image?" to edit this field. The image will be generated based on this prompt.', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    
                     <div class="aips-form-columns">
                         <div class="aips-form-row">
                             <label for="post_status"><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></label>
