@@ -7,25 +7,39 @@ class AIPS_Logger {
     
     private $log_file;
     private $enabled;
+    private $dir_checked = false;
     
     public function __construct() {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
         
+        $this->log_file = $log_dir . '/aips-' . date('Y-m-d') . '.log';
+        $this->enabled = (bool) get_option('aips_enable_logging', true);
+    }
+
+    private function ensure_directory_exists() {
+        if ($this->dir_checked) {
+            return;
+        }
+
+        $upload_dir = wp_upload_dir();
+        $log_dir = $upload_dir['basedir'] . '/aips-logs';
+
         if (!file_exists($log_dir)) {
             wp_mkdir_p($log_dir);
             file_put_contents($log_dir . '/.htaccess', 'deny from all');
             file_put_contents($log_dir . '/index.php', '<?php // Silence is golden');
         }
         
-        $this->log_file = $log_dir . '/aips-' . date('Y-m-d') . '.log';
-        $this->enabled = (bool) get_option('aips_enable_logging', true);
+        $this->dir_checked = true;
     }
     
     public function log($message, $level = 'info', $context = array()) {
         if (!$this->enabled) {
             return;
         }
+
+        $this->ensure_directory_exists();
         
         $timestamp = current_time('mysql');
         $level = strtoupper($level);
