@@ -109,11 +109,18 @@ $templates = $templates_handler->get_all(true);
                     <div class="aips-form-row">
                         <label for="schedule_frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></label>
                         <select id="schedule_frequency" name="frequency">
-                            <option value="hourly"><?php esc_html_e('Hourly', 'ai-post-scheduler'); ?></option>
-                            <option value="every_6_hours"><?php esc_html_e('Every 6 Hours', 'ai-post-scheduler'); ?></option>
-                            <option value="every_12_hours"><?php esc_html_e('Every 12 Hours', 'ai-post-scheduler'); ?></option>
-                            <option value="daily" selected><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
-                            <option value="weekly"><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
+                            <?php
+                            $cron_schedules = wp_get_schedules();
+
+                            // Sort by interval
+                            uasort($cron_schedules, function($a, $b) {
+                                return $a['interval'] - $b['interval'];
+                            });
+
+                            foreach ($cron_schedules as $key => $schedule) {
+                                echo '<option value="' . esc_attr($key) . '" ' . selected('daily', $key, false) . '>' . esc_html($schedule['display']) . '</option>';
+                            }
+                            ?>
                         </select>
                     </div>
                     

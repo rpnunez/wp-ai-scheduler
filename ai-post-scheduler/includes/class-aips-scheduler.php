@@ -23,6 +23,11 @@ class AIPS_Scheduler {
     }
     
     public function add_cron_intervals($schedules) {
+        $schedules['every_4_hours'] = array(
+            'interval' => 14400,
+            'display' => __('Every 4 Hours', 'ai-post-scheduler')
+        );
+
         $schedules['every_6_hours'] = array(
             'interval' => 21600,
             'display' => __('Every 6 Hours', 'ai-post-scheduler')
@@ -33,10 +38,33 @@ class AIPS_Scheduler {
             'display' => __('Every 12 Hours', 'ai-post-scheduler')
         );
         
+        $schedules['daily'] = array(
+            'interval' => 86400,
+            'display' => __('Daily', 'ai-post-scheduler')
+        );
+
         $schedules['weekly'] = array(
             'interval' => 604800,
             'display' => __('Once Weekly', 'ai-post-scheduler')
         );
+
+        $schedules['bi_weekly'] = array(
+            'interval' => 1209600,
+            'display' => __('Every 2 Weeks', 'ai-post-scheduler')
+        );
+
+        $schedules['monthly'] = array(
+            'interval' => 2592000,
+            'display' => __('Monthly', 'ai-post-scheduler')
+        );
+
+        $days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+        foreach ($days as $day) {
+            $schedules['every_' . strtolower($day)] = array(
+                'interval' => 604800,
+                'display' => sprintf(__('Every %s', 'ai-post-scheduler'), $day)
+            );
+        }
         
         return $schedules;
     }
@@ -105,6 +133,9 @@ class AIPS_Scheduler {
             case 'hourly':
                 $next = strtotime('+1 hour', $base_time);
                 break;
+            case 'every_4_hours':
+                $next = strtotime('+4 hours', $base_time);
+                break;
             case 'every_6_hours':
                 $next = strtotime('+6 hours', $base_time);
                 break;
@@ -117,8 +148,28 @@ class AIPS_Scheduler {
             case 'weekly':
                 $next = strtotime('+1 week', $base_time);
                 break;
+            case 'bi_weekly':
+                $next = strtotime('+2 weeks', $base_time);
+                break;
+            case 'monthly':
+                $next = strtotime('+1 month', $base_time);
+                break;
             default:
-                $next = strtotime('+1 day', $base_time);
+                if (strpos($frequency, 'every_') === 0) {
+                    $day = ucfirst(str_replace('every_', '', $frequency));
+                    $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+
+                    if (in_array($day, $valid_days)) {
+                        // Calculate next occurrence of the day while preserving time
+                        $next = strtotime("next $day", $base_time);
+                        // Reset the time to the base_time's time
+                        $next = strtotime(date('H:i:s', $base_time), $next);
+                    } else {
+                        $next = strtotime('+1 day', $base_time);
+                    }
+                } else {
+                    $next = strtotime('+1 day', $base_time);
+                }
         }
         
         return date('Y-m-d H:i:s', $next);
