@@ -12,7 +12,17 @@ if (!defined('ABSPATH')) {
     <div class="aips-templates-container">
         <div class="aips-templates-list">
             <?php if (!empty($templates)): ?>
-            <table class="wp-list-table widefat fixed striped">
+            <div class="tablenav top">
+                <div class="alignright">
+                    <p class="search-box">
+                        <label class="screen-reader-text" for="template-search-input"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
+                        <input type="search" id="template-search-input" name="s" value="" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
+                    </p>
+                </div>
+                <br class="clear">
+            </div>
+
+            <table class="wp-list-table widefat fixed striped" id="aips-templates-table">
                 <thead>
                     <tr>
                         <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
@@ -202,3 +212,38 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 </div>
+
+<script>
+jQuery(document).ready(function($) {
+    var $searchInput = $('#template-search-input');
+    var $table = $('#aips-templates-table');
+    var $rows = $table.find('tbody tr');
+    var $noResultsRow = $('<tr class="no-items"><td colspan="5" style="text-align:center; padding: 20px;">' +
+        '<?php esc_html_e('No templates found matching your search.', 'ai-post-scheduler'); ?>' +
+        '</td></tr>');
+
+    $searchInput.on('keyup search', function() {
+        var term = $(this).val().toLowerCase().trim();
+        var visibleCount = 0;
+
+        // Remove existing no-results row
+        $table.find('.no-items').remove();
+
+        $rows.each(function() {
+            var $row = $(this);
+            var name = $row.find('.column-name strong').text().toLowerCase();
+
+            if (name.indexOf(term) > -1) {
+                $row.show();
+                visibleCount++;
+            } else {
+                $row.hide();
+            }
+        });
+
+        if (visibleCount === 0) {
+            $table.find('tbody').append($noResultsRow);
+        }
+    });
+});
+</script>
