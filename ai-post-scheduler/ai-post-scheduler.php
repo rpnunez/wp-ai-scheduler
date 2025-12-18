@@ -54,6 +54,7 @@ final class AI_Post_Scheduler {
     
     private function includes() {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
@@ -92,6 +93,7 @@ final class AI_Post_Scheduler {
         $table_history = $wpdb->prefix . 'aips_history';
         $table_templates = $wpdb->prefix . 'aips_templates';
         $table_schedule = $wpdb->prefix . 'aips_schedule';
+        $table_voices = $wpdb->prefix . 'aips_voices';
         
         $sql_history = "CREATE TABLE IF NOT EXISTS $table_history (
             id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -115,6 +117,8 @@ final class AI_Post_Scheduler {
             name varchar(255) NOT NULL,
             prompt_template text NOT NULL,
             title_prompt text,
+            voice_id bigint(20) DEFAULT NULL,
+            post_quantity int DEFAULT 1,
             post_status varchar(50) DEFAULT 'draft',
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
@@ -138,10 +142,21 @@ final class AI_Post_Scheduler {
             KEY next_run (next_run)
         ) $charset_collate;";
         
+        $sql_voices = "CREATE TABLE IF NOT EXISTS $table_voices (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            title_prompt text NOT NULL,
+            content_instructions text NOT NULL,
+            is_active tinyint(1) DEFAULT 1,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) $charset_collate;";
+        
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_history);
         dbDelta($sql_templates);
         dbDelta($sql_schedule);
+        dbDelta($sql_voices);
     }
     
     private function set_default_options() {
@@ -165,6 +180,7 @@ final class AI_Post_Scheduler {
         
         if (is_admin()) {
             new AIPS_Settings();
+            new AIPS_Voices();
             new AIPS_Templates();
             new AIPS_History();
         }

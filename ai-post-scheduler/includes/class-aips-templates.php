@@ -36,6 +36,8 @@ class AIPS_Templates {
             'name' => sanitize_text_field($data['name']),
             'prompt_template' => wp_kses_post($data['prompt_template']),
             'title_prompt' => isset($data['title_prompt']) ? sanitize_text_field($data['title_prompt']) : '',
+            'voice_id' => isset($data['voice_id']) ? absint($data['voice_id']) : NULL,
+            'post_quantity' => isset($data['post_quantity']) ? absint($data['post_quantity']) : 1,
             'post_status' => sanitize_text_field($data['post_status']),
             'post_category' => absint($data['post_category']),
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
@@ -48,7 +50,7 @@ class AIPS_Templates {
                 $this->table_name,
                 $template_data,
                 array('id' => absint($data['id'])),
-                array('%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d'),
+                array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%d', '%d'),
                 array('%d')
             );
             return absint($data['id']);
@@ -56,7 +58,7 @@ class AIPS_Templates {
             $wpdb->insert(
                 $this->table_name,
                 $template_data,
-                array('%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d')
+                array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%d', '%d')
             );
             return $wpdb->insert_id;
         }
@@ -79,6 +81,8 @@ class AIPS_Templates {
             'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
             'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
             'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field($_POST['title_prompt']) : '',
+            'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
+            'post_quantity' => isset($_POST['post_quantity']) ? absint($_POST['post_quantity']) : 1,
             'post_status' => isset($_POST['post_status']) ? sanitize_text_field($_POST['post_status']) : 'draft',
             'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
@@ -88,6 +92,10 @@ class AIPS_Templates {
         
         if (empty($data['name']) || empty($data['prompt_template'])) {
             wp_send_json_error(array('message' => __('Name and prompt template are required.', 'ai-post-scheduler')));
+        }
+        
+        if ($data['post_quantity'] < 1 || $data['post_quantity'] > 20) {
+            $data['post_quantity'] = 1;
         }
         
         $id = $this->save($data);

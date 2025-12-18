@@ -78,8 +78,12 @@ class AIPS_Generator {
         }
     }
     
-    public function generate_title($prompt, $options = array()) {
-        $title_prompt = "Generate a compelling blog post title for the following topic. Return only the title, nothing else:\n\n" . $prompt;
+    public function generate_title($prompt, $voice_title_prompt = null, $options = array()) {
+        if ($voice_title_prompt) {
+            $title_prompt = $voice_title_prompt . "\n\n" . $prompt;
+        } else {
+            $title_prompt = "Generate a compelling blog post title for the following topic. Return only the title, nothing else:\n\n" . $prompt;
+        }
         
         $options['max_tokens'] = 100;
         
@@ -95,7 +99,7 @@ class AIPS_Generator {
         return $title;
     }
     
-    public function generate_post($template) {
+    public function generate_post($template, $voice = null) {
         global $wpdb;
         
         $history_table = $wpdb->prefix . 'aips_history';
@@ -115,6 +119,11 @@ class AIPS_Generator {
         
         $processed_prompt = $this->process_template_variables($template->prompt_template);
         
+        if ($voice) {
+            $voice_instructions = $this->process_template_variables($voice->content_instructions);
+            $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
+        }
+        
         $content = $this->generate_content($processed_prompt);
         
         if (is_wp_error($content)) {
@@ -133,11 +142,16 @@ class AIPS_Generator {
             return $content;
         }
         
+        $voice_title_prompt = null;
+        if ($voice) {
+            $voice_title_prompt = $this->process_template_variables($voice->title_prompt);
+        }
+        
         if (!empty($template->title_prompt)) {
             $title_prompt = $this->process_template_variables($template->title_prompt);
-            $title = $this->generate_title($title_prompt);
+            $title = $this->generate_title($title_prompt, $voice_title_prompt);
         } else {
-            $title = $this->generate_title($processed_prompt);
+            $title = $this->generate_title($processed_prompt, $voice_title_prompt);
         }
         
         if (is_wp_error($title)) {

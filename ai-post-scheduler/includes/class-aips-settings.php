@@ -33,6 +33,15 @@ class AIPS_Settings {
         
         add_submenu_page(
             'ai-post-scheduler',
+            __('Voices', 'ai-post-scheduler'),
+            __('Voices', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-voices',
+            array($this, 'render_voices_page')
+        );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Templates', 'ai-post-scheduler'),
             __('Templates', 'ai-post-scheduler'),
             'manage_options',
@@ -227,6 +236,11 @@ class AIPS_Settings {
         ");
         
         include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
+    }
+    
+    public function render_voices_page() {
+        $voices_handler = new AIPS_Voices();
+        $voices_handler->render_page();
     }
     
     public function render_templates_page() {

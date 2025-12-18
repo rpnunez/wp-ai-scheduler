@@ -294,17 +294,36 @@ class AIPS_Scheduler {
             wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
         }
         
-        $generator = new AIPS_Generator();
-        $result = $generator->generate_post($template);
-        
-        if (is_wp_error($result)) {
-            wp_send_json_error(array('message' => $result->get_error_message()));
+        $voice = null;
+        if (!empty($template->voice_id)) {
+            $voices = new AIPS_Voices();
+            $voice = $voices->get($template->voice_id);
         }
         
+        $quantity = $template->post_quantity ?: 1;
+        $post_ids = array();
+        
+        $generator = new AIPS_Generator();
+        
+        for ($i = 0; $i < $quantity; $i++) {
+            $result = $generator->generate_post($template, $voice);
+            
+            if (is_wp_error($result)) {
+                wp_send_json_error(array('message' => $result->get_error_message()));
+            }
+            
+            $post_ids[] = $result;
+        }
+        
+        $message = sprintf(
+            __('%d post(s) generated successfully!', 'ai-post-scheduler'),
+            count($post_ids)
+        );
+        
         wp_send_json_success(array(
-            'message' => __('Post generated successfully!', 'ai-post-scheduler'),
-            'post_id' => $result,
-            'edit_url' => get_edit_post_link($result, 'raw')
+            'message' => $message,
+            'post_ids' => $post_ids,
+            'edit_url' => !empty($post_ids) ? get_edit_post_link($post_ids[0], 'raw') : ''
         ));
     }
 }

@@ -102,6 +102,23 @@ if (!defined('ABSPATH')) {
                         <input type="text" id="title_prompt" name="title_prompt" class="regular-text" placeholder="<?php esc_attr_e('Leave empty to auto-generate from content prompt', 'ai-post-scheduler'); ?>">
                     </div>
                     
+                    <div class="aips-form-row">
+                        <label for="voice_id"><?php esc_html_e('Voice', 'ai-post-scheduler'); ?></label>
+                        <div class="aips-voice-selector">
+                            <input type="text" id="voice_search" class="regular-text" placeholder="<?php esc_attr_e('Search voices...', 'ai-post-scheduler'); ?>" style="margin-bottom: 8px;">
+                            <select id="voice_id" name="voice_id" class="regular-text">
+                                <option value="0"><?php esc_html_e('No Voice (Use Default)', 'ai-post-scheduler'); ?></option>
+                            </select>
+                            <p class="description"><?php esc_html_e('Optional. A voice provides pre-configured title and content instructions.', 'ai-post-scheduler'); ?></p>
+                        </div>
+                    </div>
+                    
+                    <div class="aips-form-row">
+                        <label for="post_quantity"><?php esc_html_e('Number of Posts to Generate', 'ai-post-scheduler'); ?></label>
+                        <input type="number" id="post_quantity" name="post_quantity" min="1" max="20" value="1" class="small-text">
+                        <p class="description"><?php esc_html_e('Generate 1-20 posts when running this template. Useful for batch generation.', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    
                     <div class="aips-form-columns">
                         <div class="aips-form-row">
                             <label for="post_status"><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></label>
