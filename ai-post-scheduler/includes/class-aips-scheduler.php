@@ -22,55 +22,76 @@ class AIPS_Scheduler {
         add_action('wp_ajax_aips_run_now', array($this, 'ajax_run_now'));
     }
     
-    public function add_cron_intervals($schedules) {
-        $schedules['every_4_hours'] = array(
+    public function get_intervals() {
+        $intervals = array();
+
+        $intervals['hourly'] = array(
+            'interval' => 3600,
+            'display' => __('Hourly', 'ai-post-scheduler')
+        );
+
+        $intervals['every_4_hours'] = array(
             'interval' => 14400,
             'display' => __('Every 4 Hours', 'ai-post-scheduler')
         );
 
-        $schedules['every_6_hours'] = array(
+        $intervals['every_6_hours'] = array(
             'interval' => 21600,
             'display' => __('Every 6 Hours', 'ai-post-scheduler')
         );
         
-        $schedules['every_12_hours'] = array(
+        $intervals['every_12_hours'] = array(
             'interval' => 43200,
             'display' => __('Every 12 Hours', 'ai-post-scheduler')
         );
         
-        $schedules['daily'] = array(
+        $intervals['daily'] = array(
             'interval' => 86400,
             'display' => __('Daily', 'ai-post-scheduler')
         );
 
-        $schedules['weekly'] = array(
+        $intervals['weekly'] = array(
             'interval' => 604800,
             'display' => __('Once Weekly', 'ai-post-scheduler')
         );
 
-        $schedules['bi_weekly'] = array(
+        $intervals['bi_weekly'] = array(
             'interval' => 1209600,
             'display' => __('Every 2 Weeks', 'ai-post-scheduler')
         );
 
-        $schedules['monthly'] = array(
+        $intervals['monthly'] = array(
             'interval' => 2592000,
             'display' => __('Monthly', 'ai-post-scheduler')
         );
 
-        $schedules['once'] = array(
+        $intervals['once'] = array(
             'interval' => 86400, // Default to daily interval, but handled specially
             'display' => __('Once', 'ai-post-scheduler')
         );
 
         $days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
         foreach ($days as $day) {
-            $schedules['every_' . strtolower($day)] = array(
+            $intervals['every_' . strtolower($day)] = array(
                 'interval' => 604800,
                 'display' => sprintf(__('Every %s', 'ai-post-scheduler'), $day)
             );
         }
         
+        return $intervals;
+    }
+
+    public function add_cron_intervals($schedules) {
+        $intervals = $this->get_intervals();
+
+        // Merge our intervals into WP schedules
+        // Note: 'hourly' is a default WP interval, so we might overlap, but that's fine.
+        foreach ($intervals as $key => $data) {
+            if (!isset($schedules[$key])) {
+                $schedules[$key] = $data;
+            }
+        }
+
         return $schedules;
     }
     
