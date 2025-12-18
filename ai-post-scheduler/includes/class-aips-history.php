@@ -30,27 +30,47 @@ class AIPS_History {
         $args = wp_parse_args($args, $defaults);
         
         $offset = ($args['page'] - 1) * $args['per_page'];
-        $where = "1=1";
+
+        // Fix: Use array for where clauses and arguments to avoid double prepare
+        $where_clauses = array("1=1");
+        $where_args = array();
         
         if (!empty($args['status'])) {
-            $where .= $wpdb->prepare(" AND h.status = %s", $args['status']);
+            $where_clauses[] = "h.status = %s";
+            $where_args[] = $args['status'];
         }
         
+        $where_sql = implode(' AND ', $where_clauses);
+
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
         
         $templates_table = $wpdb->prefix . 'aips_templates';
         
+        // Arguments for the main query: where args + limit + offset
+        $query_args = $where_args;
+        $query_args[] = $args['per_page'];
+        $query_args[] = $offset;
+
         $results = $wpdb->get_results($wpdb->prepare("
             SELECT h.*, t.name as template_name 
             FROM {$this->table_name} h 
             LEFT JOIN {$templates_table} t ON h.template_id = t.id 
-            WHERE $where 
+            WHERE $where_sql
             ORDER BY h.$orderby $order 
             LIMIT %d OFFSET %d
-        ", $args['per_page'], $offset));
+        ", $query_args));
         
-        $total = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where");
+        // For the count query, we only need the where args
+        if (!empty($where_args)) {
+            $total = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
+                $where_args
+            ));
+        } else {
+            // No placeholders, run directly
+            $total = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+        }
         
         return array(
             'items' => $results,
