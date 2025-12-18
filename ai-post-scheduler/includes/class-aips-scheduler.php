@@ -283,6 +283,7 @@ class AIPS_Scheduler {
         if (!empty($schedules_to_delete)) {
             $ids_placeholder = implode(',', array_fill(0, count($schedules_to_delete), '%d'));
             // Use array unpacking with spread operator to pass individual parameters
+            // Note: $this->schedule_table is safe as it's constructed from wpdb->prefix in __construct()
             $wpdb->query($wpdb->prepare(
                 "DELETE FROM {$this->schedule_table} WHERE id IN ($ids_placeholder)",
                 ...$schedules_to_delete
@@ -315,6 +316,8 @@ class AIPS_Scheduler {
                 $last_run_case = implode(' ', $last_run_cases);
                 $next_run_case = implode(' ', $next_run_cases);
                 
+                // Note: $this->schedule_table is safe as it's constructed from wpdb->prefix in __construct()
+                // WordPress doesn't support table name placeholders in prepare(), this is the standard approach
                 $wpdb->query("
                     UPDATE {$this->schedule_table}
                     SET 

@@ -5,6 +5,10 @@ if (!defined('ABSPATH')) {
 
 /**
  * Migration 1.5: Add database indexes for better query performance
+ * 
+ * Security Note: WordPress wpdb->prepare() doesn't support table name placeholders.
+ * Table names are constructed from wpdb->prefix (trusted) and validated with regex.
+ * This is the standard WordPress approach for dynamic table names in migrations.
  */
 
 global $wpdb;
@@ -26,11 +30,13 @@ function aips_index_exists($table_name, $index_name) {
 }
 
 // Add indexes to schedule table
+// Table name constructed from wpdb->prefix (trusted source)
 $schedule_table = $wpdb->prefix . 'aips_schedule';
 
-// Validate table name matches expected pattern for security
+// Validate table name matches expected pattern for additional security
 if (preg_match('/^[a-zA-Z0-9_]+$/', $schedule_table)) {
     if (!aips_index_exists($schedule_table, 'idx_is_active_next_run')) {
+        // Backticks used for table name quoting per MySQL standards
         $wpdb->query("ALTER TABLE `{$schedule_table}` ADD INDEX idx_is_active_next_run (is_active, next_run)");
     }
 

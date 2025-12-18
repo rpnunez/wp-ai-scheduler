@@ -9,6 +9,9 @@ class AIPS_Generator {
     private $logger;
     private $generation_log;
     
+    // Sentinel value for cache invalidation with null topics
+    const CACHE_TOPIC_UNSET = '__AIPS_CACHE_TOPIC_UNSET__';
+    
     public function __construct() {
         $this->logger = new AIPS_Logger();
         $this->reset_generation_log();
@@ -372,7 +375,7 @@ class AIPS_Generator {
     private function process_template_variables($template, $topic = null) {
         // Use static variable to cache non-random values when called multiple times
         static $cache = null;
-        static $cached_topic = '__UNSET__'; // Use sentinel value to distinguish null from unset
+        static $cached_topic = self::CACHE_TOPIC_UNSET; // Use constant sentinel value
         
         // Reset cache if this is a new template processing (when topic changes)
         // Handle all edge cases including null topic values
