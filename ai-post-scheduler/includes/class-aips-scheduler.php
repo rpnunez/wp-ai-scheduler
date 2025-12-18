@@ -22,50 +22,76 @@ class AIPS_Scheduler {
         add_action('wp_ajax_aips_run_now', array($this, 'ajax_run_now'));
     }
     
-    public function add_cron_intervals($schedules) {
-        $schedules['every_4_hours'] = array(
+    public function get_intervals() {
+        $intervals = array();
+
+        $intervals['hourly'] = array(
+            'interval' => 3600,
+            'display' => __('Hourly', 'ai-post-scheduler')
+        );
+
+        $intervals['every_4_hours'] = array(
             'interval' => 14400,
             'display' => __('Every 4 Hours', 'ai-post-scheduler')
         );
 
-        $schedules['every_6_hours'] = array(
+        $intervals['every_6_hours'] = array(
             'interval' => 21600,
             'display' => __('Every 6 Hours', 'ai-post-scheduler')
         );
         
-        $schedules['every_12_hours'] = array(
+        $intervals['every_12_hours'] = array(
             'interval' => 43200,
             'display' => __('Every 12 Hours', 'ai-post-scheduler')
         );
         
-        $schedules['daily'] = array(
+        $intervals['daily'] = array(
             'interval' => 86400,
             'display' => __('Daily', 'ai-post-scheduler')
         );
 
-        $schedules['weekly'] = array(
+        $intervals['weekly'] = array(
             'interval' => 604800,
             'display' => __('Once Weekly', 'ai-post-scheduler')
         );
 
-        $schedules['bi_weekly'] = array(
+        $intervals['bi_weekly'] = array(
             'interval' => 1209600,
             'display' => __('Every 2 Weeks', 'ai-post-scheduler')
         );
 
-        $schedules['monthly'] = array(
+        $intervals['monthly'] = array(
             'interval' => 2592000,
             'display' => __('Monthly', 'ai-post-scheduler')
         );
 
+        $intervals['once'] = array(
+            'interval' => 86400, // Default to daily interval, but handled specially
+            'display' => __('Once', 'ai-post-scheduler')
+        );
+
         $days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
         foreach ($days as $day) {
-            $schedules['every_' . strtolower($day)] = array(
+            $intervals['every_' . strtolower($day)] = array(
                 'interval' => 604800,
                 'display' => sprintf(__('Every %s', 'ai-post-scheduler'), $day)
             );
         }
         
+        return $intervals;
+    }
+
+    public function add_cron_intervals($schedules) {
+        $intervals = $this->get_intervals();
+
+        // Merge our intervals into WP schedules
+        // Note: 'hourly' is a default WP interval, so we might overlap, but that's fine.
+        foreach ($intervals as $key => $data) {
+            if (!isset($schedules[$key])) {
+                $schedules[$key] = $data;
+            }
+        }
+
         return $schedules;
     }
     
@@ -201,7 +227,8 @@ class AIPS_Scheduler {
         foreach ($due_schedules as $schedule) {
             $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
                 'template_id' => $schedule->template_id,
-                'template_name' => $schedule->name
+                'template_name' => $schedule->name,
+                'topic' => isset($schedule->topic) ? $schedule->topic : ''
             ));
             
             $template = (object) array(
@@ -213,22 +240,33 @@ class AIPS_Scheduler {
                 'post_category' => $schedule->post_category,
                 'post_tags' => $schedule->post_tags,
                 'post_author' => $schedule->post_author,
+                'post_quantity' => 1, // Schedules always run one at a time per interval
+                'generate_featured_image' => isset($schedule->generate_featured_image) ? $schedule->generate_featured_image : 0,
+                'image_prompt' => isset($schedule->image_prompt) ? $schedule->image_prompt : '',
             );
             
-            $result = $generator->generate_post($template);
+            $topic = isset($schedule->topic) ? $schedule->topic : null;
+            $result = $generator->generate_post($template, null, $topic);
             
-            $next_run = $this->calculate_next_run($schedule->frequency);
-            
-            $wpdb->update(
-                $this->schedule_table,
-                array(
-                    'last_run' => current_time('mysql'),
-                    'next_run' => $next_run,
-                ),
-                array('id' => $schedule->schedule_id),
-                array('%s', '%s'),
-                array('%d')
-            );
+            if ($schedule->frequency === 'once' && !is_wp_error($result)) {
+                // If it's a one-time schedule and successful, delete it
+                $wpdb->delete($this->schedule_table, array('id' => $schedule->id), array('%d'));
+                $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->id));
+            } else {
+                // Otherwise calculate next run
+                $next_run = $this->calculate_next_run($schedule->frequency);
+
+                $wpdb->update(
+                    $this->schedule_table,
+                    array(
+                        'last_run' => current_time('mysql'),
+                        'next_run' => $next_run,
+                    ),
+                    array('id' => $schedule->schedule_id),
+                    array('%s', '%s'),
+                    array('%d')
+                );
+            }
             
             if (is_wp_error($result)) {
                 $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(

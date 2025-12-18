@@ -187,6 +187,6 @@ class AIPS_Templates {
         $categories = get_categories(array('hide_empty' => false));
         $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));
         
-        include AIPS_PLUGIN_DIR . 'templates/admin/templates.php';
+        include AIPS_PLUGIN_DIR . 'templates/admin/main.php';
     }
 }

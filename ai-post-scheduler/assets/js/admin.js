@@ -31,6 +31,11 @@
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
+            // Template Search
+            $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
+            $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
+            $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
+
             $(document).on('click', '.aips-modal-close', this.closeModal);
             $(document).on('click', '.aips-modal', function(e) {
                 if ($(e.target).hasClass('aips-modal')) {
@@ -41,6 +46,177 @@
             $(document).on('keydown', function(e) {
                 if (e.key === 'Escape') {
                     AIPS.closeModal();
+                }
+            });
+
+            // Planner events
+            $(document).on('click', '.nav-tab', this.switchTab);
+            $(document).on('click', '#btn-generate-topics', this.generateTopics);
+            $(document).on('click', '#btn-parse-manual', this.parseManualTopics);
+            $(document).on('click', '#btn-bulk-schedule', this.bulkSchedule);
+            $(document).on('change', '#check-all-topics', this.toggleAllTopics);
+            $(document).on('change', '.topic-checkbox', this.updateSelectionCount);
+        },
+
+        switchTab: function(e) {
+            e.preventDefault();
+            var tabId = $(this).data('tab');
+
+            $('.nav-tab').removeClass('nav-tab-active');
+            $(this).addClass('nav-tab-active');
+
+            $('.aips-tab-content').hide();
+            $('#' + tabId + '-tab').show();
+        },
+
+        generateTopics: function(e) {
+            e.preventDefault();
+            var niche = $('#planner-niche').val();
+            var count = $('#planner-count').val();
+
+            if (!niche) {
+                alert('Please enter a niche or topic.');
+                return;
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true);
+            $btn.next('.spinner').addClass('is-active');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_generate_topics',
+                    nonce: aipsAjax.nonce,
+                    niche: niche,
+                    count: count
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.renderTopics(response.data.topics);
+                        $('#planner-results').slideDown();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                    $btn.next('.spinner').removeClass('is-active');
+                }
+            });
+        },
+
+        parseManualTopics: function(e) {
+            e.preventDefault();
+            var text = $('#planner-manual-topics').val();
+            if (!text) return;
+
+            var topics = text.split('\n').map(function(t) { return t.trim(); }).filter(function(t) { return t.length > 0; });
+
+            if (topics.length > 0) {
+                AIPS.renderTopics(topics, true); // true = append
+                $('#planner-results').slideDown();
+                $('#planner-manual-topics').val('');
+            }
+        },
+
+        renderTopics: function(topics, append) {
+            var html = '';
+            topics.forEach(function(topic) {
+                // Escape HTML
+                var div = document.createElement('div');
+                div.textContent = topic;
+                var safeTopic = div.innerHTML;
+
+                html += '<div class="topic-item">';
+                html += '<label>';
+                html += '<input type="checkbox" class="topic-checkbox" value="' + safeTopic + '" checked>';
+                html += '<span>' + safeTopic + '</span>';
+                html += '</label>';
+                html += '</div>';
+            });
+
+            if (append) {
+                $('#topics-list').append(html);
+            } else {
+                $('#topics-list').html(html);
+            }
+
+            AIPS.updateSelectionCount();
+        },
+
+        toggleAllTopics: function() {
+            var isChecked = $(this).is(':checked');
+            $('.topic-checkbox').prop('checked', isChecked);
+            AIPS.updateSelectionCount();
+        },
+
+        updateSelectionCount: function() {
+            var count = $('.topic-checkbox:checked').length;
+            $('.selection-count').text(count + ' selected');
+        },
+
+        bulkSchedule: function(e) {
+            e.preventDefault();
+            var topics = [];
+            $('.topic-checkbox:checked').each(function() {
+                topics.push($(this).val());
+            });
+
+            if (topics.length === 0) {
+                alert('Please select at least one topic.');
+                return;
+            }
+
+            var templateId = $('#bulk-template').val();
+            var startDate = $('#bulk-start-date').val();
+
+            if (!templateId) {
+                alert('Please select a template.');
+                return;
+            }
+            if (!startDate) {
+                alert('Please select a start date.');
+                return;
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true);
+            $btn.next('.spinner').addClass('is-active');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_schedule',
+                    nonce: aipsAjax.nonce,
+                    topics: topics,
+                    template_id: templateId,
+                    start_date: startDate,
+                    frequency: $('#bulk-frequency').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        // Clear selection or redirect?
+                        // For now just uncheck scheduled ones or clear list
+                         $('#topics-list').html('');
+                         $('#planner-results').slideUp();
+                         $('#planner-niche').val('');
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                    $btn.next('.spinner').removeClass('is-active');
                 }
             });
         },
@@ -550,6 +726,47 @@
         toggleImagePrompt: function(e) {
             var isChecked = $(this).is(':checked');
             $('#image_prompt').prop('disabled', !isChecked);
+        },
+
+        filterTemplates: function() {
+            var term = $('#aips-template-search').val().toLowerCase().trim();
+            var $rows = $('.aips-templates-list tbody tr');
+            var $noResults = $('#aips-template-search-no-results');
+            var $table = $('.aips-templates-list table');
+            var $clearBtn = $('#aips-template-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                var name = $row.find('.column-name').text().toLowerCase();
+                var category = $row.find('.column-category').text().toLowerCase();
+
+                if (name.indexOf(term) > -1 || category.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearTemplateSearch: function(e) {
+            e.preventDefault();
+            $('#aips-template-search').val('').trigger('keyup');
         },
 
         viewDetails: function(e) {
