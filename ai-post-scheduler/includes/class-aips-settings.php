@@ -75,6 +75,15 @@ class AIPS_Settings {
             'aips-settings',
             array($this, 'render_settings_page')
         );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('System Status', 'ai-post-scheduler'),
+            __('System Status', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-status',
+            array($this, 'render_status_page')
+        );
     }
     
     public function register_settings() {
@@ -259,5 +268,10 @@ class AIPS_Settings {
     
     public function render_settings_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/settings.php';
+    }
+
+    public function render_status_page() {
+        $status_handler = new AIPS_System_Status();
+        $status_handler->render_page();
     }
 }
