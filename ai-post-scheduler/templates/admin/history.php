@@ -142,7 +142,7 @@ if (!defined('ABSPATH')) {
     
     <?php else: ?>
     <div class="aips-empty-state">
-        <span class="dashicons dashicons-backup"></span>
+        <span class="dashicons dashicons-backup" aria-hidden="true"></span>
         <h3><?php esc_html_e('No History Yet', 'ai-post-scheduler'); ?></h3>
         <p><?php esc_html_e('Generated posts will appear here.', 'ai-post-scheduler'); ?></p>
     </div>
@@ -153,7 +153,7 @@ if (!defined('ABSPATH')) {
     <div class="aips-modal-content aips-modal-large">
         <div class="aips-modal-header">
             <h2 id="aips-details-title"><?php esc_html_e('Generation Details', 'ai-post-scheduler'); ?></h2>
-            <button class="aips-modal-close">&times;</button>
+            <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         </div>
         <div class="aips-modal-body">
             <div id="aips-details-loading" class="aips-loading">
