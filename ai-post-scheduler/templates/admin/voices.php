@@ -48,7 +48,7 @@ if (!defined('ABSPATH')) {
         </table>
         <?php else: ?>
         <div class="aips-empty-state">
-            <span class="dashicons dashicons-format-quote"></span>
+            <span class="dashicons dashicons-format-quote" aria-hidden="true"></span>
             <h3><?php esc_html_e('No Voices Yet', 'ai-post-scheduler'); ?></h3>
             <p><?php esc_html_e('Create a voice to establish consistent tone and style for your generated posts.', 'ai-post-scheduler'); ?></p>
             <button class="button button-primary button-large aips-add-voice-btn">
@@ -62,7 +62,7 @@ if (!defined('ABSPATH')) {
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2 id="aips-voice-modal-title"><?php esc_html_e('Add New Voice', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close">&times;</button>
+                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <form id="aips-voice-form">

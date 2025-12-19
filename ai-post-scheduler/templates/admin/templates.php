@@ -68,7 +68,7 @@ if (!defined('ABSPATH')) {
                 </tbody>
             </table>
             <div id="aips-template-search-no-results" class="aips-empty-state" style="display: none;">
-                <span class="dashicons dashicons-search"></span>
+                <span class="dashicons dashicons-search" aria-hidden="true"></span>
                 <h3><?php esc_html_e('No Templates Found', 'ai-post-scheduler'); ?></h3>
                 <p><?php esc_html_e('No templates match your search criteria.', 'ai-post-scheduler'); ?></p>
                 <button type="button" class="button button-primary aips-clear-search-btn">
@@ -77,7 +77,7 @@ if (!defined('ABSPATH')) {
             </div>
             <?php else: ?>
             <div class="aips-empty-state">
-                <span class="dashicons dashicons-media-document"></span>
+                <span class="dashicons dashicons-media-document" aria-hidden="true"></span>
                 <h3><?php esc_html_e('No Templates Yet', 'ai-post-scheduler'); ?></h3>
                 <p><?php esc_html_e('Create your first template to start generating AI posts.', 'ai-post-scheduler'); ?></p>
                 <button class="button button-primary button-large aips-add-template-btn">
@@ -92,7 +92,7 @@ if (!defined('ABSPATH')) {
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2 id="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close">&times;</button>
+                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <form id="aips-template-form">
@@ -195,7 +195,7 @@ if (!defined('ABSPATH')) {
             </div>
             <div class="aips-modal-footer">
                 <button type="button" class="button aips-test-template"><?php esc_html_e('Test Generate', 'ai-post-scheduler'); ?></button>
-                <button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+                <button type="button" class="button aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                 <button type="button" class="button button-primary aips-save-template"><?php esc_html_e('Save Template', 'ai-post-scheduler'); ?></button>
             </div>
         </div>
@@ -205,13 +205,13 @@ if (!defined('ABSPATH')) {
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2><?php esc_html_e('Test Generation Result', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close">&times;</button>
+                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <div id="aips-test-content"></div>
             </div>
             <div class="aips-modal-footer">
-                <button type="button" class="button aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+                <button type="button" class="button aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
             </div>
         </div>
     </div>
