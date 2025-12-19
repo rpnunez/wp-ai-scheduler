@@ -37,6 +37,55 @@ class AIPS_DB_Manager {
         return $full_names;
     }
 
+    /**
+     * Parse schema to get table definitions (columns)
+     * Returns: ['table_name_without_prefix' => ['col1', 'col2', ...]]
+     */
+    public static function get_table_definitions() {
+        global $wpdb;
+        $instance = new self();
+        $schema = $instance->get_schema();
+        $definitions = array();
+
+        foreach ($schema as $sql) {
+            // Extract table name
+            if (preg_match('/CREATE TABLE\s+(\S+)\s*\(/i', $sql, $matches)) {
+                $full_table_name = str_replace('`', '', $matches[1]);
+                $table_name = str_replace($wpdb->prefix, '', $full_table_name);
+
+                // Extract body
+                if (preg_match('/\((.*)\)\s*[^)]*$/s', $sql, $body_matches)) {
+                    $body = $body_matches[1];
+                    $lines = explode("\n", $body);
+                    $columns = array();
+
+                    foreach ($lines as $line) {
+                        $line = trim($line);
+                        if (empty($line)) continue;
+
+                        // Skip keys and constraints
+                        if (preg_match('/^(PRIMARY KEY|KEY|UNIQUE|INDEX|CONSTRAINT|FOREIGN KEY)/i', $line)) {
+                            continue;
+                        }
+
+                        // Get column name (first word)
+                        $parts = preg_split('/\s+/', $line);
+                        if (!empty($parts[0])) {
+                            $col_name = str_replace('`', '', $parts[0]);
+                            $columns[] = $col_name;
+                        }
+                    }
+
+                    if (!empty($columns)) {
+                        $definitions[$table_name] = $columns;
+                    }
+                }
+            }
+        }
+
+        return $definitions;
+    }
+
     public function get_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
