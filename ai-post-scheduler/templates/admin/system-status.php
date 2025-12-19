@@ -54,6 +54,37 @@ if (!defined('ABSPATH')) {
             </table>
             <br>
         <?php endforeach; ?>
+
+        <h2 class="title"><?php esc_html_e('Database Actions', 'ai-post-scheduler'); ?></h2>
+        <div class="card">
+            <h3><?php esc_html_e('Repair & Maintenance', 'ai-post-scheduler'); ?></h3>
+            <p><?php esc_html_e('Use these tools to fix database issues or reset the plugin.', 'ai-post-scheduler'); ?></p>
+
+            <p>
+                <button type="button" class="button button-primary aips-repair-db"><?php esc_html_e('Repair DB Tables', 'ai-post-scheduler'); ?></button>
+                <span class="description"><?php esc_html_e('Runs the database migration script to fix missing tables or columns.', 'ai-post-scheduler'); ?></span>
+            </p>
+
+            <hr>
+
+            <p>
+                <label>
+                    <input type="checkbox" id="aips-backup-db">
+                    <?php esc_html_e('Backup and Restore Data (Experimental)', 'ai-post-scheduler'); ?>
+                </label>
+            </p>
+            <p>
+                <button type="button" class="button button-secondary aips-reinstall-db"><?php esc_html_e('Reinstall DB Tables', 'ai-post-scheduler'); ?></button>
+                <span class="description"><?php esc_html_e('Drops and recreates all plugin tables. Use with caution.', 'ai-post-scheduler'); ?></span>
+            </p>
+
+            <hr>
+
+            <p>
+                <button type="button" class="button button-link-delete aips-wipe-db"><?php esc_html_e('Wipe Plugin Data', 'ai-post-scheduler'); ?></button>
+                <span class="description"><?php esc_html_e('Permanently deletes all data from the plugin tables.', 'ai-post-scheduler'); ?></span>
+            </p>
+        </div>
     </div>
 </div>
 

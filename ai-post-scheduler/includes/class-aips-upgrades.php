@@ -22,11 +22,11 @@ class AIPS_Upgrades {
     
     private function run_migrations($from_version) {
         $migrations = array(
-            '1.0' => 'migration-1.0-initial.php',
-            '1.1' => 'migration-1.1-add-voices.php',
-            '1.2' => 'migration-1.2-add-featured-images.php',
-            '1.3' => 'migration-1.3-add-generation-log.php',
-            '1.4' => 'migration-1.4-add-topic.php',
+            '1.0.0' => 'migration-1.0-initial.php',
+            '1.1.0' => 'migration-1.1-add-voices.php',
+            '1.2.0' => 'migration-1.2-add-featured-images.php',
+            '1.3.0' => 'migration-1.3-add-generation-log.php',
+            '1.4.0' => 'migration-1.4-add-topic.php',
         );
         
         foreach ($migrations as $version => $file) {
@@ -35,6 +35,10 @@ class AIPS_Upgrades {
             }
         }
         
+        // Ensure schema is fully up-to-date using the DB Manager
+        // This handles cases where intermediate migrations might have been skipped or partial
+        AIPS_DB_Manager::install_tables();
+
         update_option('aips_db_version', AIPS_VERSION);
         $this->logger->log('Database upgrade completed to version ' . AIPS_VERSION, 'info');
     }
