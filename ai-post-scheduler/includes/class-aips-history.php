@@ -83,11 +83,21 @@ class AIPS_History {
     public function get_stats() {
         global $wpdb;
         
+        // Optimized to single query
+        $results = $wpdb->get_row("
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
+            FROM {$this->table_name}
+        ");
+
         $stats = array(
-            'total' => $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}"),
-            'completed' => $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} WHERE status = 'completed'"),
-            'failed' => $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} WHERE status = 'failed'"),
-            'processing' => $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} WHERE status = 'processing'"),
+            'total' => (int) $results->total,
+            'completed' => (int) $results->completed,
+            'failed' => (int) $results->failed,
+            'processing' => (int) $results->processing,
         );
         
         $stats['success_rate'] = $stats['total'] > 0 
