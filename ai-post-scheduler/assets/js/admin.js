@@ -36,6 +36,11 @@
             $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
             $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
 
+            // Voice Search
+            $(document).on('keyup search', '#aips-voice-search', this.filterVoices);
+            $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
+            $(document).on('click', '.aips-clear-voice-search-btn', this.clearVoiceSearch);
+
             $(document).on('click', '.aips-modal-close', this.closeModal);
             $(document).on('click', '.aips-modal', function(e) {
                 if ($(e.target).hasClass('aips-modal')) {
@@ -767,6 +772,46 @@
         clearTemplateSearch: function(e) {
             e.preventDefault();
             $('#aips-template-search').val('').trigger('keyup');
+        },
+
+        filterVoices: function() {
+            var term = $('#aips-voice-search').val().toLowerCase().trim();
+            var $rows = $('.aips-voices-list tbody tr');
+            var $noResults = $('#aips-voice-search-no-results');
+            var $table = $('.aips-voices-list');
+            var $clearBtn = $('#aips-voice-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                var name = $row.find('.column-name').text().toLowerCase();
+
+                if (name.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearVoiceSearch: function(e) {
+            e.preventDefault();
+            $('#aips-voice-search').val('').trigger('keyup');
         },
 
         viewDetails: function(e) {
