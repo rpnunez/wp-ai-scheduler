@@ -3,14 +3,35 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Class AIPS_Settings
+ *
+ * Handles the registration of admin menu pages, settings, and rendering of admin interfaces
+ * for the AI Post Scheduler plugin.
+ *
+ * @package AI_Post_Scheduler
+ */
 class AIPS_Settings {
     
+    /**
+     * Initialize the settings class.
+     *
+     * Hooks into admin_menu, admin_init, and admin_enqueue_scripts.
+     */
     public function __construct() {
         add_action('admin_menu', array($this, 'add_menu_pages'));
         add_action('admin_init', array($this, 'register_settings'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
     }
     
+    /**
+     * Add menu pages to the WordPress admin dashboard.
+     *
+     * Registers the main menu page and subpages for Dashboard, Voices, Templates,
+     * Schedule, History, Settings, and System Status.
+     *
+     * @return void
+     */
     public function add_menu_pages() {
         add_menu_page(
             __('AI Post Scheduler', 'ai-post-scheduler'),
@@ -86,6 +107,14 @@ class AIPS_Settings {
         );
     }
     
+    /**
+     * Register plugin settings and fields.
+     *
+     * Defines the settings section and fields for general configuration including
+     * post status, category, AI model, retries, and logging.
+     *
+     * @return void
+     */
     public function register_settings() {
         register_setting('aips_settings', 'aips_default_post_status');
         register_setting('aips_settings', 'aips_default_category');
@@ -141,6 +170,14 @@ class AIPS_Settings {
         );
     }
     
+    /**
+     * Enqueue admin styles and scripts.
+     *
+     * Loads CSS and JS assets only on plugin-specific pages.
+     *
+     * @param string $hook The current admin page hook.
+     * @return void
+     */
     public function enqueue_admin_assets($hook) {
         if (strpos($hook, 'ai-post-scheduler') === false && strpos($hook, 'aips-') === false) {
             return;
@@ -167,10 +204,22 @@ class AIPS_Settings {
         ));
     }
     
+    /**
+     * Render the description for the general settings section.
+     *
+     * @return void
+     */
     public function general_section_callback() {
         echo '<p>' . esc_html__('Configure default settings for AI-generated posts.', 'ai-post-scheduler') . '</p>';
     }
     
+    /**
+     * Render the default post status setting field.
+     *
+     * Displays a dropdown to select between draft, pending, or publish.
+     *
+     * @return void
+     */
     public function post_status_field_callback() {
         $value = get_option('aips_default_post_status', 'draft');
         ?>
@@ -183,6 +232,13 @@ class AIPS_Settings {
         <?php
     }
     
+    /**
+     * Render the default category setting field.
+     *
+     * Displays a dropdown of available post categories.
+     *
+     * @return void
+     */
     public function category_field_callback() {
         $value = get_option('aips_default_category', 0);
         wp_dropdown_categories(array(
@@ -195,6 +251,13 @@ class AIPS_Settings {
         echo '<p class="description">' . esc_html__('Default category for generated posts.', 'ai-post-scheduler') . '</p>';
     }
     
+    /**
+     * Render the AI model setting field.
+     *
+     * Displays a text input for specifying a custom AI Engine model.
+     *
+     * @return void
+     */
     public function ai_model_field_callback() {
         $value = get_option('aips_ai_model', '');
         ?>
@@ -203,6 +266,13 @@ class AIPS_Settings {
         <?php
     }
     
+    /**
+     * Render the max retries setting field.
+     *
+     * Displays a number input for configuring retry attempts on failure.
+     *
+     * @return void
+     */
     public function max_retries_field_callback() {
         $value = get_option('aips_max_retries', 3);
         ?>
@@ -211,6 +281,13 @@ class AIPS_Settings {
         <?php
     }
     
+    /**
+     * Render the logging enable setting field.
+     *
+     * Displays a checkbox to enable or disable detailed logging.
+     *
+     * @return void
+     */
     public function logging_field_callback() {
         $value = get_option('aips_enable_logging', 1);
         ?>
@@ -221,6 +298,14 @@ class AIPS_Settings {
         <?php
     }
     
+    /**
+     * Render the main dashboard page.
+     *
+     * Fetches statistics and recent activity from the database to display
+     * on the dashboard template.
+     *
+     * @return void
+     */
     public function render_dashboard_page() {
         global $wpdb;
         
@@ -247,29 +332,71 @@ class AIPS_Settings {
         include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
     }
     
+    /**
+     * Render the Voices management page.
+     *
+     * Delegates rendering to the AIPS_Voices class.
+     *
+     * @return void
+     */
     public function render_voices_page() {
         $voices_handler = new AIPS_Voices();
         $voices_handler->render_page();
     }
     
+    /**
+     * Render the Templates management page.
+     *
+     * Delegates rendering to the AIPS_Templates class.
+     *
+     * @return void
+     */
     public function render_templates_page() {
         $templates_handler = new AIPS_Templates();
         $templates_handler->render_page();
     }
     
+    /**
+     * Render the Schedule management page.
+     *
+     * Includes the schedule template file.
+     *
+     * @return void
+     */
     public function render_schedule_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
     }
     
+    /**
+     * Render the History page.
+     *
+     * Delegates rendering to the AIPS_History class.
+     *
+     * @return void
+     */
     public function render_history_page() {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
     }
     
+    /**
+     * Render the Settings page.
+     *
+     * Includes the settings template file.
+     *
+     * @return void
+     */
     public function render_settings_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/settings.php';
     }
 
+    /**
+     * Render the System Status page.
+     *
+     * Delegates rendering to the AIPS_System_Status class.
+     *
+     * @return void
+     */
     public function render_status_page() {
         $status_handler = new AIPS_System_Status();
         $status_handler->render_page();
