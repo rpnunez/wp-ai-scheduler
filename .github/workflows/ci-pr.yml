@@ -1,0 +1,83 @@
+name: PR CI (lint + unit tests)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, converted, reopened]
+
+concurrency:
+  group: ci-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-unit:
+    name: Lint & Unit Tests (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: [8.1, 8.2]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v4
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, intl, xml, curl, zip
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate --no-check-publish || true
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/composer
+            ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - name: Run PHPCS (WordPress Coding Standards) if installed
+        run: |
+          if [ -x vendor/bin/phpcs ]; then
+            vendor/bin/phpcs --standard=WordPress --extensions=php -n .
+          else
+            echo "PHPCS not present — skipping lint"
+          fi
+
+      - name: Run PHPStan if present
+        run: |
+          if [ -x vendor/bin/phpstan ]; then
+            vendor/bin/phpstan analyse --memory-limit=1G || true
+          else
+            echo "PHPStan not present — skipping static analysis"
+          fi
+
+      - name: Run unit tests (phpunit) if present
+        run: |
+          if [ -x vendor/bin/phpunit ]; then
+            vendor/bin/phpunit --colors=always -v
+          else
+            echo "phpunit not present — skipping unit tests"
+          fi
+        env:
+          WP_TESTS_DIR: /tmp/wordpress-tests
+
+      - name: Build plugin zip (artifact)
+        run: |
+          PLUGIN_SLUG=$(basename "$GITHUB_WORKSPACE")
+          ART_DIR=/tmp/artifact
+          mkdir -p "$ART_DIR"
+          # Exclude heavy/dev files
+          zip -r "$ART_DIR/${PLUGIN_SLUG}.zip" . -x ".git/*" "node_modules/*" "vendor/*" "tests/*" ".github/*" || true
+
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-zip
+          path: /tmp/artifact/*.zip
