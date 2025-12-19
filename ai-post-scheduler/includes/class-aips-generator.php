@@ -428,6 +428,8 @@ class AIPS_Generator {
             require_once(ABSPATH . 'wp-admin/includes/media.php');
             
             $response_object = wp_remote_get($image_url);
+
+            // SECURITY FIX: Check response code and content type
             if (is_wp_error($response_object)) {
                 $error_msg = 'Failed to fetch image: ' . $response_object->get_error_message();
                 $this->logger->log($error_msg, 'error');
@@ -439,6 +441,30 @@ class AIPS_Generator {
                 return false;
             }
             
+            $response_code = wp_remote_retrieve_response_code($response_object);
+            if ($response_code !== 200) {
+                 $error_msg = 'Failed to fetch image. HTTP Code: ' . $response_code;
+                 $this->logger->log($error_msg, 'error');
+                 $this->generation_log['errors'][] = array(
+                    'type' => 'image_download_status',
+                    'timestamp' => current_time('mysql'),
+                    'message' => $error_msg,
+                );
+                return false;
+            }
+
+            $content_type = wp_remote_retrieve_header($response_object, 'content-type');
+            if (strpos($content_type, 'image/') !== 0) {
+                 $error_msg = 'Invalid content type: ' . $content_type;
+                 $this->logger->log($error_msg, 'error');
+                 $this->generation_log['errors'][] = array(
+                    'type' => 'image_content_type',
+                    'timestamp' => current_time('mysql'),
+                    'message' => $error_msg,
+                );
+                return false;
+            }
+
             $image_data = wp_remote_retrieve_body($response_object);
             $post_slug = sanitize_title($post_title);
             $filename = $post_slug . '.jpg';
