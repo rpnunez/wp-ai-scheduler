@@ -2,7 +2,7 @@ name: PR CI (lint + unit tests)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, converted, reopened]
+    types: [opened, synchronize, reopened, converted]
 
 concurrency:
   group: ci-pr-${{ github.ref }}
@@ -79,5 +79,5 @@ jobs:
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: plugin-zip
+          name: plugin-zip-php${{ matrix.php }}
           path: /tmp/artifact/*.zip
