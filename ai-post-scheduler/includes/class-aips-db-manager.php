@@ -5,20 +5,47 @@ if (!defined('ABSPATH')) {
 
 class AIPS_DB_Manager {
 
+    private static $tables = array(
+        'aips_history',
+        'aips_templates',
+        'aips_schedule',
+        'aips_voices'
+    );
+
     public function __construct() {
         add_action('wp_ajax_aips_repair_db', array($this, 'ajax_repair_db'));
         add_action('wp_ajax_aips_reinstall_db', array($this, 'ajax_reinstall_db'));
         add_action('wp_ajax_aips_wipe_db', array($this, 'ajax_wipe_db'));
     }
 
+    /**
+     * Get the list of plugin tables (without prefix)
+     */
+    public static function get_table_names() {
+        return self::$tables;
+    }
+
+    /**
+     * Get the list of plugin tables with full prefix
+     */
+    public static function get_full_table_names() {
+        global $wpdb;
+        $full_names = array();
+        foreach (self::$tables as $table) {
+            $full_names[$table] = $wpdb->prefix . $table;
+        }
+        return $full_names;
+    }
+
     public function get_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
+        $tables = self::get_full_table_names();
 
-        $table_history = $wpdb->prefix . 'aips_history';
-        $table_templates = $wpdb->prefix . 'aips_templates';
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
-        $table_voices = $wpdb->prefix . 'aips_voices';
+        $table_history = $tables['aips_history'];
+        $table_templates = $tables['aips_templates'];
+        $table_schedule = $tables['aips_schedule'];
+        $table_voices = $tables['aips_voices'];
 
         $sql = array();
 
@@ -98,12 +125,7 @@ class AIPS_DB_Manager {
 
     public function drop_tables() {
         global $wpdb;
-        $tables = array(
-            $wpdb->prefix . 'aips_history',
-            $wpdb->prefix . 'aips_templates',
-            $wpdb->prefix . 'aips_schedule',
-            $wpdb->prefix . 'aips_voices'
-        );
+        $tables = self::get_full_table_names();
 
         foreach ($tables as $table) {
             $wpdb->query("DROP TABLE IF EXISTS $table");
@@ -112,29 +134,17 @@ class AIPS_DB_Manager {
 
     public function truncate_tables() {
         global $wpdb;
-        $tables = array(
-            $wpdb->prefix . 'aips_history',
-            $wpdb->prefix . 'aips_templates',
-            $wpdb->prefix . 'aips_schedule',
-            $wpdb->prefix . 'aips_voices'
-        );
+        $tables = self::get_full_table_names();
 
         foreach ($tables as $table) {
             $wpdb->query("TRUNCATE TABLE $table");
         }
-
-        // Restore defaults if necessary
     }
 
     public function backup_data() {
         global $wpdb;
         $data = array();
-        $tables = array(
-            'aips_history' => $wpdb->prefix . 'aips_history',
-            'aips_templates' => $wpdb->prefix . 'aips_templates',
-            'aips_schedule' => $wpdb->prefix . 'aips_schedule',
-            'aips_voices' => $wpdb->prefix . 'aips_voices'
-        );
+        $tables = self::get_full_table_names();
 
         foreach ($tables as $key => $table_name) {
             if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name) {
@@ -151,12 +161,7 @@ class AIPS_DB_Manager {
         global $wpdb;
         if (empty($data)) return;
 
-        $tables = array(
-            'aips_history' => $wpdb->prefix . 'aips_history',
-            'aips_templates' => $wpdb->prefix . 'aips_templates',
-            'aips_schedule' => $wpdb->prefix . 'aips_schedule',
-            'aips_voices' => $wpdb->prefix . 'aips_voices'
-        );
+        $tables = self::get_full_table_names();
 
         foreach ($data as $key => $rows) {
             if (empty($rows)) continue;
