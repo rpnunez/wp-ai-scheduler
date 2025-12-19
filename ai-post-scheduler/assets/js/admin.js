@@ -2,6 +2,18 @@
     'use strict';
 
     var AIPS = {
+        // Debounce utility function for performance optimization
+        debounce: function(func, wait) {
+            var timeout;
+            return function() {
+                var context = this, args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(function() {
+                    func.apply(context, args);
+                }, wait);
+            };
+        },
+
         init: function() {
             this.bindEvents();
         },
@@ -14,7 +26,9 @@
             $(document).on('click', '.aips-test-template', this.testTemplate);
             $(document).on('click', '.aips-run-now', this.runNow);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
-            $(document).on('keyup', '#voice_search', this.searchVoices);
+            
+            // Use debounced search for better performance (300ms delay)
+            $(document).on('keyup', '#voice_search', this.debounce(this.searchVoices, 300));
 
             $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
             $(document).on('click', '.aips-edit-voice', this.editVoice);
@@ -31,8 +45,8 @@
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
-            // Template Search
-            $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
+            // Template Search - use debounced search for better performance (300ms delay)
+            $(document).on('keyup search', '#aips-template-search', this.debounce(this.filterTemplates, 300));
             $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
             $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
 

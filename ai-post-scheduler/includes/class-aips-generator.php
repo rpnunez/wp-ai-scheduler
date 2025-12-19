@@ -9,6 +9,9 @@ class AIPS_Generator {
     private $logger;
     private $generation_log;
     
+    // Sentinel value for cache invalidation with null topics
+    const CACHE_TOPIC_UNSET = '__AIPS_CACHE_TOPIC_UNSET__';
+    
     public function __construct() {
         $this->logger = new AIPS_Logger();
         $this->reset_generation_log();
@@ -370,22 +373,35 @@ class AIPS_Generator {
     }
     
     private function process_template_variables($template, $topic = null) {
-        $variables = array(
-            '{{date}}' => date('F j, Y'),
-            '{{year}}' => date('Y'),
-            '{{month}}' => date('F'),
-            '{{day}}' => date('l'),
-            '{{time}}' => current_time('H:i'),
-            '{{site_name}}' => get_bloginfo('name'),
-            '{{site_description}}' => get_bloginfo('description'),
-            '{{random_number}}' => rand(1, 1000),
-            '{{topic}}' => $topic ? $topic : '',
-            '{{title}}' => $topic ? $topic : '', // Alias for topic if user prefers
-        );
+        // Use static variable to cache non-random values when called multiple times
+        static $cache = null;
+        static $cached_topic = self::CACHE_TOPIC_UNSET; // Use constant sentinel value
         
-        $variables = apply_filters('aips_template_variables', $variables);
+        // Reset cache if this is a new template processing (when topic changes)
+        // Handle all edge cases including null topic values
+        if ($cache === null || $cached_topic !== $topic) {
+            $cached_topic = $topic;
+            $cache = array(
+                '{{date}}' => date('F j, Y'),
+                '{{year}}' => date('Y'),
+                '{{month}}' => date('F'),
+                '{{day}}' => date('l'),
+                '{{time}}' => current_time('H:i'),
+                '{{site_name}}' => get_bloginfo('name'),
+                '{{site_description}}' => get_bloginfo('description'),
+                '{{topic}}' => $topic ? $topic : '',
+                '{{title}}' => $topic ? $topic : '', // Alias for topic if user prefers
+            );
+            
+            $cache = apply_filters('aips_template_variables', $cache);
+        }
         
-        return str_replace(array_keys($variables), array_values($variables), $template);
+        // Random number must be generated fresh each time to ensure uniqueness
+        $variables = $cache;
+        $variables['{{random_number}}'] = rand(1, 1000);
+        
+        // Use strtr instead of str_replace for better performance with multiple replacements
+        return strtr($template, $variables);
     }
     
     private function generate_and_upload_featured_image($image_prompt, $post_title) {
