@@ -54,6 +54,7 @@ final class AI_Post_Scheduler {
     
     private function includes() {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
@@ -115,6 +116,7 @@ final class AI_Post_Scheduler {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
         
         if (is_admin()) {
+            new AIPS_DB_Manager();
             new AIPS_Settings();
             new AIPS_Voices();
             new AIPS_Templates();
