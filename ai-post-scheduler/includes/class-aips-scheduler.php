@@ -250,8 +250,8 @@ class AIPS_Scheduler {
             
             if ($schedule->frequency === 'once' && !is_wp_error($result)) {
                 // If it's a one-time schedule and successful, delete it
-                $wpdb->delete($this->schedule_table, array('id' => $schedule->id), array('%d'));
-                $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->id));
+                $wpdb->delete($this->schedule_table, array('id' => $schedule->schedule_id), array('%d'));
+                $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
                 // Otherwise calculate next run
                 $next_run = $this->calculate_next_run($schedule->frequency);
