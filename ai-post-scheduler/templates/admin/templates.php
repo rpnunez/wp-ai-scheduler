@@ -119,6 +119,7 @@ if (!defined('ABSPATH')) {
                     <div class="aips-form-row">
                         <label for="voice_id"><?php esc_html_e('Voice', 'ai-post-scheduler'); ?></label>
                         <div class="aips-voice-selector">
+                            <label class="screen-reader-text" for="voice_search"><?php esc_html_e('Filter voices', 'ai-post-scheduler'); ?></label>
                             <input type="text" id="voice_search" class="regular-text" placeholder="<?php esc_attr_e('Search voices...', 'ai-post-scheduler'); ?>" style="margin-bottom: 8px;">
                             <select id="voice_id" name="voice_id" class="regular-text">
                                 <option value="0"><?php esc_html_e('No Voice (Use Default)', 'ai-post-scheduler'); ?></option>
