@@ -68,23 +68,63 @@ class AIPS_Logger {
         if (!file_exists($this->log_file)) {
             return array();
         }
+
+        // Performance Fix: Use fseek to read only the end of the file
+        // instead of SplFileObject seeking which scans the whole file.
+        $fp = fopen($this->log_file, 'r');
+        if (!$fp) {
+            return array();
+        }
+
+        $chunk_size = 1024 * 100; // Read 100KB from end
+        fseek($fp, 0, SEEK_END);
+        $filesize = ftell($fp);
+
+        if ($filesize <= 0) {
+            fclose($fp);
+            return array();
+        }
+
+        // If file is smaller than chunk, read whole file
+        $seek_offset = max(0, $filesize - $chunk_size);
+        fseek($fp, $seek_offset);
         
-        $file = new SplFileObject($this->log_file, 'r');
-        $file->seek(PHP_INT_MAX);
-        $total_lines = $file->key();
+        $content = '';
+        // If we sought to a non-zero position, discard the first partial line
+        // unless we are exactly at the start (offset 0).
+        // Actually, reading a chunk might start in middle of line.
+        // We will read, then explode, and if offset > 0, discard first element.
         
-        $start = max(0, $total_lines - $lines);
-        $file->seek($start);
-        
-        $logs = array();
-        while (!$file->eof()) {
-            $line = trim($file->fgets());
-            if (!empty($line)) {
-                $logs[] = $line;
-            }
+        $content = fread($fp, $chunk_size);
+        fclose($fp);
+
+        if ($content === false) {
+            return array();
+        }
+
+        $file_lines = explode("\n", $content);
+
+        // If we started from middle of file (offset > 0), the first line is likely partial.
+        // However, standard text files end with newline.
+        // If we read the last chunk, the last char is likely newline (resulting in empty string at end of array).
+        // Let's clean up empty lines first.
+
+        // Remove empty lines (especially the trailing one if file ends with newline)
+        $file_lines = array_filter($file_lines, function($line) {
+            return trim($line) !== '';
+        });
+
+        // If we read a partial chunk (offset > 0), discard the first line as it might be incomplete
+        if ($seek_offset > 0 && count($file_lines) > 0) {
+            array_shift($file_lines);
         }
         
-        return $logs;
+        // Return only requested number of lines, from the end
+        if (count($file_lines) > $lines) {
+            $file_lines = array_slice($file_lines, -$lines);
+        }
+        
+        return array_values($file_lines);
     }
     
     public function clear_logs() {
