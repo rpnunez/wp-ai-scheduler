@@ -54,7 +54,7 @@ if (!defined('ABSPATH')) {
         </table>
 
         <div id="aips-voice-search-no-results" class="aips-empty-state" style="display: none;">
-            <span class="dashicons dashicons-search"></span>
+            <span class="dashicons dashicons-search" aria-hidden="true"></span>
             <h3><?php esc_html_e('No Voices Found', 'ai-post-scheduler'); ?></h3>
             <p><?php esc_html_e('No voices match your search criteria.', 'ai-post-scheduler'); ?></p>
             <button type="button" class="button button-primary aips-clear-voice-search-btn">
