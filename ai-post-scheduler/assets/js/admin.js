@@ -29,6 +29,12 @@
             $(document).on('click', '.aips-clear-history', this.clearHistory);
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
+            $(document).on('click', '#aips-history-search-submit', this.searchHistory);
+            $(document).on('keypress', '#aips-history-search-input', function(e) {
+                if(e.which == 13) {
+                    AIPS.searchHistory(e);
+                }
+            });
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
             // Template Search
@@ -838,6 +844,21 @@
             }
             url.searchParams.delete('paged');
             
+            window.location.href = url.toString();
+        },
+
+        searchHistory: function(e) {
+            e.preventDefault();
+            var search = $('#aips-history-search-input').val();
+            var url = new URL(window.location.href);
+
+            if (search) {
+                url.searchParams.set('s', search);
+            } else {
+                url.searchParams.delete('s');
+            }
+            url.searchParams.delete('paged');
+
             window.location.href = url.toString();
         },
 
