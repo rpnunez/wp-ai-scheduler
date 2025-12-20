@@ -35,6 +35,15 @@ if (!defined('ABSPATH')) {
             </select>
             <button class="button" id="aips-filter-btn"><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
         </div>
+
+        <div class="alignleft actions">
+            <p class="search-box" style="margin: 0; display: inline-block;">
+                <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
+                <input type="search" id="aips-history-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="<?php esc_attr_e('Search by title...', 'ai-post-scheduler'); ?>">
+                <input type="button" id="aips-history-search-submit" class="button" value="<?php esc_attr_e('Search', 'ai-post-scheduler'); ?>">
+            </p>
+        </div>
+
         <div class="alignright">
             <button class="button aips-clear-history" data-status=""><?php esc_html_e('Clear All History', 'ai-post-scheduler'); ?></button>
             <button class="button aips-clear-history" data-status="failed"><?php esc_html_e('Clear Failed Only', 'ai-post-scheduler'); ?></button>
@@ -112,6 +121,9 @@ if (!defined('ABSPATH')) {
                 $base_url = admin_url('admin.php?page=aips-history');
                 if ($status_filter) {
                     $base_url .= '&status=' . urlencode($status_filter);
+                }
+                if ($search_query) {
+                    $base_url .= '&s=' . urlencode($search_query);
                 }
                 
                 if ($history['current_page'] > 1): ?>
