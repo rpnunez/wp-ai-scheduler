@@ -452,18 +452,6 @@ class AIPS_Generator {
                 );
                 return false;
             }
-            
-            $response_code = wp_remote_retrieve_response_code($response_object);
-            if ($response_code !== 200) {
-                 $error_msg = 'Failed to fetch image. HTTP Code: ' . $response_code;
-                 $this->logger->log($error_msg, 'error');
-                 $this->generation_log['errors'][] = array(
-                    'type' => 'image_download_status',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
 
             $content_type = wp_remote_retrieve_header($response_object, 'content-type');
             if (strpos($content_type, 'image/') !== 0) {
