@@ -35,8 +35,8 @@
         <h3><?php echo esc_html__('Review & Schedule', 'ai-post-scheduler'); ?></h3>
 
         <div class="aips-toolbar">
-            <label><input type="checkbox" id="check-all-topics"> <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?></label>
-            <span class="selection-count"></span>
+            <label><input type="checkbox" id="check-all-topics" checked> <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?></label>
+            <span class="selection-count" aria-live="polite"></span>
         </div>
 
         <div id="topics-list" class="aips-topics-grid">
@@ -101,13 +101,23 @@
     border: 1px solid #eee;
     display: flex;
     align-items: center;
+    gap: 8px;
 }
-.topic-item input {
-    margin-right: 10px;
+.topic-input {
+    flex-grow: 1;
+    border: 1px solid transparent;
+    background: transparent;
+    box-shadow: none;
+    padding: 2px 5px;
 }
-.topic-item input:checked + span {
-    font-weight: bold;
-    color: #0073aa;
+.topic-input:hover {
+    border-color: #ccc;
+    background: #fcfcfc;
+}
+.topic-input:focus {
+    background: #fff;
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
 }
 .aips-row {
     display: flex;
