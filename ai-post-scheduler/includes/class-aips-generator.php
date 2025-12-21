@@ -9,11 +9,13 @@ class AIPS_Generator {
     private $logger;
     private $generation_log;
     private $template_processor;
+    private $image_service;
     
     public function __construct() {
         $this->logger = new AIPS_Logger();
         $this->ai_service = new AIPS_AI_Service();
         $this->template_processor = new AIPS_Template_Processor();
+        $this->image_service = new AIPS_Image_Service($this->ai_service);
         $this->reset_generation_log();
     }
     
@@ -331,10 +333,19 @@ class AIPS_Generator {
         $featured_image_id = null;
         if ($template->generate_featured_image && !empty($template->image_prompt)) {
             $image_prompt = $this->template_processor->process($template->image_prompt, $topic);
-            $featured_image_id = $this->generate_and_upload_featured_image($image_prompt, $title);
+            $featured_image_result = $this->image_service->generate_and_upload_featured_image($image_prompt, $title);
             
-            if ($featured_image_id) {
+            if (!is_wp_error($featured_image_result)) {
+                $featured_image_id = $featured_image_result;
                 set_post_thumbnail($post_id, $featured_image_id);
+                $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
+            } else {
+                $this->logger->log('Featured image generation failed: ' . $featured_image_result->get_error_message(), 'error');
+                $this->generation_log['errors'][] = array(
+                    'type' => 'featured_image',
+                    'timestamp' => current_time('mysql'),
+                    'message' => $featured_image_result->get_error_message(),
+                );
             }
         }
         
@@ -372,138 +383,5 @@ class AIPS_Generator {
         do_action('aips_post_generated', $post_id, $template, $history_id);
         
         return $post_id;
-    }
-    
-    /**
-     * Generate and upload featured image from AI.
-     *
-     * Uses AI Engine to generate an image based on the prompt, then uploads it
-     * to the WordPress media library.
-     *
-     * @param string $image_prompt The prompt to use for image generation.
-     * @param string $post_title   The post title to use for the image filename.
-     * @return int|false The attachment ID on success, false on failure.
-     */
-    private function generate_and_upload_featured_image($image_prompt, $post_title) {
-        $image_url = $this->ai_service->generate_image($image_prompt);
-        
-        if (is_wp_error($image_url)) {
-            $error_msg = $image_url->get_error_message();
-            $this->log($error_msg, 'error', array(
-                'type' => 'featured_image',
-                'prompt' => $image_prompt,
-                'options' => array(),
-                'error' => $error_msg
-            ));
-            return false;
-        }
-        
-        $this->log_ai_call('featured_image', $image_prompt, $image_url, array());
-        
-        return $this->upload_image_from_url($image_url, $post_title);
-    }
-    
-    /**
-     * Upload an image from a URL to WordPress media library.
-     *
-     * Downloads an image from a given URL and creates a WordPress attachment.
-     *
-     * @param string $image_url  The URL of the image to download.
-     * @param string $post_title The post title to use for the image filename.
-     * @return int|false The attachment ID on success, false on failure.
-     */
-    private function upload_image_from_url($image_url, $post_title) {
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-        
-        // SECURITY FIX: Use wp_safe_remote_get to prevent SSRF
-        $response_object = wp_safe_remote_get($image_url);
-
-        // Check response code and content type
-        if (is_wp_error($response_object)) {
-            $error_msg = 'Failed to fetch image: ' . $response_object->get_error_message();
-            $this->logger->log($error_msg, 'error');
-            $this->generation_log['errors'][] = array(
-                'type' => 'image_download',
-                'timestamp' => current_time('mysql'),
-                'message' => $error_msg,
-            );
-            return false;
-        }
-
-        $response_code = wp_remote_retrieve_response_code($response_object);
-        if ($response_code !== 200) {
-            $error_msg = 'Failed to fetch image. HTTP Code: ' . $response_code;
-            $this->logger->log($error_msg, 'error');
-            $this->generation_log['errors'][] = array(
-                'type' => 'image_download',
-                'timestamp' => current_time('mysql'),
-                'message' => $error_msg,
-            );
-            return false;
-        }
-
-        $content_type = wp_remote_retrieve_header($response_object, 'content-type');
-        if (strpos($content_type, 'image/') !== 0) {
-             $error_msg = 'Invalid content type: ' . $content_type;
-             $this->logger->log($error_msg, 'error');
-             $this->generation_log['errors'][] = array(
-                'type' => 'image_content_type',
-                'timestamp' => current_time('mysql'),
-                'message' => $error_msg,
-            );
-            return false;
-        }
-
-        $image_data = wp_remote_retrieve_body($response_object);
-        $post_slug = sanitize_title($post_title);
-        $filename = $post_slug . '.jpg';
-        
-        $upload_dir = wp_upload_dir();
-        $file_path = $upload_dir['path'] . '/' . $filename;
-        
-        if (!file_put_contents($file_path, $image_data)) {
-            $error_msg = 'Failed to write image file: ' . $file_path;
-            $this->logger->log($error_msg, 'error');
-            $this->generation_log['errors'][] = array(
-                'type' => 'image_save',
-                'timestamp' => current_time('mysql'),
-                'message' => $error_msg,
-            );
-            return false;
-        }
-        
-        $file_type = wp_check_filetype($filename);
-        
-        $attachment = array(
-            'post_mime_type' => $file_type['type'],
-            'post_title' => preg_replace('/\.[^.]+$/', '', $filename),
-            'post_content' => '',
-            'post_status' => 'inherit'
-        );
-        
-        $attachment_id = wp_insert_attachment($attachment, $file_path);
-        
-        if (is_wp_error($attachment_id)) {
-            $error_msg = 'Failed to insert attachment: ' . $attachment_id->get_error_message();
-            $this->logger->log($error_msg, 'error');
-            $this->generation_log['errors'][] = array(
-                'type' => 'image_attachment',
-                'timestamp' => current_time('mysql'),
-                'message' => $error_msg,
-            );
-            return false;
-        }
-        
-        $attach_data = wp_generate_attachment_metadata($attachment_id, $file_path);
-        wp_update_attachment_metadata($attachment_id, $attach_data);
-        
-        $this->logger->log('Featured image uploaded', 'info', array(
-            'attachment_id' => $attachment_id,
-            'filename' => $filename
-        ));
-        
-        return $attachment_id;
     }
 }

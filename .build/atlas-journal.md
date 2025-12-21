@@ -198,3 +198,60 @@ This document serves as the persistent memory for architectural decisions, struc
 * No changes to plugin settings or options
 * Generated content format and structure unchanged
 * Image generation functionality preserved exactly
+
+---
+
+## 2025-12-21 - Split Generator and Extract Image Service
+
+**Context:** The `AIPS_Generator` class had grown to 520+ lines and was responsible for too many concerns: content generation, title generation, excerpt generation, image generation, image downloading, image uploading, file system operations, and WordPress attachment management. The image handling code alone was ~120 lines (methods `generate_and_upload_featured_image()` and `upload_image_from_url()`). This violated the Single Responsibility Principle and made testing difficult since image operations required filesystem and network access.
+
+**Decision:** Applied "Separation of Concerns" and "Single Responsibility Principle". Created a dedicated `AIPS_Image_Service` class in `includes/class-aips-image-service.php`. This new class:
+* Handles all image generation and upload operations
+* Provides methods: `generate_and_upload_featured_image()`, `upload_image_from_url()`, `upload_multiple_images()`, `validate_image_url()`
+* Encapsulates file system operations for images
+* Manages WordPress attachment creation
+* Performs security validation (SSRF prevention, content-type checking)
+* Includes comprehensive DocBlocks following WordPress standards
+* Accepts AI Service via dependency injection for better testability
+* Returns WP_Error objects for consistent error handling (instead of false)
+* Reduced `AIPS_Generator` from ~520 to ~370 lines (29% reduction)
+
+**Consequence:**
+* **Pros:**
+  - Generator is now focused on orchestrating content generation, not image handling
+  - Image operations can be tested independently without generating content
+  - New `validate_image_url()` method enables pre-validation before downloading
+  - New `upload_multiple_images()` method enables batch operations
+  - Better error handling with WP_Error instead of boolean false
+  - Image service can be reused in other contexts (user uploads, galleries, etc.)
+  - Cleaner separation of concerns makes code easier to understand
+  - File cleanup on attachment failure prevents orphaned files
+* **Cons:**
+  - Added one new file to the includes directory
+  - Slightly increased memory footprint (one additional object instance)
+  - Need to understand two classes instead of one for image operations
+* **Trade-offs:**
+  - Chose composition over inheritance (Generator has-a Image Service)
+  - Maintained backward compatibility: image generation behavior unchanged
+  - Image Service owns all file system and attachment operations
+  - Generator remains the orchestrator but delegates image work
+
+**Tests:** Created test suite in `tests/test-image-service.php` with 9 test cases covering:
+* Service instantiation
+* URL validation (empty, invalid format, non-existent)
+* Multiple image upload
+* Invalid URL handling
+* AI unavailability scenarios
+* Custom AI service injection
+* Empty array handling
+* Filename sanitization
+
+**Backward Compatibility:**
+* Generated posts with featured images work identically
+* Image generation process and results unchanged
+* No database schema changes
+* No changes to template configuration
+* No changes to plugin settings
+* Existing code using Generator requires no updates
+* Error logging format preserved
+* Generation log structure maintained
