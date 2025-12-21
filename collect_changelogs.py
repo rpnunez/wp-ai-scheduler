@@ -133,16 +133,19 @@ def main():
 
                 # Parse date object for sorting
                 try:
-                    clean_date_str = date_str[:19]
+                    clean_date_str = (date_str or "")[:19]
                     date_obj = datetime.datetime.strptime(clean_date_str, "%Y-%m-%d %H:%M:%S")
                 except Exception as e:
                     print(f"Error parsing date '{date_str}' for {branch}: {e}")
                     date_obj = datetime.datetime.min
 
+                # Safely derive a display date string (may be empty if date_str is None/invalid)
+                date_str_value = date_str.split(' ')[0] if date_str else ""
+
                 entries.append({
                     'branch': branch_name,
                     'date': date_obj,
-                    'date_str': date_str.split(' ')[0],
+                    'date_str': date_str_value,
                     'content': final_branch_content
                 })
 
