@@ -27,7 +27,7 @@ jobs:
           tools: composer:v2
 
       - name: Validate composer.json
-        run: composer validate --no-check-publish || true
+        run: cd ai-post-scheduler && composer validate --no-check-publish || true
 
       - name: Cache Composer
         uses: actions/cache@v4
@@ -35,15 +35,16 @@ jobs:
           path: |
             ~/.cache/composer
             ~/.composer/cache
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('ai-post-scheduler/composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-composer-
 
       - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+        run: cd ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress --no-scripts
 
       - name: Run PHPCS (WordPress Coding Standards) if installed
         run: |
+          cd ai-post-scheduler
           if [ -x vendor/bin/phpcs ]; then
             vendor/bin/phpcs --standard=WordPress --extensions=php -n .
           else
@@ -52,6 +53,7 @@ jobs:
 
       - name: Run PHPStan if present
         run: |
+          cd ai-post-scheduler
           if [ -x vendor/bin/phpstan ]; then
             vendor/bin/phpstan analyse --memory-limit=1G || true
           else
@@ -60,6 +62,7 @@ jobs:
 
       - name: Run unit tests (phpunit) if present
         run: |
+          cd ai-post-scheduler
           if [ -x vendor/bin/phpunit ]; then
             vendor/bin/phpunit --colors=always -v
           else

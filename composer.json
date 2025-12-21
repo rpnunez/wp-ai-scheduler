@@ -1,0 +1,43 @@
+{
+  "name": "rpnunez/wp-ai-scheduler",
+  "description": "AI Post Scheduler - Schedule AI-generated posts using Meow Apps AI Engine",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "authors": [
+    {
+      "name": "rpnunez",
+      "email": "rpnunez@example.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.4"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.6",
+    "yoast/phpunit-polyfills": "^2.0",
+    "wp-phpunit/wp-phpunit": "^6.6"
+  },
+  "autoload": {
+    "classmap": [
+      "ai-post-scheduler/includes/"
+    ]
+  },
+  "autoload-dev": {
+    "classmap": [
+      "ai-post-scheduler/tests/"
+    ]
+  },
+  "scripts": {
+    "test": "phpunit",
+    "test:coverage": "phpunit --coverage-html coverage",
+    "test:verbose": "phpunit --verbose"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    },
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true
+  }
+}
