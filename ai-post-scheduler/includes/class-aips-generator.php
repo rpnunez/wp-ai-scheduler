@@ -52,7 +52,7 @@ class AIPS_Generator {
         }
     }
 
-    private function log_with_history($message, $level, $ai_data = array(), $context = array()) {
+    private function log($message, $level, $ai_data = array(), $context = array()) {
         $this->logger->log($message, $level, $context);
 
         if (!empty($ai_data) && isset($ai_data['type']) && isset($ai_data['prompt'])) {
@@ -85,7 +85,7 @@ class AIPS_Generator {
         
         if (!$ai) {
             $error_msg = 'AI Engine not available';
-            $this->log_with_history($error_msg, 'error', array(
+            $this->log($error_msg, 'error', array(
                 'type' => $log_type,
                 'prompt' => $prompt,
                 'options' => $options,
@@ -122,7 +122,7 @@ class AIPS_Generator {
             $response = $ai->run_query($query);
             
             if ($response && !empty($response->result)) {
-                $this->log_with_history('Content generated successfully', 'info', array(
+                $this->log('Content generated successfully', 'info', array(
                     'type' => $log_type,
                     'prompt' => $prompt,
                     'response' => $response->result,
@@ -135,7 +135,7 @@ class AIPS_Generator {
             }
             
             $error_msg = 'Empty response from AI Engine';
-            $this->log_with_history($error_msg, 'error', array(
+            $this->log($error_msg, 'error', array(
                 'type' => $log_type,
                 'prompt' => $prompt,
                 'options' => $options,
@@ -145,7 +145,7 @@ class AIPS_Generator {
             
         } catch (Exception $e) {
             $error_msg = $e->getMessage();
-            $this->log_with_history('AI generation failed: ' . $error_msg, 'error', array(
+            $this->log('AI generation failed: ' . $error_msg, 'error', array(
                 'type' => $log_type,
                 'prompt' => $prompt,
                 'options' => $options,
@@ -423,7 +423,7 @@ class AIPS_Generator {
         
         if (!$ai) {
             $error_msg = 'AI Engine not available for image generation';
-            $this->log_with_history($error_msg, 'error', array(
+            $this->log($error_msg, 'error', array(
                 'type' => 'featured_image',
                 'prompt' => $image_prompt,
                 'options' => array(),
@@ -438,7 +438,7 @@ class AIPS_Generator {
             
             if (!$response || empty($response->result)) {
                 $error_msg = 'Empty response from AI Engine for image generation';
-                $this->log_with_history($error_msg, 'error', array(
+                $this->log($error_msg, 'error', array(
                     'type' => 'featured_image',
                     'prompt' => $image_prompt,
                     'options' => array(),
@@ -556,7 +556,7 @@ class AIPS_Generator {
             
         } catch (Exception $e) {
             $error_msg = 'Image generation error: ' . $e->getMessage();
-            $this->log_with_history($error_msg, 'error', array(
+            $this->log($error_msg, 'error', array(
                 'type' => 'featured_image',
                 'prompt' => $image_prompt,
                 'options' => array(),
