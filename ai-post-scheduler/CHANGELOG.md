@@ -21,3 +21,6 @@ All notable changes to this project will be documented in this file.
 ## [bolt-logger-optimization-13857484038144494642] - 2025-12-20
 ### Improved
 - 2024-05-23: Optimized `AIPS_Logger::get_logs` to use tail reading for large log files, improving performance from O(N) to O(1) for files larger than 100KB.
+
+## [1.4.0] - 2025-12-21
+- Refactor: Split 'admin.js' into modular files 'admin-planner.js' and 'admin-db.js' for better maintainability.
