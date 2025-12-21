@@ -35,3 +35,51 @@ This document serves as the persistent memory for architectural decisions, struc
 * Reduced bundle size on landing pages by 40%.
 * Easier to test individual domains.
 * Trade-off: Required updating import paths in 50+ files (automated via codemod).
+
+---
+
+## 2025-12-21 - Extract Template Variable Processor
+
+**Context:** The `AIPS_Generator` class had grown to 568 lines, violating the Single Responsibility Principle. It was responsible for AI content generation, title generation, excerpt generation, image handling, AND template variable processing. The `process_template_variables()` method (19 lines) was tightly coupled within the generator, making it difficult to test independently and reuse in other contexts.
+
+**Decision:** Applied "Separation of Concerns" and "Single Responsibility Principle". Created a dedicated `AIPS_Template_Processor` class in `includes/class-aips-template-processor.php`. This new class:
+* Handles all template variable replacements ({{date}}, {{topic}}, {{site_name}}, etc.)
+* Provides a clean public API: `process()`, `get_variables()`, `get_variable_names()`, `validate_template()`
+* Includes comprehensive DocBlocks following WordPress standards
+* Maintains backward compatibility through the existing `aips_template_variables` filter
+* Adds new validation capabilities to detect malformed templates
+
+**Consequence:**
+* **Pros:**
+  - Reduced `AIPS_Generator` from 568 to ~549 lines
+  - Template processing is now testable in isolation
+  - New validation capabilities prevent runtime errors from malformed templates
+  - Variable processing can be reused in other contexts (e.g., email templates, notifications)
+  - Clear separation makes the codebase easier to understand and maintain
+* **Cons:**
+  - Added one new file to the includes directory
+  - Slightly increased memory footprint (one additional object instance)
+  - Developers must now understand two classes instead of one for template processing
+* **Trade-offs:**
+  - Chose composition over inheritance (Generator has-a Processor rather than is-a Processor)
+  - Maintained backward compatibility: existing filter hooks work unchanged
+  - Template validation is opt-in (doesn't break existing templates)
+
+**Tests:** Created comprehensive test suite in `tests/test-template-processor.php` with 17 test cases covering:
+* Basic variable replacement
+* Topic and title alias handling
+* Empty topic scenarios
+* All date/time variables
+* Random number generation
+* Variable retrieval methods
+* Template validation (valid templates, unclosed braces, invalid variables)
+* Custom variable filters
+* Multiple occurrences of same variable
+* Templates without variables
+
+**Backward Compatibility:**
+* All existing code calling template variable processing continues to work
+* The `aips_template_variables` filter is preserved and functional
+* No changes to database schema or stored data
+* No changes to public plugin APIs or hooks
+* Generator class maintains same public interface

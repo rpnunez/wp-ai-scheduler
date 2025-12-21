@@ -8,9 +8,11 @@ class AIPS_Generator {
     private $ai_engine;
     private $logger;
     private $generation_log;
+    private $template_processor;
     
     public function __construct() {
         $this->logger = new AIPS_Logger();
+        $this->template_processor = new AIPS_Template_Processor();
         $this->reset_generation_log();
     }
     
@@ -246,10 +248,10 @@ class AIPS_Generator {
         
         $history_id = $wpdb->insert_id;
         
-        $processed_prompt = $this->process_template_variables($template->prompt_template, $topic);
+        $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
         
         if ($voice) {
-            $voice_instructions = $this->process_template_variables($voice->content_instructions, $topic);
+            $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
             $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
         }
         
@@ -282,11 +284,11 @@ class AIPS_Generator {
         
         $voice_title_prompt = null;
         if ($voice) {
-            $voice_title_prompt = $this->process_template_variables($voice->title_prompt, $topic);
+            $voice_title_prompt = $this->template_processor->process($voice->title_prompt, $topic);
         }
         
         if (!empty($template->title_prompt)) {
-            $title_prompt = $this->process_template_variables($template->title_prompt, $topic);
+            $title_prompt = $this->template_processor->process($template->title_prompt, $topic);
             $title = $this->generate_title($title_prompt, $voice_title_prompt);
         } else {
             $title = $this->generate_title($processed_prompt, $voice_title_prompt);
@@ -298,7 +300,7 @@ class AIPS_Generator {
         
         $voice_excerpt_instructions = null;
         if ($voice && !empty($voice->excerpt_instructions)) {
-            $voice_excerpt_instructions = $this->process_template_variables($voice->excerpt_instructions, $topic);
+            $voice_excerpt_instructions = $this->template_processor->process($voice->excerpt_instructions, $topic);
         }
         
         $excerpt = $this->generate_excerpt($title, $processed_prompt, $voice_excerpt_instructions);
@@ -355,7 +357,7 @@ class AIPS_Generator {
         
         $featured_image_id = null;
         if ($template->generate_featured_image && !empty($template->image_prompt)) {
-            $image_prompt = $this->process_template_variables($template->image_prompt, $topic);
+            $image_prompt = $this->template_processor->process($template->image_prompt, $topic);
             $featured_image_id = $this->generate_and_upload_featured_image($image_prompt, $title);
             
             if ($featured_image_id) {
@@ -399,25 +401,16 @@ class AIPS_Generator {
         return $post_id;
     }
     
-    private function process_template_variables($template, $topic = null) {
-        $variables = array(
-            '{{date}}' => date('F j, Y'),
-            '{{year}}' => date('Y'),
-            '{{month}}' => date('F'),
-            '{{day}}' => date('l'),
-            '{{time}}' => current_time('H:i'),
-            '{{site_name}}' => get_bloginfo('name'),
-            '{{site_description}}' => get_bloginfo('description'),
-            '{{random_number}}' => rand(1, 1000),
-            '{{topic}}' => $topic ? $topic : '',
-            '{{title}}' => $topic ? $topic : '', // Alias for topic if user prefers
-        );
-        
-        $variables = apply_filters('aips_template_variables', $variables);
-        
-        return str_replace(array_keys($variables), array_values($variables), $template);
-    }
-    
+    /**
+     * Generate and upload featured image from AI.
+     *
+     * Uses AI Engine to generate an image based on the prompt, then uploads it
+     * to the WordPress media library.
+     *
+     * @param string $image_prompt The prompt to use for image generation.
+     * @param string $post_title   The post title to use for the image filename.
+     * @return int|false The attachment ID on success, false on failure.
+     */
     private function generate_and_upload_featured_image($image_prompt, $post_title) {
         $ai = $this->get_ai_engine();
         
