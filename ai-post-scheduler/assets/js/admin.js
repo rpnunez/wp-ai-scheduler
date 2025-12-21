@@ -50,6 +50,9 @@
             $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
             $(document).on('click', '.aips-clear-voice-search-btn', this.clearVoiceSearch);
 
+            $(document).on('click', '.aips-view-template-posts', this.openTemplatePostsModal);
+            $(document).on('click', '.aips-modal-page', this.paginateTemplatePosts);
+
             $(document).on('click', '.aips-modal-close', this.closeModal);
             $(document).on('click', '.aips-modal', function(e) {
                 if ($(e.target).hasClass('aips-modal')) {
@@ -672,6 +675,45 @@
         clearVoiceSearch: function(e) {
             e.preventDefault();
             $('#aips-voice-search').val('').trigger('keyup');
+        },
+
+        openTemplatePostsModal: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            $('#aips-template-posts-modal').data('template-id', id).show();
+            AIPS.loadTemplatePosts(id, 1);
+        },
+
+        paginateTemplatePosts: function(e) {
+            e.preventDefault();
+            var page = $(this).data('page');
+            var id = $('#aips-template-posts-modal').data('template-id');
+            AIPS.loadTemplatePosts(id, page);
+        },
+
+        loadTemplatePosts: function(id, page) {
+            $('#aips-template-posts-content').html('<p class="aips-loading">Loading...</p>');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_template_posts',
+                    nonce: aipsAjax.nonce,
+                    template_id: id,
+                    page: page
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#aips-template-posts-content').html(response.data.html);
+                    } else {
+                        $('#aips-template-posts-content').html('<p class="aips-error-text">' + response.data.message + '</p>');
+                    }
+                },
+                error: function() {
+                    $('#aips-template-posts-content').html('<p class="aips-error-text">An error occurred.</p>');
+                }
+            });
         },
 
         viewDetails: function(e) {
