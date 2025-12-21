@@ -427,7 +427,8 @@ class AIPS_Generator {
             require_once(ABSPATH . 'wp-admin/includes/file.php');
             require_once(ABSPATH . 'wp-admin/includes/media.php');
             
-            $response_object = wp_remote_get($image_url);
+            // SECURITY FIX: Use wp_safe_remote_get to prevent SSRF
+            $response_object = wp_safe_remote_get($image_url);
 
             // SECURITY FIX: Check response code and content type
             if (is_wp_error($response_object)) {
