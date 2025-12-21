@@ -75,11 +75,6 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        global $wpdb; // Scheduler doesn't expose a toggle method yet, maybe we should add one.
-        // For now, let's keep the logic here or add update_status to Scheduler.
-        // Direct DB access here violates the separation, so let's update Scheduler to handle this.
-        // Since I'm refactoring Scheduler anyway, I'll add toggle_active there.
-
         $id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
         $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
 
@@ -87,11 +82,11 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
         }
 
-        // We will add this method to Scheduler
+        // We use the new toggle_active method in Scheduler
         if (method_exists($this->scheduler, 'toggle_active')) {
              $result = $this->scheduler->toggle_active($id, $is_active);
         } else {
-             // Fallback if not yet implemented (during transition)
+             // Fallback
              global $wpdb;
              $table_name = $wpdb->prefix . 'aips_schedule';
              $result = $wpdb->update(
