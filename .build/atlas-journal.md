@@ -83,3 +83,57 @@ This document serves as the persistent memory for architectural decisions, struc
 * No changes to database schema or stored data
 * No changes to public plugin APIs or hooks
 * Generator class maintains same public interface
+
+---
+
+## 2025-12-21 - Extract Interval Calculator Service
+
+**Context:** The `AIPS_Scheduler` class was responsible for both schedule orchestration AND interval calculation logic. The `get_intervals()` method (77 lines) and `calculate_next_run()` method (60 lines) contained complex date/time math that should be independently testable. The scheduler's responsibility should be coordinating schedules, not performing interval calculations.
+
+**Decision:** Applied "Separation of Concerns" and "Single Responsibility Principle". Created a dedicated `AIPS_Interval_Calculator` class in `includes/class-aips-interval-calculator.php`. This new class:
+* Handles all interval definitions and calculations
+* Provides methods: `get_intervals()`, `calculate_next_run()`, `get_interval_duration()`, `get_interval_display()`, `is_valid_frequency()`, `merge_with_wp_schedules()`
+* Encapsulates complex day-specific interval logic (e.g., "every_monday")
+* Includes comprehensive DocBlocks following WordPress standards
+* Makes scheduling math testable in isolation
+* Reduces `AIPS_Scheduler` from 298 to ~165 lines
+
+**Consequence:**
+* **Pros:**
+  - Scheduler class is now focused solely on orchestrating scheduled tasks
+  - Interval calculation logic can be tested independently of WordPress hooks
+  - New validation method `is_valid_frequency()` enables input validation before processing
+  - Helper methods `get_interval_duration()` and `get_interval_display()` make UI development easier
+  - Date/time edge cases (preserving time for day-specific intervals) are isolated and testable
+  - Clearer separation makes the codebase easier to understand and debug
+* **Cons:**
+  - Added one new file to the includes directory
+  - Slightly increased memory footprint (one additional object instance)
+  - Developers must now understand two classes instead of one for scheduling
+* **Trade-offs:**
+  - Chose composition over inheritance (Scheduler has-a Calculator)
+  - Maintained backward compatibility: Scheduler's public API unchanged
+  - Extracted private calculation logic into new class; public interface preserved
+
+**Tests:** Created comprehensive test suite in `tests/test-interval-calculator.php` with 20+ test cases covering:
+* Interval structure validation
+* Day-specific interval generation
+* All frequency calculations (hourly, daily, weekly, monthly, bi-weekly, every N hours)
+* Day-specific frequency calculations (every_monday, etc.)
+* Time preservation for day-specific intervals
+* Current time handling when no start time provided
+* Past time handling (defaults to current time)
+* Interval duration retrieval
+* Display name retrieval
+* Frequency validation
+* WordPress schedule merging
+* Invalid frequency handling (defaults to daily)
+
+**Backward Compatibility:**
+* `AIPS_Scheduler::get_intervals()` continues to work identically
+* `AIPS_Scheduler::calculate_next_run()` maintains same signature and behavior
+* `AIPS_Scheduler::add_cron_intervals()` hook callback unchanged
+* All existing schedules and frequencies work without modification
+* No database schema changes
+* No changes to cron job configurations
+* Existing code calling scheduler methods requires no updates
