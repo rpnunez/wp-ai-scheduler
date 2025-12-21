@@ -137,3 +137,64 @@ This document serves as the persistent memory for architectural decisions, struc
 * No database schema changes
 * No changes to cron job configurations
 * Existing code calling scheduler methods requires no updates
+
+---
+
+## 2025-12-21 - Create AI Service Layer
+
+**Context:** The `AIPS_Generator` class directly accessed the Meow AI Engine through global variables and contained all AI interaction logic mixed with content generation orchestration. This created tight coupling to the AI Engine implementation, made testing difficult (can't mock AI responses), and violated the Dependency Inversion Principle. The AI-related code (80+ lines) was embedded within the 568-line Generator class, making it hard to reuse AI functionality in other contexts or swap AI providers.
+
+**Decision:** Applied "Separation of Concerns", "Dependency Inversion Principle", and "Service Layer Pattern". Created a dedicated `AIPS_AI_Service` class in `includes/class-aips-ai-service.php`. This new class:
+* Abstracts all AI Engine interactions behind a clean interface
+* Provides methods: `is_available()`, `generate_text()`, `generate_image()`, `get_call_log()`, `clear_call_log()`, `get_call_statistics()`
+* Handles AI Engine initialization and availability checking
+* Manages options (model, temperature, max_tokens) in one place
+* Provides built-in logging and debugging capabilities
+* Makes AI calls testable through dependency injection
+* Includes comprehensive DocBlocks following WordPress standards
+
+**Consequence:**
+* **Pros:**
+  - Generator class reduced from ~568 to ~470 lines
+  - AI interaction logic is now independently testable
+  - Call logging built into service layer for better debugging
+  - Statistics tracking enables monitoring and optimization
+  - AI provider can be swapped without changing Generator
+  - New `get_call_log()` enables detailed debugging of AI interactions
+  - Error handling is centralized and consistent
+  - Future support for multiple AI providers is now feasible
+* **Cons:**
+  - Added one new file to the includes directory
+  - Slightly increased memory footprint (one additional object instance)
+  - Additional layer of abstraction may be overkill for simple use cases
+* **Trade-offs:**
+  - Chose service layer over direct AI Engine access (better abstraction)
+  - Maintained backward compatibility: Generator's public API unchanged
+  - AI Service owns all AI Engine interaction details
+  - Extracted image generation into separate method `upload_image_from_url()` for better separation
+
+**Tests:** Created comprehensive test suite in `tests/test-ai-service.php` with 16+ test cases covering:
+* Service instantiation
+* Availability checking
+* Text generation (with unavailable AI Engine)
+* Image generation (with unavailable AI Engine)
+* Call log initialization and accumulation
+* Call log clearing
+* Call statistics structure and tracking
+* Prompt capture in logs
+* Type capture (text vs image)
+* Timestamp capture
+* Success/failure status tracking
+* Error message capture
+* Options passing and capture
+* Multiple call accumulation
+
+**Backward Compatibility:**
+* `AIPS_Generator::is_available()` continues to work identically
+* `AIPS_Generator::generate_content()` maintains same signature and behavior
+* All existing code using Generator requires no changes
+* AI Engine integration remains unchanged from external perspective
+* No database schema changes
+* No changes to plugin settings or options
+* Generated content format and structure unchanged
+* Image generation functionality preserved exactly
