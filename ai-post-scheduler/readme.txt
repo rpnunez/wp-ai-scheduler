@@ -82,3 +82,28 @@ Yes, you can specify a custom AI model in the Settings page. Leave empty to use 
 
 = 1.0.0 =
 Initial release of AI Post Scheduler.
+
+== Development & Testing ==
+
+For developers contributing to this plugin:
+
+= Running Tests =
+
+1. Install Composer dependencies:
+   `composer install`
+
+2. Run PHPUnit tests:
+   `composer test`
+
+3. Generate coverage report:
+   `composer test:coverage`
+
+See TESTING.md in the repository for detailed testing documentation.
+
+= Test Infrastructure =
+
+* PHPUnit 9.6 for unit testing
+* 62+ test cases covering core functionality
+* Multi-PHP version testing (7.4, 8.0, 8.1, 8.2)
+* Code coverage reporting
+* GitHub Actions CI/CD integration
