@@ -182,7 +182,7 @@ class AIPS_Scheduler {
         $logger->log('Starting scheduled post generation', 'info');
         
         $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT s.*, t.* 
+            SELECT t.*, s.*
             FROM {$this->schedule_table} s 
             INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
             WHERE s.is_active = 1 
