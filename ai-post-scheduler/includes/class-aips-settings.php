@@ -197,6 +197,22 @@ class AIPS_Settings {
             AIPS_VERSION,
             true
         );
+
+        wp_enqueue_script(
+            'aips-admin-planner',
+            AIPS_PLUGIN_URL . 'assets/js/admin-planner.js',
+            array('aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-admin-db',
+            AIPS_PLUGIN_URL . 'assets/js/admin-db.js',
+            array('aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
         
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),

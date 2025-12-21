@@ -15,6 +15,7 @@ class AIPS_Templates {
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
         add_action('wp_ajax_aips_get_template', array($this, 'ajax_get_template'));
         add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
+        add_action('wp_ajax_aips_get_template_posts', array($this, 'ajax_get_template_posts'));
     }
     
     public function get_all($active_only = false) {
@@ -180,6 +181,191 @@ class AIPS_Templates {
             'content' => $result,
             'message' => __('Test generation successful.', 'ai-post-scheduler')
         ));
+    }
+
+    public function get_pending_stats($template_id) {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'aips_schedule';
+
+        $schedules = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table_schedule WHERE template_id = %d AND is_active = 1",
+            $template_id
+        ));
+
+        $stats = array(
+            'today' => 0,
+            'week' => 0,
+            'month' => 0
+        );
+
+        if (empty($schedules)) {
+            return $stats;
+        }
+
+        $now = current_time('timestamp');
+        $today_end = strtotime('today 23:59:59', $now);
+        $week_end = strtotime('+7 days', $now);
+        $month_end = strtotime('+30 days', $now);
+
+        foreach ($schedules as $schedule) {
+            $cursor = strtotime($schedule->next_run);
+            $frequency = $schedule->frequency;
+
+            // Limit iterations to prevent infinite loops or excessive processing
+            $max_iterations = 100;
+            $i = 0;
+
+            while ($cursor <= $month_end && $i < $max_iterations) {
+                if ($cursor < $now) {
+                    // Skip past events that haven't run yet but update cursor?
+                    // Actually if next_run is in past, it will run next cron.
+                    // So count it as imminent.
+                }
+
+                if ($cursor <= $today_end) {
+                    $stats['today']++;
+                }
+
+                if ($cursor <= $week_end) {
+                    $stats['week']++;
+                }
+
+                if ($cursor <= $month_end) {
+                    $stats['month']++;
+                } else {
+                    break;
+                }
+
+                if ($frequency === 'once') {
+                    break;
+                }
+
+                // Calculate next run
+                $cursor = $this->calculate_next_run($frequency, $cursor);
+                $i++;
+            }
+        }
+
+        return $stats;
+    }
+
+    private function calculate_next_run($frequency, $base_time) {
+        switch ($frequency) {
+            case 'hourly':
+                return strtotime('+1 hour', $base_time);
+            case 'every_4_hours':
+                return strtotime('+4 hours', $base_time);
+            case 'every_6_hours':
+                return strtotime('+6 hours', $base_time);
+            case 'every_12_hours':
+                return strtotime('+12 hours', $base_time);
+            case 'daily':
+                return strtotime('+1 day', $base_time);
+            case 'weekly':
+                return strtotime('+1 week', $base_time);
+            case 'bi_weekly':
+                return strtotime('+2 weeks', $base_time);
+            case 'monthly':
+                return strtotime('+1 month', $base_time);
+            default:
+                if (strpos($frequency, 'every_') === 0) {
+                    $day = ucfirst(str_replace('every_', '', $frequency));
+                    $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+
+                    if (in_array($day, $valid_days)) {
+                        $next = strtotime("next $day", $base_time);
+                        return strtotime(date('H:i:s', $base_time), $next);
+                    }
+                }
+                return strtotime('+1 day', $base_time);
+        }
+    }
+
+    public function ajax_get_template_posts() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+        $page = isset($_POST['page']) ? absint($_POST['page']) : 1;
+
+        if (!$template_id) {
+            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
+        }
+
+        $history = new AIPS_History();
+        $data = $history->get_history(array(
+            'template_id' => $template_id,
+            'page' => $page,
+            'per_page' => 10,
+            'status' => 'completed'
+        ));
+
+        ob_start();
+        if (!empty($data['items'])): ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
+                        <th><?php esc_html_e('Date', 'ai-post-scheduler'); ?></th>
+                        <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($data['items'] as $item): ?>
+                    <tr>
+                        <td>
+                            <?php if ($item->post_id): ?>
+                                <a href="<?php echo get_permalink($item->post_id); ?>" target="_blank">
+                                    <?php echo esc_html($item->generated_title); ?>
+                                </a>
+                            <?php else: ?>
+                                <?php echo esc_html($item->generated_title); ?>
+                            <?php endif; ?>
+                        </td>
+                        <td><?php echo esc_html($item->created_at); ?></td>
+                        <td>
+                            <a href="<?php echo get_edit_post_link($item->post_id); ?>" class="button button-small" target="_blank">
+                                <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <?php if ($data['pages'] > 1): ?>
+            <div class="aips-pagination" style="margin-top: 10px; text-align: right;">
+                <?php
+                $current = $data['current_page'];
+                $total = $data['pages'];
+
+                if ($current > 1) {
+                    echo '<button type="button" class="button aips-modal-page" data-page="' . ($current - 1) . '">&laquo; ' . esc_html__('Prev', 'ai-post-scheduler') . '</button> ';
+                }
+
+                printf(
+                    '<span class="paging-input">%s %d %s %d</span> ',
+                    esc_html__('Page', 'ai-post-scheduler'),
+                    $current,
+                    esc_html__('of', 'ai-post-scheduler'),
+                    $total
+                );
+
+                if ($current < $total) {
+                    echo '<button type="button" class="button aips-modal-page" data-page="' . ($current + 1) . '">' . esc_html__('Next', 'ai-post-scheduler') . ' &raquo;</button>';
+                }
+                ?>
+            </div>
+            <?php endif; ?>
+        <?php else: ?>
+            <p><?php esc_html_e('No posts generated yet.', 'ai-post-scheduler'); ?></p>
+        <?php endif;
+        $html = ob_get_clean();
+
+        wp_send_json_success(array('html' => $html));
     }
     
     public function render_page() {

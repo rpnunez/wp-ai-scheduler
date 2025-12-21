@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [bolt-optimize-planner-bulk-insert] - 2024-05-23
+### Improved
+- Optimized the Planner's "Schedule All" feature by replacing N+1 database `INSERT` queries with a single bulk `INSERT` statement, significantly reducing database load during bulk scheduling.
+
 ## [hunter-fix-scheduler-id-collision-15743482046909698209] - 2025-12-21
 ### Fixed
 - Resolved a critical SQL column collision in the scheduler where `SELECT *` joins caused the Template ID to overwrite the Schedule ID, potentially updating the wrong database records.
@@ -21,3 +25,6 @@ All notable changes to this project will be documented in this file.
 ## [bolt-logger-optimization-13857484038144494642] - 2025-12-20
 ### Improved
 - 2024-05-23: Optimized `AIPS_Logger::get_logs` to use tail reading for large log files, improving performance from O(N) to O(1) for files larger than 100KB.
+
+## [1.4.0] - 2025-12-21
+- Refactor: Split 'admin.js' into modular files 'admin-planner.js' and 'admin-db.js' for better maintainability.

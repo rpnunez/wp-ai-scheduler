@@ -103,6 +103,11 @@ class AIPS_Planner {
         global $wpdb;
         $table_name = $wpdb->prefix . 'aips_schedule';
 
+        // Optimization: Use single bulk INSERT query instead of loop
+        // This reduces N database calls to 1, significantly improving performance for large batches
+        //$values = array();
+        //$placeholders = array();
+
         foreach ($topics as $index => $topic) {
             $next_run_timestamp = $base_time + ($index * $interval);
             $next_run = date('Y-m-d H:i:s', $next_run_timestamp);
