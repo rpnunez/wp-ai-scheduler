@@ -102,12 +102,29 @@
     display: flex;
     align-items: center;
 }
-.topic-item input {
-    margin-right: 10px;
+.topic-checkbox {
+    margin-right: 10px !important;
 }
-.topic-item input:checked + span {
-    font-weight: bold;
-    color: #0073aa;
+.topic-text-input {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 3px 5px;
+    font-size: 14px;
+    color: #1d2327;
+}
+.topic-text-input:hover {
+    border: 1px solid #ccc;
+    background: #fff;
+}
+.topic-text-input:focus {
+    border: 1px solid #2271b1;
+    background: #fff;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+.topic-checkbox:checked + .topic-text-input {
+    font-weight: 500;
 }
 .aips-row {
     display: flex;

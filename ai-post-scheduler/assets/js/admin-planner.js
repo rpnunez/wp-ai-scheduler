@@ -65,16 +65,14 @@
         renderTopics: function(topics, append) {
             var html = '';
             topics.forEach(function(topic) {
-                // Escape HTML
+                // Escape HTML for value attribute
                 var div = document.createElement('div');
                 div.textContent = topic;
-                var safeTopic = div.innerHTML;
+                var safeTopic = div.innerHTML.replace(/"/g, '&quot;');
 
                 html += '<div class="topic-item">';
-                html += '<label>';
-                html += '<input type="checkbox" class="topic-checkbox" value="' + safeTopic + '" checked>';
-                html += '<span>' + safeTopic + '</span>';
-                html += '</label>';
+                html += '<input type="checkbox" class="topic-checkbox" checked>';
+                html += '<input type="text" class="topic-text-input" value="' + safeTopic + '" aria-label="Edit topic title">';
                 html += '</div>';
             });
 
@@ -101,8 +99,13 @@
         bulkSchedule: function(e) {
             e.preventDefault();
             var topics = [];
+
+            // Iterate over checked checkboxes and get the value from the sibling text input
             $('.topic-checkbox:checked').each(function() {
-                topics.push($(this).val());
+                var val = $(this).siblings('.topic-text-input').val();
+                if (val && val.trim().length > 0) {
+                    topics.push(val.trim());
+                }
             });
 
             if (topics.length === 0) {
@@ -140,8 +143,7 @@
                 success: function(response) {
                     if (response.success) {
                         alert(response.data.message);
-                        // Clear selection or redirect?
-                        // For now just uncheck scheduled ones or clear list
+                        // Clear list after successful scheduling
                          $('#topics-list').html('');
                          $('#planner-results').slideUp();
                          $('#planner-niche').val('');
