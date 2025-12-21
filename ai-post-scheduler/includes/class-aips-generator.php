@@ -51,6 +51,20 @@ class AIPS_Generator {
             );
         }
     }
+
+    private function log($message, $level, $ai_data = array(), $context = array()) {
+        $this->logger->log($message, $level, $context);
+
+        if (!empty($ai_data) && isset($ai_data['type']) && isset($ai_data['prompt'])) {
+            $type = $ai_data['type'];
+            $prompt = $ai_data['prompt'];
+            $response = isset($ai_data['response']) ? $ai_data['response'] : null;
+            $options = isset($ai_data['options']) ? $ai_data['options'] : array();
+            $error = isset($ai_data['error']) ? $ai_data['error'] : null;
+
+            $this->log_ai_call($type, $prompt, $response, $options, $error);
+        }
+    }
     
     private function get_ai_engine() {
         if ($this->ai_engine === null) {
@@ -71,8 +85,12 @@ class AIPS_Generator {
         
         if (!$ai) {
             $error_msg = 'AI Engine not available';
-            $this->logger->log($error_msg, 'error');
-            $this->log_ai_call($log_type, $prompt, null, $options, $error_msg);
+            $this->log($error_msg, 'error', array(
+                'type' => $log_type,
+                'prompt' => $prompt,
+                'options' => $options,
+                'error' => $error_msg
+            ));
             return new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
         }
         
@@ -104,23 +122,35 @@ class AIPS_Generator {
             $response = $ai->run_query($query);
             
             if ($response && !empty($response->result)) {
-                $this->logger->log('Content generated successfully', 'info', array(
+                $this->log('Content generated successfully', 'info', array(
+                    'type' => $log_type,
+                    'prompt' => $prompt,
+                    'response' => $response->result,
+                    'options' => $options
+                ), array(
                     'prompt_length' => strlen($prompt),
                     'response_length' => strlen($response->result)
                 ));
-                $this->log_ai_call($log_type, $prompt, $response->result, $options);
                 return $response->result;
             }
             
             $error_msg = 'Empty response from AI Engine';
-            $this->logger->log($error_msg, 'error');
-            $this->log_ai_call($log_type, $prompt, null, $options, $error_msg);
+            $this->log($error_msg, 'error', array(
+                'type' => $log_type,
+                'prompt' => $prompt,
+                'options' => $options,
+                'error' => $error_msg
+            ));
             return new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
             
         } catch (Exception $e) {
             $error_msg = $e->getMessage();
-            $this->logger->log('AI generation failed: ' . $error_msg, 'error');
-            $this->log_ai_call($log_type, $prompt, null, $options, $error_msg);
+            $this->log('AI generation failed: ' . $error_msg, 'error', array(
+                'type' => $log_type,
+                'prompt' => $prompt,
+                'options' => $options,
+                'error' => $error_msg
+            ));
             return new WP_Error('generation_failed', $error_msg);
         }
     }
@@ -393,8 +423,12 @@ class AIPS_Generator {
         
         if (!$ai) {
             $error_msg = 'AI Engine not available for image generation';
-            $this->logger->log($error_msg, 'error');
-            $this->log_ai_call('featured_image', $image_prompt, null, array(), $error_msg);
+            $this->log($error_msg, 'error', array(
+                'type' => 'featured_image',
+                'prompt' => $image_prompt,
+                'options' => array(),
+                'error' => $error_msg
+            ));
             return false;
         }
         
@@ -404,8 +438,12 @@ class AIPS_Generator {
             
             if (!$response || empty($response->result)) {
                 $error_msg = 'Empty response from AI Engine for image generation';
-                $this->logger->log($error_msg, 'error');
-                $this->log_ai_call('featured_image', $image_prompt, null, array(), $error_msg);
+                $this->log($error_msg, 'error', array(
+                    'type' => 'featured_image',
+                    'prompt' => $image_prompt,
+                    'options' => array(),
+                    'error' => $error_msg
+                ));
                 return false;
             }
             
@@ -427,9 +465,10 @@ class AIPS_Generator {
             require_once(ABSPATH . 'wp-admin/includes/file.php');
             require_once(ABSPATH . 'wp-admin/includes/media.php');
             
-            $response_object = wp_remote_get($image_url);
+            // SECURITY FIX: Use wp_safe_remote_get to prevent SSRF
+            $response_object = wp_safe_remote_get($image_url);
 
-            // SECURITY FIX: Check response code and content type
+            // Check response code and content type
             if (is_wp_error($response_object)) {
                 $error_msg = 'Failed to fetch image: ' . $response_object->get_error_message();
                 $this->logger->log($error_msg, 'error');
@@ -517,8 +556,12 @@ class AIPS_Generator {
             
         } catch (Exception $e) {
             $error_msg = 'Image generation error: ' . $e->getMessage();
-            $this->logger->log($error_msg, 'error');
-            $this->log_ai_call('featured_image', $image_prompt, null, array(), $e->getMessage());
+            $this->log($error_msg, 'error', array(
+                'type' => 'featured_image',
+                'prompt' => $image_prompt,
+                'options' => array(),
+                'error' => $e->getMessage()
+            ));
             return false;
         }
     }

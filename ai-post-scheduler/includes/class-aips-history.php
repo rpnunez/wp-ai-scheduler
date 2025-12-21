@@ -23,6 +23,8 @@ class AIPS_History {
             'per_page' => 20,
             'page' => 1,
             'status' => '',
+            'search' => '',
+            'template_id' => 0,
             'orderby' => 'created_at',
             'order' => 'DESC',
         );
@@ -38,6 +40,16 @@ class AIPS_History {
         if (!empty($args['status'])) {
             $where_clauses[] = "h.status = %s";
             $where_args[] = $args['status'];
+        }
+
+        if (!empty($args['template_id'])) {
+            $where_clauses[] = "h.template_id = %d";
+            $where_args[] = $args['template_id'];
+        }
+
+        if (!empty($args['search'])) {
+            $where_clauses[] = "h.generated_title LIKE %s";
+            $where_args[] = '%' . $wpdb->esc_like($args['search']) . '%';
         }
         
         $where_sql = implode(' AND ', $where_clauses);
@@ -105,6 +117,15 @@ class AIPS_History {
             : 0;
         
         return $stats;
+    }
+
+    public function get_template_stats($template_id) {
+        global $wpdb;
+
+        return $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->table_name} WHERE template_id = %d AND status = 'completed'",
+            $template_id
+        ));
     }
     
     public function clear_history($status = '') {
@@ -221,10 +242,12 @@ class AIPS_History {
     public function render_page() {
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+        $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
         
         $history = $this->get_history(array(
             'page' => $current_page,
             'status' => $status_filter,
+            'search' => $search_query,
         ));
         
         $stats = $this->get_stats();

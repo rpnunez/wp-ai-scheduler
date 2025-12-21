@@ -1,0 +1,78 @@
+services:
+  db:
+    image: mariadb:10.6
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    volumes:
+      # Use a named Docker volume instead of bind-mounting ./data/mysql
+      - db_data_v2:/var/lib/mysql
+      # Mount custom MariaDB configuration to reduce log sizes and tmp usage
+      - ./mariadb-conf/my.cnf:/etc/mysql/conf.d/my_custom.cnf:ro
+    healthcheck:
+      # Avoid compose-level interpolation of ${MYSQL_ROOT_PASSWORD} by hardcoding the
+      # password used by this service (keeps the healthcheck evaluated inside the container).
+      test: [ "CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -proot" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    ports:
+      - "8080:80"
+      - "9003:9003" # Xdebug
+    environment:
+      # WordPress DB settings used by entrypoint WP-CLI commands
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      # mysql root password (used by entrypoint to wait/ping)
+      MYSQL_ROOT_PASSWORD: root
+
+      # Initial WP admin credentials (change in production)
+      WP_ADMIN_USER: admin
+      WP_ADMIN_PASSWORD: admin
+      WP_ADMIN_EMAIL: admin@example.com
+      WP_SITE_TITLE: "WP AI Scheduler Dev"
+      WP_SITE_URL: http://localhost:8080
+
+      # Xdebug (Xdebug 3): enable debug mode and point to host (Windows: host.docker.internal)
+      XDEBUG_MODE: debug
+      XDEBUG_CONFIG: "client_host=host.docker.internal client_port=9003"
+      XDEBUG_LOG: /tmp/xdebug.log
+      # Optional: set ENTRYPOINT_DEBUG=1 to enable the entrypoint interactive diagnostics
+      ENTRYPOINT_DEBUG: "1"
+    volumes:
+      # Use a named Docker volume instead of a host bind to avoid Windows permission issues.
+      - wordpress_data_v2:/var/www/html
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+    #restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    restart: always
+    ports:
+      - "8082:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 300M
+    # depends_on:
+    #   - db
+
+# Declare the named volume used by the DB service
+volumes:
+  db_data_v2:
+  wordpress_data_v2:

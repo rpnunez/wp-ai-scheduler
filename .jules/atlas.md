@@ -1,0 +1,3 @@
+# Atlas Journal - Architectural Decision Records
+
+## 2024-05-23 - [JS Modularization] **Context:** The 'admin.js' file was a 'God Object' (1100+ lines) handling distinct domains like Planner, DB Management, and core UI, making maintenance difficult. **Decision:** Split 'admin.js' into feature-specific files ('admin-planner.js', 'admin-db.js') using 'window.AIPS' as a shared namespace and 'Object.assign' for extension. **Consequence:** Improved separation of concerns and file readability, but introduced a dependency on load order (admin.js must load before modules), managed via 'wp_enqueue_script' dependencies.

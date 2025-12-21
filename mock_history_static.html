@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock History Page</title>
+    <style>
+        .wrap { margin: 10px 20px 0 2px; }
+        .search-box { float: right; margin-bottom: 10px; }
+        .tablenav { clear: both; margin: 6px 0 4px; vertical-align: middle; }
+        .tablenav .actions { padding: 2px 8px 0 0; }
+        .alignleft { float: left; }
+        .alignright { float: right; }
+        .screen-reader-text {
+            border: 0;
+            clip: rect(1px, 1px, 1px, 1px);
+            -webkit-clip-path: inset(50%);
+            clip-path: inset(50%);
+            height: 1px;
+            margin: -1px;
+            overflow: hidden;
+            padding: 0;
+            position: absolute;
+            width: 1px;
+            word-wrap: normal !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Generation History</h1>
+
+        <p class="search-box">
+            <label class="screen-reader-text" for="aips-history-search-input">Search History:</label>
+            <input type="search" id="aips-history-search-input" name="s" value="">
+            <input type="submit" id="aips-history-search-btn" class="button" value="Search History">
+        </p>
+
+        <div class="tablenav top">
+            <div class="alignleft actions">
+                <select id="aips-filter-status">
+                    <option value="">All Statuses</option>
+                    <option value="completed">Completed</option>
+                    <option value="failed">Failed</option>
+                    <option value="processing">Processing</option>
+                </select>
+                <button class="button" id="aips-filter-btn">Filter</button>
+            </div>
+            <div class="alignright">
+                <button class="button aips-clear-history" data-status="">Clear All History</button>
+                <button class="button aips-clear-history" data-status="failed">Clear Failed Only</button>
+            </div>
+        </div>
+
+        <div class="aips-empty-state">
+            <h3>No History Yet</h3>
+            <p>Generated posts will appear here.</p>
+        </div>
+    </div>
+</body>
+</html>
