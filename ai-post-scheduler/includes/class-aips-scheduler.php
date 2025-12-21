@@ -14,12 +14,18 @@ class AIPS_Scheduler {
      */
     private $repository;
     
+    /**
+     * @var AIPS_Event_Dispatcher Event dispatcher
+     */
+    private $event_dispatcher;
+    
     public function __construct() {
         global $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->repository = new AIPS_Schedule_Repository();
+        $this->event_dispatcher = new AIPS_Event_Dispatcher();
         
         add_action('aips_generate_scheduled_posts', array($this, 'process_scheduled_posts'));
         add_filter('cron_schedules', array($this, 'add_cron_intervals'));
@@ -120,6 +126,9 @@ class AIPS_Scheduler {
         $generator = new AIPS_Generator();
         
         foreach ($due_schedules as $schedule) {
+            // Dispatch schedule execution started event
+            $this->event_dispatcher->schedule_execution_started($schedule->schedule_id);
+            
             $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
                 'template_id' => $schedule->template_id,
                 'template_name' => $schedule->name,
@@ -161,10 +170,22 @@ class AIPS_Scheduler {
                 $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
                     'schedule_id' => $schedule->schedule_id
                 ));
+                
+                // Dispatch schedule execution failed event
+                $this->event_dispatcher->schedule_execution_failed($schedule->schedule_id, $result, array(
+                    'template_id' => $schedule->template_id,
+                    'frequency' => $schedule->frequency,
+                ));
             } else {
                 $logger->log('Schedule completed successfully', 'info', array(
                     'schedule_id' => $schedule->schedule_id,
                     'post_id' => $result
+                ));
+                
+                // Dispatch schedule execution completed event
+                $this->event_dispatcher->schedule_execution_completed($schedule->schedule_id, $result, array(
+                    'template_id' => $schedule->template_id,
+                    'frequency' => $schedule->frequency,
                 ));
             }
         }

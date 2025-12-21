@@ -10,12 +10,14 @@ class AIPS_Generator {
     private $generation_log;
     private $template_processor;
     private $image_service;
+    private $event_dispatcher;
     
     public function __construct() {
         $this->logger = new AIPS_Logger();
         $this->ai_service = new AIPS_AI_Service();
         $this->template_processor = new AIPS_Template_Processor();
         $this->image_service = new AIPS_Image_Service($this->ai_service);
+        $this->event_dispatcher = new AIPS_Event_Dispatcher();
         $this->reset_generation_log();
     }
     
@@ -181,6 +183,9 @@ class AIPS_Generator {
     public function generate_post($template, $voice = null, $topic = null) {
         global $wpdb;
         
+        // Dispatch post generation started event
+        $this->event_dispatcher->post_generation_started($template->id, $topic ? $topic : '');
+        
         $this->reset_generation_log();
         $this->generation_log['started_at'] = current_time('mysql');
         
@@ -253,6 +258,12 @@ class AIPS_Generator {
                 array('%s', '%s', '%s', '%s'),
                 array('%d')
             );
+            
+            // Dispatch post generation failed event
+            $this->event_dispatcher->post_generation_failed($template->id, $content, array(
+                'history_id' => $history_id,
+                'topic' => $topic,
+            ));
             
             return $content;
         }
@@ -378,6 +389,14 @@ class AIPS_Generator {
             'post_id' => $post_id,
             'template_id' => $template->id,
             'title' => $title
+        ));
+        
+        // Dispatch post generation completed event
+        $this->event_dispatcher->post_generation_completed($template->id, $post_id, array(
+            'history_id' => $history_id,
+            'topic' => $topic,
+            'title' => $title,
+            'featured_image_id' => $featured_image_id,
         ));
         
         do_action('aips_post_generated', $post_id, $template, $history_id);
