@@ -430,7 +430,7 @@ class AIPS_Generator {
             // SECURITY FIX: Use wp_safe_remote_get to prevent SSRF
             $response_object = wp_safe_remote_get($image_url);
 
-            // SECURITY FIX: Check response code and content type
+            // Check response code and content type
             if (is_wp_error($response_object)) {
                 $error_msg = 'Failed to fetch image: ' . $response_object->get_error_message();
                 $this->logger->log($error_msg, 'error');
