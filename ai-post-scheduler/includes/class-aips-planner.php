@@ -107,19 +107,15 @@ class AIPS_Planner {
             $next_run_timestamp = $base_time + ($index * $interval);
             $next_run = date('Y-m-d H:i:s', $next_run_timestamp);
 
-            $wpdb->insert(
-                $table_name,
-                array(
-                    'template_id' => $template_id,
-                    'frequency' => 'once',
-                    'next_run' => $next_run,
-                    'is_active' => 1,
-                    'topic' => $topic
-                ),
-                array('%d', '%s', '%s', '%d', '%s')
-            );
+            $schedule_id = $scheduler->save_schedule(array(
+                'template_id' => $template_id,
+                'frequency' => 'once',
+                'next_run' => $next_run,
+                'is_active' => 1,
+                'topic' => $topic
+            ));
 
-            if ($wpdb->insert_id) {
+            if ($schedule_id) {
                 $count++;
             }
         }
