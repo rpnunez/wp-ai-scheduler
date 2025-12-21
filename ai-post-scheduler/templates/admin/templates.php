@@ -24,12 +24,20 @@ if (!defined('ABSPATH')) {
                         <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
                         <th class="column-status"><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></th>
                         <th class="column-category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></th>
+                        <th class="column-stats"><?php esc_html_e('Statistics', 'ai-post-scheduler'); ?></th>
                         <th class="column-active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
                         <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($templates as $template): ?>
+                    <?php
+                    $history = new AIPS_History();
+                    $templates_class = new AIPS_Templates();
+
+                    foreach ($templates as $template):
+                        $generated_count = $history->get_template_stats($template->id);
+                        $pending_stats = $templates_class->get_pending_stats($template->id);
+                    ?>
                     <tr data-template-id="<?php echo esc_attr($template->id); ?>">
                         <td class="column-name">
                             <strong><?php echo esc_html($template->name); ?></strong>
@@ -46,6 +54,20 @@ if (!defined('ABSPATH')) {
                                 echo '-';
                             }
                             ?>
+                        </td>
+                        <td class="column-stats">
+                            <div>
+                                <strong><?php esc_html_e('Generated:', 'ai-post-scheduler'); ?></strong> <?php echo esc_html($generated_count); ?>
+                                <a href="#" class="aips-view-template-posts" data-id="<?php echo esc_attr($template->id); ?>" style="font-size: 0.9em;">
+                                    <?php esc_html_e('(View Posts)', 'ai-post-scheduler'); ?>
+                                </a>
+                            </div>
+                            <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                                <strong><?php esc_html_e('Pending:', 'ai-post-scheduler'); ?></strong><br>
+                                <?php esc_html_e('Today:', 'ai-post-scheduler'); ?> <?php echo esc_html($pending_stats['today']); ?><br>
+                                <?php esc_html_e('Week:', 'ai-post-scheduler'); ?> <?php echo esc_html($pending_stats['week']); ?><br>
+                                <?php esc_html_e('Month:', 'ai-post-scheduler'); ?> <?php echo esc_html($pending_stats['month']); ?>
+                            </div>
                         </td>
                         <td class="column-active">
                             <span class="aips-status aips-status-<?php echo $template->is_active ? 'active' : 'inactive'; ?>">
@@ -209,6 +231,23 @@ if (!defined('ABSPATH')) {
             </div>
             <div class="aips-modal-body">
                 <div id="aips-test-content"></div>
+            </div>
+            <div class="aips-modal-footer">
+                <button type="button" class="button aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="aips-template-posts-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content aips-modal-large">
+            <div class="aips-modal-header">
+                <h2><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></h2>
+                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <div id="aips-template-posts-content">
+                    <p class="aips-loading"><?php esc_html_e('Loading...', 'ai-post-scheduler'); ?></p>
+                </div>
             </div>
             <div class="aips-modal-footer">
                 <button type="button" class="button aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
