@@ -65,16 +65,15 @@
         renderTopics: function(topics, append) {
             var html = '';
             topics.forEach(function(topic) {
-                // Escape HTML
+                // Escape HTML for value attribute
                 var div = document.createElement('div');
                 div.textContent = topic;
                 var safeTopic = div.innerHTML;
+                var safeValue = safeTopic.replace(/"/g, '&quot;');
 
                 html += '<div class="topic-item">';
-                html += '<label>';
-                html += '<input type="checkbox" class="topic-checkbox" value="' + safeTopic + '" checked>';
-                html += '<span>' + safeTopic + '</span>';
-                html += '</label>';
+                html += '<input type="checkbox" class="topic-checkbox" checked aria-label="Select topic">';
+                html += '<input type="text" class="topic-input regular-text" value="' + safeValue + '" aria-label="Edit topic title">';
                 html += '</div>';
             });
 
@@ -101,8 +100,12 @@
         bulkSchedule: function(e) {
             e.preventDefault();
             var topics = [];
-            $('.topic-checkbox:checked').each(function() {
-                topics.push($(this).val());
+            $('.topic-item').each(function() {
+                var $checkbox = $(this).find('.topic-checkbox');
+                var $input = $(this).find('.topic-input');
+                if ($checkbox.is(':checked') && $input.val().trim()) {
+                    topics.push($input.val().trim());
+                }
             });
 
             if (topics.length === 0) {
