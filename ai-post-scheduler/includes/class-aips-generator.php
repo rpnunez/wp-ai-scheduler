@@ -8,9 +8,11 @@ class AIPS_Generator {
     private $ai_engine;
     private $logger;
     private $generation_log;
+    private $image_service;
     
     public function __construct() {
         $this->logger = new AIPS_Logger();
+        $this->image_service = new AIPS_Image_Service(null, $this->logger);
         $this->reset_generation_log();
     }
     
@@ -356,10 +358,24 @@ class AIPS_Generator {
         $featured_image_id = null;
         if ($template->generate_featured_image && !empty($template->image_prompt)) {
             $image_prompt = $this->process_template_variables($template->image_prompt, $topic);
-            $featured_image_id = $this->generate_and_upload_featured_image($image_prompt, $title);
             
-            if ($featured_image_id) {
+            $image_result = $this->image_service->generate_and_attach($image_prompt, $title);
+
+            // Log the AI call if we got a URL, regardless of final success
+            if (!empty($image_result['image_url'])) {
+                $this->log_ai_call('featured_image', $image_prompt, $image_result['image_url'], array());
+            }
+
+            if ($image_result['success']) {
+                $featured_image_id = $image_result['attachment_id'];
                 set_post_thumbnail($post_id, $featured_image_id);
+            } else {
+                // Log the specific error to the generation history
+                $this->generation_log['errors'][] = array(
+                    'type' => $image_result['error_code'] ?: 'featured_image',
+                    'timestamp' => current_time('mysql'),
+                    'message' => $image_result['error_message'] ?: 'Unknown image generation error',
+                );
             }
         }
         
@@ -416,153 +432,5 @@ class AIPS_Generator {
         $variables = apply_filters('aips_template_variables', $variables);
         
         return str_replace(array_keys($variables), array_values($variables), $template);
-    }
-    
-    private function generate_and_upload_featured_image($image_prompt, $post_title) {
-        $ai = $this->get_ai_engine();
-        
-        if (!$ai) {
-            $error_msg = 'AI Engine not available for image generation';
-            $this->log($error_msg, 'error', array(
-                'type' => 'featured_image',
-                'prompt' => $image_prompt,
-                'options' => array(),
-                'error' => $error_msg
-            ));
-            return false;
-        }
-        
-        try {
-            $query = new Meow_MWAI_Query_Image($image_prompt);
-            $response = $ai->run_query($query);
-            
-            if (!$response || empty($response->result)) {
-                $error_msg = 'Empty response from AI Engine for image generation';
-                $this->log($error_msg, 'error', array(
-                    'type' => 'featured_image',
-                    'prompt' => $image_prompt,
-                    'options' => array(),
-                    'error' => $error_msg
-                ));
-                return false;
-            }
-            
-            $image_url = $response->result;
-            
-            if (is_array($image_url) && !empty($image_url[0])) {
-                $image_url = $image_url[0];
-            }
-            
-            $this->log_ai_call('featured_image', $image_prompt, $image_url, array());
-            
-            if (empty($image_url)) {
-                $error_msg = 'No image URL in AI response';
-                $this->logger->log($error_msg, 'error');
-                return false;
-            }
-            
-            require_once(ABSPATH . 'wp-admin/includes/image.php');
-            require_once(ABSPATH . 'wp-admin/includes/file.php');
-            require_once(ABSPATH . 'wp-admin/includes/media.php');
-            
-            // SECURITY FIX: Use wp_safe_remote_get to prevent SSRF
-            $response_object = wp_safe_remote_get($image_url);
-
-            // Check response code and content type
-            if (is_wp_error($response_object)) {
-                $error_msg = 'Failed to fetch image: ' . $response_object->get_error_message();
-                $this->logger->log($error_msg, 'error');
-                $this->generation_log['errors'][] = array(
-                    'type' => 'image_download',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
-
-            $response_code = wp_remote_retrieve_response_code($response_object);
-            if ($response_code !== 200) {
-                $error_msg = 'Failed to fetch image. HTTP Code: ' . $response_code;
-                $this->logger->log($error_msg, 'error');
-                $this->generation_log['errors'][] = array(
-                    'type' => 'image_download',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
-
-            $content_type = wp_remote_retrieve_header($response_object, 'content-type');
-            if (strpos($content_type, 'image/') !== 0) {
-                 $error_msg = 'Invalid content type: ' . $content_type;
-                 $this->logger->log($error_msg, 'error');
-                 $this->generation_log['errors'][] = array(
-                    'type' => 'image_content_type',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
-
-            $image_data = wp_remote_retrieve_body($response_object);
-            $post_slug = sanitize_title($post_title);
-            $filename = $post_slug . '.jpg';
-            
-            $upload_dir = wp_upload_dir();
-            $file_path = $upload_dir['path'] . '/' . $filename;
-            
-            if (!file_put_contents($file_path, $image_data)) {
-                $error_msg = 'Failed to write image file: ' . $file_path;
-                $this->logger->log($error_msg, 'error');
-                $this->generation_log['errors'][] = array(
-                    'type' => 'image_save',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
-            
-            $file_type = wp_check_filetype($filename);
-            
-            $attachment = array(
-                'post_mime_type' => $file_type['type'],
-                'post_title' => preg_replace('/\.[^.]+$/', '', $filename),
-                'post_content' => '',
-                'post_status' => 'inherit'
-            );
-            
-            $attachment_id = wp_insert_attachment($attachment, $file_path);
-            
-            if (is_wp_error($attachment_id)) {
-                $error_msg = 'Failed to insert attachment: ' . $attachment_id->get_error_message();
-                $this->logger->log($error_msg, 'error');
-                $this->generation_log['errors'][] = array(
-                    'type' => 'image_attachment',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
-            
-            $attach_data = wp_generate_attachment_metadata($attachment_id, $file_path);
-            wp_update_attachment_metadata($attachment_id, $attach_data);
-            
-            $this->logger->log('Featured image generated and uploaded', 'info', array(
-                'attachment_id' => $attachment_id,
-                'filename' => $filename
-            ));
-            
-            return $attachment_id;
-            
-        } catch (Exception $e) {
-            $error_msg = 'Image generation error: ' . $e->getMessage();
-            $this->log($error_msg, 'error', array(
-                'type' => 'featured_image',
-                'prompt' => $image_prompt,
-                'options' => array(),
-                'error' => $e->getMessage()
-            ));
-            return false;
-        }
     }
 }
