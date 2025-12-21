@@ -61,6 +61,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
@@ -122,6 +123,7 @@ final class AI_Post_Scheduler {
             new AIPS_Templates();
             new AIPS_History();
             new AIPS_Planner();
+            new AIPS_Schedule_Controller();
         }
         
         new AIPS_Scheduler();

@@ -105,28 +105,23 @@ class AIPS_Planner {
 
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
-        $values = array();
-        $placeholders = array();
+        //$values = array();
+        //$placeholders = array();
 
         foreach ($topics as $index => $topic) {
             $next_run_timestamp = $base_time + ($index * $interval);
             $next_run = date('Y-m-d H:i:s', $next_run_timestamp);
 
-            array_push($values, $template_id, 'once', $next_run, 1, $topic);
-            $placeholders[] = "(%d, %s, %s, %d, %s)";
-        }
+            $schedule_id = $scheduler->save_schedule(array(
+                'template_id' => $template_id,
+                'frequency' => 'once',
+                'next_run' => $next_run,
+                'is_active' => 1,
+                'topic' => $topic
+            ));
 
-        if (!empty($placeholders)) {
-            $query = "INSERT INTO $table_name (template_id, frequency, next_run, is_active, topic) VALUES ";
-            $query .= implode(', ', $placeholders);
-
-            $sql = $wpdb->prepare($query, $values);
-
-            // $wpdb->query returns number of rows affected for INSERT
-            $rows_affected = $wpdb->query($sql);
-
-            if ($rows_affected !== false) {
-                $count = $rows_affected;
+            if ($schedule_id) {
+                $count++;
             }
         }
 
