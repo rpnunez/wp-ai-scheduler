@@ -5,12 +5,17 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Generator {
     
-    private $ai_engine;
+    private $ai_service;
     private $logger;
     private $generation_log;
+    private $template_processor;
+    private $image_service;
     
     public function __construct() {
         $this->logger = new AIPS_Logger();
+        $this->ai_service = new AIPS_AI_Service();
+        $this->template_processor = new AIPS_Template_Processor();
+        $this->image_service = new AIPS_Image_Service($this->ai_service);
         $this->reset_generation_log();
     }
     
@@ -26,6 +31,15 @@ class AIPS_Generator {
         );
     }
     
+    /**
+     * Log an AI call to the generation log.
+     *
+     * @param string      $type     Type of AI call (e.g., 'title', 'content', 'excerpt', 'featured_image').
+     * @param string      $prompt   The prompt sent to AI.
+     * @param string|null $response The AI response, if successful.
+     * @param array       $options  Options used for the call.
+     * @param string|null $error    Error message, if call failed.
+     */
     private function log_ai_call($type, $prompt, $response, $options = array(), $error = null) {
         $call_log = array(
             'type' => $type,
@@ -52,6 +66,14 @@ class AIPS_Generator {
         }
     }
 
+    /**
+     * Log a message with optional AI data.
+     *
+     * @param string $message Message to log.
+     * @param string $level   Log level (info, error, warning).
+     * @param array  $ai_data Optional AI call data to log.
+     * @param array  $context Optional context data.
+     */
     private function log($message, $level, $ai_data = array(), $context = array()) {
         $this->logger->log($message, $level, $context);
 
@@ -66,93 +88,48 @@ class AIPS_Generator {
         }
     }
     
-    private function get_ai_engine() {
-        if ($this->ai_engine === null) {
-            if (class_exists('Meow_MWAI_Core')) {
-                global $mwai_core;
-                $this->ai_engine = $mwai_core;
-            }
-        }
-        return $this->ai_engine;
-    }
-    
+    /**
+     * Check if AI is available.
+     *
+     * @return bool True if AI Engine is available, false otherwise.
+     */
     public function is_available() {
-        return $this->get_ai_engine() !== null;
+        return $this->ai_service->is_available();
     }
     
+    /**
+     * Generate content using AI.
+     *
+     * Wrapper method that uses the AI Service to generate text content.
+     *
+     * @param string $prompt   The prompt to send to AI.
+     * @param array  $options  Optional AI generation options.
+     * @param string $log_type Optional type label for logging.
+     * @return string|WP_Error The generated content or WP_Error on failure.
+     */
     public function generate_content($prompt, $options = array(), $log_type = 'content') {
-        $ai = $this->get_ai_engine();
+        $result = $this->ai_service->generate_text($prompt, $options);
         
-        if (!$ai) {
-            $error_msg = 'AI Engine not available';
-            $this->log($error_msg, 'error', array(
+        if (is_wp_error($result)) {
+            $this->log($result->get_error_message(), 'error', array(
                 'type' => $log_type,
                 'prompt' => $prompt,
                 'options' => $options,
-                'error' => $error_msg
+                'error' => $result->get_error_message()
             ));
-            return new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+        } else {
+            $this->log('Content generated successfully', 'info', array(
+                'type' => $log_type,
+                'prompt' => $prompt,
+                'response' => $result,
+                'options' => $options
+            ), array(
+                'prompt_length' => strlen($prompt),
+                'response_length' => strlen($result)
+            ));
         }
         
-        $model = get_option('aips_ai_model', '');
-        
-        $default_options = array(
-            'model' => $model,
-            'max_tokens' => 2000,
-            'temperature' => 0.7,
-        );
-        
-        $options = wp_parse_args($options, $default_options);
-        
-        try {
-            $query = new Meow_MWAI_Query_Text($prompt);
-            
-            if (!empty($options['model'])) {
-                $query->set_model($options['model']);
-            }
-            
-            if (isset($options['max_tokens'])) {
-                $query->set_max_tokens($options['max_tokens']);
-            }
-            
-            if (isset($options['temperature'])) {
-                $query->set_temperature($options['temperature']);
-            }
-            
-            $response = $ai->run_query($query);
-            
-            if ($response && !empty($response->result)) {
-                $this->log('Content generated successfully', 'info', array(
-                    'type' => $log_type,
-                    'prompt' => $prompt,
-                    'response' => $response->result,
-                    'options' => $options
-                ), array(
-                    'prompt_length' => strlen($prompt),
-                    'response_length' => strlen($response->result)
-                ));
-                return $response->result;
-            }
-            
-            $error_msg = 'Empty response from AI Engine';
-            $this->log($error_msg, 'error', array(
-                'type' => $log_type,
-                'prompt' => $prompt,
-                'options' => $options,
-                'error' => $error_msg
-            ));
-            return new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
-            
-        } catch (Exception $e) {
-            $error_msg = $e->getMessage();
-            $this->log('AI generation failed: ' . $error_msg, 'error', array(
-                'type' => $log_type,
-                'prompt' => $prompt,
-                'options' => $options,
-                'error' => $error_msg
-            ));
-            return new WP_Error('generation_failed', $error_msg);
-        }
+        return $result;
     }
     
     public function generate_title($prompt, $voice_title_prompt = null, $options = array()) {
@@ -246,10 +223,10 @@ class AIPS_Generator {
         
         $history_id = $wpdb->insert_id;
         
-        $processed_prompt = $this->process_template_variables($template->prompt_template, $topic);
+        $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
         
         if ($voice) {
-            $voice_instructions = $this->process_template_variables($voice->content_instructions, $topic);
+            $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
             $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
         }
         
@@ -282,11 +259,11 @@ class AIPS_Generator {
         
         $voice_title_prompt = null;
         if ($voice) {
-            $voice_title_prompt = $this->process_template_variables($voice->title_prompt, $topic);
+            $voice_title_prompt = $this->template_processor->process($voice->title_prompt, $topic);
         }
         
         if (!empty($template->title_prompt)) {
-            $title_prompt = $this->process_template_variables($template->title_prompt, $topic);
+            $title_prompt = $this->template_processor->process($template->title_prompt, $topic);
             $title = $this->generate_title($title_prompt, $voice_title_prompt);
         } else {
             $title = $this->generate_title($processed_prompt, $voice_title_prompt);
@@ -298,7 +275,7 @@ class AIPS_Generator {
         
         $voice_excerpt_instructions = null;
         if ($voice && !empty($voice->excerpt_instructions)) {
-            $voice_excerpt_instructions = $this->process_template_variables($voice->excerpt_instructions, $topic);
+            $voice_excerpt_instructions = $this->template_processor->process($voice->excerpt_instructions, $topic);
         }
         
         $excerpt = $this->generate_excerpt($title, $processed_prompt, $voice_excerpt_instructions);
@@ -355,11 +332,20 @@ class AIPS_Generator {
         
         $featured_image_id = null;
         if ($template->generate_featured_image && !empty($template->image_prompt)) {
-            $image_prompt = $this->process_template_variables($template->image_prompt, $topic);
-            $featured_image_id = $this->generate_and_upload_featured_image($image_prompt, $title);
+            $image_prompt = $this->template_processor->process($template->image_prompt, $topic);
+            $featured_image_result = $this->image_service->generate_and_upload_featured_image($image_prompt, $title);
             
-            if ($featured_image_id) {
+            if (!is_wp_error($featured_image_result)) {
+                $featured_image_id = $featured_image_result;
                 set_post_thumbnail($post_id, $featured_image_id);
+                $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
+            } else {
+                $this->logger->log('Featured image generation failed: ' . $featured_image_result->get_error_message(), 'error');
+                $this->generation_log['errors'][] = array(
+                    'type' => 'featured_image',
+                    'timestamp' => current_time('mysql'),
+                    'message' => $featured_image_result->get_error_message(),
+                );
             }
         }
         
@@ -397,172 +383,5 @@ class AIPS_Generator {
         do_action('aips_post_generated', $post_id, $template, $history_id);
         
         return $post_id;
-    }
-    
-    private function process_template_variables($template, $topic = null) {
-        $variables = array(
-            '{{date}}' => date('F j, Y'),
-            '{{year}}' => date('Y'),
-            '{{month}}' => date('F'),
-            '{{day}}' => date('l'),
-            '{{time}}' => current_time('H:i'),
-            '{{site_name}}' => get_bloginfo('name'),
-            '{{site_description}}' => get_bloginfo('description'),
-            '{{random_number}}' => rand(1, 1000),
-            '{{topic}}' => $topic ? $topic : '',
-            '{{title}}' => $topic ? $topic : '', // Alias for topic if user prefers
-        );
-        
-        $variables = apply_filters('aips_template_variables', $variables);
-        
-        return str_replace(array_keys($variables), array_values($variables), $template);
-    }
-    
-    private function generate_and_upload_featured_image($image_prompt, $post_title) {
-        $ai = $this->get_ai_engine();
-        
-        if (!$ai) {
-            $error_msg = 'AI Engine not available for image generation';
-            $this->log($error_msg, 'error', array(
-                'type' => 'featured_image',
-                'prompt' => $image_prompt,
-                'options' => array(),
-                'error' => $error_msg
-            ));
-            return false;
-        }
-        
-        try {
-            $query = new Meow_MWAI_Query_Image($image_prompt);
-            $response = $ai->run_query($query);
-            
-            if (!$response || empty($response->result)) {
-                $error_msg = 'Empty response from AI Engine for image generation';
-                $this->log($error_msg, 'error', array(
-                    'type' => 'featured_image',
-                    'prompt' => $image_prompt,
-                    'options' => array(),
-                    'error' => $error_msg
-                ));
-                return false;
-            }
-            
-            $image_url = $response->result;
-            
-            if (is_array($image_url) && !empty($image_url[0])) {
-                $image_url = $image_url[0];
-            }
-            
-            $this->log_ai_call('featured_image', $image_prompt, $image_url, array());
-            
-            if (empty($image_url)) {
-                $error_msg = 'No image URL in AI response';
-                $this->logger->log($error_msg, 'error');
-                return false;
-            }
-            
-            require_once(ABSPATH . 'wp-admin/includes/image.php');
-            require_once(ABSPATH . 'wp-admin/includes/file.php');
-            require_once(ABSPATH . 'wp-admin/includes/media.php');
-            
-            // SECURITY FIX: Use wp_safe_remote_get to prevent SSRF
-            $response_object = wp_safe_remote_get($image_url);
-
-            // Check response code and content type
-            if (is_wp_error($response_object)) {
-                $error_msg = 'Failed to fetch image: ' . $response_object->get_error_message();
-                $this->logger->log($error_msg, 'error');
-                $this->generation_log['errors'][] = array(
-                    'type' => 'image_download',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
-
-            $response_code = wp_remote_retrieve_response_code($response_object);
-            if ($response_code !== 200) {
-                $error_msg = 'Failed to fetch image. HTTP Code: ' . $response_code;
-                $this->logger->log($error_msg, 'error');
-                $this->generation_log['errors'][] = array(
-                    'type' => 'image_download',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
-
-            $content_type = wp_remote_retrieve_header($response_object, 'content-type');
-            if (strpos($content_type, 'image/') !== 0) {
-                 $error_msg = 'Invalid content type: ' . $content_type;
-                 $this->logger->log($error_msg, 'error');
-                 $this->generation_log['errors'][] = array(
-                    'type' => 'image_content_type',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
-
-            $image_data = wp_remote_retrieve_body($response_object);
-            $post_slug = sanitize_title($post_title);
-            $filename = $post_slug . '.jpg';
-            
-            $upload_dir = wp_upload_dir();
-            $file_path = $upload_dir['path'] . '/' . $filename;
-            
-            if (!file_put_contents($file_path, $image_data)) {
-                $error_msg = 'Failed to write image file: ' . $file_path;
-                $this->logger->log($error_msg, 'error');
-                $this->generation_log['errors'][] = array(
-                    'type' => 'image_save',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
-            
-            $file_type = wp_check_filetype($filename);
-            
-            $attachment = array(
-                'post_mime_type' => $file_type['type'],
-                'post_title' => preg_replace('/\.[^.]+$/', '', $filename),
-                'post_content' => '',
-                'post_status' => 'inherit'
-            );
-            
-            $attachment_id = wp_insert_attachment($attachment, $file_path);
-            
-            if (is_wp_error($attachment_id)) {
-                $error_msg = 'Failed to insert attachment: ' . $attachment_id->get_error_message();
-                $this->logger->log($error_msg, 'error');
-                $this->generation_log['errors'][] = array(
-                    'type' => 'image_attachment',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $error_msg,
-                );
-                return false;
-            }
-            
-            $attach_data = wp_generate_attachment_metadata($attachment_id, $file_path);
-            wp_update_attachment_metadata($attachment_id, $attach_data);
-            
-            $this->logger->log('Featured image generated and uploaded', 'info', array(
-                'attachment_id' => $attachment_id,
-                'filename' => $filename
-            ));
-            
-            return $attachment_id;
-            
-        } catch (Exception $e) {
-            $error_msg = 'Image generation error: ' . $e->getMessage();
-            $this->log($error_msg, 'error', array(
-                'type' => 'featured_image',
-                'prompt' => $image_prompt,
-                'options' => array(),
-                'error' => $e->getMessage()
-            ));
-            return false;
-        }
     }
 }
