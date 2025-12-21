@@ -6,15 +6,15 @@ This PR establishes a complete PHPUnit testing infrastructure for the AI Post Sc
 
 ### Files Created
 
-1. **composer.json** - Defines PHPUnit and development dependencies
+1. **ai-post-scheduler/composer.json** - Defines PHPUnit and development dependencies
    - PHPUnit 9.6 (compatible with PHP 7.4+)
    - Yoast PHPUnit Polyfills for backward compatibility
    - WordPress PHPUnit library
    - Convenient test scripts: `composer test`, `composer test:coverage`, `composer test:verbose`
 
-2. **phpunit.xml** - PHPUnit configuration
-   - Test suite configuration pointing to `ai-post-scheduler/tests/`
-   - Code coverage settings for `ai-post-scheduler/includes/`
+2. **ai-post-scheduler/phpunit.xml** - PHPUnit configuration
+   - Test suite configuration pointing to `tests/`
+   - Code coverage settings for `includes/`
    - Strict error reporting and test execution settings
    - Memory limit and environment variable configuration
 
@@ -87,21 +87,25 @@ The infrastructure supports the existing 62+ test cases across 6 test files:
 
 1. **Install dependencies:**
    ```bash
+   cd ai-post-scheduler
    composer install
    ```
 
 2. **Run all tests:**
    ```bash
+   cd ai-post-scheduler
    composer test
    ```
 
 3. **Run with coverage:**
    ```bash
+   cd ai-post-scheduler
    composer test:coverage
    ```
 
 4. **Run with verbose output:**
    ```bash
+   cd ai-post-scheduler
    composer test:verbose
    ```
 
@@ -184,10 +188,11 @@ This addresses the requirement to:
 To verify this setup works:
 
 1. Clone the repository
-2. Run `composer install`
-3. Run `composer test`
-4. Verify tests execute
-5. Check GitHub Actions for workflow runs
+2. Navigate to plugin directory: `cd ai-post-scheduler`
+3. Run `composer install`
+4. Run `composer test`
+5. Verify tests execute
+6. Check GitHub Actions for workflow runs
 
 ## Notes
 

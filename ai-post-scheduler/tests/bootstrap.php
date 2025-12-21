@@ -8,13 +8,13 @@
  */
 
 // Composer autoloader
-if (file_exists(dirname(dirname(__DIR__)) . '/vendor/autoload.php')) {
-    require_once dirname(dirname(__DIR__)) . '/vendor/autoload.php';
+if (file_exists(dirname(__DIR__) . '/vendor/autoload.php')) {
+    require_once dirname(__DIR__) . '/vendor/autoload.php';
 }
 
 // Load the Yoast PHPUnit Polyfills autoloader
-if (file_exists(dirname(dirname(__DIR__)) . '/vendor/yoast/phpunit-polyfills/phpunitpolyfills-autoload.php')) {
-    require_once dirname(dirname(__DIR__)) . '/vendor/yoast/phpunit-polyfills/phpunitpolyfills-autoload.php';
+if (file_exists(dirname(__DIR__) . '/vendor/yoast/phpunit-polyfills/phpunitpolyfills-autoload.php')) {
+    require_once dirname(__DIR__) . '/vendor/yoast/phpunit-polyfills/phpunitpolyfills-autoload.php';
 }
 
 // Define WordPress test environment constants
@@ -51,7 +51,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     // Define minimal WordPress constants and functions for basic testing
     if (!defined('ABSPATH')) {
-        define('ABSPATH', dirname(dirname(__DIR__)) . '/');
+        define('ABSPATH', dirname(__DIR__) . '/');
     }
     
     if (!defined('AIPS_VERSION')) {

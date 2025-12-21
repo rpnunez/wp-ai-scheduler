@@ -9,9 +9,10 @@ This document describes how to run tests for the AI Post Scheduler plugin.
 
 ## Installation
 
-Install development dependencies using Composer:
+Navigate to the plugin directory and install development dependencies using Composer:
 
 ```bash
+cd ai-post-scheduler
 composer install
 ```
 
@@ -21,6 +22,12 @@ This will install:
 - WordPress PHPUnit library (WordPress testing framework)
 
 ## Running Tests
+
+All commands should be run from the `ai-post-scheduler` directory:
+
+```bash
+cd ai-post-scheduler
+```
 
 ### Run all tests
 ```bash
@@ -41,7 +48,7 @@ This generates an HTML coverage report in the `coverage/` directory. Open `cover
 
 ### Run specific test files
 ```bash
-vendor/bin/phpunit ai-post-scheduler/tests/test-template-processor.php
+vendor/bin/phpunit tests/test-template-processor.php
 ```
 
 ### Run PHPUnit directly with options
@@ -62,7 +69,7 @@ Tests are located in `ai-post-scheduler/tests/`:
 
 ## Configuration
 
-### PHPUnit Configuration (`phpunit.xml`)
+### PHPUnit Configuration (`ai-post-scheduler/phpunit.xml`)
 
 The `phpunit.xml` file configures:
 - Test suite location
@@ -86,6 +93,7 @@ The bootstrap file:
 Tests can run without a full WordPress installation. The bootstrap file provides mock implementations of WordPress functions and classes.
 
 ```bash
+cd ai-post-scheduler
 composer test
 ```
 
@@ -105,6 +113,7 @@ export WP_TESTS_DIR=/tmp/wordpress-tests-lib
 
 3. Run tests:
 ```bash
+cd ai-post-scheduler
 composer test
 ```
 
@@ -189,7 +198,8 @@ Increase the memory limit in `phpunit.xml`:
 Run specific test files instead of the entire suite:
 
 ```bash
-vendor/bin/phpunit ai-post-scheduler/tests/test-specific.php
+cd ai-post-scheduler
+vendor/bin/phpunit tests/test-specific.php
 ```
 
 ### Coverage report issues
@@ -208,10 +218,11 @@ Coverage reports show which lines of code are executed during tests. To view:
 
 1. Generate coverage report:
 ```bash
+cd ai-post-scheduler
 composer test:coverage
 ```
 
-2. Open `coverage/index.html` in your browser
+2. Open `ai-post-scheduler/coverage/index.html` in your browser
 
 3. Click on files to see line-by-line coverage
 

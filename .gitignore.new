@@ -1,10 +1,10 @@
 # Composer
-/vendor/
-composer.lock
+ai-post-scheduler/vendor/
+ai-post-scheduler/composer.lock
 
 # PHPUnit
-/coverage/
-.phpunit.result.cache
+ai-post-scheduler/coverage/
+ai-post-scheduler/.phpunit.result.cache
 
 # IDE
 .idea/

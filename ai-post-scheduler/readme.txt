@@ -89,13 +89,16 @@ For developers contributing to this plugin:
 
 = Running Tests =
 
-1. Install Composer dependencies:
+1. Navigate to plugin directory:
+   `cd ai-post-scheduler`
+
+2. Install Composer dependencies:
    `composer install`
 
-2. Run PHPUnit tests:
+3. Run PHPUnit tests:
    `composer test`
 
-3. Generate coverage report:
+4. Generate coverage report:
    `composer test:coverage`
 
 See TESTING.md in the repository for detailed testing documentation.

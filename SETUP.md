@@ -4,12 +4,12 @@ After cloning this repository, please update the `.gitignore` file with the foll
 
 ```
 # Composer
-/vendor/
-composer.lock
+ai-post-scheduler/vendor/
+ai-post-scheduler/composer.lock
 
 # PHPUnit
-/coverage/
-.phpunit.result.cache
+ai-post-scheduler/coverage/
+ai-post-scheduler/.phpunit.result.cache
 
 # IDE
 .idea/
@@ -34,3 +34,13 @@ cp .gitignore.new .gitignore
 ```
 
 This ensures that Composer dependencies, test coverage reports, and other development artifacts are not committed to the repository.
+
+## Running Tests
+
+To run the tests:
+
+```bash
+cd ai-post-scheduler
+composer install
+composer test
+```
