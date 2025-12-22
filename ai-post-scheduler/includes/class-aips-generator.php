@@ -10,14 +10,12 @@ class AIPS_Generator {
     private $generation_log;
     private $template_processor;
     private $image_service;
-    private $event_dispatcher;
     
     public function __construct() {
         $this->logger = new AIPS_Logger();
         $this->ai_service = new AIPS_AI_Service();
         $this->template_processor = new AIPS_Template_Processor();
         $this->image_service = new AIPS_Image_Service($this->ai_service);
-        $this->event_dispatcher = new AIPS_Event_Dispatcher();
         $this->reset_generation_log();
     }
     
@@ -184,7 +182,11 @@ class AIPS_Generator {
         global $wpdb;
         
         // Dispatch post generation started event
-        $this->event_dispatcher->post_generation_started($template->id, $topic ? $topic : '');
+        do_action('aips_post_generation_started', array(
+            'template_id' => $template->id,
+            'topic' => $topic ? $topic : '',
+            'timestamp' => current_time('mysql'),
+        ), 'post_generation');
         
         $this->reset_generation_log();
         $this->generation_log['started_at'] = current_time('mysql');
@@ -260,10 +262,16 @@ class AIPS_Generator {
             );
             
             // Dispatch post generation failed event
-            $this->event_dispatcher->post_generation_failed($template->id, $content, array(
-                'history_id' => $history_id,
-                'topic' => $topic,
-            ));
+            do_action('aips_post_generation_failed', array(
+                'template_id' => $template->id,
+                'error_code' => $content->get_error_code(),
+                'error_message' => $content->get_error_message(),
+                'metadata' => array(
+                    'history_id' => $history_id,
+                    'topic' => $topic,
+                ),
+                'timestamp' => current_time('mysql'),
+            ), 'post_generation');
             
             return $content;
         }
@@ -392,12 +400,17 @@ class AIPS_Generator {
         ));
         
         // Dispatch post generation completed event
-        $this->event_dispatcher->post_generation_completed($template->id, $post_id, array(
-            'history_id' => $history_id,
-            'topic' => $topic,
-            'title' => $title,
-            'featured_image_id' => $featured_image_id,
-        ));
+        do_action('aips_post_generation_completed', array(
+            'template_id' => $template->id,
+            'post_id' => $post_id,
+            'metadata' => array(
+                'history_id' => $history_id,
+                'topic' => $topic,
+                'title' => $title,
+                'featured_image_id' => $featured_image_id,
+            ),
+            'timestamp' => current_time('mysql'),
+        ), 'post_generation');
         
         do_action('aips_post_generated', $post_id, $template, $history_id);
         

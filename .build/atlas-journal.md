@@ -649,19 +649,18 @@ As the plugin grows, managing database operations becomes increasingly complex. 
 * Debug complex operations (no event trail)
 * Integrate with external systems (webhooks, notifications, etc.)
 
-While WordPress provides `do_action()` and `add_action()`, having a centralized event dispatcher with consistent naming, logging, and debugging capabilities improves the developer experience significantly.
+WordPress already provides `do_action()` and `add_action()` for event handling. Rather than creating an abstraction layer, we use WordPress's native hooks directly with consistent naming conventions.
 
-**Decision:** Applied "Event-Driven Architecture" pattern. Created `AIPS_Event_Dispatcher` class in `class-aips-event-dispatcher.php` that:
+**Decision:** Applied "Event-Driven Architecture" pattern using native WordPress hooks. Implemented event dispatching directly in `AIPS_Generator` and `AIPS_Scheduler` classes:
 
-### Event Dispatcher Features
-* Provides clean interface for dispatching events with consistent naming
-* Uses WordPress hooks internally (fully compatible with WordPress ecosystem)
-* Maintains event history for debugging (in-memory during execution)
-* Logs events when debug mode is enabled
-* Provides event statistics (count by event name and context)
-* Pre-defined convenience methods for common events
+### Event Implementation
+* Uses native WordPress `do_action()` calls throughout
+* Consistent event naming with `aips_` prefix
+* All events pass structured data arrays and context
+* Zero overhead - no wrapper classes or abstractions
+* Fully compatible with WordPress ecosystem
 
-### Pre-defined Events
+### Defined Events
 **Post Generation Events:**
 * `aips_post_generation_started` - Fired when generation begins
 * `aips_post_generation_completed` - Fired on successful generation
@@ -672,54 +671,41 @@ While WordPress provides `do_action()` and `add_action()`, having a centralized 
 * `aips_schedule_execution_completed` - Fired on successful execution
 * `aips_schedule_execution_failed` - Fired on execution failure
 
-**AI Request Events:**
-* `aips_ai_request_started` - Fired before AI API call
-* `aips_ai_request_completed` - Fired after successful AI call
-* `aips_ai_request_failed` - Fired on AI call failure
-
-**Generic Error Event:**
-* `aips_error_occurred` - Fired for any error with context
-
 ### Integration Points
-* `AIPS_Generator`: Dispatches post generation events at start, completion, and failure
-* `AIPS_Scheduler`: Dispatches schedule execution events for each schedule processed
-* Both classes create event dispatcher instance via composition
+* `AIPS_Generator`: Dispatches post generation events at start, completion, and failure using `do_action()`
+* `AIPS_Scheduler`: Dispatches schedule execution events for each schedule processed using `do_action()`
+* All events include timestamp and contextual data
 
 **Consequence:**
 * **Pros:**
-  - Plugin is now highly extensible without modifying core code
-  - Third-party developers can hook into all major operations
-  - Event history provides debugging trail for complex operations
-  - Monitoring and analytics are now easy to implement
-  - Consistent event naming across the plugin (namespace prefix)
+  - Plugin is highly extensible without modifying core code
+  - Third-party developers can hook into operations using standard WordPress APIs
+  - Zero performance overhead - direct use of WordPress hooks
+  - No additional dependencies or wrapper classes
+  - Monitoring and analytics are easy to implement
+  - Consistent event naming across the plugin (aips_ prefix)
   - Future integration with webhooks/notifications is straightforward
   - Better error tracking with contextual information
-  - Event statistics help identify bottlenecks
+  - Developers already know how to use WordPress hooks
 * **Cons:**
-  - Added 1 new file (~400 lines)
-  - Slightly increased memory usage (event history storage)
-  - Slight performance overhead (event dispatching and logging)
-  - Developers need to learn event names to extend
+  - No built-in event history tracking (can be added via custom hook if needed)
+  - No event statistics (can be tracked by listeners if needed)
 * **Trade-offs:**
-  - Chose event-driven architecture over tightly coupled operations
+  - Chose native WordPress hooks over custom dispatcher (less complexity)
   - Maintained backward compatibility (existing `do_action` calls preserved)
-  - Event history is in-memory only (cleared on each request)
-  - Prioritized extensibility over minimal abstraction
+  - Prioritized simplicity and zero overhead over features
+  - Event tracking is opt-in via listener implementation
 
-**Tests:** Event dispatcher tests should cover:
-* Event dispatching and listener registration
-* Event history tracking
-* Event statistics calculation
-* Namespace handling
-* Pre-defined event methods
-* Integration with WordPress actions
-* Debug logging when enabled
+**Tests:** Event tests should cover:
+* Event dispatching at correct times
+* Data structure passed to listeners
+* Integration with WordPress action system
+* Multiple listeners per event
 
 **Backward Compatibility:**
 * All existing WordPress actions continue to work
 * No changes to existing hook names or signatures
 * New events are additive (don't replace existing functionality)
-* Event dispatcher is optional (core plugin works without it)
 * No breaking changes to public APIs
 
 ---
@@ -934,9 +920,10 @@ Modern cloud services require resilient API clients with retry logic, circuit br
 * Improved testability and security
 
 ### Phase 2: Event/Hook System
-* Created event dispatcher class (~400 lines)
-* Defined pre-defined events for major operations
+* Implemented event dispatching using native WordPress `do_action()` calls
+* Defined events for major operations (post generation, schedule execution)
 * Integrated into Generator and Scheduler
+* Zero overhead - no wrapper classes
 * Enabled extensibility for third-party developers
 
 ### Phase 3: Configuration Layer
@@ -953,14 +940,14 @@ Modern cloud services require resilient API clients with retry logic, circuit br
 
 **Overall Improvements:**
 * **Before:** Scattered configuration, no event system, direct database access, no retry logic
-* **After:** Centralized configuration, event-driven architecture, repository pattern, production-grade resilience
+* **After:** Centralized configuration, native WordPress event hooks, repository pattern, production-grade resilience
 
 **Total Code Organization:**
-* Created: 6 new architectural classes
+* Created: 4 new architectural classes (3 repositories + Config)
 * Modified: 6 existing classes
-* Added: ~2000 lines of infrastructure code
+* Added: ~1700 lines of infrastructure code
 * Removed/Simplified: ~400 lines of duplicated code
-* Net increase: ~1600 lines (87% increase in infrastructure quality)
+* Net increase: ~1300 lines (increased infrastructure quality with KISS principle)
 
 **Future Work (Recommended):**
 1. **Comprehensive Testing**: Add unit tests for all new repositories, config, events, and retry logic
@@ -971,22 +958,23 @@ Modern cloud services require resilient API clients with retry logic, circuit br
 6. **Batch Operations**: Implement batch generation feature using event system
 
 **Metrics:**
-* Lines of infrastructure code added: ~2000
-* New architectural patterns: 4 (Repository, Event-Driven, Configuration, Resilience)
+* Lines of infrastructure code added: ~1700
+* New architectural patterns: 4 (Repository, Event-Driven with native WP hooks, Configuration, Resilience)
 * Backward compatibility: 100% maintained
 * Breaking changes: 0
 * Feature flags introduced: 5
-* Event types defined: 9
+* Event types defined: 5 (using native WordPress hooks)
 
 **Principles Applied:**
 * **Repository Pattern:** Centralized data access
-* **Event-Driven Architecture:** Decoupled operations
+* **Event-Driven Architecture:** Decoupled operations using native WordPress hooks
 * **Configuration Pattern:** Centralized settings
 * **Retry Pattern:** Resilient API calls
 * **Circuit Breaker Pattern:** Failure isolation
 * **Rate Limiter Pattern:** Resource protection
 * **Singleton Pattern:** Global configuration access
 * **Dependency Injection:** Services use composition
+* **KISS Principle:** Use native WordPress features instead of custom abstractions
 
 **Conclusion:**
-These architectural improvements significantly enhance the plugin's maintainability, testability, extensibility, and reliability. The codebase now follows modern software engineering practices and is ready for production use at scale. Future features will be easier to implement, and the risk of introducing bugs has been further reduced. The plugin is now more resilient to external API failures and provides a clean extension points for third-party developers.
+These architectural improvements significantly enhance the plugin's maintainability, testability, extensibility, and reliability. The codebase now follows modern software engineering practices and leverages WordPress's native capabilities where possible, avoiding unnecessary abstraction layers. The plugin is ready for production use at scale. Future features will be easier to implement, and the risk of introducing bugs has been further reduced. The plugin is now more resilient to external API failures and provides clean extension points for third-party developers using standard WordPress hooks.
