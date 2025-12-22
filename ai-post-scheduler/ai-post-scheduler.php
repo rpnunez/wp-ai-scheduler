@@ -54,6 +54,7 @@ final class AI_Post_Scheduler {
     
     private function includes() {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-config.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         
@@ -107,21 +108,15 @@ final class AI_Post_Scheduler {
         flush_rewrite_rules();
     }
     
-    
+    /**
+     * Set default options using centralized configuration.
+     */
     private function set_default_options() {
-        $defaults = array(
-            'aips_default_post_status' => 'draft',
-            'aips_default_category' => 0,
-            'aips_enable_logging' => 1,
-            'aips_max_retries' => 3,
-            'aips_ai_model' => '',
-            'aips_db_version' => AIPS_VERSION,
-        );
+        AIPS_Config::init_defaults();
         
-        foreach ($defaults as $key => $value) {
-            if (get_option($key) === false) {
-                add_option($key, $value);
-            }
+        // Set database version
+        if (get_option('aips_db_version') === false) {
+            add_option('aips_db_version', AIPS_VERSION);
         }
     }
     
