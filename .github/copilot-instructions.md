@@ -24,6 +24,8 @@ ai-post-scheduler/           # Main plugin directory
 │   ├── Service classes     # AI Service, Image Service, Logger
 │   └── Controller classes  # Schedule Controller, Settings
 ├── templates/               # Admin UI templates
+│   └── admin/              # WordPress admin interface templates
+├── migrations/              # Database migration files
 ├── assets/                  # CSS, JS files
 ├── tests/                   # PHPUnit tests
 │   ├── bootstrap.php       # Test environment setup
@@ -131,10 +133,10 @@ vendor/bin/phpunit ai-post-scheduler/tests/test-specific.php  # Run specific tes
 6. Update relevant documentation
 
 ### Adding a Database Table
-1. Use migration system in `migrations/` directory
-2. Create migration file: `001-feature-name.php`
-3. Update `class-aips-upgrades.php` to run migration
-4. Create corresponding repository class
+1. Create migration file in `migrations/` directory
+2. Follow naming convention: `migration-X.Y-feature-name.php`
+3. Update `class-aips-upgrades.php` to run migration on version update
+4. Create corresponding repository class in `includes/`
 5. Add tests for the new repository
 
 ### Adding Template Variables
