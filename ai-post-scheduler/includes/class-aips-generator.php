@@ -10,12 +10,14 @@ class AIPS_Generator {
     private $generation_log;
     private $template_processor;
     private $image_service;
+    private $structure_manager;
     
     public function __construct() {
         $this->logger = new AIPS_Logger();
         $this->ai_service = new AIPS_AI_Service();
         $this->template_processor = new AIPS_Template_Processor();
         $this->image_service = new AIPS_Image_Service($this->ai_service);
+        $this->structure_manager = new AIPS_Article_Structure_Manager();
         $this->reset_generation_log();
     }
     
@@ -230,7 +232,21 @@ class AIPS_Generator {
         
         $history_id = $wpdb->insert_id;
         
-        $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
+        // NEW: Check if article_structure_id is provided, build prompt with structure
+        $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
+        
+        if ($article_structure_id) {
+            // Use article structure to build prompt
+            $processed_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic);
+            
+            if (is_wp_error($processed_prompt)) {
+                // Fall back to regular template processing
+                $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
+            }
+        } else {
+            // Use traditional template processing
+            $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
+        }
         
         if ($voice) {
             $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
