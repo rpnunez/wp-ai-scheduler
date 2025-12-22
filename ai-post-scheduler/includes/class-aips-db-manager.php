@@ -37,6 +37,20 @@ class AIPS_DB_Manager {
         return $full_names;
     }
 
+    /**
+     * Get a single table name with full prefix from table data
+     * 
+     * @param string $tableData The table name without prefix (e.g., 'aips_history')
+     * @return string|null The full table name with prefix, or null if table not found
+     */
+    public static function get_table_name($tableData) {
+        if (!in_array($tableData, self::$tables)) {
+            return null;
+        }
+        global $wpdb;
+        return $wpdb->prefix . $tableData;
+    }
+
     public function get_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();

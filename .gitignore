@@ -1,0 +1,17 @@
+# Composer dependencies
+vendor/
+composer.lock
+
+# PHPUnit coverage reports
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
