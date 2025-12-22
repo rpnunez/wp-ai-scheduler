@@ -37,6 +37,9 @@
         <div class="aips-toolbar">
             <label><input type="checkbox" id="check-all-topics"> <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?></label>
             <span class="selection-count"></span>
+            <button type="button" id="btn-clear-topics" class="button button-small" style="margin-left: auto;">
+                <?php echo esc_html__('Clear List', 'ai-post-scheduler'); ?>
+            </button>
         </div>
 
         <div id="topics-list" class="aips-topics-grid">
