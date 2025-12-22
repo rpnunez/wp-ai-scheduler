@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://example.com/ai-post-scheduler
  * Description: Schedule AI-generated posts using Meow Apps AI Engine
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: Your Name
  * Author URI: https://example.com
  * License: GPL v2 or later
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIPS_VERSION', '1.4.0');
+define('AIPS_VERSION', '1.5.0');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -56,6 +56,14 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
+        
+        // Repository classes
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-base-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voice-repository.php';
+        
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
