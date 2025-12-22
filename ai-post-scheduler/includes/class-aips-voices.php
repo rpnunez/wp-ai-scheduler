@@ -3,13 +3,27 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Class AIPS_Voices
+ *
+ * Handles voice UI and AJAX operations.
+ * Uses AIPS_Voice_Repository for database operations.
+ *
+ * @package AI_Post_Scheduler
+ * @since 1.0.0
+ */
 class AIPS_Voices {
     
-    private $table_name;
+    /**
+     * @var AIPS_Voice_Repository Voice repository instance
+     */
+    private $repository;
     
+    /**
+     * Initialize voices handler.
+     */
     public function __construct() {
-        global $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_voices';
+        $this->repository = new AIPS_Voice_Repository();
         
         add_action('wp_ajax_aips_save_voice', array($this, 'ajax_save_voice'));
         add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
@@ -17,51 +31,44 @@ class AIPS_Voices {
         add_action('wp_ajax_aips_search_voices', array($this, 'ajax_search_voices'));
     }
     
+    /**
+     * Get all voices.
+     *
+     * @param bool $active_only Optional. Whether to return only active voices.
+     * @return array Array of voice objects.
+     */
     public function get_all($active_only = false) {
-        global $wpdb;
-        
-        $where = $active_only ? "WHERE is_active = 1" : "";
-        return $wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
+        return $this->repository->get_all($active_only);
     }
     
+    /**
+     * Get a specific voice by ID.
+     *
+     * @param int $id Voice ID.
+     * @return object|null Voice object or null if not found.
+     */
     public function get($id) {
-        global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $id));
+        return $this->repository->find($id);
     }
     
+    /**
+     * Save a voice (create or update).
+     *
+     * @param array $data Voice data.
+     * @return int|false Voice ID or false on failure.
+     */
     public function save($data) {
-        global $wpdb;
-        
-        $voice_data = array(
-            'name' => sanitize_text_field($data['name']),
-            'title_prompt' => wp_kses_post($data['title_prompt']),
-            'content_instructions' => wp_kses_post($data['content_instructions']),
-            'excerpt_instructions' => isset($data['excerpt_instructions']) ? wp_kses_post($data['excerpt_instructions']) : '',
-            'is_active' => isset($data['is_active']) ? 1 : 0,
-        );
-        
-        if (!empty($data['id'])) {
-            $wpdb->update(
-                $this->table_name,
-                $voice_data,
-                array('id' => absint($data['id'])),
-                array('%s', '%s', '%s', '%s', '%d'),
-                array('%d')
-            );
-            return absint($data['id']);
-        } else {
-            $wpdb->insert(
-                $this->table_name,
-                $voice_data,
-                array('%s', '%s', '%s', '%s', '%d')
-            );
-            return $wpdb->insert_id;
-        }
+        return $this->repository->save($data);
     }
     
+    /**
+     * Delete a voice by ID.
+     *
+     * @param int $id Voice ID.
+     * @return int|false Number of rows deleted or false on error.
+     */
     public function delete($id) {
-        global $wpdb;
-        return $wpdb->delete($this->table_name, array('id' => $id), array('%d'));
+        return $this->repository->delete($id);
     }
     
     public function ajax_save_voice() {
@@ -138,6 +145,9 @@ class AIPS_Voices {
         }
     }
     
+    /**
+     * AJAX handler for searching voices.
+     */
     public function ajax_search_voices() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
@@ -145,14 +155,26 @@ class AIPS_Voices {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
         
-        global $wpdb;
-        
         $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
-        $where = $search ? $wpdb->prepare("WHERE is_active = 1 AND name LIKE %s", '%' . $wpdb->esc_like($search) . '%') : "WHERE is_active = 1";
         
-        $voices = $wpdb->get_results("SELECT id, name FROM {$this->table_name} $where ORDER BY name ASC LIMIT 20");
+        if ($search) {
+            $voices = $this->repository->search($search);
+        } else {
+            $voices = $this->repository->get_all(true);
+        }
         
-        wp_send_json_success(array('voices' => $voices));
+        // Limit to 20 results
+        $voices = array_slice($voices, 0, 20);
+        
+        // Format for response
+        $formatted_voices = array_map(function($voice) {
+            return array(
+                'id' => $voice->id,
+                'name' => $voice->name
+            );
+        }, $voices);
+        
+        wp_send_json_success(array('voices' => $formatted_voices));
     }
     
     public function render_page() {

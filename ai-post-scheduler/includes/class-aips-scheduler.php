@@ -3,16 +3,32 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Class AIPS_Scheduler
+ *
+ * Handles schedule management and execution.
+ * Uses AIPS_Schedule_Repository for database operations.
+ *
+ * @package AI_Post_Scheduler
+ * @since 1.0.0
+ */
 class AIPS_Scheduler {
     
-    private $schedule_table;
-    private $templates_table;
+    /**
+     * @var AIPS_Schedule_Repository Schedule repository instance
+     */
+    private $repository;
+    
+    /**
+     * @var AIPS_Interval_Calculator Interval calculator instance
+     */
     private $interval_calculator;
     
+    /**
+     * Initialize scheduler.
+     */
     public function __construct() {
-        global $wpdb;
-        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
-        $this->templates_table = $wpdb->prefix . 'aips_templates';
+        $this->repository = new AIPS_Schedule_Repository();
         $this->interval_calculator = new AIPS_Interval_Calculator();
         
         add_action('aips_generate_scheduled_posts', array($this, 'process_scheduled_posts'));
@@ -38,25 +54,32 @@ class AIPS_Scheduler {
         return $this->interval_calculator->merge_with_wp_schedules($schedules);
     }
     
+    /**
+     * Get all schedules with template information.
+     *
+     * @return array Array of schedule objects.
+     */
     public function get_all_schedules() {
-        global $wpdb;
-        
-        return $wpdb->get_results("
-            SELECT s.*, t.name as template_name 
-            FROM {$this->schedule_table} s 
-            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id 
-            ORDER BY s.next_run ASC
-        ");
+        return $this->repository->get_all_schedules();
     }
     
+    /**
+     * Get a specific schedule by ID.
+     *
+     * @param int $id Schedule ID.
+     * @return object|null Schedule object or null if not found.
+     */
     public function get_schedule($id) {
-        global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->schedule_table} WHERE id = %d", $id));
+        return $this->repository->find($id);
     }
     
+    /**
+     * Save a schedule (create or update).
+     *
+     * @param array $data Schedule data.
+     * @return int|false Schedule ID or false on failure.
+     */
     public function save_schedule($data) {
-        global $wpdb;
-        
         $frequency = sanitize_text_field($data['frequency']);
 
         if (isset($data['next_run'])) {
@@ -65,49 +88,30 @@ class AIPS_Scheduler {
             $next_run = $this->calculate_next_run($frequency, isset($data['start_time']) ? $data['start_time'] : null);
         }
         
-        $schedule_data = array(
-            'template_id' => absint($data['template_id']),
-            'frequency' => $frequency,
-            'next_run' => $next_run,
-            'is_active' => isset($data['is_active']) ? 1 : 0,
-            'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
-        );
+        $data['next_run'] = $next_run;
         
-        $format = array('%d', '%s', '%s', '%d', '%s');
-
-        if (!empty($data['id'])) {
-            $wpdb->update(
-                $this->schedule_table,
-                $schedule_data,
-                array('id' => absint($data['id'])),
-                $format,
-                array('%d')
-            );
-            return absint($data['id']);
-        } else {
-            $wpdb->insert(
-                $this->schedule_table,
-                $schedule_data,
-                $format
-            );
-            return $wpdb->insert_id;
-        }
+        return $this->repository->save($data);
     }
     
+    /**
+     * Delete a schedule by ID.
+     *
+     * @param int $id Schedule ID.
+     * @return int|false Number of rows deleted or false on error.
+     */
     public function delete_schedule($id) {
-        global $wpdb;
-        return $wpdb->delete($this->schedule_table, array('id' => $id), array('%d'));
+        return $this->repository->delete($id);
     }
 
+    /**
+     * Toggle schedule active status.
+     *
+     * @param int $id        Schedule ID.
+     * @param int $is_active Active status (0 or 1).
+     * @return int|false Number of rows affected or false on error.
+     */
     public function toggle_active($id, $is_active) {
-        global $wpdb;
-        return $wpdb->update(
-            $this->schedule_table,
-            array('is_active' => $is_active),
-            array('id' => $id),
-            array('%d'),
-            array('%d')
-        );
+        return $this->repository->toggle_active($id, $is_active);
     }
     
     /**
@@ -121,21 +125,16 @@ class AIPS_Scheduler {
         return $this->interval_calculator->calculate_next_run($frequency, $start_time);
     }
     
+    /**
+     * Process scheduled posts that are due.
+     *
+     * Executes generation for all active schedules that are past their next_run time.
+     */
     public function process_scheduled_posts() {
-        global $wpdb;
-        
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
-        $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT s.id AS schedule_id, s.*, t.*
-            FROM {$this->schedule_table} s 
-            INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            AND s.next_run <= %s 
-            AND t.is_active = 1
-            ORDER BY s.next_run ASC
-        ", current_time('mysql')));
+        $due_schedules = $this->repository->get_due_schedules();
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
@@ -170,21 +169,16 @@ class AIPS_Scheduler {
             
             if ($schedule->frequency === 'once' && !is_wp_error($result)) {
                 // If it's a one-time schedule and successful, delete it
-                $wpdb->delete($this->schedule_table, array('id' => $schedule->schedule_id), array('%d'));
+                $this->repository->delete($schedule->schedule_id);
                 $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
                 // Otherwise calculate next run
                 $next_run = $this->calculate_next_run($schedule->frequency);
-
-                $wpdb->update(
-                    $this->schedule_table,
-                    array(
-                        'last_run' => current_time('mysql'),
-                        'next_run' => $next_run,
-                    ),
-                    array('id' => $schedule->schedule_id),
-                    array('%s', '%s'),
-                    array('%d')
+                
+                $this->repository->update_run_times(
+                    $schedule->schedule_id,
+                    current_time('mysql'),
+                    $next_run
                 );
             }
             

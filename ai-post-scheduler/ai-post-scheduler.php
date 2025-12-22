@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://example.com/ai-post-scheduler
  * Description: Schedule AI-generated posts using Meow Apps AI Engine
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: Your Name
  * Author URI: https://example.com
  * License: GPL v2 or later
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIPS_VERSION', '1.4.0');
+define('AIPS_VERSION', '1.5.0');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -54,8 +54,17 @@ final class AI_Post_Scheduler {
     
     private function includes() {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-config.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
+        
+        // Repository classes
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-base-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voice-repository.php';
+        
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
@@ -99,21 +108,15 @@ final class AI_Post_Scheduler {
         flush_rewrite_rules();
     }
     
-    
+    /**
+     * Set default options using centralized configuration.
+     */
     private function set_default_options() {
-        $defaults = array(
-            'aips_default_post_status' => 'draft',
-            'aips_default_category' => 0,
-            'aips_enable_logging' => 1,
-            'aips_max_retries' => 3,
-            'aips_ai_model' => '',
-            'aips_db_version' => AIPS_VERSION,
-        );
+        AIPS_Config::init_defaults();
         
-        foreach ($defaults as $key => $value) {
-            if (get_option($key) === false) {
-                add_option($key, $value);
-            }
+        // Set database version
+        if (get_option('aips_db_version') === false) {
+            add_option('aips_db_version', AIPS_VERSION);
         }
     }
     

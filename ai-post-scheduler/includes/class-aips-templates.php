@@ -3,13 +3,27 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Class AIPS_Templates
+ *
+ * Handles template UI and AJAX operations.
+ * Uses AIPS_Template_Repository for database operations.
+ *
+ * @package AI_Post_Scheduler
+ * @since 1.0.0
+ */
 class AIPS_Templates {
     
-    private $table_name;
+    /**
+     * @var AIPS_Template_Repository Template repository instance
+     */
+    private $repository;
     
+    /**
+     * Initialize templates handler.
+     */
     public function __construct() {
-        global $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_templates';
+        $this->repository = new AIPS_Template_Repository();
         
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
@@ -18,58 +32,44 @@ class AIPS_Templates {
         add_action('wp_ajax_aips_get_template_posts', array($this, 'ajax_get_template_posts'));
     }
     
+    /**
+     * Get all templates.
+     *
+     * @param bool $active_only Optional. Whether to return only active templates.
+     * @return array Array of template objects.
+     */
     public function get_all($active_only = false) {
-        global $wpdb;
-        
-        $where = $active_only ? "WHERE is_active = 1" : "";
-        return $wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
+        return $this->repository->get_all($active_only);
     }
     
+    /**
+     * Get a specific template by ID.
+     *
+     * @param int $id Template ID.
+     * @return object|null Template object or null if not found.
+     */
     public function get($id) {
-        global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $id));
+        return $this->repository->find($id);
     }
     
+    /**
+     * Save a template (create or update).
+     *
+     * @param array $data Template data.
+     * @return int|false Template ID or false on failure.
+     */
     public function save($data) {
-        global $wpdb;
-        
-        $template_data = array(
-            'name' => sanitize_text_field($data['name']),
-            'prompt_template' => wp_kses_post($data['prompt_template']),
-            'title_prompt' => isset($data['title_prompt']) ? sanitize_text_field($data['title_prompt']) : '',
-            'voice_id' => isset($data['voice_id']) ? absint($data['voice_id']) : NULL,
-            'post_quantity' => isset($data['post_quantity']) ? absint($data['post_quantity']) : 1,
-            'image_prompt' => isset($data['image_prompt']) ? wp_kses_post($data['image_prompt']) : '',
-            'generate_featured_image' => isset($data['generate_featured_image']) ? 1 : 0,
-            'post_status' => sanitize_text_field($data['post_status']),
-            'post_category' => absint($data['post_category']),
-            'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
-            'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
-            'is_active' => isset($data['is_active']) ? 1 : 0,
-        );
-        
-        if (!empty($data['id'])) {
-            $wpdb->update(
-                $this->table_name,
-                $template_data,
-                array('id' => absint($data['id'])),
-                array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d'),
-                array('%d')
-            );
-            return absint($data['id']);
-        } else {
-            $wpdb->insert(
-                $this->table_name,
-                $template_data,
-                array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d')
-            );
-            return $wpdb->insert_id;
-        }
+        return $this->repository->save($data);
     }
     
+    /**
+     * Delete a template by ID.
+     *
+     * @param int $id Template ID.
+     * @return int|false Number of rows deleted or false on error.
+     */
     public function delete($id) {
-        global $wpdb;
-        return $wpdb->delete($this->table_name, array('id' => $id), array('%d'));
+        return $this->repository->delete($id);
     }
     
     public function ajax_save_template() {
