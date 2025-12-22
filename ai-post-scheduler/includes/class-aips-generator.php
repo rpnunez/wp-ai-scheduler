@@ -181,6 +181,13 @@ class AIPS_Generator {
     public function generate_post($template, $voice = null, $topic = null) {
         global $wpdb;
         
+        // Dispatch post generation started event
+        do_action('aips_post_generation_started', array(
+            'template_id' => $template->id,
+            'topic' => $topic ? $topic : '',
+            'timestamp' => current_time('mysql'),
+        ), 'post_generation');
+        
         $this->reset_generation_log();
         $this->generation_log['started_at'] = current_time('mysql');
         
@@ -253,6 +260,18 @@ class AIPS_Generator {
                 array('%s', '%s', '%s', '%s'),
                 array('%d')
             );
+            
+            // Dispatch post generation failed event
+            do_action('aips_post_generation_failed', array(
+                'template_id' => $template->id,
+                'error_code' => $content->get_error_code(),
+                'error_message' => $content->get_error_message(),
+                'metadata' => array(
+                    'history_id' => $history_id,
+                    'topic' => $topic,
+                ),
+                'timestamp' => current_time('mysql'),
+            ), 'post_generation');
             
             return $content;
         }
@@ -379,6 +398,19 @@ class AIPS_Generator {
             'template_id' => $template->id,
             'title' => $title
         ));
+        
+        // Dispatch post generation completed event
+        do_action('aips_post_generation_completed', array(
+            'template_id' => $template->id,
+            'post_id' => $post_id,
+            'metadata' => array(
+                'history_id' => $history_id,
+                'topic' => $topic,
+                'title' => $title,
+                'featured_image_id' => $featured_image_id,
+            ),
+            'timestamp' => current_time('mysql'),
+        ), 'post_generation');
         
         do_action('aips_post_generated', $post_id, $template, $history_id);
         

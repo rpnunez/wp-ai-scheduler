@@ -9,11 +9,17 @@ class AIPS_Scheduler {
     private $templates_table;
     private $interval_calculator;
     
+    /**
+     * @var AIPS_Schedule_Repository Repository for database operations
+     */
+    private $repository;
+    
     public function __construct() {
         global $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
+        $this->repository = new AIPS_Schedule_Repository();
         
         add_action('aips_generate_scheduled_posts', array($this, 'process_scheduled_posts'));
         add_filter('cron_schedules', array($this, 'add_cron_intervals'));
@@ -39,24 +45,14 @@ class AIPS_Scheduler {
     }
     
     public function get_all_schedules() {
-        global $wpdb;
-        
-        return $wpdb->get_results("
-            SELECT s.*, t.name as template_name 
-            FROM {$this->schedule_table} s 
-            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id 
-            ORDER BY s.next_run ASC
-        ");
+        return $this->repository->get_all();
     }
     
     public function get_schedule($id) {
-        global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->schedule_table} WHERE id = %d", $id));
+        return $this->repository->get_by_id($id);
     }
     
     public function save_schedule($data) {
-        global $wpdb;
-        
         $frequency = sanitize_text_field($data['frequency']);
 
         if (isset($data['next_run'])) {
@@ -72,42 +68,21 @@ class AIPS_Scheduler {
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
         );
-        
-        $format = array('%d', '%s', '%s', '%d', '%s');
 
         if (!empty($data['id'])) {
-            $wpdb->update(
-                $this->schedule_table,
-                $schedule_data,
-                array('id' => absint($data['id'])),
-                $format,
-                array('%d')
-            );
+            $this->repository->update(absint($data['id']), $schedule_data);
             return absint($data['id']);
         } else {
-            $wpdb->insert(
-                $this->schedule_table,
-                $schedule_data,
-                $format
-            );
-            return $wpdb->insert_id;
+            return $this->repository->create($schedule_data);
         }
     }
     
     public function delete_schedule($id) {
-        global $wpdb;
-        return $wpdb->delete($this->schedule_table, array('id' => $id), array('%d'));
+        return $this->repository->delete($id);
     }
 
     public function toggle_active($id, $is_active) {
-        global $wpdb;
-        return $wpdb->update(
-            $this->schedule_table,
-            array('is_active' => $is_active),
-            array('id' => $id),
-            array('%d'),
-            array('%d')
-        );
+        return $this->repository->set_active($id, $is_active);
     }
     
     /**
@@ -145,6 +120,12 @@ class AIPS_Scheduler {
         $generator = new AIPS_Generator();
         
         foreach ($due_schedules as $schedule) {
+            // Dispatch schedule execution started event
+            do_action('aips_schedule_execution_started', array(
+                'schedule_id' => $schedule->schedule_id,
+                'timestamp' => current_time('mysql'),
+            ), 'schedule_execution');
+            
             $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
                 'template_id' => $schedule->template_id,
                 'template_name' => $schedule->name,
@@ -170,33 +151,50 @@ class AIPS_Scheduler {
             
             if ($schedule->frequency === 'once' && !is_wp_error($result)) {
                 // If it's a one-time schedule and successful, delete it
-                $wpdb->delete($this->schedule_table, array('id' => $schedule->schedule_id), array('%d'));
+                $this->repository->delete($schedule->schedule_id);
                 $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
                 // Otherwise calculate next run
                 $next_run = $this->calculate_next_run($schedule->frequency);
 
-                $wpdb->update(
-                    $this->schedule_table,
-                    array(
-                        'last_run' => current_time('mysql'),
-                        'next_run' => $next_run,
-                    ),
-                    array('id' => $schedule->schedule_id),
-                    array('%s', '%s'),
-                    array('%d')
-                );
+                $this->repository->update($schedule->schedule_id, array(
+                    'last_run' => current_time('mysql'),
+                    'next_run' => $next_run,
+                ));
             }
             
             if (is_wp_error($result)) {
                 $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
                     'schedule_id' => $schedule->schedule_id
                 ));
+                
+                // Dispatch schedule execution failed event
+                do_action('aips_schedule_execution_failed', array(
+                    'schedule_id' => $schedule->schedule_id,
+                    'error_code' => $result->get_error_code(),
+                    'error_message' => $result->get_error_message(),
+                    'metadata' => array(
+                        'template_id' => $schedule->template_id,
+                        'frequency' => $schedule->frequency,
+                    ),
+                    'timestamp' => current_time('mysql'),
+                ), 'schedule_execution');
             } else {
                 $logger->log('Schedule completed successfully', 'info', array(
                     'schedule_id' => $schedule->schedule_id,
                     'post_id' => $result
                 ));
+                
+                // Dispatch schedule execution completed event
+                do_action('aips_schedule_execution_completed', array(
+                    'schedule_id' => $schedule->schedule_id,
+                    'post_id' => $result,
+                    'metadata' => array(
+                        'template_id' => $schedule->template_id,
+                        'frequency' => $schedule->frequency,
+                    ),
+                    'timestamp' => current_time('mysql'),
+                ), 'schedule_execution');
             }
         }
     }

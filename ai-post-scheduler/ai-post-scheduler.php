@@ -54,10 +54,17 @@ final class AI_Post_Scheduler {
     
     private function includes() {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-config.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
+        
+        // Repository layer
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-repository.php';
+        
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-processor.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-interval-calculator.php';

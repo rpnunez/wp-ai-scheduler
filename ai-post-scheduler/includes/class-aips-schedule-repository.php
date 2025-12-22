@@ -1,0 +1,275 @@
+<?php
+/**
+ * Schedule Repository
+ *
+ * Database abstraction layer for schedule operations.
+ * Provides a clean interface for CRUD operations on the schedule table.
+ *
+ * @package AI_Post_Scheduler
+ * @since 1.5.0
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Class AIPS_Schedule_Repository
+ *
+ * Repository pattern implementation for schedule data access.
+ * Encapsulates all database operations related to scheduling.
+ */
+class AIPS_Schedule_Repository {
+    
+    /**
+     * @var string The schedule table name (with prefix)
+     */
+    private $schedule_table;
+    
+    /**
+     * @var string The templates table name (with prefix)
+     */
+    private $templates_table;
+    
+    /**
+     * @var wpdb WordPress database abstraction object
+     */
+    private $wpdb;
+    
+    /**
+     * Initialize the repository.
+     */
+    public function __construct() {
+        global $wpdb;
+        $this->wpdb = $wpdb;
+        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
+        $this->templates_table = $wpdb->prefix . 'aips_templates';
+    }
+    
+    /**
+     * Get all schedules with optional template details.
+     *
+     * @param bool $active_only Optional. Return only active schedules. Default false.
+     * @return array Array of schedule objects with template names.
+     */
+    public function get_all($active_only = false) {
+        $where = $active_only ? "WHERE s.is_active = 1" : "";
+        
+        return $this->wpdb->get_results("
+            SELECT s.*, t.name as template_name 
+            FROM {$this->schedule_table} s 
+            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id 
+            $where
+            ORDER BY s.next_run ASC
+        ");
+    }
+    
+    /**
+     * Get a single schedule by ID.
+     *
+     * @param int $id Schedule ID.
+     * @return object|null Schedule object or null if not found.
+     */
+    public function get_by_id($id) {
+        return $this->wpdb->get_row($this->wpdb->prepare(
+            "SELECT * FROM {$this->schedule_table} WHERE id = %d",
+            $id
+        ));
+    }
+    
+    /**
+     * Get schedules that are due to run.
+     *
+     * @param string $current_time Optional. Current time in MySQL format. Default current time.
+     * @return array Array of schedule objects that should run now.
+     */
+    public function get_due_schedules($current_time = null) {
+        if ($current_time === null) {
+            $current_time = current_time('mysql');
+        }
+        
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT s.*, t.name as template_name 
+            FROM {$this->schedule_table} s 
+            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id 
+            WHERE s.is_active = 1 
+            AND s.next_run <= %s
+            ORDER BY s.next_run ASC
+        ", $current_time));
+    }
+    
+    /**
+     * Get schedules by template ID.
+     *
+     * @param int $template_id Template ID.
+     * @return array Array of schedule objects for this template.
+     */
+    public function get_by_template($template_id) {
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT * FROM {$this->schedule_table} WHERE template_id = %d ORDER BY next_run ASC
+        ", $template_id));
+    }
+    
+    /**
+     * Create a new schedule.
+     *
+     * @param array $data {
+     *     Schedule data.
+     *
+     *     @type int    $template_id Template ID.
+     *     @type string $frequency   Frequency identifier (daily, weekly, etc.).
+     *     @type string $next_run    Next run datetime in MySQL format.
+     *     @type int    $is_active   Active status (1 or 0).
+     *     @type string $topic       Optional topic for generation.
+     * }
+     * @return int|false The inserted ID on success, false on failure.
+     */
+    public function create($data) {
+        $insert_data = array(
+            'template_id' => absint($data['template_id']),
+            'frequency' => sanitize_text_field($data['frequency']),
+            'next_run' => sanitize_text_field($data['next_run']),
+            'is_active' => isset($data['is_active']) ? 1 : 0,
+            'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+        );
+        
+        $format = array('%d', '%s', '%s', '%d', '%s');
+        
+        $result = $this->wpdb->insert($this->schedule_table, $insert_data, $format);
+        
+        return $result ? $this->wpdb->insert_id : false;
+    }
+    
+    /**
+     * Update an existing schedule.
+     *
+     * @param int   $id   Schedule ID.
+     * @param array $data Data to update (same structure as create).
+     * @return bool True on success, false on failure.
+     */
+    public function update($id, $data) {
+        $update_data = array();
+        $format = array();
+        
+        if (isset($data['template_id'])) {
+            $update_data['template_id'] = absint($data['template_id']);
+            $format[] = '%d';
+        }
+        
+        if (isset($data['frequency'])) {
+            $update_data['frequency'] = sanitize_text_field($data['frequency']);
+            $format[] = '%s';
+        }
+        
+        if (isset($data['next_run'])) {
+            $update_data['next_run'] = sanitize_text_field($data['next_run']);
+            $format[] = '%s';
+        }
+        
+        if (isset($data['last_run'])) {
+            $update_data['last_run'] = sanitize_text_field($data['last_run']);
+            $format[] = '%s';
+        }
+        
+        if (isset($data['is_active'])) {
+            $update_data['is_active'] = $data['is_active'] ? 1 : 0;
+            $format[] = '%d';
+        }
+        
+        if (isset($data['topic'])) {
+            $update_data['topic'] = sanitize_text_field($data['topic']);
+            $format[] = '%s';
+        }
+        
+        if (empty($update_data)) {
+            return false;
+        }
+        
+        return $this->wpdb->update(
+            $this->schedule_table,
+            $update_data,
+            array('id' => $id),
+            $format,
+            array('%d')
+        ) !== false;
+    }
+    
+    /**
+     * Delete a schedule by ID.
+     *
+     * @param int $id Schedule ID.
+     * @return bool True on success, false on failure.
+     */
+    public function delete($id) {
+        return $this->wpdb->delete($this->schedule_table, array('id' => $id), array('%d')) !== false;
+    }
+    
+    /**
+     * Delete all schedules for a template.
+     *
+     * @param int $template_id Template ID.
+     * @return int|false Number of rows affected or false on failure.
+     */
+    public function delete_by_template($template_id) {
+        return $this->wpdb->delete($this->schedule_table, array('template_id' => $template_id), array('%d'));
+    }
+    
+    /**
+     * Update the last_run timestamp for a schedule.
+     *
+     * @param int    $id        Schedule ID.
+     * @param string $timestamp Optional. Timestamp in MySQL format. Default current time.
+     * @return bool True on success, false on failure.
+     */
+    public function update_last_run($id, $timestamp = null) {
+        if ($timestamp === null) {
+            $timestamp = current_time('mysql');
+        }
+        
+        return $this->update($id, array('last_run' => $timestamp));
+    }
+    
+    /**
+     * Update the next_run timestamp for a schedule.
+     *
+     * @param int    $id        Schedule ID.
+     * @param string $timestamp Timestamp in MySQL format.
+     * @return bool True on success, false on failure.
+     */
+    public function update_next_run($id, $timestamp) {
+        return $this->update($id, array('next_run' => $timestamp));
+    }
+    
+    /**
+     * Toggle schedule active status.
+     *
+     * @param int  $id        Schedule ID.
+     * @param bool $is_active Active status.
+     * @return bool True on success, false on failure.
+     */
+    public function set_active($id, $is_active) {
+        return $this->update($id, array('is_active' => $is_active));
+    }
+    
+    /**
+     * Count schedules by status.
+     *
+     * @return array {
+     *     @type int $total  Total number of schedules.
+     *     @type int $active Number of active schedules.
+     * }
+     */
+    public function count_by_status() {
+        $results = $this->wpdb->get_row("
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
+            FROM {$this->schedule_table}
+        ");
+        
+        return array(
+            'total' => (int) $results->total,
+            'active' => (int) $results->active,
+        );
+    }
+}
