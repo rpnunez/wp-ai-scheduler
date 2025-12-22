@@ -44,6 +44,9 @@ class AIPS_DB_Manager {
      * @return string|null The full table name with prefix, or null if table not found
      */
     public static function get_table_name($tableData) {
+        if (!is_string($tableData) || empty($tableData)) {
+            return null;
+        }
         if (!in_array($tableData, self::$tables)) {
             return null;
         }

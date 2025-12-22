@@ -76,6 +76,33 @@ class Test_AIPS_DB_Manager extends WP_UnitTestCase {
     }
 
     /**
+     * Test get_table_name with non-string input (integer)
+     */
+    public function test_get_table_name_with_integer_input() {
+        $result = AIPS_DB_Manager::get_table_name(123);
+        
+        $this->assertNull($result);
+    }
+
+    /**
+     * Test get_table_name with non-string input (array)
+     */
+    public function test_get_table_name_with_array_input() {
+        $result = AIPS_DB_Manager::get_table_name(array('aips_history'));
+        
+        $this->assertNull($result);
+    }
+
+    /**
+     * Test get_table_name with null input
+     */
+    public function test_get_table_name_with_null_input() {
+        $result = AIPS_DB_Manager::get_table_name(null);
+        
+        $this->assertNull($result);
+    }
+
+    /**
      * Test get_table_name with different prefix
      */
     public function test_get_table_name_with_custom_prefix() {
