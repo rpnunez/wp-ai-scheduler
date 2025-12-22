@@ -48,7 +48,7 @@ class AIPS_Template_Type_Selector {
 		// If specific structure is set, use it
 		if (!empty($schedule->article_structure_id)) {
 			$structure = $this->structure_repository->get_by_id($schedule->article_structure_id);
-			if ($structure && $structure->is_active) {
+			if ($structure && !empty($structure->is_active)) {
 				return $structure->id;
 			}
 		}
@@ -135,7 +135,7 @@ class AIPS_Template_Type_Selector {
 		$weighted = array();
 		
 		foreach ($active_structures as $structure) {
-			$weight = $structure->is_default ? 2 : 1;
+			$weight = !empty($structure->is_default) ? 2 : 1;
 			for ($i = 0; $i < $weight; $i++) {
 				$weighted[] = $structure->id;
 			}
@@ -237,7 +237,7 @@ class AIPS_Template_Type_Selector {
 			case 'weighted':
 				// For preview, just show the default or first
 				foreach ($active_structures as $structure) {
-					if ($structure->is_default) {
+					if (!empty($structure->is_default)) {
 						$structure_id = $structure->id;
 						break;
 					}
