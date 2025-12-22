@@ -80,6 +80,33 @@ class AIPS_Scheduler {
             return $this->repository->create($schedule_data);
         }
     }
+
+    public function save_schedule_bulk($schedules_data) {
+        // Validate and prepare data
+        $bulk_data = array();
+
+        foreach ($schedules_data as $data) {
+            $frequency = sanitize_text_field($data['frequency']);
+
+            if (isset($data['next_run'])) {
+                $next_run = sanitize_text_field($data['next_run']);
+            } else {
+                $next_run = $this->calculate_next_run($frequency, isset($data['start_time']) ? $data['start_time'] : null);
+            }
+
+            $bulk_data[] = array(
+                'template_id' => absint($data['template_id']),
+                'frequency' => $frequency,
+                'next_run' => $next_run,
+                'is_active' => !empty($data['is_active']) ? 1 : 0,
+                'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+                'article_structure_id' => isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
+                'rotation_pattern' => isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
+            );
+        }
+
+        return $this->repository->create_bulk($bulk_data);
+    }
     
     public function delete_schedule($id) {
         return $this->repository->delete($id);
