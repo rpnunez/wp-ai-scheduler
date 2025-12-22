@@ -107,8 +107,8 @@ class AIPS_Article_Structure_Repository {
 			'name' => sanitize_text_field($data['name']),
 			'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
 			'structure_data' => $data['structure_data'],
-			'is_active' => isset($data['is_active']) ? 1 : 0,
-			'is_default' => isset($data['is_default']) ? 1 : 0,
+			'is_active' => !empty($data['is_active']) ? 1 : 0,
+			'is_default' => !empty($data['is_default']) ? 1 : 0,
 		);
 		
 		// If setting as default, unset other defaults

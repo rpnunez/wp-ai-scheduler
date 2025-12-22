@@ -171,7 +171,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             <?php foreach ($article_structures as $structure): ?>
                             <option value="<?php echo esc_attr($structure->id); ?>">
                                 <?php echo esc_html($structure->name); ?>
-                                <?php if ($structure->is_default): ?> (<?php esc_html_e('Default', 'ai-post-scheduler'); ?>)<?php endif; ?>
+                                <?php if (!empty($structure->is_default)): ?> (<?php esc_html_e('Default', 'ai-post-scheduler'); ?>)<?php endif; ?>
                             </option>
                             <?php endforeach; ?>
                         </select>

@@ -123,7 +123,7 @@ class AIPS_Prompt_Section_Repository {
 			'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
 			'section_key' => sanitize_key($data['section_key']),
 			'content' => wp_kses_post($data['content']),
-			'is_active' => isset($data['is_active']) ? 1 : 0,
+			'is_active' => !empty($data['is_active']) ? 1 : 0,
 		);
 		
 		$format = array('%s', '%s', '%s', '%s', '%d');

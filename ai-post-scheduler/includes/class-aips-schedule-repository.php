@@ -135,21 +135,15 @@ class AIPS_Schedule_Repository {
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
         );
         
+        $format = array('%d', '%s', '%s', '%d', '%s');
+        
         if (isset($data['article_structure_id'])) {
             $insert_data['article_structure_id'] = $data['article_structure_id'] ? absint($data['article_structure_id']) : null;
+            $format[] = '%d';
         }
         
         if (isset($data['rotation_pattern'])) {
             $insert_data['rotation_pattern'] = $data['rotation_pattern'] ? sanitize_text_field($data['rotation_pattern']) : null;
-        }
-        
-        $format = array('%d', '%s', '%s', '%d', '%s');
-        
-        if (isset($data['article_structure_id'])) {
-            $format[] = $data['article_structure_id'] ? '%d' : null;
-        }
-        
-        if (isset($data['rotation_pattern'])) {
             $format[] = '%s';
         }
         
@@ -201,7 +195,7 @@ class AIPS_Schedule_Repository {
         
         if (isset($data['article_structure_id'])) {
             $update_data['article_structure_id'] = $data['article_structure_id'] ? absint($data['article_structure_id']) : null;
-            $format[] = $data['article_structure_id'] ? '%d' : null;
+            $format[] = '%d';
         }
         
         if (isset($data['rotation_pattern'])) {
