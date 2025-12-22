@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [hunter-wizard-atlas-bolt] - 2025-12-21
+### Added
+- [Wizard] Added a "Clear List" button to the Planner interface to easily reset topic generation results.
+
+### Changed
+- [Hunter] Implemented a batch limit (default 5) in `AIPS_Scheduler::process_scheduled_posts` to prevent PHP timeouts during large schedule executions.
+- [Atlas] Refactored `AIPS_Generator` to support Dependency Injection, improving testability and decoupling dependencies.
+- [Bolt] Optimized bulk scheduling in `AIPS_Planner` to use a single bulk `INSERT` query instead of multiple individual queries, reducing database load.
+
 ## [bolt-optimize-planner-bulk-insert] - 2024-05-23
 ### Improved
 - Optimized the Planner's "Schedule All" feature by replacing N+1 database `INSERT` queries with a single bulk `INSERT` statement, significantly reducing database load during bulk scheduling.

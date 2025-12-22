@@ -139,6 +139,37 @@ class AIPS_Schedule_Repository {
         
         return $result ? $this->wpdb->insert_id : false;
     }
+
+    /**
+     * Bulk create schedules.
+     *
+     * @param array $data_array Array of schedule data arrays.
+     * @return int|false Number of rows inserted or false on failure.
+     */
+    public function create_bulk($data_array) {
+        if (empty($data_array)) {
+            return 0;
+        }
+
+        $values = array();
+        $placeholders = array();
+
+        foreach ($data_array as $data) {
+            $template_id = absint($data['template_id']);
+            $frequency = sanitize_text_field($data['frequency']);
+            $next_run = sanitize_text_field($data['next_run']);
+            $is_active = isset($data['is_active']) ? 1 : 0;
+            $topic = isset($data['topic']) ? sanitize_text_field($data['topic']) : '';
+
+            array_push($values, $template_id, $frequency, $next_run, $is_active, $topic);
+            $placeholders[] = "(%d, %s, %s, %d, %s)";
+        }
+
+        $query = "INSERT INTO {$this->schedule_table} (template_id, frequency, next_run, is_active, topic) VALUES ";
+        $query .= implode(', ', $placeholders);
+
+        return $this->wpdb->query($this->wpdb->prepare($query, $values));
+    }
     
     /**
      * Update an existing schedule.

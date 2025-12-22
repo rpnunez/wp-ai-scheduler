@@ -11,11 +11,11 @@ class AIPS_Generator {
     private $template_processor;
     private $image_service;
     
-    public function __construct() {
-        $this->logger = new AIPS_Logger();
-        $this->ai_service = new AIPS_AI_Service();
-        $this->template_processor = new AIPS_Template_Processor();
-        $this->image_service = new AIPS_Image_Service($this->ai_service);
+    public function __construct($logger = null, $ai_service = null, $template_processor = null, $image_service = null) {
+        $this->logger = $logger ?: new AIPS_Logger();
+        $this->ai_service = $ai_service ?: new AIPS_AI_Service();
+        $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
+        $this->image_service = $image_service ?: new AIPS_Image_Service($this->ai_service);
         $this->reset_generation_log();
     }
     
