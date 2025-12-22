@@ -9,6 +9,13 @@ $schedules = $scheduler->get_all_schedules();
 
 $templates_handler = new AIPS_Templates();
 $templates = $templates_handler->get_all(true);
+
+// Get article structures and rotation patterns
+$structure_manager = new AIPS_Article_Structure_Manager();
+$article_structures = $structure_manager->get_active_structures();
+
+$template_type_selector = new AIPS_Template_Type_Selector();
+$rotation_patterns = $template_type_selector->get_rotation_patterns();
 ?>
 <div class="wrap aips-wrap">
     <h1>
@@ -29,6 +36,7 @@ $templates = $templates_handler->get_all(true);
             <thead>
                 <tr>
                     <th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
+                    <th class="column-structure"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></th>
                     <th class="column-frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
                     <th class="column-next-run"><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></th>
                     <th class="column-last-run"><?php esc_html_e('Last Run', 'ai-post-scheduler'); ?></th>
@@ -37,10 +45,30 @@ $templates = $templates_handler->get_all(true);
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($schedules as $schedule): ?>
+                <?php 
+                // Get article structure repository for lookup
+                $structure_repo = new AIPS_Article_Structure_Repository();
+                foreach ($schedules as $schedule): 
+                    // Get structure info
+                    $structure_display = __('Default', 'ai-post-scheduler');
+                    if (!empty($schedule->article_structure_id)) {
+                        $structure = $structure_repo->get_by_id($schedule->article_structure_id);
+                        if ($structure) {
+                            $structure_display = $structure->name;
+                        }
+                    } else if (!empty($schedule->rotation_pattern)) {
+                        $structure_display = __('Rotating', 'ai-post-scheduler');
+                    }
+                ?>
                 <tr data-schedule-id="<?php echo esc_attr($schedule->id); ?>">
                     <td class="column-template">
                         <?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?>
+                    </td>
+                    <td class="column-structure">
+                        <?php echo esc_html($structure_display); ?>
+                        <?php if (!empty($schedule->rotation_pattern)): ?>
+                            <br><small style="color: #666;"><?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->rotation_pattern))); ?></small>
+                        <?php endif; ?>
                     </td>
                     <td class="column-frequency">
                         <?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->frequency))); ?>
@@ -128,6 +156,37 @@ $templates = $templates_handler->get_all(true);
                         <label for="schedule_start_time"><?php esc_html_e('Start Time', 'ai-post-scheduler'); ?></label>
                         <input type="datetime-local" id="schedule_start_time" name="start_time">
                         <p class="description"><?php esc_html_e('Leave empty to start from now', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    
+                    <div class="aips-form-row">
+                        <label for="schedule_topic"><?php esc_html_e('Topic (Optional)', 'ai-post-scheduler'); ?></label>
+                        <input type="text" id="schedule_topic" name="topic" class="regular-text">
+                        <p class="description"><?php esc_html_e('Optional topic to pass to template variables', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    
+                    <div class="aips-form-row">
+                        <label for="article_structure_id"><?php esc_html_e('Article Structure (Optional)', 'ai-post-scheduler'); ?></label>
+                        <select id="article_structure_id" name="article_structure_id">
+                            <option value=""><?php esc_html_e('Use Default', 'ai-post-scheduler'); ?></option>
+                            <?php foreach ($article_structures as $structure): ?>
+                            <option value="<?php echo esc_attr($structure->id); ?>">
+                                <?php echo esc_html($structure->name); ?>
+                                <?php if (!empty($structure->is_default)): ?> (<?php esc_html_e('Default', 'ai-post-scheduler'); ?>)<?php endif; ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="description"><?php esc_html_e('Select a specific article structure or leave as default', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    
+                    <div class="aips-form-row">
+                        <label for="rotation_pattern"><?php esc_html_e('Rotation Pattern (Optional)', 'ai-post-scheduler'); ?></label>
+                        <select id="rotation_pattern" name="rotation_pattern">
+                            <option value=""><?php esc_html_e('No Rotation', 'ai-post-scheduler'); ?></option>
+                            <?php foreach ($rotation_patterns as $key => $label): ?>
+                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="description"><?php esc_html_e('Automatically alternate between different article structures', 'ai-post-scheduler'); ?></p>
                     </div>
                     
                     <div class="aips-form-row">

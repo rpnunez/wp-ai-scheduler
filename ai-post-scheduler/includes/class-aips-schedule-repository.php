@@ -116,11 +116,13 @@ class AIPS_Schedule_Repository {
      * @param array $data {
      *     Schedule data.
      *
-     *     @type int    $template_id Template ID.
-     *     @type string $frequency   Frequency identifier (daily, weekly, etc.).
-     *     @type string $next_run    Next run datetime in MySQL format.
-     *     @type int    $is_active   Active status (1 or 0).
-     *     @type string $topic       Optional topic for generation.
+     *     @type int    $template_id           Template ID.
+     *     @type int    $article_structure_id  Optional article structure ID.
+     *     @type string $rotation_pattern      Optional rotation pattern (sequential, random, weighted, alternating).
+     *     @type string $frequency             Frequency identifier (daily, weekly, etc.).
+     *     @type string $next_run              Next run datetime in MySQL format.
+     *     @type int    $is_active             Active status (1 or 0).
+     *     @type string $topic                 Optional topic for generation.
      * }
      * @return int|false The inserted ID on success, false on failure.
      */
@@ -134,6 +136,16 @@ class AIPS_Schedule_Repository {
         );
         
         $format = array('%d', '%s', '%s', '%d', '%s');
+        
+        if (isset($data['article_structure_id'])) {
+            $insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
+            $format[] = '%d';
+        }
+        
+        if (isset($data['rotation_pattern'])) {
+            $insert_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
+            $format[] = '%s';
+        }
         
         $result = $this->wpdb->insert($this->schedule_table, $insert_data, $format);
         
@@ -178,6 +190,16 @@ class AIPS_Schedule_Repository {
         
         if (isset($data['topic'])) {
             $update_data['topic'] = sanitize_text_field($data['topic']);
+            $format[] = '%s';
+        }
+        
+        if (isset($data['article_structure_id'])) {
+            $update_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
+            $format[] = '%d';
+        }
+        
+        if (isset($data['rotation_pattern'])) {
+            $update_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
             $format[] = '%s';
         }
         

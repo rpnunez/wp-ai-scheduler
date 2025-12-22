@@ -8,6 +8,7 @@ class AIPS_Scheduler {
     private $schedule_table;
     private $templates_table;
     private $interval_calculator;
+    private $template_type_selector;
     
     /**
      * @var AIPS_Schedule_Repository Repository for database operations
@@ -20,6 +21,7 @@ class AIPS_Scheduler {
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->repository = new AIPS_Schedule_Repository();
+        $this->template_type_selector = new AIPS_Template_Type_Selector();
         
         add_action('aips_generate_scheduled_posts', array($this, 'process_scheduled_posts'));
         add_filter('cron_schedules', array($this, 'add_cron_intervals'));
@@ -67,6 +69,8 @@ class AIPS_Scheduler {
             'next_run' => $next_run,
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+            'article_structure_id' => isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
+            'rotation_pattern' => isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
         );
 
         if (!empty($data['id'])) {
@@ -132,6 +136,9 @@ class AIPS_Scheduler {
                 'topic' => isset($schedule->topic) ? $schedule->topic : ''
             ));
             
+            // NEW: Select article structure for this execution
+            $article_structure_id = $this->template_type_selector->select_structure($schedule);
+            
             $template = (object) array(
                 'id' => $schedule->template_id,
                 'name' => $schedule->name,
@@ -144,6 +151,7 @@ class AIPS_Scheduler {
                 'post_quantity' => 1, // Schedules always run one at a time per interval
                 'generate_featured_image' => isset($schedule->generate_featured_image) ? $schedule->generate_featured_image : 0,
                 'image_prompt' => isset($schedule->image_prompt) ? $schedule->image_prompt : '',
+                'article_structure_id' => $article_structure_id, // NEW: Pass selected structure
             );
             
             $topic = isset($schedule->topic) ? $schedule->topic : null;

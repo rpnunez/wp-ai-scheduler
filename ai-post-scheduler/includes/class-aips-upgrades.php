@@ -27,6 +27,7 @@ class AIPS_Upgrades {
             '1.2.0' => 'migration-1.2-add-featured-images.php',
             '1.3.0' => 'migration-1.3-add-generation-log.php',
             '1.4.0' => 'migration-1.4-add-topic.php',
+            '1.5.0' => 'migration-1.5-add-article-structures.php',
         );
         
         foreach ($migrations as $version => $file) {
