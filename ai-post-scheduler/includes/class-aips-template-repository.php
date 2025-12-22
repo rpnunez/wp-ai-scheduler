@@ -22,6 +22,13 @@ if (!defined('ABSPATH')) {
 class AIPS_Template_Repository {
     
     /**
+     * Table name suffix (without prefix)
+     * 
+     * @since 1.5.0
+     */
+    private const TABLE_SUFFIX = 'aips_templates';
+    
+    /**
      * @var string The templates table name (with prefix)
      */
     private $table_name;
@@ -33,11 +40,16 @@ class AIPS_Template_Repository {
     
     /**
      * Initialize the repository.
+     * 
+     * The $wpdb object is stored as an instance variable following WordPress best practices.
+     * Since $wpdb is a singleton that persists throughout the request lifecycle, storing
+     * a reference to it once in the constructor is more efficient than globalizing it
+     * in every method.
      */
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_templates';
+        $this->table_name = $wpdb->prefix . self::TABLE_SUFFIX;
     }
     
     /**
