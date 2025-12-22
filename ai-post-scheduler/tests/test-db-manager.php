@@ -28,46 +28,46 @@ class Test_AIPS_DB_Manager extends WP_UnitTestCase {
     }
 
     /**
-     * Test get_table_name with valid table
+     * Test get_table_name with valid table key
      */
     public function test_get_table_name_with_valid_table() {
-        $result = AIPS_DB_Manager::get_table_name('aips_history');
+        $result = AIPS_DB_Manager::get_table_name('history');
         
         $this->assertEquals('wp_aips_history', $result);
     }
 
     /**
-     * Test get_table_name with another valid table
+     * Test get_table_name with templates table key
      */
     public function test_get_table_name_with_templates_table() {
-        $result = AIPS_DB_Manager::get_table_name('aips_templates');
+        $result = AIPS_DB_Manager::get_table_name('templates');
         
         $this->assertEquals('wp_aips_templates', $result);
     }
 
     /**
-     * Test get_table_name with schedule table
+     * Test get_table_name with schedule table key
      */
     public function test_get_table_name_with_schedule_table() {
-        $result = AIPS_DB_Manager::get_table_name('aips_schedule');
+        $result = AIPS_DB_Manager::get_table_name('schedule');
         
         $this->assertEquals('wp_aips_schedule', $result);
     }
 
     /**
-     * Test get_table_name with voices table
+     * Test get_table_name with voices table key
      */
     public function test_get_table_name_with_voices_table() {
-        $result = AIPS_DB_Manager::get_table_name('aips_voices');
+        $result = AIPS_DB_Manager::get_table_name('voices');
         
         $this->assertEquals('wp_aips_voices', $result);
     }
 
     /**
-     * Test get_table_name with invalid table
+     * Test get_table_name with invalid table key
      */
     public function test_get_table_name_with_invalid_table() {
-        $result = AIPS_DB_Manager::get_table_name('aips_nonexistent');
+        $result = AIPS_DB_Manager::get_table_name('nonexistent');
         
         $this->assertNull($result);
     }
@@ -115,7 +115,7 @@ class Test_AIPS_DB_Manager extends WP_UnitTestCase {
         global $wpdb;
         $wpdb->prefix = 'custom_';
         
-        $result = AIPS_DB_Manager::get_table_name('aips_history');
+        $result = AIPS_DB_Manager::get_table_name('history');
         
         $this->assertEquals('custom_aips_history', $result);
     }
@@ -124,13 +124,29 @@ class Test_AIPS_DB_Manager extends WP_UnitTestCase {
      * Test that all tables from get_table_names work with get_table_name
      */
     public function test_get_table_name_with_all_tables() {
-        $tables = AIPS_DB_Manager::get_table_names();
+        $table_names = AIPS_DB_Manager::get_table_names();
         
-        foreach ($tables as $table) {
-            $result = AIPS_DB_Manager::get_table_name($table);
-            $this->assertNotNull($result);
-            $this->assertStringStartsWith('wp_', $result);
-            $this->assertStringContainsString($table, $result);
-        }
+        // Verify we can retrieve each table by its key
+        $result = AIPS_DB_Manager::get_table_name('history');
+        $this->assertNotNull($result);
+        $this->assertEquals('wp_aips_history', $result);
+        
+        $result = AIPS_DB_Manager::get_table_name('templates');
+        $this->assertNotNull($result);
+        $this->assertEquals('wp_aips_templates', $result);
+        
+        $result = AIPS_DB_Manager::get_table_name('schedule');
+        $this->assertNotNull($result);
+        $this->assertEquals('wp_aips_schedule', $result);
+        
+        $result = AIPS_DB_Manager::get_table_name('voices');
+        $this->assertNotNull($result);
+        $this->assertEquals('wp_aips_voices', $result);
+        
+        // Verify get_table_names returns the table names (not keys)
+        $this->assertContains('aips_history', $table_names);
+        $this->assertContains('aips_templates', $table_names);
+        $this->assertContains('aips_schedule', $table_names);
+        $this->assertContains('aips_voices', $table_names);
     }
 }

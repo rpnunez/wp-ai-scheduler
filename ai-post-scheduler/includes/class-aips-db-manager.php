@@ -6,10 +6,10 @@ if (!defined('ABSPATH')) {
 class AIPS_DB_Manager {
 
     private static $tables = array(
-        'aips_history',
-        'aips_templates',
-        'aips_schedule',
-        'aips_voices'
+        'history' => 'aips_history',
+        'templates' => 'aips_templates',
+        'schedule' => 'aips_schedule',
+        'voices' => 'aips_voices'
     );
 
     public function __construct() {
@@ -20,13 +20,17 @@ class AIPS_DB_Manager {
 
     /**
      * Get the list of plugin tables (without prefix)
+     * 
+     * @return array Array of table names without prefix
      */
     public static function get_table_names() {
-        return self::$tables;
+        return array_values(self::$tables);
     }
 
     /**
      * Get the list of plugin tables with full prefix
+     * 
+     * @return array Associative array with table names as keys and full prefixed names as values
      */
     public static function get_full_table_names() {
         global $wpdb;
@@ -38,20 +42,20 @@ class AIPS_DB_Manager {
     }
 
     /**
-     * Get a single table name with full prefix from table data
+     * Get a single table name with full prefix from table key
      * 
-     * @param string $tableData The table name without prefix (e.g., 'aips_history')
+     * @param string $tableKey The table key (e.g., 'history', 'templates', 'schedule', 'voices')
      * @return string|null The full table name with prefix, or null if table not found
      */
-    public static function get_table_name($tableData) {
-        if (!is_string($tableData) || empty($tableData)) {
+    public static function get_table_name($tableKey) {
+        if (!is_string($tableKey) || empty($tableKey)) {
             return null;
         }
-        if (!in_array($tableData, self::$tables)) {
+        if (!isset(self::$tables[$tableKey])) {
             return null;
         }
         global $wpdb;
-        return $wpdb->prefix . $tableData;
+        return $wpdb->prefix . self::$tables[$tableKey];
     }
 
     public function get_schema() {
