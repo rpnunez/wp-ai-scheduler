@@ -26,12 +26,14 @@ class AIPS_Schedule_Controller {
         $data = array(
             'id' => isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0,
             'template_id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
-            'frequency' => isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily',
-            'start_time' => isset($_POST['start_time']) ? sanitize_text_field($_POST['start_time']) : null,
+            // SECURITY: Add length limit to prevent potential DoS or DB truncation issues
+            'frequency' => isset($_POST['frequency']) ? substr(sanitize_text_field($_POST['frequency']), 0, 50) : 'daily',
+            'start_time' => isset($_POST['start_time']) ? substr(sanitize_text_field($_POST['start_time']), 0, 50) : null,
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
-            'topic' => isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '',
+            // SECURITY: Limit topic length to reasonable size (1000 chars)
+            'topic' => isset($_POST['topic']) ? substr(sanitize_text_field($_POST['topic']), 0, 1000) : '',
             'article_structure_id' => isset($_POST['article_structure_id']) && $_POST['article_structure_id'] !== '' ? absint($_POST['article_structure_id']) : null,
-            'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? sanitize_text_field($_POST['rotation_pattern']) : null,
+            'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? substr(sanitize_text_field($_POST['rotation_pattern']), 0, 100) : null,
         );
 
         if (empty($data['template_id'])) {
