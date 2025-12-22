@@ -18,6 +18,7 @@ class AIPS_History {
         $this->repository = new AIPS_History_Repository();
         
         add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
+        add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
         add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
         add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
     }
@@ -50,6 +51,38 @@ class AIPS_History {
         $this->clear_history($status);
         
         wp_send_json_success(array('message' => __('History cleared successfully.', 'ai-post-scheduler')));
+    }
+
+    public function ajax_bulk_delete_history() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $ids = isset($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
+
+        if (empty($ids)) {
+            wp_send_json_error(array('message' => __('No items selected.', 'ai-post-scheduler')));
+        }
+
+        $deleted_count = 0;
+        foreach ($ids as $id) {
+            if ($this->repository->delete($id)) {
+                $deleted_count++;
+            }
+        }
+
+        if ($deleted_count > 0) {
+            wp_send_json_success(array(
+                'message' => sprintf(
+                    _n('%d item deleted.', '%d items deleted.', $deleted_count, 'ai-post-scheduler'),
+                    $deleted_count
+                )
+            ));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to delete items.', 'ai-post-scheduler')));
+        }
     }
     
     public function ajax_retry_generation() {

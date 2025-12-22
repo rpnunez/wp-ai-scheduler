@@ -171,7 +171,71 @@ class AIPS_Templates {
         ));
     }
 
+    /**
+     * Eager loads pending stats for all templates to avoid N+1 queries.
+     *
+     * @return array An array of stats keyed by template_id.
+     */
+    public function get_all_pending_stats() {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'aips_schedule';
+
+        // Fetch all active schedules in one query
+        $all_schedules = $wpdb->get_results("SELECT template_id, next_run, frequency FROM $table_schedule WHERE is_active = 1");
+
+        $stats_by_template = array();
+
+        $now = current_time('timestamp');
+        $today_end = strtotime('today 23:59:59', $now);
+        $week_end = strtotime('+7 days', $now);
+        $month_end = strtotime('+30 days', $now);
+
+        foreach ($all_schedules as $schedule) {
+            $tid = $schedule->template_id;
+            if (!isset($stats_by_template[$tid])) {
+                $stats_by_template[$tid] = array('today' => 0, 'week' => 0, 'month' => 0);
+            }
+
+            $cursor = strtotime($schedule->next_run);
+            $frequency = $schedule->frequency;
+            $max_iterations = 100; // Cap projections
+            $i = 0;
+
+            while ($cursor <= $month_end && $i < $max_iterations) {
+                // Count stats
+                if ($cursor <= $today_end) {
+                    $stats_by_template[$tid]['today']++;
+                }
+                if ($cursor <= $week_end) {
+                    $stats_by_template[$tid]['week']++;
+                }
+                if ($cursor <= $month_end) {
+                    $stats_by_template[$tid]['month']++;
+                } else {
+                    break;
+                }
+
+                if ($frequency === 'once') {
+                    break;
+                }
+
+                $cursor = $this->calculate_next_run($frequency, $cursor);
+                $i++;
+            }
+        }
+
+        return $stats_by_template;
+    }
+
     public function get_pending_stats($template_id) {
+        // Fallback for backward compatibility, but we encourage using get_all_pending_stats for lists.
+        // We can optimize this single call too by reusing the logic if needed,
+        // but since we are refactoring the main list, this is less critical.
+        // For now, let's keep the old implementation or wrap the new one?
+        // Wrapping is cleaner but fetching ALL might be overkill if we only need one.
+        // So we keep the old implementation for single fetch, but maybe we should optimize it too?
+        // Actually, the old implementation is fine for single fetch.
+
         global $wpdb;
         $table_schedule = $wpdb->prefix . 'aips_schedule';
 
@@ -205,9 +269,7 @@ class AIPS_Templates {
 
             while ($cursor <= $month_end && $i < $max_iterations) {
                 if ($cursor < $now) {
-                    // Skip past events that haven't run yet but update cursor?
-                    // Actually if next_run is in past, it will run next cron.
-                    // So count it as imminent.
+                    // Skip past events
                 }
 
                 if ($cursor <= $today_end) {

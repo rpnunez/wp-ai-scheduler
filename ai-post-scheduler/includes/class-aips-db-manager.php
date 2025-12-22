@@ -114,6 +114,56 @@ class AIPS_DB_Manager {
         return $sql;
     }
 
+    /**
+     * Parses the schema SQL to return a structured array of table definitions.
+     * This acts as the source of truth for System Status checks.
+     *
+     * @return array Array of tables and their columns.
+     */
+    public function get_schema_definitions() {
+        $sql_statements = $this->get_schema();
+        $definitions = array();
+        global $wpdb;
+
+        foreach ($sql_statements as $sql) {
+            // Extract table name
+            if (preg_match('/CREATE TABLE\s+(\S+)\s+\(/', $sql, $table_match)) {
+                $full_table_name = $table_match[1];
+                // Remove prefix to get the key used in check_database (e.g. 'aips_history')
+                // Note: strict check might fail if prefix is complex, but usually it works.
+                // Better to use the raw name as key, but check_database expects 'aips_history'.
+                // So we strip the prefix.
+                $table_name = str_replace($wpdb->prefix, '', $full_table_name);
+
+                $definitions[$table_name] = array();
+
+                // Extract content inside parentheses
+                if (preg_match('/\((.*)\)\s*[^)]*$/s', $sql, $content_match)) {
+                    $lines = explode(',', $content_match[1]);
+                    foreach ($lines as $line) {
+                        $line = trim($line);
+                        if (empty($line)) continue;
+
+                        // Skip keys and constraints
+                        if (preg_match('/^(PRIMARY KEY|KEY|UNIQUE KEY|INDEX|CONSTRAINT)/i', $line)) {
+                            continue;
+                        }
+
+                        // Extract column name (first word)
+                        $parts = explode(' ', $line);
+                        if (!empty($parts[0])) {
+                            // Clean backticks if present (though not used in get_schema currently)
+                            $col_name = str_replace('`', '', $parts[0]);
+                            $definitions[$table_name][] = $col_name;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $definitions;
+    }
+
     public static function install_tables() {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         $instance = new self();

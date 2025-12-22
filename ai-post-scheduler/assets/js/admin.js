@@ -40,6 +40,10 @@
             });
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
+            // History Bulk Actions
+            $(document).on('click', '#cb-select-all-1, #cb-select-all-2', this.toggleAllHistory);
+            $(document).on('click', '#aips-do-action-top', this.doBulkAction);
+
             // Template Search
             $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
             $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
@@ -589,6 +593,57 @@
             url.searchParams.delete('paged');
             
             window.location.href = url.toString();
+        },
+
+        toggleAllHistory: function() {
+            var checked = $(this).prop('checked');
+            $('input[name="history_ids[]"]').prop('checked', checked);
+            $('#cb-select-all-1, #cb-select-all-2').prop('checked', checked);
+        },
+
+        doBulkAction: function(e) {
+            e.preventDefault();
+            var action = $('#aips-bulk-action-selector-top').val();
+
+            if (action === '-1') {
+                return;
+            }
+
+            if (action === 'delete') {
+                var ids = [];
+                $('input[name="history_ids[]"]:checked').each(function() {
+                    ids.push($(this).val());
+                });
+
+                if (ids.length === 0) {
+                    alert('Please select at least one item.');
+                    return;
+                }
+
+                if (!confirm('Are you sure you want to delete ' + ids.length + ' item(s)?')) {
+                    return;
+                }
+
+                $.ajax({
+                    url: aipsAjax.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'aips_bulk_delete_history',
+                        nonce: aipsAjax.nonce,
+                        ids: ids
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            location.reload();
+                        } else {
+                            alert(response.data.message);
+                        }
+                    },
+                    error: function() {
+                        alert('An error occurred. Please try again.');
+                    }
+                });
+            }
         },
 
         toggleImagePrompt: function(e) {

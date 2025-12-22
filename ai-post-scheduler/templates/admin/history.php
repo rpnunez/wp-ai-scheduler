@@ -32,6 +32,14 @@ if (!defined('ABSPATH')) {
     </p>
 
     <div class="tablenav top">
+        <div class="alignleft actions bulkactions">
+            <select id="aips-bulk-action-selector-top">
+                <option value="-1"><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+                <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+            </select>
+            <input type="submit" id="aips-do-action-top" class="button action" value="<?php esc_attr_e('Apply', 'ai-post-scheduler'); ?>">
+        </div>
+
         <div class="alignleft actions">
             <select id="aips-filter-status">
                 <option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
@@ -51,6 +59,10 @@ if (!defined('ABSPATH')) {
     <table class="wp-list-table widefat fixed striped">
         <thead>
             <tr>
+                <td id="cb" class="manage-column column-cb check-column">
+                    <label class="screen-reader-text" for="cb-select-all-1"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
+                    <input id="cb-select-all-1" type="checkbox">
+                </td>
                 <th class="column-title"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
                 <th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
                 <th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
@@ -61,6 +73,10 @@ if (!defined('ABSPATH')) {
         <tbody>
             <?php foreach ($history['items'] as $item): ?>
             <tr>
+                <th scope="row" class="check-column">
+                    <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>"><?php esc_html_e('Select', 'ai-post-scheduler'); ?></label>
+                    <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" name="history_ids[]" value="<?php echo esc_attr($item->id); ?>">
+                </th>
                 <td class="column-title">
                     <?php if ($item->post_id): ?>
                     <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
@@ -102,6 +118,19 @@ if (!defined('ABSPATH')) {
             </tr>
             <?php endforeach; ?>
         </tbody>
+        <tfoot>
+            <tr>
+                <td class="manage-column column-cb check-column">
+                    <label class="screen-reader-text" for="cb-select-all-2"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
+                    <input id="cb-select-all-2" type="checkbox">
+                </td>
+                <th class="column-title"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
+                <th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
+                <th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+                <th class="column-date"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
+                <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+            </tr>
+        </tfoot>
     </table>
     
     <?php if ($history['pages'] > 1): ?>

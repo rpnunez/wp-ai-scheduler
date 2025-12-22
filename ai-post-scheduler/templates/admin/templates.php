@@ -34,9 +34,15 @@ if (!defined('ABSPATH')) {
                     $history = new AIPS_History();
                     $templates_class = new AIPS_Templates();
 
+                    // Bolt: Eager load stats to prevent N+1 queries
+                    $all_pending_stats = $templates_class->get_all_pending_stats();
+
                     foreach ($templates as $template):
                         $generated_count = $history->get_template_stats($template->id);
-                        $pending_stats = $templates_class->get_pending_stats($template->id);
+
+                        $pending_stats = isset($all_pending_stats[$template->id])
+                            ? $all_pending_stats[$template->id]
+                            : array('today' => 0, 'week' => 0, 'month' => 0);
                     ?>
                     <tr data-template-id="<?php echo esc_attr($template->id); ?>">
                         <td class="column-name">
