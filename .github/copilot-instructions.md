@@ -41,23 +41,23 @@ ai-post-scheduler/           # Main plugin directory
 
 ### Installation
 ```bash
-cd ai-post-scheduler
+# From the repository root
 composer install
 ```
 
 ### Running Tests
 ```bash
-# From the ai-post-scheduler directory
+# From the repository root
 composer test                # Run all tests
 composer test:verbose        # Run with verbose output
 composer test:coverage       # Generate HTML coverage report
-vendor/bin/phpunit tests/test-specific.php  # Run specific test file
+vendor/bin/phpunit ai-post-scheduler/tests/test-specific.php  # Run specific test file
 ```
 
 ### Important Notes
 - Tests can run without a full WordPress installation (bootstrap provides mocks)
 - The plugin requires Meow Apps AI Engine to be installed and activated
-- All commands should be run from the `ai-post-scheduler` directory
+- All commands should be run from the repository root directory
 
 ## Coding Standards
 
