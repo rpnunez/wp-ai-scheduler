@@ -9,13 +9,28 @@
 
 class Test_AIPS_DB_Manager extends WP_UnitTestCase {
 
+    private $original_prefix;
+
+    public function setUp() {
+        parent::setUp();
+        global $wpdb;
+        // Store original prefix
+        $this->original_prefix = $wpdb->prefix;
+        // Set standard test prefix
+        $wpdb->prefix = 'wp_';
+    }
+
+    public function tearDown() {
+        global $wpdb;
+        // Restore original prefix
+        $wpdb->prefix = $this->original_prefix;
+        parent::tearDown();
+    }
+
     /**
      * Test get_table_name with valid table
      */
     public function test_get_table_name_with_valid_table() {
-        global $wpdb;
-        $wpdb->prefix = 'wp_';
-        
         $result = AIPS_DB_Manager::get_table_name('aips_history');
         
         $this->assertEquals('wp_aips_history', $result);
@@ -25,9 +40,6 @@ class Test_AIPS_DB_Manager extends WP_UnitTestCase {
      * Test get_table_name with another valid table
      */
     public function test_get_table_name_with_templates_table() {
-        global $wpdb;
-        $wpdb->prefix = 'wp_';
-        
         $result = AIPS_DB_Manager::get_table_name('aips_templates');
         
         $this->assertEquals('wp_aips_templates', $result);
@@ -37,9 +49,6 @@ class Test_AIPS_DB_Manager extends WP_UnitTestCase {
      * Test get_table_name with schedule table
      */
     public function test_get_table_name_with_schedule_table() {
-        global $wpdb;
-        $wpdb->prefix = 'wp_';
-        
         $result = AIPS_DB_Manager::get_table_name('aips_schedule');
         
         $this->assertEquals('wp_aips_schedule', $result);
@@ -49,9 +58,6 @@ class Test_AIPS_DB_Manager extends WP_UnitTestCase {
      * Test get_table_name with voices table
      */
     public function test_get_table_name_with_voices_table() {
-        global $wpdb;
-        $wpdb->prefix = 'wp_';
-        
         $result = AIPS_DB_Manager::get_table_name('aips_voices');
         
         $this->assertEquals('wp_aips_voices', $result);
@@ -107,24 +113,17 @@ class Test_AIPS_DB_Manager extends WP_UnitTestCase {
      */
     public function test_get_table_name_with_custom_prefix() {
         global $wpdb;
-        $original_prefix = $wpdb->prefix;
         $wpdb->prefix = 'custom_';
         
         $result = AIPS_DB_Manager::get_table_name('aips_history');
         
         $this->assertEquals('custom_aips_history', $result);
-        
-        // Restore original prefix
-        $wpdb->prefix = $original_prefix;
     }
 
     /**
      * Test that all tables from get_table_names work with get_table_name
      */
     public function test_get_table_name_with_all_tables() {
-        global $wpdb;
-        $wpdb->prefix = 'wp_';
-        
         $tables = AIPS_DB_Manager::get_table_names();
         
         foreach ($tables as $table) {

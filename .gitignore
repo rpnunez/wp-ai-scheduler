@@ -1,17 +1,23 @@
-# Composer dependencies
-vendor/
-composer.lock
+# Composer
+ai-post-scheduler/vendor/
+ai-post-scheduler/composer.lock
 
-# PHPUnit coverage reports
-coverage/
+# PHPUnit
+ai-post-scheduler/coverage/
+ai-post-scheduler/.phpunit.result.cache
 
-# OS files
-.DS_Store
-Thumbs.db
-
-# IDE files
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+/tmp/
