@@ -29,11 +29,19 @@ if (!defined('ABSPATH')) {
                                 <?php echo esc_html($check['value']); ?>
                                 <?php if (!empty($check['details'])) : ?>
                                     <br>
-                                    <a href="#" class="aips-toggle-log-details" data-target="log-details-<?php echo esc_attr($key); ?>">
-                                        <?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>
-                                    </a>
-                                    <div id="log-details-<?php echo esc_attr($key); ?>" class="aips-log-details" style="display:none; margin-top: 10px;">
-                                        <textarea class="large-text code" rows="10" readonly><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
+                                    <div class="aips-details-controls">
+                                        <a href="#" class="aips-toggle-log-details" data-target="log-details-<?php echo esc_attr($key); ?>">
+                                            <?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>
+                                        </a>
+                                    </div>
+                                    <div id="log-details-<?php echo esc_attr($key); ?>" class="aips-log-details" style="display:none; margin-top: 10px; position: relative;">
+                                        <div class="aips-copy-wrapper" style="text-align: right; margin-bottom: 5px;">
+                                            <button type="button" class="button button-small aips-copy-details" data-target="log-textarea-<?php echo esc_attr($key); ?>">
+                                                <span class="dashicons dashicons-clipboard" style="font-size: 16px; height: 16px; width: 16px; vertical-align: text-bottom;"></span>
+                                                <?php esc_html_e('Copy to Clipboard', 'ai-post-scheduler'); ?>
+                                            </button>
+                                        </div>
+                                        <textarea id="log-textarea-<?php echo esc_attr($key); ?>" class="large-text code" rows="10" readonly><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
                                     </div>
                                 <?php endif; ?>
                             </td>
@@ -87,13 +95,3 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 </div>
-
-<script>
-jQuery(document).ready(function($) {
-    $('.aips-toggle-log-details').on('click', function(e) {
-        e.preventDefault();
-        var target = $(this).data('target');
-        $('#' + target).toggle();
-    });
-});
-</script>

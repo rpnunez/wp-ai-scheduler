@@ -1,0 +1,48 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/3.10.0/css/dashicons.min.css">
+            <style>
+                .aips-log-details { display: none; }
+                .button { padding: 5px 10px; cursor: pointer; }
+            </style>
+        </head>
+        <body>
+            <div class="wrap">
+                <h1>System Status</h1>
+                <div class="aips-status-page">
+                    <h2>Environment</h2>
+                    <table>
+                        <tr>
+                            <td>PHP Version</td>
+                            <td>
+                                8.0.0
+                                <br>
+                                <div class="aips-details-controls">
+                                    <a href="#" class="aips-toggle-log-details" data-target="log-details-php_version">Show Details</a>
+                                </div>
+                                <div id="log-details-php_version" class="aips-log-details" style="display:none;">
+                                    <div class="aips-copy-wrapper">
+                                        <button type="button" class="button aips-copy-details" data-target="log-textarea-php_version">
+                                            <span class="dashicons dashicons-clipboard"></span>
+                                            Copy to Clipboard
+                                        </button>
+                                    </div>
+                                    <textarea id="log-textarea-php_version" readonly>PHP Version: 8.0.0
+Memory Limit: 256M
+Max Execution Time: 300</textarea>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <script>
+                var aipsAjax = { ajaxUrl: '', nonce: '' };
+                window.AIPS = window.AIPS || {};
+            </script>
+            <!-- In real scenario, we load the JS file. Here we will inject it or load it if possible -->
+        </body>
+        </html>
