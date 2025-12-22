@@ -124,19 +124,22 @@ class AIPS_Image_Service {
         $post_slug = sanitize_title($post_title);
         $filename = $post_slug . '.jpg';
         
-        $upload_dir = wp_upload_dir();
-        $file_path = $upload_dir['path'] . '/' . $filename;
+        // Use wp_upload_bits to handle file creation and uniqueness
+        $upload = wp_upload_bits($filename, null, $image_data);
         
-        // Write image data to file
-        if (!file_put_contents($file_path, $image_data)) {
+        if (!empty($upload['error'])) {
             $error = new WP_Error(
                 'image_save_failed',
-                sprintf(__('Failed to write image file: %s', 'ai-post-scheduler'), $file_path)
+                sprintf(__('Failed to write image file: %s', 'ai-post-scheduler'), $upload['error'])
             );
             $this->logger->log($error->get_error_message(), 'error');
             return $error;
         }
         
+        $file_path = $upload['file'];
+        // Update filename to the actual saved filename (which might have -1, -2 suffix)
+        $filename = basename($file_path);
+
         $attachment_id = $this->create_attachment($file_path, $filename);
         
         if (is_wp_error($attachment_id)) {
