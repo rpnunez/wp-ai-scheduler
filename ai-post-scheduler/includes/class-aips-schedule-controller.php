@@ -23,17 +23,23 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        // SECURITY: Get configurable limits
+        $limit_frequency = get_option('aips_limit_frequency', 50);
+        $limit_start_time = get_option('aips_limit_start_time', 50);
+        $limit_topic = get_option('aips_limit_topic', 1000);
+        $limit_rotation_pattern = get_option('aips_limit_rotation_pattern', 100);
+
         $data = array(
             'id' => isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0,
             'template_id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
             // SECURITY: Add length limit to prevent potential DoS or DB truncation issues
-            'frequency' => isset($_POST['frequency']) ? substr(sanitize_text_field($_POST['frequency']), 0, 50) : 'daily',
-            'start_time' => isset($_POST['start_time']) ? substr(sanitize_text_field($_POST['start_time']), 0, 50) : null,
+            'frequency' => isset($_POST['frequency']) ? mb_substr(sanitize_text_field($_POST['frequency']), 0, $limit_frequency) : 'daily',
+            'start_time' => isset($_POST['start_time']) ? mb_substr(sanitize_text_field($_POST['start_time']), 0, $limit_start_time) : null,
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
-            // SECURITY: Limit topic length to reasonable size (1000 chars)
-            'topic' => isset($_POST['topic']) ? substr(sanitize_text_field($_POST['topic']), 0, 1000) : '',
+            // SECURITY: Limit topic length to reasonable size (configurable)
+            'topic' => isset($_POST['topic']) ? mb_substr(sanitize_text_field($_POST['topic']), 0, $limit_topic) : '',
             'article_structure_id' => isset($_POST['article_structure_id']) && $_POST['article_structure_id'] !== '' ? absint($_POST['article_structure_id']) : null,
-            'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? substr(sanitize_text_field($_POST['rotation_pattern']), 0, 100) : null,
+            'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? mb_substr(sanitize_text_field($_POST['rotation_pattern']), 0, $limit_rotation_pattern) : null,
         );
 
         if (empty($data['template_id'])) {

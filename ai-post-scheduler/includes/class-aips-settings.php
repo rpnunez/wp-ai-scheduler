@@ -121,11 +121,24 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_enable_logging');
         register_setting('aips_settings', 'aips_max_retries');
         register_setting('aips_settings', 'aips_ai_model');
+
+        // Security Limits
+        register_setting('aips_settings', 'aips_limit_topic', array('sanitize_callback' => 'absint'));
+        register_setting('aips_settings', 'aips_limit_frequency', array('sanitize_callback' => 'absint'));
+        register_setting('aips_settings', 'aips_limit_start_time', array('sanitize_callback' => 'absint'));
+        register_setting('aips_settings', 'aips_limit_rotation_pattern', array('sanitize_callback' => 'absint'));
         
         add_settings_section(
             'aips_general_section',
             __('General Settings', 'ai-post-scheduler'),
             array($this, 'general_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_section(
+            'aips_security_section',
+            __('Security & Limits', 'ai-post-scheduler'),
+            array($this, 'security_section_callback'),
             'aips-settings'
         );
         
@@ -167,6 +180,38 @@ class AIPS_Settings {
             array($this, 'logging_field_callback'),
             'aips-settings',
             'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_limit_topic',
+            __('Topic Limit (chars)', 'ai-post-scheduler'),
+            array($this, 'limit_topic_callback'),
+            'aips-settings',
+            'aips_security_section'
+        );
+
+        add_settings_field(
+            'aips_limit_frequency',
+            __('Frequency Limit (chars)', 'ai-post-scheduler'),
+            array($this, 'limit_frequency_callback'),
+            'aips-settings',
+            'aips_security_section'
+        );
+
+        add_settings_field(
+            'aips_limit_start_time',
+            __('Start Time Limit (chars)', 'ai-post-scheduler'),
+            array($this, 'limit_start_time_callback'),
+            'aips-settings',
+            'aips_security_section'
+        );
+
+        add_settings_field(
+            'aips_limit_rotation_pattern',
+            __('Rotation Pattern Limit (chars)', 'ai-post-scheduler'),
+            array($this, 'limit_rotation_pattern_callback'),
+            'aips-settings',
+            'aips_security_section'
         );
     }
     
@@ -227,6 +272,15 @@ class AIPS_Settings {
      */
     public function general_section_callback() {
         echo '<p>' . esc_html__('Configure default settings for AI-generated posts.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the description for the security settings section.
+     *
+     * @return void
+     */
+    public function security_section_callback() {
+        echo '<p>' . esc_html__('Configure input length limits to prevent abuse.', 'ai-post-scheduler') . '</p>';
     }
     
     /**
@@ -312,6 +366,26 @@ class AIPS_Settings {
             <?php esc_html_e('Enable detailed logging for debugging', 'ai-post-scheduler'); ?>
         </label>
         <?php
+    }
+
+    public function limit_topic_callback() {
+        $value = get_option('aips_limit_topic', 1000);
+        echo '<input type="number" name="aips_limit_topic" value="' . esc_attr($value) . '" class="regular-text">';
+    }
+
+    public function limit_frequency_callback() {
+        $value = get_option('aips_limit_frequency', 50);
+        echo '<input type="number" name="aips_limit_frequency" value="' . esc_attr($value) . '" class="regular-text">';
+    }
+
+    public function limit_start_time_callback() {
+        $value = get_option('aips_limit_start_time', 50);
+        echo '<input type="number" name="aips_limit_start_time" value="' . esc_attr($value) . '" class="regular-text">';
+    }
+
+    public function limit_rotation_pattern_callback() {
+        $value = get_option('aips_limit_rotation_pattern', 100);
+        echo '<input type="number" name="aips_limit_rotation_pattern" value="' . esc_attr($value) . '" class="regular-text">';
     }
     
     /**
