@@ -9,7 +9,9 @@ class AIPS_DB_Manager {
         'aips_history',
         'aips_templates',
         'aips_schedule',
-        'aips_voices'
+        'aips_voices',
+        'aips_article_structures',
+        'aips_prompt_sections'
     );
 
     public function __construct() {
@@ -46,6 +48,8 @@ class AIPS_DB_Manager {
         $table_templates = $tables['aips_templates'];
         $table_schedule = $tables['aips_schedule'];
         $table_voices = $tables['aips_voices'];
+        $table_structures = $tables['aips_article_structures'];
+        $table_sections = $tables['aips_prompt_sections'];
 
         $sql = array();
 
@@ -89,6 +93,8 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_schedule (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             template_id bigint(20) NOT NULL,
+            article_structure_id bigint(20) DEFAULT NULL,
+            rotation_pattern varchar(50) DEFAULT NULL,
             frequency varchar(50) NOT NULL DEFAULT 'daily',
             topic TEXT DEFAULT NULL,
             next_run datetime NOT NULL,
@@ -97,6 +103,7 @@ class AIPS_DB_Manager {
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY template_id (template_id),
+            KEY article_structure_id (article_structure_id),
             KEY next_run (next_run)
         ) $charset_collate;";
 
@@ -109,6 +116,34 @@ class AIPS_DB_Manager {
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_structures (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text,
+            structure_data longtext NOT NULL,
+            is_active tinyint(1) DEFAULT 1,
+            is_default tinyint(1) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY is_active (is_active),
+            KEY is_default (is_default)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_sections (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text,
+            section_key varchar(100) NOT NULL,
+            content text NOT NULL,
+            is_active tinyint(1) DEFAULT 1,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY section_key (section_key),
+            KEY is_active (is_active)
         ) $charset_collate;";
 
         return $sql;
