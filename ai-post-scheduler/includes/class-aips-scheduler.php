@@ -76,6 +76,39 @@ class AIPS_Scheduler {
             return $this->repository->create($schedule_data);
         }
     }
+
+    /**
+     * Save multiple schedules at once.
+     *
+     * @param array $schedules_data Array of schedule data arrays.
+     * @return int|false Number of schedules created or false on failure.
+     */
+    public function save_schedule_bulk($schedules_data) {
+        if (empty($schedules_data)) {
+            return 0;
+        }
+
+        $bulk_data = array();
+        foreach ($schedules_data as $data) {
+            $frequency = sanitize_text_field($data['frequency']);
+
+            if (isset($data['next_run'])) {
+                $next_run = sanitize_text_field($data['next_run']);
+            } else {
+                $next_run = $this->calculate_next_run($frequency, isset($data['start_time']) ? $data['start_time'] : null);
+            }
+
+            $bulk_data[] = array(
+                'template_id' => absint($data['template_id']),
+                'frequency' => $frequency,
+                'next_run' => $next_run,
+                'is_active' => isset($data['is_active']) ? 1 : 0,
+                'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+            );
+        }
+
+        return $this->repository->create_bulk($bulk_data);
+    }
     
     public function delete_schedule($id) {
         return $this->repository->delete($id);
@@ -96,12 +129,18 @@ class AIPS_Scheduler {
         return $this->interval_calculator->calculate_next_run($frequency, $start_time);
     }
     
-    public function process_scheduled_posts() {
+    public function process_scheduled_posts($limit = 5) {
         global $wpdb;
         
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
+        // Ensure limit is an integer
+        $limit = absint($limit);
+        if ($limit <= 0) {
+            $limit = 5;
+        }
+
         $due_schedules = $wpdb->get_results($wpdb->prepare("
             SELECT s.id AS schedule_id, s.*, t.*
             FROM {$this->schedule_table} s 
@@ -110,7 +149,8 @@ class AIPS_Scheduler {
             AND s.next_run <= %s 
             AND t.is_active = 1
             ORDER BY s.next_run ASC
-        ", current_time('mysql')));
+            LIMIT %d
+        ", current_time('mysql'), $limit));
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
