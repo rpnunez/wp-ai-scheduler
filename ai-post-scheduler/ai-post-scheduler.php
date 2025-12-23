@@ -70,6 +70,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-processor.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-manager.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-builder.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-type-selector.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-interval-calculator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-ai-service.php';
