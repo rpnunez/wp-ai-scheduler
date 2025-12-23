@@ -7,6 +7,16 @@
     // Extend AIPS with Planner functionality
     Object.assign(window.AIPS, {
 
+        clearTopics: function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to clear the list? This will remove all generated topics.')) {
+                $('#topics-list').empty();
+                $('#planner-results').slideUp();
+                $('#check-all-topics').prop('checked', false);
+                window.AIPS.updateSelectionCount();
+            }
+        },
+
         generateTopics: function(e) {
             e.preventDefault();
             var niche = $('#planner-niche').val();
@@ -167,6 +177,7 @@
         $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
         $(document).on('click', '#btn-parse-manual', window.AIPS.parseManualTopics);
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
+        $(document).on('click', '#btn-clear-topics', window.AIPS.clearTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
     });
