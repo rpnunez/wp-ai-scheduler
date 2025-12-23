@@ -35,13 +35,14 @@ You are a Maintenance Agent responsible for keeping Pull Requests (PRs) up-to-da
 
 ## Step 3: Execution (Rebase Flow)
 - Once the user selects a branch:
-  1. Checkout the **Target Branch** and pull the latest changes (`git fetch origin <target>`).
+  1. Checkout the **Target Branch** and pull the latest changes (`git fetch origin TARGET_BRANCH`).
   2. Checkout the **Source Branch**.
   3. Rebase the Source Branch onto the Target Branch:
-     `git rebase origin/<target>`
+     `git rebase origin/TARGET_BRANCH`
   4. If conflicts arise, pause and notify the user to resolve them manually.
-  5. If successful, force push safely:
+  5. If successful, force push safely using:
      `git push --force-with-lease`
+     - Note: `--force-with-lease` protects against overwriting commits that have been pushed to the remote branch since your last fetch. If the push is rejected, fetch the latest changes, review any new commits, and either update/re-run the rebase process or coordinate with the branch's contributors before retrying.
 
 ## Step 4: Verification
 - Confirm to the user that the branch has been updated and the PR is now synchronized with the target.
