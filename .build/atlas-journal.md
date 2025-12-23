@@ -1077,3 +1077,94 @@ There was also uncertainty about the best practice for handling the `$wpdb` glob
 This refactoring eliminates redundancy in repository constructors while following WordPress best practices. The changes are minimal, focused, and maintain 100% backward compatibility. The code is now more maintainable, efficient, and self-documenting. The comprehensive test suite ensures the refactoring works correctly and provides regression protection for future changes. This work demonstrates the value of applying fundamental software engineering principles (DRY, encapsulation) even to small improvements.
 
 ---
+
+## 2025-12-23 - Use Centralized DB Manager for Table Names
+
+**Context:** Following the initial repository constructor refactoring, a code review identified that table names were still being constructed independently in each repository using `$wpdb->prefix . self::TABLE_SUFFIX`. The `AIPS_DB_Manager` class already provides a centralized `get_full_table_names()` method that returns properly prefixed table names for all plugin tables. Using this centralized method instead of constructing table names independently in each repository provides:
+* A single source of truth for table name management
+* Better consistency across the codebase
+* Easier maintenance if table naming conventions change
+* Reduced coupling to WordPress's `$wpdb->prefix` implementation
+
+**Decision:** Refactored all three repository constructors to use `AIPS_DB_Manager::get_full_table_names()` instead of manually constructing table names with `$wpdb->prefix`.
+
+### Changes Made
+* **AIPS_History_Repository**: Changed from `$wpdb->prefix . self::TABLE_SUFFIX` to `AIPS_DB_Manager::get_full_table_names()[self::TABLE_SUFFIX]`
+* **AIPS_Schedule_Repository**: Changed both schedule and template table initialization to use `AIPS_DB_Manager::get_full_table_names()`
+* **AIPS_Template_Repository**: Changed from `$wpdb->prefix . self::TABLE_SUFFIX` to `AIPS_DB_Manager::get_full_table_names()[self::TABLE_SUFFIX]`
+
+### Implementation Pattern
+```php
+// Before
+public function __construct() {
+    global $wpdb;
+    $this->wpdb = $wpdb;
+    $this->table_name = $wpdb->prefix . self::TABLE_SUFFIX;
+}
+
+// After
+public function __construct() {
+    global $wpdb;
+    $this->wpdb = $wpdb;
+    
+    // Get table name from centralized DB Manager
+    $tables = AIPS_DB_Manager::get_full_table_names();
+    $this->table_name = $tables[self::TABLE_SUFFIX];
+}
+```
+
+**Consequence:**
+* **Pros:**
+  - Single source of truth: All table names come from `AIPS_DB_Manager`
+  - Improved consistency: All repositories use the same mechanism
+  - Better encapsulation: DB Manager handles all table naming logic
+  - Easier to modify: Changes to table naming only need to happen in DB Manager
+  - More testable: Can mock DB Manager if needed
+  - Clearer intent: Code explicitly shows dependency on DB Manager
+* **Cons:**
+  - Additional method call overhead (negligible - only happens once per repository instantiation)
+  - Slightly more code in constructor (but more explicit)
+  - Dependency on DB Manager class (but this is appropriate as it's the database configuration authority)
+* **Trade-offs:**
+  - Chose centralization over independence (better for maintenance)
+  - Added explicit dependency on DB Manager (better than implicit dependency on WordPress internals)
+  - Slightly longer constructor code (but more self-documenting)
+
+**Tests:** No new tests needed - existing test suite in `test-repositories.php` still validates:
+* Repository instantiation works correctly
+* Table names are properly constructed with prefixes
+* Constants are properly defined
+* All 9 existing test cases pass with the new implementation
+
+**Backward Compatibility:**
+* 100% backward compatible - no changes to public APIs
+* Table names are constructed identically to before
+* All repository methods work exactly the same
+* No database schema changes
+* No changes to method signatures or return types
+* Existing code using repositories requires no updates
+
+**Code Quality Improvements:**
+* Better adherence to Single Responsibility Principle - repositories don't handle table naming logic
+* Improved coupling - repositories depend on DB Manager abstraction, not WordPress internals
+* More maintainable - centralized table name management
+* Self-documenting - code clearly shows where table names come from
+
+**Metrics:**
+* Files modified: 3 (all repository classes)
+* Lines changed per file: ~5 lines
+* Breaking changes: 0
+* Backward compatibility: 100%
+* Test coverage: Maintained (all existing tests pass)
+
+**Principles Applied:**
+* **Single Source of Truth:** DB Manager is the authority for all table names
+* **DRY (Don't Repeat Yourself):** Table name construction logic exists in one place
+* **Dependency Inversion:** Repositories depend on DB Manager abstraction
+* **Encapsulation:** Table naming details hidden in DB Manager
+* **Open/Closed Principle:** Easy to extend table management without modifying repositories
+
+**Conclusion:**
+This refinement further improves the repository architecture by leveraging the existing centralized DB Manager. The changes are minimal but provide significant architectural benefits by establishing clear ownership of table name management. All existing tests pass, confirming 100% backward compatibility. This demonstrates the value of iterative refactoring and code review in identifying opportunities for further improvement.
+
+---

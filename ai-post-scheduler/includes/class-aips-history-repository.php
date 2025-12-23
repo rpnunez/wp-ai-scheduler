@@ -45,11 +45,16 @@ class AIPS_History_Repository {
      * Since $wpdb is a singleton that persists throughout the request lifecycle, storing
      * a reference to it once in the constructor is more efficient than globalizing it
      * in every method.
+     * 
+     * Uses AIPS_DB_Manager::get_full_table_names() to get the properly prefixed table name.
      */
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . self::TABLE_SUFFIX;
+        
+        // Get table name from centralized DB Manager
+        $tables = AIPS_DB_Manager::get_full_table_names();
+        $this->table_name = $tables[self::TABLE_SUFFIX];
     }
     
     /**
