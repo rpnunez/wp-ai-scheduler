@@ -11,13 +11,26 @@ class AIPS_Generator {
     private $template_processor;
     private $image_service;
     private $structure_manager;
+    private $post_creator;
+    private $history_repository;
     
-    public function __construct() {
-        $this->logger = new AIPS_Logger();
-        $this->ai_service = new AIPS_AI_Service();
-        $this->template_processor = new AIPS_Template_Processor();
-        $this->image_service = new AIPS_Image_Service($this->ai_service);
-        $this->structure_manager = new AIPS_Article_Structure_Manager();
+    public function __construct(
+        $logger = null,
+        $ai_service = null,
+        $template_processor = null,
+        $image_service = null,
+        $structure_manager = null,
+        $post_creator = null,
+        $history_repository = null
+    ) {
+        $this->logger = $logger ?: new AIPS_Logger();
+        $this->ai_service = $ai_service ?: new AIPS_AI_Service();
+        $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
+        $this->image_service = $image_service ?: new AIPS_Image_Service($this->ai_service);
+        $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
+        $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
+        $this->history_repository = $history_repository ?: new AIPS_History_Repository();
+
         $this->reset_generation_log();
     }
     
@@ -181,7 +194,6 @@ class AIPS_Generator {
     }
     
     public function generate_post($template, $voice = null, $topic = null) {
-        global $wpdb;
         
         // Dispatch post generation started event
         do_action('aips_post_generation_started', array(
@@ -217,20 +229,19 @@ class AIPS_Generator {
             );
         }
         
-        $history_table = $wpdb->prefix . 'aips_history';
+        // Create initial history record using Repository
+        $history_id = $this->history_repository->create(array(
+            'template_id' => $template->id,
+            'status' => 'processing',
+            'prompt' => $template->prompt_template,
+        ));
         
-        $history_id = $wpdb->insert(
-            $history_table,
-            array(
-                'template_id' => $template->id,
-                'status' => 'processing',
-                'prompt' => $template->prompt_template,
-                'created_at' => current_time('mysql'),
-            ),
-            array('%d', '%s', '%s', '%s')
-        );
-        
-        $history_id = $wpdb->insert_id;
+        if (!$history_id) {
+            // Fallback if repository fails (though unlikely)
+            $this->logger->log('Failed to create history record', 'error');
+            // We should probably stop here, but let's try to continue or just return error.
+            // For now, let's proceed but we won't be able to update history.
+        }
         
         // NEW: Check if article_structure_id is provided, build prompt with structure
         $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
@@ -264,18 +275,14 @@ class AIPS_Generator {
                 'error' => $content->get_error_message(),
             );
             
-            $wpdb->update(
-                $history_table,
-                array(
+            if ($history_id) {
+                $this->history_repository->update($history_id, array(
                     'status' => 'failed',
                     'error_message' => $content->get_error_message(),
                     'generation_log' => wp_json_encode($this->generation_log),
                     'completed_at' => current_time('mysql'),
-                ),
-                array('id' => $history_id),
-                array('%s', '%s', '%s', '%s'),
-                array('%d')
-            );
+                ));
+            }
             
             // Dispatch post generation failed event
             do_action('aips_post_generation_failed', array(
@@ -315,22 +322,15 @@ class AIPS_Generator {
         
         $excerpt = $this->generate_excerpt($title, $processed_prompt, $voice_excerpt_instructions);
         
-        $post_data = array(
-            'post_title' => $title,
-            'post_content' => $content,
-            'post_excerpt' => $excerpt,
-            'post_status' => $template->post_status ?: get_option('aips_default_post_status', 'draft'),
-            'post_author' => $template->post_author ?: get_current_user_id(),
-            'post_type' => 'post',
+        // Use Post Creator Service
+        $post_creation_data = array(
+            'title' => $title,
+            'content' => $content,
+            'excerpt' => $excerpt,
+            'template' => $template,
         );
-        
-        if (!empty($template->post_category)) {
-            $post_data['post_category'] = array($template->post_category);
-        } elseif ($default_cat = get_option('aips_default_category')) {
-            $post_data['post_category'] = array($default_cat);
-        }
-        
-        $post_id = wp_insert_post($post_data, true);
+
+        $post_id = $this->post_creator->create_post($post_creation_data);
         
         if (is_wp_error($post_id)) {
             $this->generation_log['completed_at'] = current_time('mysql');
@@ -342,27 +342,18 @@ class AIPS_Generator {
                 'generated_excerpt' => $excerpt,
             );
             
-            $wpdb->update(
-                $history_table,
-                array(
+            if ($history_id) {
+                $this->history_repository->update($history_id, array(
                     'status' => 'failed',
                     'error_message' => $post_id->get_error_message(),
                     'generated_title' => $title,
                     'generated_content' => $content,
                     'generation_log' => wp_json_encode($this->generation_log),
                     'completed_at' => current_time('mysql'),
-                ),
-                array('id' => $history_id),
-                array('%s', '%s', '%s', '%s', '%s', '%s'),
-                array('%d')
-            );
+                ));
+            }
             
             return $post_id;
-        }
-        
-        if (!empty($template->post_tags)) {
-            $tags = array_map('trim', explode(',', $template->post_tags));
-            wp_set_post_tags($post_id, $tags);
         }
         
         $featured_image_id = null;
@@ -372,7 +363,7 @@ class AIPS_Generator {
             
             if (!is_wp_error($featured_image_result)) {
                 $featured_image_id = $featured_image_result;
-                set_post_thumbnail($post_id, $featured_image_id);
+                $this->post_creator->set_featured_image($post_id, $featured_image_id);
                 $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
             } else {
                 $this->logger->log('Featured image generation failed: ' . $featured_image_result->get_error_message(), 'error');
@@ -394,20 +385,16 @@ class AIPS_Generator {
             'featured_image_id' => $featured_image_id,
         );
         
-        $wpdb->update(
-            $history_table,
-            array(
+        if ($history_id) {
+            $this->history_repository->update($history_id, array(
                 'post_id' => $post_id,
                 'status' => 'completed',
                 'generated_title' => $title,
                 'generated_content' => $content,
                 'generation_log' => wp_json_encode($this->generation_log),
                 'completed_at' => current_time('mysql'),
-            ),
-            array('id' => $history_id),
-            array('%d', '%s', '%s', '%s', '%s', '%s'),
-            array('%d')
-        );
+            ));
+        }
         
         $this->logger->log('Post generated successfully', 'info', array(
             'post_id' => $post_id,
