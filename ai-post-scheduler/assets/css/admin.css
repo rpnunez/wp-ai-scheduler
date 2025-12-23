@@ -554,3 +554,17 @@
         width: 100px;
     }
 }
+.aips-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.aips-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
