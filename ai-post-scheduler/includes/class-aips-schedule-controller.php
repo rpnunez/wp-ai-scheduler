@@ -34,6 +34,11 @@ class AIPS_Schedule_Controller {
             'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? sanitize_text_field($_POST['rotation_pattern']) : null,
         );
 
+        $limits = AIPS_Config::get_instance()->get_security_limits();
+        if (mb_strlen($data['topic']) > $limits['topic_max_length']) {
+             wp_send_json_error(array('message' => sprintf(__('Topic is too long. Max %d characters.', 'ai-post-scheduler'), $limits['topic_max_length'])));
+        }
+
         if (empty($data['template_id'])) {
             wp_send_json_error(array('message' => __('Please select a template.', 'ai-post-scheduler')));
         }

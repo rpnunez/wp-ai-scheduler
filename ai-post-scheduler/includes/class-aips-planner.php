@@ -20,11 +20,16 @@ class AIPS_Planner {
         $niche = isset($_POST['niche']) ? sanitize_text_field($_POST['niche']) : '';
         $count = isset($_POST['count']) ? absint($_POST['count']) : 10;
 
+        $limits = AIPS_Config::get_instance()->get_security_limits();
+        if (mb_strlen($niche) > $limits['topic_max_length']) {
+             wp_send_json_error(array('message' => sprintf(__('Niche length must be less than %d characters.', 'ai-post-scheduler'), $limits['topic_max_length'])));
+        }
+
         if (empty($niche)) {
             wp_send_json_error(array('message' => __('Please provide a niche or topic.', 'ai-post-scheduler')));
         }
 
-        if ($count < 1 || $count > 50) {
+        if ($count < 1 || $count > $limits['max_topics_count']) {
             $count = 10;
         }
 
@@ -87,6 +92,18 @@ class AIPS_Planner {
 
         // Sanitize topics
         $topics = array_map('sanitize_text_field', $topics);
+
+        $limits = AIPS_Config::get_instance()->get_security_limits();
+
+        if (count($topics) > $limits['max_topics_count']) {
+             wp_send_json_error(array('message' => sprintf(__('Cannot schedule more than %d topics at once.', 'ai-post-scheduler'), $limits['max_topics_count'])));
+        }
+
+        foreach ($topics as $topic) {
+            if (mb_strlen($topic) > $limits['topic_max_length']) {
+                wp_send_json_error(array('message' => sprintf(__('Topic "%s" is too long. Max %d characters.', 'ai-post-scheduler'), mb_substr($topic, 0, 30) . '...', $limits['topic_max_length'])));
+            }
+        }
 
         $scheduler = new AIPS_Scheduler();
         $count = 0;

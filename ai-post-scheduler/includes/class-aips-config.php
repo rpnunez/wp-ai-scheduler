@@ -215,6 +215,22 @@ class AIPS_Config {
             'level' => $this->is_debug_mode() ? 'debug' : 'info',
         );
     }
+
+    /**
+     * Get security limits for input validation.
+     *
+     * @return array Security limits.
+     */
+    public function get_security_limits() {
+        return array(
+            'name_max_length' => 255,
+            'topic_max_length' => 1000,
+            'prompt_max_length' => 10000,
+            'text_max_length' => 5000,
+            'url_max_length' => 2048,
+            'max_topics_count' => 50,
+        );
+    }
     
     // ========================================
     // Feature Flags

@@ -83,6 +83,20 @@ class AIPS_Templates {
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
         
+        $limits = AIPS_Config::get_instance()->get_security_limits();
+
+        if (mb_strlen($data['name']) > $limits['name_max_length']) {
+             wp_send_json_error(array('message' => sprintf(__('Template name is too long. Max %d characters.', 'ai-post-scheduler'), $limits['name_max_length'])));
+        }
+
+        if (mb_strlen($data['prompt_template']) > $limits['prompt_max_length']) {
+             wp_send_json_error(array('message' => sprintf(__('Prompt template is too long. Max %d characters.', 'ai-post-scheduler'), $limits['prompt_max_length'])));
+        }
+
+        if (mb_strlen($data['image_prompt']) > $limits['prompt_max_length']) {
+             wp_send_json_error(array('message' => sprintf(__('Image prompt is too long. Max %d characters.', 'ai-post-scheduler'), $limits['prompt_max_length'])));
+        }
+
         if (empty($data['name']) || empty($data['prompt_template'])) {
             wp_send_json_error(array('message' => __('Name and prompt template are required.', 'ai-post-scheduler')));
         }
