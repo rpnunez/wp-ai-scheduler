@@ -135,6 +135,7 @@ class AIPS_Schedule_Controller {
 
         $quantity = $template->post_quantity ?: 1;
         $post_ids = array();
+        $errors = array();
 
         $generator = new AIPS_Generator();
 
@@ -142,10 +143,18 @@ class AIPS_Schedule_Controller {
             $result = $generator->generate_post($template, $voice);
 
             if (is_wp_error($result)) {
-                wp_send_json_error(array('message' => $result->get_error_message()));
+                $errors[] = $result->get_error_message();
+            } else {
+                $post_ids[] = $result;
             }
+        }
 
-            $post_ids[] = $result;
+        if (empty($post_ids) && !empty($errors)) {
+            // All attempts failed
+            $error_msg = count($errors) > 1
+                ? __('All generation attempts failed.', 'ai-post-scheduler')
+                : $errors[0];
+            wp_send_json_error(array('message' => $error_msg, 'errors' => $errors));
         }
 
         $message = sprintf(
@@ -153,9 +162,17 @@ class AIPS_Schedule_Controller {
             count($post_ids)
         );
 
+        if (!empty($errors)) {
+            $message .= ' ' . sprintf(
+                __('(%d failed attempts)', 'ai-post-scheduler'),
+                count($errors)
+            );
+        }
+
         wp_send_json_success(array(
             'message' => $message,
             'post_ids' => $post_ids,
+            'errors' => $errors,
             'edit_url' => !empty($post_ids) ? get_edit_post_link($post_ids[0], 'raw') : ''
         ));
     }
