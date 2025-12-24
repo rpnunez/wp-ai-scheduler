@@ -343,7 +343,7 @@ class AIPS_Research_Service {
         }
         
         // Check for temporal words
-        $temporal_words = array('now', 'today', 'current', 'latest', 'new', 'trending', '2025', 'this year');
+        $temporal_words = array('now', 'today', 'current', 'latest', 'new', 'trending', 'this year');
         foreach ($temporal_words as $word) {
             if (strpos($all_text, $word) !== false) {
                 $freshness_score += 10;
