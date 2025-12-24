@@ -106,6 +106,9 @@ class AIPS_Scheduler {
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
+        // Limit the number of posts processed in a single run to prevent timeouts
+        $limit = apply_filters('aips_schedule_process_limit', 5);
+
         $due_schedules = $wpdb->get_results($wpdb->prepare("
             SELECT s.id AS schedule_id, s.*, t.*
             FROM {$this->schedule_table} s 
@@ -114,7 +117,8 @@ class AIPS_Scheduler {
             AND s.next_run <= %s 
             AND t.is_active = 1
             ORDER BY s.next_run ASC
-        ", current_time('mysql')));
+            LIMIT %d
+        ", current_time('mysql'), $limit));
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
