@@ -111,7 +111,7 @@ Once the user selects a specific PR/branch:
    ```
 
 4. **Handle outcomes:**
-   - **Success:** Proceed to step 5
+   - **Success:** Proceed to force push (see below)
    - **Conflicts:** Execute conflict handling procedure (see below)
    - **Error:** Report error details and stop
 
@@ -135,15 +135,17 @@ If conflicts occur:
    ```
 4. Wait for user to resolve and confirm before continuing
 
-5. **Force push with safety:**
-   ```bash
-   git push origin SOURCE_BRANCH --force-with-lease
-   ```
-   
-   **About `--force-with-lease`:**
-   - Protects against overwriting commits pushed to remote since your last fetch
-   - If push is rejected: fetch latest changes, review new commits, coordinate with contributors, then retry
-   - Safer than regular `--force` which can cause data loss
+### Force Push with Safety
+After successful rebase (with or without conflict resolution):
+
+```bash
+git push origin SOURCE_BRANCH --force-with-lease
+```
+
+**About `--force-with-lease`:**
+- Protects against overwriting commits pushed to remote since your last fetch
+- If push is rejected: fetch latest changes, review new commits, coordinate with contributors, then retry
+- Safer than regular `--force` which can cause data loss
 
 ## Step 4: Verification
 
