@@ -38,7 +38,7 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
         dbDelta($sql);
     }
     
-    public function tearDown() {
+    public function tearDown(): void {
         // Clean up test data
         global $wpdb;
         $table_name = $wpdb->prefix . 'aips_trending_topics';
