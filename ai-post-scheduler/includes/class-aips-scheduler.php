@@ -63,12 +63,19 @@ class AIPS_Scheduler {
             $next_run = $this->calculate_next_run($frequency, isset($data['start_time']) ? $data['start_time'] : null);
         }
         
+        $topic = isset($data['topic']) ? sanitize_text_field($data['topic']) : '';
+        $topic_limit = (int) get_option('aips_limit_topic', 1000);
+
+        if (mb_strlen($topic) > $topic_limit) {
+            $topic = mb_substr($topic, 0, $topic_limit);
+        }
+
         $schedule_data = array(
             'template_id' => absint($data['template_id']),
             'frequency' => $frequency,
             'next_run' => $next_run,
             'is_active' => isset($data['is_active']) ? 1 : 0,
-            'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+            'topic' => $topic,
             'article_structure_id' => isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
             'rotation_pattern' => isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
         );

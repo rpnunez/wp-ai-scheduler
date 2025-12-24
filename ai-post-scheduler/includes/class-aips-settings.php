@@ -168,6 +168,23 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
+
+        register_setting('aips_settings', 'aips_limit_topic');
+
+        add_settings_section(
+            'aips_security_section',
+            __('Security Limits', 'ai-post-scheduler'),
+            array($this, 'security_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_limit_topic',
+            __('Topic Character Limit', 'ai-post-scheduler'),
+            array($this, 'limit_topic_field_callback'),
+            'aips-settings',
+            'aips_security_section'
+        );
     }
     
     /**
@@ -311,6 +328,30 @@ class AIPS_Settings {
             <input type="checkbox" name="aips_enable_logging" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Enable detailed logging for debugging', 'ai-post-scheduler'); ?>
         </label>
+        <?php
+    }
+
+    /**
+     * Render the description for the security limits section.
+     *
+     * @return void
+     */
+    public function security_section_callback() {
+        echo '<p>' . esc_html__('Configure security limits to prevent misuse.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the topic limit setting field.
+     *
+     * Displays a number input for the topic character limit.
+     *
+     * @return void
+     */
+    public function limit_topic_field_callback() {
+        $value = get_option('aips_limit_topic', 1000);
+        ?>
+        <input type="number" name="aips_limit_topic" value="<?php echo esc_attr($value); ?>" min="10" max="10000" class="small-text">
+        <p class="description"><?php esc_html_e('Maximum number of characters allowed for topics.', 'ai-post-scheduler'); ?></p>
         <?php
     }
     
