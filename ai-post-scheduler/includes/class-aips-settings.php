@@ -121,6 +121,7 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_enable_logging');
         register_setting('aips_settings', 'aips_max_retries');
         register_setting('aips_settings', 'aips_ai_model');
+        register_setting('aips_settings', 'aips_limit_topic', 'absint');
         
         add_settings_section(
             'aips_general_section',
@@ -167,6 +168,21 @@ class AIPS_Settings {
             array($this, 'logging_field_callback'),
             'aips-settings',
             'aips_general_section'
+        );
+
+        add_settings_section(
+            'aips_security_section',
+            __('Security Limits', 'ai-post-scheduler'),
+            array($this, 'security_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_limit_topic',
+            __('Topic Character Limit', 'ai-post-scheduler'),
+            array($this, 'limit_topic_field_callback'),
+            'aips-settings',
+            'aips_security_section'
         );
     }
     
@@ -313,6 +329,30 @@ class AIPS_Settings {
         </label>
         <?php
     }
+
+    /**
+     * Render the description for the security settings section.
+     *
+     * @return void
+     */
+    public function security_section_callback() {
+        echo '<p>' . esc_html__('Configure security limits for input fields.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the topic limit setting field.
+     *
+     * Displays a number input for configuring the maximum character length for topics.
+     *
+     * @return void
+     */
+    public function limit_topic_field_callback() {
+        $value = get_option('aips_limit_topic', 1000);
+        ?>
+        <input type="number" name="aips_limit_topic" value="<?php echo esc_attr($value); ?>" min="10" max="10000" class="small-text">
+        <p class="description"><?php esc_html_e('Maximum number of characters allowed in the topic field.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
     
     /**
      * Render the main dashboard page.
@@ -325,16 +365,20 @@ class AIPS_Settings {
     public function render_dashboard_page() {
         global $wpdb;
         
-        $table_history = $wpdb->prefix . 'aips_history';
+        $history_repo = new AIPS_History_Repository();
+        $history_stats = $history_repo->get_stats();
+
+        $total_generated = $history_stats['completed'];
+        $failed_count = $history_stats['failed'];
+
         $table_schedule = $wpdb->prefix . 'aips_schedule';
         $table_templates = $wpdb->prefix . 'aips_templates';
         
-        $total_generated = $wpdb->get_var("SELECT COUNT(*) FROM $table_history WHERE status = 'completed'");
         $pending_scheduled = $wpdb->get_var("SELECT COUNT(*) FROM $table_schedule WHERE is_active = 1");
         $total_templates = $wpdb->get_var("SELECT COUNT(*) FROM $table_templates WHERE is_active = 1");
-        $failed_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_history WHERE status = 'failed'");
         
-        $recent_posts = $wpdb->get_results("SELECT * FROM $table_history ORDER BY created_at DESC LIMIT 5");
+        $recent_history = $history_repo->get_history(array('per_page' => 5));
+        $recent_posts = $recent_history['items'];
         
         $upcoming = $wpdb->get_results("
             SELECT s.*, t.name as template_name 

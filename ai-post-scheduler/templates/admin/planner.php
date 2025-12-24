@@ -35,8 +35,11 @@
         <h3><?php echo esc_html__('Review & Schedule', 'ai-post-scheduler'); ?></h3>
 
         <div class="aips-toolbar">
-            <label><input type="checkbox" id="check-all-topics"> <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?></label>
-            <span class="selection-count"></span>
+            <div class="aips-toolbar-left">
+                <label><input type="checkbox" id="check-all-topics"> <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?></label>
+                <span class="selection-count"></span>
+            </div>
+            <button type="button" id="btn-clear-list" class="button button-link-delete"><?php echo esc_html__('Clear List', 'ai-post-scheduler'); ?></button>
         </div>
 
         <div id="topics-list" class="aips-topics-grid">
