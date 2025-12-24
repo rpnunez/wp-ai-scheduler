@@ -42,29 +42,19 @@ class AIPS_AI_Service {
     private $config;
     
     /**
-     * @var array Circuit breaker state
+     * @var AIPS_Resilience_Service Resilience service
      */
-    private $circuit_breaker_state = array(
-        'failures' => 0,
-        'last_failure_time' => 0,
-        'state' => 'closed', // closed, open, half_open
-    );
-    
-    /**
-     * @var array Rate limiter state
-     */
-    private $rate_limiter_state = array(
-        'requests' => array(),
-    );
+    private $resilience_service;
     
     /**
      * Initialize the AI Service.
      */
-    public function __construct() {
-        $this->logger = new AIPS_Logger();
+    public function __construct($logger = null, $config = null, $resilience_service = null) {
+        $this->logger = $logger ?: new AIPS_Logger();
+        $this->config = $config ?: AIPS_Config::get_instance();
         $this->call_log = array();
-        $this->config = AIPS_Config::get_instance();
-        $this->load_circuit_breaker_state();
+
+        $this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service($this->logger, $this->config);
     }
     
     /**
@@ -113,14 +103,14 @@ class AIPS_AI_Service {
         }
         
         // Check circuit breaker
-        if (!$this->check_circuit_breaker()) {
+        if (!$this->resilience_service->check_circuit_breaker()) {
             $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
         
         // Check rate limiting
-        if (!$this->check_rate_limit()) {
+        if (!$this->resilience_service->check_rate_limit()) {
             $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, null, $options, $error->get_error_message());
             return $error;
@@ -129,7 +119,7 @@ class AIPS_AI_Service {
         $options = $this->prepare_options($options);
         
         // Try with retry logic
-        return $this->execute_with_retry(function() use ($ai, $prompt, $options) {
+        return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
             try {
                 $query = new Meow_MWAI_Query_Text($prompt);
                 
@@ -152,19 +142,19 @@ class AIPS_AI_Service {
                 
                 if ($response && !empty($response->result)) {
                     $this->log_call('text', $prompt, $response->result, $options);
-                    $this->record_success();
+                    $this->resilience_service->record_success();
                     return $response->result;
                 }
                 
                 $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
                 $this->log_call('text', $prompt, null, $options, $error->get_error_message());
-                $this->record_failure();
+                $this->resilience_service->record_failure();
                 return $error;
                 
             } catch (Exception $e) {
                 $error = new WP_Error('generation_failed', $e->getMessage());
                 $this->log_call('text', $prompt, null, $options, $e->getMessage());
-                $this->record_failure();
+                $this->resilience_service->record_failure();
                 return $error;
             }
         }, 'text', $prompt, $options);
@@ -333,209 +323,7 @@ class AIPS_AI_Service {
         );
     }
     
-    // ========================================
-    // Retry Logic with Exponential Backoff
-    // ========================================
-    
-    /**
-     * Execute a function with retry logic.
-     *
-     * Implements exponential backoff with jitter for retry attempts.
-     *
-     * @param callable $function Function to execute.
-     * @param string   $type     Request type for logging.
-     * @param string   $prompt   Prompt for logging.
-     * @param array    $options  Options for logging.
-     * @return mixed Function result or WP_Error.
-     */
-    private function execute_with_retry($function, $type, $prompt, $options) {
-        $retry_config = $this->config->get_retry_config();
-        
-        if (!$retry_config['enabled']) {
-            return $function();
-        }
-        
-        $max_attempts = $retry_config['max_attempts'];
-        $initial_delay = $retry_config['initial_delay'];
-        $attempt = 0;
-        $last_error = null;
-        
-        while ($attempt < $max_attempts) {
-            $attempt++;
-            
-            $result = $function();
-            
-            // If successful (not a WP_Error), return immediately
-            if (!is_wp_error($result)) {
-                if ($attempt > 1) {
-                    $this->logger->log("Retry successful on attempt {$attempt}", 'info', array(
-                        'type' => $type,
-                        'attempts' => $attempt,
-                    ));
-                }
-                return $result;
-            }
-            
-            $last_error = $result;
-            
-            // If we've reached max attempts, return the error
-            if ($attempt >= $max_attempts) {
-                $this->logger->log("Max retry attempts reached ({$max_attempts})", 'error', array(
-                    'type' => $type,
-                    'error' => $result->get_error_message(),
-                ));
-                break;
-            }
-            
-            // Calculate delay with exponential backoff and jitter
-            $delay = $this->calculate_retry_delay($attempt, $initial_delay, $retry_config);
-            
-            $this->logger->log("Retry attempt {$attempt} failed, waiting {$delay}s before retry", 'warning', array(
-                'type' => $type,
-                'error' => $result->get_error_message(),
-            ));
-            
-            sleep($delay);
-        }
-        
-        return $last_error;
-    }
-    
-    /**
-     * Calculate retry delay with exponential backoff and jitter.
-     *
-     * @param int   $attempt       Current attempt number.
-     * @param int   $initial_delay Initial delay in seconds.
-     * @param array $config        Retry configuration.
-     * @return int Delay in seconds.
-     */
-    private function calculate_retry_delay($attempt, $initial_delay, $config) {
-        // Exponential backoff: delay = initial_delay * (2 ^ (attempt - 1))
-        $delay = $initial_delay * pow(2, $attempt - 1);
-        
-        // Cap at 60 seconds
-        $delay = min($delay, 60);
-        
-        // Add jitter (random 0-25% of delay) to prevent thundering herd
-        if ($config['jitter']) {
-            $jitter = rand(0, (int)($delay * 0.25));
-            $delay += $jitter;
-        }
-        
-        return (int) $delay;
-    }
-    
-    // ========================================
-    // Circuit Breaker Pattern
-    // ========================================
-    
-    /**
-     * Load circuit breaker state from transient.
-     */
-    private function load_circuit_breaker_state() {
-        $state = get_transient('aips_circuit_breaker_state');
-        if ($state !== false) {
-            $this->circuit_breaker_state = $state;
-        }
-    }
-    
-    /**
-     * Save circuit breaker state to transient.
-     */
-    private function save_circuit_breaker_state() {
-        set_transient('aips_circuit_breaker_state', $this->circuit_breaker_state, HOUR_IN_SECONDS);
-    }
-    
-    /**
-     * Check if circuit breaker allows requests.
-     *
-     * @return bool True if requests are allowed.
-     */
-    private function check_circuit_breaker() {
-        $cb_config = $this->config->get_circuit_breaker_config();
-        
-        if (!$cb_config['enabled']) {
-            return true;
-        }
-        
-        $state = $this->circuit_breaker_state['state'];
-        $failures = $this->circuit_breaker_state['failures'];
-        $last_failure = $this->circuit_breaker_state['last_failure_time'];
-        $threshold = $cb_config['failure_threshold'];
-        $timeout = $cb_config['timeout'];
-        
-        // Circuit is open (blocking requests)
-        if ($state === 'open') {
-            $time_since_failure = time() - $last_failure;
-            
-            // Check if timeout has passed
-            if ($time_since_failure >= $timeout) {
-                // Try half-open state
-                $this->circuit_breaker_state['state'] = 'half_open';
-                $this->save_circuit_breaker_state();
-                $this->logger->log('Circuit breaker entering half-open state', 'info');
-                return true;
-            }
-            
-            $this->logger->log('Circuit breaker is open, blocking request', 'warning');
-            return false;
-        }
-        
-        // Circuit is closed or half-open, allow requests
-        return true;
-    }
-    
-    /**
-     * Record a successful request for circuit breaker.
-     */
-    private function record_success() {
-        $cb_config = $this->config->get_circuit_breaker_config();
-        
-        if (!$cb_config['enabled']) {
-            return;
-        }
-        
-        $state = $this->circuit_breaker_state['state'];
-        
-        // If half-open, close the circuit
-        if ($state === 'half_open') {
-            $this->circuit_breaker_state['state'] = 'closed';
-            $this->circuit_breaker_state['failures'] = 0;
-            $this->save_circuit_breaker_state();
-            $this->logger->log('Circuit breaker closed after successful request', 'info');
-        } elseif ($state === 'closed') {
-            // Reset failure count on success
-            $this->circuit_breaker_state['failures'] = 0;
-            $this->save_circuit_breaker_state();
-        }
-    }
-    
-    /**
-     * Record a failed request for circuit breaker.
-     */
-    private function record_failure() {
-        $cb_config = $this->config->get_circuit_breaker_config();
-        
-        if (!$cb_config['enabled']) {
-            return;
-        }
-        
-        $threshold = $cb_config['failure_threshold'];
-        
-        $this->circuit_breaker_state['failures']++;
-        $this->circuit_breaker_state['last_failure_time'] = time();
-        
-        // Open circuit if threshold exceeded
-        if ($this->circuit_breaker_state['failures'] >= $threshold) {
-            $this->circuit_breaker_state['state'] = 'open';
-            $this->logger->log('Circuit breaker opened after reaching failure threshold', 'error', array(
-                'failures' => $this->circuit_breaker_state['failures'],
-                'threshold' => $threshold,
-            ));
-        }
-        
-        $this->save_circuit_breaker_state();
-    }
+    // Delegate methods to Resilience Service for backward compatibility and access
     
     /**
      * Reset circuit breaker manually.
@@ -543,14 +331,7 @@ class AIPS_AI_Service {
      * @return bool True on success.
      */
     public function reset_circuit_breaker() {
-        $this->circuit_breaker_state = array(
-            'failures' => 0,
-            'last_failure_time' => 0,
-            'state' => 'closed',
-        );
-        $this->save_circuit_breaker_state();
-        $this->logger->log('Circuit breaker manually reset', 'info');
-        return true;
+        return $this->resilience_service->reset_circuit_breaker();
     }
     
     /**
@@ -559,55 +340,7 @@ class AIPS_AI_Service {
      * @return array Circuit breaker status.
      */
     public function get_circuit_breaker_status() {
-        return $this->circuit_breaker_state;
-    }
-    
-    // ========================================
-    // Rate Limiting
-    // ========================================
-    
-    /**
-     * Check if rate limit allows requests.
-     *
-     * @return bool True if requests are allowed.
-     */
-    private function check_rate_limit() {
-        $rl_config = $this->config->get_rate_limit_config();
-        
-        if (!$rl_config['enabled']) {
-            return true;
-        }
-        
-        $max_requests = $rl_config['requests'];
-        $period = $rl_config['period'];
-        $current_time = time();
-        
-        // Load rate limiter state from transient
-        $requests = get_transient('aips_rate_limiter_requests');
-        if ($requests === false) {
-            $requests = array();
-        }
-        
-        // Remove old requests outside the time window
-        $requests = array_filter($requests, function($timestamp) use ($current_time, $period) {
-            return ($current_time - $timestamp) < $period;
-        });
-        
-        // Check if limit exceeded
-        if (count($requests) >= $max_requests) {
-            $this->logger->log('Rate limit exceeded', 'warning', array(
-                'requests' => count($requests),
-                'max' => $max_requests,
-                'period' => $period,
-            ));
-            return false;
-        }
-        
-        // Add current request
-        $requests[] = $current_time;
-        set_transient('aips_rate_limiter_requests', $requests, $period);
-        
-        return true;
+        return $this->resilience_service->get_circuit_breaker_status();
     }
     
     /**
@@ -616,28 +349,7 @@ class AIPS_AI_Service {
      * @return array Rate limiter status.
      */
     public function get_rate_limiter_status() {
-        $rl_config = $this->config->get_rate_limit_config();
-        $requests = get_transient('aips_rate_limiter_requests');
-        
-        if ($requests === false) {
-            $requests = array();
-        }
-        
-        $current_time = time();
-        $period = $rl_config['period'];
-        
-        // Count recent requests
-        $recent_requests = array_filter($requests, function($timestamp) use ($current_time, $period) {
-            return ($current_time - $timestamp) < $period;
-        });
-        
-        return array(
-            'enabled' => $rl_config['enabled'],
-            'current_requests' => count($recent_requests),
-            'max_requests' => $rl_config['requests'],
-            'period' => $period,
-            'remaining' => max(0, $rl_config['requests'] - count($recent_requests)),
-        );
+        return $this->resilience_service->get_rate_limiter_status();
     }
     
     /**
@@ -646,8 +358,6 @@ class AIPS_AI_Service {
      * @return bool True on success.
      */
     public function reset_rate_limiter() {
-        delete_transient('aips_rate_limiter_requests');
-        $this->logger->log('Rate limiter manually reset', 'info');
-        return true;
+        return $this->resilience_service->reset_rate_limiter();
     }
 }
