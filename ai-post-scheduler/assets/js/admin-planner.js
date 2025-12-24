@@ -96,6 +96,67 @@
             $('.selection-count').text(count + ' selected');
         },
 
+        copySelectedTopics: function(e) {
+            e.preventDefault();
+            var topics = [];
+
+            $('.topic-checkbox:checked').each(function() {
+                var val = $(this).siblings('.topic-text-input').val();
+                if (val && val.trim().length > 0) {
+                    topics.push(val.trim());
+                }
+            });
+
+            if (topics.length === 0) {
+                alert('Please select at least one topic.');
+                return;
+            }
+
+            var text = topics.join('\n');
+            var $btn = $(this);
+            var originalText = $btn.html();
+
+            // Copy to clipboard
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    $btn.text('Copied!');
+                    setTimeout(function() {
+                        $btn.html(originalText);
+                    }, 2000);
+                }).catch(function(err) {
+                    console.error('Failed to copy: ', err);
+                    alert('Failed to copy topics. Please try manually.');
+                });
+            } else {
+                // Fallback for older browsers
+                var textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    $btn.text('Copied!');
+                    setTimeout(function() {
+                        $btn.html(originalText);
+                    }, 2000);
+                } catch (err) {
+                    alert('Failed to copy topics. Please try manually.');
+                }
+                document.body.removeChild(textArea);
+            }
+        },
+
+        clearTopics: function(e) {
+            if (e) e.preventDefault();
+            if (confirm('Are you sure you want to clear the list?')) {
+                $('#topics-list').empty();
+                $('#planner-results').slideUp();
+                $('#planner-niche').val('');
+                $('#planner-manual-topics').val('');
+                window.AIPS.updateSelectionCount();
+            }
+        },
+
         bulkSchedule: function(e) {
             e.preventDefault();
             var topics = [];
@@ -166,6 +227,8 @@
     $(document).ready(function() {
         $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
         $(document).on('click', '#btn-parse-manual', window.AIPS.parseManualTopics);
+        $(document).on('click', '#btn-copy-topics', window.AIPS.copySelectedTopics);
+        $(document).on('click', '#btn-clear-topics', window.AIPS.clearTopics);
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
