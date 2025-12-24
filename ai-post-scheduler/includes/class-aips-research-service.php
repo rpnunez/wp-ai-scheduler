@@ -398,10 +398,10 @@ class AIPS_Research_Service {
             return $score2 <=> $score1; // Higher scores first
         }
         
-        // If scores are equal, compare by keyword count
+        // If scores are equal, compare by keyword count (more keywords first)
         $keywords1 = isset($topic1['keywords']) ? count($topic1['keywords']) : 0;
         $keywords2 = isset($topic2['keywords']) ? count($topic2['keywords']) : 0;
         
-        return $keywords2 <=> $keywords1;
+        return $keywords1 <=> $keywords2;
     }
 }
