@@ -139,6 +139,18 @@ class AIPS_History {
             'status' => $status_filter,
             'search' => $search_query,
         ));
+
+        if (!empty($history['items'])) {
+            $post_ids = array();
+            foreach ($history['items'] as $item) {
+                if (!empty($item->post_id)) {
+                    $post_ids[] = $item->post_id;
+                }
+            }
+            if (!empty($post_ids)) {
+                _prime_post_caches($post_ids);
+            }
+        }
         
         $stats = $this->get_stats();
         

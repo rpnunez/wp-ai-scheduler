@@ -29,7 +29,7 @@ class AIPS_Schedule_Controller {
             'frequency' => isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily',
             'start_time' => isset($_POST['start_time']) ? sanitize_text_field($_POST['start_time']) : null,
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
-            'topic' => isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '',
+            'topic' => isset($_POST['topic']) ? sanitize_text_field(mb_substr($_POST['topic'], 0, get_option('aips_limit_topic', 1000))) : '',
             'article_structure_id' => isset($_POST['article_structure_id']) && $_POST['article_structure_id'] !== '' ? absint($_POST['article_structure_id']) : null,
             'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? sanitize_text_field($_POST['rotation_pattern']) : null,
         );

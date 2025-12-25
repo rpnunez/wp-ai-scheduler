@@ -96,6 +96,19 @@
             $('.selection-count').text(count + ' selected');
         },
 
+        clearTopics: function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to clear the list? This cannot be undone.')) {
+                 $('#topics-list').html('');
+                 $('#planner-results').slideUp();
+                 $('#planner-niche').val('');
+                 $('#planner-manual-topics').val('');
+                 $('.selection-count').text('');
+                 $('#check-all-topics').prop('checked', false);
+                 window.AIPS.updateSelectionCount();
+            }
+        },
+
         bulkSchedule: function(e) {
             e.preventDefault();
             var topics = [];
@@ -167,6 +180,7 @@
         $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
         $(document).on('click', '#btn-parse-manual', window.AIPS.parseManualTopics);
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
+        $(document).on('click', '#btn-clear-list', window.AIPS.clearTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
     });
