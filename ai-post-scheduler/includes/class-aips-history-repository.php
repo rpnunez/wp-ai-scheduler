@@ -160,6 +160,12 @@ class AIPS_History_Repository {
      * }
      */
     public function get_stats() {
+        $cached_stats = get_transient('aips_history_stats');
+
+        if ($cached_stats !== false) {
+            return $cached_stats;
+        }
+
         $results = $this->wpdb->get_row("
             SELECT
                 COUNT(*) as total,
@@ -179,6 +185,8 @@ class AIPS_History_Repository {
         $stats['success_rate'] = $stats['total'] > 0 
             ? round(($stats['completed'] / $stats['total']) * 100, 1) 
             : 0;
+
+        set_transient('aips_history_stats', $stats, HOUR_IN_SECONDS);
         
         return $stats;
     }
@@ -229,6 +237,10 @@ class AIPS_History_Repository {
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
+        if ($result) {
+            delete_transient('aips_history_stats');
+        }
+
         return $result ? $this->wpdb->insert_id : false;
     }
     
@@ -282,13 +294,19 @@ class AIPS_History_Repository {
             return false;
         }
         
-        return $this->wpdb->update(
+        $result = $this->wpdb->update(
             $this->table_name,
             $update_data,
             array('id' => $id),
             $format,
             array('%d')
-        ) !== false;
+        );
+
+        if ($result !== false) {
+            delete_transient('aips_history_stats');
+        }
+
+        return $result !== false;
     }
     
     /**
@@ -298,6 +316,8 @@ class AIPS_History_Repository {
      * @return int|false Number of rows affected or false on failure.
      */
     public function delete_by_status($status = '') {
+        delete_transient('aips_history_stats');
+
         if (empty($status)) {
             return $this->wpdb->query("TRUNCATE TABLE {$this->table_name}");
         }
@@ -312,6 +332,12 @@ class AIPS_History_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
-        return $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
+        $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
+
+        if ($result !== false) {
+            delete_transient('aips_history_stats');
+        }
+
+        return $result !== false;
     }
 }
