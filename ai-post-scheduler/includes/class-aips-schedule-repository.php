@@ -151,6 +151,60 @@ class AIPS_Schedule_Repository {
         
         return $result ? $this->wpdb->insert_id : false;
     }
+
+    /**
+     * Create multiple schedules in a single query.
+     *
+     * @param array $data_items Array of schedule data arrays.
+     * @return int Number of rows inserted.
+     */
+    public function create_bulk($data_items) {
+        if (empty($data_items)) {
+            return 0;
+        }
+
+        $values = array();
+        $placeholders = array();
+
+        // Prepare data for bulk insert
+        foreach ($data_items as $data) {
+            $template_id = absint($data['template_id']);
+            $frequency = sanitize_text_field($data['frequency']);
+            $next_run = sanitize_text_field($data['next_run']);
+            $is_active = !empty($data['is_active']) ? 1 : 0;
+            $topic = isset($data['topic']) ? sanitize_text_field($data['topic']) : '';
+
+            // Build placeholder for this row
+            $row_placeholders = array('%d', '%s', '%s', '%d', '%s');
+            $values[] = $template_id;
+            $values[] = $frequency;
+            $values[] = $next_run;
+            $values[] = $is_active;
+            $values[] = $topic;
+
+            // Handle optional article_structure_id
+            if (isset($data['article_structure_id']) && !empty($data['article_structure_id'])) {
+                $row_placeholders[] = '%d';
+                $values[] = absint($data['article_structure_id']);
+            } else {
+                $row_placeholders[] = 'NULL';
+            }
+
+            // Handle optional rotation_pattern
+            if (isset($data['rotation_pattern']) && !empty($data['rotation_pattern'])) {
+                $row_placeholders[] = '%s';
+                $values[] = sanitize_text_field($data['rotation_pattern']);
+            } else {
+                $row_placeholders[] = 'NULL';
+            }
+
+            $placeholders[] = "(" . implode(', ', $row_placeholders) . ")";
+        }
+
+        $query = "INSERT INTO {$this->schedule_table} (template_id, frequency, next_run, is_active, topic, article_structure_id, rotation_pattern) VALUES " . implode(', ', $placeholders);
+
+        return $this->wpdb->query($this->wpdb->prepare($query, $values));
+    }
     
     /**
      * Update an existing schedule.
