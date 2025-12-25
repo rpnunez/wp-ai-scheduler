@@ -116,7 +116,19 @@ class AIPS_Scheduler {
         
         $this->logger->log('Starting scheduled post generation', 'info');
 
-        $limit = apply_filters('aips_schedule_process_limit', 5);
+        $default_limit = 5;
+        $limit         = apply_filters('aips_schedule_process_limit', $default_limit);
+
+        // Ensure the limit is a positive integer within a reasonable range.
+        $limit = absint( $limit );
+        if ( $limit <= 0 ) {
+            $limit = $default_limit;
+        }
+
+        $max_limit = 50;
+        if ( $limit > $max_limit ) {
+            $limit = $max_limit;
+        }
         
         $due_schedules = $wpdb->get_results($wpdb->prepare("
             SELECT s.id AS schedule_id, s.*, t.*
