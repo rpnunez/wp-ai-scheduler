@@ -13,8 +13,32 @@ class AIPS_Logger {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
         
-        $this->log_file = $log_dir . '/aips-' . date('Y-m-d') . '.log';
+        // SECURITY: Append a random secret to the log filename to prevent
+        // unauthorized access on servers where .htaccess is ignored (e.g. Nginx).
+        $secret = $this->get_log_secret();
+
+        $this->log_file = $log_dir . '/aips-' . date('Y-m-d') . '-' . $secret . '.log';
         $this->enabled = (bool) get_option('aips_enable_logging', true);
+    }
+
+    /**
+     * Get or generate a persistent secret token for log files.
+     * This ensures log filenames are not guessable.
+     */
+    private function get_log_secret() {
+        $secret = get_option('aips_log_secret');
+
+        if (empty($secret)) {
+            // Generate a secure random string
+            if (function_exists('wp_generate_password')) {
+                $secret = wp_generate_password(12, false);
+            } else {
+                $secret = bin2hex(random_bytes(6));
+            }
+            update_option('aips_log_secret', $secret);
+        }
+
+        return $secret;
     }
 
     private function ensure_directory_exists() {
