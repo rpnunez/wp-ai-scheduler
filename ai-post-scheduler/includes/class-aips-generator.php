@@ -13,6 +13,7 @@ class AIPS_Generator {
     private $structure_manager;
     private $post_creator;
     private $history_repository;
+    private $prompt_builder;
     
     public function __construct(
         $logger = null,
@@ -21,7 +22,8 @@ class AIPS_Generator {
         $image_service = null,
         $structure_manager = null,
         $post_creator = null,
-        $history_repository = null
+        $history_repository = null,
+        $prompt_builder = null
     ) {
         $this->logger = $logger ?: new AIPS_Logger();
         $this->ai_service = $ai_service ?: new AIPS_AI_Service();
@@ -30,6 +32,7 @@ class AIPS_Generator {
         $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
         $this->history_repository = $history_repository ?: new AIPS_History_Repository();
+        $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder();
 
         $this->reset_generation_log();
     }
@@ -148,11 +151,7 @@ class AIPS_Generator {
     }
     
     public function generate_title($prompt, $voice_title_prompt = null, $options = array()) {
-        if ($voice_title_prompt) {
-            $title_prompt = $voice_title_prompt . "\n\n" . $prompt;
-        } else {
-            $title_prompt = "Generate a compelling blog post title for the following topic. Return only the title, nothing else:\n\n" . $prompt;
-        }
+        $title_prompt = $this->prompt_builder->build_title_prompt($prompt, $voice_title_prompt);
         
         $options['max_tokens'] = 100;
         
@@ -169,15 +168,7 @@ class AIPS_Generator {
     }
     
     public function generate_excerpt($title, $content, $voice_excerpt_instructions = null, $options = array()) {
-        $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 characters. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
-        
-        if ($voice_excerpt_instructions) {
-            $excerpt_prompt .= $voice_excerpt_instructions . "\n\n";
-        }
-        
-        $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
-        $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
-        $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
+        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice_excerpt_instructions);
         
         $options['max_tokens'] = 150;
         
@@ -259,12 +250,16 @@ class AIPS_Generator {
             $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
         }
         
+        $voice_instructions = null;
         if ($voice) {
             $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
-            $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
         }
+
+        // Merge the main prompt with voice instructions
+        $processed_prompt = $this->prompt_builder->build_base_content_prompt($processed_prompt, $voice_instructions);
         
-        $content_prompt = $processed_prompt . "\n\nOutput the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.";
+        // Add final formatting instructions
+        $content_prompt = $this->prompt_builder->add_formatting_instructions($processed_prompt);
         
         $content = $this->generate_content($content_prompt, array(), 'content');
         
