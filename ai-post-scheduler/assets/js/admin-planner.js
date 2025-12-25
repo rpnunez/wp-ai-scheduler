@@ -96,6 +96,71 @@
             $('.selection-count').text(count + ' selected');
         },
 
+        copySelectedTopics: function() {
+            var topics = [];
+            $('.topic-checkbox:checked').each(function() {
+                var val = $(this).siblings('.topic-text-input').val();
+                if (val && val.trim().length > 0) {
+                    topics.push(val.trim());
+                }
+            });
+
+            if (topics.length === 0) {
+                alert('Please select at least one topic to copy.');
+                return;
+            }
+
+            var text = topics.join('\n');
+            var $btn = $(this);
+            var originalText = $btn.text();
+
+            // Try using clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    $btn.text('Copied!');
+                    setTimeout(function() { $btn.text(originalText); }, 2000);
+                }).catch(function(err) {
+                    console.error('Could not copy text: ', err);
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                fallbackCopyTextToClipboard(text);
+            }
+
+            function fallbackCopyTextToClipboard(text) {
+                var textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";  // Avoid scrolling to bottom
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    var successful = document.execCommand('copy');
+                    if (successful) {
+                        $btn.text('Copied!');
+                        setTimeout(function() { $btn.text(originalText); }, 2000);
+                    } else {
+                        alert('Unable to copy to clipboard');
+                    }
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                    alert('Unable to copy to clipboard');
+                }
+                document.body.removeChild(textArea);
+            }
+        },
+
+        clearTopics: function() {
+            if (confirm('Are you sure you want to clear the list?')) {
+                $('#topics-list').empty();
+                $('#planner-results').slideUp();
+                $('#planner-niche').val('');
+                $('#planner-count').val(10);
+                window.AIPS.updateSelectionCount();
+            }
+        },
+
         bulkSchedule: function(e) {
             e.preventDefault();
             var topics = [];
@@ -167,6 +232,8 @@
         $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
         $(document).on('click', '#btn-parse-manual', window.AIPS.parseManualTopics);
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
+        $(document).on('click', '#btn-copy-topics', window.AIPS.copySelectedTopics);
+        $(document).on('click', '#btn-clear-topics', window.AIPS.clearTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
     });
