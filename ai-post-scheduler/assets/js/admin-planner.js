@@ -96,6 +96,81 @@
             $('.selection-count').text(count + ' selected');
         },
 
+        copySelectedTopics: function(e) {
+            e.preventDefault();
+            var topics = window.AIPS.getSelectedTopics();
+
+            if (topics.length === 0) {
+                alert('Please select at least one topic to copy.');
+                return;
+            }
+
+            var textToCopy = topics.join('\n');
+            var $btn = $(this);
+            var originalText = $btn.text();
+
+            // Modern API with fallback
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(function() {
+                    $btn.text('Copied!');
+                    setTimeout(function() {
+                        $btn.text(originalText);
+                    }, 2000);
+                }).catch(function(err) {
+                    console.error('Could not copy text: ', err);
+                    window.AIPS.fallbackCopyTextToClipboard(textToCopy);
+                });
+            } else {
+                window.AIPS.fallbackCopyTextToClipboard(textToCopy);
+                $btn.text('Copied!');
+                setTimeout(function() {
+                    $btn.text(originalText);
+                }, 2000);
+            }
+        },
+
+        fallbackCopyTextToClipboard: function(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";  // avoid scrolling to bottom
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                var successful = document.execCommand('copy');
+                var msg = successful ? 'successful' : 'unsuccessful';
+                // console.log('Fallback: Copying text command was ' + msg);
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert('Unable to copy to clipboard automatically. Please check permissions.');
+            }
+
+            document.body.removeChild(textArea);
+        },
+
+        clearTopics: function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to clear the list?')) {
+                $('#topics-list').html('');
+                $('#planner-results').slideUp();
+                $('#planner-niche').val('');
+                $('#planner-manual-topics').val('');
+                window.AIPS.updateSelectionCount();
+            }
+        },
+
+        getSelectedTopics: function() {
+            var topics = [];
+            $('.topic-checkbox:checked').each(function() {
+                var val = $(this).siblings('.topic-text-input').val();
+                if (val && val.trim().length > 0) {
+                    topics.push(val.trim());
+                }
+            });
+            return topics;
+        },
+
         bulkSchedule: function(e) {
             e.preventDefault();
             var topics = [];
@@ -169,6 +244,8 @@
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
+        $(document).on('click', '#btn-copy-topics', window.AIPS.copySelectedTopics);
+        $(document).on('click', '#btn-clear-topics', window.AIPS.clearTopics);
     });
 
 })(jQuery);

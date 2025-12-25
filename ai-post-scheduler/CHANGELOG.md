@@ -28,3 +28,9 @@ All notable changes to this project will be documented in this file.
 
 ## [1.4.0] - 2025-12-21
 - Refactor: Split 'admin.js' into modular files 'admin-planner.js' and 'admin-db.js' for better maintainability.
+
+## [1.1.0] - 2024-05-24
+### Added
+- **Planner:** Added "Copy Selected" button to easily copy generated topics to clipboard.
+- **Planner:** Added "Clear List" button to reset the planner view.
+- **Planner:** Improved toolbar layout for better usability.
