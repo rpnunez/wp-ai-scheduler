@@ -66,8 +66,62 @@
                 }
             });
 
+            // Clipboard copy
+            $(document).on('click', '.aips-copy-btn', function(e) {
+                e.preventDefault();
+                var text = $(this).attr('data-text');
+                if (text) {
+                    AIPS.copyToClipboard(text, $(this));
+                }
+            });
+
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
+        },
+
+        // --- Hunter: Improved Error Handling ---
+        handleAjaxError: function(jqXHR, textStatus, errorThrown) {
+            var message = 'An error occurred. Please try again.';
+            if (jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
+                message = jqXHR.responseJSON.data.message;
+            } else if (errorThrown) {
+                message += ' (' + errorThrown + ')';
+            }
+            alert(message);
+        },
+
+        // --- Wizard: Copy to Clipboard Utility ---
+        copyToClipboard: function(text, $btn) {
+            var originalText = $btn.text();
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    $btn.text('Copied!');
+                    setTimeout(function() {
+                        $btn.text(originalText);
+                    }, 2000);
+                }).catch(function(err) {
+                    console.error('Failed to copy: ', err);
+                    prompt('Copy manually:', text);
+                });
+            } else {
+                // Fallback
+                var textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    $btn.text('Copied!');
+                    setTimeout(function() {
+                        $btn.text(originalText);
+                    }, 2000);
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                    prompt('Copy manually:', text);
+                }
+                document.body.removeChild(textArea);
+            }
         },
 
         switchTab: function(e) {
@@ -125,9 +179,7 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                },
+                error: AIPS.handleAjaxError,
                 complete: function() {
                     $btn.prop('disabled', false);
                 }
@@ -160,9 +212,7 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                }
+                error: AIPS.handleAjaxError
             });
         },
 
@@ -205,9 +255,7 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                },
+                error: AIPS.handleAjaxError,
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Template');
                 }
@@ -237,14 +285,28 @@
                 success: function(response) {
                     if (response.success) {
                         $('#aips-test-content').text(response.data.content);
+
+                        // Add copy button if not exists
+                        var $modalContent = $('#aips-test-result-modal .aips-modal-content');
+                        if ($modalContent.find('.aips-copy-result').length === 0) {
+                            $modalContent.append('<div style="margin-top: 10px; text-align: right;"><button type="button" class="button aips-copy-result">Copy Result</button></div>');
+                            // Bind click specifically for this dynamic button or use the delegate we set up
+                            $modalContent.find('.aips-copy-result').on('click', function() {
+                                AIPS.copyToClipboard(response.data.content, $(this));
+                            });
+                        } else {
+                            // Update the click handler closure with new content
+                             $modalContent.find('.aips-copy-result').off('click').on('click', function() {
+                                AIPS.copyToClipboard(response.data.content, $(this));
+                            });
+                        }
+
                         $('#aips-test-result-modal').show();
                     } else {
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                },
+                error: AIPS.handleAjaxError,
                 complete: function() {
                     $btn.prop('disabled', false).text('Test Generate');
                 }
@@ -277,9 +339,7 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                },
+                error: AIPS.handleAjaxError,
                 complete: function() {
                     $btn.prop('disabled', false).text('Run Now');
                 }
@@ -399,9 +459,7 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                },
+                error: AIPS.handleAjaxError,
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Voice');
                 }
@@ -446,9 +504,7 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                },
+                error: AIPS.handleAjaxError,
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Schedule');
                 }
@@ -481,9 +537,7 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                }
+                error: AIPS.handleAjaxError
             });
         },
 
@@ -500,9 +554,7 @@
                     schedule_id: id,
                     is_active: isActive
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                }
+                error: AIPS.handleAjaxError
             });
         },
 
@@ -530,9 +582,7 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                }
+                error: AIPS.handleAjaxError
             });
         },
 
@@ -559,9 +609,7 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                },
+                error: AIPS.handleAjaxError,
                 complete: function() {
                     $btn.prop('disabled', false).text('Retry');
                 }
@@ -742,8 +790,8 @@
                         $('#aips-details-modal').hide();
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
+                error: function(jqXHR, textStatus, errorThrown) {
+                    AIPS.handleAjaxError(jqXHR, textStatus, errorThrown);
                     $('#aips-details-modal').hide();
                 },
                 complete: function() {
@@ -773,14 +821,17 @@
             if (log.template) {
                 var templateHtml = '<table class="aips-details-table">';
                 templateHtml += '<tr><th>Name:</th><td>' + (log.template.name || '-') + '</td></tr>';
-                templateHtml += '<tr><th>Prompt Template:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.prompt_template || '') + '</pre></td></tr>';
+                templateHtml += '<tr><th>Prompt Template:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.prompt_template || '') + '</pre>';
+                templateHtml += '<button type="button" class="button button-small aips-copy-btn" data-text="' + AIPS.escapeHtmlAttribute(log.template.prompt_template || '') + '">Copy</button></td></tr>';
                 if (log.template.title_prompt) {
-                    templateHtml += '<tr><th>Title Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.title_prompt) + '</pre></td></tr>';
+                    templateHtml += '<tr><th>Title Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.title_prompt) + '</pre>';
+                    templateHtml += '<button type="button" class="button button-small aips-copy-btn" data-text="' + AIPS.escapeHtmlAttribute(log.template.title_prompt) + '">Copy</button></td></tr>';
                 }
                 templateHtml += '<tr><th>Post Status:</th><td>' + (log.template.post_status || 'draft') + '</td></tr>';
                 templateHtml += '<tr><th>Post Quantity:</th><td>' + (log.template.post_quantity || 1) + '</td></tr>';
                 if (log.template.generate_featured_image) {
-                    templateHtml += '<tr><th>Image Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.image_prompt || '') + '</pre></td></tr>';
+                    templateHtml += '<tr><th>Image Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.image_prompt || '') + '</pre>';
+                    templateHtml += '<button type="button" class="button button-small aips-copy-btn" data-text="' + AIPS.escapeHtmlAttribute(log.template.image_prompt || '') + '">Copy</button></td></tr>';
                 }
                 templateHtml += '</table>';
                 $('#aips-details-template').html(templateHtml);
@@ -791,10 +842,15 @@
             if (log.voice) {
                 var voiceHtml = '<table class="aips-details-table">';
                 voiceHtml += '<tr><th>Name:</th><td>' + (log.voice.name || '-') + '</td></tr>';
-                voiceHtml += '<tr><th>Title Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.title_prompt || '') + '</pre></td></tr>';
-                voiceHtml += '<tr><th>Content Instructions:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.content_instructions || '') + '</pre></td></tr>';
+                voiceHtml += '<tr><th>Title Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.title_prompt || '') + '</pre>';
+                voiceHtml += '<button type="button" class="button button-small aips-copy-btn" data-text="' + AIPS.escapeHtmlAttribute(log.voice.title_prompt || '') + '">Copy</button></td></tr>';
+
+                voiceHtml += '<tr><th>Content Instructions:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.content_instructions || '') + '</pre>';
+                voiceHtml += '<button type="button" class="button button-small aips-copy-btn" data-text="' + AIPS.escapeHtmlAttribute(log.voice.content_instructions || '') + '">Copy</button></td></tr>';
+
                 if (log.voice.excerpt_instructions) {
-                    voiceHtml += '<tr><th>Excerpt Instructions:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.excerpt_instructions) + '</pre></td></tr>';
+                    voiceHtml += '<tr><th>Excerpt Instructions:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.excerpt_instructions) + '</pre>';
+                    voiceHtml += '<button type="button" class="button button-small aips-copy-btn" data-text="' + AIPS.escapeHtmlAttribute(log.voice.excerpt_instructions) + '">Copy</button></td></tr>';
                 }
                 voiceHtml += '</table>';
                 $('#aips-details-voice').html(voiceHtml);
@@ -815,6 +871,7 @@
                     callsHtml += '<div class="aips-call-section">';
                     callsHtml += '<h4>Request</h4>';
                     callsHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(call.request.prompt || '') + '</pre>';
+                    callsHtml += '<button type="button" class="button button-small aips-copy-btn" data-text="' + AIPS.escapeHtmlAttribute(call.request.prompt || '') + '">Copy</button>';
                     if (call.request.options && Object.keys(call.request.options).length > 0) {
                         callsHtml += '<p><small>Options: ' + JSON.stringify(call.request.options) + '</small></p>';
                     }
@@ -823,6 +880,7 @@
                     callsHtml += '<h4>Response</h4>';
                     if (call.response.success) {
                         callsHtml += '<pre class="aips-response-text">' + AIPS.escapeHtml(call.response.content || '') + '</pre>';
+                        callsHtml += '<button type="button" class="button button-small aips-copy-btn" data-text="' + AIPS.escapeHtmlAttribute(call.response.content || '') + '">Copy</button>';
                     } else {
                         callsHtml += '<p class="aips-error-text">Error: ' + AIPS.escapeHtml(call.response.error || 'Unknown error') + '</p>';
                     }
@@ -857,6 +915,11 @@
             var div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        },
+
+        escapeHtmlAttribute: function(text) {
+            if (!text) return '';
+            return text.replace(/"/g, '&quot;');
         },
 
         closeModal: function() {
