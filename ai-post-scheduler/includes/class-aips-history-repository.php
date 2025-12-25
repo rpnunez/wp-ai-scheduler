@@ -184,6 +184,27 @@ class AIPS_History_Repository {
     }
 
     /**
+     * Get statistics for all templates.
+     *
+     * @return array Array of template_id => count pairs.
+     */
+    public function get_all_template_stats() {
+        $results = $this->wpdb->get_results("
+            SELECT template_id, COUNT(*) as count
+            FROM {$this->table_name}
+            WHERE status = 'completed'
+            GROUP BY template_id
+        ");
+
+        $stats = array();
+        foreach ($results as $row) {
+            $stats[$row->template_id] = (int) $row->count;
+        }
+
+        return $stats;
+    }
+
+    /**
      * Get statistics for a specific template.
      *
      * @param int $template_id Template ID.

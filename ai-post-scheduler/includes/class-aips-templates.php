@@ -237,6 +237,47 @@ class AIPS_Templates {
         return $stats;
     }
 
+    public function get_all_pending_stats() {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'aips_schedule';
+
+        // Fetch all active schedules at once
+        $schedules = $wpdb->get_results("SELECT * FROM $table_schedule WHERE is_active = 1");
+
+        $all_stats = array();
+
+        $now = current_time('timestamp');
+        $today_end = strtotime('today 23:59:59', $now);
+        $week_end = strtotime('+7 days', $now);
+        $month_end = strtotime('+30 days', $now);
+
+        foreach ($schedules as $schedule) {
+            $tid = $schedule->template_id;
+            if (!isset($all_stats[$tid])) {
+                $all_stats[$tid] = array('today' => 0, 'week' => 0, 'month' => 0);
+            }
+
+            $cursor = strtotime($schedule->next_run);
+            $frequency = $schedule->frequency;
+            $max_iterations = 100;
+            $i = 0;
+
+            while ($cursor <= $month_end && $i < $max_iterations) {
+                if ($cursor <= $today_end) $all_stats[$tid]['today']++;
+                if ($cursor <= $week_end) $all_stats[$tid]['week']++;
+                if ($cursor <= $month_end) $all_stats[$tid]['month']++;
+                else break;
+
+                if ($frequency === 'once') break;
+
+                $cursor = $this->calculate_next_run($frequency, $cursor);
+                $i++;
+            }
+        }
+
+        return $all_stats;
+    }
+
     private function calculate_next_run($frequency, $base_time) {
         switch ($frequency) {
             case 'hourly':
