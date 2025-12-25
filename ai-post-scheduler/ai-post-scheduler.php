@@ -75,6 +75,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-ai-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-image-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-builder.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-content-engine.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-controller.php';
