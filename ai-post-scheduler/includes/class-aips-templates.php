@@ -237,6 +237,73 @@ class AIPS_Templates {
         return $stats;
     }
 
+    public function get_all_pending_stats() {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'aips_schedule';
+
+        // Fetch all active schedules ordered by template_id
+        $schedules = $wpdb->get_results(
+            "SELECT * FROM $table_schedule WHERE is_active = 1 ORDER BY template_id"
+        );
+
+        $all_stats = array();
+
+        // Group schedules by template_id
+        $grouped_schedules = array();
+        foreach ($schedules as $schedule) {
+            $grouped_schedules[$schedule->template_id][] = $schedule;
+        }
+
+        $now = current_time('timestamp');
+        $today_end = strtotime('today 23:59:59', $now);
+        $week_end = strtotime('+7 days', $now);
+        $month_end = strtotime('+30 days', $now);
+
+        foreach ($grouped_schedules as $template_id => $template_schedules) {
+            $stats = array(
+                'today' => 0,
+                'week' => 0,
+                'month' => 0
+            );
+
+            foreach ($template_schedules as $schedule) {
+                $cursor = strtotime($schedule->next_run);
+                $frequency = $schedule->frequency;
+
+                // Limit iterations to prevent infinite loops or excessive processing
+                $max_iterations = 100;
+                $i = 0;
+
+                while ($cursor <= $month_end && $i < $max_iterations) {
+                    if ($cursor <= $today_end) {
+                        $stats['today']++;
+                    }
+
+                    if ($cursor <= $week_end) {
+                        $stats['week']++;
+                    }
+
+                    if ($cursor <= $month_end) {
+                        $stats['month']++;
+                    } else {
+                        break;
+                    }
+
+                    if ($frequency === 'once') {
+                        break;
+                    }
+
+                    // Calculate next run
+                    $cursor = $this->calculate_next_run($frequency, $cursor);
+                    $i++;
+                }
+            }
+            $all_stats[$template_id] = $stats;
+        }
+
+        return $all_stats;
+    }
+
     private function calculate_next_run($frequency, $base_time) {
         switch ($frequency) {
             case 'hourly':
