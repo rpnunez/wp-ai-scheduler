@@ -187,16 +187,16 @@ class Test_Research_Service extends WP_UnitTestCase {
         
         // Get appropriate seasonal term based on current month
         $seasonal_terms = array(
-            array(12, 1, 2) => 'holiday',
-            array(3, 4, 5) => 'spring',
-            array(6, 7, 8) => 'summer',
-            array(9, 10, 11) => 'fall',
+            array('months' => array(12, 1, 2), 'term' => 'holiday'),
+            array('months' => array(3, 4, 5), 'term' => 'spring'),
+            array('months' => array(6, 7, 8), 'term' => 'summer'),
+            array('months' => array(9, 10, 11), 'term' => 'fall'),
         );
         
         $seasonal_term = 'test';
-        foreach ($seasonal_terms as $months => $term) {
-            if (in_array($month, $months)) {
-                $seasonal_term = $term;
+        foreach ($seasonal_terms as $entry) {
+            if (in_array($month, $entry['months'])) {
+                $seasonal_term = $entry['term'];
                 break;
             }
         }
@@ -233,7 +233,9 @@ class Test_Research_Service extends WP_UnitTestCase {
         
         $result = $this->research_service->compare_topics($topic1, $topic2);
         
-        // Topic1 has more keywords; according to implementation this yields a positive result
+        // When scores are equal, the comparator treats topics with fewer keywords as higher priority
+        // (e.g., considering them more focused). Since Topic1 has more keywords than Topic2, it is
+        // considered "greater" and the comparison is expected to return a positive value.
         $this->assertEquals(1, $result);
     }
     
