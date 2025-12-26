@@ -33,6 +33,9 @@ class AIPS_Generator {
     private $post_creator;
     private $history_repository;
     
+    // NEW: Dependency
+    private $prompt_builder;
+
     public function __construct(
         $logger = null,
         $ai_service = null,
@@ -40,7 +43,8 @@ class AIPS_Generator {
         $image_service = null,
         $structure_manager = null,
         $post_creator = null,
-        $history_repository = null
+        $history_repository = null,
+        $prompt_builder = null
     ) {
         $this->logger = $logger ?: new AIPS_Logger();
         $this->ai_service = $ai_service ?: new AIPS_AI_Service();
@@ -49,6 +53,7 @@ class AIPS_Generator {
         $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
         $this->history_repository = $history_repository ?: new AIPS_History_Repository();
+        $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 
         // Initialize session tracker
         $this->current_session = new AIPS_Generation_Session();
@@ -134,11 +139,7 @@ class AIPS_Generator {
     }
     
     public function generate_title($prompt, $voice_title_prompt = null, $options = array()) {
-        if ($voice_title_prompt) {
-            $title_prompt = $voice_title_prompt . "\n\n" . $prompt;
-        } else {
-            $title_prompt = "Generate a compelling blog post title for the following topic. Return only the title, nothing else:\n\n" . $prompt;
-        }
+        $title_prompt = $this->prompt_builder->build_title_prompt_from_raw($prompt, $voice_title_prompt);
         
         $options['max_tokens'] = 100;
         
@@ -155,15 +156,7 @@ class AIPS_Generator {
     }
     
     public function generate_excerpt($title, $content, $voice_excerpt_instructions = null, $options = array()) {
-        $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 characters. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
-        
-        if ($voice_excerpt_instructions) {
-            $excerpt_prompt .= $voice_excerpt_instructions . "\n\n";
-        }
-        
-        $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
-        $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
-        $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
+        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt_from_raw($title, $content, $voice_excerpt_instructions);
         
         $options['max_tokens'] = 150;
         
@@ -201,33 +194,21 @@ class AIPS_Generator {
         if (!$history_id) {
             // Fallback if repository fails (though unlikely)
             $this->logger->log('Failed to create history record', 'error');
-            // We should probably stop here, but let's try to continue or just return error.
-            // For now, let's proceed but we won't be able to update history.
         }
         
-        // NEW: Check if article_structure_id is provided, build prompt with structure
-        $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
+        // Use Prompt Builder for content prompt
+        $content_prompt = $this->prompt_builder->build_full_content_prompt($template, $topic, $voice);
         
-        if ($article_structure_id) {
-            // Use article structure to build prompt
-            $processed_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic);
-            
-            if (is_wp_error($processed_prompt)) {
-                // Fall back to regular template processing
-                $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-            }
-        } else {
-            // Use traditional template processing
-            $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
+        if (is_wp_error($content_prompt)) {
+             // If base content prompt building fails, we treat it as a generation failure.
+             $error_msg = $content_prompt->get_error_message();
+             $this->current_session->complete(array('success' => false, 'error' => $error_msg));
+             if ($history_id) {
+                $this->history_repository->update($history_id, array('status' => 'failed', 'error_message' => $error_msg, 'generation_log' => $this->current_session->to_json()));
+             }
+             return $content_prompt;
         }
-        
-        if ($voice) {
-            $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
-            $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
-        }
-        
-        $content_prompt = $processed_prompt . "\n\nOutput the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.";
-        
+
         $content = $this->generate_content($content_prompt, array(), 'content');
         
         if (is_wp_error($content)) {
@@ -261,28 +242,40 @@ class AIPS_Generator {
             return $content;
         }
         
+        // Title Generation
+        // Calculate the base prompt for title (subject)
+        $base_prompt = $this->prompt_builder->build_base_content_prompt($template, $topic);
+        if (is_wp_error($base_prompt)) {
+             // Should not happen if build_full_content_prompt succeeded above, but safe to check
+             $base_prompt = $topic;
+        }
+        $processed_prompt_with_voice = $this->prompt_builder->apply_voice($base_prompt, $voice, $topic, 'content');
+        
+        // Determine what text to base the title on
+        $prompt_for_title = $processed_prompt_with_voice;
+        if (!empty($template->title_prompt)) {
+            $prompt_for_title = $this->template_processor->process($template->title_prompt, $topic);
+        }
+        
+        // Calculate Voice Prompt instructions for title
         $voice_title_prompt = null;
         if ($voice) {
-            $voice_title_prompt = $this->template_processor->process($voice->title_prompt, $topic);
+             $voice_title_prompt = $this->template_processor->process($voice->title_prompt, $topic);
         }
-        
-        if (!empty($template->title_prompt)) {
-            $title_prompt = $this->template_processor->process($template->title_prompt, $topic);
-            $title = $this->generate_title($title_prompt, $voice_title_prompt);
-        } else {
-            $title = $this->generate_title($processed_prompt, $voice_title_prompt);
-        }
-        
+
+        $title = $this->generate_title($prompt_for_title, $voice_title_prompt);
+
         if (is_wp_error($title)) {
             $title = __('AI Generated Post', 'ai-post-scheduler') . ' - ' . date('Y-m-d H:i:s');
         }
         
+        // Excerpt Generation
         $voice_excerpt_instructions = null;
         if ($voice && !empty($voice->excerpt_instructions)) {
             $voice_excerpt_instructions = $this->template_processor->process($voice->excerpt_instructions, $topic);
         }
         
-        $excerpt = $this->generate_excerpt($title, $processed_prompt, $voice_excerpt_instructions);
+        $excerpt = $this->generate_excerpt($title, $processed_prompt_with_voice, $voice_excerpt_instructions);
         
         // Use Post Creator Service
         $post_creation_data = array(
@@ -320,16 +313,19 @@ class AIPS_Generator {
         
         $featured_image_id = null;
         if ($template->generate_featured_image && !empty($template->image_prompt)) {
-            $image_prompt = $this->template_processor->process($template->image_prompt, $topic);
-            $featured_image_result = $this->image_service->generate_and_upload_featured_image($image_prompt, $title);
+            $image_prompt = $this->prompt_builder->build_image_prompt($template, $topic);
             
-            if (!is_wp_error($featured_image_result)) {
-                $featured_image_id = $featured_image_result;
-                $this->post_creator->set_featured_image($post_id, $featured_image_id);
-                $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
-            } else {
-                $this->logger->log('Featured image generation failed: ' . $featured_image_result->get_error_message(), 'error');
-                $this->current_session->add_error('featured_image', $featured_image_result->get_error_message());
+            if ($image_prompt) {
+                $featured_image_result = $this->image_service->generate_and_upload_featured_image($image_prompt, $title);
+
+                if (!is_wp_error($featured_image_result)) {
+                    $featured_image_id = $featured_image_result;
+                    $this->post_creator->set_featured_image($post_id, $featured_image_id);
+                    $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
+                } else {
+                    $this->logger->log('Featured image generation failed: ' . $featured_image_result->get_error_message(), 'error');
+                    $this->current_session->add_error('featured_image', $featured_image_result->get_error_message());
+                }
             }
         }
         
