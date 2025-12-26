@@ -121,6 +121,9 @@ class AIPS_Image_Service {
             return $error;
         }
 
+        // Determine MIME type - prefer actual content inspection over Content-Type header
+        $mime_type = $content_type;
+        
         // SECURITY: Verify actual file content is an image using finfo if available
         // This prevents saving non-image files (e.g. scripts) even if Content-Type header is spoofed
         if (class_exists('finfo')) {
@@ -135,10 +138,16 @@ class AIPS_Image_Service {
                 $this->logger->log($error->get_error_message(), 'error');
                 return $error;
             }
+            
+            // Use the verified MIME type for determining file extension
+            $mime_type = $real_mime;
         }
         
+        // Get the correct file extension based on MIME type
+        $extension = $this->get_extension_from_mime($mime_type);
+        
         $post_slug = sanitize_title($post_title);
-        $filename = $post_slug . '.jpg';
+        $filename = $post_slug . '.' . $extension;
         
         // Use wp_upload_bits to handle file creation and uniqueness
         $upload = wp_upload_bits($filename, null, $image_data);
@@ -263,5 +272,35 @@ class AIPS_Image_Service {
         }
         
         return true;
+    }
+    
+    /**
+     * Get file extension from MIME type.
+     *
+     * Maps common image MIME types to their file extensions.
+     * This ensures WordPress accepts the uploaded file based on its actual content type.
+     *
+     * @param string $mime_type The MIME type (e.g., 'image/png', 'image/jpeg').
+     * @return string The file extension without the dot (e.g., 'png', 'jpg').
+     */
+    private function get_extension_from_mime($mime_type) {
+        // WordPress standard MIME type to extension mapping for images
+        // Based on WordPress's getimagesize_mimes_to_exts filter
+        $mime_to_ext = array(
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
+            'image/bmp'  => 'bmp',
+            'image/tiff' => 'tif',
+            'image/webp' => 'webp',
+            'image/avif' => 'avif',
+            'image/x-icon' => 'ico',
+        );
+        
+        // Apply WordPress filter to allow customization
+        $mime_to_ext = apply_filters('getimagesize_mimes_to_exts', $mime_to_ext);
+        
+        // Return the extension if found, otherwise default to 'jpg'
+        return isset($mime_to_ext[$mime_type]) ? $mime_to_ext[$mime_type] : 'jpg';
     }
 }

@@ -1,0 +1,1 @@
+{"version":1,"defects":{"Test_AIPS_Image_Service::test_mime_to_extension_mapping":4,"Test_AIPS_Image_Service::test_mime_to_extension_fallback":4},"times":{"Test_AIPS_Image_Service::test_mime_to_extension_mapping":0,"Test_AIPS_Image_Service::test_mime_to_extension_fallback":0}}

@@ -12,12 +12,12 @@ class Test_AIPS_Image_Service extends WP_UnitTestCase {
 
     private $service;
 
-    public function setUp() {
+    public function setUp(): void {
         parent::setUp();
         $this->service = new AIPS_Image_Service();
     }
 
-    public function tearDown() {
+    public function tearDown(): void {
         parent::tearDown();
     }
 
@@ -135,5 +135,39 @@ class Test_AIPS_Image_Service extends WP_UnitTestCase {
         // Even though download will fail, we're testing that it doesn't crash
         // on filename sanitization
         $this->assertInstanceOf('WP_Error', $result);
+    }
+
+    /**
+     * Test MIME type to extension mapping for common image types
+     */
+    public function test_mime_to_extension_mapping() {
+        // Use reflection to test the private method
+        $reflection = new ReflectionClass($this->service);
+        $method = $reflection->getMethod('get_extension_from_mime');
+        $method->setAccessible(true);
+        
+        // Test common image MIME types
+        $this->assertEquals('jpg', $method->invoke($this->service, 'image/jpeg'));
+        $this->assertEquals('png', $method->invoke($this->service, 'image/png'));
+        $this->assertEquals('gif', $method->invoke($this->service, 'image/gif'));
+        $this->assertEquals('webp', $method->invoke($this->service, 'image/webp'));
+        $this->assertEquals('bmp', $method->invoke($this->service, 'image/bmp'));
+        $this->assertEquals('tif', $method->invoke($this->service, 'image/tiff'));
+        $this->assertEquals('avif', $method->invoke($this->service, 'image/avif'));
+        $this->assertEquals('ico', $method->invoke($this->service, 'image/x-icon'));
+    }
+
+    /**
+     * Test default extension for unknown MIME type
+     */
+    public function test_mime_to_extension_fallback() {
+        // Use reflection to test the private method
+        $reflection = new ReflectionClass($this->service);
+        $method = $reflection->getMethod('get_extension_from_mime');
+        $method->setAccessible(true);
+        
+        // Test unknown MIME type should default to jpg
+        $this->assertEquals('jpg', $method->invoke($this->service, 'image/unknown'));
+        $this->assertEquals('jpg', $method->invoke($this->service, 'application/octet-stream'));
     }
 }
