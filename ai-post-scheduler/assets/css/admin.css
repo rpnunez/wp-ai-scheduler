@@ -442,6 +442,26 @@
     vertical-align: top;
 }
 
+.aips-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.aips-toolbar-left,
+.aips-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.aips-toolbar-right {
+    gap: 10px;
+}
+
 .aips-prompt-text,
 .aips-response-text {
     background: #f6f7f7;

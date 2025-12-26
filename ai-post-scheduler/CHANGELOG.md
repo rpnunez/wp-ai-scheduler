@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [palette-planner-toolbar-enhancement] - 2024-05-23
+### Added
+- Added "Copy Selected" and "Clear List" buttons to the Planner toolbar for better usability.
+- Improved Planner toolbar layout with flexbox for better organization.
+
 ## [bolt-optimize-planner-bulk-insert] - 2024-05-23
 ### Improved
 - Optimized the Planner's "Schedule All" feature by replacing N+1 database `INSERT` queries with a single bulk `INSERT` statement, significantly reducing database load during bulk scheduling.
