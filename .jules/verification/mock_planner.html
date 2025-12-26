@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .aips-toolbar { display: flex; justify-content: space-between; }
+        .aips-toolbar-left { display: flex; align-items: center; }
+        .aips-toolbar-right { display: flex; gap: 10px; }
+        .topic-item { padding: 5px; border: 1px solid #ccc; margin: 5px 0; }
+        #planner-results { border: 1px solid blue; padding: 10px; margin-top: 10px; }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var aipsAjax = { ajaxUrl: '/ajax', nonce: '123' };
+    </script>
+</head>
+<body>
+    <div class="aips-planner-container">
+        <div id="planner-results" style="display: block;">
+            <h3>Review & Schedule</h3>
+            <div class="aips-toolbar">
+                <div class="aips-toolbar-left">
+                    <label><input type="checkbox" id="check-all-topics"> Select All</label>
+                    <span class="selection-count"></span>
+                </div>
+                <div class="aips-toolbar-right">
+                    <button type="button" id="btn-copy-topics" class="button">Copy Selected</button>
+                    <button type="button" id="btn-clear-topics" class="button">Clear List</button>
+                </div>
+            </div>
+            <div id="topics-list">
+                <div class="topic-item">
+                    <input type="checkbox" class="topic-checkbox" checked>
+                    <input type="text" class="topic-text-input" value="Topic 1">
+                </div>
+                <div class="topic-item">
+                    <input type="checkbox" class="topic-checkbox" checked>
+                    <input type="text" class="topic-text-input" value="Topic 2">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the actual JS file we modified -->
+    <script src="../../ai-post-scheduler/assets/js/admin-planner.js"></script>
+</body>
+</html>

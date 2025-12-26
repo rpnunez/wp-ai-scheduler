@@ -11,3 +11,10 @@
 ## 2024-05-24 - [Dashboard Stats Caching]
 **Learning:** The `get_stats` method performed a full table scan and aggregation on every dashboard load. Implementing transient caching eliminated this overhead for read-heavy workloads.
 **Action:** Identify read-heavy dashboard metrics and apply transient caching with invalidation on write.
+
+## 2024-05-25 - N+1 Query Fix in Templates List
+**Learning:** The Templates list view was executing a stats query for each row, leading to severe performance degradation with many templates.
+**Action:** Implemented  and  to pre-fetch all necessary data in two queries before the loop.
+## 2024-05-25 - N+1 Query Fix in Templates List
+**Learning:** The Templates list view was executing a stats query for each row.
+**Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.

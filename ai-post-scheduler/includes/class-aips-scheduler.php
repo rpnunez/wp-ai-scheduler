@@ -80,6 +80,10 @@ class AIPS_Scheduler {
             return $this->repository->create($schedule_data);
         }
     }
+
+    public function save_schedule_bulk($schedules) {
+        return $this->repository->create_bulk($schedules);
+    }
     
     public function delete_schedule($id) {
         return $this->repository->delete($id);
@@ -107,7 +111,7 @@ class AIPS_Scheduler {
         $logger->log('Starting scheduled post generation', 'info');
         
         $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT s.id AS schedule_id, s.*, t.*
+            SELECT t.*, s.*, s.id AS schedule_id
             FROM {$this->schedule_table} s 
             INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
             WHERE s.is_active = 1 

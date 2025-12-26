@@ -96,6 +96,53 @@
             $('.selection-count').text(count + ' selected');
         },
 
+        clearTopics: function() {
+            if (confirm('Are you sure you want to clear the list?')) {
+                $('#topics-list').empty();
+                $('#planner-results').slideUp();
+                $('#planner-niche').val('');
+                $('#planner-manual-topics').val('');
+                window.AIPS.updateSelectionCount();
+            }
+        },
+
+        copySelectedTopics: function() {
+            var topics = [];
+            $('.topic-checkbox:checked').each(function() {
+                var val = $(this).siblings('.topic-text-input').val();
+                if (val && val.trim().length > 0) {
+                    topics.push(val.trim());
+                }
+            });
+
+            if (topics.length === 0) {
+                alert('Please select at least one topic.');
+                return;
+            }
+
+            var textToCopy = topics.join('\n');
+            var $btn = $('#btn-copy-topics');
+            var originalText = $btn.text();
+
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(textToCopy).then(function() {
+                    $btn.text('Copied!');
+                    setTimeout(function() { $btn.text(originalText); }, 2000);
+                }).catch(function() {
+                    alert('Failed to copy to clipboard.');
+                });
+            } else {
+                // Fallback
+                var $temp = $('<textarea>');
+                $('body').append($temp);
+                $temp.val(textToCopy).select();
+                document.execCommand('copy');
+                $temp.remove();
+                $btn.text('Copied!');
+                setTimeout(function() { $btn.text(originalText); }, 2000);
+            }
+        },
+
         bulkSchedule: function(e) {
             e.preventDefault();
             var topics = [];
@@ -167,6 +214,8 @@
         $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
         $(document).on('click', '#btn-parse-manual', window.AIPS.parseManualTopics);
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
+        $(document).on('click', '#btn-clear-topics', window.AIPS.clearTopics);
+        $(document).on('click', '#btn-copy-topics', window.AIPS.copySelectedTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
     });

@@ -105,24 +105,25 @@ class AIPS_Planner {
 
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches
-        //$values = array();
-        //$placeholders = array();
+        $schedules = array();
 
         foreach ($topics as $index => $topic) {
             $next_run_timestamp = $base_time + ($index * $interval);
             $next_run = date('Y-m-d H:i:s', $next_run_timestamp);
 
-            $schedule_id = $scheduler->save_schedule(array(
+            $schedules[] = array(
                 'template_id' => $template_id,
                 'frequency' => 'once',
                 'next_run' => $next_run,
                 'is_active' => 1,
                 'topic' => $topic
-            ));
+            );
+        }
 
-            if ($schedule_id) {
-                $count++;
-            }
+        $count = $scheduler->save_schedule_bulk($schedules);
+
+        if ($count === false) {
+             wp_send_json_error(array('message' => __('Failed to schedule topics.', 'ai-post-scheduler')));
         }
 
         wp_send_json_success(array(
