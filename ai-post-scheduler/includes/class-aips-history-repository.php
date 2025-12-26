@@ -118,13 +118,26 @@ class AIPS_History_Repository {
         ", $query_args));
         
         // Query for total count
-        if (!empty($where_args)) {
-            $total = $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
-                $where_args
-            ));
-        } else {
-            $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+        // Optimization: Use cached stats if possible (when not searching or filtering by template)
+        $total = null;
+        if (empty($args['search']) && empty($args['template_id'])) {
+            $stats = $this->get_stats();
+            if (empty($args['status'])) {
+                $total = $stats['total'];
+            } elseif (isset($stats[$args['status']])) {
+                $total = $stats[$args['status']];
+            }
+        }
+
+        if ($total === null) {
+            if (!empty($where_args)) {
+                $total = $this->wpdb->get_var($this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
+                    $where_args
+                ));
+            } else {
+                $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+            }
         }
         
         return array(
