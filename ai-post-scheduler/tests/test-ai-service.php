@@ -13,12 +13,12 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
 
     private $service;
 
-    public function setUp() {
+    public function setUp(): void {
         parent::setUp();
         $this->service = new AIPS_AI_Service();
     }
 
-    public function tearDown() {
+    public function tearDown(): void {
         parent::tearDown();
     }
 

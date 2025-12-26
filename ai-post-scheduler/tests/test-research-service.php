@@ -11,7 +11,7 @@ class Test_Research_Service extends WP_UnitTestCase {
     private $research_service;
     private $mock_ai_service;
     
-    public function setUp() {
+    public function setUp(): void {
         parent::setUp();
         
         // Create mock AI service
@@ -19,7 +19,7 @@ class Test_Research_Service extends WP_UnitTestCase {
         $this->research_service = new AIPS_Research_Service($this->mock_ai_service);
     }
     
-    public function tearDown() {
+    public function tearDown(): void {
         parent::tearDown();
     }
     
