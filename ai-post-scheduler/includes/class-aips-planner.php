@@ -122,7 +122,7 @@ class AIPS_Planner {
 
         $count = $scheduler->save_schedule_bulk($schedules);
 
-        if ($count === false) {
+        if ($count === false || $count === 0) {
             wp_send_json_error(array('message' => __('Failed to schedule topics.', 'ai-post-scheduler')));
         }
 
