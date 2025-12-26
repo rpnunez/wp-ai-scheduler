@@ -8,7 +8,7 @@
 
 class Test_AIPS_History_Security extends WP_UnitTestCase {
 
-    public function setUp() {
+    public function setUp(): void {
         parent::setUp();
         // Setup mock data if needed
     }

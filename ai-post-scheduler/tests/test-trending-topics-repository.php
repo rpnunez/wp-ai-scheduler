@@ -10,7 +10,7 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
     
     private $repository;
     
-    public function setUp() {
+    public function setUp(): void {
         parent::setUp();
         $this->repository = new AIPS_Trending_Topics_Repository();
         

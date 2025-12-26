@@ -12,7 +12,7 @@ class Test_AIPS_Template_Processor extends WP_UnitTestCase {
 
     private $processor;
 
-    public function setUp() {
+    public function setUp(): void {
         parent::setUp();
         $this->processor = new AIPS_Template_Processor();
     }
