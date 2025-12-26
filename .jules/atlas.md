@@ -17,14 +17,6 @@
 ## 2024-05-25 - [Extract Resilience Service] **Context:** `AIPS_AI_Service` was violating SRP by handling core AI orchestration alongside resilience concerns (Circuit Breaker, Rate Limiting, Retry Logic). **Decision:** Extracted resilience logic into a dedicated `AIPS_Resilience_Service` class. Refactored `AIPS_AI_Service` to delegate resilience checks to this new service. **Consequence:** Improved separation of concerns; `AIPS_AI_Service` is now cleaner and focused on AI interactions. Increased file count by 1.
 
 ## 2024-05-25 - Bulk Insert Architecture
-**Context:** Creating hundreds of schedule items via a loop of  statements was inefficient and caused timeouts.
-**Decision:** Implemented  to accept an array of schedules and generate a single SQL  statement.
-**Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
-## 2024-05-25 - Bulk Insert Architecture
-**Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
-**Decision:** Implemented  to accept an array of schedules and generate a single SQL INSERT statement.
-**Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
-## 2024-05-25 - Bulk Insert Architecture
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
