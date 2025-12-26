@@ -144,6 +144,36 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('get_option')) {
+        function get_option($option, $default = false) {
+            return $default;
+        }
+    }
+    
+    if (!function_exists('update_option')) {
+        function update_option($option, $value, $autoload = null) {
+            return true;
+        }
+    }
+    
+    if (!function_exists('get_transient')) {
+        function get_transient($transient) {
+            return false;
+        }
+    }
+    
+    if (!function_exists('set_transient')) {
+        function set_transient($transient, $value, $expiration = 0) {
+            return true;
+        }
+    }
+    
+    if (!function_exists('delete_transient')) {
+        function delete_transient($transient) {
+            return true;
+        }
+    }
+    
     if (!function_exists('wp_upload_dir')) {
         function wp_upload_dir() {
             return [
