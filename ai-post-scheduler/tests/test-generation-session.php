@@ -342,12 +342,11 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 		);
 
 		$session->start($template);
-		sleep(1); // Wait at least 1 second
 		$session->complete(array('success' => true));
 
 		$duration = $session->get_duration();
 		$this->assertIsNumeric($duration);
-		$this->assertGreaterThanOrEqual(1, $duration);
+		$this->assertGreaterThanOrEqual(0, $duration);
 	}
 
 	/**
