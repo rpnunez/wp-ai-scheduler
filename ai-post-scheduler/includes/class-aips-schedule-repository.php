@@ -22,6 +22,20 @@ if (!defined('ABSPATH')) {
 class AIPS_Schedule_Repository {
     
     /**
+     * Schedule table name suffix (without prefix)
+     * 
+     * @since 1.5.0
+     */
+    private const SCHEDULE_TABLE_SUFFIX = 'aips_schedule';
+    
+    /**
+     * Templates table name suffix (without prefix)
+     * 
+     * @since 1.5.0
+     */
+    private const TEMPLATES_TABLE_SUFFIX = 'aips_templates';
+    
+    /**
      * @var string The schedule table name (with prefix)
      */
     private $schedule_table;
@@ -38,12 +52,22 @@ class AIPS_Schedule_Repository {
     
     /**
      * Initialize the repository.
+     * 
+     * The $wpdb object is stored as an instance variable following WordPress best practices.
+     * Since $wpdb is a singleton that persists throughout the request lifecycle, storing
+     * a reference to it once in the constructor is more efficient than globalizing it
+     * in every method.
+     * 
+     * Uses AIPS_DB_Manager::get_full_table_names() to get the properly prefixed table names.
      */
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
-        $this->templates_table = $wpdb->prefix . 'aips_templates';
+        
+        // Get table names from centralized DB Manager
+        $tables = AIPS_DB_Manager::get_full_table_names();
+        $this->schedule_table = $tables[self::SCHEDULE_TABLE_SUFFIX];
+        $this->templates_table = $tables[self::TEMPLATES_TABLE_SUFFIX];
     }
     
     /**
