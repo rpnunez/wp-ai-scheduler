@@ -4,7 +4,7 @@ Tags: ai, content, automation, scheduling, meow apps, ai engine
 Requires at least: 5.8
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,10 +18,28 @@ AI Post Scheduler integrates with Meow Apps AI Engine to provide a powerful admi
 
 * **Template System**: Create reusable prompt templates with dynamic variables
 * **Flexible Scheduling**: Schedule posts hourly, every 6 hours, every 12 hours, daily, or weekly
+* **Trending Topics Research** (NEW): AI-powered trend discovery and topic ranking
+* **Automated Research**: Schedule automatic topic research to run daily
+* **Bulk Scheduling**: Schedule multiple trending topics at once
 * **Post Configuration**: Set post status, category, tags, and author for generated content
 * **Generation History**: Track all generated posts with success/failure status
 * **Test Generation**: Preview AI output before scheduling
 * **Error Handling**: Automatic logging and retry capabilities
+
+= Trending Topics Research =
+
+The Trending Topics feature uses AI to automatically discover what's trending in your niche:
+
+* **AI-Powered Discovery**: Enter your niche and let AI find trending topics
+* **Relevance Scoring**: Each topic gets a score (1-100) based on current trends
+* **Keyword Analysis**: See related keywords for each topic
+* **Freshness Analysis**: Topics are scored based on timeliness and seasonal relevance
+* **Research Library**: All discovered topics stored for future reference
+* **Smart Filtering**: Filter by niche, score, or freshness (last 7 days)
+* **Bulk Scheduling**: Select multiple topics and schedule them all at once
+* **Automated Research**: Configure niches to research automatically on schedule
+
+Use this to "automate the automation" - let AI handle content strategy and topic discovery!
 
 = Requirements =
 
@@ -68,7 +86,30 @@ The scheduler runs every hour via WordPress Cron. Posts are generated when their
 
 Yes, you can specify a custom AI model in the Settings page. Leave empty to use AI Engine's default model.
 
+= How does Trending Topics Research work? =
+
+The Trending Topics feature uses AI to analyze what's currently trending in your specified niche. It considers current events, seasonal relevance, search trends, and provides scored topics with keywords. You can manually research topics or configure automatic daily research.
+
+= Can I automatically schedule trending topics? =
+
+Yes! After researching topics, you can select multiple topics from your library and bulk schedule them with a template and frequency. The system will create schedules for each topic automatically.
+
 == Changelog ==
+
+= 1.6.0 =
+* NEW: Trending Topics Research feature - AI-powered trend discovery
+* NEW: Automated topic research with scheduled cron jobs
+* NEW: Trending Topics admin page with filterable library
+* NEW: Bulk scheduling for trending topics
+* NEW: Topic relevance scoring (1-100) and freshness analysis
+* NEW: Keyword extraction and display for each topic
+* NEW: Research statistics dashboard
+* Added: AIPS_Research_Service for trend analysis
+* Added: AIPS_Trending_Topics_Repository for data persistence
+* Added: AIPS_Research_Controller for workflow orchestration
+* Added: Database table for trending topics storage
+* Added: 41 new test cases for research functionality
+* Enhanced: "Automate the automation" - let AI handle content strategy
 
 = 1.0.0 =
 * Initial release
@@ -79,6 +120,9 @@ Yes, you can specify a custom AI model in the Settings page. Leave empty to use 
 * Dynamic template variables
 
 == Upgrade Notice ==
+
+= 1.6.0 =
+Major new feature: Trending Topics Research! Automatically discover and schedule trending topics in your niche using AI-powered analysis.
 
 = 1.0.0 =
 Initial release of AI Post Scheduler.
