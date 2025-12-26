@@ -11,7 +11,7 @@ class Test_AIPS_Logger_Performance extends WP_UnitTestCase {
     private $logger;
     private $log_file;
 
-    public function setUp() {
+    public function setUp(): void {
         parent::setUp();
         $this->logger = new AIPS_Logger();
 
@@ -25,7 +25,7 @@ class Test_AIPS_Logger_Performance extends WP_UnitTestCase {
         file_put_contents($this->log_file, "");
     }
 
-    public function tearDown() {
+    public function tearDown(): void {
         if (file_exists($this->log_file)) {
             unlink($this->log_file);
         }

@@ -12,7 +12,7 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
 
     private $calculator;
 
-    public function setUp() {
+    public function setUp(): void {
         parent::setUp();
         $this->calculator = new AIPS_Interval_Calculator();
     }
