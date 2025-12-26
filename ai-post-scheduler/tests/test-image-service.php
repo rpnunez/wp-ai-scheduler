@@ -12,12 +12,12 @@ class Test_AIPS_Image_Service extends WP_UnitTestCase {
 
     private $service;
 
-    public function setUp() {
+    public function setUp(): void {
         parent::setUp();
         $this->service = new AIPS_Image_Service();
     }
 
-    public function tearDown() {
+    public function tearDown(): void {
         parent::tearDown();
     }
 
@@ -135,5 +135,64 @@ class Test_AIPS_Image_Service extends WP_UnitTestCase {
         // Even though download will fail, we're testing that it doesn't crash
         // on filename sanitization
         $this->assertInstanceOf('WP_Error', $result);
+    }
+
+    /**
+     * Test that finfo validation rejects non-image content with spoofed headers
+     * 
+     * This test verifies the security validation that uses finfo to check actual
+     * file content, preventing non-image files (e.g., scripts/HTML) from being
+     * saved even if the Content-Type header claims to be an image.
+     */
+    public function test_finfo_rejects_non_image_content() {
+        // Skip test if finfo is not available
+        if (!class_exists('finfo')) {
+            $this->markTestSkipped('finfo extension not available');
+        }
+
+        // Mock HTML content that could be malicious
+        $malicious_content = '<!DOCTYPE html><html><body><script>alert("xss")</script></body></html>';
+        
+        // Create a mock response that has image Content-Type but non-image content
+        $mock_response = array(
+            'headers' => array(
+                'content-type' => 'image/jpeg',
+            ),
+            'body' => $malicious_content,
+            'response' => array(
+                'code' => 200,
+                'message' => 'OK'
+            ),
+        );
+
+        // Mock wp_safe_remote_get to return our crafted response
+        add_filter('pre_http_request', function($preempt, $args, $url) use ($mock_response) {
+            if ($url === 'https://evil.example.com/fake-image.jpg') {
+                return $mock_response;
+            }
+            return $preempt;
+        }, 10, 3);
+
+        // Attempt to upload the "image"
+        $result = $this->service->upload_image_from_url(
+            'https://evil.example.com/fake-image.jpg',
+            'Test Post'
+        );
+
+        // Clean up filter
+        remove_all_filters('pre_http_request');
+
+        // Verify it returns WP_Error with correct error code
+        $this->assertInstanceOf('WP_Error', $result, 'Expected WP_Error for non-image content');
+        $this->assertEquals(
+            'invalid_image_content',
+            $result->get_error_code(),
+            'Expected error code to be invalid_image_content'
+        );
+        
+        // Verify error message mentions the actual detected MIME type
+        $error_message = $result->get_error_message();
+        $this->assertStringContainsString('Security check failed', $error_message);
+        $this->assertStringContainsString('expected image', $error_message);
     }
 }
