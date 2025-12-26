@@ -1,0 +1,25 @@
+# Composer
+ai-post-scheduler/vendor/
+ai-post-scheduler/composer.lock
+vendor/
+composer.lock
+
+# PHPUnit
+ai-post-scheduler/coverage/
+ai-post-scheduler/.phpunit.result.cache
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+/tmp/
