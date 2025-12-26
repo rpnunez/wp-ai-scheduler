@@ -93,7 +93,83 @@
 
         updateSelectionCount: function() {
             var count = $('.topic-checkbox:checked').length;
-            $('.selection-count').text(count + ' selected');
+            var text = count + ' selected';
+            if (count === 0) text = '';
+            $('.selection-count').text(text);
+        },
+
+        clearTopics: function(e) {
+            e.preventDefault();
+            if (!confirm('Are you sure you want to clear the list?')) {
+                return;
+            }
+            $('#topics-list').empty();
+            $('#planner-results').slideUp();
+            $('#planner-niche').val('');
+            $('#check-all-topics').prop('checked', false);
+            window.AIPS.updateSelectionCount();
+        },
+
+        copySelectedTopics: function(e) {
+            e.preventDefault();
+            var topics = [];
+            $('.topic-checkbox:checked').each(function() {
+                var val = $(this).siblings('.topic-text-input').val();
+                if (val && val.trim().length > 0) {
+                    topics.push(val.trim());
+                }
+            });
+
+            if (topics.length === 0) {
+                alert('Please select topics to copy.');
+                return;
+            }
+
+            var textToCopy = topics.join('\n');
+            var $btn = $(this);
+            var originalText = $btn.html();
+
+            // Use navigator.clipboard if available, otherwise fallback
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(function() {
+                    window.AIPS.showCopyFeedback($btn, originalText);
+                }).catch(function(err) {
+                    console.error('Could not copy text: ', err);
+                    window.AIPS.fallbackCopyText(textToCopy, $btn, originalText);
+                });
+            } else {
+                window.AIPS.fallbackCopyText(textToCopy, $btn, originalText);
+            }
+        },
+
+        showCopyFeedback: function($btn, originalText) {
+            $btn.addClass('button-primary').text('Copied!');
+            setTimeout(function() {
+                $btn.removeClass('button-primary').html(originalText);
+            }, 2000);
+        },
+
+        fallbackCopyText: function(text, $btn, originalText) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";  // Avoid scrolling to bottom
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                var successful = document.execCommand('copy');
+                if (successful) {
+                    window.AIPS.showCopyFeedback($btn, originalText);
+                } else {
+                    alert('Unable to copy to clipboard.');
+                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert('Unable to copy to clipboard.');
+            }
+
+            document.body.removeChild(textArea);
         },
 
         bulkSchedule: function(e) {
@@ -169,6 +245,8 @@
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
+        $(document).on('click', '.aips-clear-list', window.AIPS.clearTopics);
+        $(document).on('click', '.aips-copy-topics', window.AIPS.copySelectedTopics);
     });
 
 })(jQuery);

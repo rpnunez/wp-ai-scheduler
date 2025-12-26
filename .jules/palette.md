@@ -1,3 +1,3 @@
-## 2024-05-23 - Accessibility Patterns for WordPress Admin
-**Learning:** Standard WordPress Admin UI patterns (like modals and empty states with Dashicons) often lack default ARIA attributes. Specifically, modal close buttons (`&times;`) are frequently missing `aria-label`, and decorative Dashicons are missing `aria-hidden="true"`.
-**Action:** When working on WP Admin interfaces, always audit modal close buttons and decorative icons for these specific attributes. Use `esc_attr_e('Close modal', 'text-domain')` for consistency.
+## 2024-05-23 - Clipboard Interaction in Browsers
+**Learning:** `navigator.clipboard.writeText` is the modern standard but requires a secure context (HTTPS) and user interaction. For older browsers or non-secure contexts (often local dev), a fallback using `document.execCommand('copy')` with a temporary textarea is necessary.
+**Action:** When implementing "Copy to Clipboard" features, always wrap the modern API in a feature check and provide the textarea/execCommand fallback to ensure functionality across all environments.

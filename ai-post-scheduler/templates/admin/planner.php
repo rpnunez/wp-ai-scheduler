@@ -35,8 +35,20 @@
         <h3><?php echo esc_html__('Review & Schedule', 'ai-post-scheduler'); ?></h3>
 
         <div class="aips-toolbar">
-            <label><input type="checkbox" id="check-all-topics"> <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?></label>
-            <span class="selection-count"></span>
+            <div class="aips-toolbar-left">
+                <label><input type="checkbox" id="check-all-topics"> <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?></label>
+                <span class="selection-count"></span>
+            </div>
+            <div class="aips-toolbar-right">
+                <button type="button" class="button button-small aips-copy-topics" title="<?php esc_attr_e('Copy selected topics to clipboard', 'ai-post-scheduler'); ?>">
+                    <span class="dashicons dashicons-clipboard" aria-hidden="true"></span>
+                    <?php echo esc_html__('Copy Selected', 'ai-post-scheduler'); ?>
+                </button>
+                <button type="button" class="button button-small button-link-delete aips-clear-list" title="<?php esc_attr_e('Clear all topics', 'ai-post-scheduler'); ?>">
+                    <span class="dashicons dashicons-trash" aria-hidden="true"></span>
+                    <?php echo esc_html__('Clear List', 'ai-post-scheduler'); ?>
+                </button>
+            </div>
         </div>
 
         <div id="topics-list" class="aips-topics-grid">
@@ -125,6 +137,16 @@
 }
 .topic-checkbox:checked + .topic-text-input {
     font-weight: 500;
+}
+.aips-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.aips-toolbar-right {
+    display: flex;
+    gap: 10px;
 }
 .aips-row {
     display: flex;
