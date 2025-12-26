@@ -4,7 +4,7 @@ This document describes how to run tests for the AI Post Scheduler plugin.
 
 ## Prerequisites
 
-- PHP 7.4 or higher
+- PHP 8.3 or higher
 - Composer (https://getcomposer.org/)
 
 ## Installation
@@ -125,9 +125,9 @@ Tests run automatically on:
 - Manual workflow dispatch
 
 The GitHub Actions workflow:
-- Tests against PHP 7.4, 8.0, 8.1, and 8.2
+- Tests against PHP 8.3
 - Caches Composer dependencies
-- Generates code coverage reports (PHP 8.1)
+- Generates code coverage reports (PHP 8.3)
 - Uploads test results as artifacts
 
 ## Writing New Tests
