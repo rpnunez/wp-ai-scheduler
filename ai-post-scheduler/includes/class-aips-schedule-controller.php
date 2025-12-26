@@ -38,6 +38,11 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Please select a template.', 'ai-post-scheduler')));
         }
 
+        $interval_calculator = new AIPS_Interval_Calculator();
+        if (!$interval_calculator->is_valid_frequency($data['frequency'])) {
+            wp_send_json_error(array('message' => __('Invalid frequency selected.', 'ai-post-scheduler')));
+        }
+
         $id = $this->scheduler->save_schedule($data);
 
         if ($id) {
