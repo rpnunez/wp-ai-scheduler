@@ -49,7 +49,12 @@ class Test_Bulk_Schedule extends WP_UnitTestCase {
 
         $this->assertEquals(2, $count);
 
-        $results = $wpdb->get_results("SELECT * FROM " . $wpdb->prefix . "aips_schedule WHERE template_id = $template_id ORDER BY topic ASC");
+        $results = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}aips_schedule WHERE template_id = %d ORDER BY topic ASC",
+                $template_id
+            )
+        );
         $this->assertCount(2, $results);
         $this->assertEquals('Topic 1', $results[0]->topic);
         $this->assertEquals('Topic 2', $results[1]->topic);
