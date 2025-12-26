@@ -1,4 +1,4 @@
-FROM wordpress:6.4-php8.1-apache
+FROM wordpress:6.4-php8.3-apache
 
 # Install utilities, mysql client, curl and Xdebug (PECL)
 RUN apt-get update \
