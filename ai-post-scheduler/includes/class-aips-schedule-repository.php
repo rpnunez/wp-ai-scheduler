@@ -293,7 +293,7 @@ class AIPS_Schedule_Repository {
                 absint($data['template_id']),
                 sanitize_text_field($data['frequency']),
                 sanitize_text_field($data['next_run']),
-                isset($data['is_active']) ? 1 : 0,
+                isset($data['is_active']) ? (int) $data['is_active'] : 0,
                 isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
                 isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
                 isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null
