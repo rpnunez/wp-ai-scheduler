@@ -119,6 +119,31 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('current_time')) {
+        function current_time($type = 'mysql', $gmt = 0) {
+            if ($type === 'timestamp') {
+                return time();
+            }
+
+            if ($type === 'mysql') {
+                if ($gmt) {
+                    return gmdate('Y-m-d H:i:s');
+                }
+
+                return date('Y-m-d H:i:s');
+            }
+
+            // Fallback: return a Unix timestamp for unknown types.
+            return time();
+        }
+    }
+    
+    if (!function_exists('wp_json_encode')) {
+        function wp_json_encode($data, $options = 0, $depth = 512) {
+            return json_encode($data, $options, $depth);
+        }
+    }
+    
     if (!function_exists('wp_upload_dir')) {
         function wp_upload_dir() {
             return [
@@ -199,19 +224,30 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     $includes_dir = dirname(__DIR__) . '/includes/';
     $files = [
         'class-aips-logger.php',
+        'class-aips-config.php',
+        'class-aips-db-manager.php',
+        'class-aips-history-repository.php',
+        'class-aips-schedule-repository.php',
+        'class-aips-template-repository.php',
+        'class-aips-article-structure-repository.php',
+        'class-aips-prompt-section-repository.php',
         'class-aips-template-processor.php',
+        'class-aips-article-structure-manager.php',
+        'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
+        'class-aips-resilience-service.php',
         'class-aips-ai-service.php',
         'class-aips-image-service.php',
-        'class-aips-db-manager.php',
-        'class-aips-scheduler.php',
+        'class-aips-generation-session.php',
+        'class-aips-post-creator.php',
         'class-aips-generator.php',
+        'class-aips-scheduler.php',
+        'class-aips-schedule-controller.php',
+        'class-aips-planner.php',
         'class-aips-history.php',
         'class-aips-settings.php',
         'class-aips-system-status.php',
         'class-aips-templates.php',
-        'class-aips-planner.php',
-        'class-aips-schedule-controller.php',
         'class-aips-upgrades.php',
         'class-aips-voices.php',
     ];

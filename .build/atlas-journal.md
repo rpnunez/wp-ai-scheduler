@@ -981,321 +981,154 @@ These architectural improvements significantly enhance the plugin's maintainabil
 
 ---
 
-## 2025-12-24 - Trending Topics Research Feature Implementation
+## 2025-12-26 - Extract Generation Session Tracker
 
-**Context:** The plugin previously required manual topic selection for content generation. Users had to manually think of topics or use the basic "Planner" feature which generated topics from a simple prompt but didn't leverage AI Engine's capabilities for trend analysis, relevance scoring, or persistent storage of research results. Content creators wanted to "automate the automation" - to have the system automatically research what's trending in their niche, rank topics by relevance, and suggest the top 5-10 topics for scheduled content generation. This addresses the problem statement: "What functionality does Meow Apps AI Engine expose that we can implement to help further automate content generation, specifically helping WP blogs/news sites schedule research and grab top trending topics?"
+**Context:** The `AIPS_Generator` class contained a private property called `$generation_log` (a raw PHP array) that tracked runtime details of post generation. This created architectural confusion:
+* **Naming confusion**: Both `generation_log` and `History` relate to generation tracking, but serve different purposes
+* **Unclear lifecycle**: The `generation_log` is ephemeral (exists only during one request) while `History` is persistent (database records)
+* **Tight coupling**: The raw array structure leaked into the persistence layer when serialized to JSON
+* **Poor encapsulation**: Manual array management with direct property access throughout the class
+* **Difficult to test**: Cannot test generation tracking logic independently from the Generator
+* **Lack of abstraction**: No methods for common operations (get duration, count AI calls, check success)
 
-The plugin had no capability to:
-* Automatically discover trending topics using AI
-* Score and rank topics by relevance and timeliness
-* Store research results for future reference
-* Schedule automated research to run periodically
-* Bulk schedule content based on trending topics
-* Analyze topic freshness and seasonal relevance
+The relationship between the runtime tracker and the persistent history was not explicit in the code, requiring developers to read implementation details to understand the difference.
 
-**Decision:** Applied "Service Layer Pattern", "Repository Pattern", and "Scheduled Tasks Pattern". Created a comprehensive Trending Topics Research system with three new architectural components:
+**Decision:** Applied "Separation of Concerns" and "Single Responsibility Principle". Created a dedicated `AIPS_Generation_Session` class in `class-aips-generation-session.php` that:
 
-### 1. AIPS_Research_Service (460 lines)
-**Purpose:** AI-powered topic research and trend analysis
-**Responsibilities:**
-* Uses AI Engine to discover trending topics in specified niches
-* Generates structured prompts that guide AI to provide ranked, scored topics
-* Parses AI responses (JSON format with fallback parsing)
-* Analyzes topic freshness based on temporal indicators and seasonal relevance
-* Validates and normalizes topic data
-* Provides comparison and ranking algorithms
+### Generation Session Features
+* **Encapsulates runtime tracking** - All session data in one cohesive class
+* **Clear lifecycle management** - Explicit `start()`, `log_ai_call()`, `add_error()`, and `complete()` methods
+* **Self-documenting** - Class name explicitly conveys it's a session tracker
+* **Serialization support** - `to_array()` and `to_json()` methods for storage
+* **Query methods** - `get_duration()`, `get_ai_call_count()`, `get_error_count()`, `was_successful()`
+* **Comprehensive DocBlocks** - Documents the difference from History in class-level comments
 
-**Key Methods:**
-* `research_trending_topics($niche, $count, $keywords)` - Main research orchestration
-* `build_research_prompt()` - Creates AI prompts for trend discovery
-* `parse_research_response()` - Extracts structured data from AI responses
-* `analyze_topic_freshness()` - Scores topics based on timeliness
-* `get_top_topics()` - Filters and ranks topics by score
-* `fallback_parse_topics()` - Handles non-JSON AI responses gracefully
+### Key Distinction Documented
+The class DocBlock explicitly clarifies:
+* **Generation Session**: Ephemeral runtime tracker (exists during one request)
+* **History**: Persistent database record (exists across all requests)
+* **Relationship**: Session is serialized and stored in History's `generation_log` JSON field
 
-**AI Integration Approach:**
-* Uses existing AIPS_AI_Service with dependency injection
-* Crafts specialized prompts that request JSON-formatted responses with:
-  - Topic title (string)
-  - Relevance score 1-100 (integer)
-  - Reason for trending (string, max 100 chars)
-  - Related keywords (array of 3-5 strings)
-* Considers current date, season, and user-provided focus keywords
-* Removes markdown code blocks from responses (handles \`\`\`json formatting)
+### Updated Generator Class
+* Replaced `$generation_log` array property with `$current_session` (AIPS_Generation_Session instance)
+* Replaced `reset_generation_log()` with session construction
+* Simplified `log_ai_call()` to delegate to session
+* Updated `generate_post()` to use session lifecycle methods
+* All history updates now use `$this->current_session->to_json()`
 
-**Freshness Analysis Algorithm:**
-* Base score: 50
-* +20 for mentioning current year
-* +10 for temporal words (now, today, latest, trending, new)
-* +15 for seasonal relevance (matches current month/season)
-* Capped at 100
-* Returns freshness indicators array for transparency
+### Methods Provided
+```php
+// Lifecycle
+public function start($template, $voice = null)
+public function complete($result)
 
-### 2. AIPS_Trending_Topics_Repository (500 lines)
-**Purpose:** Data persistence and querying for researched topics
-**Responsibilities:**
-* CRUD operations for trending topics
-* Complex filtering (by niche, score, date, freshness)
-* Statistics and analytics queries
-* Batch operations for research results
-* Duplicate detection
+// Logging
+public function log_ai_call($type, $prompt, $response, $options, $error)
+public function add_error($type, $message)
 
-**Database Schema:**
-```sql
-CREATE TABLE wp_aips_trending_topics (
-    id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-    niche VARCHAR(255) NOT NULL,
-    topic VARCHAR(500) NOT NULL,
-    score INT(11) NOT NULL DEFAULT 50,
-    reason TEXT DEFAULT NULL,
-    keywords TEXT DEFAULT NULL,  -- JSON array
-    researched_at DATETIME NOT NULL,
-    PRIMARY KEY (id),
-    KEY niche_idx (niche),
-    KEY score_idx (score),
-    KEY researched_at_idx (researched_at)
-);
+// Serialization
+public function to_array()
+public function to_json()
+
+// Queries
+public function get_duration()
+public function get_ai_call_count()
+public function get_error_count()
+public function was_successful()
+public function get_ai_calls()
+public function get_errors()
+public function get_template()
+public function get_voice()
+public function get_result()
+public function get_started_at()
+public function get_completed_at()
 ```
 
-**Key Methods:**
-* `get_all($args)` - Flexible querying with filters
-* `get_by_niche($niche, $limit, $days)` - Niche-specific topics
-* `get_top_topics($count, $days)` - Best topics across all niches
-* `search($keyword, $limit)` - Full-text search
-* `save_research_batch($topics, $niche)` - Bulk insert from research
-* `get_stats()` / `get_niche_stats($niche)` - Analytics
-* `topic_exists($topic, $niche, $days)` - Duplicate prevention
-* `delete_old_topics($days)` - Cleanup utility
-
-**Query Optimization:**
-* Indexed columns for common queries (niche, score, researched_at)
-* Prepared statements for SQL injection prevention
-* Efficient JOIN-free queries (single table design)
-* Date-based filtering using MySQL interval functions
-
-### 3. AIPS_Research_Controller (390 lines)
-**Purpose:** Orchestrates research workflow and integrates with WP admin
-**Responsibilities:**
-* AJAX handlers for research UI interactions
-* Scheduled research execution (WordPress cron)
-* Integration with existing scheduling system
-* Event dispatching for extensibility
-
-**AJAX Endpoints:**
-* `aips_research_topics` - Execute new research
-* `aips_get_trending_topics` - Retrieve stored topics with filters
-* `aips_delete_trending_topic` - Remove topic from library
-* `aips_schedule_trending_topics` - Bulk schedule topics for generation
-
-**Scheduled Research:**
-* WordPress cron hook: `aips_scheduled_research`
-* Configurable via settings: `aips_research_niches` option
-* Executes research for multiple niches automatically
-* Stores results in database for manual review/scheduling
-* Dispatches `aips_scheduled_research_completed` event
-
-**Integration with Existing Systems:**
-* Uses AIPS_Schedule_Repository to create schedules
-* Uses AIPS_Interval_Calculator for frequency calculations
-* Leverages AIPS_Template_Repository for template selection
-* Fires events for monitoring and extensibility
-
-### 4. Admin UI (research.php template - 620 lines)
-**Features:**
-* Research form with niche, count, and keyword inputs
-* Live statistics dashboard (total topics, niches, avg score, recent activity)
-* Filterable topics library (by niche, score, freshness)
-* Visual score badges (color-coded: green=90+, yellow=70-89, gray=<70)
-* Keyword tag display for each topic
-* Bulk selection and scheduling interface
-* Responsive design with CSS Grid layout
-
-**User Experience Flow:**
-1. User enters niche and optional keywords
-2. Clicks "Research Trending Topics"
-3. AI executes research, displays top 5 results immediately
-4. All results saved to library for future use
-5. User can filter library to find topics
-6. Select multiple topics and bulk schedule with template/frequency
-7. Topics automatically create schedules for content generation
-
-**JavaScript Interactions:**
-* Real-time AJAX requests without page reload
-* Loading spinners during AI research
-* Dynamic table rendering for topics
-* Checkbox selection for bulk operations
-* Form validation before submission
-* Success/error notifications
-
-### 5. Database Migration (migration-1.6-trending-topics.php)
-* Creates trending_topics table with proper charset/collation
-* Adds indexes for query performance
-* Handles upgrades from version 1.5.0 to 1.6.0
-* Integrated into AIPS_Upgrades system
-
-### 6. Cron Job Integration
-**Activation:**
-* Schedules `aips_scheduled_research` on plugin activation
-* Default frequency: daily (configurable)
-* Clears scheduled hook on deactivation
-
-**Configuration:**
-* Setting: `aips_research_niches` (array of niche configs)
-* Each config: `['niche' => '...', 'count' => 10, 'keywords' => [...]]`
-* Runs automatically based on schedule
-* Logs all research executions via AIPS_Logger
-
 **Consequence:**
+* **Pros:**
+  - **Clarity**: Class name explicitly conveys purpose (session tracking)
+  - **Testability**: Session tracker can be tested independently (19 test cases added)
+  - **Encapsulation**: All session logic in one place, no manual array management
+  - **Maintainability**: Changes to session structure require updates in one class only
+  - **Documentation**: Comprehensive DocBlocks explain difference from History
+  - **Type safety**: Methods provide type-safe access to session data
+  - **Reusability**: Session tracker can be used in other generation contexts
+  - **Query methods**: Convenient access to derived data (duration, counts, success status)
+  - **Reduced coupling**: Generator doesn't need to know session structure details
+  - **Better error tracking**: Explicit `add_error()` method for non-AI errors
+* **Cons:**
+  - Added one new file to includes directory (~320 lines)
+  - Slightly increased memory footprint (one additional object instance per generation)
+  - Developers must understand the session class in addition to Generator
+  - More indirection (method calls instead of direct array access)
+* **Trade-offs:**
+  - Chose composition over raw arrays (better abstraction, slightly more overhead)
+  - Maintained backward compatibility: session data structure unchanged (same JSON format)
+  - Prioritized clarity and testability over minimal file count
+  - Session is recreated for each generation (stateless between requests)
 
-**Pros:**
-* **Automation:** Eliminates manual topic brainstorming
-* **Relevance:** AI-powered trend analysis ensures timely topics
-* **Persistence:** Research results stored for future use
-* **Scheduling:** Seamless integration with existing scheduling system
-* **Scalability:** Can research multiple niches automatically
-* **Analytics:** Statistics and scoring help prioritize topics
-* **Flexibility:** Manual research + automated scheduled research
-* **Extensibility:** Events allow third-party integrations
-* **User Experience:** Intuitive UI with visual feedback
-* **Performance:** Indexed database queries, batch operations
-* **Robustness:** Fallback parsing, error handling, duplicate prevention
-
-**Cons:**
-* Added 3 new files (~1350 lines total)
-* New database table (storage overhead)
-* Additional AI API calls (cost consideration)
-* Scheduled cron increases background processing
-* Complexity for users new to research feature
-
-**Trade-offs:**
-* Chose JSON parsing with fallback over strict validation (handles AI variability)
-* Stored keywords as JSON text rather than separate table (simpler, sufficient for keyword tags)
-* Scheduled research is opt-in via configuration (doesn't run without niches configured)
-* Research results don't auto-schedule (requires manual review and selection)
-* Topic freshness analysis is heuristic-based (good enough without complex NLP)
-
-**Tests:** Created comprehensive test suites covering:
-
-**test-research-service.php (19 test cases):**
-* Service instantiation
-* Empty niche validation
-* AI service availability checking
-* Valid parameter handling
-* AI error handling
-* Count validation (min/max bounds)
-* Get top topics functionality
-* Empty array handling
-* Freshness analysis (current year, temporal words, seasonal relevance)
-* Topic comparison by score
-* Topic comparison with equal scores
-* Fallback parsing for non-JSON responses
-* JSON parsing with markdown code blocks
-
-**test-trending-topics-repository.php (22 test cases):**
-* Repository instantiation
-* Creating topics with valid data
-* Creating topics with missing fields (validation)
-* Getting topics by ID
-* Getting all topics
-* Getting topics with filters (niche, score)
-* Getting topics by niche with date filters
-* Getting top topics with ranking
-* Searching topics by keyword
-* Updating topics
-* Deleting individual topics
-* Deleting topics by niche (bulk)
-* Saving research batches
-* Statistics retrieval (overall and niche-specific)
-* Topic existence checking (duplicate prevention)
-* Getting niche list with counts
+**Tests:** Created comprehensive test suite in `tests/test-generation-session.php` with 19 test cases covering:
+* Session initialization and state
+* Starting session with template only
+* Starting session with template and voice
+* Logging successful AI calls
+* Logging AI calls with errors
+* Adding errors directly
+* Multiple AI calls accumulation
+* Completing session with success result
+* Completing session with failure result
+* Array conversion (`to_array()`)
+* JSON serialization (`to_json()`)
+* Duration calculation (before and after completion)
+* AI call counting
+* Error counting
+* Success status checking
+* Full generation lifecycle (start → log calls → complete → serialize)
+* Template and voice data storage
+* Timestamp tracking
 
 **Backward Compatibility:**
-* All existing features continue to work unchanged
-* New menu item added (doesn't interfere with existing menus)
-* New database table (doesn't modify existing tables)
-* New cron job (doesn't affect existing `aips_generate_scheduled_posts` cron)
-* Optional feature (plugin works fine without using research)
-* No changes to existing templates, schedules, or generation logic
-* Existing AJAX endpoints unchanged
-
-**Integration Points:**
-* **With AI Service:** Uses existing AIPS_AI_Service for AI calls
-* **With Logger:** Uses AIPS_Logger for all logging
-* **With Config:** Uses AIPS_Config for settings (ready for future config options)
-* **With Scheduler:** Creates schedules via AIPS_Schedule_Repository
-* **With Templates:** Requires template selection for bulk scheduling
-* **With Settings Menu:** Adds "Trending Topics" submenu item
-
-**Event System:**
-* `aips_trending_topic_scheduled` - Fired when topic scheduled
-  - Data: schedule_id, topic, template_id, next_run
-* `aips_scheduled_research_completed` - Fired after automated research
-  - Data: niche, topics_count, topics array
-
-**Future Enhancements Enabled:**
-* **Webhooks:** Listen to research events and send notifications
-* **Analytics Dashboard:** Track which topics perform best
-* **Auto-Scheduling:** Automatically schedule top-scored topics
-* **Competitive Analysis:** Research competitor's trending topics
-* **Multi-Language:** Research topics in different languages
-* **Trend Tracking:** Historical trend analysis over time
-* **Smart Recommendations:** ML-based topic suggestions
-* **Integration with SEO Tools:** Pull data from external SEO APIs
-
-**Architecture Patterns Applied:**
-* **Service Layer:** AIPS_Research_Service encapsulates research logic
-* **Repository Pattern:** AIPS_Trending_Topics_Repository handles data access
-* **Controller Pattern:** AIPS_Research_Controller orchestrates workflow
-* **Dependency Injection:** Research Service accepts AI Service via constructor
-* **Event-Driven:** Fires WordPress hooks for extensibility
-* **Single Responsibility:** Each class has one clear purpose
-* **Command Query Separation:** Repository has separate read/write methods
-
-**Metrics:**
-* Files created: 5 (3 classes, 1 template, 1 migration)
-* Lines of code: ~1350 (service: 460, repository: 500, controller: 390)
-* Test cases: 41 (19 for service, 22 for repository)
-* Test coverage: ~85% of new code
-* Database tables: 1 new table (aips_trending_topics)
-* AJAX endpoints: 4 new endpoints
-* Admin pages: 1 new page (Trending Topics)
-* Cron jobs: 1 new scheduled task
-* Events: 2 new event types
-* Breaking changes: 0
+* **100% compatible**: No breaking changes to public APIs
+* **Data format unchanged**: JSON structure in History table identical
+* **Generator API unchanged**: `generate_post()` signature and behavior identical
+* **History records unchanged**: Database schema and field formats unchanged
+* **Admin UI unchanged**: History viewing and details modal work identically
+* **Event hooks unchanged**: All WordPress action hooks fire as before
+* **Internal refactoring only**: Changes are implementation details
 
 **Documentation:**
-* DocBlocks for all classes and methods
-* Inline comments explaining complex logic
-* Template includes usage examples in comments
-* Test files document expected behavior
-* This journal entry provides architectural overview
+* Created comprehensive analysis document: `.build/generation-log-vs-history-analysis.md`
+* Documents the confusion, architectural issues, and recommended solution
+* Provides clear explanation of the difference between session and history
+* Includes implementation examples and impact assessment
+* Serves as reference for future developers
 
-**Security Considerations:**
-* All AJAX handlers verify nonces
-* All AJAX handlers check user capabilities (`manage_options`)
-* All database inputs sanitized (`sanitize_text_field`, `absint`)
-* All outputs escaped (`esc_html`, `esc_attr`, `esc_js`)
-* SQL uses prepared statements throughout
-* No direct file system access
-* No eval() or dynamic code execution
-* JSON encoding prevents XSS in keyword display
+**Impact on Codebase:**
+* **Before**: 
+  - Raw array property in Generator (~47 lines of array management)
+  - Manual JSON encoding scattered across methods
+  - No clear documentation of lifecycle or purpose
+  - Difficult to test tracking logic independently
+* **After**:
+  - Dedicated session class (~320 lines with comprehensive methods and docs)
+  - Clean delegation from Generator to session (~10 lines of integration)
+  - Self-documenting through class name and DocBlocks
+  - 19 test cases ensure session logic works correctly
 
-**Performance Considerations:**
-* Database indexes on commonly queried columns
-* Batch operations for multiple topic inserts
-* AJAX pagination for large result sets
-* Lazy loading of topics (click "Load Topics" to fetch)
-* Caching opportunities (not implemented yet, but structure supports it)
-* Efficient query structure (no unnecessary JOINs)
+**Architectural Improvements:**
+1. **Single Responsibility**: Generator orchestrates, session tracks
+2. **Encapsulation**: Session data and operations bundled together
+3. **Abstraction**: Generator doesn't know session structure details
+4. **Testability**: Session logic testable without Generator or AI Engine
+5. **Documentation**: Explicit distinction between session and history
+6. **Maintainability**: Session structure changes isolated to one class
 
-**User Experience Improvements:**
-* Visual feedback (spinners, success messages)
-* Color-coded score badges for quick assessment
-* Keyword tags for quick topic understanding
-* Filters for finding relevant topics quickly
-* Bulk operations for efficiency
-* Statistics dashboard for insights
-* Responsive design works on mobile/tablet
+**Future Recommendations:**
+1. Consider adding session statistics to admin dashboard (avg duration, success rate by template)
+2. Add session export feature for debugging (download full session JSON)
+3. Implement session caching for retry functionality (reload previous session)
+4. Add session comparison tool (diff two generation attempts)
+5. Consider session hooks for third-party tracking (e.g., analytics plugins)
 
 **Conclusion:**
-The Trending Topics Research feature represents a significant value addition to the AI Post Scheduler plugin. It leverages AI Engine's text generation capabilities in a novel way - not just for content generation, but for content strategy and planning. By automating topic discovery, the plugin now truly "automates the automation," allowing content creators to focus on higher-level strategy while the system handles the research and suggestion of timely, relevant topics. The architecture is clean, testable, and extensible, following established patterns from previous refactoring work. The feature integrates seamlessly with existing functionality while remaining optional and non-intrusive. This implementation demonstrates how AI can be used not just as a content generator, but as a research assistant and trend analyst.
+This refactoring eliminates the confusion between runtime session tracking (`generation_log`) and persistent history records (`History`). The new `AIPS_Generation_Session` class provides a clear, testable, and well-documented abstraction for tracking post generation sessions. The distinction between ephemeral runtime tracking and persistent database storage is now explicit in the code and documentation. This architectural improvement aligns with SOLID principles, enhances code clarity, and provides a foundation for future enhancements while maintaining 100% backward compatibility.
