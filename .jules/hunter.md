@@ -6,8 +6,5 @@
 **Learning:**  in  caused template properties to overwrite schedule properties (like ) when column names collided.
 **Action:** Changed query to  to ensure schedule properties take precedence, preserving the integrity of the schedule object.
 ## 2024-05-25 - Schedule Query Collision Fix
-**Learning:**  in  caused template properties to overwrite schedule properties (like ) when column names collided.
-**Action:** Changed query to  to ensure schedule properties take precedence, preserving the integrity of the schedule object.
-## 2024-05-25 - Schedule Query Collision Fix
 **Learning:** SQL JOINs can overwrite columns if using wildcard selects.
 **Action:** Changed query order to ensure schedule properties take precedence.
