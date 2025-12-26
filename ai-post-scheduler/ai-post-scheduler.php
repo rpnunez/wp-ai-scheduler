@@ -53,39 +53,12 @@ final class AI_Post_Scheduler {
     }
     
     private function includes() {
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-config.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
-        
-        // Repository layer
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-section-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-trending-topics-repository.php';
-        
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-processor.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-manager.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-type-selector.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-interval-calculator.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-resilience-service.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-ai-service.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-image-service.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generation-session.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-service.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-creator.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-controller.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-controller.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
+        // Load autoloader
+        if (file_exists(AIPS_PLUGIN_DIR . 'vendor/autoload.php')) {
+            require_once AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        } else {
+            require_once AIPS_PLUGIN_DIR . 'src/autoload.php';
+        }
     }
     
     private function init_hooks() {
