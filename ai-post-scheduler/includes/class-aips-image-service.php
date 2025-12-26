@@ -120,6 +120,22 @@ class AIPS_Image_Service {
             $this->logger->log($error->get_error_message(), 'error');
             return $error;
         }
+
+        // SECURITY: Verify actual file content is an image using finfo if available
+        // This prevents saving non-image files (e.g. scripts) even if Content-Type header is spoofed
+        if (class_exists('finfo')) {
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $real_mime = $finfo->buffer($image_data);
+
+            if (strpos($real_mime, 'image/') !== 0) {
+                $error = new WP_Error(
+                    'invalid_image_content',
+                    sprintf(__('Security check failed: Content appears to be %s, expected image.', 'ai-post-scheduler'), $real_mime)
+                );
+                $this->logger->log($error->get_error_message(), 'error');
+                return $error;
+            }
+        }
         
         $post_slug = sanitize_title($post_title);
         $filename = $post_slug . '.jpg';
