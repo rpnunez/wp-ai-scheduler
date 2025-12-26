@@ -272,6 +272,39 @@ class AIPS_Schedule_Repository {
     public function set_active($id, $is_active) {
         return $this->update($id, array('is_active' => $is_active));
     }
+
+    /**
+     * Create multiple schedules in a single query.
+     *
+     * @param array $schedules Array of schedule data arrays.
+     * @return int Number of rows inserted.
+     */
+    public function create_bulk($schedules) {
+        if (empty($schedules)) {
+            return 0;
+        }
+
+        $values = array();
+        $placeholders = array();
+        $query = "INSERT INTO {$this->schedule_table} (template_id, frequency, next_run, is_active, topic, article_structure_id, rotation_pattern) VALUES ";
+
+        foreach ($schedules as $data) {
+            array_push($values,
+                absint($data['template_id']),
+                sanitize_text_field($data['frequency']),
+                sanitize_text_field($data['next_run']),
+                isset($data['is_active']) ? 1 : 0,
+                isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+                isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
+                isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null
+            );
+            $placeholders[] = "(%d, %s, %s, %d, %s, %d, %s)";
+        }
+
+        $query .= implode(', ', $placeholders);
+
+        return $this->wpdb->query($this->wpdb->prepare($query, $values));
+    }
     
     /**
      * Count schedules by status.

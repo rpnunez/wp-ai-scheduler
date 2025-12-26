@@ -237,6 +237,65 @@ class AIPS_Templates {
         return $stats;
     }
 
+    public function get_all_pending_stats() {
+        global $wpdb;
+        $table_schedule = $wpdb->prefix . 'aips_schedule';
+
+        // Get all active schedules ordered by template_id
+        $schedules = $wpdb->get_results("SELECT * FROM $table_schedule WHERE is_active = 1 ORDER BY template_id");
+
+        $stats = array();
+        if (empty($schedules)) {
+            return $stats;
+        }
+
+        $now = current_time('timestamp');
+        $today_end = strtotime('today 23:59:59', $now);
+        $week_end = strtotime('+7 days', $now);
+        $month_end = strtotime('+30 days', $now);
+
+        foreach ($schedules as $schedule) {
+            $tid = $schedule->template_id;
+            if (!isset($stats[$tid])) {
+                $stats[$tid] = array('today' => 0, 'week' => 0, 'month' => 0);
+            }
+
+            $cursor = strtotime($schedule->next_run);
+            $frequency = $schedule->frequency;
+
+            // Limit iterations to prevent infinite loops or excessive processing
+            $max_iterations = 100;
+            $i = 0;
+
+            while ($cursor <= $month_end && $i < $max_iterations) {
+                // If cursor is in the past, it's considered imminent (Today)
+                if ($cursor <= $today_end) {
+                    $stats[$tid]['today']++;
+                }
+
+                if ($cursor <= $week_end) {
+                    $stats[$tid]['week']++;
+                }
+
+                if ($cursor <= $month_end) {
+                    $stats[$tid]['month']++;
+                } else {
+                    break;
+                }
+
+                if ($frequency === 'once') {
+                    break;
+                }
+
+                // Calculate next run
+                $cursor = $this->calculate_next_run($frequency, $cursor);
+                $i++;
+            }
+        }
+
+        return $stats;
+    }
+
     private function calculate_next_run($frequency, $base_time) {
         switch ($frequency) {
             case 'hourly':

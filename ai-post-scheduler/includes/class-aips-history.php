@@ -33,6 +33,10 @@ class AIPS_History {
     public function get_template_stats($template_id) {
         return $this->repository->get_template_stats($template_id);
     }
+
+    public function get_all_template_stats() {
+        return $this->repository->get_all_template_stats();
+    }
     
     public function clear_history($status = '') {
         return $this->repository->delete_by_status($status);

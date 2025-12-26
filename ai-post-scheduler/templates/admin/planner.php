@@ -35,8 +35,14 @@
         <h3><?php echo esc_html__('Review & Schedule', 'ai-post-scheduler'); ?></h3>
 
         <div class="aips-toolbar">
-            <label><input type="checkbox" id="check-all-topics"> <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?></label>
-            <span class="selection-count"></span>
+            <div class="aips-toolbar-left">
+                <label><input type="checkbox" id="check-all-topics"> <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?></label>
+                <span class="selection-count"></span>
+            </div>
+            <div class="aips-toolbar-right">
+                <button type="button" id="btn-copy-topics" class="button button-secondary button-small"><?php echo esc_html__('Copy Selected', 'ai-post-scheduler'); ?></button>
+                <button type="button" id="btn-clear-topics" class="button button-link-delete button-small"><?php echo esc_html__('Clear List', 'ai-post-scheduler'); ?></button>
+            </div>
         </div>
 
         <div id="topics-list" class="aips-topics-grid">
