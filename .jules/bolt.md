@@ -13,8 +13,5 @@
 **Action:** Identify read-heavy dashboard metrics and apply transient caching with invalidation on write.
 
 ## 2024-05-25 - N+1 Query Fix in Templates List
-**Learning:** The Templates list view was executing a stats query for each row, leading to severe performance degradation with many templates.
-**Action:** Implemented  and  to pre-fetch all necessary data in two queries before the loop.
-## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
