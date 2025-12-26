@@ -45,6 +45,11 @@
             $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
             $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
 
+            // Schedule Search
+            $(document).on('keyup search', '#aips-schedule-search', this.filterSchedules);
+            $(document).on('click', '#aips-schedule-search-clear', this.clearScheduleSearch);
+            $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
+
             // Voice Search
             $(document).on('keyup search', '#aips-voice-search', this.filterVoices);
             $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
@@ -635,6 +640,48 @@
         clearTemplateSearch: function(e) {
             e.preventDefault();
             $('#aips-template-search').val('').trigger('keyup');
+        },
+
+        filterSchedules: function() {
+            var term = $('#aips-schedule-search').val().toLowerCase().trim();
+            var $rows = $('.aips-schedules-container table tbody tr');
+            var $noResults = $('#aips-schedule-search-no-results');
+            var $table = $('.aips-schedules-container table');
+            var $clearBtn = $('#aips-schedule-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                var template = $row.find('.column-template').text().toLowerCase();
+                var structure = $row.find('.column-structure').text().toLowerCase();
+                var frequency = $row.find('.column-frequency').text().toLowerCase();
+
+                if (template.indexOf(term) > -1 || structure.indexOf(term) > -1 || frequency.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearScheduleSearch: function(e) {
+            e.preventDefault();
+            $('#aips-schedule-search').val('').trigger('keyup');
         },
 
         filterVoices: function() {

@@ -32,6 +32,12 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
     
     <div class="aips-schedules-container">
         <?php if (!empty($schedules)): ?>
+        <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+            <label class="screen-reader-text" for="aips-schedule-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
+            <input type="search" id="aips-schedule-search" class="regular-text" placeholder="<?php esc_attr_e('Search schedules...', 'ai-post-scheduler'); ?>">
+            <button type="button" id="aips-schedule-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+        </div>
+
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>
@@ -100,6 +106,14 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                 <?php endforeach; ?>
             </tbody>
         </table>
+        <div id="aips-schedule-search-no-results" class="aips-empty-state" style="display: none;">
+            <span class="dashicons dashicons-search" aria-hidden="true"></span>
+            <h3><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
+            <p><?php esc_html_e('No schedules match your search criteria.', 'ai-post-scheduler'); ?></p>
+            <button type="button" class="button button-primary aips-clear-schedule-search-btn">
+                <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+            </button>
+        </div>
         <?php else: ?>
         <div class="aips-empty-state">
             <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
