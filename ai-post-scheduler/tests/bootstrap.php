@@ -121,9 +121,19 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     if (!function_exists('current_time')) {
         function current_time($type = 'mysql', $gmt = 0) {
+            if ($type === 'timestamp') {
+                return time();
+            }
+
             if ($type === 'mysql') {
+                if ($gmt) {
+                    return gmdate('Y-m-d H:i:s');
+                }
+
                 return date('Y-m-d H:i:s');
             }
+
+            // Fallback: return a Unix timestamp for unknown types.
             return time();
         }
     }
