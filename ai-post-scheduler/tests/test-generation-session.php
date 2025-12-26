@@ -97,6 +97,60 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that only expected template properties are stored.
+	 * 
+	 * Verifies that the session filters out unexpected properties
+	 * and only stores the defined template fields.
+	 */
+	public function test_template_property_filtering() {
+		$session = new AIPS_Generation_Session();
+
+		// Create template with extra unexpected properties
+		$template = (object) array(
+			'id' => 1,
+			'name' => 'Test Template',
+			'prompt_template' => 'Write about {{topic}}',
+			'title_prompt' => 'Generate title',
+			'post_status' => 'draft',
+			'post_category' => '1',
+			'post_tags' => 'ai,test',
+			'post_author' => 1,
+			'post_quantity' => 1,
+			'generate_featured_image' => false,
+			'image_prompt' => '',
+			// Extra unexpected properties
+			'unexpected_field' => 'should not be stored',
+			'another_field' => 'also should not be stored',
+			'internal_data' => array('secret' => 'value'),
+		);
+
+		$session->start($template);
+
+		$stored_template = $session->get_template();
+
+		// Verify expected properties are present
+		$this->assertArrayHasKey('id', $stored_template);
+		$this->assertArrayHasKey('name', $stored_template);
+		$this->assertArrayHasKey('prompt_template', $stored_template);
+		$this->assertArrayHasKey('title_prompt', $stored_template);
+		$this->assertArrayHasKey('post_status', $stored_template);
+		$this->assertArrayHasKey('post_category', $stored_template);
+		$this->assertArrayHasKey('post_tags', $stored_template);
+		$this->assertArrayHasKey('post_author', $stored_template);
+		$this->assertArrayHasKey('post_quantity', $stored_template);
+		$this->assertArrayHasKey('generate_featured_image', $stored_template);
+		$this->assertArrayHasKey('image_prompt', $stored_template);
+
+		// Verify unexpected properties are NOT present
+		$this->assertArrayNotHasKey('unexpected_field', $stored_template);
+		$this->assertArrayNotHasKey('another_field', $stored_template);
+		$this->assertArrayNotHasKey('internal_data', $stored_template);
+
+		// Verify only expected keys exist (count should be 11)
+		$this->assertCount(11, $stored_template);
+	}
+
+	/**
 	 * Test logging AI calls.
 	 */
 	public function test_log_ai_call_success() {

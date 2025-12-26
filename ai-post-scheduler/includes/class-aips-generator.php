@@ -20,6 +20,10 @@ class AIPS_Generator {
      * - History: Persistent database records (managed by AIPS_History_Repository)
      * 
      * The session is saved as the `generation_log` JSON field in History records.
+     * 
+     * Note: The session is automatically reset at the start of each generate_post()
+     * call via the start() method, so it's safe to reuse the same Generator instance
+     * for multiple post generations.
      */
     private $current_session;
     
