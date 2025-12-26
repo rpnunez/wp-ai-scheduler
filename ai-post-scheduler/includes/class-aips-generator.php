@@ -7,7 +7,22 @@ class AIPS_Generator {
     
     private $ai_service;
     private $logger;
-    private $generation_log;
+    
+    /**
+     * @var AIPS_Generation_Session Current generation session tracker.
+     * 
+     * This tracks runtime details of a single post generation attempt.
+     * It is ephemeral (exists only during the current request) and is
+     * serialized to JSON for storage in the History database table.
+     * 
+     * Key Distinction:
+     * - Generation Session: Runtime tracking (this property)
+     * - History: Persistent database records (managed by AIPS_History_Repository)
+     * 
+     * The session is saved as the `generation_log` JSON field in History records.
+     */
+    private $current_session;
+    
     private $template_processor;
     private $image_service;
     private $structure_manager;
@@ -31,23 +46,12 @@ class AIPS_Generator {
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
         $this->history_repository = $history_repository ?: new AIPS_History_Repository();
 
-        $this->reset_generation_log();
-    }
-    
-    private function reset_generation_log() {
-        $this->generation_log = array(
-            'started_at' => null,
-            'completed_at' => null,
-            'template' => null,
-            'voice' => null,
-            'ai_calls' => array(),
-            'errors' => array(),
-            'result' => null,
-        );
+        // Initialize session tracker
+        $this->current_session = new AIPS_Generation_Session();
     }
     
     /**
-     * Log an AI call to the generation log.
+     * Log an AI call to the current generation session.
      *
      * @param string      $type     Type of AI call (e.g., 'title', 'content', 'excerpt', 'featured_image').
      * @param string      $prompt   The prompt sent to AI.
@@ -56,29 +60,7 @@ class AIPS_Generator {
      * @param string|null $error    Error message, if call failed.
      */
     private function log_ai_call($type, $prompt, $response, $options = array(), $error = null) {
-        $call_log = array(
-            'type' => $type,
-            'timestamp' => current_time('mysql'),
-            'request' => array(
-                'prompt' => $prompt,
-                'options' => $options,
-            ),
-            'response' => array(
-                'success' => $error === null,
-                'content' => $response,
-                'error' => $error,
-            ),
-        );
-        
-        $this->generation_log['ai_calls'][] = $call_log;
-        
-        if ($error) {
-            $this->generation_log['errors'][] = array(
-                'type' => $type,
-                'timestamp' => current_time('mysql'),
-                'message' => $error,
-            );
-        }
+        $this->current_session->log_ai_call($type, $prompt, $response, $options, $error);
     }
 
     /**
@@ -202,32 +184,8 @@ class AIPS_Generator {
             'timestamp' => current_time('mysql'),
         ), 'post_generation');
         
-        $this->reset_generation_log();
-        $this->generation_log['started_at'] = current_time('mysql');
-        
-        $this->generation_log['template'] = array(
-            'id' => $template->id,
-            'name' => $template->name,
-            'prompt_template' => $template->prompt_template,
-            'title_prompt' => $template->title_prompt,
-            'post_status' => $template->post_status,
-            'post_category' => $template->post_category,
-            'post_tags' => $template->post_tags,
-            'post_author' => $template->post_author,
-            'post_quantity' => $template->post_quantity,
-            'generate_featured_image' => $template->generate_featured_image,
-            'image_prompt' => $template->image_prompt,
-        );
-        
-        if ($voice) {
-            $this->generation_log['voice'] = array(
-                'id' => $voice->id,
-                'name' => $voice->name,
-                'title_prompt' => $voice->title_prompt,
-                'content_instructions' => $voice->content_instructions,
-                'excerpt_instructions' => $voice->excerpt_instructions,
-            );
-        }
+        // Start new generation session
+        $this->current_session->start($template, $voice);
         
         // Create initial history record using Repository
         $history_id = $this->history_repository->create(array(
@@ -269,17 +227,17 @@ class AIPS_Generator {
         $content = $this->generate_content($content_prompt, array(), 'content');
         
         if (is_wp_error($content)) {
-            $this->generation_log['completed_at'] = current_time('mysql');
-            $this->generation_log['result'] = array(
+            // Complete session with failure result
+            $this->current_session->complete(array(
                 'success' => false,
                 'error' => $content->get_error_message(),
-            );
+            ));
             
             if ($history_id) {
                 $this->history_repository->update($history_id, array(
                     'status' => 'failed',
                     'error_message' => $content->get_error_message(),
-                    'generation_log' => wp_json_encode($this->generation_log),
+                    'generation_log' => $this->current_session->to_json(),
                     'completed_at' => current_time('mysql'),
                 ));
             }
@@ -333,14 +291,14 @@ class AIPS_Generator {
         $post_id = $this->post_creator->create_post($post_creation_data);
         
         if (is_wp_error($post_id)) {
-            $this->generation_log['completed_at'] = current_time('mysql');
-            $this->generation_log['result'] = array(
+            // Complete session with failure result
+            $this->current_session->complete(array(
                 'success' => false,
                 'error' => $post_id->get_error_message(),
                 'generated_title' => $title,
                 'generated_content' => $content,
                 'generated_excerpt' => $excerpt,
-            );
+            ));
             
             if ($history_id) {
                 $this->history_repository->update($history_id, array(
@@ -348,7 +306,7 @@ class AIPS_Generator {
                     'error_message' => $post_id->get_error_message(),
                     'generated_title' => $title,
                     'generated_content' => $content,
-                    'generation_log' => wp_json_encode($this->generation_log),
+                    'generation_log' => $this->current_session->to_json(),
                     'completed_at' => current_time('mysql'),
                 ));
             }
@@ -367,23 +325,19 @@ class AIPS_Generator {
                 $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
             } else {
                 $this->logger->log('Featured image generation failed: ' . $featured_image_result->get_error_message(), 'error');
-                $this->generation_log['errors'][] = array(
-                    'type' => 'featured_image',
-                    'timestamp' => current_time('mysql'),
-                    'message' => $featured_image_result->get_error_message(),
-                );
+                $this->current_session->add_error('featured_image', $featured_image_result->get_error_message());
             }
         }
         
-        $this->generation_log['completed_at'] = current_time('mysql');
-        $this->generation_log['result'] = array(
+        // Complete session with success result
+        $this->current_session->complete(array(
             'success' => true,
             'post_id' => $post_id,
             'generated_title' => $title,
             'generated_content' => $content,
             'generated_excerpt' => $excerpt,
             'featured_image_id' => $featured_image_id,
-        );
+        ));
         
         if ($history_id) {
             $this->history_repository->update($history_id, array(
@@ -391,7 +345,7 @@ class AIPS_Generator {
                 'status' => 'completed',
                 'generated_title' => $title,
                 'generated_content' => $content,
-                'generation_log' => wp_json_encode($this->generation_log),
+                'generation_log' => $this->current_session->to_json(),
                 'completed_at' => current_time('mysql'),
             ));
         }

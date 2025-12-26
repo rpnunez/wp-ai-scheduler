@@ -978,3 +978,157 @@ Modern cloud services require resilient API clients with retry logic, circuit br
 
 **Conclusion:**
 These architectural improvements significantly enhance the plugin's maintainability, testability, extensibility, and reliability. The codebase now follows modern software engineering practices and leverages WordPress's native capabilities where possible, avoiding unnecessary abstraction layers. The plugin is ready for production use at scale. Future features will be easier to implement, and the risk of introducing bugs has been further reduced. The plugin is now more resilient to external API failures and provides clean extension points for third-party developers using standard WordPress hooks.
+
+---
+
+## 2025-12-26 - Extract Generation Session Tracker
+
+**Context:** The `AIPS_Generator` class contained a private property called `$generation_log` (a raw PHP array) that tracked runtime details of post generation. This created architectural confusion:
+* **Naming confusion**: Both `generation_log` and `History` relate to generation tracking, but serve different purposes
+* **Unclear lifecycle**: The `generation_log` is ephemeral (exists only during one request) while `History` is persistent (database records)
+* **Tight coupling**: The raw array structure leaked into the persistence layer when serialized to JSON
+* **Poor encapsulation**: Manual array management with direct property access throughout the class
+* **Difficult to test**: Cannot test generation tracking logic independently from the Generator
+* **Lack of abstraction**: No methods for common operations (get duration, count AI calls, check success)
+
+The relationship between the runtime tracker and the persistent history was not explicit in the code, requiring developers to read implementation details to understand the difference.
+
+**Decision:** Applied "Separation of Concerns" and "Single Responsibility Principle". Created a dedicated `AIPS_Generation_Session` class in `class-aips-generation-session.php` that:
+
+### Generation Session Features
+* **Encapsulates runtime tracking** - All session data in one cohesive class
+* **Clear lifecycle management** - Explicit `start()`, `log_ai_call()`, `add_error()`, and `complete()` methods
+* **Self-documenting** - Class name explicitly conveys it's a session tracker
+* **Serialization support** - `to_array()` and `to_json()` methods for storage
+* **Query methods** - `get_duration()`, `get_ai_call_count()`, `get_error_count()`, `was_successful()`
+* **Comprehensive DocBlocks** - Documents the difference from History in class-level comments
+
+### Key Distinction Documented
+The class DocBlock explicitly clarifies:
+* **Generation Session**: Ephemeral runtime tracker (exists during one request)
+* **History**: Persistent database record (exists across all requests)
+* **Relationship**: Session is serialized and stored in History's `generation_log` JSON field
+
+### Updated Generator Class
+* Replaced `$generation_log` array property with `$current_session` (AIPS_Generation_Session instance)
+* Replaced `reset_generation_log()` with session construction
+* Simplified `log_ai_call()` to delegate to session
+* Updated `generate_post()` to use session lifecycle methods
+* All history updates now use `$this->current_session->to_json()`
+
+### Methods Provided
+```php
+// Lifecycle
+public function start($template, $voice = null)
+public function complete($result)
+
+// Logging
+public function log_ai_call($type, $prompt, $response, $options, $error)
+public function add_error($type, $message)
+
+// Serialization
+public function to_array()
+public function to_json()
+
+// Queries
+public function get_duration()
+public function get_ai_call_count()
+public function get_error_count()
+public function was_successful()
+public function get_ai_calls()
+public function get_errors()
+public function get_template()
+public function get_voice()
+public function get_result()
+public function get_started_at()
+public function get_completed_at()
+```
+
+**Consequence:**
+* **Pros:**
+  - **Clarity**: Class name explicitly conveys purpose (session tracking)
+  - **Testability**: Session tracker can be tested independently (19 test cases added)
+  - **Encapsulation**: All session logic in one place, no manual array management
+  - **Maintainability**: Changes to session structure require updates in one class only
+  - **Documentation**: Comprehensive DocBlocks explain difference from History
+  - **Type safety**: Methods provide type-safe access to session data
+  - **Reusability**: Session tracker can be used in other generation contexts
+  - **Query methods**: Convenient access to derived data (duration, counts, success status)
+  - **Reduced coupling**: Generator doesn't need to know session structure details
+  - **Better error tracking**: Explicit `add_error()` method for non-AI errors
+* **Cons:**
+  - Added one new file to includes directory (~320 lines)
+  - Slightly increased memory footprint (one additional object instance per generation)
+  - Developers must understand the session class in addition to Generator
+  - More indirection (method calls instead of direct array access)
+* **Trade-offs:**
+  - Chose composition over raw arrays (better abstraction, slightly more overhead)
+  - Maintained backward compatibility: session data structure unchanged (same JSON format)
+  - Prioritized clarity and testability over minimal file count
+  - Session is recreated for each generation (stateless between requests)
+
+**Tests:** Created comprehensive test suite in `tests/test-generation-session.php` with 19 test cases covering:
+* Session initialization and state
+* Starting session with template only
+* Starting session with template and voice
+* Logging successful AI calls
+* Logging AI calls with errors
+* Adding errors directly
+* Multiple AI calls accumulation
+* Completing session with success result
+* Completing session with failure result
+* Array conversion (`to_array()`)
+* JSON serialization (`to_json()`)
+* Duration calculation (before and after completion)
+* AI call counting
+* Error counting
+* Success status checking
+* Full generation lifecycle (start → log calls → complete → serialize)
+* Template and voice data storage
+* Timestamp tracking
+
+**Backward Compatibility:**
+* **100% compatible**: No breaking changes to public APIs
+* **Data format unchanged**: JSON structure in History table identical
+* **Generator API unchanged**: `generate_post()` signature and behavior identical
+* **History records unchanged**: Database schema and field formats unchanged
+* **Admin UI unchanged**: History viewing and details modal work identically
+* **Event hooks unchanged**: All WordPress action hooks fire as before
+* **Internal refactoring only**: Changes are implementation details
+
+**Documentation:**
+* Created comprehensive analysis document: `.build/generation-log-vs-history-analysis.md`
+* Documents the confusion, architectural issues, and recommended solution
+* Provides clear explanation of the difference between session and history
+* Includes implementation examples and impact assessment
+* Serves as reference for future developers
+
+**Impact on Codebase:**
+* **Before**: 
+  - Raw array property in Generator (~47 lines of array management)
+  - Manual JSON encoding scattered across methods
+  - No clear documentation of lifecycle or purpose
+  - Difficult to test tracking logic independently
+* **After**:
+  - Dedicated session class (~320 lines with comprehensive methods and docs)
+  - Clean delegation from Generator to session (~10 lines of integration)
+  - Self-documenting through class name and DocBlocks
+  - 19 test cases ensure session logic works correctly
+
+**Architectural Improvements:**
+1. **Single Responsibility**: Generator orchestrates, session tracks
+2. **Encapsulation**: Session data and operations bundled together
+3. **Abstraction**: Generator doesn't know session structure details
+4. **Testability**: Session logic testable without Generator or AI Engine
+5. **Documentation**: Explicit distinction between session and history
+6. **Maintainability**: Session structure changes isolated to one class
+
+**Future Recommendations:**
+1. Consider adding session statistics to admin dashboard (avg duration, success rate by template)
+2. Add session export feature for debugging (download full session JSON)
+3. Implement session caching for retry functionality (reload previous session)
+4. Add session comparison tool (diff two generation attempts)
+5. Consider session hooks for third-party tracking (e.g., analytics plugins)
+
+**Conclusion:**
+This refactoring eliminates the confusion between runtime session tracking (`generation_log`) and persistent history records (`History`). The new `AIPS_Generation_Session` class provides a clear, testable, and well-documented abstraction for tracking post generation sessions. The distinction between ephemeral runtime tracking and persistent database storage is now explicit in the code and documentation. This architectural improvement aligns with SOLID principles, enhances code clarity, and provides a foundation for future enhancements while maintaining 100% backward compatibility.
