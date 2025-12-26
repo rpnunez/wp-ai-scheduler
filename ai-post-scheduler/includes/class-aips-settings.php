@@ -125,11 +125,21 @@ class AIPS_Settings {
      * @return void
      */
     public function register_settings() {
-        register_setting('aips_settings', 'aips_default_post_status');
-        register_setting('aips_settings', 'aips_default_category');
-        register_setting('aips_settings', 'aips_enable_logging');
-        register_setting('aips_settings', 'aips_max_retries');
-        register_setting('aips_settings', 'aips_ai_model');
+        register_setting('aips_settings', 'aips_default_post_status', array(
+            'sanitize_callback' => 'sanitize_text_field'
+        ));
+        register_setting('aips_settings', 'aips_default_category', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_enable_logging', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_retry_max_attempts', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_ai_model', array(
+            'sanitize_callback' => 'sanitize_text_field'
+        ));
         
         add_settings_section(
             'aips_general_section',
@@ -163,7 +173,7 @@ class AIPS_Settings {
         );
         
         add_settings_field(
-            'aips_max_retries',
+            'aips_retry_max_attempts',
             __('Max Retries on Failure', 'ai-post-scheduler'),
             array($this, 'max_retries_field_callback'),
             'aips-settings',
@@ -299,9 +309,9 @@ class AIPS_Settings {
      * @return void
      */
     public function max_retries_field_callback() {
-        $value = get_option('aips_max_retries', 3);
+        $value = get_option('aips_retry_max_attempts', 3);
         ?>
-        <input type="number" name="aips_max_retries" value="<?php echo esc_attr($value); ?>" min="0" max="10" class="small-text">
+        <input type="number" name="aips_retry_max_attempts" value="<?php echo esc_attr($value); ?>" min="0" max="10" class="small-text">
         <p class="description"><?php esc_html_e('Number of retry attempts if generation fails.', 'ai-post-scheduler'); ?></p>
         <?php
     }
