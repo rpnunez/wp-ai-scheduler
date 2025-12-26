@@ -124,22 +124,47 @@
             var $btn = $('#btn-copy-topics');
             var originalText = $btn.text();
 
-            if (navigator.clipboard) {
+            var fallbackCopy = function() {
+                var $temp = $('<textarea>');
+                // Position off-screen to avoid layout issues
+                $temp.css({
+                    position: 'fixed',
+                    top: '-9999px',
+                    left: '-9999px'
+                });
+                $('body').append($temp);
+                $temp.val(textToCopy).trigger('focus').trigger('select');
+
+                var success = false;
+                try {
+                    if (typeof document.queryCommandSupported !== 'function' || document.queryCommandSupported('copy')) {
+                        success = document.execCommand('copy');
+                    }
+                } catch (err) {
+                    success = false;
+                }
+
+                $temp.remove();
+
+                if (success) {
+                    $btn.text('Copied!');
+                    setTimeout(function() { $btn.text(originalText); }, 2000);
+                } else {
+                    alert('Unable to copy text automatically. Please select the topics and copy them manually (Ctrl+C or Cmd+C on Mac).');
+                }
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(textToCopy).then(function() {
                     $btn.text('Copied!');
                     setTimeout(function() { $btn.text(originalText); }, 2000);
                 }).catch(function() {
-                    alert('Failed to copy to clipboard.');
+                    // If the modern API fails, attempt the legacy fallback
+                    fallbackCopy();
                 });
             } else {
-                // Fallback
-                var $temp = $('<textarea>');
-                $('body').append($temp);
-                $temp.val(textToCopy).select();
-                document.execCommand('copy');
-                $temp.remove();
-                $btn.text('Copied!');
-                setTimeout(function() { $btn.text(originalText); }, 2000);
+                // Legacy fallback for older browsers
+                fallbackCopy();
             }
         },
 
