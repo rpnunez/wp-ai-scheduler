@@ -81,6 +81,15 @@ class AIPS_Settings {
         
         add_submenu_page(
             'ai-post-scheduler',
+            __('Trending Topics', 'ai-post-scheduler'),
+            __('Trending Topics', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-research',
+            array($this, 'render_research_page')
+        );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
             'manage_options',
@@ -381,6 +390,17 @@ class AIPS_Settings {
      */
     public function render_schedule_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
+    }
+    
+    /**
+     * Render the Trending Topics Research page.
+     *
+     * Includes the research template file.
+     *
+     * @return void
+     */
+    public function render_research_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
     }
     
     /**
