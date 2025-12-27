@@ -22,33 +22,37 @@ class AIPS_Seeder_Service {
      *
      * @param string $type The type of data to seed (voices, templates, schedule, planner).
      * @param int $count The number of items to create.
+     * @param string $keywords Optional keywords to guide generation.
      * @return array Result with success count and message.
      */
-    public function seed($type, $count) {
+    public function seed($type, $count, $keywords = '') {
         if ($count <= 0) {
             return array('success' => true, 'count' => 0, 'message' => 'Count is 0, skipping.');
         }
 
         switch ($type) {
             case 'voices':
-                return $this->seed_voices($count);
+                return $this->seed_voices($count, $keywords);
             case 'templates':
-                return $this->seed_templates($count);
+                return $this->seed_templates($count, $keywords);
             case 'schedule':
                 return $this->seed_scheduled_templates($count);
             case 'planner':
-                return $this->seed_planner_entries($count);
+                return $this->seed_planner_entries($count, $keywords);
             default:
                 return array('success' => false, 'message' => 'Invalid type.');
         }
     }
 
-    private function seed_voices($count) {
+    private function seed_voices($count, $keywords = '') {
         if (!$this->generator->is_available()) {
             return array('success' => false, 'message' => 'AI Engine not available.');
         }
 
         $prompt = "Generate a list of {$count} unique personas for blog writing. \n";
+        if (!empty($keywords)) {
+            $prompt .= "Use the following keywords to inspire the personas: {$keywords}. \n";
+        }
         $prompt .= "Each persona must have a 'name', 'content_instructions' (writing style description), and 'title_prompt' (instructions for writing titles). \n";
         $prompt .= "Return ONLY a valid JSON array of objects. Example: [{\"name\": \"Tech Guru\", \"content_instructions\": \"...\", \"title_prompt\": \"...\"}]";
 
@@ -75,12 +79,15 @@ class AIPS_Seeder_Service {
         return array('success' => true, 'count' => $created, 'message' => "Created {$created} voices.");
     }
 
-    private function seed_templates($count) {
+    private function seed_templates($count, $keywords = '') {
         if (!$this->generator->is_available()) {
             return array('success' => false, 'message' => 'AI Engine not available.');
         }
 
         $prompt = "Generate a list of {$count} blog post templates. \n";
+        if (!empty($keywords)) {
+            $prompt .= "The templates should be relevant to these keywords/niche: {$keywords}. \n";
+        }
         $prompt .= "Each template needs a 'name', 'prompt_template' (e.g., 'Write a blog post about {{topic}}...'), and 'image_prompt'. \n";
         $prompt .= "Return ONLY a valid JSON array of objects. Example: [{\"name\": \"How-to Guide\", \"prompt_template\": \"...\", \"image_prompt\": \"...\"}]";
 
@@ -140,7 +147,7 @@ class AIPS_Seeder_Service {
         return array('success' => true, 'count' => $saved_count, 'message' => "Scheduled {$saved_count} recurring templates.");
     }
 
-    private function seed_planner_entries($count) {
+    private function seed_planner_entries($count, $keywords = '') {
         if (!$this->generator->is_available()) {
             return array('success' => false, 'message' => 'AI Engine not available.');
         }
@@ -150,7 +157,12 @@ class AIPS_Seeder_Service {
             return array('success' => false, 'message' => 'No active templates found. Please seed templates first.');
         }
 
-        $prompt = "Generate a list of {$count} interesting blog post topics/titles about Technology, Lifestyle, or Business. \n";
+        $prompt = "Generate a list of {$count} interesting blog post topics/titles. \n";
+        if (!empty($keywords)) {
+            $prompt .= "The topics MUST be related to these keywords: {$keywords}. \n";
+        } else {
+            $prompt .= "Topics should be about Technology, Lifestyle, or Business. \n";
+        }
         $prompt .= "Return ONLY a valid JSON array of strings. Example: [\"Topic 1\", \"Topic 2\"]";
 
         $topics = $this->generate_json($prompt);

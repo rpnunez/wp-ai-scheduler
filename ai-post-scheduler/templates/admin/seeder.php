@@ -8,6 +8,13 @@
         <form id="aips-seeder-form">
             <table class="form-table">
                 <tr>
+                    <th scope="row"><label for="seeder-keywords"><?php esc_html_e('Seeder Keywords', 'ai-post-scheduler'); ?></label></th>
+                    <td>
+                        <textarea id="seeder-keywords" name="keywords" rows="3" class="large-text code" placeholder="<?php esc_attr_e('e.g., technology, fitness, vegan recipes', 'ai-post-scheduler'); ?>"></textarea>
+                        <p class="description"><?php esc_html_e('Comma-separated keywords to guide the AI generation (optional).', 'ai-post-scheduler'); ?></p>
+                    </td>
+                </tr>
+                <tr>
                     <th scope="row"><label for="seeder-voices"><?php esc_html_e('Voices', 'ai-post-scheduler'); ?></label></th>
                     <td>
                         <input type="number" id="seeder-voices" name="voices" value="0" min="0" max="50" class="small-text">

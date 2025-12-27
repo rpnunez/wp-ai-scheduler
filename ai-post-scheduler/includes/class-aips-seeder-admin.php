@@ -53,6 +53,7 @@ class AIPS_Seeder_Admin {
 
         $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : '';
         $count = isset($_POST['count']) ? absint($_POST['count']) : 0;
+        $keywords = isset($_POST['keywords']) ? sanitize_textarea_field($_POST['keywords']) : '';
 
         if (empty($type)) {
             wp_send_json_error(array('message' => 'Missing type.'));
@@ -63,7 +64,7 @@ class AIPS_Seeder_Admin {
             set_time_limit(300);
         }
 
-        $result = $this->service->seed($type, $count);
+        $result = $this->service->seed($type, $count, $keywords);
 
         if ($result['success']) {
             wp_send_json_success($result);
