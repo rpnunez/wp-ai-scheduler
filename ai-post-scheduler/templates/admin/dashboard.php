@@ -106,7 +106,7 @@ if (!defined('ABSPATH')) {
                         <td><?php echo esc_html($temp['success_rate']); ?>%</td>
                         <td style="width: 200px;">
                             <div class="aips-progress-bar">
-                                <div class="aips-progress-fill <?php echo ($temp['success_rate'] < 50) ? 'low' : (($temp['success_rate'] < 80) ? 'medium' : 'high'); ?>"
+                                <div class="aips-progress-fill <?php echo esc_attr( ($temp['success_rate'] < 50) ? 'low' : (($temp['success_rate'] < 80) ? 'medium' : 'high') ); ?>"
                                      style="width: <?php echo esc_attr($temp['success_rate']); ?>%;"></div>
                             </div>
                         </td>
