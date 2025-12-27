@@ -139,6 +139,14 @@ class AIPS_Schedule_Controller {
         }
 
         $quantity = $template->post_quantity ?: 1;
+
+        // Enforce hard limit to prevent timeouts
+        $capped = false;
+        if ($quantity > 5) {
+            $quantity = 5;
+            $capped = true;
+        }
+
         $post_ids = array();
         $errors = array();
 
@@ -166,6 +174,10 @@ class AIPS_Schedule_Controller {
             __('%d post(s) generated successfully!', 'ai-post-scheduler'),
             count($post_ids)
         );
+
+        if ($capped) {
+            $message .= ' ' . __('(Limited to 5 posts per run to prevent timeouts.)', 'ai-post-scheduler');
+        }
 
         if (!empty($errors)) {
             $message .= ' ' . sprintf(
