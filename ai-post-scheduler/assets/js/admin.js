@@ -71,8 +71,60 @@
                 }
             });
 
+            // Copy to clipboard
+            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
+        },
+
+        copyToClipboard: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var text = $btn.data('clipboard-text');
+            var $icon = $btn.find('.dashicons');
+
+            // Store original icon class if not already stored
+            if (!$btn.data('original-icon')) {
+                $btn.data('original-icon', $icon.attr('class'));
+            }
+
+            var originalIcon = $btn.data('original-icon');
+
+            var onSuccess = function() {
+                $icon.removeClass().addClass('dashicons dashicons-yes');
+
+                // Clear any existing timeout to handle rapid clicks
+                var existingTimeout = $btn.data('reset-timeout');
+                if (existingTimeout) {
+                    clearTimeout(existingTimeout);
+                }
+
+                var timeoutId = setTimeout(function() {
+                    $icon.attr('class', originalIcon);
+                }, 2000);
+
+                $btn.data('reset-timeout', timeoutId);
+            };
+
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(onSuccess).catch(function(err) {
+                    console.error('Could not copy text: ', err);
+                });
+            } else {
+                // Fallback for older browsers
+                var textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    onSuccess();
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                }
+                document.body.removeChild(textArea);
+            }
         },
 
         switchTab: function(e) {
