@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock Planner</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        #topics-list { border: 1px solid #ccc; padding: 10px; min-height: 50px; }
+        #planner-results { display: block; border: 1px solid blue; padding: 10px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div id="planner-container">
+        <input type="text" id="planner-niche" value="Test Niche">
+        <textarea id="planner-manual-topics">Some topics</textarea>
+
+        <div id="planner-results">
+            <div id="topics-list">
+                <div class="topic-item">Topic 1</div>
+            </div>
+            <div class="selection-count">1 selected</div>
+        </div>
+
+        <button id="btn-clear-topics">Clear List</button>
+    </div>
+
+    <script>
+        // Mock AIPS object
+        window.AIPS = {
+            updateSelectionCount: function() {
+                var count = .length;
+                .text(count + ' selected');
+            }
+        };
+    </script>
+    <script src="ai-post-scheduler/assets/js/admin-planner.js"></script>
+</body>
+</html>

@@ -205,26 +205,8 @@ class AIPS_Generator {
             // For now, let's proceed but we won't be able to update history.
         }
         
-        // NEW: Check if article_structure_id is provided, build prompt with structure
-        $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
-        
-        if ($article_structure_id) {
-            // Use article structure to build prompt
-            $processed_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic);
-            
-            if (is_wp_error($processed_prompt)) {
-                // Fall back to regular template processing
-                $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-            }
-        } else {
-            // Use traditional template processing
-            $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-        }
-        
-        if ($voice) {
-            $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
-            $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
-        }
+        // ATLAS: Decoupled prompt preparation logic
+        $processed_prompt = $this->prepare_prompt($template, $topic, $voice);
         
         $content_prompt = $processed_prompt . "\n\nOutput the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.";
         
@@ -376,5 +358,38 @@ class AIPS_Generator {
         do_action('aips_post_generated', $post_id, $template, $history_id);
         
         return $post_id;
+    }
+
+    /**
+     * Prepare the prompt content using either Structure Manager or Template Processor.
+     *
+     * @param object $template The template object.
+     * @param string $topic    The topic/title.
+     * @param object $voice    Optional voice settings.
+     * @return string          The processed prompt.
+     */
+    private function prepare_prompt($template, $topic, $voice) {
+        // Check if article_structure_id is provided, build prompt with structure
+        $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
+
+        if ($article_structure_id) {
+            // Use article structure to build prompt
+            $processed_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic);
+
+            if (is_wp_error($processed_prompt)) {
+                // Fall back to regular template processing
+                $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
+            }
+        } else {
+            // Use traditional template processing
+            $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
+        }
+
+        if ($voice) {
+            $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
+            $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
+        }
+
+        return $processed_prompt;
     }
 }

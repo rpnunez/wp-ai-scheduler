@@ -55,10 +55,26 @@ class AIPS_Planner {
 
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
             // Fallback: try to parse line by line if JSON fails
-            $topics = array_filter(array_map('trim', explode("\n", $json_str)));
-            // Remove empty lines and lines that look like list markers if strictly splitting by newline
-            // But if the AI followed instructions, it should be JSON.
-            // If it failed JSON, let's just log it and return error or try best effort.
+            // HUNTER: Improved fallback parsing to handle numbered lists (e.g. "1. Topic") common in AI responses
+            $lines = explode("\n", $json_str);
+            $topics = array();
+
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line)) continue;
+
+                // Remove leading numbers, bullets, and dashes (e.g., "1.", "-", "*")
+                // HUNTER Fix: Use stricter regex to avoid stripping leading numbers from topics like "10 Best Tips"
+                $clean_line = preg_replace('/^(\d+[\.\)]|[\-\*])\s+/', '', $line);
+
+                // Remove quotes if they wrap the line
+                $clean_line = trim($clean_line, '"\'');
+
+                if (!empty($clean_line)) {
+                    $topics[] = $clean_line;
+                }
+            }
+
             if (empty($topics)) {
                 wp_send_json_error(array(
                     'message' => __('Failed to parse AI response. Raw response: ', 'ai-post-scheduler') . substr($json_str, 0, 100) . '...'

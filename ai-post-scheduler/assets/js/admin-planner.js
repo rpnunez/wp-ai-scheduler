@@ -103,6 +103,12 @@
                 $('#planner-niche').val('');
                 $('#planner-manual-topics').val('');
                 window.AIPS.updateSelectionCount();
+
+                // WIZARD: Provide visual feedback
+                var $btn = $('#btn-clear-topics');
+                var originalText = $btn.text();
+                $btn.text('Cleared!');
+                setTimeout(function() { $btn.text(originalText); }, 2000);
             }
         },
 

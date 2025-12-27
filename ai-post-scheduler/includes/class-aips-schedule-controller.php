@@ -89,21 +89,9 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
         }
 
-        // We use the new toggle_active method in Scheduler
-        if (method_exists($this->scheduler, 'toggle_active')) {
-             $result = $this->scheduler->toggle_active($id, $is_active);
-        } else {
-             // Fallback
-             global $wpdb;
-             $table_name = $wpdb->prefix . 'aips_schedule';
-             $result = $wpdb->update(
-                $table_name,
-                array('is_active' => $is_active),
-                array('id' => $id),
-                array('%d'),
-                array('%d')
-            );
-        }
+        // BOLT: Removed inefficient fallback logic that used direct SQL in controller
+        // Delegating entirely to Scheduler service which uses the Repository pattern
+        $result = $this->scheduler->toggle_active($id, $is_active);
 
         if ($result !== false) {
             wp_send_json_success(array('message' => __('Schedule updated.', 'ai-post-scheduler')));
@@ -139,6 +127,14 @@ class AIPS_Schedule_Controller {
         }
 
         $quantity = $template->post_quantity ?: 1;
+
+        // HUNTER: Limit the quantity for immediate execution to prevent timeouts in synchronous AJAX calls.
+        // For larger batches, the background scheduler should be used.
+        $max_immediate_run = 5;
+        if ($quantity > $max_immediate_run) {
+            $quantity = $max_immediate_run;
+        }
+
         $post_ids = array();
         $errors = array();
 
