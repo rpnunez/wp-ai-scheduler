@@ -15,10 +15,13 @@
     <div id="dashboard-tab" class="aips-tab-content <?php echo $active_tab === 'dashboard' ? 'active' : ''; ?>" style="<?php echo $active_tab === 'dashboard' ? '' : 'display:none;'; ?>">
         <?php
         // Ensure we have data even if loaded via main wrapper
-        if (!isset($stats) && class_exists('AIPS_Dashboard')) {
+        if ( ! isset( $stats ) && class_exists( 'AIPS_Dashboard' ) ) {
             $dashboard_service = new AIPS_Dashboard();
-            $dashboard_data = $dashboard_service->get_dashboard_data();
-            extract($dashboard_data);
+            $dashboard_data    = $dashboard_service->get_dashboard_data();
+
+            if ( is_array( $dashboard_data ) && array_key_exists( 'stats', $dashboard_data ) && ! isset( $stats ) ) {
+                $stats = $dashboard_data['stats'];
+            }
         }
         include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
         ?>
