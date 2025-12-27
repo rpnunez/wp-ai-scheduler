@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Dashboard</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-inner-content { display: none; }
+        .aips-inner-content.active { display: block; }
+        .aips-inner-tab.active { font-weight: bold; }
+        .notice { background: #fff; border-left: 4px solid #fff; box-shadow: 0 1px 1px 0 rgba(0,0,0,.1); padding: 1px 12px; }
+        .notice-warning { border-left-color: #f0ad4e; }
+        .notice-info { border-left-color: #5bc0de; }
+    </style>
+</head>
+<body>
+    <div class="aips-dashboard-container">
+        <div class="aips-inner-nav">
+            <a href="#" class="aips-inner-tab active" data-target="metrics">Metrics</a>
+            <a href="#" class="aips-inner-tab" data-target="logs">Logs</a>
+            <a href="#" class="aips-inner-tab" data-target="automation">Automation</a>
+        </div>
+
+        <div id="aips-dashboard-metrics" class="aips-inner-content active">
+            <div class="aips-suggestions-container" style="margin-bottom: 20px;">
+                <div class="notice notice-warning inline"><p>You have 2 failed generations. Check logs to diagnose.</p></div>
+                <div class="notice notice-info inline"><p>Trending research suggests posting at 2 PM boosts engagement.</p></div>
+            </div>
+            Metrics Content
+            <button id="aips-refresh-stats">Refresh Stats</button>
+        </div>
+
+        <div id="aips-dashboard-logs" class="aips-inner-content">
+            Logs Content
+            <button id="aips-fetch-logs">Fetch Logs</button>
+            <div id="aips-log-viewer"></div>
+        </div>
+
+        <div id="aips-dashboard-automation" class="aips-inner-content">
+            Automation Content
+            <form id="aips-automation-form">
+                <input type="checkbox" name="disable_low_performance" value="1">
+                <button type="submit">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        var aipsAjax = {
+            ajaxUrl: 'http://example.com/wp-admin/admin-ajax.php',
+            nonce: 'mock_nonce'
+        };
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin-dashboard.js"></script>
+</body>
+</html>

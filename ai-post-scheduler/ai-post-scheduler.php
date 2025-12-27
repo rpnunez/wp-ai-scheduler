@@ -86,6 +86,8 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dashboard.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-automation-service.php';
     }
     
     private function init_hooks() {
@@ -152,6 +154,8 @@ final class AI_Post_Scheduler {
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
             new AIPS_Research_Controller();
+            new AIPS_Dashboard();
+            new AIPS_Automation_Service();
         }
         
         new AIPS_Scheduler();
