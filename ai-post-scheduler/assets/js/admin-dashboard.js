@@ -38,9 +38,22 @@
                 $suggestionsContainer.empty();
                 if (data.suggestions.length > 0) {
                     $.each(data.suggestions, function(i, suggestion) {
-                        var html = '<div class="notice notice-' + suggestion.type + ' inline" style="margin: 5px 0 15px 0;">' +
-                                   '<p>' + suggestion.message + '</p></div>';
-                        $suggestionsContainer.append(html);
+                        var allowedTypes = ['success', 'error', 'warning', 'info', 'updated'];
+                        var type = (suggestion.type || '').toString().toLowerCase();
+                        if ($.inArray(type, allowedTypes) === -1) {
+                            type = 'info';
+                        }
+
+                        var $notice = $('<div></div>')
+                            .addClass('notice')
+                            .addClass('notice-' + type)
+                            .addClass('inline')
+                            .attr('style', 'margin: 5px 0 15px 0;');
+
+                        var $message = $('<p></p>').text((suggestion.message || '').toString());
+                        $notice.append($message);
+
+                        $suggestionsContainer.append($notice);
                     });
                 } else {
                     $suggestionsContainer.remove();
