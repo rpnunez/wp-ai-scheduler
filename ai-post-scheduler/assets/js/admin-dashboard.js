@@ -209,10 +209,14 @@
                 type: 'POST',
                 data: $form.serialize() + '&action=aips_save_automation&nonce=' + aipsAjax.nonce,
                 success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
+                    var defaultSuccessMessage = 'Settings saved successfully.';
+                    var defaultErrorMessage = 'An error occurred while saving settings.';
+                    var hasDataMessage = response && response.data && typeof response.data.message === 'string' && response.data.message.length > 0;
+
+                    if (response && response.success) {
+                        alert(hasDataMessage ? response.data.message : defaultSuccessMessage);
                     } else {
-                        alert('Error: ' + response.data.message);
+                        alert('Error: ' + (hasDataMessage ? response.data.message : defaultErrorMessage));
                     }
                 },
                 error: function() {
