@@ -203,6 +203,17 @@ class AIPS_Templates {
             $max_iterations = 100;
             $i = 0;
 
+            // Optimization: Handle high-frequency fixed intervals mathematically
+            // to avoid loop overhead and the 100-iteration limit.
+            $projected = $this->calculate_projected_counts($cursor, $frequency, $today_end, $week_end, $month_end);
+
+            if ($projected !== false) {
+                $stats['today'] += $projected['today'];
+                $stats['week'] += $projected['week'];
+                $stats['month'] += $projected['month'];
+                continue;
+            }
+
             while ($cursor <= $month_end && $i < $max_iterations) {
                 if ($cursor < $now) {
                     // Skip past events that haven't run yet but update cursor?
@@ -263,6 +274,17 @@ class AIPS_Templates {
             $cursor = strtotime($schedule->next_run);
             $frequency = $schedule->frequency;
 
+            // Optimization: Handle high-frequency fixed intervals mathematically
+            // to avoid loop overhead and the 100-iteration limit.
+            $projected = $this->calculate_projected_counts($cursor, $frequency, $today_end, $week_end, $month_end);
+
+            if ($projected !== false) {
+                $stats[$tid]['today'] += $projected['today'];
+                $stats[$tid]['week'] += $projected['week'];
+                $stats[$tid]['month'] += $projected['month'];
+                continue;
+            }
+
             // Limit iterations to prevent infinite loops or excessive processing
             $max_iterations = 100;
             $i = 0;
@@ -294,6 +316,44 @@ class AIPS_Templates {
         }
 
         return $stats;
+    }
+
+    /**
+     * Calculate projected counts for high-frequency fixed intervals mathematically.
+     * This avoids loop overhead and the 100-iteration limit for hourly/frequent tasks.
+     *
+     * @param int $cursor Start timestamp.
+     * @param string $frequency Frequency identifier.
+     * @param int $today_end Timestamp for end of today.
+     * @param int $week_end Timestamp for end of week.
+     * @param int $month_end Timestamp for end of month.
+     * @return array|false Array of counts or false if frequency is not supported for optimization.
+     */
+    private function calculate_projected_counts($cursor, $frequency, $today_end, $week_end, $month_end) {
+        $interval_seconds = 0;
+        switch ($frequency) {
+            case 'hourly': $interval_seconds = 3600; break;
+            case 'every_4_hours': $interval_seconds = 14400; break;
+            case 'every_6_hours': $interval_seconds = 21600; break;
+            case 'every_12_hours': $interval_seconds = 43200; break;
+        }
+
+        if ($interval_seconds > 0) {
+             $counts = array('today' => 0, 'week' => 0, 'month' => 0);
+
+             if ($cursor <= $today_end) {
+                 $counts['today'] = max(0, floor(($today_end - $cursor) / $interval_seconds) + 1);
+             }
+             if ($cursor <= $week_end) {
+                 $counts['week'] = max(0, floor(($week_end - $cursor) / $interval_seconds) + 1);
+             }
+             if ($cursor <= $month_end) {
+                 $counts['month'] = max(0, floor(($month_end - $cursor) / $interval_seconds) + 1);
+             }
+             return $counts;
+        }
+
+        return false;
     }
 
     private function calculate_next_run($frequency, $base_time) {
