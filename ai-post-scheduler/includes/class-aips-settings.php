@@ -22,6 +22,43 @@ class AIPS_Settings {
         add_action('admin_menu', array($this, 'add_menu_pages'));
         add_action('admin_init', array($this, 'register_settings'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+        add_action('pre_update_option', array($this, 'dispatch_settings_update_started'), 10, 3);
+        add_action('updated_option', array($this, 'dispatch_settings_updated'), 10, 3);
+    }
+
+    /**
+     * Dispatch an event before plugin settings are updated.
+     *
+     * @param mixed  $value     New option value.
+     * @param string $option    Option name.
+     * @param mixed  $old_value Old option value.
+     */
+    public function dispatch_settings_update_started($value, $option, $old_value) {
+        if (strpos($option, 'aips_') === 0) {
+            do_action('aips_settings_update_started', array(
+                'option' => $option,
+                'old_value' => $old_value,
+                'value' => $value
+            ));
+        }
+        return $value;
+    }
+
+    /**
+     * Dispatch an event when plugin settings are updated.
+     *
+     * @param string $option    Option name.
+     * @param mixed  $old_value Old option value.
+     * @param mixed  $value     New option value.
+     */
+    public function dispatch_settings_updated($option, $old_value, $value) {
+        if (strpos($option, 'aips_') === 0) {
+            do_action('aips_settings_updated', array(
+                'option' => $option,
+                'old_value' => $old_value,
+                'value' => $value
+            ));
+        }
     }
     
     /**
