@@ -107,7 +107,13 @@ class AIPS_Dashboard {
         }
 
         // Only force refresh if explicitly requested, otherwise rely on repository cache invalidation
-        if (isset($_POST['force_refresh']) && $_POST['force_refresh'] === 'true') {
+        $force_refresh = false;
+        if (isset($_POST['force_refresh'])) {
+            $force_refresh_value = sanitize_text_field(wp_unslash($_POST['force_refresh']));
+            $force_refresh       = ('true' === $force_refresh_value);
+        }
+
+        if ($force_refresh) {
             delete_transient('aips_history_stats');
         }
 
