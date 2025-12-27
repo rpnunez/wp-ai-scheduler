@@ -36,7 +36,7 @@ class AIPS_Seeder_Service {
             case 'templates':
                 return $this->seed_templates($count, $keywords);
             case 'schedule':
-                return $this->seed_scheduled_templates($count);
+                return $this->seed_scheduled_templates($count, $keywords);
             case 'planner':
                 return $this->seed_planner_entries($count, $keywords);
             default:
@@ -100,7 +100,7 @@ class AIPS_Seeder_Service {
         $created = 0;
         foreach ($data as $item) {
             if (isset($item->name)) {
-                $this->templates->save(array(
+                $result = $this->templates->save(array(
                     'name' => sanitize_text_field($item->name),
                     'prompt_template' => isset($item->prompt_template) ? wp_kses_post($item->prompt_template) : 'Write about {{topic}}',
                     'image_prompt' => isset($item->image_prompt) ? wp_kses_post($item->image_prompt) : 'An abstract image representing {{topic}}',
@@ -110,14 +110,17 @@ class AIPS_Seeder_Service {
                     'post_category' => 0,
                     'is_active' => 1
                 ));
-                $created++;
+
+                if ($result) {
+                    $created++;
+                }
             }
         }
 
         return array('success' => true, 'count' => $created, 'message' => "Created {$created} templates.");
     }
 
-    private function seed_scheduled_templates($count) {
+    private function seed_scheduled_templates($count, $keywords = '') {
         $all_templates = $this->templates->get_all(true); // Active only
 
         if (empty($all_templates)) {
@@ -143,6 +146,10 @@ class AIPS_Seeder_Service {
         }
 
         $saved_count = $this->scheduler->save_schedule_bulk($schedules);
+
+        if ($saved_count === false) {
+            return array('success' => false, 'message' => 'Failed to save schedules to database.');
+        }
 
         return array('success' => true, 'count' => $saved_count, 'message' => "Scheduled {$saved_count} recurring templates.");
     }
@@ -190,6 +197,10 @@ class AIPS_Seeder_Service {
         }
 
         $saved_count = $this->scheduler->save_schedule_bulk($schedules);
+
+        if ($saved_count === false) {
+            return array('success' => false, 'message' => 'Failed to save planner entries to database.');
+        }
 
         return array('success' => true, 'count' => $saved_count, 'message' => "Created {$saved_count} planner entries (scheduled once).");
     }
