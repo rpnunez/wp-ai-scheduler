@@ -231,7 +231,13 @@ class AIPS_Template_Repository {
         );
 
         if ($result !== false) {
-            do_action('aips_template_updated', $id, $data);
+            do_action(
+                'aips_template_updated',
+                array(
+                    'id'   => $id,
+                    'data' => $data,
+                )
+            );
         }
 
         return $result !== false;
