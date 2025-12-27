@@ -73,6 +73,38 @@
 
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
+            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+        },
+
+        copyToClipboard: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var text = $btn.data('clipboard-text');
+            var $icon = $btn.find('.dashicons');
+            var originalIcon = $btn.data('original-icon') || 'dashicons-admin-page';
+
+            // Store original icon class if not already stored
+            if (!$btn.data('original-icon')) {
+                $btn.data('original-icon', originalIcon);
+            }
+
+            var successCallback = function() {
+                $icon.removeClass(originalIcon).addClass('dashicons-yes');
+                setTimeout(function() {
+                    $icon.removeClass('dashicons-yes').addClass(originalIcon);
+                }, 2000);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(successCallback);
+            } else {
+                var $temp = $('<textarea>');
+                $('body').append($temp);
+                $temp.val(text).select();
+                document.execCommand('copy');
+                $temp.remove();
+                successCallback();
+            }
         },
 
         switchTab: function(e) {
