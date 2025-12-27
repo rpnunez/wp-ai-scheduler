@@ -85,12 +85,24 @@ class AIPS_Dashboard {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $disable_low_performance_raw      = isset($_POST['disable_low_performance']) ? sanitize_text_field(wp_unslash($_POST['disable_low_performance'])) : '';
+        $auto_retry_failed_raw            = isset($_POST['auto_retry_failed']) ? sanitize_text_field(wp_unslash($_POST['auto_retry_failed'])) : '';
+        $low_performance_threshold_raw    = isset($_POST['low_performance_threshold']) ? wp_unslash($_POST['low_performance_threshold']) : '';
+        $min_generations_threshold_raw    = isset($_POST['min_generations_threshold']) ? wp_unslash($_POST['min_generations_threshold']) : '';
+        $retry_limit_raw                  = isset($_POST['retry_limit']) ? wp_unslash($_POST['retry_limit']) : '';
+
+        $disable_low_performance   = !empty($disable_low_performance_raw) ? 1 : 0;
+        $auto_retry_failed         = !empty($auto_retry_failed_raw) ? 1 : 0;
+        $low_performance_threshold = $low_performance_threshold_raw !== '' ? absint($low_performance_threshold_raw) : 30;
+        $min_generations_threshold = $min_generations_threshold_raw !== '' ? absint($min_generations_threshold_raw) : 5;
+        $retry_limit               = $retry_limit_raw !== '' ? absint($retry_limit_raw) : 3;
+
         $settings = array(
-            'disable_low_performance' => isset($_POST['disable_low_performance']) ? 1 : 0,
-            'low_performance_threshold' => isset($_POST['low_performance_threshold']) ? absint($_POST['low_performance_threshold']) : 30,
-            'min_generations_threshold' => isset($_POST['min_generations_threshold']) ? absint($_POST['min_generations_threshold']) : 5,
-            'auto_retry_failed' => isset($_POST['auto_retry_failed']) ? 1 : 0,
-            'retry_limit' => isset($_POST['retry_limit']) ? absint($_POST['retry_limit']) : 3,
+            'disable_low_performance'     => $disable_low_performance,
+            'low_performance_threshold'   => $low_performance_threshold,
+            'min_generations_threshold'   => $min_generations_threshold,
+            'auto_retry_failed'           => $auto_retry_failed,
+            'retry_limit'                 => $retry_limit,
         );
 
         update_option('aips_automation_settings', $settings);
