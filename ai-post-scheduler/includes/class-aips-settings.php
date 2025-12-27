@@ -35,7 +35,11 @@ class AIPS_Settings {
      */
     public function dispatch_settings_update_started($value, $option, $old_value) {
         if (strpos($option, 'aips_') === 0) {
-            do_action('aips_setting_update_started', $option, $old_value, $value);
+            do_action('aips_settings_update_started', array(
+                'option' => $option,
+                'old_value' => $old_value,
+                'value' => $value
+            ));
         }
         return $value;
     }
@@ -49,7 +53,11 @@ class AIPS_Settings {
      */
     public function dispatch_settings_updated($option, $old_value, $value) {
         if (strpos($option, 'aips_') === 0) {
-            do_action('aips_setting_updated', $option, $old_value, $value);
+            do_action('aips_settings_updated', array(
+                'option' => $option,
+                'old_value' => $old_value,
+                'value' => $value
+            ));
         }
     }
     

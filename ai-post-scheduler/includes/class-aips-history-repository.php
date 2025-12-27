@@ -243,13 +243,7 @@ class AIPS_History_Repository {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
-        do_action(
-            'aips_history_create_started',
-            array(
-                'data'      => $data,
-                'timestamp' => current_time('mysql'),
-            )
-        );
+        do_action('aips_history_create_started', array('data' => $data));
 
         $insert_data = array(
             'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
@@ -268,7 +262,10 @@ class AIPS_History_Repository {
         
         if ($result) {
             delete_transient('aips_history_stats');
-            do_action('aips_history_created', $this->wpdb->insert_id, $data);
+            do_action('aips_history_created', array(
+                'id' => $this->wpdb->insert_id,
+                'data' => $data
+            ));
             return $this->wpdb->insert_id;
         }
 
@@ -283,7 +280,10 @@ class AIPS_History_Repository {
      * @return bool True on success, false on failure.
      */
     public function update($id, $data) {
-        do_action('aips_history_update_started', $id, $data);
+        do_action('aips_history_update_started', array(
+            'id' => $id,
+            'data' => $data
+        ));
 
         $update_data = array();
         $format = array();
@@ -337,7 +337,10 @@ class AIPS_History_Repository {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
-            do_action('aips_history_updated', $id, $data);
+            do_action('aips_history_updated', array(
+                'id' => $id,
+                'data' => $data
+            ));
         }
 
         return $result !== false;

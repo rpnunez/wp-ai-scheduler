@@ -112,12 +112,8 @@ class AIPS_Template_Repository {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
-        $event_data = array(
-            'data'      => $data,
-            'timestamp' => current_time('mysql'),
-        );
+        do_action('aips_template_create_started', array('data' => $data));
 
-        do_action('aips_template_create_started', $event_data, 'template_create');
         $insert_data = array(
             'name' => sanitize_text_field($data['name']),
             'prompt_template' => wp_kses_post($data['prompt_template']),
@@ -138,7 +134,10 @@ class AIPS_Template_Repository {
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
         if ($result) {
-            do_action('aips_template_created', $this->wpdb->insert_id, $data);
+            do_action('aips_template_created', array(
+                'id' => $this->wpdb->insert_id,
+                'data' => $data
+            ));
             return $this->wpdb->insert_id;
         }
 
@@ -153,7 +152,10 @@ class AIPS_Template_Repository {
      * @return bool True on success, false on failure.
      */
     public function update($id, $data) {
-        do_action('aips_template_update_started', $id, $data);
+        do_action('aips_template_update_started', array(
+            'id' => $id,
+            'data' => $data
+        ));
 
         $update_data = array();
         $format = array();
@@ -231,13 +233,10 @@ class AIPS_Template_Repository {
         );
 
         if ($result !== false) {
-            do_action(
-                'aips_template_updated',
-                array(
-                    'id'   => $id,
-                    'data' => $data,
-                )
-            );
+            do_action('aips_template_updated', array(
+                'id' => $id,
+                'data' => $data
+            ));
         }
 
         return $result !== false;
@@ -250,23 +249,11 @@ class AIPS_Template_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
-        $event_data_started = array(
-            'template_id' => (int) $id,
-            'timestamp'   => current_time('mysql'),
-        );
-
-        do_action('aips_template_delete_started', $id, $event_data_started);
-
+        do_action('aips_template_delete_started', array('id' => $id));
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
 
         if ($result !== false) {
-            $event_data_deleted = array(
-                'template_id'   => (int) $id,
-                'timestamp'     => current_time('mysql'),
-                'rows_affected' => (int) $result,
-            );
-
-            do_action('aips_template_deleted', $id, $event_data_deleted);
+            do_action('aips_template_deleted', array('id' => $id));
         }
 
         return $result !== false;
