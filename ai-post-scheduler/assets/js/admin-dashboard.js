@@ -2,6 +2,8 @@
     'use strict';
 
     $(document).ready(function() {
+        var refreshIntervalId = null;
+
         // Inner Tab Switching
         $('.aips-inner-tab').on('click', function(e) {
             e.preventDefault();
@@ -16,31 +18,129 @@
             $('#aips-dashboard-' + target).show();
         });
 
-        // Refresh Stats
-        $('#aips-refresh-stats').on('click', function(e) {
-            e.preventDefault();
-            var $btn = $(this);
-            $btn.prop('disabled', true).find('.dashicons').addClass('spin');
+        function updateDashboardUI(data) {
+            var stats = data.stats;
+            // Update stats grid
+            $('.aips-stat-card:eq(0) .aips-stat-number').text(stats.total);
+            $('.aips-stat-card:eq(1) .aips-stat-number').text(stats.success_rate + '%');
+            $('.aips-stat-card:eq(2) .aips-stat-number').text(stats.failed);
+            $('.aips-stat-card:eq(3) .aips-stat-number').text(stats.processing);
+
+            // Rebuild Suggestions
+            var $suggestionsContainer = $('.aips-suggestions-container');
+            if ($suggestionsContainer.length === 0 && data.suggestions.length > 0) {
+                // Insert container if missing but suggestions exist
+                $suggestionsContainer = $('<div class="aips-suggestions-container" style="margin-bottom: 20px;"></div>');
+                $('.aips-header-actions').after($suggestionsContainer);
+            }
+
+            if ($suggestionsContainer.length > 0) {
+                $suggestionsContainer.empty();
+                if (data.suggestions.length > 0) {
+                    $.each(data.suggestions, function(i, suggestion) {
+                        var html = '<div class="notice notice-' + suggestion.type + ' inline" style="margin: 5px 0 15px 0;">' +
+                                   '<p>' + suggestion.message + '</p></div>';
+                        $suggestionsContainer.append(html);
+                    });
+                } else {
+                    $suggestionsContainer.remove();
+                }
+            }
+
+            // Rebuild Template Performance Table
+            var $tbody = $('.aips-card table tbody');
+            $tbody.empty();
+            if (data.template_performance.length > 0) {
+                $.each(data.template_performance, function(i, temp) {
+                    var barClass = (temp.success_rate < 50) ? 'low' : ((temp.success_rate < 80) ? 'medium' : 'high');
+                    var html = '<tr>' +
+                        '<td>' + temp.name + '</td>' +
+                        '<td>' + temp.total + '</td>' +
+                        '<td>' + temp.completed + '</td>' +
+                        '<td>' + temp.success_rate + '%</td>' +
+                        '<td style="width: 200px;">' +
+                            '<div class="aips-progress-bar">' +
+                                '<div class="aips-progress-fill ' + barClass + '" style="width: ' + temp.success_rate + '%;"></div>' +
+                            '</div>' +
+                        '</td>' +
+                    '</tr>';
+                    $tbody.append(html);
+                });
+            } else {
+                $tbody.append('<tr><td colspan="5">No template data available yet.</td></tr>');
+            }
+        }
+
+        function fetchStats(force) {
+            var $btn = $('#aips-refresh-stats');
+            if (force) {
+                $btn.prop('disabled', true).find('.dashicons').addClass('spin');
+            }
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
                     action: 'aips_refresh_stats',
-                    nonce: aipsAjax.nonce
+                    nonce: aipsAjax.nonce,
+                    force_refresh: force ? 'true' : 'false'
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload(); // Simplest way to refresh all numbers
-                    } else {
+                        updateDashboardUI(response.data.data);
+                    } else if (force) {
                         alert('Error: ' + response.data.message);
                     }
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).find('.dashicons').removeClass('spin');
+                    if (force) {
+                        $btn.prop('disabled', false).find('.dashicons').removeClass('spin');
+                    }
                 }
             });
+        }
+
+        // Refresh Stats Button
+        $('#aips-refresh-stats').on('click', function(e) {
+            e.preventDefault();
+            fetchStats(true);
         });
+
+        // Real-Time Mode Toggle
+        $('#aips-realtime-toggle').on('change', function() {
+            var enabled = $(this).is(':checked');
+            var $intervalSelect = $('#aips-refresh-interval');
+
+            if (enabled) {
+                $intervalSelect.show();
+                startAutoRefresh();
+            } else {
+                $intervalSelect.hide();
+                stopAutoRefresh();
+            }
+        });
+
+        // Interval Change
+        $('#aips-refresh-interval').on('change', function() {
+            if ($('#aips-realtime-toggle').is(':checked')) {
+                stopAutoRefresh();
+                startAutoRefresh();
+            }
+        });
+
+        function startAutoRefresh() {
+            var interval = parseInt($('#aips-refresh-interval').val(), 10) || 5000;
+            refreshIntervalId = setInterval(function() {
+                fetchStats(false);
+            }, interval);
+        }
+
+        function stopAutoRefresh() {
+            if (refreshIntervalId) {
+                clearInterval(refreshIntervalId);
+                refreshIntervalId = null;
+            }
+        }
 
         // Fetch Logs
         $('#aips-fetch-logs').on('click', function(e) {

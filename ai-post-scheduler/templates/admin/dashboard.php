@@ -19,10 +19,25 @@ if (!defined('ABSPATH')) {
     
     <!-- Metrics Tab -->
     <div id="aips-dashboard-metrics" class="aips-inner-content active">
-        <div class="aips-header-actions" style="margin-bottom: 20px;">
+        <div class="aips-header-actions" style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center;">
             <button class="button button-secondary" id="aips-refresh-stats">
                 <span class="dashicons dashicons-update"></span> <?php esc_html_e('Refresh Stats', 'ai-post-scheduler'); ?>
             </button>
+
+            <div class="aips-realtime-controls">
+                <label class="aips-toggle-label">
+                    <input type="checkbox" id="aips-realtime-toggle">
+                    <?php esc_html_e('Real-Time Mode', 'ai-post-scheduler'); ?>
+                </label>
+
+                <select id="aips-refresh-interval" style="display: none; margin-left: 10px;">
+                    <?php foreach (AIPS_Dashboard::REFRESH_INTERVALS as $interval): ?>
+                        <option value="<?php echo esc_attr($interval * 1000); ?>" <?php selected($interval, 5); ?>>
+                            <?php printf(esc_html__('Every %d Seconds', 'ai-post-scheduler'), $interval); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
         </div>
 
         <div class="aips-stats-grid">

@@ -5,6 +5,8 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Dashboard {
 
+    const REFRESH_INTERVALS = [1, 3, 5, 30];
+
     private $history_repo;
     private $analytics_service;
 
@@ -30,6 +32,16 @@ class AIPS_Dashboard {
         $template_performance = $this->analytics_service->get_template_performance();
 
         // Fetch Automation Settings
+        /**
+         * Automation Settings Configuration
+         *
+         * @var array $automation_settings
+         * @key bool disable_low_performance  If true, templates falling below threshold are auto-disabled.
+         * @key int  low_performance_threshold Percentage (0-100) success rate trigger for deactivation.
+         * @key int  min_generations_threshold Minimum number of posts before evaluating performance stats.
+         * @key bool auto_retry_failed        If true, failed generations are automatically retried.
+         * @key int  retry_limit              Maximum number of retry attempts per failed post.
+         */
         $automation_settings = get_option('aips_automation_settings', array(
             'disable_low_performance' => 0,
             'low_performance_threshold' => 30, // %
@@ -94,11 +106,15 @@ class AIPS_Dashboard {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        delete_transient('aips_history_stats');
-        $stats = $this->history_repo->get_stats();
+        // Only force refresh if explicitly requested, otherwise rely on repository cache invalidation
+        if (isset($_POST['force_refresh']) && $_POST['force_refresh'] === 'true') {
+            delete_transient('aips_history_stats');
+        }
+
+        $data = $this->get_dashboard_data();
 
         wp_send_json_success(array(
-            'stats' => $stats,
+            'data' => $data,
             'message' => __('Statistics refreshed.', 'ai-post-scheduler')
         ));
     }

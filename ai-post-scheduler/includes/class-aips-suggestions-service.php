@@ -35,13 +35,6 @@ class AIPS_Suggestions_Service {
             );
         }
 
-        // Suggestion 4: Mock Trending Research
-        $suggestions[] = array(
-            'type' => 'info',
-            'message' => __('Trending research suggests posting at 2 PM boosts engagement.', 'ai-post-scheduler'),
-            'action' => 'research'
-        );
-
         return $suggestions;
     }
 }
