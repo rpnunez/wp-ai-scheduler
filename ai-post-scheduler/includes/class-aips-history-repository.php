@@ -243,6 +243,8 @@ class AIPS_History_Repository {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
+        do_action('aips_history_create_started', $data);
+
         $insert_data = array(
             'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'pending',
@@ -260,9 +262,11 @@ class AIPS_History_Repository {
         
         if ($result) {
             delete_transient('aips_history_stats');
+            do_action('aips_history_created', $this->wpdb->insert_id, $data);
+            return $this->wpdb->insert_id;
         }
 
-        return $result ? $this->wpdb->insert_id : false;
+        return false;
     }
     
     /**
@@ -273,6 +277,8 @@ class AIPS_History_Repository {
      * @return bool True on success, false on failure.
      */
     public function update($id, $data) {
+        do_action('aips_history_update_started', $id, $data);
+
         $update_data = array();
         $format = array();
         
@@ -325,6 +331,7 @@ class AIPS_History_Repository {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+            do_action('aips_history_updated', $id, $data);
         }
 
         return $result !== false;
@@ -353,10 +360,12 @@ class AIPS_History_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
+        do_action('aips_history_delete_started', $id);
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+            do_action('aips_history_deleted', $id);
         }
 
         return $result !== false;
