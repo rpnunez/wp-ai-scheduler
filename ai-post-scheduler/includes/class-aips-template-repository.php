@@ -112,8 +112,12 @@ class AIPS_Template_Repository {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
-        do_action('aips_template_create_started', $data);
+        $event_data = array(
+            'data'      => $data,
+            'timestamp' => current_time('mysql'),
+        );
 
+        do_action('aips_template_create_started', $event_data, 'template_create');
         $insert_data = array(
             'name' => sanitize_text_field($data['name']),
             'prompt_template' => wp_kses_post($data['prompt_template']),
