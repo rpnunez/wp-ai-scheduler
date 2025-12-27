@@ -40,10 +40,10 @@ class AIPS_History_Repository {
      * Initialize the repository.
      */
     public function __construct($template_repository = null) {
-         global $wpdb;
-         $this->wpdb = $wpdb;
--        $this->table_name = $wpdb->prefix . 'aips_history';
-+        $this->table_name = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_history') : $wpdb->prefix . 'aips_history';
+        global $wpdb;
+        $this->wpdb = $wpdb;
+        $this->table_name = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_history') : $this->wpdb->prefix . 'aips_history';
+        
         // Respect an injected template repository (useful for testing or
         // when dependency injection is used); otherwise try to construct one
         // if available. This avoids dynamically creating properties (PHP 8.2+).
