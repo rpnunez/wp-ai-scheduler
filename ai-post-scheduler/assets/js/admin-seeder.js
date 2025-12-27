@@ -9,15 +9,16 @@ jQuery(document).ready(function($) {
         e.preventDefault();
 
         const queue = [];
+        const keywords = $('#seeder-keywords').val();
         const voices = parseInt($('#seeder-voices').val()) || 0;
         const templates = parseInt($('#seeder-templates').val()) || 0;
         const schedule = parseInt($('#seeder-schedule').val()) || 0;
         const planner = parseInt($('#seeder-planner').val()) || 0;
 
-        if (voices > 0) queue.push({ type: 'voices', count: voices, label: 'Voices' });
-        if (templates > 0) queue.push({ type: 'templates', count: templates, label: 'Templates' });
-        if (schedule > 0) queue.push({ type: 'schedule', count: schedule, label: 'Scheduled Templates' });
-        if (planner > 0) queue.push({ type: 'planner', count: planner, label: 'Planner Entries' });
+        if (voices > 0) queue.push({ type: 'voices', count: voices, label: 'Voices', keywords: keywords });
+        if (templates > 0) queue.push({ type: 'templates', count: templates, label: 'Templates', keywords: keywords });
+        if (schedule > 0) queue.push({ type: 'schedule', count: schedule, label: 'Scheduled Templates', keywords: keywords });
+        if (planner > 0) queue.push({ type: 'planner', count: planner, label: 'Planner Entries', keywords: keywords });
 
         if (queue.length === 0) {
             alert('Please enter at least one quantity.');
@@ -54,7 +55,8 @@ jQuery(document).ready(function($) {
                 action: 'aips_process_seeder',
                 nonce: aipsAjax.nonce,
                 type: task.type,
-                count: task.count
+                count: task.count,
+                keywords: task.keywords
             },
             success: function(response) {
                 if (response.success) {
