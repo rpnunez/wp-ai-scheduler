@@ -334,6 +334,19 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
 jQuery(document).ready(function($) {
     let selectedTopics = [];
     
+    // Utility to escape HTML to prevent XSS
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        var map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
     // Research form submission
     $('#aips-research-form').on('submit', function(e) {
         e.preventDefault();
@@ -381,16 +394,18 @@ jQuery(document).ready(function($) {
     // Display research results
     function displayResearchResults(data) {
         const $container = $('#research-results-content');
-        let html = '<p><strong>' + data.saved_count + ' <?php echo esc_js(__('topics saved for', 'ai-post-scheduler')); ?> "' + data.niche + '"</strong></p>';
+        // Using escapeHtml for niche and topic data to prevent XSS
+        let html = '<p><strong>' + data.saved_count + ' <?php echo esc_js(__('topics saved for', 'ai-post-scheduler')); ?> "' + escapeHtml(data.niche) + '"</strong></p>';
         
         if (data.top_topics && data.top_topics.length > 0) {
             html += '<h4><?php echo esc_js(__('Top 5 Topics:', 'ai-post-scheduler')); ?></h4><ol>';
             data.top_topics.forEach(function(topic) {
                 const scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
-                html += '<li><strong>' + topic.topic + '</strong> ';
-                html += '<span class="aips-score-badge aips-score-' + scoreClass + '">' + topic.score + '</span>';
+                // Escape user-generated content
+                html += '<li><strong>' + escapeHtml(topic.topic) + '</strong> ';
+                html += '<span class="aips-score-badge aips-score-' + scoreClass + '">' + escapeHtml(topic.score) + '</span>';
                 if (topic.reason) {
-                    html += '<br><small><em>' + topic.reason + '</em></small>';
+                    html += '<br><small><em>' + escapeHtml(topic.reason) + '</em></small>';
                 }
                 html += '</li>';
             });
@@ -451,22 +466,22 @@ jQuery(document).ready(function($) {
             const keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
             
             html += '<tr>';
-            html += '<td><input type="checkbox" class="topic-checkbox" value="' + topic.id + '"></td>';
-            html += '<td><strong>' + topic.topic + '</strong>';
+            html += '<td><input type="checkbox" class="topic-checkbox" value="' + escapeHtml(topic.id) + '"></td>';
+            html += '<td><strong>' + escapeHtml(topic.topic) + '</strong>';
             if (topic.reason) {
-                html += '<br><small>' + topic.reason + '</small>';
+                html += '<br><small>' + escapeHtml(topic.reason) + '</small>';
             }
             html += '</td>';
-            html += '<td><span class="aips-score-badge aips-score-' + scoreClass + '">' + topic.score + '</span></td>';
-            html += '<td>' + topic.niche + '</td>';
+            html += '<td><span class="aips-score-badge aips-score-' + scoreClass + '">' + escapeHtml(topic.score) + '</span></td>';
+            html += '<td>' + escapeHtml(topic.niche) + '</td>';
             html += '<td><div class="aips-keywords-list">';
             keywords.forEach(function(kw) {
-                html += '<span class="aips-keyword-tag">' + kw + '</span>';
+                html += '<span class="aips-keyword-tag">' + escapeHtml(kw) + '</span>';
             });
             html += '</div></td>';
             html += '<td>' + new Date(topic.researched_at).toLocaleDateString() + '</td>';
             html += '<td><div class="aips-topic-actions">';
-            html += '<button class="button button-small delete-topic" data-id="' + topic.id + '"><?php echo esc_js(__('Delete', 'ai-post-scheduler')); ?></button>';
+            html += '<button class="button button-small delete-topic" data-id="' + escapeHtml(topic.id) + '"><?php echo esc_js(__('Delete', 'ai-post-scheduler')); ?></button>';
             html += '</div></td>';
             html += '</tr>';
         });
