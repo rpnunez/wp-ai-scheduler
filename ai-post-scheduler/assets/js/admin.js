@@ -73,6 +73,9 @@
 
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
+
+            // Copy to Clipboard
+            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
         },
 
         switchTab: function(e) {
@@ -913,6 +916,51 @@
             } else {
                 $('.aips-modal').hide();
             }
+        },
+
+        copyToClipboard: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var text = $btn.data('clipboard-text');
+            var $icon = $btn.find('.dashicons');
+            var originalIcon = $icon.attr('class');
+
+            // Prevent multiple clicks
+            if ($btn.hasClass('copied')) return;
+
+            var success = function() {
+                $btn.addClass('copied');
+                $icon.removeClass().addClass('dashicons dashicons-yes');
+                setTimeout(function() {
+                    $btn.removeClass('copied');
+                    $icon.attr('class', originalIcon);
+                }, 2000);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(success).catch(function() {
+                    // Fallback if permission denied or other error
+                    AIPS.fallbackCopy(text, success);
+                });
+            } else {
+                AIPS.fallbackCopy(text, success);
+            }
+        },
+
+        fallbackCopy: function(text, successCallback) {
+            var $temp = $('<textarea>');
+            $('body').append($temp);
+            $temp.val(text).select();
+
+            try {
+                if (document.execCommand('copy')) {
+                    if (successCallback) successCallback();
+                }
+            } catch (err) {
+                console.error('Copy failed', err);
+            }
+
+            $temp.remove();
         }
     });
 
