@@ -53,7 +53,12 @@ class AIPS_Dashboard {
         // Suggestions
         $suggestions = $this->analytics_service->get_suggestions($stats);
 
-        return compact('stats', 'template_performance', 'automation_settings', 'suggestions');
+        return array(
+            'stats' => $stats,
+            'template_performance' => $template_performance,
+            'automation_settings' => $automation_settings,
+            'suggestions' => $suggestions,
+        );
     }
 
     public function render_page() {
