@@ -186,7 +186,7 @@ class AIPS_History_Repository {
             WHERE $where_sql
         ";
 
-        if ($template_id) {
+        if (!empty($where_args)) {
             $results = $this->wpdb->get_row($this->wpdb->prepare($query, $where_args));
         } else {
             $results = $this->wpdb->get_row($query);

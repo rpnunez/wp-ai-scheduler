@@ -89,8 +89,7 @@
                     if (response.success) {
                         updateDashboardUI(response.data.data);
                     } else if (force) {
-                        var errorMessage = (response && response.data && response.data.message) ? response.data.message : 'An unexpected error occurred while refreshing the stats.';
-                        alert('Error: ' + errorMessage);
+                        alert('Error: ' + response.data.message);
                     }
                 },
                 complete: function() {
