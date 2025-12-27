@@ -553,4 +553,25 @@
     .aips-details-table th {
         width: 100px;
     }
+
+.aips-copy-btn {
+    margin-left: 5px !important;
+    padding: 0 4px !important;
+    min-height: 24px !important;
+    line-height: 22px !important;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.aips-copy-btn:hover {
+    opacity: 1;
+}
+
+.aips-copy-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    line-height: 1.5;
+}
 }
