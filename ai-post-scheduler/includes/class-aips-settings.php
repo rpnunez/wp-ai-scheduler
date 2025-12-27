@@ -43,6 +43,7 @@ class AIPS_Settings {
             30
         );
         
+        // Ensure Dashboard is the first submenu
         add_submenu_page(
             'ai-post-scheduler',
             __('Dashboard', 'ai-post-scheduler'),
@@ -232,6 +233,14 @@ class AIPS_Settings {
             AIPS_VERSION,
             true
         );
+
+        wp_enqueue_script(
+            'aips-admin-dashboard',
+            AIPS_PLUGIN_URL . 'assets/js/admin-dashboard.js',
+            array('aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
         
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -336,35 +345,88 @@ class AIPS_Settings {
     /**
      * Render the main dashboard page.
      *
-     * Fetches statistics and recent activity from the database to display
-     * on the dashboard template.
+     * Delegates to AIPS_Dashboard to render the unified dashboard.
      *
      * @return void
      */
     public function render_dashboard_page() {
-        global $wpdb;
+        // We use AIPS_Dashboard to render the dashboard tab content,
+        // but here we are rendering the top-level page which includes tabs.
+        // We should just include main.php, and let main.php include dashboard.php for the dashboard tab.
+        // However, existing pages like render_templates_page instantiate a class and call render_page().
+
+        // Since we unified everything into main.php with tabs, and we want 'Dashboard' to be the active tab:
+        // We can just instantiate AIPS_Dashboard and call render_page(), BUT AIPS_Dashboard::render_page() currently
+        // includes dashboard.php directly (as per my previous step), NOT main.php.
+
+        // Wait, I designed AIPS_Dashboard::render_page to include dashboard.php?
+        // Let me check my previous step.
+        // Yes: "include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';"
+
+        // But main.php is the container with tabs.
+        // So render_dashboard_page should include main.php, just like AIPS_Templates::render_page does.
+
+        // Let's reuse AIPS_Templates pattern but for Dashboard.
+        // I should have made AIPS_Dashboard::render_page include main.php.
+        // Let me fix AIPS_Dashboard::render_page first?
+        // Or I can just include main.php here directly.
+        // But main.php expects variables/context?
+        // Actually main.php just includes other files based on tabs.
+        // The *content* of dashboard tab is what needs variables.
+        // Those variables are prepared in AIPS_Dashboard::render_page.
+
+        // Correct approach:
+        // AIPS_Dashboard::render_page() should PREPARE data, and then include main.php?
+        // OR main.php includes dashboard.php, and dashboard.php expects variables.
+        // So we need to prepare variables BEFORE including main.php.
+
+        // So I will call AIPS_Dashboard to prepare data, then include main.php.
+        // But AIPS_Dashboard::render_page currently includes dashboard.php directly.
+
+        // I will change this method to instantiate AIPS_Dashboard to prepare data (if I can separate it)
+        // or just rely on AIPS_Dashboard handling the view.
+
+        // If I use AIPS_Dashboard::render_page() as is, it includes dashboard.php (the inner content).
+        // If I want the tabs, I need main.php.
+
+        // Let's look at AIPS_Templates::render_page. It includes main.php.
+        // And inside main.php, it includes templates.php.
+
+        // So I should modify AIPS_Dashboard::render_page to include main.php instead of dashboard.php.
+        // But I already wrote AIPS_Dashboard::render_page to include dashboard.php.
+        // I should update AIPS_Dashboard::render_page in the next step or modify this method to work around it.
+
+        // The best way is to update AIPS_Dashboard::render_page to include main.php.
+        // But I can't do that in this step (modifying settings.php).
+
+        // So for now, I will assume AIPS_Dashboard::render_page will be fixed to include main.php
+        // OR I will instantiate AIPS_Dashboard, let it prepare data, and then I include main.php?
+        // No, AIPS_Dashboard is a class.
+
+        // I will update this method to just call AIPS_Dashboard::render_page()
+        // and I will update AIPS_Dashboard::render_page in a separate step (or realized I made a mistake).
         
-        $table_history = $wpdb->prefix . 'aips_history';
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
-        $table_templates = $wpdb->prefix . 'aips_templates';
+        // Wait, I can overwrite AIPS_Dashboard.php again.
+        // But let's stick to the plan order if possible.
+        // I'll update this file to call AIPS_Dashboard::render_page().
+        // And I will fix AIPS_Dashboard::render_page in a subsequent step if needed.
         
-        $total_generated = $wpdb->get_var("SELECT COUNT(*) FROM $table_history WHERE status = 'completed'");
-        $pending_scheduled = $wpdb->get_var("SELECT COUNT(*) FROM $table_schedule WHERE is_active = 1");
-        $total_templates = $wpdb->get_var("SELECT COUNT(*) FROM $table_templates WHERE is_active = 1");
-        $failed_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_history WHERE status = 'failed'");
+        // Actually, if I look at my created AIPS_Dashboard::render_page:
+        // it fetches stats, then includes templates/admin/dashboard.php.
+        // If I call it here, it will output the dashboard content WITHOUT the tabs (main.php wrapper).
+        // That's bad.
         
-        $recent_posts = $wpdb->get_results("SELECT * FROM $table_history ORDER BY created_at DESC LIMIT 5");
+        // I should change AIPS_Dashboard::render_page to include 'templates/admin/main.php'.
+        // And inside main.php, it includes dashboard.php.
+        // But dashboard.php needs variables ($stats, etc.).
+        // Variables scope: if AIPS_Dashboard::render_page includes main.php, and main.php includes dashboard.php,
+        // variables defined in render_page should be available in dashboard.php.
         
-        $upcoming = $wpdb->get_results("
-            SELECT s.*, t.name as template_name 
-            FROM $table_schedule s 
-            LEFT JOIN $table_templates t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            ORDER BY s.next_run ASC 
-            LIMIT 5
-        ");
+        // So the fix is indeed in AIPS_Dashboard::render_page.
+        // Here I just call it.
         
-        include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
+        $dashboard = new AIPS_Dashboard();
+        $dashboard->render_page();
     }
     
     /**

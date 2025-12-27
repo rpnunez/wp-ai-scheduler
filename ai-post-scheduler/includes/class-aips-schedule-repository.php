@@ -42,8 +42,8 @@ class AIPS_Schedule_Repository {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
-        $this->templates_table = $wpdb->prefix . 'aips_templates';
+        $this->schedule_table = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_schedule') : $wpdb->prefix . 'aips_schedule';
+        $this->templates_table = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_templates') : $wpdb->prefix . 'aips_templates';
     }
     
     /**

@@ -32,12 +32,28 @@ class AIPS_History_Repository {
     private $wpdb;
     
     /**
+     * @var AIPS_Template_Repository|null Template repository instance used for table name resolution
+     */
+    private $template_repository;
+
+    /**
      * Initialize the repository.
      */
-    public function __construct() {
+    public function __construct($template_repository = null) {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_history';
+        $this->table_name = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_history') : $this->wpdb->prefix . 'aips_history';
+        
+        // Respect an injected template repository (useful for testing or
+        // when dependency injection is used); otherwise try to construct one
+        // if available. This avoids dynamically creating properties (PHP 8.2+).
+        if ($template_repository instanceof AIPS_Template_Repository) {
+            $this->template_repository = $template_repository;
+        } elseif (class_exists('AIPS_Template_Repository')) {
+            $this->template_repository = new AIPS_Template_Repository();
+        } else {
+            $this->template_repository = null;
+        }
     }
     
     /**
@@ -101,22 +117,22 @@ class AIPS_History_Repository {
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
         
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
-        
+        // Prefer using the Template Repository to resolve the templates table
+        // name to avoid duplicate hard-coded table names.
+        if (!empty($this->template_repository) && method_exists($this->template_repository, 'get_table_name')) {
+            $templates_table = $this->template_repository->get_table_name();
+        } else {
+            // Fallback for older installs where the class might not be available.
+            $templates_table = $this->wpdb->prefix . 'aips_templates';
+        }
+
         // Query for items
         $query_args = $where_args;
         $query_args[] = $args['per_page'];
         $query_args[] = $offset;
 
-        $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.*, t.name as template_name 
-            FROM {$this->table_name} h 
-            LEFT JOIN {$templates_table} t ON h.template_id = t.id 
-            WHERE $where_sql
-            ORDER BY h.$orderby $order 
-            LIMIT %d OFFSET %d
-        ", $query_args));
-        
+        $results = $this->wpdb->get_results($this->wpdb->prepare("\n            SELECT h.*, t.name as template_name \n            FROM {$this->table_name} h \n            LEFT JOIN {$templates_table} t ON h.template_id = t.id \n            WHERE $where_sql\n            ORDER BY h.$orderby $order \n            LIMIT %d OFFSET %d\n        ", $query_args));
+
         // Query for total count
         if (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
@@ -151,6 +167,7 @@ class AIPS_History_Repository {
     /**
      * Get overall statistics for history.
      *
+     * @param int|null $template_id Optional. Filter by template ID.
      * @return array {
      *     @type int   $total        Total number of items.
      *     @type int   $completed    Number of completed items.
@@ -159,21 +176,37 @@ class AIPS_History_Repository {
      *     @type float $success_rate Success rate percentage.
      * }
      */
-    public function get_stats() {
-        $cached_stats = get_transient('aips_history_stats');
+    public function get_stats($template_id = null) {
+        $cache_key = 'aips_history_stats' . ($template_id ? '_' . $template_id : '');
+        $cached_stats = get_transient($cache_key);
 
         if ($cached_stats !== false) {
             return $cached_stats;
         }
 
-        $results = $this->wpdb->get_row("
+        $where_sql = '1=1';
+        $where_args = array();
+
+        if ($template_id) {
+            $where_sql = 'template_id = %d';
+            $where_args[] = $template_id;
+        }
+
+        $query = "
             SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
                 SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
             FROM {$this->table_name}
-        ");
+            WHERE $where_sql
+        ";
+
+        if (!empty($where_args)) {
+            $results = $this->wpdb->get_row($this->wpdb->prepare($query, $where_args));
+        } else {
+            $results = $this->wpdb->get_row($query);
+        }
 
         $stats = array(
             'total' => (int) $results->total,
@@ -186,14 +219,51 @@ class AIPS_History_Repository {
             ? round(($stats['completed'] / $stats['total']) * 100, 1) 
             : 0;
 
-        set_transient('aips_history_stats', $stats, HOUR_IN_SECONDS);
+        set_transient($cache_key, $stats, HOUR_IN_SECONDS);
         
+        return $stats;
+    }
+
+    /**
+     * Get statistics for all templates in a single query to avoid N+1 issues.
+     *
+     * @return array Associative array of template ID => stats array.
+     */
+    public function get_all_template_stats_aggregated() {
+        $results = $this->wpdb->get_results("
+            SELECT
+                template_id,
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
+            FROM {$this->table_name}
+            WHERE template_id IS NOT NULL AND template_id > 0
+            GROUP BY template_id
+        ");
+
+        $stats = array();
+        foreach ($results as $row) {
+            $total = (int) $row->total;
+            $completed = (int) $row->completed;
+            $rate = $total > 0 ? round(($completed / $total) * 100, 1) : 0;
+
+            $stats[$row->template_id] = array(
+                'total' => $total,
+                'completed' => $completed,
+                'failed' => (int) $row->failed,
+                'processing' => (int) $row->processing,
+                'success_rate' => $rate
+            );
+        }
+
         return $stats;
     }
 
     /**
      * Get statistics for a specific template.
      *
+     * @deprecated 1.6.0 Use get_stats($template_id) instead.
      * @param int $template_id Template ID.
      * @return int Number of completed posts for this template.
      */

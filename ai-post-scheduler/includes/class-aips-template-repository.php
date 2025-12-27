@@ -37,7 +37,7 @@ class AIPS_Template_Repository {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_templates';
+        $this->table_name = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_templates') : $wpdb->prefix . 'aips_templates';
     }
     
     /**
@@ -248,19 +248,26 @@ class AIPS_Template_Repository {
      * }
      */
     public function count_by_status() {
-        $results = $this->wpdb->get_row("
-            SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
-            FROM {$this->table_name}
-        ");
-        
+        $results = $this->wpdb->get_row("\n            SELECT\n                COUNT(*) as total,\n                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active\n            FROM {$this->table_name}\n        ");
+
         return array(
             'total' => (int) $results->total,
             'active' => (int) $results->active,
         );
     }
     
+    /**
+     * Get the fully-prefixed templates table name.
+     *
+     * This allows other repositories to avoid hard-coding table names and
+     * keeps a single source of truth for the templates table.
+     *
+     * @return string
+     */
+    public function get_table_name() {
+        return $this->table_name;
+    }
+
     /**
      * Check if a template name already exists.
      *

@@ -19,7 +19,7 @@ $niches = $repository->get_niche_list();
 $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
 ?>
 
-<div class="wrap aips-research">
+<div class="aips-tab-panel aips-research-panel aips-research">
     <h1><?php echo esc_html__('Trending Topics Research', 'ai-post-scheduler'); ?></h1>
     
     <p class="description">

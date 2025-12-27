@@ -37,7 +37,7 @@ class AIPS_Prompt_Section_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_prompt_sections';
+		$this->table_name = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_prompt_sections') : $wpdb->prefix . 'aips_prompt_sections';
 	}
 	
 	/**

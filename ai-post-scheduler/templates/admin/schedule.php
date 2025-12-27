@@ -17,7 +17,7 @@ $article_structures = $structure_manager->get_active_structures();
 $template_type_selector = new AIPS_Template_Type_Selector();
 $rotation_patterns = $template_type_selector->get_rotation_patterns();
 ?>
-<div class="wrap aips-wrap">
+<div class="aips-tab-panel aips-schedule-panel">
     <h1>
         <?php esc_html_e('Post Schedules', 'ai-post-scheduler'); ?>
         <button class="page-title-action aips-add-schedule-btn"><?php esc_html_e('Add New', 'ai-post-scheduler'); ?></button>

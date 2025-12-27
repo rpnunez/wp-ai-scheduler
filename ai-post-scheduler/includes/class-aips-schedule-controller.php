@@ -95,7 +95,7 @@ class AIPS_Schedule_Controller {
         } else {
              // Fallback
              global $wpdb;
-             $table_name = $wpdb->prefix . 'aips_schedule';
+             $table_name = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_schedule') : $wpdb->prefix . 'aips_schedule';
              $result = $wpdb->update(
                 $table_name,
                 array('is_active' => $is_active),
