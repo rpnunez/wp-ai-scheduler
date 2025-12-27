@@ -28,7 +28,7 @@ class AIPS_Suggestions_Service {
 
         // Suggestion 3: Check for pending/processing bottleneck
         if ($stats['processing'] > 5) {
-             $suggestions[] = array(
+            $suggestions[] = array(
                 'type' => 'info',
                 'message' => __('Multiple posts are currently processing. Please wait for them to complete.', 'ai-post-scheduler'),
                 'action' => 'metrics'
