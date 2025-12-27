@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<div class="wrap aips-wrap">
+<div class="aips-tab-panel aips-history-panel">
     <h1><?php esc_html_e('Generation History', 'ai-post-scheduler'); ?></h1>
     
     <div class="aips-history-stats">

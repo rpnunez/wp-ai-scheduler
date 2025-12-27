@@ -1,3 +1,4 @@
+<div class="aips-tab-panel aips-planner-panel">
 <div class="aips-planner-container">
     <div class="aips-card">
         <h3><?php echo esc_html__('Topic Brainstorming', 'ai-post-scheduler'); ?></h3>
@@ -145,3 +146,4 @@
     max-width: 100%;
 }
 </style>
+</div>

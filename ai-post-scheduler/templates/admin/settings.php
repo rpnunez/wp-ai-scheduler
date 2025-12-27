@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<div class="wrap aips-wrap">
+<div class="aips-tab-panel aips-settings-panel">
     <h1><?php esc_html_e('AI Post Scheduler Settings', 'ai-post-scheduler'); ?></h1>
     
     <form method="post" action="options.php">

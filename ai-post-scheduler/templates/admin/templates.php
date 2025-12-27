@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<div class="wrap aips-wrap">
+<div class="aips-tab-panel aips-templates-panel">
     <h1>
         <?php esc_html_e('Post Templates', 'ai-post-scheduler'); ?>
         <button class="page-title-action aips-add-template-btn"><?php esc_html_e('Add New', 'ai-post-scheduler'); ?></button>
