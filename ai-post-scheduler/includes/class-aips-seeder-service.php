@@ -63,20 +63,31 @@ class AIPS_Seeder_Service {
         }
 
         $created = 0;
+        $failed = 0;
         foreach ($data as $item) {
             if (isset($item->name)) {
-                $this->voices->save(array(
+                $result = $this->voices->save(array(
                     'name' => sanitize_text_field($item->name),
                     'title_prompt' => isset($item->title_prompt) ? wp_kses_post($item->title_prompt) : 'Generate a catchy title.',
                     'content_instructions' => isset($item->content_instructions) ? wp_kses_post($item->content_instructions) : 'Write in a professional tone.',
                     'excerpt_instructions' => '',
                     'is_active' => 1
                 ));
-                $created++;
+
+                if ($result) {
+                    $created++;
+                } else {
+                    $failed++;
+                }
             }
         }
 
-        return array('success' => true, 'count' => $created, 'message' => "Created {$created} voices.");
+        $message = "Created {$created} voices.";
+        if ($failed > 0) {
+            $message .= " Failed to create {$failed}.";
+        }
+
+        return array('success' => true, 'count' => $created, 'message' => $message);
     }
 
     private function seed_templates($count, $keywords = '') {
