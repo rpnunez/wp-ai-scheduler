@@ -1,42 +1,21 @@
-from playwright.sync_api import sync_playwright
-import os
+"""
+Legacy manual dashboard verification script.
 
-def run(playwright):
-    browser = playwright.chromium.launch(headless=True)
-    page = browser.new_page()
+This project uses PHPUnit with the WordPress PHPUnit library for automated
+testing, as documented in TESTING.md and phpunit.xml. Python/Playwright
+tests are not part of the supported testing framework and MUST NOT be used
+as automated tests.
 
-    # Load the mock HTML file
-    file_path = os.path.abspath("tests/mock_dashboard.html")
-    page.goto(f"file://{file_path}")
+If you need to test the AIPS dashboard:
+- Add or update a PHPUnit test that extends WP_UnitTestCase under tests/.
+- For true browser-based E2E coverage, establish a separate, documented
+  E2E framework outside the core PHPUnit test suite.
 
-    # 1. Verify Metrics tab is active initially
-    assert page.is_visible("#aips-dashboard-metrics")
-    assert not page.is_visible("#aips-dashboard-logs")
+This file is kept only as documentation and does not perform any tests.
+"""
 
-    # 2. Click Logs tab and verify switch
-    page.click("a[data-target='logs']")
-    assert not page.is_visible("#aips-dashboard-metrics")
-    assert page.is_visible("#aips-dashboard-logs")
-
-    # 3. Click Automation tab and verify switch
-    page.click("a[data-target='automation']")
-    assert page.is_visible("#aips-dashboard-automation")
-
-    # 4. Mock AJAX for Fetch Logs
-    page.route("**/wp-admin/admin-ajax.php", lambda route: route.fulfill(
-        status=200,
-        content_type="application/json",
-        body='{"success": true, "data": {"logs": ["Log Entry 1", "Log Entry 2"]}}'
-    ))
-
-    page.click("a[data-target='logs']")
-    page.click("#aips-fetch-logs")
-
-    # Verify logs are displayed
-    page.wait_for_selector("#aips-log-viewer:has-text('Log Entry 1')")
-    print("Logs fetched successfully.")
-
-    browser.close()
-
-with sync_playwright() as playwright:
-    run(playwright)
+if __name__ == "__main__":
+    raise SystemExit(
+        "verify_dashboard.py is deprecated. "
+        "Use the PHPUnit test suite (tests/test-*.php) instead."
+    )
