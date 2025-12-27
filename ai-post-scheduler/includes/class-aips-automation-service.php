@@ -12,12 +12,37 @@ class AIPS_Automation_Service {
         $this->template_repo = new AIPS_Template_Repository();
         $this->history_repo = new AIPS_History_Repository();
 
-        // Hook into generation completion or schedule processing
-        add_action('aips_post_generated', array($this, 'check_performance_thresholds'), 10, 2);
+        // Hook into generation completion event fired by the generator.
+        // The documented event signature is: do_action( 'aips_post_generation_completed', $data, $context ).
+        add_action( 'aips_post_generation_completed', array( $this, 'check_performance_thresholds' ), 10, 2 );
     }
 
-    public function check_performance_thresholds($post_id, $template_id) {
-        if (!$template_id) {
+    /**
+     * Check performance thresholds for a template after a post has been generated.
+     *
+     * This method is designed to be flexible about the arguments it receives so it can
+     * work with both:
+     * - Legacy calls: ($post_id, $template_id)
+     * - Event payloads: ($data, $context) from aips_post_generation_completed.
+     *
+     * @param mixed $arg1 Post ID or data array.
+     * @param mixed $arg2 Template ID, context array, or null.
+     */
+    public function check_performance_thresholds( $arg1, $arg2 = null ) {
+        $template_id = null;
+
+        // Backwards compatibility: second argument is a numeric template ID.
+        if ( is_numeric( $arg2 ) ) {
+            $template_id = (int) $arg2;
+        } elseif ( is_array( $arg1 ) && isset( $arg1['template_id'] ) ) {
+            // Event payload style: template_id provided in the first argument.
+            $template_id = (int) $arg1['template_id'];
+        } elseif ( is_array( $arg2 ) && isset( $arg2['template_id'] ) ) {
+            // Event payload style: template_id provided in the second argument.
+            $template_id = (int) $arg2['template_id'];
+        }
+
+        if ( ! $template_id ) {
             return;
         }
 
