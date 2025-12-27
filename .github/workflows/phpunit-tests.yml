@@ -87,25 +87,6 @@ jobs:
           sed -i "s/yourpasswordhere/root/" /tmp/wordpress-tests-lib/wp-tests-config.php
           sed -i "s|localhost|127.0.0.1|" /tmp/wordpress-tests-lib/wp-tests-config.php
 
-      - name: Setup WordPress and Activate Plugin
-        run: |
-          # Copy plugin to WordPress plugins directory (as requested)
-          mkdir -p /tmp/wordpress/wp-content/plugins/ai-post-scheduler
-          cp -r ai-post-scheduler/* /tmp/wordpress/wp-content/plugins/ai-post-scheduler/
-
-          # Create wp-config.php for WP-CLI
-          cp /tmp/wordpress/wp-config-sample.php /tmp/wordpress/wp-config.php
-          sed -i "s/database_name_here/wordpress_tests/" /tmp/wordpress/wp-config.php
-          sed -i "s/username_here/root/" /tmp/wordpress/wp-config.php
-          sed -i "s/password_here/root/" /tmp/wordpress/wp-config.php
-          sed -i "s|localhost|127.0.0.1|" /tmp/wordpress/wp-config.php
-
-          # Install WordPress (needed for activation)
-          wp core install --url="http://example.com" --title="Test Site" --admin_user="admin" --admin_password="password" --admin_email="admin@example.com" --path=/tmp/wordpress --skip-email
-
-          # Activate Plugin
-          wp plugin activate ai-post-scheduler --path=/tmp/wordpress
-
       - name: Display installed dependencies
         run: cd ai-post-scheduler && composer show
 
