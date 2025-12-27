@@ -192,6 +192,27 @@ class AIPS_History_Repository {
     }
 
     /**
+     * Get detailed statistics for a specific template.
+     *
+     * @param int $template_id Template ID.
+     * @return object {
+     *     @type int $total     Total generations.
+     *     @type int $completed Successful generations.
+     *     @type int $failed    Failed generations.
+     * }
+     */
+    public function get_detailed_template_stats($template_id) {
+        return $this->wpdb->get_row($this->wpdb->prepare("
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+            FROM {$this->table_name}
+            WHERE template_id = %d
+        ", $template_id));
+    }
+
+    /**
      * Get statistics for a specific template.
      *
      * @param int $template_id Template ID.

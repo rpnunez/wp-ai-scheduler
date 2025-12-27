@@ -116,7 +116,7 @@ if (!defined('ABSPATH')) {
                     <span class="dashicons dashicons-search"></span> <?php esc_html_e('Fetch Latest Logs', 'ai-post-scheduler'); ?>
                 </button>
             </div>
-            
+
             <div id="aips-log-viewer" class="aips-log-console">
                 <div class="aips-log-placeholder"><?php esc_html_e('Click "Fetch Latest Logs" to view system events.', 'ai-post-scheduler'); ?></div>
             </div>
@@ -178,62 +178,3 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 </div>
-
-<style>
-.aips-inner-nav {
-    border-bottom: 1px solid #ccc;
-    margin-bottom: 20px;
-    padding-bottom: 0;
-}
-.aips-inner-tab {
-    display: inline-block;
-    padding: 10px 15px;
-    text-decoration: none;
-    color: #444;
-    border: 1px solid transparent;
-    border-bottom: none;
-    margin-bottom: -1px;
-    font-weight: 500;
-}
-.aips-inner-tab.active {
-    background: #fff;
-    border-color: #ccc;
-    color: #000;
-    font-weight: 600;
-}
-.aips-inner-tab:hover {
-    background: #f1f1f1;
-}
-.aips-progress-bar {
-    background: #eee;
-    height: 10px;
-    border-radius: 5px;
-    overflow: hidden;
-    width: 100%;
-}
-.aips-progress-fill {
-    height: 100%;
-    background: #46b450;
-    width: 0;
-    transition: width 0.3s ease;
-}
-.aips-progress-fill.medium { background: #ffb900; }
-.aips-progress-fill.low { background: #dc3232; }
-
-.aips-log-console {
-    background: #f6f7f7;
-    border: 1px solid #c3c4c7;
-    padding: 15px;
-    height: 300px;
-    overflow-y: auto;
-    font-family: monospace;
-    font-size: 12px;
-    margin-top: 15px;
-    white-space: pre-wrap;
-}
-.aips-log-placeholder {
-    color: #666;
-    text-align: center;
-    padding-top: 100px;
-}
-</style>

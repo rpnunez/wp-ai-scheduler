@@ -6,9 +6,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Automation_Service {
 
     private $template_repo;
+    private $history_repo;
 
     public function __construct() {
         $this->template_repo = new AIPS_Template_Repository();
+        $this->history_repo = new AIPS_History_Repository();
 
         // Hook into generation completion or schedule processing
         add_action('aips_post_generated', array($this, 'check_performance_thresholds'), 10, 2);
@@ -28,18 +30,9 @@ class AIPS_Automation_Service {
         $threshold = isset($settings['low_performance_threshold']) ? (int)$settings['low_performance_threshold'] : 30;
         $min_gens = isset($settings['min_generations_threshold']) ? (int)$settings['min_generations_threshold'] : 5;
 
-        global $wpdb;
-        $table_history = $wpdb->prefix . 'aips_history';
+        $stats = $this->history_repo->get_detailed_template_stats($template_id);
 
-        $stats = $wpdb->get_row($wpdb->prepare("
-            SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
-            FROM $table_history
-            WHERE template_id = %d
-        ", $template_id));
-
-        if ($stats->total < $min_gens) {
+        if (!$stats || $stats->total < $min_gens) {
             return;
         }
 
