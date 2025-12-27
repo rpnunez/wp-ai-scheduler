@@ -13,30 +13,33 @@ class AIPS_Analytics_Service {
         $this->template_repo = new AIPS_Template_Repository();
     }
 
+    /**
+     * Get performance metrics for all templates.
+     *
+     * Uses aggregated stats to prevent N+1 queries.
+     *
+     * @return array
+     */
     public function get_template_performance() {
         $templates = $this->template_repo->get_all();
+        $all_stats = $this->history_repo->get_all_template_stats_aggregated();
         $performance = array();
 
         foreach ($templates as $template) {
-            $stats = $this->history_repo->get_detailed_template_stats($template->id);
-
-            // Only include templates with at least one generation
-            if (!$stats || $stats->total == 0) {
+            if (!isset($all_stats[$template->id])) {
                 continue;
             }
 
-            $total = (int)$stats->total;
-            $completed = (int)$stats->completed;
-            $failed = (int)$stats->failed;
-            $rate = $total > 0 ? round(($completed / $total) * 100, 1) : 0;
+            $stats = $all_stats[$template->id];
 
             $performance[] = array(
                 'id' => $template->id,
                 'name' => $template->name,
-                'total' => $total,
-                'completed' => $completed,
-                'failed' => $failed,
-                'success_rate' => $rate
+                'total' => $stats['total'],
+                'completed' => $stats['completed'],
+                'failed' => $stats['failed'],
+                'processing' => $stats['processing'],
+                'success_rate' => $stats['success_rate']
             );
         }
 
@@ -49,23 +52,7 @@ class AIPS_Analytics_Service {
     }
 
     public function get_suggestions($stats) {
-        $suggestions = array();
-
-        if ($stats['failed'] > 0) {
-            $suggestions[] = array(
-                'type' => 'warning',
-                'message' => sprintf(__('You have %d failed generations. Check logs to diagnose.', 'ai-post-scheduler'), $stats['failed']),
-                'action' => 'logs'
-            );
-        }
-
-        // Mock suggestion
-        $suggestions[] = array(
-            'type' => 'info',
-            'message' => __('Trending research suggests posting at 2 PM boosts engagement.', 'ai-post-scheduler'),
-            'action' => 'research'
-        );
-
-        return $suggestions;
+        $suggestions_service = new AIPS_Suggestions_Service();
+        return $suggestions_service->get_suggestions($stats);
     }
 }

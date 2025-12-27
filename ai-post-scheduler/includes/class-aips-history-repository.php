@@ -151,6 +151,7 @@ class AIPS_History_Repository {
     /**
      * Get overall statistics for history.
      *
+     * @param int|null $template_id Optional. Filter by template ID.
      * @return array {
      *     @type int   $total        Total number of items.
      *     @type int   $completed    Number of completed items.
@@ -159,21 +160,37 @@ class AIPS_History_Repository {
      *     @type float $success_rate Success rate percentage.
      * }
      */
-    public function get_stats() {
-        $cached_stats = get_transient('aips_history_stats');
+    public function get_stats($template_id = null) {
+        $cache_key = 'aips_history_stats' . ($template_id ? '_' . $template_id : '');
+        $cached_stats = get_transient($cache_key);
 
         if ($cached_stats !== false) {
             return $cached_stats;
         }
 
-        $results = $this->wpdb->get_row("
+        $where_sql = '1=1';
+        $where_args = array();
+
+        if ($template_id) {
+            $where_sql = 'template_id = %d';
+            $where_args[] = $template_id;
+        }
+
+        $query = "
             SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
                 SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
             FROM {$this->table_name}
-        ");
+            WHERE $where_sql
+        ";
+
+        if ($template_id) {
+            $results = $this->wpdb->get_row($this->wpdb->prepare($query, $where_args));
+        } else {
+            $results = $this->wpdb->get_row($query);
+        }
 
         $stats = array(
             'total' => (int) $results->total,
@@ -186,35 +203,51 @@ class AIPS_History_Repository {
             ? round(($stats['completed'] / $stats['total']) * 100, 1) 
             : 0;
 
-        set_transient('aips_history_stats', $stats, HOUR_IN_SECONDS);
+        set_transient($cache_key, $stats, HOUR_IN_SECONDS);
         
         return $stats;
     }
 
     /**
-     * Get detailed statistics for a specific template.
+     * Get statistics for all templates in a single query to avoid N+1 issues.
      *
-     * @param int $template_id Template ID.
-     * @return object {
-     *     @type int $total     Total generations.
-     *     @type int $completed Successful generations.
-     *     @type int $failed    Failed generations.
-     * }
+     * @return array Associative array of template ID => stats array.
      */
-    public function get_detailed_template_stats($template_id) {
-        return $this->wpdb->get_row($this->wpdb->prepare("
+    public function get_all_template_stats_aggregated() {
+        $results = $this->wpdb->get_results("
             SELECT
+                template_id,
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
             FROM {$this->table_name}
-            WHERE template_id = %d
-        ", $template_id));
+            WHERE template_id IS NOT NULL AND template_id > 0
+            GROUP BY template_id
+        ");
+
+        $stats = array();
+        foreach ($results as $row) {
+            $total = (int) $row->total;
+            $completed = (int) $row->completed;
+            $rate = $total > 0 ? round(($completed / $total) * 100, 1) : 0;
+
+            $stats[$row->template_id] = array(
+                'total' => $total,
+                'completed' => $completed,
+                'failed' => (int) $row->failed,
+                'processing' => (int) $row->processing,
+                'success_rate' => $rate
+            );
+        }
+
+        return $stats;
     }
 
     /**
      * Get statistics for a specific template.
      *
+     * @deprecated 1.6.0 Use get_stats($template_id) instead.
      * @param int $template_id Template ID.
      * @return int Number of completed posts for this template.
      */

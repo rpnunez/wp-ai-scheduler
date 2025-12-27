@@ -30,13 +30,14 @@ class AIPS_Automation_Service {
         $threshold = isset($settings['low_performance_threshold']) ? (int)$settings['low_performance_threshold'] : 30;
         $min_gens = isset($settings['min_generations_threshold']) ? (int)$settings['min_generations_threshold'] : 5;
 
-        $stats = $this->history_repo->get_detailed_template_stats($template_id);
+        $stats = $this->history_repo->get_stats($template_id);
 
-        if (!$stats || $stats->total < $min_gens) {
+        if (!$stats || $stats['total'] < $min_gens) {
             return;
         }
 
-        $success_rate = ($stats->total > 0) ? ($stats->completed / $stats->total) * 100 : 0;
+        // $stats is an array now, and success_rate is pre-calculated but let's be explicit
+        $success_rate = $stats['success_rate'];
 
         if ($success_rate < $threshold) {
             $this->template_repo->update($template_id, array('is_active' => 0));
