@@ -36,7 +36,7 @@ class AIPS_Automation_Service {
             return;
         }
 
-        // $stats is an array now, and success_rate is pre-calculated but let's be explicit
+        // Use the pre-calculated success_rate from history stats for threshold comparison.
         $success_rate = $stats['success_rate'];
 
         if ($success_rate < $threshold) {
