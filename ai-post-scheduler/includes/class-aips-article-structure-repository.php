@@ -37,7 +37,7 @@ class AIPS_Article_Structure_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_article_structures';
+		$this->table_name = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_article_structures') : $wpdb->prefix . 'aips_article_structures';
 	}
 	
 	/**

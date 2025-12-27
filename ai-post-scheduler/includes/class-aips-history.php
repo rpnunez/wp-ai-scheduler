@@ -14,7 +14,8 @@ class AIPS_History {
     
     public function __construct() {
         global $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_history';
+
+        $this->table_name = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_history') : $wpdb->prefix . 'aips_history';
         $this->repository = new AIPS_History_Repository();
         
         add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));

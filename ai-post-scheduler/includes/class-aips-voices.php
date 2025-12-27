@@ -9,8 +9,13 @@ class AIPS_Voices {
     
     public function __construct() {
         global $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_voices';
-        
+        // Resolve table name from central helper to avoid hard-coding.
+        if (class_exists('AIPS_DB_Tables')) {
+            $this->table_name = AIPS_DB_Tables::get('aips_voices');
+        } else {
+            $this->table_name = $wpdb->prefix . 'aips_voices';
+        }
+
         add_action('wp_ajax_aips_save_voice', array($this, 'ajax_save_voice'));
         add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
         add_action('wp_ajax_aips_get_voice', array($this, 'ajax_get_voice'));

@@ -101,7 +101,7 @@ class AIPS_Planner {
         }
 
         global $wpdb;
-        $table_name = $wpdb->prefix . 'aips_schedule';
+        $table_name = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_schedule') : $wpdb->prefix . 'aips_schedule';
 
         // Optimization: Use single bulk INSERT query instead of loop
         // This reduces N database calls to 1, significantly improving performance for large batches

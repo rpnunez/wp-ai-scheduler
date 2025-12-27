@@ -14,7 +14,11 @@ class AIPS_Templates {
     
     public function __construct() {
         global $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_templates';
+        if (class_exists('AIPS_DB_Tables')) {
+            $this->table_name = AIPS_DB_Tables::get('aips_templates');
+        } else {
+            $this->table_name = $wpdb->prefix . 'aips_templates';
+        }
         $this->repository = new AIPS_Template_Repository();
         
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
@@ -173,7 +177,7 @@ class AIPS_Templates {
 
     public function get_pending_stats($template_id) {
         global $wpdb;
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
+        $table_schedule = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_schedule') : $wpdb->prefix . 'aips_schedule';
 
         $schedules = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM $table_schedule WHERE template_id = %d AND is_active = 1",
@@ -239,7 +243,7 @@ class AIPS_Templates {
 
     public function get_all_pending_stats() {
         global $wpdb;
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
+        $table_schedule = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_schedule') : $wpdb->prefix . 'aips_schedule';
 
         // Get all active schedules ordered by template_id
         $schedules = $wpdb->get_results("SELECT * FROM $table_schedule WHERE is_active = 1 ORDER BY template_id");

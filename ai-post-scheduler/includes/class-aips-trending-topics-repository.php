@@ -37,7 +37,11 @@ class AIPS_Trending_Topics_Repository {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_trending_topics';
+        if (class_exists('AIPS_DB_Tables')) {
+            $this->table_name = AIPS_DB_Tables::get('aips_trending_topics');
+        } else {
+            $this->table_name = $wpdb->prefix . 'aips_trending_topics';
+        }
     }
     
     /**

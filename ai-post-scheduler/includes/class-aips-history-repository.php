@@ -32,12 +32,28 @@ class AIPS_History_Repository {
     private $wpdb;
     
     /**
+     * @var AIPS_Template_Repository|null Template repository instance used for table name resolution
+     */
+    private $template_repository;
+
+    /**
      * Initialize the repository.
      */
-    public function __construct() {
-        global $wpdb;
-        $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_history';
+    public function __construct($template_repository = null) {
+         global $wpdb;
+         $this->wpdb = $wpdb;
+-        $this->table_name = $wpdb->prefix . 'aips_history';
++        $this->table_name = class_exists('AIPS_DB_Tables') ? AIPS_DB_Tables::get('aips_history') : $wpdb->prefix . 'aips_history';
+        // Respect an injected template repository (useful for testing or
+        // when dependency injection is used); otherwise try to construct one
+        // if available. This avoids dynamically creating properties (PHP 8.2+).
+        if ($template_repository instanceof AIPS_Template_Repository) {
+            $this->template_repository = $template_repository;
+        } elseif (class_exists('AIPS_Template_Repository')) {
+            $this->template_repository = new AIPS_Template_Repository();
+        } else {
+            $this->template_repository = null;
+        }
     }
     
     /**
@@ -101,22 +117,22 @@ class AIPS_History_Repository {
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
         
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
-        
+        // Prefer using the Template Repository to resolve the templates table
+        // name to avoid duplicate hard-coded table names.
+        if (!empty($this->template_repository) && method_exists($this->template_repository, 'get_table_name')) {
+            $templates_table = $this->template_repository->get_table_name();
+        } else {
+            // Fallback for older installs where the class might not be available.
+            $templates_table = $this->wpdb->prefix . 'aips_templates';
+        }
+
         // Query for items
         $query_args = $where_args;
         $query_args[] = $args['per_page'];
         $query_args[] = $offset;
 
-        $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.*, t.name as template_name 
-            FROM {$this->table_name} h 
-            LEFT JOIN {$templates_table} t ON h.template_id = t.id 
-            WHERE $where_sql
-            ORDER BY h.$orderby $order 
-            LIMIT %d OFFSET %d
-        ", $query_args));
-        
+        $results = $this->wpdb->get_results($this->wpdb->prepare("\n            SELECT h.*, t.name as template_name \n            FROM {$this->table_name} h \n            LEFT JOIN {$templates_table} t ON h.template_id = t.id \n            WHERE $where_sql\n            ORDER BY h.$orderby $order \n            LIMIT %d OFFSET %d\n        ", $query_args));
+
         // Query for total count
         if (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
