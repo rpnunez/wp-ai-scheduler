@@ -80,6 +80,20 @@ class AIPS_Voices {
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
         
+        $limits = AIPS_Config::get_instance()->get_security_limits();
+
+        if (mb_strlen($data['name']) > $limits['name_max_length']) {
+             wp_send_json_error(array('message' => sprintf(__('Voice name is too long. Max %d characters.', 'ai-post-scheduler'), $limits['name_max_length'])));
+        }
+
+        if (mb_strlen($data['content_instructions']) > $limits['prompt_max_length']) {
+             wp_send_json_error(array('message' => sprintf(__('Content instructions are too long. Max %d characters.', 'ai-post-scheduler'), $limits['prompt_max_length'])));
+        }
+
+        if (mb_strlen($data['excerpt_instructions']) > $limits['prompt_max_length']) {
+             wp_send_json_error(array('message' => sprintf(__('Excerpt instructions are too long. Max %d characters.', 'ai-post-scheduler'), $limits['prompt_max_length'])));
+        }
+
         if (empty($data['name']) || empty($data['title_prompt']) || empty($data['content_instructions'])) {
             wp_send_json_error(array('message' => __('Name, Title Prompt, and Content Instructions are required.', 'ai-post-scheduler')));
         }
