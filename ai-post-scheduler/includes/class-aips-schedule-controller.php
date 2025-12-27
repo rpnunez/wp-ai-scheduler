@@ -139,6 +139,19 @@ class AIPS_Schedule_Controller {
         }
 
         $quantity = $template->post_quantity ?: 1;
+
+        // LIMITATION: Cap immediate execution to prevent timeouts
+        $max_run_now = 5;
+        $limit_message = '';
+
+        if ($quantity > $max_run_now) {
+            $quantity = $max_run_now;
+            $limit_message = ' ' . sprintf(
+                __('Note: Execution limited to %d posts to prevent timeouts.', 'ai-post-scheduler'),
+                $max_run_now
+            );
+        }
+
         $post_ids = array();
         $errors = array();
 
@@ -159,6 +172,11 @@ class AIPS_Schedule_Controller {
             $error_msg = count($errors) > 1
                 ? __('All generation attempts failed.', 'ai-post-scheduler')
                 : $errors[0];
+
+            if ($limit_message) {
+                $error_msg .= $limit_message;
+            }
+
             wp_send_json_error(array('message' => $error_msg, 'errors' => $errors));
         }
 
@@ -173,6 +191,8 @@ class AIPS_Schedule_Controller {
                 count($errors)
             );
         }
+
+        $message .= $limit_message;
 
         wp_send_json_success(array(
             'message' => $message,
