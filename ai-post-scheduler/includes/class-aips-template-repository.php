@@ -240,11 +240,23 @@ class AIPS_Template_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
-        do_action('aips_template_delete_started', $id);
+        $event_data_started = array(
+            'template_id' => (int) $id,
+            'timestamp'   => current_time('mysql'),
+        );
+
+        do_action('aips_template_delete_started', $id, $event_data_started);
+
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
 
         if ($result !== false) {
-            do_action('aips_template_deleted', $id);
+            $event_data_deleted = array(
+                'template_id'   => (int) $id,
+                'timestamp'     => current_time('mysql'),
+                'rows_affected' => (int) $result,
+            );
+
+            do_action('aips_template_deleted', $id, $event_data_deleted);
         }
 
         return $result !== false;
