@@ -1,10 +1,3 @@
-## 2024-05-24 - SSRF Prevention with `wp_safe_remote_get`
-**Learning:** `wp_remote_get` allows requests to local/private IPs, making it a vector for SSRF attacks when handling user or AI-generated URLs.
-**Action:** Always use `wp_safe_remote_get` for fetching external resources, which includes built-in DNS rebinding protection and private IP blocking.
-
-## 2024-05-25 - Schedule Query Collision Fix
-**Learning:**  in  caused template properties to overwrite schedule properties (like ) when column names collided.
-**Action:** Changed query to  to ensure schedule properties take precedence, preserving the integrity of the schedule object.
-## 2024-05-25 - Schedule Query Collision Fix
-**Learning:** SQL JOINs can overwrite columns if using wildcard selects.
-**Action:** Changed query order to ensure schedule properties take precedence.
+## 2024-05-25 - Prevent PHP Timeouts in Synchronous Loops
+**Learning:** Allowing user configuration (like `post_quantity`) to directly control the number of iterations in a synchronous process (like `ajax_run_now`) causes timeouts when the value is high (e.g., 50).
+**Action:** Always implement a hard limit (cap) on synchronous loops and inform the user if their request was truncated to preserve server stability.
