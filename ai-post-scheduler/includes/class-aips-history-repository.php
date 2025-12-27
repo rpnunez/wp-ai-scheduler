@@ -366,12 +366,12 @@ class AIPS_History_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
-        do_action('aips_history_delete_started', $id);
+        do_action('aips_history_delete_started', array('id' => $id));
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
-            do_action('aips_history_deleted', $id);
+            do_action('aips_history_deleted', array('id' => $id));
         }
 
         return $result !== false;
