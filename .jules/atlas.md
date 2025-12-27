@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-27 - [Full Mode Tests] **Context:** The project used a mock-based "Limited Mode" for testing in CI, which masked integration issues. **Decision:** Switch to a full WordPress environment in GitHub Actions, including MySQL and the official WordPress Test Library. **Consequence:** CI runs will take slightly longer but will provide accurate integration testing results. `bootstrap.php` no longer supports running without a WP environment.
