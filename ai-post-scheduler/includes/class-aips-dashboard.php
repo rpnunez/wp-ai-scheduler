@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Dashboard {
 
-    const REFRESH_INTERVALS = [1, 3, 5, 30];
+    const REFRESH_INTERVALS = array(1, 3, 5, 30);
 
     private $history_repo;
     private $analytics_service;
