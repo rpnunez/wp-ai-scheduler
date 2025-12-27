@@ -86,6 +86,10 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
+
+        // Seeder Feature
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-seeder-service.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-seeder-admin.php';
     }
     
     private function init_hooks() {
@@ -152,6 +156,7 @@ final class AI_Post_Scheduler {
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
             new AIPS_Research_Controller();
+            new AIPS_Seeder_Admin();
         }
         
         new AIPS_Scheduler();
