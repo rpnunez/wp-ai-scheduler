@@ -900,7 +900,7 @@
         },
 
         escapeHtml: function(text) {
-            if (!text) return '';
+            if (text === null || text === undefined) return '';
             var div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
