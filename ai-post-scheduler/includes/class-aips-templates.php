@@ -12,10 +12,16 @@ class AIPS_Templates {
      */
     private $repository;
     
+    /**
+     * @var AIPS_Interval_Calculator Service for interval calculations
+     */
+    private $interval_calculator;
+
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_templates';
         $this->repository = new AIPS_Template_Repository();
+        $this->interval_calculator = new AIPS_Interval_Calculator();
         
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
@@ -196,42 +202,17 @@ class AIPS_Templates {
         $month_end = strtotime('+30 days', $now);
 
         foreach ($schedules as $schedule) {
-            $cursor = strtotime($schedule->next_run);
-            $frequency = $schedule->frequency;
+            $schedule_stats = $this->interval_calculator->calculate_pending_stats(
+                strtotime($schedule->next_run),
+                $schedule->frequency,
+                $today_end,
+                $week_end,
+                $month_end
+            );
 
-            // Limit iterations to prevent infinite loops or excessive processing
-            $max_iterations = 100;
-            $i = 0;
-
-            while ($cursor <= $month_end && $i < $max_iterations) {
-                if ($cursor < $now) {
-                    // Skip past events that haven't run yet but update cursor?
-                    // Actually if next_run is in past, it will run next cron.
-                    // So count it as imminent.
-                }
-
-                if ($cursor <= $today_end) {
-                    $stats['today']++;
-                }
-
-                if ($cursor <= $week_end) {
-                    $stats['week']++;
-                }
-
-                if ($cursor <= $month_end) {
-                    $stats['month']++;
-                } else {
-                    break;
-                }
-
-                if ($frequency === 'once') {
-                    break;
-                }
-
-                // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
-                $i++;
-            }
+            $stats['today'] += $schedule_stats['today'];
+            $stats['week'] += $schedule_stats['week'];
+            $stats['month'] += $schedule_stats['month'];
         }
 
         return $stats;
@@ -260,72 +241,20 @@ class AIPS_Templates {
                 $stats[$tid] = array('today' => 0, 'week' => 0, 'month' => 0);
             }
 
-            $cursor = strtotime($schedule->next_run);
-            $frequency = $schedule->frequency;
+            $schedule_stats = $this->interval_calculator->calculate_pending_stats(
+                strtotime($schedule->next_run),
+                $schedule->frequency,
+                $today_end,
+                $week_end,
+                $month_end
+            );
 
-            // Limit iterations to prevent infinite loops or excessive processing
-            $max_iterations = 100;
-            $i = 0;
-
-            while ($cursor <= $month_end && $i < $max_iterations) {
-                // If cursor is in the past, it's considered imminent (Today)
-                if ($cursor <= $today_end) {
-                    $stats[$tid]['today']++;
-                }
-
-                if ($cursor <= $week_end) {
-                    $stats[$tid]['week']++;
-                }
-
-                if ($cursor <= $month_end) {
-                    $stats[$tid]['month']++;
-                } else {
-                    break;
-                }
-
-                if ($frequency === 'once') {
-                    break;
-                }
-
-                // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
-                $i++;
-            }
+            $stats[$tid]['today'] += $schedule_stats['today'];
+            $stats[$tid]['week'] += $schedule_stats['week'];
+            $stats[$tid]['month'] += $schedule_stats['month'];
         }
 
         return $stats;
-    }
-
-    private function calculate_next_run($frequency, $base_time) {
-        switch ($frequency) {
-            case 'hourly':
-                return strtotime('+1 hour', $base_time);
-            case 'every_4_hours':
-                return strtotime('+4 hours', $base_time);
-            case 'every_6_hours':
-                return strtotime('+6 hours', $base_time);
-            case 'every_12_hours':
-                return strtotime('+12 hours', $base_time);
-            case 'daily':
-                return strtotime('+1 day', $base_time);
-            case 'weekly':
-                return strtotime('+1 week', $base_time);
-            case 'bi_weekly':
-                return strtotime('+2 weeks', $base_time);
-            case 'monthly':
-                return strtotime('+1 month', $base_time);
-            default:
-                if (strpos($frequency, 'every_') === 0) {
-                    $day = ucfirst(str_replace('every_', '', $frequency));
-                    $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
-
-                    if (in_array($day, $valid_days)) {
-                        $next = strtotime("next $day", $base_time);
-                        return strtotime(date('H:i:s', $base_time), $next);
-                    }
-                }
-                return strtotime('+1 day', $base_time);
-        }
     }
 
     public function ajax_get_template_posts() {

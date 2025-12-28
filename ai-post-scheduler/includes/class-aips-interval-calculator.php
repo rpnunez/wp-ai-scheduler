@@ -250,4 +250,69 @@ class AIPS_Interval_Calculator {
 
         return $schedules;
     }
+
+    /**
+     * Calculate pending statistics for a schedule using O(1) math where possible.
+     *
+     * @param int    $next_run_ts Next run timestamp.
+     * @param string $frequency   Schedule frequency.
+     * @param int    $today_end   Timestamp for end of today.
+     * @param int    $week_end    Timestamp for end of week.
+     * @param int    $month_end   Timestamp for end of month.
+     * @return array Associative array with 'today', 'week', 'month' counts.
+     */
+    public function calculate_pending_stats($next_run_ts, $frequency, $today_end, $week_end, $month_end) {
+        $stats = array('today' => 0, 'week' => 0, 'month' => 0);
+
+        // Handle 'once' frequency separately
+        if ($frequency === 'once') {
+            if ($next_run_ts <= $today_end) $stats['today'] = 1;
+            if ($next_run_ts <= $week_end) $stats['week'] = 1;
+            if ($next_run_ts <= $month_end) $stats['month'] = 1;
+            return $stats;
+        }
+
+        // Determine if we can use O(1) math
+        $is_fixed = in_array($frequency, array(
+            'hourly', 'every_4_hours', 'every_6_hours', 'every_12_hours',
+            'daily', 'weekly', 'bi_weekly'
+        ));
+
+        // Check for day-specific (every_monday, etc) which are also fixed weekly (604800s)
+        if (!$is_fixed && strpos($frequency, 'every_') === 0 && $frequency !== 'every_month') {
+            // Check if it's a day name
+            $day = ucfirst(str_replace('every_', '', $frequency));
+            $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+            if (in_array($day, $valid_days)) {
+                $is_fixed = true;
+            }
+        }
+
+        if ($is_fixed && $frequency !== 'monthly') {
+            $interval = $this->get_interval_duration($frequency);
+            if ($interval > 0) {
+                // O(1) Calculation
+                $stats['today'] = ($next_run_ts > $today_end) ? 0 : 1 + floor(($today_end - $next_run_ts) / $interval);
+                $stats['week'] = ($next_run_ts > $week_end) ? 0 : 1 + floor(($week_end - $next_run_ts) / $interval);
+                $stats['month'] = ($next_run_ts > $month_end) ? 0 : 1 + floor(($month_end - $next_run_ts) / $interval);
+                return $stats;
+            }
+        }
+
+        // Fallback to iterative approach for variable intervals (like monthly)
+        $cursor = $next_run_ts;
+        $max_iterations = 100;
+        $i = 0;
+
+        while ($cursor <= $month_end && $i < $max_iterations) {
+            if ($cursor <= $today_end) $stats['today']++;
+            if ($cursor <= $week_end) $stats['week']++;
+            if ($cursor <= $month_end) $stats['month']++;
+
+            $cursor = $this->calculate_next_timestamp($frequency, $cursor);
+            $i++;
+        }
+
+        return $stats;
+    }
 }
