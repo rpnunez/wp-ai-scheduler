@@ -10,6 +10,7 @@
         },
 
         bindEvents: function() {
+            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
             $(document).on('click', '.aips-delete-template', this.deleteTemplate);
@@ -897,6 +898,56 @@
             }
             
             $('#aips-details-content').show();
+        },
+
+        copyToClipboard: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var text = $btn.data('clipboard-text');
+
+            if (!text) return;
+
+            var $icon = $btn.find('.dashicons');
+            var originalIcon = $btn.data('original-icon') || 'dashicons-admin-page';
+
+            // Store original icon class if not already stored
+            if (!$btn.data('original-icon')) {
+                $btn.data('original-icon', originalIcon);
+            }
+
+            var fallbackCopy = function() {
+                var $temp = $('<textarea>');
+                $('body').append($temp);
+                $temp.val(text).select();
+
+                var success = false;
+                try {
+                    success = document.execCommand('copy');
+                } catch (err) {
+                    success = false;
+                }
+
+                $temp.remove();
+
+                if (success) {
+                    showSuccess();
+                } else {
+                    alert('Unable to copy to clipboard.');
+                }
+            };
+
+            var showSuccess = function() {
+                $icon.removeClass(originalIcon).addClass('dashicons-yes');
+                setTimeout(function() {
+                    $icon.removeClass('dashicons-yes').addClass(originalIcon);
+                }, 2000);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(showSuccess).catch(fallbackCopy);
+            } else {
+                fallbackCopy();
+            }
         },
 
         escapeHtml: function(text) {

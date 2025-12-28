@@ -1,0 +1,48 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/4.6/dashicons.min.css">
+        </head>
+        <body>
+            <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{date}}" aria-label="Copy variable">
+                <span class="dashicons dashicons-admin-page"></span>
+            </button>
+            <script>
+            // Mock AIPS object and copyToClipboard function from admin.js
+            window.AIPS = window.AIPS || {};
+            window.AIPS.copyToClipboard = function(e) {
+                e.preventDefault();
+                var $btn = $(this);
+                var text = $btn.data('clipboard-text');
+                var $icon = $btn.find('.dashicons');
+                var originalIcon = $btn.data('original-icon') || 'dashicons-admin-page';
+
+                if (!$btn.data('original-icon')) {
+                    $btn.data('original-icon', originalIcon);
+                }
+
+                var fallbackCopy = function() {
+                   // Fallback not easily testable in headless without user interaction context sometimes
+                   console.log("Fallback copy triggered");
+                };
+
+                var showSuccess = function() {
+                    $icon.removeClass(originalIcon).addClass('dashicons-yes');
+                    setTimeout(function() {
+                        $icon.removeClass('dashicons-yes').addClass(originalIcon);
+                    }, 2000);
+                };
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(showSuccess).catch(fallbackCopy);
+                } else {
+                    fallbackCopy();
+                }
+            };
+
+            $(document).on('click', '.aips-copy-btn', window.AIPS.copyToClipboard);
+            </script>
+        </body>
+        </html>
