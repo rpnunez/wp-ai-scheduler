@@ -71,8 +71,59 @@
                 }
             });
 
+            // Copy to clipboard
+            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
+        },
+
+        copyToClipboard: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var text = $btn.data('clipboard-text');
+            var $icon = $btn.find('.dashicons');
+            var originalIconClass = $btn.data('original-icon') || $icon.attr('class');
+
+            // Store original icon class if not already stored
+            if (!$btn.data('original-icon')) {
+                $btn.data('original-icon', originalIconClass);
+            }
+
+            var fallbackCopy = function() {
+                var $temp = $('<textarea>');
+                $temp.css({
+                    position: 'fixed',
+                    top: '-9999px',
+                    left: '-9999px'
+                });
+                $('body').append($temp);
+                $temp.val(text).trigger('focus').trigger('select');
+
+                var success = false;
+                try {
+                    success = document.execCommand('copy');
+                } catch (err) {
+                    success = false;
+                }
+                $temp.remove();
+                return success;
+            };
+
+            var onSuccess = function() {
+                $icon.removeClass().addClass('dashicons dashicons-yes');
+                setTimeout(function() {
+                    $icon.removeClass().addClass(originalIconClass);
+                }, 2000);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(onSuccess).catch(function() {
+                    if (fallbackCopy()) onSuccess();
+                });
+            } else {
+                if (fallbackCopy()) onSuccess();
+            }
         },
 
         switchTab: function(e) {

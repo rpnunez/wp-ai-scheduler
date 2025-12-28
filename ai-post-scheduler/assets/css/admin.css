@@ -554,3 +554,28 @@
         width: 100px;
     }
 }
+
+/* Copy Button Styles */
+.aips-copy-btn {
+    margin-left: 8px;
+    padding: 0 4px !important;
+    vertical-align: middle;
+    height: 24px !important;
+    line-height: 22px !important;
+    background: transparent !important;
+    border: none !important;
+    color: #2271b1 !important;
+    box-shadow: none !important;
+}
+
+.aips-copy-btn:hover {
+    color: #135e96 !important;
+    background: #f0f0f1 !important;
+}
+
+.aips-copy-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 24px;
+}
