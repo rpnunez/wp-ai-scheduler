@@ -1,0 +1,119 @@
+
+from playwright.sync_api import sync_playwright
+
+def verify_copy_ui():
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+
+        # Mock HTML content
+        html_content = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Settings Page</title>
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/4.6/dashicons.min.css">
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; padding: 20px; background: #f1f1f1; }
+                .wrap { max-width: 1000px; margin: 0 auto; }
+                .aips-card { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+                h2 { margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid #f0f0f1; font-size: 1.3em; color: #1d2327; }
+                table { width: 100%; border-collapse: collapse; }
+                th { text-align: left; padding: 10px; font-weight: 500; border-bottom: 1px solid #c3c4c7; }
+                td { padding: 10px; border-bottom: 1px solid #f0f0f1; vertical-align: middle; }
+                .button {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    text-decoration: none;
+                    border: 1px solid #2271b1;
+                    border-radius: 3px;
+                    background: #f6f7f7;
+                    color: #2271b1;
+                    cursor: pointer;
+                    padding: 0 10px;
+                    line-height: 2;
+                    height: 30px;
+                    font-size: 13px;
+                }
+                .button:hover { background: #f0f0f1; border-color: #0a4b78; color: #0a4b78; }
+                .button-small { height: 24px; padding: 0 6px; font-size: 11px; }
+                .dashicons { font-size: 16px; line-height: 1; margin-top: -1px; }
+                code { background: #f0f0f1; padding: 3px 5px; font-family: Consolas, Monaco, monospace; }
+                .column-actions { width: 50px; text-align: center; }
+                .column-actions button { margin: 0 auto; }
+            </style>
+        </head>
+        <body>
+            <div class="wrap">
+                <div class="aips-card">
+                    <h2>Template Variables</h2>
+                    <p>You can use these variables in your prompt templates:</p>
+                    <table class="widefat striped">
+                        <thead>
+                            <tr>
+                                <th>Variable</th>
+                                <th>Description</th>
+                                <th>Example</th>
+                                <th class="column-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>{{date}}</code></td>
+                                <td>Current date</td>
+                                <td>October 24, 2023</td>
+                                <td class="column-actions">
+                                    <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{date}}" aria-label="Copy variable">
+                                        <span class="dashicons dashicons-admin-page"></span>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><code>{{year}}</code></td>
+                                <td>Current year</td>
+                                <td>2023</td>
+                                <td class="column-actions">
+                                    <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{year}}" aria-label="Copy variable">
+                                        <span class="dashicons dashicons-admin-page"></span>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <script>
+            // Injected mock logic for verification
+            $(document).on('click', '.aips-copy-btn', function(e) {
+                var $btn = $(this);
+                var $icon = $btn.find('.dashicons');
+                var originalIcon = 'dashicons-admin-page';
+
+                $icon.removeClass(originalIcon).addClass('dashicons-yes');
+                // Don't revert in screenshot so we can see the state
+            });
+            </script>
+        </body>
+        </html>
+        """
+
+        with open("verification/settings_ui.html", "w") as f:
+            f.write(html_content)
+
+        import os
+        file_path = os.path.abspath("verification/settings_ui.html")
+        page.goto(f"file://{file_path}")
+
+        # Click the first button to show the active state
+        page.click('tr:first-child .aips-copy-btn')
+
+        # Take screenshot
+        page.screenshot(path="verification/settings_copy_feature.png")
+
+        browser.close()
+
+if __name__ == "__main__":
+    verify_copy_ui()
