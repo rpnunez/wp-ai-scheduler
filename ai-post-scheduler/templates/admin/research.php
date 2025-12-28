@@ -146,7 +146,12 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
         
         <!-- Bulk Schedule -->
         <div id="bulk-schedule-section" style="display: none; margin-top: 30px;">
-            <h3><?php echo esc_html__('Schedule Selected Topics', 'ai-post-scheduler'); ?></h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;"><?php echo esc_html__('Schedule Selected Topics', 'ai-post-scheduler'); ?></h3>
+                <button type="button" class="button button-link-delete" id="bulk-delete-topics">
+                    <?php echo esc_html__('Delete Selected Topics', 'ai-post-scheduler'); ?>
+                </button>
+            </div>
             
             <form id="bulk-schedule-form">
                 <table class="form-table">
@@ -522,6 +527,47 @@ jQuery(document).ready(function($) {
         });
     });
     
+    // Bulk delete
+    $(document).on('click', '#bulk-delete-topics', function() {
+        if (selectedTopics.length === 0) {
+            alert('<?php echo esc_js(__('Please select at least one topic to delete.', 'ai-post-scheduler')); ?>');
+            return;
+        }
+
+        if (!confirm('<?php echo esc_js(__('Are you sure you want to delete the selected topics?', 'ai-post-scheduler')); ?>')) {
+            return;
+        }
+
+        const $btn = $(this);
+        const originalText = $btn.text();
+        $btn.text('<?php echo esc_js(__('Deleting...', 'ai-post-scheduler')); ?>').prop('disabled', true);
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'aips_bulk_delete_trending_topics',
+                nonce: $('#aips_nonce').val(),
+                topic_ids: selectedTopics
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#load-topics').trigger('click');
+                    selectedTopics = []; // Clear selection
+                    $('#select-all-topics').prop('checked', false);
+                } else {
+                    alert('Error: ' + response.data.message);
+                }
+            },
+            error: function() {
+                alert('<?php echo esc_js(__('An error occurred during deletion.', 'ai-post-scheduler')); ?>');
+            },
+            complete: function() {
+                $btn.text(originalText).prop('disabled', false);
+            }
+        });
+    });
+
     // Bulk schedule
     $('#bulk-schedule-form').on('submit', function(e) {
         e.preventDefault();
