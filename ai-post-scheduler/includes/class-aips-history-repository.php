@@ -118,7 +118,24 @@ class AIPS_History_Repository {
         ", $query_args));
         
         // Query for total count
-        if (!empty($where_args)) {
+        // Optimization: Use cached stats if possible to avoid COUNT(*)
+        $use_cache = false;
+        $cached_total = 0;
+
+        if (empty($args['search']) && empty($args['template_id'])) {
+            $stats = $this->get_stats();
+            if (empty($args['status'])) {
+                 $cached_total = $stats['total'];
+                 $use_cache = true;
+            } elseif (isset($stats[$args['status']])) {
+                 $cached_total = $stats[$args['status']];
+                 $use_cache = true;
+            }
+        }
+
+        if ($use_cache) {
+            $total = $cached_total;
+        } elseif (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
                 "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
                 $where_args
@@ -130,7 +147,7 @@ class AIPS_History_Repository {
         return array(
             'items' => $results,
             'total' => (int) $total,
-            'pages' => ceil($total / $args['per_page']),
+            'pages' => $args['per_page'] > 0 ? ceil($total / $args['per_page']) : 1,
             'current_page' => $args['page'],
         );
     }

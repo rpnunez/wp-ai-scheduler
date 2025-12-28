@@ -133,6 +133,39 @@ class AIPS_Generator {
         return $result;
     }
     
+    public function generate_topics($niche, $count = 10) {
+        $prompt = "Generate a list of {$count} unique, engaging blog post titles/topics about '{$niche}'. \n";
+        $prompt .= "Return ONLY a valid JSON array of strings. Do not include any other text, markdown formatting, or numbering. \n";
+        $prompt .= "Example: [\"Topic 1\", \"Topic 2\", \"Topic 3\"]";
+
+        $result = $this->generate_content($prompt, array('temperature' => 0.7, 'max_tokens' => 1000), 'planner_topics');
+
+        if (is_wp_error($result)) {
+            return $result;
+        }
+
+        // Clean up the result to ensure it's valid JSON
+        $json_str = trim($result);
+        // Remove potential markdown code blocks
+        $json_str = preg_replace('/^```json/', '', $json_str);
+        $json_str = preg_replace('/^```/', '', $json_str);
+        $json_str = preg_replace('/```$/', '', $json_str);
+        $json_str = trim($json_str);
+
+        $topics = json_decode($json_str);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
+            // Fallback: try to parse line by line if JSON fails
+            $topics = array_filter(array_map('trim', explode("\n", $json_str)));
+
+            if (empty($topics)) {
+                 return new WP_Error('json_parse_error', 'Failed to parse AI response.', array('raw' => $json_str));
+            }
+        }
+
+        return $topics;
+    }
+
     public function generate_title($prompt, $voice_title_prompt = null, $options = array()) {
         if ($voice_title_prompt) {
             $title_prompt = $voice_title_prompt . "\n\n" . $prompt;

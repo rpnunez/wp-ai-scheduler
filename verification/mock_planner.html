@@ -1,3 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Planner Mock</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-card { padding: 20px; border: 1px solid #ccc; }
+        #planner-results { display: block; } /* Show results for test */
+    </style>
+</head>
+<body>
+    <div id="planner-results" class="aips-card">
+        <h3>Review & Schedule</h3>
+
+        <div class="aips-toolbar">
+            <div class="aips-toolbar-left">
+                <label><input type="checkbox" id="check-all-topics" checked> Select All</label>
+                <span class="selection-count">10 selected</span>
+            </div>
+            <div class="aips-toolbar-right">
+                <button type="button" id="btn-copy-topics" class="button button-secondary button-small">Copy Selected</button>
+                <button type="button" id="btn-clear-topics" class="button button-link-delete button-small">Clear List</button>
+            </div>
+        </div>
+
+        <div id="topics-list" class="aips-topics-grid">
+            <div class="topic-item">Item 1</div>
+            <div class="topic-item">Item 2</div>
+        </div>
+    </div>
+
+    <script>
+        // Mock aipsAjax
+        var aipsAjax = { ajaxUrl: "mock_url", nonce: "mock_nonce" };
+
+        // Mock confirm
+        window.confirm = function() { return true; };
+    </script>
+    <script>
+
 (function($) {
     'use strict';
 
@@ -256,3 +296,7 @@
     });
 
 })(jQuery);
+
+    </script>
+</body>
+</html>

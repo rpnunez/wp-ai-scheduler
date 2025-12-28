@@ -139,6 +139,16 @@ class AIPS_Schedule_Controller {
         }
 
         $quantity = $template->post_quantity ?: 1;
+
+        // Enforce a hard limit of 5 posts per execution to prevent timeouts
+        $max_limit = 5;
+        $limit_enforced = false;
+
+        if ($quantity > $max_limit) {
+            $quantity = $max_limit;
+            $limit_enforced = true;
+        }
+
         $post_ids = array();
         $errors = array();
 
@@ -171,6 +181,13 @@ class AIPS_Schedule_Controller {
             $message .= ' ' . sprintf(
                 __('(%d failed attempts)', 'ai-post-scheduler'),
                 count($errors)
+            );
+        }
+
+        if ($limit_enforced) {
+            $message .= ' ' . sprintf(
+                __('Note: Execution limited to %d posts to prevent timeouts.', 'ai-post-scheduler'),
+                $max_limit
             );
         }
 
