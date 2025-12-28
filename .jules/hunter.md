@@ -1,10 +1,3 @@
-## 2024-05-24 - SSRF Prevention with `wp_safe_remote_get`
-**Learning:** `wp_remote_get` allows requests to local/private IPs, making it a vector for SSRF attacks when handling user or AI-generated URLs.
-**Action:** Always use `wp_safe_remote_get` for fetching external resources, which includes built-in DNS rebinding protection and private IP blocking.
-
-## 2024-05-25 - Schedule Query Collision Fix
-**Learning:**  in  caused template properties to overwrite schedule properties (like ) when column names collided.
-**Action:** Changed query to  to ensure schedule properties take precedence, preserving the integrity of the schedule object.
-## 2024-05-25 - Schedule Query Collision Fix
-**Learning:** SQL JOINs can overwrite columns if using wildcard selects.
-**Action:** Changed query order to ensure schedule properties take precedence.
+## 2024-12-28 - Schedule Drift & Catch-up Fix
+**Learning:** Calculating next run times based on `current_time` (execution time) causes permanent schedule drift. Also, blindly resetting past times to "now" can cause immediate re-execution loops.
+**Action:** Changed `calculate_next_run` to anchor on the *scheduled* time, effectively preserving the phase (e.g., "10:00"). Added loop to skip missed intervals (catch-up) without running them, ensuring the next run is in the future.
