@@ -118,6 +118,7 @@ class AIPS_Scheduler {
             AND s.next_run <= %s 
             AND t.is_active = 1
             ORDER BY s.next_run ASC
+            LIMIT 5
         ", current_time('mysql')));
         
         if (empty($due_schedules)) {
@@ -166,8 +167,8 @@ class AIPS_Scheduler {
                 $this->repository->delete($schedule->schedule_id);
                 $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
-                // Otherwise calculate next run
-                $next_run = $this->calculate_next_run($schedule->frequency);
+                // Otherwise calculate next run, passing existing next_run as start_time to preserve phase
+                $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run);
 
                 $this->repository->update($schedule->schedule_id, array(
                     'last_run' => current_time('mysql'),

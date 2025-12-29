@@ -1,4 +1,36 @@
-(function($) {
+
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var aipsAjax = { ajaxUrl: '/ajax', nonce: '123' };
+        // Mock clipboard
+        navigator.clipboard = {
+            writeText: function(text) {
+                console.log('Clipboard write:', text);
+                return Promise.resolve();
+            }
+        };
+    </script>
+    <style>
+        .aips-modal { display: none; }
+    </style>
+</head>
+<body>
+    <button class="aips-view-details" data-id="1">View Details</button>
+
+    <div id="aips-details-modal" class="aips-modal">
+        <div class="aips-modal-content">
+            <div id="aips-details-summary"></div>
+            <div id="aips-details-template"></div>
+            <div id="aips-details-voice"></div>
+            <div id="aips-details-ai-calls"></div>
+            <div id="aips-details-errors"></div>
+        </div>
+    </div>
+
+    <script>(function($) {
     'use strict';
 
     window.AIPS = window.AIPS || {};
@@ -139,7 +171,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
-            
+
             $btn.prop('disabled', true);
 
             $.ajax({
@@ -263,7 +295,7 @@
         testTemplate: function(e) {
             e.preventDefault();
             var prompt = $('#prompt_template').val();
-            
+
             if (!prompt) {
                 alert('Please enter a prompt template first.');
                 return;
@@ -556,7 +588,7 @@
             e.preventDefault();
             var status = $(this).data('status');
             var message = status ? 'Are you sure you want to clear all ' + status + ' history?' : 'Are you sure you want to clear all history?';
-            
+
             if (!confirm(message)) {
                 return;
             }
@@ -619,7 +651,7 @@
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
             var url = new URL(window.location.href);
-            
+
             if (status) {
                 url.searchParams.set('status', status);
             } else {
@@ -633,7 +665,7 @@
             }
 
             url.searchParams.delete('paged');
-            
+
             window.location.href = url.toString();
         },
 
@@ -808,7 +840,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
-            
+
             $btn.prop('disabled', true);
             $('#aips-details-loading').show();
             $('#aips-details-content').hide();
@@ -843,7 +875,7 @@
 
         renderDetails: function(data) {
             var log = data.generation_log || {};
-            
+
             var summaryHtml = '<table class="aips-details-table">';
             summaryHtml += '<tr><th>Status:</th><td><span class="aips-status aips-status-' + data.status + '">' + data.status.charAt(0).toUpperCase() + data.status.slice(1) + '</span></td></tr>';
             summaryHtml += '<tr><th>Title:</th><td>' + (data.generated_title || '-') + '</td></tr>';
@@ -857,7 +889,7 @@
             }
             summaryHtml += '</table>';
             $('#aips-details-summary').html(summaryHtml);
-            
+
             if (log.template) {
                 var templateHtml = '<table class="aips-details-table">';
                 templateHtml += '<tr><th>Name:</th><td>' + (log.template.name || '-') + '</td></tr>';
@@ -879,7 +911,7 @@
             } else {
                 $('#aips-details-template').html('<p>No template data available.</p>');
             }
-            
+
             if (log.voice) {
                 var voiceHtml = '<table class="aips-details-table">';
                 voiceHtml += '<tr><th>Name:</th><td>' + (log.voice.name || '-') + '</td></tr>';
@@ -900,7 +932,7 @@
             } else {
                 $('#aips-details-voice-section').hide();
             }
-            
+
             if (log.ai_calls && log.ai_calls.length > 0) {
                 var callsHtml = '';
                 log.ai_calls.forEach(function(call, index) {
@@ -931,7 +963,7 @@
             } else {
                 $('#aips-details-ai-calls').html('<p>No AI call data available for this entry.</p>');
             }
-            
+
             if (log.errors && log.errors.length > 0) {
                 var errorsHtml = '<ul class="aips-errors-list">';
                 log.errors.forEach(function(error) {
@@ -946,7 +978,7 @@
             } else {
                 $('#aips-details-errors-section').hide();
             }
-            
+
             $('#aips-details-content').show();
         },
 
@@ -976,3 +1008,40 @@
     });
 
 })(jQuery);
+</script>
+    <script>
+        // We need to inject the content of admin.js or load it.
+        // Since we are file-based, we can try to load relative if served,
+        // but easier to just inline it for this mock if we were generating it via PHP.
+        // But here I will try to rely on the file system if Playwright allows file:// access to relative.
+        // It might be tricky. I'll read admin.js content and inject it here for simplicity.
+    </script>
+
+<script>
+    // Mock Ajax
+    $.ajax = function(options) {
+        if (options.data.action === 'aips_get_history_details') {
+            options.success({
+                success: true,
+                data: {
+                    status: 'completed',
+                    created_at: '2023-01-01 12:00:00',
+                    generation_log: {
+                        template: {
+                            name: 'Test Template',
+                            prompt_template: 'This is the prompt to copy',
+                            title_prompt: 'Title prompt to copy'
+                        },
+                        voice: {
+                            name: 'Test Voice',
+                            content_instructions: 'Voice content instr'
+                        }
+                    }
+                }
+            });
+        }
+    };
+</script>
+</body>
+
+</html>

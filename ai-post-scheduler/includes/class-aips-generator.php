@@ -32,6 +32,7 @@ class AIPS_Generator {
     private $structure_manager;
     private $post_creator;
     private $history_repository;
+    private $prompt_builder;
     
     public function __construct(
         $logger = null,
@@ -40,7 +41,8 @@ class AIPS_Generator {
         $image_service = null,
         $structure_manager = null,
         $post_creator = null,
-        $history_repository = null
+        $history_repository = null,
+        $prompt_builder = null
     ) {
         $this->logger = $logger ?: new AIPS_Logger();
         $this->ai_service = $ai_service ?: new AIPS_AI_Service();
@@ -49,6 +51,7 @@ class AIPS_Generator {
         $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
         $this->history_repository = $history_repository ?: new AIPS_History_Repository();
+        $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 
         // Initialize session tracker
         $this->current_session = new AIPS_Generation_Session();
@@ -205,28 +208,7 @@ class AIPS_Generator {
             // For now, let's proceed but we won't be able to update history.
         }
         
-        // NEW: Check if article_structure_id is provided, build prompt with structure
-        $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
-        
-        if ($article_structure_id) {
-            // Use article structure to build prompt
-            $processed_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic);
-            
-            if (is_wp_error($processed_prompt)) {
-                // Fall back to regular template processing
-                $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-            }
-        } else {
-            // Use traditional template processing
-            $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-        }
-        
-        if ($voice) {
-            $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
-            $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
-        }
-        
-        $content_prompt = $processed_prompt . "\n\nOutput the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.";
+        $content_prompt = $this->prompt_builder->build_content_prompt($template, $topic, $voice);
         
         $content = $this->generate_content($content_prompt, array(), 'content');
         
@@ -266,23 +248,33 @@ class AIPS_Generator {
             $voice_title_prompt = $this->template_processor->process($voice->title_prompt, $topic);
         }
         
+        // We still need the base processed prompt for title generation if no specific title prompt exists
+        $base_processed_prompt = $this->prompt_builder->build_base_content_prompt($template, $topic);
+        if ($voice) {
+             // Re-append voice instruction to base prompt for context if needed,
+             // but generate_title usually just takes the "context" as the prompt argument if no title prompt.
+             // Original logic: $title = $this->generate_title($processed_prompt, $voice_title_prompt);
+             // $processed_prompt included voice instructions in original logic?
+             // Yes: $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
+
+             $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
+             $base_processed_prompt = $voice_instructions . "\n\n" . $base_processed_prompt;
+        }
+
         if (!empty($template->title_prompt)) {
             $title_prompt = $this->template_processor->process($template->title_prompt, $topic);
             $title = $this->generate_title($title_prompt, $voice_title_prompt);
         } else {
-            $title = $this->generate_title($processed_prompt, $voice_title_prompt);
+            $title = $this->generate_title($base_processed_prompt, $voice_title_prompt);
         }
         
         if (is_wp_error($title)) {
             $title = __('AI Generated Post', 'ai-post-scheduler') . ' - ' . date('Y-m-d H:i:s');
         }
         
-        $voice_excerpt_instructions = null;
-        if ($voice && !empty($voice->excerpt_instructions)) {
-            $voice_excerpt_instructions = $this->template_processor->process($voice->excerpt_instructions, $topic);
-        }
+        $voice_excerpt_instructions = $this->prompt_builder->build_excerpt_instructions($voice, $topic);
         
-        $excerpt = $this->generate_excerpt($title, $processed_prompt, $voice_excerpt_instructions);
+        $excerpt = $this->generate_excerpt($title, $base_processed_prompt, $voice_excerpt_instructions);
         
         // Use Post Creator Service
         $post_creation_data = array(

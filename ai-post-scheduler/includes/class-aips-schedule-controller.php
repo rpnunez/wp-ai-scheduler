@@ -143,9 +143,15 @@ class AIPS_Schedule_Controller {
         $errors = array();
 
         $generator = new AIPS_Generator();
+        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+
+        // Enforce hard limit of 5 to prevent timeouts (Bolt)
+        if ($quantity > 5) {
+            $quantity = 5;
+        }
 
         for ($i = 0; $i < $quantity; $i++) {
-            $result = $generator->generate_post($template, $voice);
+            $result = $generator->generate_post($template, $voice, $topic);
 
             if (is_wp_error($result)) {
                 $errors[] = $result->get_error_message();
