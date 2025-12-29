@@ -1,0 +1,70 @@
+html = """<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .button-link-delete { color: red; }
+        .button-primary { color: white; background-color: blue; }
+    </style>
+</head>
+<body>
+    <button id="btn-clear-topics" class="button-link-delete">Clear List</button>
+    <div id="topics-list"><div>Item 1</div></div>
+    <div id="planner-results">Results</div>
+    <input id="planner-niche" value="Test Niche">
+    <textarea id="planner-manual-topics">Test Topic</textarea>
+    <input type="checkbox" id="check-all-topics">
+
+    <script>
+        // Mock AIPS object
+        window.AIPS = {
+            updateSelectionCount: function() {}
+        };
+        // Mock aipsAjax
+        var aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: '123' };
+    </script>
+    <script>
+    $(function() {
+        $('#btn-clear-topics').on('click', function() {
+            var $btn = $(this);
+
+            // Soft Confirm Pattern
+            if ($btn.data('confirming')) {
+                // User confirmed
+                $('#topics-list').empty();
+                $('#planner-results').slideUp();
+                $('#planner-niche').val('');
+                $('#planner-manual-topics').val('');
+                $('#check-all-topics').prop('checked', true); // Reset select all
+                window.AIPS.updateSelectionCount();
+
+                // Reset button
+                $btn.text('Cleared!');
+                setTimeout(function() {
+                    $btn.text('Clear List');
+                    $btn.removeData('confirming');
+                    $btn.removeClass('button-primary').addClass('button-link-delete');
+                }, 1500);
+            } else {
+                // First click: Ask for confirmation
+                $btn.data('confirming', true);
+                $btn.data('original-text', $btn.text());
+                $btn.text('Click again to confirm');
+                $btn.removeClass('button-link-delete').addClass('button-primary');
+
+                // Reset if not clicked again within 3 seconds
+                setTimeout(function() {
+                    if ($btn.data('confirming')) {
+                         $btn.text('Clear List');
+                         $btn.removeData('confirming');
+                         $btn.removeClass('button-primary').addClass('button-link-delete');
+                    }
+                }, 3000);
+            }
+        });
+    });
+    </script>
+</body>
+</html>"""
+with open('verification/mock_planner.html', 'w') as f:
+    f.write(html)

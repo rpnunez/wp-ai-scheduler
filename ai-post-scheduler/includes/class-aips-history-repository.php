@@ -118,7 +118,20 @@ class AIPS_History_Repository {
         ", $query_args));
         
         // Query for total count
-        if (!empty($where_args)) {
+        // Optimizing for common cases using cached stats
+        $stats = false;
+        if (empty($args['search']) && empty($args['template_id'])) {
+             // If no search and no template filter, we might use cached stats
+             $stats = $this->get_stats();
+        }
+
+        if ($stats && empty($args['status'])) {
+             // Total count
+             $total = $stats['total'];
+        } elseif ($stats && !empty($args['status']) && isset($stats[$args['status']])) {
+             // Count by status
+             $total = $stats[$args['status']];
+        } elseif (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
                 "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
                 $where_args

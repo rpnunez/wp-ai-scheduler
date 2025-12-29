@@ -139,6 +139,12 @@ class AIPS_Schedule_Controller {
         }
 
         $quantity = $template->post_quantity ?: 1;
+
+        // Hunter: Enforce hard limit to prevent timeouts
+        if ($quantity > 5) {
+            $quantity = 5;
+        }
+
         $post_ids = array();
         $errors = array();
 

@@ -97,12 +97,40 @@
         },
 
         clearTopics: function() {
-            if (confirm('Are you sure you want to clear the list?')) {
+            var $btn = $('#btn-clear-topics');
+
+            // Soft Confirm Pattern
+            if ($btn.data('confirming')) {
+                // User confirmed
                 $('#topics-list').empty();
                 $('#planner-results').slideUp();
                 $('#planner-niche').val('');
                 $('#planner-manual-topics').val('');
+                $('#check-all-topics').prop('checked', true); // Reset select all
                 window.AIPS.updateSelectionCount();
+
+                // Reset button
+                $btn.text('Cleared!');
+                setTimeout(function() {
+                    $btn.text('Clear List');
+                    $btn.removeData('confirming');
+                    $btn.removeClass('button-primary').addClass('button-link-delete');
+                }, 1500);
+            } else {
+                // First click: Ask for confirmation
+                $btn.data('confirming', true);
+                $btn.data('original-text', $btn.text());
+                $btn.text('Click again to confirm');
+                $btn.removeClass('button-link-delete').addClass('button-primary');
+
+                // Reset if not clicked again within 3 seconds
+                setTimeout(function() {
+                    if ($btn.data('confirming')) {
+                         $btn.text('Clear List');
+                         $btn.removeData('confirming');
+                         $btn.removeClass('button-primary').addClass('button-link-delete');
+                    }
+                }, 3000);
             }
         },
 
