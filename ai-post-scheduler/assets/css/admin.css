@@ -94,6 +94,18 @@
     margin-top: -2px;
 }
 
+.aips-copy-btn {
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+.aips-copy-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 24px;
+}
+
 .aips-status {
     display: inline-block;
     padding: 3px 8px;

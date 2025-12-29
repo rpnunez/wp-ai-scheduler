@@ -1,4 +1,37 @@
-(function($) {
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Mock Settings</title>
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/3.0.0/css/dashicons.min.css">
+            <style>
+                /* Minimal CSS to support visibility checks */
+                .aips-copy-btn { cursor: pointer; color: #2271b1; }
+            </style>
+        </head>
+        <body>
+            <div class="wrap">
+                 <table>
+                    <tr>
+                        <td>
+                            <code>{{date}}</code>
+                            <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{date}}" aria-label="Copy variable">
+                                <span class="dashicons dashicons-clipboard"></span>
+                            </button>
+                        </td>
+                    </tr>
+                 </table>
+            </div>
+
+            <script>
+            // Mock window.aipsAjax
+            window.aipsAjax = { ajaxUrl: 'mock_url', nonce: 'mock_nonce' };
+            </script>
+
+            <script>
+            // Injecting the actual admin.js content
+            (function($) {
     'use strict';
 
     window.AIPS = window.AIPS || {};
@@ -73,60 +106,6 @@
 
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
-
-            // Copy to Clipboard
-            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
-        },
-
-        copyToClipboard: function(e) {
-            e.preventDefault();
-            var $btn = $(this);
-            var text = $btn.data('clipboard-text');
-            var $icon = $btn.find('.dashicons');
-
-            if (!text) return;
-
-            // Store original icon class if not already stored
-            if (!$btn.data('original-icon')) {
-                $btn.data('original-icon', $icon.attr('class'));
-            }
-            var originalIcon = $btn.data('original-icon');
-
-            var successCallback = function() {
-                $icon.attr('class', 'dashicons dashicons-yes');
-                setTimeout(function() {
-                    $icon.attr('class', originalIcon);
-                }, 2000);
-            };
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(successCallback).catch(function(err) {
-                    console.error('Clipboard API failed', err);
-                    fallbackCopy(text);
-                });
-            } else {
-                fallbackCopy(text);
-            }
-
-            function fallbackCopy(text) {
-                var textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-
-                try {
-                    var successful = document.execCommand('copy');
-                    if (successful) {
-                        successCallback();
-                    }
-                } catch (err) {
-                    console.error('Fallback: Oops, unable to copy', err);
-                }
-
-                document.body.removeChild(textArea);
-            }
         },
 
         switchTab: function(e) {
@@ -152,7 +131,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
-            
+
             $btn.prop('disabled', true);
 
             $.ajax({
@@ -276,7 +255,7 @@
         testTemplate: function(e) {
             e.preventDefault();
             var prompt = $('#prompt_template').val();
-            
+
             if (!prompt) {
                 alert('Please enter a prompt template first.');
                 return;
@@ -569,7 +548,7 @@
             e.preventDefault();
             var status = $(this).data('status');
             var message = status ? 'Are you sure you want to clear all ' + status + ' history?' : 'Are you sure you want to clear all history?';
-            
+
             if (!confirm(message)) {
                 return;
             }
@@ -632,7 +611,7 @@
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
             var url = new URL(window.location.href);
-            
+
             if (status) {
                 url.searchParams.set('status', status);
             } else {
@@ -646,7 +625,7 @@
             }
 
             url.searchParams.delete('paged');
-            
+
             window.location.href = url.toString();
         },
 
@@ -821,7 +800,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
-            
+
             $btn.prop('disabled', true);
             $('#aips-details-loading').show();
             $('#aips-details-content').hide();
@@ -856,7 +835,7 @@
 
         renderDetails: function(data) {
             var log = data.generation_log || {};
-            
+
             var summaryHtml = '<table class="aips-details-table">';
             summaryHtml += '<tr><th>Status:</th><td><span class="aips-status aips-status-' + data.status + '">' + data.status.charAt(0).toUpperCase() + data.status.slice(1) + '</span></td></tr>';
             summaryHtml += '<tr><th>Title:</th><td>' + (data.generated_title || '-') + '</td></tr>';
@@ -870,7 +849,7 @@
             }
             summaryHtml += '</table>';
             $('#aips-details-summary').html(summaryHtml);
-            
+
             if (log.template) {
                 var templateHtml = '<table class="aips-details-table">';
                 templateHtml += '<tr><th>Name:</th><td>' + (log.template.name || '-') + '</td></tr>';
@@ -888,7 +867,7 @@
             } else {
                 $('#aips-details-template').html('<p>No template data available.</p>');
             }
-            
+
             if (log.voice) {
                 var voiceHtml = '<table class="aips-details-table">';
                 voiceHtml += '<tr><th>Name:</th><td>' + (log.voice.name || '-') + '</td></tr>';
@@ -903,7 +882,7 @@
             } else {
                 $('#aips-details-voice-section').hide();
             }
-            
+
             if (log.ai_calls && log.ai_calls.length > 0) {
                 var callsHtml = '';
                 log.ai_calls.forEach(function(call, index) {
@@ -934,7 +913,7 @@
             } else {
                 $('#aips-details-ai-calls').html('<p>No AI call data available for this entry.</p>');
             }
-            
+
             if (log.errors && log.errors.length > 0) {
                 var errorsHtml = '<ul class="aips-errors-list">';
                 log.errors.forEach(function(error) {
@@ -949,7 +928,7 @@
             } else {
                 $('#aips-details-errors-section').hide();
             }
-            
+
             $('#aips-details-content').show();
         },
 
@@ -979,3 +958,7 @@
     });
 
 })(jQuery);
+
+            </script>
+        </body>
+        </html>
