@@ -40,6 +40,7 @@ if (!defined('ABSPATH')) {
                 <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
             </select>
             <button class="button" id="aips-filter-btn"><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
+            <button class="button" id="aips-delete-selected-btn" disabled><?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?></button>
         </div>
         <div class="alignright">
             <button class="button aips-clear-history" data-status=""><?php esc_html_e('Clear All History', 'ai-post-scheduler'); ?></button>
@@ -48,9 +49,13 @@ if (!defined('ABSPATH')) {
     </div>
     
     <?php if (!empty($history['items'])): ?>
-    <table class="wp-list-table widefat fixed striped">
+    <table class="wp-list-table widefat fixed striped aips-history-table">
         <thead>
             <tr>
+                <td id="cb" class="manage-column column-cb check-column">
+                    <label class="screen-reader-text" for="cb-select-all-1"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
+                    <input id="cb-select-all-1" type="checkbox">
+                </td>
                 <th class="column-title"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
                 <th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
                 <th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
@@ -61,6 +66,10 @@ if (!defined('ABSPATH')) {
         <tbody>
             <?php foreach ($history['items'] as $item): ?>
             <tr>
+                <th scope="row" class="check-column">
+                    <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>"><?php esc_html_e('Select Item', 'ai-post-scheduler'); ?></label>
+                    <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" name="history[]" value="<?php echo esc_attr($item->id); ?>">
+                </th>
                 <td class="column-title">
                     <?php if ($item->post_id): ?>
                     <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">

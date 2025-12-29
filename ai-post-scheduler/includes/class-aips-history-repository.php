@@ -361,4 +361,34 @@ class AIPS_History_Repository {
 
         return $result !== false;
     }
+
+    /**
+     * Delete multiple history entries by ID.
+     *
+     * @param array $ids Array of history item IDs.
+     * @return int|false Number of rows affected or false on failure.
+     */
+    public function delete_bulk($ids) {
+        if (empty($ids)) {
+            return 0;
+        }
+
+        // Sanitize IDs
+        $ids = array_map('absint', $ids);
+        $ids = array_filter($ids);
+
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $ids_sql = implode(',', $ids);
+
+        $result = $this->wpdb->query("DELETE FROM {$this->table_name} WHERE id IN ($ids_sql)");
+
+        if ($result !== false) {
+            delete_transient('aips_history_stats');
+        }
+
+        return $result;
+    }
 }
