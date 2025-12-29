@@ -41,6 +41,11 @@
             });
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
+            // History Bulk Actions
+            $(document).on('change', '#cb-select-all-1', this.toggleAllHistory);
+            $(document).on('change', '.aips-history-table input[name="history[]"]', this.toggleHistorySelection);
+            $(document).on('click', '#aips-delete-selected-btn', this.deleteSelectedHistory);
+
             // Template Search
             $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
             $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
@@ -1033,6 +1038,62 @@
             } else {
                 $('.aips-modal').hide();
             }
+        },
+
+        toggleAllHistory: function() {
+            var isChecked = $(this).prop('checked');
+            $('.aips-history-table input[name="history[]"]').prop('checked', isChecked);
+            AIPS.updateDeleteButton();
+        },
+
+        toggleHistorySelection: function() {
+            var allChecked = $('.aips-history-table input[name="history[]"]').length === $('.aips-history-table input[name="history[]"]:checked').length;
+            $('#cb-select-all-1').prop('checked', allChecked);
+            AIPS.updateDeleteButton();
+        },
+
+        updateDeleteButton: function() {
+            var count = $('.aips-history-table input[name="history[]"]:checked').length;
+            $('#aips-delete-selected-btn').prop('disabled', count === 0);
+        },
+
+        deleteSelectedHistory: function(e) {
+            e.preventDefault();
+            var ids = [];
+            $('.aips-history-table input[name="history[]"]:checked').each(function() {
+                ids.push($(this).val());
+            });
+
+            if (ids.length === 0) return;
+
+            if (!confirm('Are you sure you want to delete ' + ids.length + ' item(s)?')) {
+                return;
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Deleting...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_delete_history',
+                    nonce: aipsAjax.nonce,
+                    ids: ids
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                        $btn.prop('disabled', false).text('Delete Selected');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    $btn.prop('disabled', false).text('Delete Selected');
+                }
+            });
         }
     });
 
