@@ -73,6 +73,9 @@
 
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
+
+            // Copy to Clipboard
+            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
         },
 
         switchTab: function(e) {
@@ -800,6 +803,19 @@
             });
         },
 
+        createCodeBlock: function(text, type) {
+            var className = type === 'response' ? 'aips-response-text' : 'aips-prompt-text';
+            var html = '<div class="aips-code-block">';
+            html += '<pre class="' + className + '">' + AIPS.escapeHtml(text || '') + '</pre>';
+            if (text && text.trim().length > 0) {
+                html += '<button type="button" class="aips-copy-btn" data-clipboard-text="' + AIPS.escapeHtmlAttribute(text) + '" aria-label="Copy to clipboard">';
+                html += '<span class="dashicons dashicons-admin-page" aria-hidden="true"></span>';
+                html += '</button>';
+            }
+            html += '</div>';
+            return html;
+        },
+
         renderDetails: function(data) {
             var log = data.generation_log || {};
             
@@ -820,14 +836,14 @@
             if (log.template) {
                 var templateHtml = '<table class="aips-details-table">';
                 templateHtml += '<tr><th>Name:</th><td>' + (log.template.name || '-') + '</td></tr>';
-                templateHtml += '<tr><th>Prompt Template:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.prompt_template || '') + '</pre></td></tr>';
+                templateHtml += '<tr><th>Prompt Template:</th><td>' + AIPS.createCodeBlock(log.template.prompt_template, 'prompt') + '</td></tr>';
                 if (log.template.title_prompt) {
-                    templateHtml += '<tr><th>Title Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.title_prompt) + '</pre></td></tr>';
+                    templateHtml += '<tr><th>Title Prompt:</th><td>' + AIPS.createCodeBlock(log.template.title_prompt, 'prompt') + '</td></tr>';
                 }
                 templateHtml += '<tr><th>Post Status:</th><td>' + (log.template.post_status || 'draft') + '</td></tr>';
                 templateHtml += '<tr><th>Post Quantity:</th><td>' + (log.template.post_quantity || 1) + '</td></tr>';
                 if (log.template.generate_featured_image) {
-                    templateHtml += '<tr><th>Image Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.image_prompt || '') + '</pre></td></tr>';
+                    templateHtml += '<tr><th>Image Prompt:</th><td>' + AIPS.createCodeBlock(log.template.image_prompt, 'prompt') + '</td></tr>';
                 }
                 templateHtml += '</table>';
                 $('#aips-details-template').html(templateHtml);
@@ -838,10 +854,10 @@
             if (log.voice) {
                 var voiceHtml = '<table class="aips-details-table">';
                 voiceHtml += '<tr><th>Name:</th><td>' + (log.voice.name || '-') + '</td></tr>';
-                voiceHtml += '<tr><th>Title Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.title_prompt || '') + '</pre></td></tr>';
-                voiceHtml += '<tr><th>Content Instructions:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.content_instructions || '') + '</pre></td></tr>';
+                voiceHtml += '<tr><th>Title Prompt:</th><td>' + AIPS.createCodeBlock(log.voice.title_prompt, 'prompt') + '</td></tr>';
+                voiceHtml += '<tr><th>Content Instructions:</th><td>' + AIPS.createCodeBlock(log.voice.content_instructions, 'prompt') + '</td></tr>';
                 if (log.voice.excerpt_instructions) {
-                    voiceHtml += '<tr><th>Excerpt Instructions:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.excerpt_instructions) + '</pre></td></tr>';
+                    voiceHtml += '<tr><th>Excerpt Instructions:</th><td>' + AIPS.createCodeBlock(log.voice.excerpt_instructions, 'prompt') + '</td></tr>';
                 }
                 voiceHtml += '</table>';
                 $('#aips-details-voice').html(voiceHtml);
@@ -861,7 +877,7 @@
                     callsHtml += '</div>';
                     callsHtml += '<div class="aips-call-section">';
                     callsHtml += '<h4>Request</h4>';
-                    callsHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(call.request.prompt || '') + '</pre>';
+                    callsHtml += AIPS.createCodeBlock(call.request.prompt, 'prompt');
                     if (call.request.options && Object.keys(call.request.options).length > 0) {
                         callsHtml += '<p><small>Options: ' + JSON.stringify(call.request.options) + '</small></p>';
                     }
@@ -869,7 +885,7 @@
                     callsHtml += '<div class="aips-call-section">';
                     callsHtml += '<h4>Response</h4>';
                     if (call.response.success) {
-                        callsHtml += '<pre class="aips-response-text">' + AIPS.escapeHtml(call.response.content || '') + '</pre>';
+                        callsHtml += AIPS.createCodeBlock(call.response.content, 'response');
                     } else {
                         callsHtml += '<p class="aips-error-text">Error: ' + AIPS.escapeHtml(call.response.error || 'Unknown error') + '</p>';
                     }
@@ -899,11 +915,75 @@
             $('#aips-details-content').show();
         },
 
+        copyToClipboard: function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var $btn = $(this);
+            var text = $btn.data('clipboard-text');
+            var $icon = $btn.find('.dashicons');
+            var originalIconClass = $icon.attr('class');
+
+            // If already copied recently, ignore
+            if ($btn.hasClass('copied')) return;
+
+            var onSuccess = function() {
+                $btn.addClass('copied');
+                $icon.removeClass().addClass('dashicons dashicons-yes');
+
+                setTimeout(function() {
+                    $btn.removeClass('copied');
+                    $icon.removeClass().addClass(originalIconClass);
+                }, 2000);
+            };
+
+            var onFail = function() {
+                alert('Failed to copy to clipboard.');
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(onSuccess).catch(onFail);
+            } else {
+                // Fallback
+                var textArea = document.createElement("textarea");
+                textArea.value = text;
+
+                // Ensure it's not visible but part of DOM
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                document.body.appendChild(textArea);
+
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    var successful = document.execCommand('copy');
+                    if (successful) onSuccess();
+                    else onFail();
+                } catch (err) {
+                    onFail();
+                }
+
+                document.body.removeChild(textArea);
+            }
+        },
+
         escapeHtml: function(text) {
             if (!text) return '';
             var div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        },
+
+        escapeHtmlAttribute: function(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
         },
 
         closeModal: function() {
