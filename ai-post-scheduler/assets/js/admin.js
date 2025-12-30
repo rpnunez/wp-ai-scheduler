@@ -27,6 +27,7 @@
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
+            $(document).on('click', '.aips-clone-schedule', this.cloneSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
 
             $(document).on('click', '.aips-clear-history', this.clearHistory);
@@ -126,6 +127,58 @@
                         $('#is_active').prop('checked', t.is_active == 1);
                         $('#aips-modal-title').text('Edit Template');
                         $('#aips-template-modal').show();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                }
+            });
+        },
+
+        cloneSchedule: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var $row = $btn.closest('tr');
+            var id = $btn.data('id');
+
+            $btn.prop('disabled', true);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_schedule',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var s = response.data.schedule;
+                        $('#schedule_id').val(''); // Clear ID to create new
+                        $('#schedule_template').val(s.template_id);
+                        $('#schedule_frequency').val(s.frequency);
+                        // start_time is tricky because date inputs need specific format
+                        // s.start_time is likely MySQL format 'YYYY-MM-DD HH:MM:SS'
+                        // datetime-local input needs 'YYYY-MM-DDTHH:MM'
+                        if (s.start_time) {
+                            var dt = s.start_time.replace(' ', 'T').substring(0, 16);
+                            $('#schedule_start_time').val(dt);
+                        } else {
+                            $('#schedule_start_time').val('');
+                        }
+
+                        $('#schedule_topic').val(s.topic ? s.topic + ' (Copy)' : '');
+                        $('#article_structure_id').val(s.article_structure_id || '');
+                        $('#rotation_pattern').val(s.rotation_pattern || '');
+                        $('#schedule_is_active').prop('checked', false); // Default to inactive for safety
+
+                        $('#aips-schedule-modal .aips-modal-header h2').text('Clone Schedule');
+                        $('#aips-schedule-modal').show();
                     } else {
                         alert(response.data.message);
                     }

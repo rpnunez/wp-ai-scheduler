@@ -1,0 +1,146 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Schedules</title>
+    <!-- Mock WordPress Admin Styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f1f1f1; padding: 20px; }
+        .wrap { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+        .wp-list-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .wp-list-table th, .wp-list-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e5e5; }
+        .button { background: #f7f7f7; border: 1px solid #ccc; color: #0073aa; cursor: pointer; padding: 4px 8px; border-radius: 3px; font-size: 13px; text-decoration: none; }
+        .button-primary { background: #2271b1; color: #fff; border-color: #2271b1; }
+        .button-link-delete { color: #a00; background: none; border: none; cursor: pointer; text-decoration: underline; }
+        .aips-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .aips-modal-content { background: #fff; padding: 20px; width: 500px; border-radius: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .aips-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .aips-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; }
+        .aips-form-row { margin-bottom: 15px; }
+        .aips-form-row label { display: block; margin-bottom: 5px; font-weight: 600; }
+        .aips-form-row input[type="text"], .aips-form-row select { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; }
+
+        /* New Clone Button Style Mock */
+        .aips-clone-schedule { margin-right: 5px; }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<div class="wrap aips-wrap">
+    <h1>Post Schedules <button class="button page-title-action aips-add-schedule-btn">Add New</button></h1>
+
+    <table class="wp-list-table widefat fixed striped">
+        <thead>
+            <tr>
+                <th>Template</th>
+                <th>Frequency</th>
+                <th>Next Run</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr data-schedule-id="123">
+                <td>Daily News Summary</td>
+                <td>Daily</td>
+                <td>2023-10-28 10:00:00</td>
+                <td class="column-actions">
+                    <!-- The new Clone button -->
+                    <button class="button aips-clone-schedule" data-id="123">Clone</button>
+                    <button class="button button-link-delete aips-delete-schedule" data-id="123">Delete</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Modal Mock -->
+    <div id="aips-schedule-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content">
+            <div class="aips-modal-header">
+                <h2>Add New Schedule</h2>
+                <button class="aips-modal-close">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <form id="aips-schedule-form">
+                    <input type="hidden" id="schedule_id">
+                    <div class="aips-form-row">
+                        <label>Template</label>
+                        <select id="schedule_template">
+                            <option value="1">Daily News Summary</option>
+                            <option value="2">Weekly Review</option>
+                        </select>
+                    </div>
+                    <div class="aips-form-row">
+                        <label>Frequency</label>
+                        <select id="schedule_frequency">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                        </select>
+                    </div>
+                    <div class="aips-form-row">
+                        <label>Topic</label>
+                        <input type="text" id="schedule_topic">
+                    </div>
+                     <div class="aips-form-row">
+                        <label>Start Time</label>
+                        <input type="datetime-local" id="schedule_start_time">
+                    </div>
+                </form>
+            </div>
+             <div class="aips-modal-footer">
+                <button type="button" class="button aips-modal-close">Cancel</button>
+                <button type="button" class="button button-primary aips-save-schedule">Save Schedule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Mock the global object and AJAX
+    window.aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: 'mock_nonce' };
+
+    // Minimal logic to simulate the clone action without full admin.js
+    $(document).ready(function() {
+        $('.aips-clone-schedule').click(function(e) {
+            e.preventDefault();
+            // Simulate AJAX success
+            console.log('Clone clicked');
+
+            // Mock data response
+            var mockResponse = {
+                success: true,
+                data: {
+                    schedule: {
+                        template_id: 1,
+                        frequency: 'daily',
+                        topic: 'Tech News',
+                        start_time: '2023-10-28 10:00:00',
+                        is_active: 1
+                    }
+                }
+            };
+
+            // Populate Modal
+            $('#schedule_id').val('');
+            $('#schedule_template').val(mockResponse.data.schedule.template_id);
+            $('#schedule_frequency').val(mockResponse.data.schedule.frequency);
+            $('#schedule_topic').val(mockResponse.data.schedule.topic + ' (Copy)');
+
+            // Format time
+            var dt = mockResponse.data.schedule.start_time.replace(' ', 'T').substring(0, 16);
+            $('#schedule_start_time').val(dt);
+
+            $('#aips-schedule-modal h2').text('Clone Schedule');
+            $('#aips-schedule-modal').show();
+        });
+
+        $('.aips-modal-close').click(function() {
+            $('.aips-modal').hide();
+        });
+    });
+</script>
+
+</body>
+</html>
