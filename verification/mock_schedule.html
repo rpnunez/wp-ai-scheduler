@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock Schedule</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-modal { display: none; }
+        .wrap { padding: 20px; }
+        .button { padding: 5px 10px; cursor: pointer; border: 1px solid #ccc; background: #f7f7f7; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Schedules</h1>
+        <table class="wp-list-table widefat fixed striped" border="1" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>Template</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-schedule-id="123">
+                    <td class="column-template">My Template</td>
+                    <td class="column-actions">
+                        <button class="button aips-clone-schedule" data-id="123">Clone</button>
+                        <button class="button button-link-delete aips-delete-schedule" data-id="123">Delete</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div id="aips-schedule-modal" class="aips-modal" style="border: 1px solid #ccc; padding: 20px; margin-top: 20px; background: #fff;">
+            <div class="aips-modal-content">
+                <div class="aips-modal-header">
+                    <h2 id="aips-modal-title-schedule">Add New Schedule</h2>
+                </div>
+                <form id="aips-schedule-form">
+                    <input type="hidden" name="schedule_id" id="schedule_id" value="">
+                    <div>
+                        <label>Template</label>
+                        <select id="schedule_template" name="template_id">
+                            <option value="1">My Template</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Frequency</label>
+                        <select id="schedule_frequency" name="frequency">
+                            <option value="daily">Daily</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Topic</label>
+                        <input type="text" id="schedule_topic" name="topic">
+                    </div>
+                    <div>
+                        <label>Active</label>
+                        <input type="checkbox" id="schedule_is_active" name="is_active">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        var aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: 'nonce' };
+    </script>
+</body>
+</html>

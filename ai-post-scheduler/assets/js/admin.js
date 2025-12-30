@@ -25,6 +25,7 @@
             $(document).on('click', '.aips-save-voice', this.saveVoice);
 
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
+            $(document).on('click', '.aips-clone-schedule', this.cloneSchedule);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
@@ -417,7 +418,58 @@
             e.preventDefault();
             $('#aips-schedule-form')[0].reset();
             $('#schedule_id').val('');
+            $('#aips-modal-title-schedule').text('Add New Schedule');
             $('#aips-schedule-modal').show();
+        },
+
+        cloneSchedule: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+
+            $btn.prop('disabled', true);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_schedule',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var s = response.data.schedule;
+                        // Reset form first
+                        $('#aips-schedule-form')[0].reset();
+
+                        // Populate fields
+                        $('#schedule_id').val(''); // Clear ID for new creation
+                        $('#schedule_template').val(s.template_id);
+                        $('#schedule_frequency').val(s.frequency);
+                        $('#schedule_topic').val(s.topic);
+                        $('#article_structure_id').val(s.article_structure_id || '');
+                        $('#rotation_pattern').val(s.rotation_pattern || '');
+
+                        // Set active by default
+                        $('#schedule_is_active').prop('checked', true);
+
+                        // Change modal title to indicate cloning
+                        $('#aips-modal-title-schedule').text('Clone Schedule');
+
+                        // Show modal
+                        $('#aips-schedule-modal').show();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                }
+            });
         },
 
         saveSchedule: function(e) {

@@ -98,6 +98,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         </label>
                     </td>
                     <td class="column-actions">
+                        <button class="button aips-clone-schedule" data-id="<?php echo esc_attr($schedule->id); ?>">
+                            <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
+                        </button>
                         <button class="button button-link-delete aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>">
                             <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                         </button>
@@ -131,7 +134,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
     <div id="aips-schedule-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content">
             <div class="aips-modal-header">
-                <h2><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>
+                <h2 id="aips-modal-title-schedule"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>
                 <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
