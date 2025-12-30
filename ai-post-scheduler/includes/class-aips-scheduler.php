@@ -167,7 +167,7 @@ class AIPS_Scheduler {
                 $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
                 // Otherwise calculate next run
-                $next_run = $this->calculate_next_run($schedule->frequency);
+                $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run);
 
                 $this->repository->update($schedule->schedule_id, array(
                     'last_run' => current_time('mysql'),
