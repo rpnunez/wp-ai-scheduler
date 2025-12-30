@@ -336,35 +336,16 @@ class AIPS_Settings {
     /**
      * Render the main dashboard page.
      *
-     * Fetches statistics and recent activity from the database to display
-     * on the dashboard template.
+     * Delegates rendering to the AIPS_Dashboard class.
      *
      * @return void
      */
     public function render_dashboard_page() {
-        global $wpdb;
-        
-        $table_history = $wpdb->prefix . 'aips_history';
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
-        $table_templates = $wpdb->prefix . 'aips_templates';
-        
-        $total_generated = $wpdb->get_var("SELECT COUNT(*) FROM $table_history WHERE status = 'completed'");
-        $pending_scheduled = $wpdb->get_var("SELECT COUNT(*) FROM $table_schedule WHERE is_active = 1");
-        $total_templates = $wpdb->get_var("SELECT COUNT(*) FROM $table_templates WHERE is_active = 1");
-        $failed_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_history WHERE status = 'failed'");
-        
-        $recent_posts = $wpdb->get_results("SELECT * FROM $table_history ORDER BY created_at DESC LIMIT 5");
-        
-        $upcoming = $wpdb->get_results("
-            SELECT s.*, t.name as template_name 
-            FROM $table_schedule s 
-            LEFT JOIN $table_templates t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            ORDER BY s.next_run ASC 
-            LIMIT 5
-        ");
-        
-        include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
+        if (!class_exists('AIPS_Dashboard')) {
+             require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dashboard.php';
+        }
+        $dashboard = new AIPS_Dashboard();
+        $dashboard->render_page();
     }
     
     /**

@@ -147,6 +147,20 @@ class AIPS_History_Repository {
             $id
         ));
     }
+
+    /**
+     * Get recent history items.
+     *
+     * @param int $limit Number of items to return. Default 5.
+     * @return array Array of history objects.
+     */
+    public function get_recent($limit = 5) {
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT * FROM {$this->table_name}
+            ORDER BY created_at DESC
+            LIMIT %d
+        ", $limit));
+    }
     
     /**
      * Get overall statistics for history.
