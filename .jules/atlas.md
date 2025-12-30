@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-30 - [Extract Templates Controller] **Context:** `AIPS_Templates` was violating SRP by mixing AJAX handling, view rendering, and business logic (pending stats, interval calculation). It also duplicated logic from `AIPS_Interval_Calculator`. **Decision:** Extracted AJAX logic into `AIPS_Templates_Controller`. Refactored `AIPS_Templates` to use `AIPS_Interval_Calculator` for date math, removing duplication. **Consequence:** `AIPS_Templates` is now a cleaner Service class; duplicated date logic is removed; AJAX logic is isolated. Increased file count by 1.

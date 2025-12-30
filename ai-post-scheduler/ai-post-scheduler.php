@@ -69,6 +69,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-trending-topics-repository.php';
         
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-processor.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-type-selector.php';
@@ -151,7 +152,8 @@ final class AI_Post_Scheduler {
             new AIPS_DB_Manager();
             new AIPS_Settings();
             new AIPS_Voices();
-            new AIPS_Templates();
+            $templates_service = new AIPS_Templates();
+            new AIPS_Templates_Controller($templates_service);
             new AIPS_History();
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
