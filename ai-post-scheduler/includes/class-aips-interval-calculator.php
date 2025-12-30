@@ -101,14 +101,33 @@ class AIPS_Interval_Calculator {
      */
     public function calculate_next_run($frequency, $start_time = null) {
         $base_time = $start_time ? strtotime($start_time) : current_time('timestamp');
+        $now = current_time('timestamp');
         
-        // If start time is in the past, use current time
-        if ($base_time < current_time('timestamp')) {
-            $base_time = current_time('timestamp');
+        // If start time is in the future, just calculate one interval ahead from it
+        if ($base_time > $now) {
+            $next = $this->calculate_next_timestamp($frequency, $base_time);
+            return date('Y-m-d H:i:s', $next);
         }
+
+        // Catch-up logic: Keep adding intervals until we are in the future
+        // This preserves the original schedule phase (e.g. "at 15 minutes past the hour")
+        // preventing drift if cron misses several cycles.
         
+        // Limit iterations to prevent infinite loops (approx 100 cycles)
+        $limit = 100;
         $next = $this->calculate_next_timestamp($frequency, $base_time);
         
+        while ($next <= $now && $limit > 0) {
+            $next = $this->calculate_next_timestamp($frequency, $next);
+            $limit--;
+        }
+
+        // Safety fallback: if we exhausted the limit and are still in the past,
+        // force a reset to current time + interval to ensure we don't get stuck.
+        if ($next <= $now) {
+            $next = $this->calculate_next_timestamp($frequency, $now);
+        }
+
         return date('Y-m-d H:i:s', $next);
     }
     
