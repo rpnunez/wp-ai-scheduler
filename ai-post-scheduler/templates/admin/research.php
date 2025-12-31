@@ -114,7 +114,7 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
         
         <!-- Filters -->
         <div class="aips-filters">
-            <select id="filter-niche" class="aips-filter-select">
+            <select id="filter-niche" class="aips-filter-select" aria-label="<?php esc_attr_e('Filter by Niche', 'ai-post-scheduler'); ?>">
                 <option value=""><?php echo esc_html__('All Niches', 'ai-post-scheduler'); ?></option>
                 <?php foreach ($niches as $niche): ?>
                     <option value="<?php echo esc_attr($niche['niche']); ?>">
@@ -123,7 +123,7 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
                 <?php endforeach; ?>
             </select>
             
-            <select id="filter-score" class="aips-filter-select">
+            <select id="filter-score" class="aips-filter-select" aria-label="<?php esc_attr_e('Filter by Score', 'ai-post-scheduler'); ?>">
                 <option value="0"><?php echo esc_html__('All Scores', 'ai-post-scheduler'); ?></option>
                 <option value="80"><?php echo esc_html__('Score 80+', 'ai-post-scheduler'); ?></option>
                 <option value="90"><?php echo esc_html__('Score 90+', 'ai-post-scheduler'); ?></option>
