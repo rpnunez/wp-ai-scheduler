@@ -118,6 +118,7 @@ class AIPS_Scheduler {
             AND s.next_run <= %s 
             AND t.is_active = 1
             ORDER BY s.next_run ASC
+            LIMIT 5
         ", current_time('mysql')));
         
         if (empty($due_schedules)) {
