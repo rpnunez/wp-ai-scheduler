@@ -14,6 +14,29 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
         add_action('wp_ajax_aips_toggle_schedule', array($this, 'ajax_toggle_schedule'));
         add_action('wp_ajax_aips_run_now', array($this, 'ajax_run_now'));
+        add_action('wp_ajax_aips_get_schedule', array($this, 'ajax_get_schedule'));
+    }
+
+    public function ajax_get_schedule() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
+        }
+
+        $schedule = $this->scheduler->get_schedule($id);
+
+        if ($schedule) {
+            wp_send_json_success(array('schedule' => $schedule));
+        } else {
+            wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
+        }
     }
 
     public function ajax_save_schedule() {

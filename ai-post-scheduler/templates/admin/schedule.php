@@ -98,6 +98,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         </label>
                     </td>
                     <td class="column-actions">
+                        <button class="button aips-clone-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" style="margin-right: 5px;">
+                            <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
+                        </button>
                         <button class="button button-link-delete aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>">
                             <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                         </button>

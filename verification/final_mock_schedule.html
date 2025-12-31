@@ -1,4 +1,84 @@
-(function($) {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Schedule Admin</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .aips-modal-content { background: white; margin: 10% auto; padding: 20px; width: 50%; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Post Schedules <button class="aips-add-schedule-btn">Add New</button></h1>
+
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th class="column-template">Template</th>
+                    <th class="column-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-schedule-id="123">
+                    <td class="column-template">Test Template</td>
+                    <td class="column-actions">
+                        <button class="button aips-clone-schedule" data-id="123">Clone</button>
+                        <button class="button aips-delete-schedule" data-id="123">Delete</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div id="aips-schedule-modal" class="aips-modal">
+            <div class="aips-modal-content">
+                <div class="aips-modal-header">
+                    <h2>Add New Schedule</h2>
+                    <button class="aips-modal-close">&times;</button>
+                </div>
+                <div class="aips-modal-body">
+                    <form id="aips-schedule-form">
+                        <input type="hidden" name="schedule_id" id="schedule_id" value="">
+                        <input type="text" id="schedule_template" name="template_id">
+                        <input type="text" id="schedule_frequency" name="frequency">
+                        <input type="text" id="schedule_topic" name="topic">
+                        <input type="checkbox" id="schedule_is_active" name="is_active">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock global objects
+        var aipsAjax = {
+            ajaxUrl: '/wp-admin/admin-ajax.php',
+            nonce: 'mock_nonce'
+        };
+
+        // Mock AJAX
+        $.ajax = function(options) {
+            console.log('AJAX call:', options);
+            if (options.data.action === 'aips_get_schedule') {
+                options.success({
+                    success: true,
+                    data: {
+                        schedule: {
+                            id: 123,
+                            template_id: 5,
+                            frequency: 'weekly',
+                            topic: 'Test Topic',
+                            is_active: 1
+                        }
+                    }
+                });
+            }
+        };
+
+        // Load admin.js content (simulated)
+    </script>
+    <script>(function($) {
     'use strict';
 
     window.AIPS = window.AIPS || {};
@@ -99,7 +179,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
-            
+
             $btn.prop('disabled', true);
 
             $.ajax({
@@ -223,7 +303,7 @@
         testTemplate: function(e) {
             e.preventDefault();
             var prompt = $('#prompt_template').val();
-            
+
             if (!prompt) {
                 alert('Please enter a prompt template first.');
                 return;
@@ -573,7 +653,7 @@
             e.preventDefault();
             var status = $(this).data('status');
             var message = status ? 'Are you sure you want to clear all ' + status + ' history?' : 'Are you sure you want to clear all history?';
-            
+
             if (!confirm(message)) {
                 return;
             }
@@ -636,7 +716,7 @@
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
             var url = new URL(window.location.href);
-            
+
             if (status) {
                 url.searchParams.set('status', status);
             } else {
@@ -650,7 +730,7 @@
             }
 
             url.searchParams.delete('paged');
-            
+
             window.location.href = url.toString();
         },
 
@@ -825,7 +905,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
-            
+
             $btn.prop('disabled', true);
             $('#aips-details-loading').show();
             $('#aips-details-content').hide();
@@ -860,7 +940,7 @@
 
         renderDetails: function(data) {
             var log = data.generation_log || {};
-            
+
             var summaryHtml = '<table class="aips-details-table">';
             summaryHtml += '<tr><th>Status:</th><td><span class="aips-status aips-status-' + data.status + '">' + data.status.charAt(0).toUpperCase() + data.status.slice(1) + '</span></td></tr>';
             summaryHtml += '<tr><th>Title:</th><td>' + (data.generated_title || '-') + '</td></tr>';
@@ -874,7 +954,7 @@
             }
             summaryHtml += '</table>';
             $('#aips-details-summary').html(summaryHtml);
-            
+
             if (log.template) {
                 var templateHtml = '<table class="aips-details-table">';
                 templateHtml += '<tr><th>Name:</th><td>' + (log.template.name || '-') + '</td></tr>';
@@ -892,7 +972,7 @@
             } else {
                 $('#aips-details-template').html('<p>No template data available.</p>');
             }
-            
+
             if (log.voice) {
                 var voiceHtml = '<table class="aips-details-table">';
                 voiceHtml += '<tr><th>Name:</th><td>' + (log.voice.name || '-') + '</td></tr>';
@@ -907,7 +987,7 @@
             } else {
                 $('#aips-details-voice-section').hide();
             }
-            
+
             if (log.ai_calls && log.ai_calls.length > 0) {
                 var callsHtml = '';
                 log.ai_calls.forEach(function(call, index) {
@@ -938,7 +1018,7 @@
             } else {
                 $('#aips-details-ai-calls').html('<p>No AI call data available for this entry.</p>');
             }
-            
+
             if (log.errors && log.errors.length > 0) {
                 var errorsHtml = '<ul class="aips-errors-list">';
                 log.errors.forEach(function(error) {
@@ -953,7 +1033,7 @@
             } else {
                 $('#aips-details-errors-section').hide();
             }
-            
+
             $('#aips-details-content').show();
         },
 
@@ -983,3 +1063,6 @@
     });
 
 })(jQuery);
+</script>
+</body>
+</html>

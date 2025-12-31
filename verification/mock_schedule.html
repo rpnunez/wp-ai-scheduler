@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Schedule Admin</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .aips-modal-content { background: white; margin: 10% auto; padding: 20px; width: 50%; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Post Schedules <button class="aips-add-schedule-btn">Add New</button></h1>
+
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th class="column-template">Template</th>
+                    <th class="column-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-schedule-id="123">
+                    <td class="column-template">Test Template</td>
+                    <td class="column-actions">
+                        <button class="button aips-clone-schedule" data-id="123">Clone</button>
+                        <button class="button aips-delete-schedule" data-id="123">Delete</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div id="aips-schedule-modal" class="aips-modal">
+            <div class="aips-modal-content">
+                <div class="aips-modal-header">
+                    <h2>Add New Schedule</h2>
+                    <button class="aips-modal-close">&times;</button>
+                </div>
+                <div class="aips-modal-body">
+                    <form id="aips-schedule-form">
+                        <input type="hidden" name="schedule_id" id="schedule_id" value="">
+                        <input type="text" id="schedule_template" name="template_id">
+                        <input type="text" id="schedule_frequency" name="frequency">
+                        <input type="text" id="schedule_topic" name="topic">
+                        <input type="checkbox" id="schedule_is_active" name="is_active">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock global objects
+        var aipsAjax = {
+            ajaxUrl: '/wp-admin/admin-ajax.php',
+            nonce: 'mock_nonce'
+        };
+
+        // Mock AJAX
+        $.ajax = function(options) {
+            console.log('AJAX call:', options);
+            if (options.data.action === 'aips_get_schedule') {
+                options.success({
+                    success: true,
+                    data: {
+                        schedule: {
+                            id: 123,
+                            template_id: 5,
+                            frequency: 'weekly',
+                            topic: 'Test Topic',
+                            is_active: 1
+                        }
+                    }
+                });
+            }
+        };
+
+        // Load admin.js content (simulated)
+    </script>
+    <!-- We will inject admin.js content here in the python script -->
+</body>
+</html>
