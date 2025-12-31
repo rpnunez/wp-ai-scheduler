@@ -139,6 +139,12 @@ class AIPS_Schedule_Controller {
         }
 
         $quantity = $template->post_quantity ?: 1;
+
+        // Enforce hard limit of 5 for manual execution to prevent timeouts
+        if ($quantity > 5) {
+            $quantity = 5;
+        }
+
         $post_ids = array();
         $errors = array();
 
