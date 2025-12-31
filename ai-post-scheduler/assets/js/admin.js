@@ -12,6 +12,7 @@
         bindEvents: function() {
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
+            $(document).on('click', '.aips-duplicate-template', this.duplicateTemplate);
             $(document).on('click', '.aips-delete-template', this.deleteTemplate);
             $(document).on('click', '.aips-save-template', this.saveTemplate);
             $(document).on('click', '.aips-test-template', this.testTemplate);
@@ -123,8 +124,55 @@
                         $('#post_category').val(t.post_category);
                         $('#post_tags').val(t.post_tags);
                         $('#post_author').val(t.post_author);
+                        $('#voice_id').val(t.voice_id || 0);
                         $('#is_active').prop('checked', t.is_active == 1);
                         $('#aips-modal-title').text('Edit Template');
+                        $('#aips-template-modal').show();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                }
+            });
+        },
+
+        duplicateTemplate: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+
+            $btn.prop('disabled', true);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_template',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var t = response.data.template;
+                        $('#template_id').val(''); // Clear ID for new creation
+                        $('#template_name').val(t.name + ' (Copy)');
+                        $('#prompt_template').val(t.prompt_template);
+                        $('#title_prompt').val(t.title_prompt);
+                        $('#post_quantity').val(t.post_quantity || 1);
+                        $('#generate_featured_image').prop('checked', t.generate_featured_image == 1);
+                        $('#image_prompt').val(t.image_prompt || '').prop('disabled', t.generate_featured_image != 1);
+                        $('#post_status').val(t.post_status);
+                        $('#post_category').val(t.post_category);
+                        $('#post_tags').val(t.post_tags);
+                        $('#post_author').val(t.post_author);
+                        $('#voice_id').val(t.voice_id || 0);
+                        $('#is_active').prop('checked', t.is_active == 1);
+                        $('#aips-modal-title').text('Duplicate Template');
                         $('#aips-template-modal').show();
                     } else {
                         alert(response.data.message);
