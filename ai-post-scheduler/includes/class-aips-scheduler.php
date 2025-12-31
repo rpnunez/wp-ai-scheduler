@@ -14,14 +14,20 @@ class AIPS_Scheduler {
      * @var AIPS_Schedule_Repository Repository for database operations
      */
     private $repository;
+
+    /**
+     * @var AIPS_Logger Logger instance
+     */
+    private $logger;
     
-    public function __construct() {
+    public function __construct($logger = null, $interval_calculator = null, $repository = null, $template_type_selector = null) {
         global $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
-        $this->interval_calculator = new AIPS_Interval_Calculator();
-        $this->repository = new AIPS_Schedule_Repository();
-        $this->template_type_selector = new AIPS_Template_Type_Selector();
+        $this->interval_calculator = $interval_calculator ?: new AIPS_Interval_Calculator();
+        $this->repository = $repository ?: new AIPS_Schedule_Repository();
+        $this->template_type_selector = $template_type_selector ?: new AIPS_Template_Type_Selector();
+        $this->logger = $logger ?: new AIPS_Logger();
         
         add_action('aips_generate_scheduled_posts', array($this, 'process_scheduled_posts'));
         add_filter('cron_schedules', array($this, 'add_cron_intervals'));
@@ -107,8 +113,7 @@ class AIPS_Scheduler {
     public function process_scheduled_posts() {
         global $wpdb;
         
-        $logger = new AIPS_Logger();
-        $logger->log('Starting scheduled post generation', 'info');
+        $this->logger->log('Starting scheduled post generation', 'info');
         
         $due_schedules = $wpdb->get_results($wpdb->prepare("
             SELECT t.*, s.*, s.id AS schedule_id
@@ -118,10 +123,11 @@ class AIPS_Scheduler {
             AND s.next_run <= %s 
             AND t.is_active = 1
             ORDER BY s.next_run ASC
+            LIMIT 5
         ", current_time('mysql')));
         
         if (empty($due_schedules)) {
-            $logger->log('No scheduled posts due', 'info');
+            $this->logger->log('No scheduled posts due', 'info');
             return;
         }
         
@@ -134,7 +140,7 @@ class AIPS_Scheduler {
                 'timestamp' => current_time('mysql'),
             ), 'schedule_execution');
             
-            $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
+            $this->logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
                 'template_id' => $schedule->template_id,
                 'template_name' => $schedule->name,
                 'topic' => isset($schedule->topic) ? $schedule->topic : ''
@@ -164,10 +170,10 @@ class AIPS_Scheduler {
             if ($schedule->frequency === 'once' && !is_wp_error($result)) {
                 // If it's a one-time schedule and successful, delete it
                 $this->repository->delete($schedule->schedule_id);
-                $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
+                $this->logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
                 // Otherwise calculate next run
-                $next_run = $this->calculate_next_run($schedule->frequency);
+                $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run);
 
                 $this->repository->update($schedule->schedule_id, array(
                     'last_run' => current_time('mysql'),
@@ -176,7 +182,7 @@ class AIPS_Scheduler {
             }
             
             if (is_wp_error($result)) {
-                $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
+                $this->logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
                     'schedule_id' => $schedule->schedule_id
                 ));
                 
@@ -192,7 +198,7 @@ class AIPS_Scheduler {
                     'timestamp' => current_time('mysql'),
                 ), 'schedule_execution');
             } else {
-                $logger->log('Schedule completed successfully', 'info', array(
+                $this->logger->log('Schedule completed successfully', 'info', array(
                     'schedule_id' => $schedule->schedule_id,
                     'post_id' => $result
                 ));

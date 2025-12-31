@@ -82,6 +82,9 @@ if (!defined('ABSPATH')) {
                             <button class="button aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>">
                                 <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                             </button>
+                            <button class="button aips-duplicate-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Duplicate Template', 'ai-post-scheduler'); ?>">
+                                <span class="dashicons dashicons-admin-page" style="line-height: 1.3;"></span>
+                            </button>
                             <button class="button aips-run-now" data-id="<?php echo esc_attr($template->id); ?>">
                                 <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                             </button>
