@@ -195,6 +195,8 @@ class AIPS_Templates {
         $week_end = strtotime('+7 days', $now);
         $month_end = strtotime('+30 days', $now);
 
+        $interval_calculator = new AIPS_Interval_Calculator();
+
         foreach ($schedules as $schedule) {
             $cursor = strtotime($schedule->next_run);
             $frequency = $schedule->frequency;
@@ -229,7 +231,7 @@ class AIPS_Templates {
                 }
 
                 // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
+                $cursor = $interval_calculator->calculate_next_timestamp($frequency, $cursor);
                 $i++;
             }
         }
@@ -253,6 +255,8 @@ class AIPS_Templates {
         $today_end = strtotime('today 23:59:59', $now);
         $week_end = strtotime('+7 days', $now);
         $month_end = strtotime('+30 days', $now);
+
+        $interval_calculator = new AIPS_Interval_Calculator();
 
         foreach ($schedules as $schedule) {
             $tid = $schedule->template_id;
@@ -288,44 +292,12 @@ class AIPS_Templates {
                 }
 
                 // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
+                $cursor = $interval_calculator->calculate_next_timestamp($frequency, $cursor);
                 $i++;
             }
         }
 
         return $stats;
-    }
-
-    private function calculate_next_run($frequency, $base_time) {
-        switch ($frequency) {
-            case 'hourly':
-                return strtotime('+1 hour', $base_time);
-            case 'every_4_hours':
-                return strtotime('+4 hours', $base_time);
-            case 'every_6_hours':
-                return strtotime('+6 hours', $base_time);
-            case 'every_12_hours':
-                return strtotime('+12 hours', $base_time);
-            case 'daily':
-                return strtotime('+1 day', $base_time);
-            case 'weekly':
-                return strtotime('+1 week', $base_time);
-            case 'bi_weekly':
-                return strtotime('+2 weeks', $base_time);
-            case 'monthly':
-                return strtotime('+1 month', $base_time);
-            default:
-                if (strpos($frequency, 'every_') === 0) {
-                    $day = ucfirst(str_replace('every_', '', $frequency));
-                    $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
-
-                    if (in_array($day, $valid_days)) {
-                        $next = strtotime("next $day", $base_time);
-                        return strtotime(date('H:i:s', $base_time), $next);
-                    }
-                }
-                return strtotime('+1 day', $base_time);
-        }
     }
 
     public function ajax_get_template_posts() {

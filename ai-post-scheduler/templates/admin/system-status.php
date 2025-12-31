@@ -33,7 +33,10 @@ if (!defined('ABSPATH')) {
                                         <?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>
                                     </a>
                                     <div id="log-details-<?php echo esc_attr($key); ?>" class="aips-log-details" style="display:none; margin-top: 10px;">
-                                        <textarea class="large-text code" rows="10" readonly><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
+                                        <textarea class="large-text code" rows="10" readonly id="textarea-<?php echo esc_attr($key); ?>"><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
+                                        <button type="button" class="button button-small aips-copy-log" data-target="textarea-<?php echo esc_attr($key); ?>" style="margin-top: 5px;">
+                                            <span class="dashicons dashicons-clipboard" style="margin-top: 3px;"></span> <?php esc_html_e('Copy to Clipboard', 'ai-post-scheduler'); ?>
+                                        </button>
                                     </div>
                                 <?php endif; ?>
                             </td>
@@ -94,6 +97,27 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         var target = $(this).data('target');
         $('#' + target).toggle();
+    });
+
+    $('.aips-copy-log').on('click', function(e) {
+        e.preventDefault();
+        var targetId = $(this).data('target');
+        var copyText = document.getElementById(targetId);
+
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); /* For mobile devices */
+
+        try {
+            document.execCommand("copy");
+            var $btn = $(this);
+            var originalText = $btn.html();
+            $btn.html('<span class="dashicons dashicons-yes" style="margin-top: 3px;"></span> ' + '<?php esc_js(__('Copied!', 'ai-post-scheduler')); ?>');
+            setTimeout(function() {
+                $btn.html(originalText);
+            }, 2000);
+        } catch (err) {
+            console.error('Fallback: Oops, unable to copy', err);
+        }
     });
 });
 </script>
