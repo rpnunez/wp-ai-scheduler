@@ -101,10 +101,23 @@ class AIPS_Image_Service {
 
         // Validate content type is an image
         $content_type = wp_remote_retrieve_header($response_object, 'content-type');
-        if (strpos($content_type, 'image/') !== 0) {
+
+        // Handle parameters in content-type (e.g., "image/jpeg; charset=utf-8")
+        $content_type_parts = explode(';', $content_type);
+        $mime_type = trim($content_type_parts[0]);
+
+        // Whitelist safe image types (No SVG allowed to prevent XSS)
+        $allowed_mimes = array(
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp'
+        );
+
+        if (!in_array($mime_type, $allowed_mimes)) {
             $error = new WP_Error(
                 'invalid_content_type',
-                sprintf(__('Invalid content type: %s. Expected an image.', 'ai-post-scheduler'), $content_type)
+                sprintf(__('Invalid content type: %s. Expected one of: %s.', 'ai-post-scheduler'), $content_type, implode(', ', $allowed_mimes))
             );
             $this->logger->log($error->get_error_message(), 'error');
             return $error;
@@ -121,24 +134,36 @@ class AIPS_Image_Service {
             return $error;
         }
 
+        $real_mime = $mime_type; // Default to header mime if finfo fails
+
         // SECURITY: Verify actual file content is an image using finfo if available
         // This prevents saving non-image files (e.g. scripts) even if Content-Type header is spoofed
         if (class_exists('finfo')) {
             $finfo = new finfo(FILEINFO_MIME_TYPE);
             $real_mime = $finfo->buffer($image_data);
 
-            if (strpos($real_mime, 'image/') !== 0) {
+            if (!in_array($real_mime, $allowed_mimes)) {
                 $error = new WP_Error(
                     'invalid_image_content',
-                    sprintf(__('Security check failed: Content appears to be %s, expected image.', 'ai-post-scheduler'), $real_mime)
+                    sprintf(__('Security check failed: Content appears to be %s, expected one of: %s.', 'ai-post-scheduler'), $real_mime, implode(', ', $allowed_mimes))
                 );
                 $this->logger->log($error->get_error_message(), 'error');
                 return $error;
             }
         }
         
+        // Determine extension based on verified MIME type
+        $extensions = array(
+            'image/jpeg' => '.jpg',
+            'image/png'  => '.png',
+            'image/gif'  => '.gif',
+            'image/webp' => '.webp'
+        );
+
+        $ext = isset($extensions[$real_mime]) ? $extensions[$real_mime] : '.jpg';
+
         $post_slug = sanitize_title($post_title);
-        $filename = $post_slug . '.jpg';
+        $filename = $post_slug . $ext;
         
         // Use wp_upload_bits to handle file creation and uniqueness
         $upload = wp_upload_bits($filename, null, $image_data);
