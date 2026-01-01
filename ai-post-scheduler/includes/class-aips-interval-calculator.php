@@ -102,13 +102,28 @@ class AIPS_Interval_Calculator {
     public function calculate_next_run($frequency, $start_time = null) {
         $base_time = $start_time ? strtotime($start_time) : current_time('timestamp');
         
-        // If start time is in the past, use current time
-        if ($base_time < current_time('timestamp')) {
-            $base_time = current_time('timestamp');
-        }
+        // If start_time was NOT provided, we default to current_time.
+        // If it WAS provided, we calculate relative to it to prevent drift.
         
         $next = $this->calculate_next_timestamp($frequency, $base_time);
         
+        // Catch-up logic: if start_time was provided (schedule update) and next run is in the past,
+        // iteratively add intervals until we reach the future.
+        // This prevents "catch up storms" (running 100 missed posts) and preserves the schedule phase.
+        if ($start_time && $next <= current_time('timestamp')) {
+            $max_catchups = 1000;
+            $i = 0;
+            while ($next <= current_time('timestamp') && $i < $max_catchups) {
+                $next = $this->calculate_next_timestamp($frequency, $next);
+                $i++;
+            }
+
+            // Safety: if still in past, force to future relative to now (should not happen with valid intervals)
+            if ($next <= current_time('timestamp')) {
+                 $next = $this->calculate_next_timestamp($frequency, current_time('timestamp'));
+            }
+        }
+
         return date('Y-m-d H:i:s', $next);
     }
     
@@ -121,7 +136,7 @@ class AIPS_Interval_Calculator {
      * @param int    $base_time The base timestamp to calculate from.
      * @return int The next run timestamp.
      */
-    private function calculate_next_timestamp($frequency, $base_time) {
+    public function calculate_next_timestamp($frequency, $base_time) {
         switch ($frequency) {
             case 'hourly':
                 return strtotime('+1 hour', $base_time);
