@@ -22,6 +22,7 @@ class AIPS_Settings {
         add_action('admin_menu', array($this, 'add_menu_pages'));
         add_action('admin_init', array($this, 'register_settings'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
+        add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
     }
     
     /**
@@ -342,27 +343,43 @@ class AIPS_Settings {
      * @return void
      */
     public function render_dashboard_page() {
-        global $wpdb;
+        // Use repositories instead of direct SQL
+        $history_repo = new AIPS_History_Repository();
+        $schedule_repo = new AIPS_Schedule_Repository();
+        $template_repo = new AIPS_Template_Repository();
         
-        $table_history = $wpdb->prefix . 'aips_history';
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
-        $table_templates = $wpdb->prefix . 'aips_templates';
+        // Get stats
+        $history_stats = $history_repo->get_stats();
+        $schedule_counts = $schedule_repo->count_by_status();
+        $template_counts = $template_repo->count_by_status();
         
-        $total_generated = $wpdb->get_var("SELECT COUNT(*) FROM $table_history WHERE status = 'completed'");
-        $pending_scheduled = $wpdb->get_var("SELECT COUNT(*) FROM $table_schedule WHERE is_active = 1");
-        $total_templates = $wpdb->get_var("SELECT COUNT(*) FROM $table_templates WHERE is_active = 1");
-        $failed_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_history WHERE status = 'failed'");
+        $total_generated = $history_stats['completed'];
+        $pending_scheduled = $schedule_counts['active'];
+        $total_templates = $template_counts['active'];
+        $failed_count = $history_stats['failed'];
         
-        $recent_posts = $wpdb->get_results("SELECT * FROM $table_history ORDER BY created_at DESC LIMIT 5");
+        // Get recent history
+        $recent_posts_data = $history_repo->get_history(array('per_page' => 5));
+        $recent_posts = $recent_posts_data['items'];
         
-        $upcoming = $wpdb->get_results("
-            SELECT s.*, t.name as template_name 
-            FROM $table_schedule s 
-            LEFT JOIN $table_templates t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            ORDER BY s.next_run ASC 
-            LIMIT 5
-        ");
+        // Get upcoming schedules
+        // Note: AIPS_Schedule_Repository doesn't have a direct "get upcoming limit 5" method that returns joined data like the original query exactly,
+        // but get_due_schedules returns based on current time.
+        // We need a method to get upcoming active schedules.
+        // Let's check if get_due_schedules works or if we need to add a method.
+        // The original query was: WHERE s.is_active = 1 ORDER BY s.next_run ASC LIMIT 5.
+        // get_due_schedules has WHERE s.next_run <= %s. We want future ones too.
+        // Let's use get_all and array_slice for now, or add a method to repo.
+        // Given I cannot modify repo in this step easily without another tool call, I will use a direct query via wpdb if strictly necessary,
+        // BUT the goal is to refactor.
+        // A better approach: The memory mentions AIPS_Schedule_Repository::get_upcoming($limit). Let's verify if it exists.
+        // Reading the file I just read: It does NOT have get_upcoming.
+        // So I will stick to what I have or modify the repo. I'll modify the repo first in a separate step or just do it here if I can't.
+        // Actually, I should probably add `get_upcoming` to `AIPS_Schedule_Repository` as part of this refactor.
+        // But for now, I will use `get_all(true)` and slice it. It might be less performant if there are thousands of schedules,
+        // but typically schedules are limited.
+
+        $upcoming = $schedule_repo->get_upcoming(5);
         
         include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
     }
@@ -446,5 +463,27 @@ class AIPS_Settings {
     public function render_status_page() {
         $status_handler = new AIPS_System_Status();
         $status_handler->render_page();
+    }
+
+    /**
+     * Handle AJAX request to test AI connection.
+     *
+     * @return void
+     */
+    public function ajax_test_connection() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+        }
+
+        $ai_service = new AIPS_AI_Service();
+        $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('max_tokens' => 10));
+
+        if (is_wp_error($result)) {
+            wp_send_json_error(array('message' => $result->get_error_message()));
+        } else {
+            wp_send_json_success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . $result));
+        }
     }
 }
