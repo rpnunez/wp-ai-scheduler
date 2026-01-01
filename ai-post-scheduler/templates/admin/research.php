@@ -95,7 +95,7 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
             
             <p class="submit">
                 <button type="submit" class="button button-primary" id="research-submit">
-                    <span class="dashicons dashicons-search"></span>
+                    <span class="dashicons dashicons-search" aria-hidden="true"></span>
                     <?php echo esc_html__('Research Trending Topics', 'ai-post-scheduler'); ?>
                 </button>
                 <span class="spinner" style="float: none; margin-left: 10px;"></span>
