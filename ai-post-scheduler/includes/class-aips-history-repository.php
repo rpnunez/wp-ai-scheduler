@@ -118,13 +118,26 @@ class AIPS_History_Repository {
         ", $query_args));
         
         // Query for total count
-        if (!empty($where_args)) {
-            $total = $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
-                $where_args
-            ));
-        } else {
-            $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+        // Optimization: Use cached stats if possible (when not searching or filtering by template)
+        $total = null;
+        if (empty($args['search']) && empty($args['template_id'])) {
+            $stats = $this->get_stats();
+            if (empty($args['status'])) {
+                $total = $stats['total'];
+            } elseif (isset($stats[$args['status']])) {
+                $total = $stats[$args['status']];
+            }
+        }
+
+        if ($total === null) {
+            if (!empty($where_args)) {
+                $total = $this->wpdb->get_var($this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
+                    $where_args
+                ));
+            } else {
+                $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+            }
         }
         
         return array(
@@ -171,7 +184,8 @@ class AIPS_History_Repository {
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
+                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
             FROM {$this->table_name}
         ");
 
@@ -180,6 +194,7 @@ class AIPS_History_Repository {
             'completed' => (int) $results->completed,
             'failed' => (int) $results->failed,
             'processing' => (int) $results->processing,
+            'pending' => (int) $results->pending,
         );
         
         $stats['success_rate'] = $stats['total'] > 0 
