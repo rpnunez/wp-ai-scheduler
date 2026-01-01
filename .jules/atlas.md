@@ -20,3 +20,16 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2026-01-01 - Extract Templates Controller & Decouple Interval Logic
+**Context:** `AIPS_Templates` was a "God Class" handling AJAX requests, view rendering, and scheduling math (duplicating `AIPS_Interval_Calculator` logic), violating SRP and DRY.
+
+**Decision:**
+1.  Extracted AJAX handling to `AIPS_Templates_Controller`.
+2.  Refactored `AIPS_Templates` to use dependency injection for `AIPS_Interval_Calculator`.
+3.  Exposed `AIPS_Interval_Calculator::calculate_next_timestamp` as public.
+4.  Removed duplicate interval calculation logic from `AIPS_Templates`.
+
+**Consequence:**
+-   **Positive:** Improved separation of concerns; Single source of truth for interval calculations; Reduced complexity in `AIPS_Templates`.
+-   **Negative:** Added one new file (`class-aips-templates-controller.php`).

@@ -11,17 +11,17 @@ class AIPS_Templates {
      * @var AIPS_Template_Repository Repository for database operations
      */
     private $repository;
+
+    /**
+     * @var AIPS_Interval_Calculator Service for interval calculations
+     */
+    private $interval_calculator;
     
-    public function __construct() {
+    public function __construct(AIPS_Interval_Calculator $interval_calculator = null) {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_templates';
         $this->repository = new AIPS_Template_Repository();
-        
-        add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
-        add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
-        add_action('wp_ajax_aips_get_template', array($this, 'ajax_get_template'));
-        add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
-        add_action('wp_ajax_aips_get_template_posts', array($this, 'ajax_get_template_posts'));
+        $this->interval_calculator = $interval_calculator ?: new AIPS_Interval_Calculator();
     }
     
     public function get_all($active_only = false) {
@@ -58,117 +58,6 @@ class AIPS_Templates {
     
     public function delete($id) {
         return $this->repository->delete($id);
-    }
-    
-    public function ajax_save_template() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
-        
-        $data = array(
-            'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
-            'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
-            'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
-            'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field($_POST['title_prompt']) : '',
-            'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
-            'post_quantity' => isset($_POST['post_quantity']) ? absint($_POST['post_quantity']) : 1,
-            'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
-            'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
-            'post_status' => isset($_POST['post_status']) ? sanitize_text_field($_POST['post_status']) : 'draft',
-            'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
-            'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
-            'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
-            'is_active' => isset($_POST['is_active']) ? 1 : 0,
-        );
-        
-        if (empty($data['name']) || empty($data['prompt_template'])) {
-            wp_send_json_error(array('message' => __('Name and prompt template are required.', 'ai-post-scheduler')));
-        }
-        
-        if ($data['post_quantity'] < 1 || $data['post_quantity'] > 20) {
-            $data['post_quantity'] = 1;
-        }
-        
-        $id = $this->save($data);
-        
-        if ($id) {
-            wp_send_json_success(array(
-                'message' => __('Template saved successfully.', 'ai-post-scheduler'),
-                'template_id' => $id
-            ));
-        } else {
-            wp_send_json_error(array('message' => __('Failed to save template.', 'ai-post-scheduler')));
-        }
-    }
-    
-    public function ajax_delete_template() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
-        
-        $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-        
-        if (!$id) {
-            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
-        }
-        
-        if ($this->delete($id)) {
-            wp_send_json_success(array('message' => __('Template deleted successfully.', 'ai-post-scheduler')));
-        } else {
-            wp_send_json_error(array('message' => __('Failed to delete template.', 'ai-post-scheduler')));
-        }
-    }
-    
-    public function ajax_get_template() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
-        
-        $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-        
-        if (!$id) {
-            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
-        }
-        
-        $template = $this->get($id);
-        
-        if ($template) {
-            wp_send_json_success(array('template' => $template));
-        } else {
-            wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
-        }
-    }
-    
-    public function ajax_test_template() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
-        
-        $prompt = isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '';
-        
-        if (empty($prompt)) {
-            wp_send_json_error(array('message' => __('Prompt template is required.', 'ai-post-scheduler')));
-        }
-        
-        $generator = new AIPS_Generator();
-        $result = $generator->generate_content($prompt);
-        
-        if (is_wp_error($result)) {
-            wp_send_json_error(array('message' => $result->get_error_message()));
-        }
-        
-        wp_send_json_success(array(
-            'content' => $result,
-            'message' => __('Test generation successful.', 'ai-post-scheduler')
-        ));
     }
 
     public function get_pending_stats($template_id) {
@@ -229,7 +118,7 @@ class AIPS_Templates {
                 }
 
                 // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
+                $cursor = $this->interval_calculator->calculate_next_timestamp($frequency, $cursor);
                 $i++;
             }
         }
@@ -294,132 +183,13 @@ class AIPS_Templates {
                 }
 
                 // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
+                $cursor = $this->interval_calculator->calculate_next_timestamp($frequency, $cursor);
                 $i++;
             }
         }
 
         set_transient('aips_pending_schedule_stats', $stats, HOUR_IN_SECONDS);
         return $stats;
-    }
-
-    private function calculate_next_run($frequency, $base_time) {
-        switch ($frequency) {
-            case 'hourly':
-                return strtotime('+1 hour', $base_time);
-            case 'every_4_hours':
-                return strtotime('+4 hours', $base_time);
-            case 'every_6_hours':
-                return strtotime('+6 hours', $base_time);
-            case 'every_12_hours':
-                return strtotime('+12 hours', $base_time);
-            case 'daily':
-                return strtotime('+1 day', $base_time);
-            case 'weekly':
-                return strtotime('+1 week', $base_time);
-            case 'bi_weekly':
-                return strtotime('+2 weeks', $base_time);
-            case 'monthly':
-                return strtotime('+1 month', $base_time);
-            default:
-                if (strpos($frequency, 'every_') === 0) {
-                    $day = ucfirst(str_replace('every_', '', $frequency));
-                    $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
-
-                    if (in_array($day, $valid_days)) {
-                        $next = strtotime("next $day", $base_time);
-                        return strtotime(date('H:i:s', $base_time), $next);
-                    }
-                }
-                return strtotime('+1 day', $base_time);
-        }
-    }
-
-    public function ajax_get_template_posts() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
-
-        $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-        $page = isset($_POST['page']) ? absint($_POST['page']) : 1;
-
-        if (!$template_id) {
-            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
-        }
-
-        $history = new AIPS_History();
-        $data = $history->get_history(array(
-            'template_id' => $template_id,
-            'page' => $page,
-            'per_page' => 10,
-            'status' => 'completed'
-        ));
-
-        ob_start();
-        if (!empty($data['items'])): ?>
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
-                        <th><?php esc_html_e('Date', 'ai-post-scheduler'); ?></th>
-                        <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($data['items'] as $item): ?>
-                    <tr>
-                        <td>
-                            <?php if ($item->post_id): ?>
-                                <a href="<?php echo get_permalink($item->post_id); ?>" target="_blank">
-                                    <?php echo esc_html($item->generated_title); ?>
-                                </a>
-                            <?php else: ?>
-                                <?php echo esc_html($item->generated_title); ?>
-                            <?php endif; ?>
-                        </td>
-                        <td><?php echo esc_html($item->created_at); ?></td>
-                        <td>
-                            <a href="<?php echo get_edit_post_link($item->post_id); ?>" class="button button-small" target="_blank">
-                                <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-                            </a>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-
-            <?php if ($data['pages'] > 1): ?>
-            <div class="aips-pagination" style="margin-top: 10px; text-align: right;">
-                <?php
-                $current = $data['current_page'];
-                $total = $data['pages'];
-
-                if ($current > 1) {
-                    echo '<button type="button" class="button aips-modal-page" data-page="' . ($current - 1) . '">&laquo; ' . esc_html__('Prev', 'ai-post-scheduler') . '</button> ';
-                }
-
-                printf(
-                    '<span class="paging-input">%s %d %s %d</span> ',
-                    esc_html__('Page', 'ai-post-scheduler'),
-                    $current,
-                    esc_html__('of', 'ai-post-scheduler'),
-                    $total
-                );
-
-                if ($current < $total) {
-                    echo '<button type="button" class="button aips-modal-page" data-page="' . ($current + 1) . '">' . esc_html__('Next', 'ai-post-scheduler') . ' &raquo;</button>';
-                }
-                ?>
-            </div>
-            <?php endif; ?>
-        <?php else: ?>
-            <p><?php esc_html_e('No posts generated yet.', 'ai-post-scheduler'); ?></p>
-        <?php endif;
-        $html = ob_get_clean();
-
-        wp_send_json_success(array('html' => $html));
     }
     
     public function render_page() {
