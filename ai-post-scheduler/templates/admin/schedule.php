@@ -66,7 +66,12 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         $structure_display = __('Rotating', 'ai-post-scheduler');
                     }
                 ?>
-                <tr data-schedule-id="<?php echo esc_attr($schedule->id); ?>">
+                <tr data-schedule-id="<?php echo esc_attr($schedule->id); ?>"
+                    data-template-id="<?php echo esc_attr($schedule->template_id); ?>"
+                    data-frequency="<?php echo esc_attr($schedule->frequency); ?>"
+                    data-topic="<?php echo esc_attr($schedule->topic); ?>"
+                    data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
+                    data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
                     <td class="column-template">
                         <?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?>
                     </td>
@@ -98,6 +103,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         </label>
                     </td>
                     <td class="column-actions">
+                        <button class="button aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>">
+                            <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
+                        </button>
                         <button class="button button-link-delete aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>">
                             <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                         </button>
@@ -131,7 +139,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
     <div id="aips-schedule-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content">
             <div class="aips-modal-header">
-                <h2><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>
+                <h2 id="aips-schedule-modal-title"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>
                 <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
