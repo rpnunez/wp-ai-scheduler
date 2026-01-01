@@ -17,6 +17,8 @@ $stats = $research_controller->get_research_stats();
 $repository = new AIPS_Trending_Topics_Repository();
 $niches = $repository->get_niche_list();
 $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
+$interval_calculator = new AIPS_Interval_Calculator();
+$intervals = $interval_calculator->get_intervals();
 ?>
 
 <div class="wrap aips-research">
@@ -181,11 +183,11 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
                         </th>
                         <td>
                             <select id="schedule-frequency" name="frequency">
-                                <option value="hourly"><?php echo esc_html__('Hourly', 'ai-post-scheduler'); ?></option>
-                                <option value="every_6_hours"><?php echo esc_html__('Every 6 Hours', 'ai-post-scheduler'); ?></option>
-                                <option value="every_12_hours"><?php echo esc_html__('Every 12 Hours', 'ai-post-scheduler'); ?></option>
-                                <option value="daily" selected><?php echo esc_html__('Daily', 'ai-post-scheduler'); ?></option>
-                                <option value="weekly"><?php echo esc_html__('Weekly', 'ai-post-scheduler'); ?></option>
+                                <?php foreach ($intervals as $value => $interval): ?>
+                                    <option value="<?php echo esc_attr($value); ?>" <?php selected($value, 'daily'); ?>>
+                                        <?php echo esc_html($interval['display']); ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
                         </td>
                     </tr>
@@ -333,6 +335,12 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
 <script>
 jQuery(document).ready(function($) {
     let selectedTopics = [];
+
+    // Helper to escape HTML safely
+    function escapeHtml(text) {
+        if (text == null) return '';
+        return $('<div>').text(text).html();
+    }
     
     // Research form submission
     $('#aips-research-form').on('submit', function(e) {
@@ -381,23 +389,41 @@ jQuery(document).ready(function($) {
     // Display research results
     function displayResearchResults(data) {
         const $container = $('#research-results-content');
-        let html = '<p><strong>' + data.saved_count + ' <?php echo esc_js(__('topics saved for', 'ai-post-scheduler')); ?> "' + data.niche + '"</strong></p>';
+        $container.empty();
+
+        const $p = $('<p>');
+        $p.append($('<strong>').text(data.saved_count + ' <?php echo esc_js(__('topics saved for', 'ai-post-scheduler')); ?> "' + data.niche + '"'));
+        $container.append($p);
         
         if (data.top_topics && data.top_topics.length > 0) {
-            html += '<h4><?php echo esc_js(__('Top 5 Topics:', 'ai-post-scheduler')); ?></h4><ol>';
+            $container.append($('<h4>').text('<?php echo esc_js(__('Top 5 Topics:', 'ai-post-scheduler')); ?>'));
+            const $ol = $('<ol>');
+
             data.top_topics.forEach(function(topic) {
                 const scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
-                html += '<li><strong>' + topic.topic + '</strong> ';
-                html += '<span class="aips-score-badge aips-score-' + scoreClass + '">' + topic.score + '</span>';
+                const $li = $('<li>');
+
+                $li.append($('<strong>').text(topic.topic));
+                $li.append(' ');
+
+                const $badge = $('<span>')
+                    .addClass('aips-score-badge aips-score-' + scoreClass)
+                    .text(topic.score);
+                $li.append($badge);
+
                 if (topic.reason) {
-                    html += '<br><small><em>' + topic.reason + '</em></small>';
+                    $li.append('<br>');
+                    const $small = $('<small>');
+                    const $em = $('<em>').text(topic.reason);
+                    $small.append($em);
+                    $li.append($small);
                 }
-                html += '</li>';
+
+                $ol.append($li);
             });
-            html += '</ol>';
+            $container.append($ol);
         }
         
-        $container.html(html);
         $('#research-results').slideDown();
     }
     
@@ -452,16 +478,16 @@ jQuery(document).ready(function($) {
             
             html += '<tr>';
             html += '<td><input type="checkbox" class="topic-checkbox" value="' + topic.id + '"></td>';
-            html += '<td><strong>' + topic.topic + '</strong>';
+            html += '<td><strong>' + escapeHtml(topic.topic) + '</strong>';
             if (topic.reason) {
-                html += '<br><small>' + topic.reason + '</small>';
+                html += '<br><small>' + escapeHtml(topic.reason) + '</small>';
             }
             html += '</td>';
             html += '<td><span class="aips-score-badge aips-score-' + scoreClass + '">' + topic.score + '</span></td>';
-            html += '<td>' + topic.niche + '</td>';
+            html += '<td>' + escapeHtml(topic.niche) + '</td>';
             html += '<td><div class="aips-keywords-list">';
             keywords.forEach(function(kw) {
-                html += '<span class="aips-keyword-tag">' + kw + '</span>';
+                html += '<span class="aips-keyword-tag">' + escapeHtml(kw) + '</span>';
             });
             html += '</div></td>';
             html += '<td>' + new Date(topic.researched_at).toLocaleDateString() + '</td>';
