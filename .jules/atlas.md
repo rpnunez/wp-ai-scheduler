@@ -20,3 +20,7 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+## 2024-05-26 - Extract Templates Controller & Consolidate Intervals
+**Context:** `AIPS_Templates` was a "God Class" handling AJAX requests, page rendering, and business logic. It also duplicated date calculation logic (`calculate_next_run`) found in `AIPS_Interval_Calculator`.
+**Decision:** Extracted AJAX handling to `AIPS_Templates_Controller`. Exposed `AIPS_Interval_Calculator::calculate_next_timestamp` as public and updated `AIPS_Templates` to use it, eliminating the duplicate logic.
+**Consequence:** `AIPS_Templates` is now a cleaner Service/View class. AJAX logic is isolated in the Controller. Scheduling math is centralized. Added 1 new file.
