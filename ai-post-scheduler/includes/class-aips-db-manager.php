@@ -11,7 +11,8 @@ class AIPS_DB_Manager {
         'aips_schedule',
         'aips_voices',
         'aips_article_structures',
-        'aips_prompt_sections'
+        'aips_prompt_sections',
+        'aips_trending_topics'
     );
 
     public function __construct() {
@@ -50,6 +51,7 @@ class AIPS_DB_Manager {
         $table_voices = $tables['aips_voices'];
         $table_structures = $tables['aips_article_structures'];
         $table_sections = $tables['aips_prompt_sections'];
+        $table_trending_topics = $tables['aips_trending_topics'];
 
         $sql = array();
 
@@ -144,6 +146,20 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             UNIQUE KEY section_key (section_key),
             KEY is_active (is_active)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_trending_topics (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            niche varchar(255) NOT NULL,
+            topic varchar(500) NOT NULL,
+            score int(11) NOT NULL DEFAULT 50,
+            reason text DEFAULT NULL,
+            keywords text DEFAULT NULL,
+            researched_at datetime NOT NULL,
+            PRIMARY KEY  (id),
+            KEY niche_idx (niche),
+            KEY score_idx (score),
+            KEY researched_at_idx (researched_at)
         ) $charset_collate;";
 
         return $sql;
