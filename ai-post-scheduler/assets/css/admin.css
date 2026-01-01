@@ -442,6 +442,41 @@
     vertical-align: top;
 }
 
+.aips-code-block {
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.aips-code-block .aips-prompt-text,
+.aips-code-block .aips-response-text {
+    margin: 0;
+    padding-right: 40px; /* Space for button */
+}
+
+.aips-copy-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: transparent;
+    border: none;
+    color: #646970;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.aips-copy-btn:hover {
+    background: rgba(0,0,0,0.05);
+    color: #2271b1;
+}
+
+.aips-copy-btn .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
 .aips-prompt-text,
 .aips-response-text {
     background: #f6f7f7;
