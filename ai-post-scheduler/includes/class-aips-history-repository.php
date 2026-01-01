@@ -118,7 +118,33 @@ class AIPS_History_Repository {
         ", $query_args));
         
         // Query for total count
-        if (!empty($where_args)) {
+        $use_cached_count = false;
+        $cached_total = 0;
+
+        // Optimization: Use cached stats for total count if filters match what we have in stats
+        // We can use cached stats if:
+        // 1. No search query
+        // 2. No template ID filter
+        // 3. Status is empty (total) OR status is one of the tracked statuses
+        // Note: get_stats() uses transient caching (aips_history_stats) which is invalidated on write.
+        if (empty($args['search']) && empty($args['template_id'])) {
+            $stats = $this->get_stats();
+
+            if (empty($args['status'])) {
+                $cached_total = $stats['total'];
+                $use_cached_count = true;
+            } elseif (in_array($args['status'], array('completed', 'failed', 'processing', 'pending'))) {
+                // Ensure key exists (pending might be 0 if not returned by older get_stats call during transition, but we are updating get_stats)
+                if (isset($stats[$args['status']])) {
+                    $cached_total = $stats[$args['status']];
+                    $use_cached_count = true;
+                }
+            }
+        }
+
+        if ($use_cached_count) {
+            $total = $cached_total;
+        } elseif (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
                 "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
                 $where_args
@@ -171,7 +197,8 @@ class AIPS_History_Repository {
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
+                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
             FROM {$this->table_name}
         ");
 
@@ -180,6 +207,7 @@ class AIPS_History_Repository {
             'completed' => (int) $results->completed,
             'failed' => (int) $results->failed,
             'processing' => (int) $results->processing,
+            'pending' => (int) $results->pending,
         );
         
         $stats['success_rate'] = $stats['total'] > 0 
