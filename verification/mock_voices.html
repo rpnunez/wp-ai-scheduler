@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voices Admin Mock</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <style>
+        /* Mock WP Admin Styles */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f1f1f1; padding: 20px; }
+        .wrap { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .wp-list-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .wp-list-table th, .wp-list-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        .button { background: #f7f7f7; border: 1px solid #ccc; padding: 5px 10px; cursor: pointer; border-radius: 3px; }
+        .button-primary { background: #0073aa; color: #fff; border-color: #0073aa; }
+        .aips-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .aips-modal-content { background: #fff; width: 500px; margin: 100px auto; padding: 20px; border-radius: 5px; }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Voices <button class="page-title-action aips-add-voice-btn button">Add New</button></h1>
+
+        <table class="wp-list-table widefat fixed striped aips-voices-list">
+            <thead>
+                <tr>
+                    <th class="column-name">Name</th>
+                    <th class="column-id">ID</th>
+                    <th class="column-title-prompt">Title Prompt</th>
+                    <th class="column-active">Active</th>
+                    <th class="column-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-voice-id="1">
+                    <td class="column-name"><strong>Professional</strong></td>
+                    <td class="column-id">
+                        <button class="button button-small aips-copy-btn" data-clipboard-text="1" title="Copy ID">1</button>
+                    </td>
+                    <td class="column-title-prompt"><small>Generate a professional title...</small></td>
+                    <td class="column-active"><span class="aips-status aips-status-active">Yes</span></td>
+                    <td class="column-actions">
+                        <button class="button aips-edit-voice" data-id="1">Edit</button>
+                        <button class="button aips-clone-voice" data-id="1">Clone</button>
+                        <button class="button button-link-delete aips-delete-voice" data-id="1">Delete</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div id="aips-voice-modal" class="aips-modal">
+            <div class="aips-modal-content">
+                <h2 id="aips-voice-modal-title">Add New Voice</h2>
+                <form id="aips-voice-form">
+                    <input type="hidden" name="voice_id" id="voice_id" value="">
+                    <p><label>Name: <input type="text" id="voice_name" name="name"></label></p>
+                    <p><label>Title Prompt: <textarea id="voice_title_prompt" name="title_prompt"></textarea></label></p>
+                    <p><label>Content Instructions: <textarea id="voice_content_instructions" name="content_instructions"></textarea></label></p>
+                    <p><label>Excerpt Instructions: <textarea id="voice_excerpt_instructions" name="excerpt_instructions"></textarea></label></p>
+                    <p><label><input type="checkbox" id="voice_is_active" name="is_active"> Active</label></p>
+                </form>
+                <button class="button aips-modal-close">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock aipsAjax
+        var aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: 'mock_nonce' };
+
+        // Mock jQuery Ajax
+        $.ajax = function(options) {
+            console.log('AJAX call:', options);
+            if (options.data.action === 'aips_get_voice') {
+                options.success({
+                    success: true,
+                    data: {
+                        voice: {
+                            id: 1,
+                            name: 'Professional',
+                            title_prompt: 'Generate a professional title...',
+                            content_instructions: 'Be professional.',
+                            excerpt_instructions: 'Summarize.',
+                            is_active: 1
+                        }
+                    }
+                });
+            }
+        };
+    </script>
+    <script>
+        // Inline admin.js logic to avoid path issues or loading delays
+        (function($) {
+            'use strict';
+            window.AIPS = window.AIPS || {};
+            var AIPS = window.AIPS;
+
+            // Minimal implementation of AIPS for verification
+            Object.assign(AIPS, {
+                init: function() {
+                    $(document).on('click', '.aips-clone-voice', this.cloneVoice);
+                },
+                cloneVoice: function(e) {
+                    e.preventDefault();
+                    var id = $(this).data('id');
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_get_voice',
+                            nonce: aipsAjax.nonce,
+                            voice_id: id
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                var v = response.data.voice;
+                                $('#voice_id').val('');
+                                $('#voice_name').val(v.name + ' (Copy)');
+                                $('#voice_title_prompt').val(v.title_prompt);
+                                $('#voice_content_instructions').val(v.content_instructions);
+                                $('#voice_excerpt_instructions').val(v.excerpt_instructions || '');
+                                $('#voice_is_active').prop('checked', v.is_active == 1);
+                                $('#aips-voice-modal-title').text('Clone Voice');
+                                $('#aips-voice-modal').show();
+                            }
+                        }
+                    });
+                }
+            });
+
+            $(document).ready(function() {
+                AIPS.init();
+            });
+        })(jQuery);
+    </script>
+</body>
+</html>

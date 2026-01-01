@@ -58,7 +58,6 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
         
         // Repository layer
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-repository.php';
@@ -67,6 +66,11 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-section-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-trending-topics-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voice-repository.php';
+
+        // Controller layer
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voice-controller.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
         
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-processor.php';

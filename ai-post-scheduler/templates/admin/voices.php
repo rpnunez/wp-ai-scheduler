@@ -21,6 +21,7 @@ if (!defined('ABSPATH')) {
             <thead>
                 <tr>
                     <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
+                    <th class="column-id"><?php esc_html_e('ID', 'ai-post-scheduler'); ?></th>
                     <th class="column-title-prompt"><?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?></th>
                     <th class="column-active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
                     <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
@@ -31,6 +32,11 @@ if (!defined('ABSPATH')) {
                 <tr data-voice-id="<?php echo esc_attr($voice->id); ?>">
                     <td class="column-name">
                         <strong><?php echo esc_html($voice->name); ?></strong>
+                    </td>
+                    <td class="column-id">
+                        <button class="button button-small aips-copy-btn" data-clipboard-text="<?php echo esc_attr($voice->id); ?>" title="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>">
+                            <?php echo esc_html($voice->id); ?>
+                        </button>
                     </td>
                     <td class="column-title-prompt">
                         <small><?php echo esc_html(substr($voice->title_prompt, 0, 60)) . (strlen($voice->title_prompt) > 60 ? '...' : ''); ?></small>
@@ -43,6 +49,9 @@ if (!defined('ABSPATH')) {
                     <td class="column-actions">
                         <button class="button aips-edit-voice" data-id="<?php echo esc_attr($voice->id); ?>">
                             <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+                        </button>
+                        <button class="button aips-clone-voice" data-id="<?php echo esc_attr($voice->id); ?>">
+                            <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
                         </button>
                         <button class="button button-link-delete aips-delete-voice" data-id="<?php echo esc_attr($voice->id); ?>">
                             <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
