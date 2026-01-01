@@ -97,6 +97,23 @@ class AIPS_Schedule_Repository {
             ORDER BY s.next_run ASC
         ", $current_time));
     }
+
+    /**
+     * Get upcoming active schedules.
+     *
+     * @param int $limit Number of schedules to retrieve. Default 5.
+     * @return array Array of schedule objects with template names.
+     */
+    public function get_upcoming($limit = 5) {
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT s.*, t.name as template_name
+            FROM {$this->schedule_table} s
+            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
+            WHERE s.is_active = 1
+            ORDER BY s.next_run ASC
+            LIMIT %d
+        ", $limit));
+    }
     
     /**
      * Get schedules by template ID.
