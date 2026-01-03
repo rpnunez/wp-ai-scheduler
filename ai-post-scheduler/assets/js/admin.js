@@ -83,46 +83,41 @@
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
 
-            // Copy to Clipboard
-            $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
-        },
+            // Copy to Clipboard (using clipboard.js)
+            if (typeof ClipboardJS !== 'undefined') {
+                var clipboard = new ClipboardJS('.aips-copy-btn');
 
-        copyToClipboard: function(e) {
-            e.preventDefault();
-            var $btn = $(this);
-            var text = $btn.data('clipboard-text');
-            var originalIcon = $btn.data('original-icon') || 'dashicons-admin-page';
-            var originalText = $btn.text();
+                clipboard.on('success', function(e) {
+                    var $btn = $(e.trigger);
+                    var originalHtml = $btn.data('original-html');
 
-            if (!text) return;
+                    if (!originalHtml) {
+                        originalHtml = $btn.html();
+                        $btn.data('original-html', originalHtml);
+                    }
 
-            // Fallback for older browsers
-            if (!navigator.clipboard) {
-                var textArea = document.createElement("textarea");
-                textArea.value = text;
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    $btn.text('Copied!');
+                    var hasText = $btn.text().trim().length > 0;
+
+                    // Visual feedback
+                    $btn.addClass('aips-copy-success');
+                    if (hasText) {
+                        $btn.html('<span class="dashicons dashicons-yes"></span> Copied!');
+                    } else {
+                        $btn.html('<span class="dashicons dashicons-yes"></span>');
+                    }
+
                     setTimeout(function() {
-                        $btn.text(originalText);
+                        $btn.html(originalHtml);
+                        $btn.removeClass('aips-copy-success');
                     }, 2000);
-                } catch (err) {
-                    console.error('Fallback: Oops, unable to copy', err);
-                }
-                document.body.removeChild(textArea);
-                return;
-            }
 
-            navigator.clipboard.writeText(text).then(function() {
-                $btn.text('Copied!');
-                setTimeout(function() {
-                    $btn.text(originalText);
-                }, 2000);
-            }, function(err) {
-                console.error('Async: Could not copy text: ', err);
-            });
+                    e.clearSelection();
+                });
+
+                clipboard.on('error', function(e) {
+                    console.error('Clipboard error:', e);
+                });
+            }
         },
 
         testConnection: function(e) {
