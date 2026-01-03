@@ -51,3 +51,7 @@ function aips_migration_1_6_trending_topics($wpdb) {
     error_log("AIPS Migration 1.6: Successfully created {$table_name} table");
     return true;
 }
+
+// Execute migration
+global $wpdb;
+aips_migration_1_6_trending_topics($wpdb);
