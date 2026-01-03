@@ -105,6 +105,9 @@ final class AI_Post_Scheduler {
     public function activate() {
         $this->set_default_options();
         $this->check_upgrades();
+
+        // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
+        AIPS_DB_Manager::install_tables();
         
         if (!wp_next_scheduled('aips_generate_scheduled_posts')) {
             wp_schedule_event(time(), 'hourly', 'aips_generate_scheduled_posts');

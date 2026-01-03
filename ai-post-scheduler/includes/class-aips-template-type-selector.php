@@ -29,6 +29,13 @@ class AIPS_Template_Type_Selector {
 	 * @var AIPS_Schedule_Repository
 	 */
 	private $schedule_repository;
+
+	/**
+	 * Cache active structures to prevent N+1 queries.
+	 *
+	 * @var array|null
+	 */
+	private $active_structures_cache = null;
 	
 	/**
 	 * Initialize the selector.
@@ -70,7 +77,12 @@ class AIPS_Template_Type_Selector {
 	 * @return int|null Structure ID or null.
 	 */
 	private function select_by_pattern($schedule) {
-		$active_structures = $this->structure_repository->get_all(true);
+		// Use cached structures if available, otherwise fetch and cache
+		if ($this->active_structures_cache === null) {
+			$this->active_structures_cache = $this->structure_repository->get_all(true);
+		}
+
+		$active_structures = $this->active_structures_cache;
 		
 		if (empty($active_structures)) {
 			return null;
@@ -103,7 +115,7 @@ class AIPS_Template_Type_Selector {
 	 */
 	private function select_sequential($schedule, $active_structures) {
 		// Get count of posts generated for this schedule
-		$count = $this->get_schedule_execution_count($schedule->id);
+		$count = $this->get_schedule_execution_count($schedule);
 		
 		// Select structure based on count
 		$index = $count % count($active_structures);
@@ -165,7 +177,7 @@ class AIPS_Template_Type_Selector {
 		}
 		
 		// Get count of posts generated for this schedule
-		$count = $this->get_schedule_execution_count($schedule->id);
+		$count = $this->get_schedule_execution_count($schedule);
 		
 		// Alternate between first and second
 		$index = $count % 2;
@@ -178,16 +190,21 @@ class AIPS_Template_Type_Selector {
 	 *
 	 * Uses the history table to count successful generations.
 	 *
-	 * @param int $schedule_id Schedule ID.
+	 * @param int|object $schedule Schedule ID or object.
 	 * @return int Execution count.
 	 */
-	private function get_schedule_execution_count($schedule_id) {
+	private function get_schedule_execution_count($schedule) {
 		global $wpdb;
 		$table_history = $wpdb->prefix . 'aips_history';
 		$table_schedule = $wpdb->prefix . 'aips_schedule';
 		
-		// Get the schedule's template_id to find related history entries
-		$schedule = $this->schedule_repository->get_by_id($schedule_id);
+		// Handle ID or Object input to allow avoiding N+1 queries
+		if (is_numeric($schedule)) {
+			$schedule_id = (int) $schedule;
+			$schedule = $this->schedule_repository->get_by_id($schedule_id);
+		} else {
+			$schedule_id = $schedule->id;
+		}
 		
 		if (!$schedule) {
 			return 0;
