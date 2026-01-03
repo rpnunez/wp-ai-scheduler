@@ -185,11 +185,7 @@ class AIPS_Generator {
     public function generate_post($template, $voice = null, $topic = null) {
         
         // Dispatch post generation started event
-        do_action('aips_post_generation_started', array(
-            'template_id' => $template->id,
-            'topic' => $topic ? $topic : '',
-            'timestamp' => current_time('mysql'),
-        ), 'post_generation');
+        do_action('aips_post_generation_started', $template->id, $topic ? $topic : '');
         
         // Start new generation session
         $this->current_session->start($template, $voice);
@@ -229,16 +225,7 @@ class AIPS_Generator {
             }
             
             // Dispatch post generation failed event
-            do_action('aips_post_generation_failed', array(
-                'template_id' => $template->id,
-                'error_code' => $content->get_error_code(),
-                'error_message' => $content->get_error_message(),
-                'metadata' => array(
-                    'history_id' => $history_id,
-                    'topic' => $topic,
-                ),
-                'timestamp' => current_time('mysql'),
-            ), 'post_generation');
+            do_action('aips_post_generation_failed', $template->id, $content->get_error_message(), $topic);
             
             return $content;
         }
@@ -351,19 +338,6 @@ class AIPS_Generator {
             'template_id' => $template->id,
             'title' => $title
         ));
-        
-        // Dispatch post generation completed event
-        do_action('aips_post_generation_completed', array(
-            'template_id' => $template->id,
-            'post_id' => $post_id,
-            'metadata' => array(
-                'history_id' => $history_id,
-                'topic' => $topic,
-                'title' => $title,
-                'featured_image_id' => $featured_image_id,
-            ),
-            'timestamp' => current_time('mysql'),
-        ), 'post_generation');
         
         do_action('aips_post_generated', $post_id, $template, $history_id);
         

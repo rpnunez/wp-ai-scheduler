@@ -137,10 +137,7 @@ class AIPS_Scheduler {
         
         foreach ($due_schedules as $schedule) {
             // Dispatch schedule execution started event
-            do_action('aips_schedule_execution_started', array(
-                'schedule_id' => $schedule->schedule_id,
-                'timestamp' => current_time('mysql'),
-            ), 'schedule_execution');
+            do_action('aips_schedule_execution_started', $schedule->schedule_id);
             
             $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
                 'template_id' => $schedule->template_id,
@@ -189,16 +186,7 @@ class AIPS_Scheduler {
                 ));
                 
                 // Dispatch schedule execution failed event
-                do_action('aips_schedule_execution_failed', array(
-                    'schedule_id' => $schedule->schedule_id,
-                    'error_code' => $result->get_error_code(),
-                    'error_message' => $result->get_error_message(),
-                    'metadata' => array(
-                        'template_id' => $schedule->template_id,
-                        'frequency' => $schedule->frequency,
-                    ),
-                    'timestamp' => current_time('mysql'),
-                ), 'schedule_execution');
+                do_action('aips_schedule_execution_failed', $schedule->schedule_id, $result->get_error_message());
             } else {
                 $logger->log('Schedule completed successfully', 'info', array(
                     'schedule_id' => $schedule->schedule_id,
@@ -206,15 +194,7 @@ class AIPS_Scheduler {
                 ));
                 
                 // Dispatch schedule execution completed event
-                do_action('aips_schedule_execution_completed', array(
-                    'schedule_id' => $schedule->schedule_id,
-                    'post_id' => $result,
-                    'metadata' => array(
-                        'template_id' => $schedule->template_id,
-                        'frequency' => $schedule->frequency,
-                    ),
-                    'timestamp' => current_time('mysql'),
-                ), 'schedule_execution');
+                do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
             }
         }
     }
