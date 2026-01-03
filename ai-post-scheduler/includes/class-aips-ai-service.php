@@ -164,6 +164,7 @@ class AIPS_AI_Service {
      * Generate an image using AI.
      *
      * Sends an image prompt to the AI Engine and returns the generated image URL.
+     * Includes retry logic, circuit breaker, and rate limiting.
      *
      * @param string $prompt  The image generation prompt.
      * @param array  $options Optional. AI generation options.
@@ -177,38 +178,58 @@ class AIPS_AI_Service {
             $this->log_call('image', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
-        
-        try {
-            $query = new Meow_MWAI_Query_Image($prompt);
-            $response = $ai->run_query($query);
-            
-            if (!$response || empty($response->result)) {
-                $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
-                $this->log_call('image', $prompt, null, $options, $error->get_error_message());
-                return $error;
-            }
-            
-            $image_url = $response->result;
-            
-            // Handle array response (some AI engines return arrays)
-            if (is_array($image_url) && !empty($image_url[0])) {
-                $image_url = $image_url[0];
-            }
-            
-            if (empty($image_url)) {
-                $error = new WP_Error('no_image_url', __('No image URL in AI response.', 'ai-post-scheduler'));
-                $this->log_call('image', $prompt, null, $options, $error->get_error_message());
-                return $error;
-            }
-            
-            $this->log_call('image', $prompt, $image_url, $options);
-            return $image_url;
-            
-        } catch (Exception $e) {
-            $error = new WP_Error('generation_failed', $e->getMessage());
-            $this->log_call('image', $prompt, null, $options, $e->getMessage());
+
+        // Check circuit breaker
+        if (!$this->resilience_service->check_circuit_breaker()) {
+            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
+            $this->log_call('image', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
+        
+        // Check rate limiting
+        if (!$this->resilience_service->check_rate_limit()) {
+            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+            $this->log_call('image', $prompt, null, $options, $error->get_error_message());
+            return $error;
+        }
+
+        return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
+            try {
+                $query = new Meow_MWAI_Query_Image($prompt);
+                $response = $ai->run_query($query);
+
+                if (!$response || empty($response->result)) {
+                    $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
+                    $this->log_call('image', $prompt, null, $options, $error->get_error_message());
+                    $this->resilience_service->record_failure();
+                    return $error;
+                }
+
+                $image_url = $response->result;
+
+                // Handle array response (some AI engines return arrays)
+                if (is_array($image_url) && !empty($image_url[0])) {
+                    $image_url = $image_url[0];
+                }
+
+                if (empty($image_url)) {
+                    $error = new WP_Error('no_image_url', __('No image URL in AI response.', 'ai-post-scheduler'));
+                    $this->log_call('image', $prompt, null, $options, $error->get_error_message());
+                    $this->resilience_service->record_failure();
+                    return $error;
+                }
+
+                $this->log_call('image', $prompt, $image_url, $options);
+                $this->resilience_service->record_success();
+                return $image_url;
+
+            } catch (Exception $e) {
+                $error = new WP_Error('generation_failed', $e->getMessage());
+                $this->log_call('image', $prompt, null, $options, $e->getMessage());
+                $this->resilience_service->record_failure();
+                return $error;
+            }
+        }, 'image', $prompt, $options);
     }
     
     /**

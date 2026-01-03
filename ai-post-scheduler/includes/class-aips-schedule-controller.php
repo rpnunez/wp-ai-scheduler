@@ -139,13 +139,29 @@ class AIPS_Schedule_Controller {
         }
 
         $quantity = $template->post_quantity ?: 1;
+
+        // SECURITY: Enforce a hard limit for immediate execution to prevent PHP timeouts
+        // and potential API rate limiting issues.
+        $max_run_now = 5;
+        $capped = false;
+        if ($quantity > $max_run_now) {
+            $quantity = $max_run_now;
+            $capped = true;
+        }
+
         $post_ids = array();
         $errors = array();
 
         $generator = new AIPS_Generator();
+        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+
+        // Enforce hard limit of 5 to prevent timeouts (Bolt)
+        if ($quantity > 5) {
+            $quantity = 5;
+        }
 
         for ($i = 0; $i < $quantity; $i++) {
-            $result = $generator->generate_post($template, $voice);
+            $result = $generator->generate_post($template, $voice, $topic);
 
             if (is_wp_error($result)) {
                 $errors[] = $result->get_error_message();
@@ -166,6 +182,13 @@ class AIPS_Schedule_Controller {
             __('%d post(s) generated successfully!', 'ai-post-scheduler'),
             count($post_ids)
         );
+
+        if ($capped) {
+            $message .= ' ' . sprintf(
+                __('(Limited to %d for manual run)', 'ai-post-scheduler'),
+                $max_run_now
+            );
+        }
 
         if (!empty($errors)) {
             $message .= ' ' . sprintf(

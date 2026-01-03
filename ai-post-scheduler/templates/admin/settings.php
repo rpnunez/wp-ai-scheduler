@@ -39,6 +39,13 @@ if (!defined('ABSPATH')) {
         <h2><?php esc_html_e('AI Engine Status', 'ai-post-scheduler'); ?></h2>
         <?php if (class_exists('Meow_MWAI_Core')): ?>
         <p class="aips-status-ok"><span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e('AI Engine is installed and active.', 'ai-post-scheduler'); ?></p>
+        <div class="aips-test-connection-wrapper">
+            <button type="button" id="aips-test-connection" class="button button-secondary">
+                <?php esc_html_e('Test Connection', 'ai-post-scheduler'); ?>
+            </button>
+            <span class="spinner"></span>
+            <span id="aips-connection-result" class="aips-connection-result"></span>
+        </div>
         <?php else: ?>
         <p class="aips-status-error"><span class="dashicons dashicons-warning"></span> <?php esc_html_e('AI Engine is not installed or not activated.', 'ai-post-scheduler'); ?></p>
         <p><?php esc_html_e('Please install and activate the AI Engine plugin by Meow Apps for this plugin to work.', 'ai-post-scheduler'); ?></p>
