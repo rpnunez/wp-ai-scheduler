@@ -104,7 +104,8 @@
                             <label><?php esc_html_e('Days of Week', 'ai-post-scheduler'); ?></label>
                             <div class="aips-checkbox-group">
                                 <?php
-                                $days = ['Mon' => 1, 'Tue' => 2, 'Wed' => 3, 'Thu' => 4, 'Fri' => 5, 'Sat' => 6, 'Sun' => 0];
+                                // Use PHP date('w') mapping: 0 = Sunday, 1 = Monday, ..., 6 = Saturday.
+                                $days = ['Sun' => 0, 'Mon' => 1, 'Tue' => 2, 'Wed' => 3, 'Thu' => 4, 'Fri' => 5, 'Sat' => 6];
                                 foreach ($days as $label => $val) {
                                     echo '<label style="margin-right:10px;"><input type="checkbox" name="days_of_week[]" value="' . $val . '" checked> ' . $label . '</label>';
                                 }
