@@ -66,6 +66,8 @@ class AIPS_Planner {
             }
         }
 
+        do_action('aips_planner_topics_generated', $topics, $niche);
+
         wp_send_json_success(array('topics' => $topics));
     }
 
@@ -125,6 +127,8 @@ class AIPS_Planner {
         if ($count === false || $count === 0) {
             wp_send_json_error(array('message' => __('Failed to schedule topics.', 'ai-post-scheduler')));
         }
+
+        do_action('aips_planner_bulk_scheduled', $count, $template_id);
 
         wp_send_json_success(array(
             'message' => sprintf(__('%d topics scheduled successfully.', 'ai-post-scheduler'), $count),

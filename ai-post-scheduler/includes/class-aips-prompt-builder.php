@@ -22,6 +22,8 @@ class AIPS_Prompt_Builder {
      * @return string The constructed prompt.
      */
     public function build_content_prompt($template, $topic, $voice = null) {
+        do_action('aips_before_build_content_prompt', $template, $topic);
+
         // Check if article_structure_id is provided, build prompt with structure
         $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
 
@@ -44,6 +46,8 @@ class AIPS_Prompt_Builder {
         }
 
         $content_prompt = $processed_prompt . "\n\nOutput the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.";
+
+        $content_prompt = apply_filters('aips_content_prompt', $content_prompt, $template, $topic);
 
         return $content_prompt;
     }
