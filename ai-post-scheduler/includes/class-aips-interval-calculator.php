@@ -181,73 +181,118 @@ class AIPS_Interval_Calculator {
      * - day_of_month: 15
      */
     private function calculate_custom_interval($base_time, $rules) {
-        // Decode if JSON string
-        if (is_string($rules)) {
-            $rules = json_decode($rules, true);
-        }
+    	// Decode if JSON string
+    	if (is_string($rules)) {
+    		$rules = json_decode($rules, true);
+    	}
 
-        $next_time = $base_time;
+    	// Ensure rules is an array
+    	if (!is_array($rules)) {
+    		// Fallback: simple +1 day if rules are not usable
+    		return strtotime('+1 day', $base_time);
+    	}
 
-        // 1. Specific Time Adjustment
-        // If we are strictly calculating "next interval", we usually move forward first.
-        // But if we just finished a run at 09:00, we want tomorrow 09:00.
-        // Logic: Advance 1 day, then set time? Or find next valid day?
+    	// 1. Handle multiple times per day: look for the next time later TODAY first.
+    	if (isset($rules['times']) && is_array($rules['times']) && !empty($rules['times'])) {
+    		// Multi-time support
+    		sort($rules['times']);
 
-        // Simplest Strategy: Iterate days until we find a match.
-        // Limit iteration to 366 days to prevent infinite loops.
-        for ($i = 0; $i < 366; $i++) {
-            // Move to next candidate day (start with +1 day from base, since base was the last run)
-            // Or should we check TODAY if base_time is in the past?
-            // The calling function `calculate_next_run` handles the "catch up" loop.
-            // This function is responsible for "Given X, what is X + 1 interval".
-            // So we should always advance at least one unit.
+    		$date_str         = date('Y-m-d', $base_time);
+    		$current_time_str = date('H:i', $base_time);
 
-            // Advance by 1 day as the smallest unit for custom schedules usually
-            // Unless it's multiple times a day?
-            // "Twice a day" user request -> implies intraday.
+    		foreach ($rules['times'] as $time) {
+    			if ($time > $current_time_str) {
+    				$candidate = strtotime($date_str . ' ' . $time);
+    				if ($this->is_valid_custom_date($candidate, $rules)) {
+    					return $candidate;
+    				}
+    			}
+    		}
+    	}
 
-            if (isset($rules['times']) && is_array($rules['times']) && !empty($rules['times'])) {
-                // Multi-time support
-                // Sort times
-                sort($rules['times']);
+    	// Decide the time-of-day to use for future days.
+    	if (isset($rules['times']) && is_array($rules['times']) && !empty($rules['times'])) {
+    		$time_for_new_days = $rules['times'][0];
+    	} elseif (!empty($rules['specific_time'])) {
+    		$time_for_new_days = $rules['specific_time'];
+    	} else {
+    		$time_for_new_days = date('H:i', $base_time);
+    	}
 
-                // Check if any time later today is valid?
-                $date_str = date('Y-m-d', $base_time);
-                $current_time_str = date('H:i', $base_time);
+    	// 2. If day_of_month is configured, use month-based arithmetic instead of day-by-day looping.
+    	if (!empty($rules['day_of_month'])) {
+    		$days_of_month = $rules['day_of_month'];
+    		if (!is_array($days_of_month)) {
+    			$days_of_month = array((int) $days_of_month);
+    		}
 
-                foreach ($rules['times'] as $time) {
-                    if ($time > $current_time_str) {
-                        // Found a later time today!
-                        $candidate = strtotime("$date_str $time");
-                        if ($this->is_valid_custom_date($candidate, $rules)) {
-                            return $candidate;
-                        }
-                    }
-                }
+    		// Normalize and sort days of month
+    		$normalized_days = array();
+    		foreach ($days_of_month as $dom) {
+    			$dom = (int) $dom;
+    			if ($dom > 0 && $dom <= 31) {
+    				$normalized_days[] = $dom;
+    			}
+    		}
+    		$normalized_days = array_unique($normalized_days);
+    		sort($normalized_days);
 
-                // If no later time today, move to start of next day
-                $base_time = strtotime('+1 day', strtotime($date_str . ' 00:00:00'));
-                // Reset time for loop check
+    		if (!empty($normalized_days)) {
+    			$start_of_day   = strtotime(date('Y-m-d 00:00:00', $base_time));
+    			$best_candidate = null;
 
-            } else {
-                // Standard Daily increment
-                $base_time = strtotime('+1 day', $base_time);
-            }
+    			// Look ahead a reasonable number of months to find the next valid run.
+    			for ($m_offset = 0; $m_offset < 24; $m_offset++) {
+    				$month_base_ts = strtotime('first day of +' . $m_offset . ' month', $start_of_day);
+    				$year          = (int) date('Y', $month_base_ts);
+    				$month         = (int) date('n', $month_base_ts);
 
-            // Now check if this day is valid
-            // If we have specific times, we try the first time of the day
-            $time_to_set = isset($rules['times']) ? $rules['times'][0] : (isset($rules['specific_time']) ? $rules['specific_time'] : date('H:i', $base_time));
+    				foreach ($normalized_days as $dom) {
+    					if (!checkdate($month, $dom, $year)) {
+    						continue;
+    					}
 
-            $candidate_str = date('Y-m-d', $base_time) . ' ' . $time_to_set;
-            $candidate = strtotime($candidate_str);
+    					$day_ts = mktime(0, 0, 0, $month, $dom, $year);
+    					// We want strictly after the base time.
+    					if ($day_ts <= $base_time) {
+    						continue;
+    					}
 
-            if ($this->is_valid_custom_date($candidate, $rules)) {
-                return $candidate;
-            }
-        }
+    					$candidate_str = date('Y-m-d', $day_ts) . ' ' . $time_for_new_days;
+    					$candidate     = strtotime($candidate_str);
 
-        // Fallback
-        return strtotime('+1 day', $base_time);
+    					if ($candidate > $base_time && $this->is_valid_custom_date($candidate, $rules)) {
+    						if ($best_candidate === null || $candidate < $best_candidate) {
+    							$best_candidate = $candidate;
+    						}
+    					}
+    				}
+    			}
+
+    			if ($best_candidate !== null) {
+    				return $best_candidate;
+    			}
+    		}
+    	}
+
+    	// 3. Fallback: iterate forward by day with a small safety limit when no day_of_month constraint.
+    	//    Only days_of_week and similar constraints are left; they are satisfied within a few days.
+    	$max_days_ahead = 32; // safety cap, but far smaller than 366 and enough for weekly patterns.
+    	$base_time      = strtotime('+1 day', $base_time);
+
+    	for ($i = 0; $i < $max_days_ahead; $i++) {
+    		$candidate_str = date('Y-m-d', $base_time) . ' ' . $time_for_new_days;
+    		$candidate     = strtotime($candidate_str);
+
+    		if ($this->is_valid_custom_date($candidate, $rules)) {
+    			return $candidate;
+    		}
+
+    		$base_time = strtotime('+1 day', $base_time);
+    	}
+
+    	// Fallback: if nothing found within the safety window, just move one day ahead.
+    	return strtotime('+1 day', $base_time);
     }
 
     /**
