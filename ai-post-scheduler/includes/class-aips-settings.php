@@ -218,6 +218,17 @@ class AIPS_Settings {
             true
         );
 
+        // Load Voices component only on Voices page and Templates page (for voice search)
+        if ($hook === 'ai-post-scheduler_page_aips-voices' || $hook === 'ai-post-scheduler_page_aips-templates') {
+            wp_enqueue_script(
+                'aips-admin-voices',
+                AIPS_PLUGIN_URL . 'assets/js/admin-voices.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
         wp_enqueue_script(
             'aips-admin-research',
             AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
