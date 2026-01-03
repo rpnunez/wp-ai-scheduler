@@ -1,0 +1,62 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <style>
+                /* Mock styles for visibility */
+                .aips-copy-btn { cursor: pointer; border: 1px solid #ccc; padding: 5px; }
+            </style>
+        </head>
+        <body>
+            <table>
+                <tbody>
+                    <tr>
+                        <td>
+                            <code>{{date}}</code>
+                            <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{date}}" aria-label="Copy variable">
+                                <span class="dashicons dashicons-admin-page">Copy</span>
+                            </button>
+                        </td>
+                        <td>Current date</td>
+                        <td>May 23, 2024</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div id="result"></div>
+
+            <script>
+            // Mock AIPS object and copy handler from admin.js
+            window.AIPS = window.AIPS || {};
+
+            // Mock esc_attr_e
+            function esc_attr_e(text, domain) { return text; }
+
+            (function($) {
+                // Simplified version of the copyToClipboard from admin.js for testing logic
+                window.AIPS.copyToClipboard = function(e) {
+                    e.preventDefault();
+                    var $btn = $(this);
+                    var text = $btn.data('clipboard-text');
+                    var originalText = $btn.find('span').text(); // Simplified for test
+
+                    if (!text) return;
+
+                    // In Playwright we can verify this logic works
+                    navigator.clipboard.writeText(text).then(function() {
+                        $btn.find('span').text('Copied!'); // Change inner span for test visibility
+                        $('#result').text('Copied: ' + text);
+                        setTimeout(function() {
+                            $btn.find('span').text(originalText);
+                        }, 2000);
+                    }, function(err) {
+                        console.error('Async: Could not copy text: ', err);
+                        $('#result').text('Error copying');
+                    });
+                };
+
+                $(document).on('click', '.aips-copy-btn', window.AIPS.copyToClipboard);
+            })(jQuery);
+            </script>
+        </body>
+        </html>
