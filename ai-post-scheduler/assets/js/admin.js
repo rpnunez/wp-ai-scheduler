@@ -208,6 +208,7 @@
                         $('#post_tags').val(t.post_tags);
                         $('#post_author').val(t.post_author);
                         $('#is_active').prop('checked', t.is_active == 1);
+                        $('#review_required').prop('checked', t.review_required == 1);
                         $('#aips-modal-title').text('Edit Template');
                         $('#aips-template-modal').show();
                     } else {
@@ -311,7 +312,8 @@
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
                     post_author: $('#post_author').val(),
-                    is_active: $('#is_active').is(':checked') ? 1 : 0
+                    is_active: $('#is_active').is(':checked') ? 1 : 0,
+                    review_required: $('#review_required').is(':checked') ? 1 : 0
                 },
                 success: function(response) {
                     if (response.success) {

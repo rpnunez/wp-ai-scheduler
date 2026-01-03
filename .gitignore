@@ -21,3 +21,7 @@ Thumbs.db
 *.log
 *.tmp
 /tmp/
+/vendor/
+/coverage/
+/.phpunit.result.cache
+/composer.lock

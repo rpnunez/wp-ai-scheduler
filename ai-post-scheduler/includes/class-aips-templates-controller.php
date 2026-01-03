@@ -38,6 +38,7 @@ class AIPS_Templates_Controller {
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
+            'review_required' => isset($_POST['review_required']) ? 1 : 0,
         );
 
         if (empty($data['name']) || empty($data['prompt_template'])) {

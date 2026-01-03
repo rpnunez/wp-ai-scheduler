@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock Calendar</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var aipsAjax = { ajaxUrl: '/mock-ajax', nonce: 'mock-nonce' };
+        window.wp = {};
+
+        // Mock AJAX for Calendar
+        $.ajax = function(options) {
+            console.log("Mock AJAX called", options);
+
+            // Helper to get param from data string or object
+            var getParam = function(key) {
+                if (typeof options.data === 'string') {
+                    var params = new URLSearchParams(options.data);
+                    return params.get(key);
+                } else if (typeof options.data === 'object') {
+                    return options.data[key];
+                }
+                return null;
+            };
+
+            var action = getParam('action');
+
+            if (action === 'aips_get_calendar_events') {
+                // Calculate dynamic dates for screenshot validity
+                var now = new Date();
+                var y = now.getFullYear();
+                var m = now.getMonth() + 1;
+                var mStr = m < 10 ? '0' + m : m;
+
+                var postDate = y + '-' + mStr + '-05 09:00:00';
+                var schedDate = y + '-' + mStr + '-10 09:00:00';
+
+                // Return mock events
+                setTimeout(function() {
+                    options.success({
+                        success: true,
+                        data: {
+                            events: [
+                                {
+                                    id: 'post-1',
+                                    title: 'Published Post',
+                                    start: postDate,
+                                    status: 'publish',
+                                    color: '#00a32a',
+                                    type: 'post'
+                                },
+                                {
+                                    id: 'schedule-1-ts',
+                                    title: 'Projected Run',
+                                    start: schedDate,
+                                    status: 'scheduled',
+                                    color: '#dcdcde',
+                                    type: 'schedule'
+                                }
+                            ]
+                        }
+                    });
+                }, 100);
+            }
+        };
+    </script>
+</head>
+<body>
+    <div id="aips-calendar-view">
+        <div class="aips-view-switcher">
+            <button class="aips-view-btn" data-view="calendar">Calendar</button>
+            <button class="aips-view-btn" data-view="list">List</button>
+        </div>
+
+        <div class="aips-calendar-controls">
+            <button id="prev-month">Prev</button>
+            <span id="current-month-label"></span>
+            <button id="next-month">Next</button>
+        </div>
+
+        <div id="aips-calendar-grid"></div>
+    </div>
+
+    <div id="aips-list-view" style="display:none;">List View Content</div>
+
+    <script src="../ai-post-scheduler/assets/js/admin-schedule.js"></script>
+</body>
+</html>

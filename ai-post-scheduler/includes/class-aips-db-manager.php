@@ -12,7 +12,8 @@ class AIPS_DB_Manager {
         'aips_voices',
         'aips_article_structures',
         'aips_prompt_sections',
-        'aips_trending_topics'
+        'aips_trending_topics',
+        'aips_schedule_queue'
     );
 
     public function __construct() {
@@ -52,6 +53,7 @@ class AIPS_DB_Manager {
         $table_structures = $tables['aips_article_structures'];
         $table_sections = $tables['aips_prompt_sections'];
         $table_trending_topics = $tables['aips_trending_topics'];
+        $table_schedule_queue = $tables['aips_schedule_queue'];
 
         $sql = array();
 
@@ -87,6 +89,7 @@ class AIPS_DB_Manager {
             post_tags text,
             post_author bigint(20) DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
+            review_required tinyint(1) NOT NULL DEFAULT 0,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id)
@@ -98,6 +101,8 @@ class AIPS_DB_Manager {
             article_structure_id bigint(20) DEFAULT NULL,
             rotation_pattern varchar(50) DEFAULT NULL,
             frequency varchar(50) NOT NULL DEFAULT 'daily',
+            schedule_type varchar(50) DEFAULT 'simple',
+            advanced_rules text DEFAULT NULL,
             topic TEXT DEFAULT NULL,
             next_run datetime NOT NULL,
             last_run datetime DEFAULT NULL,
@@ -160,6 +165,17 @@ class AIPS_DB_Manager {
             KEY niche_idx (niche),
             KEY score_idx (score),
             KEY researched_at_idx (researched_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_schedule_queue (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            schedule_id bigint(20) unsigned NOT NULL,
+            topic text NOT NULL,
+            status varchar(50) NOT NULL DEFAULT 'pending',
+            created_at datetime NOT NULL,
+            PRIMARY KEY  (id),
+            KEY schedule_status_idx (schedule_id, status),
+            KEY created_at_idx (created_at)
         ) $charset_collate;";
 
         return $sql;
