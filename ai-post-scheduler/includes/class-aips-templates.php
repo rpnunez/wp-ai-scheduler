@@ -238,6 +238,11 @@ class AIPS_Templates {
     }
 
     public function get_all_pending_stats() {
+        $cached_stats = get_transient('aips_pending_schedule_stats');
+        if ($cached_stats !== false) {
+            return $cached_stats;
+        }
+
         global $wpdb;
         $table_schedule = $wpdb->prefix . 'aips_schedule';
 
@@ -246,6 +251,7 @@ class AIPS_Templates {
 
         $stats = array();
         if (empty($schedules)) {
+            set_transient('aips_pending_schedule_stats', $stats, HOUR_IN_SECONDS);
             return $stats;
         }
 
@@ -293,6 +299,7 @@ class AIPS_Templates {
             }
         }
 
+        set_transient('aips_pending_schedule_stats', $stats, HOUR_IN_SECONDS);
         return $stats;
     }
 

@@ -101,10 +101,22 @@ class AIPS_Interval_Calculator {
      */
     public function calculate_next_run($frequency, $start_time = null) {
         $base_time = $start_time ? strtotime($start_time) : current_time('timestamp');
+        $now = current_time('timestamp');
         
-        // If start time is in the past, use current time
-        if ($base_time < current_time('timestamp')) {
-            $base_time = current_time('timestamp');
+        // If start time is in the past, add intervals until future (Catch-up logic)
+        // This prevents schedule drift by preserving the phase of the schedule
+        if ($base_time < $now) {
+            // Safety limit to prevent infinite loops if interval is 0 or very small/broken
+            $limit = 100;
+            while ($base_time <= $now && $limit > 0) {
+                $base_time = $this->calculate_next_timestamp($frequency, $base_time);
+                $limit--;
+            }
+            // If we hit the limit, just set to now + interval to ensure we don't stall
+            if ($limit === 0) {
+                 $base_time = $this->calculate_next_timestamp($frequency, $now);
+            }
+            return date('Y-m-d H:i:s', $base_time);
         }
         
         $next = $this->calculate_next_timestamp($frequency, $base_time);

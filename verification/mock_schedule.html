@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Schedule</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-modal { display: none; border: 1px solid black; padding: 20px; background: white; }
+    </style>
+</head>
+<body>
+
+    <button class="aips-add-schedule-btn">Add New</button>
+
+    <table>
+        <tr data-schedule-id="123"
+            data-template-id="5"
+            data-frequency="daily"
+            data-topic="My Cool Topic"
+            data-article-structure-id="10"
+            data-rotation-pattern="sequential">
+            <td>Template Name</td>
+            <td>
+                <button class="aips-clone-schedule">Clone</button>
+            </td>
+        </tr>
+    </table>
+
+    <div id="aips-schedule-modal" class="aips-modal">
+        <div class="aips-modal-header">
+            <h2 id="aips-schedule-modal-title">Add New Schedule</h2>
+        </div>
+        <form id="aips-schedule-form">
+            <input type="hidden" id="schedule_id" name="schedule_id">
+            <select id="schedule_template"><option value="5">5</option></select>
+            <select id="schedule_frequency"><option value="daily">daily</option></select>
+            <input type="text" id="schedule_topic">
+            <input type="text" id="schedule_start_time">
+            <select id="article_structure_id"><option value="10">10</option></select>
+            <select id="rotation_pattern"><option value="sequential">sequential</option></select>
+        </form>
+    </div>
+
+    <script>
+        // Mock aipsAjax
+        window.aipsAjax = { ajaxUrl: '/ajax', nonce: '123' };
+    </script>
+
+    <!-- Load the actual admin.js script -->
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+
+</body>
+</html>

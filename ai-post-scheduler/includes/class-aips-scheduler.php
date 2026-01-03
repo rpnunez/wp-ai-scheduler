@@ -60,7 +60,14 @@ class AIPS_Scheduler {
         if (isset($data['next_run'])) {
             $next_run = sanitize_text_field($data['next_run']);
         } else {
-            $next_run = $this->calculate_next_run($frequency, isset($data['start_time']) ? $data['start_time'] : null);
+            // Use start_time as the initial run time if provided, otherwise start now.
+            // Using calculate_next_run here would skip the first interval (e.g., scheduling for "Tomorrow" if "Start Time" is "Now").
+            $start_time = isset($data['start_time']) && !empty($data['start_time'])
+                ? $data['start_time']
+                : current_time('mysql');
+
+            // Ensure proper MySQL format (handling 'T' from datetime-local inputs)
+            $next_run = date('Y-m-d H:i:s', strtotime($start_time));
         }
         
         $schedule_data = array(
@@ -167,8 +174,8 @@ class AIPS_Scheduler {
                 $this->repository->delete($schedule->schedule_id);
                 $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
-                // Otherwise calculate next run
-                $next_run = $this->calculate_next_run($schedule->frequency);
+                // Otherwise calculate next run, passing existing next_run as start_time to preserve phase
+                $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run);
 
                 $this->repository->update($schedule->schedule_id, array(
                     'last_run' => current_time('mysql'),
