@@ -60,7 +60,14 @@ class AIPS_Scheduler {
         if (isset($data['next_run'])) {
             $next_run = sanitize_text_field($data['next_run']);
         } else {
-            $next_run = $this->calculate_next_run($frequency, isset($data['start_time']) ? $data['start_time'] : null);
+            // Use start_time as the initial run time if provided, otherwise start now.
+            // Using calculate_next_run here would skip the first interval (e.g., scheduling for "Tomorrow" if "Start Time" is "Now").
+            $start_time = isset($data['start_time']) && !empty($data['start_time'])
+                ? $data['start_time']
+                : current_time('mysql');
+
+            // Ensure proper MySQL format (handling 'T' from datetime-local inputs)
+            $next_run = date('Y-m-d H:i:s', strtotime($start_time));
         }
         
         $schedule_data = array(
