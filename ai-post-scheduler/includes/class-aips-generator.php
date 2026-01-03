@@ -152,8 +152,8 @@ class AIPS_Generator {
         }
         
         $title = trim($result);
-        $title = preg_replace('/^["\'"]|["\'"]$/', '', $title);
-        
+        $title = preg_replace('/^["\']|["\']$/', '', $title);
+
         return $title;
     }
     
@@ -177,8 +177,8 @@ class AIPS_Generator {
         }
         
         $excerpt = trim($result);
-        $excerpt = preg_replace('/^["\'"]|["\'"]$/', '', $excerpt);
-        
+        $excerpt = preg_replace('/^["\']|["\']$/', '', $excerpt);
+
         return substr($excerpt, 0, 160);
     }
     
