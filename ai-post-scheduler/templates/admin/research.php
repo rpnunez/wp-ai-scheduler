@@ -139,6 +139,7 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
             <button type="button" class="button" id="load-topics">
                 <?php echo esc_html__('Load Topics', 'ai-post-scheduler'); ?>
             </button>
+            <span class="spinner" id="load-topics-spinner" style="float: none; margin-top: 0;"></span>
         </div>
         
         <!-- Topics Table -->
@@ -407,10 +408,16 @@ jQuery(document).ready(function($) {
     
     // Load topics
     $('#load-topics').on('click', function() {
+        const $btn = $(this);
+        const $spinner = $('#load-topics-spinner');
+
         const niche = $('#filter-niche').val();
         const minScore = $('#filter-score').val();
         const freshOnly = $('#filter-fresh').is(':checked');
         
+        $btn.prop('disabled', true);
+        $spinner.addClass('is-active');
+
         $.ajax({
             url: ajaxurl,
             type: 'POST',
@@ -428,6 +435,10 @@ jQuery(document).ready(function($) {
                 } else {
                     alert('Error: ' + response.data.message);
                 }
+            },
+            complete: function() {
+                $btn.prop('disabled', false);
+                $spinner.removeClass('is-active');
             }
         });
     });
