@@ -44,6 +44,9 @@ if (!defined('ABSPATH')) {
                         <button class="button aips-edit-voice" data-id="<?php echo esc_attr($voice->id); ?>">
                             <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                         </button>
+                        <button class="button aips-clone-voice" data-id="<?php echo esc_attr($voice->id); ?>" aria-label="<?php esc_attr_e('Clone voice', 'ai-post-scheduler'); ?>">
+                            <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
+                        </button>
                         <button class="button button-link-delete aips-delete-voice" data-id="<?php echo esc_attr($voice->id); ?>">
                             <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                         </button>

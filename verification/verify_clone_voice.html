@@ -1,3 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Clone Voice</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+        .aips-modal { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Voices Table -->
+    <table class="wp-list-table widefat fixed striped aips-voices-list">
+        <tbody>
+            <tr data-voice-id="123">
+                <td class="column-name"><strong>Test Voice</strong></td>
+                <td class="column-actions">
+                    <button class="button aips-clone-voice" data-id="123">Clone</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Voice Modal -->
+    <div id="aips-voice-modal" class="aips-modal">
+        <h2 id="aips-voice-modal-title">Add New Voice</h2>
+        <form id="aips-voice-form">
+            <input type="hidden" name="voice_id" id="voice_id" value="">
+            <input type="text" id="voice_name" name="name">
+            <textarea id="voice_title_prompt" name="title_prompt"></textarea>
+            <textarea id="voice_content_instructions" name="content_instructions"></textarea>
+            <textarea id="voice_excerpt_instructions" name="excerpt_instructions"></textarea>
+            <input type="checkbox" id="voice_is_active" name="is_active">
+        </form>
+    </div>
+
+    <script>
+        // Mock WordPress environment
+        var aipsAjax = {
+            ajaxUrl: '/wp-admin/admin-ajax.php',
+            nonce: 'mock_nonce'
+        };
+
+        // Mock $.ajax to avoid CORS issues with file://
+        // We intercept the call and trigger success immediately
+        var originalAjax = $.ajax;
+        $.ajax = function(options) {
+            console.log('Mock $.ajax called with:', options);
+            if (options.action === 'aips_get_voice' || (options.data && options.data.action === 'aips_get_voice')) {
+                // Return mock data
+                var response = {
+                    success: true,
+                    data: {
+                        voice: {
+                            id: "123",
+                            name: "Test Voice",
+                            title_prompt: "Prompt",
+                            content_instructions: "Content",
+                            excerpt_instructions: "Excerpt",
+                            is_active: 1
+                        }
+                    }
+                };
+                if (options.success) {
+                    options.success(response);
+                }
+            } else {
+                console.warn('Unhandled ajax action:', options);
+            }
+        };
+    </script>
+
+    <!-- Embed the admin script directly to avoid path issues -->
+    <script>
 (function($) {
     'use strict';
 
@@ -220,7 +295,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
-            
+
             $btn.prop('disabled', true);
 
             $.ajax({
@@ -370,7 +445,7 @@
         testTemplate: function(e) {
             e.preventDefault();
             var prompt = $('#prompt_template').val();
-            
+
             if (!prompt) {
                 alert('Please enter a prompt template first.');
                 return;
@@ -694,7 +769,7 @@
             e.preventDefault();
             var status = $(this).data('status');
             var message = status ? 'Are you sure you want to clear all ' + status + ' history?' : 'Are you sure you want to clear all history?';
-            
+
             if (!confirm(message)) {
                 return;
             }
@@ -757,7 +832,7 @@
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
             var url = new URL(window.location.href);
-            
+
             if (status) {
                 url.searchParams.set('status', status);
             } else {
@@ -771,7 +846,7 @@
             }
 
             url.searchParams.delete('paged');
-            
+
             window.location.href = url.toString();
         },
 
@@ -946,7 +1021,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
-            
+
             $btn.prop('disabled', true);
             $('#aips-details-loading').show();
             $('#aips-details-content').hide();
@@ -981,7 +1056,7 @@
 
         renderDetails: function(data) {
             var log = data.generation_log || {};
-            
+
             var summaryHtml = '<table class="aips-details-table">';
             summaryHtml += '<tr><th>Status:</th><td><span class="aips-status aips-status-' + data.status + '">' + data.status.charAt(0).toUpperCase() + data.status.slice(1) + '</span></td></tr>';
             summaryHtml += '<tr><th>Title:</th><td>' + (data.generated_title || '-') + '</td></tr>';
@@ -995,7 +1070,7 @@
             }
             summaryHtml += '</table>';
             $('#aips-details-summary').html(summaryHtml);
-            
+
             if (log.template) {
                 var templateHtml = '<table class="aips-details-table">';
                 templateHtml += '<tr><th>Name:</th><td>' + (log.template.name || '-') + '</td></tr>';
@@ -1017,7 +1092,7 @@
             } else {
                 $('#aips-details-template').html('<p>No template data available.</p>');
             }
-            
+
             if (log.voice) {
                 var voiceHtml = '<table class="aips-details-table">';
                 voiceHtml += '<tr><th>Name:</th><td>' + (log.voice.name || '-') + '</td></tr>';
@@ -1038,7 +1113,7 @@
             } else {
                 $('#aips-details-voice-section').hide();
             }
-            
+
             if (log.ai_calls && log.ai_calls.length > 0) {
                 var callsHtml = '';
                 log.ai_calls.forEach(function(call, index) {
@@ -1069,7 +1144,7 @@
             } else {
                 $('#aips-details-ai-calls').html('<p>No AI call data available for this entry.</p>');
             }
-            
+
             if (log.errors && log.errors.length > 0) {
                 var errorsHtml = '<ul class="aips-errors-list">';
                 log.errors.forEach(function(error) {
@@ -1084,7 +1159,7 @@
             } else {
                 $('#aips-details-errors-section').hide();
             }
-            
+
             $('#aips-details-content').show();
         },
 
@@ -1170,3 +1245,15 @@
     });
 
 })(jQuery);
+    </script>
+
+    <script>
+        // Debug
+        console.log('Admin JS loaded:', window.AIPS);
+        $(document).on('click', '.aips-clone-voice', function() {
+            console.log('Click detected on .aips-clone-voice');
+        });
+    </script>
+
+</body>
+</html>
