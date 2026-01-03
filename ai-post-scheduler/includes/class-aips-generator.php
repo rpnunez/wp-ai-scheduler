@@ -274,7 +274,10 @@ class AIPS_Generator {
         
         $voice_excerpt_instructions = $this->prompt_builder->build_excerpt_instructions($voice, $topic);
         
-        $excerpt = $this->generate_excerpt($title, $base_processed_prompt, $voice_excerpt_instructions);
+        // Use generated content for excerpt generation instead of the prompt
+        // Truncate content to avoid token limits (approx 1500 words / 6000 chars)
+        $excerpt_content = mb_substr($content, 0, 6000);
+        $excerpt = $this->generate_excerpt($title, $excerpt_content, $voice_excerpt_instructions);
         
         // Use Post Creator Service
         $post_creation_data = array(
