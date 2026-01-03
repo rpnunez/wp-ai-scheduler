@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-26 - [Refactor Admin Templates JS] **Context:** 'admin.js' was a 'God Object' (~700 lines) mixing logic for Templates, Voices, Schedules, and History. **Decision:** Extracted Template-related logic (CRUD, Search, Modals) into a new module 'admin-templates.js'. **Consequence:** Reduced 'admin.js' size by ~30%, improved separation of concerns, and established a clear pattern for further frontend modularization.
