@@ -120,7 +120,7 @@ class AIPS_Interval_Calculator {
 
             // Safety: if still in past, force to future relative to now (should not happen with valid intervals)
             if ($next <= current_time('timestamp')) {
-                 $next = $this->calculate_next_timestamp($frequency, current_time('timestamp'));
+            $next = $this->calculate_next_timestamp($frequency, current_time('timestamp'));
             }
         }
 
