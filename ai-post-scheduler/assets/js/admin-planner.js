@@ -267,7 +267,11 @@
                                     // Clear list
                                     $('#topics-list').empty();
                                     $('#planner-results').slideUp();
-                                    window.location.reload(); // Reload to show new schedule or calendar
+                                    // Trigger event so other components (e.g., schedule list or calendar) can refresh without full page reload
+                                    $(document).trigger('aips:schedule:created', {
+                                        scheduleId: scheduleId,
+                                        queuedCount: queueRes.data.count
+                                    });
                                 } else {
                                     alert('Schedule created but failed to queue topics: ' + queueRes.data.message);
                                 }
