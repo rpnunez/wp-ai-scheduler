@@ -42,9 +42,8 @@ class AIPS_History_Repository {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $tables = AIPS_DB_Manager::get_full_table_names();
-        $this->table_name = $tables['aips_history'];
-        $this->templates_table = $tables['aips_templates'];
+        $this->table_name = AIPS_DB_Manager::get_table_name('history');
+        $this->templates_table = AIPS_DB_Manager::get_table_name('templates');
     }
     
     /**
