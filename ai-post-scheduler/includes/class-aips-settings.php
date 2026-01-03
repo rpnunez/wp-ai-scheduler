@@ -264,6 +264,7 @@ class AIPS_Settings {
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
+            'weekStartsOn' => get_option('start_of_week', 0), // 0 = Sunday, 1 = Monday
         ));
     }
     

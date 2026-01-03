@@ -102,7 +102,11 @@ class AIPS_Interval_Calculator {
      *
      * @param string      $frequency  The frequency identifier (e.g., 'daily', 'hourly', 'every_monday').
      * @param string|null $start_time Optional. The base time to calculate from. Defaults to current time.
-     * @param array|null  $rules      Optional. Advanced rules for custom schedules.
+     * @param array|null  $rules      Optional. Advanced rules for custom schedules. Expected structure:
+     *                                 - 'times' (array): Array of time strings (e.g., ['09:00', '14:00', '18:00']) for multiple daily runs.
+     *                                 - 'specific_time' (string): Single time string (e.g., '09:00') for a specific time of day.
+     *                                 - 'days_of_week' (int|array): Day(s) of week. Accepts 0-6 (Sunday=0, Monday=1, ..., Saturday=6) or 1-7 (ISO: Monday=1, ..., Sunday=7).
+     *                                 - 'day_of_month' (int|array): Day(s) of month (1-31) to run on.
      * @return string The next run time in MySQL datetime format (Y-m-d H:i:s).
      */
     public function calculate_next_run($frequency, $start_time = null, $rules = null) {

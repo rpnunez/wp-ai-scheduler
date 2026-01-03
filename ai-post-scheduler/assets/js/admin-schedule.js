@@ -88,10 +88,18 @@
         var $grid = $('#aips-calendar-grid');
         $grid.empty();
 
-        // Header Row (Sun-Sat or Mon-Sun depending on locale? Using Mon-Sun for business)
-        // Adjusting to Sun-Sat for standard US layout or match WP? WP default is usually Monday.
-        // Let's stick to Mon-Sun.
-        var days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        // Get week start from WordPress settings (0 = Sunday, 1 = Monday)
+        var weekStartsOn = (typeof aipsAjax !== 'undefined' && typeof aipsAjax.weekStartsOn !== 'undefined') 
+            ? parseInt(aipsAjax.weekStartsOn, 10) 
+            : 0; // Default to Sunday if not set
+
+        // Build days array starting from the configured day
+        var allDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        var days = [];
+        for (var i = 0; i < 7; i++) {
+            days.push(allDays[(weekStartsOn + i) % 7]);
+        }
+        
         var headerHtml = '';
         days.forEach(function(d) {
             headerHtml += '<div class="aips-calendar-header">' + d + '</div>';
@@ -101,19 +109,17 @@
         var firstDay = new Date(year, month, 1);
         var lastDay = new Date(year, month + 1, 0);
 
-        // Determine start offset (Mon=0, Sun=6)
+        // Determine start offset based on WordPress week start setting
         // JS getDay(): Sun=0, Mon=1...Sat=6.
-        // We want Mon=0...Sun=6.
         var startDay = firstDay.getDay();
-        // Convert Sun(0) to 7 for calc, then subtract 1 -> Mon(1)->0, Sun(0)->6
-        if (startDay === 0) startDay = 7;
-        startDay -= 1;
+        // Calculate offset from configured week start
+        var startOffset = (startDay - weekStartsOn + 7) % 7;
 
         var totalDays = lastDay.getDate();
         var cells = [];
 
         // Empty cells for previous month
-        for (var i = 0; i < startDay; i++) {
+        for (var i = 0; i < startOffset; i++) {
             cells.push('<div class="aips-calendar-day other-month"></div>');
         }
 
