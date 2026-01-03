@@ -37,7 +37,8 @@ class AIPS_History_Repository {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_history';
+        $tables = AIPS_DB_Manager::get_full_table_names();
+        $this->table_name = $tables['aips_history'];
     }
     
     /**
@@ -101,7 +102,8 @@ class AIPS_History_Repository {
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
         
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $tables = AIPS_DB_Manager::get_full_table_names();
+        $templates_table = $tables['aips_templates'];
         
         // Query for items
         $query_args = $where_args;
