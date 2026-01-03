@@ -129,11 +129,52 @@ class AIPS_Queue_Controller {
     }
 
     private function extract_json_array($text) {
-        $start = strpos($text, '[');
-        $end = strrpos($text, ']');
-        if ($start !== false && $end !== false) {
-            return substr($text, $start, $end - $start + 1);
+        $length     = strlen($text);
+        $depth      = 0;
+        $start      = null;
+        $in_string  = false;
+        $escape     = false;
+
+        for ($i = 0; $i < $length; $i++) {
+            $char = $text[$i];
+
+            // Handle escaping inside strings
+            if ($in_string) {
+                if ($escape) {
+                    $escape = false;
+                    continue;
+                }
+                if ($char === '\\') {
+                    $escape = true;
+                    continue;
+                }
+                if ($char === '"') {
+                    $in_string = false;
+                }
+                continue;
+            } else {
+                if ($char === '"') {
+                    $in_string = true;
+                    $escape    = false;
+                    continue;
+                }
+            }
+
+            // Outside of strings: track array brackets
+            if ($char === '[') {
+                if ($depth === 0) {
+                    $start = $i;
+                }
+                $depth++;
+            } elseif ($char === ']' && $depth > 0) {
+                $depth--;
+                if ($depth === 0 && $start !== null) {
+                    return substr($text, $start, $i - $start + 1);
+                }
+            }
         }
+
+        // No complete JSON array found
         return '[]';
     }
 }
