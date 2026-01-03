@@ -18,7 +18,7 @@ class AIPS_Template_Repository_Test extends WP_UnitTestCase {
 		// Clean up test data
 		global $wpdb;
 		$table_name = AIPS_DB_Manager::get_table_name('templates');
-		$wpdb->query("DELETE FROM $table_name WHERE name LIKE 'Test%'");
+		$wpdb->query($wpdb->prepare("DELETE FROM {$table_name} WHERE name LIKE %s", 'Test%'));
 		parent::tearDown();
 	}
 	
