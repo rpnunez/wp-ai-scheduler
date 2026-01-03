@@ -27,6 +27,11 @@ class AIPS_History_Repository {
     private $table_name;
     
     /**
+     * @var string The templates table name (with prefix)
+     */
+    private $templates_table;
+    
+    /**
      * @var wpdb WordPress database abstraction object
      */
     private $wpdb;
@@ -39,6 +44,7 @@ class AIPS_History_Repository {
         $this->wpdb = $wpdb;
         $tables = AIPS_DB_Manager::get_full_table_names();
         $this->table_name = $tables['aips_history'];
+        $this->templates_table = $tables['aips_templates'];
     }
     
     /**
@@ -102,9 +108,6 @@ class AIPS_History_Repository {
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
         
-        $tables = AIPS_DB_Manager::get_full_table_names();
-        $templates_table = $tables['aips_templates'];
-        
         // Query for items
         $query_args = $where_args;
         $query_args[] = $args['per_page'];
@@ -113,7 +116,7 @@ class AIPS_History_Repository {
         $results = $this->wpdb->get_results($this->wpdb->prepare("
             SELECT h.*, t.name as template_name 
             FROM {$this->table_name} h 
-            LEFT JOIN {$templates_table} t ON h.template_id = t.id 
+            LEFT JOIN {$this->templates_table} t ON h.template_id = t.id 
             WHERE $where_sql
             ORDER BY h.$orderby $order 
             LIMIT %d OFFSET %d
