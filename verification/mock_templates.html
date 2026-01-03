@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIPS Admin Templates Verification</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Mock aipsAjax
+        var aipsAjax = {
+            ajaxUrl: '/wp-admin/admin-ajax.php',
+            nonce: 'mock_nonce'
+        };
+    </script>
+    <style>
+        .aips-modal { display: none; }
+    </style>
+</head>
+<body>
+    <button class="aips-add-template-btn">Add New Template</button>
+    <div id="aips-template-modal" class="aips-modal">
+        <div class="aips-modal-content">
+            <h3 id="aips-modal-title">Template Title</h3>
+            <form id="aips-template-form">
+                <input type="hidden" id="template_id">
+                <input type="text" id="template_name">
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts will be injected by Playwright or loaded manually if needed -->
+</body>
+</html>
