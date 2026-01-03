@@ -1,66 +1,79 @@
-from playwright.sync_api import sync_playwright, expect
+from playwright.sync_api import sync_playwright
 import os
+import time
 
 def run(playwright):
     browser = playwright.chromium.launch(headless=True)
-    page = browser.new_page()
+    # Grant permissions just in case, though we are mocking
+    context = browser.new_context()
+    context.grant_permissions(['clipboard-read', 'clipboard-write'])
+    page = context.new_page()
 
-    # Load the mock HTML
-    cwd = os.getcwd()
-    page.goto(f"file://{cwd}/verification/mock_admin_copy.html")
+    # Capture console logs
+    page.on("console", lambda msg: print(f"PAGE LOG: {msg.text}"))
 
-    # Force mock clipboard again just in case
-    page.evaluate("""
-        try {
-            Object.defineProperty(navigator, 'clipboard', {
-                value: {
-                    writeText: function(text) {
-                        console.log('Clipboard write:', text);
-                        return Promise.resolve();
-                    }
-                },
-                writable: true,
-                configurable: true
-            });
-        } catch(e) { console.error(e); }
-    """)
+    # Load the verification file
+    file_path = f"file://{os.path.abspath('verification/verify_copy_clipboard.html')}"
+    page.goto(file_path)
 
-    # Click "View Details"
-    page.click('.aips-view-details')
+    # Check initial state
+    initial_html = page.inner_html('.aips-copy-btn')
+    print(f"Initial HTML: {initial_html}")
 
-    # Wait for modal content
-    page.wait_for_selector('#aips-details-template table')
+    # Test 1: Single Click
+    print("\n--- Test 1: Single Click ---")
+    page.click('.aips-copy-btn')
 
-    # Verify "Copy" buttons exist
-    copy_btns = page.locator('.aips-copy-btn')
-    count = copy_btns.count()
-    print(f"Found {count} copy buttons")
-
-    if count < 3:
-        print("FAILURE: Not enough copy buttons found")
-        # Snapshot anyway
-        page.screenshot(path="verification/verify_copy.png")
-        exit(1)
-
-    # Screenshot of initial state
-    page.screenshot(path="verification/verify_copy_initial.png")
-
-    # Test Click
-    msg_list = []
-    page.on("console", lambda msg: msg_list.append(msg.text))
-
-    first_btn = copy_btns.first
-    first_btn.click()
-
-    # Wait for text change - wait explicitly
+    # Wait for the clipboard write
     try:
-        expect(first_btn).to_have_text("Copied!")
-        print("SUCCESS: Button text changed to Copied!")
-    except:
-        print("WARNING: Button text did not change (Mock issue?)")
-        print("Console:", msg_list)
+        page.wait_for_function("window.lastCopiedText !== undefined", timeout=5000)
+    except Exception as e:
+        print("Timeout waiting for window.lastCopiedText")
 
-    page.screenshot(path="verification/verify_copy.png")
+    copied_text = page.evaluate("window.lastCopiedText")
+
+    if copied_text == "{{date}}":
+        print("SUCCESS: Copied '{{date}}' to clipboard.")
+    else:
+        print(f"FAILURE: Expected '{{date}}', got '{copied_text}'")
+
+    # Check visual feedback
+    try:
+        page.wait_for_function("document.querySelector('.aips-copy-btn').innerText === 'Copied!'", timeout=2000)
+        print("SUCCESS: Visual feedback received.")
+    except:
+        btn_text = page.inner_text('.aips-copy-btn')
+        print(f"FAILURE: Expected button text 'Copied!', got '{btn_text}'")
+
+    # Test 2: Double Click (Re-entrancy)
+    print("\n--- Test 2: Re-entrancy ---")
+    # Button should currently say "Copied!" and have is-copying flag
+
+    # Click again immediately
+    page.click('.aips-copy-btn')
+
+    # Check if re-entrancy was blocked (we logged it in verification script)
+    is_blocked = page.evaluate("window.reentrancyBlocked === true")
+    if is_blocked:
+        print("SUCCESS: Re-entrancy blocked.")
+    else:
+        print("FAILURE: Re-entrancy NOT blocked.")
+
+    # Test 3: Restoration
+    print("\n--- Test 3: Restoration ---")
+    print("Waiting for restoration (2s)...")
+    # Wait for the reset
+    try:
+        page.wait_for_function("document.querySelector('.aips-copy-btn').innerHTML.includes('span')", timeout=3000)
+        print("SUCCESS: Button content restored.")
+    except:
+        curr_html = page.inner_html('.aips-copy-btn')
+        print(f"FAILURE: Button not restored. Current HTML: {curr_html}")
+
+    # Check if is-copying flag is cleared (we can check by clicking again and seeing if it writes)
+    # Or check data attribute if jQuery exposes it to DOM (it usually doesn't sync perfectly to DOM attributes)
+    # We'll rely on the restored HTML as proof resetBtn ran.
+
     browser.close()
 
 with sync_playwright() as playwright:

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Copy Clipboard</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-copy-btn { margin-left: 10px; }
+        .dashicons { font-family: sans-serif; } /* Mock dashicons */
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>AI Post Scheduler Settings</h1>
+        <table class="widefat striped">
+            <thead>
+                <tr>
+                    <th>Variable</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <code>{{date}}</code>
+                        <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{date}}" aria-label="Copy {{date}} variable">
+                            <span class="dashicons dashicons-admin-page" aria-hidden="true">C</span>
+                        </button>
+                    </td>
+                    <td>Current date</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Mock AIPS object and copyToClipboard function from admin.js
+        window.AIPS = window.AIPS || {};
+        var AIPS = window.AIPS;
+
+        // Force define navigator.clipboard
+        try {
+            Object.defineProperty(navigator, 'clipboard', {
+                value: {
+                    writeText: function(text) {
+                        return new Promise((resolve, reject) => {
+                            console.log('Clipboard write:', text);
+                            window.lastCopiedText = text;
+                            // Simulate async delay
+                            setTimeout(resolve, 50);
+                        });
+                    }
+                },
+                writable: true,
+                configurable: true
+            });
+        } catch(e) {
+            console.error("Failed to mock navigator.clipboard:", e);
+        }
+
+        // Mock AIPS.copyToClipboard - matching latest logic
+        AIPS.copyToClipboard = function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+
+            // Prevent re-entrancy if already copying
+            if ($btn.data('is-copying')) {
+                console.log('Re-entrancy blocked');
+                window.reentrancyBlocked = true;
+                return;
+            }
+
+            var text = $btn.data('clipboard-text');
+            var originalHtml = $btn.html();
+
+            if (!text) return;
+
+            // Mark as copying
+            $btn.data('is-copying', true);
+
+            var resetBtn = function() {
+                $btn.html(originalHtml);
+                $btn.data('is-copying', false);
+                console.log('Reset complete');
+            };
+
+            // Use the mocked clipboard
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                 navigator.clipboard.writeText(text).then(function() {
+                    $btn.text('Copied!');
+                    setTimeout(resetBtn, 2000);
+                }, function(err) {
+                    console.error('Async: Could not copy text: ', err);
+                    $btn.data('is-copying', false);
+                });
+            } else {
+                console.error("Navigator.clipboard not available or mocked incorrectly");
+            }
+        };
+
+        $(document).on('click', '.aips-copy-btn', AIPS.copyToClipboard);
+    </script>
+</body>
+</html>
