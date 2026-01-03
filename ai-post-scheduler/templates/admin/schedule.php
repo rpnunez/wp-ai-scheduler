@@ -98,7 +98,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     </td>
                     <td class="column-status">
                         <label class="aips-toggle">
-                            <input type="checkbox" class="aips-toggle-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" <?php checked($schedule->is_active, 1); ?>>
+                            <input type="checkbox" class="aips-toggle-schedule" aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>" data-id="<?php echo esc_attr($schedule->id); ?>" <?php checked($schedule->is_active, 1); ?>>
                             <span class="aips-toggle-slider"></span>
                         </label>
                     </td>

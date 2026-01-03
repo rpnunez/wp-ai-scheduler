@@ -138,7 +138,23 @@ class AIPS_Image_Service {
         }
         
         $post_slug = sanitize_title($post_title);
-        $filename = $post_slug . '.jpg';
+
+        // Determine correct extension based on MIME type
+        $mime_type = isset($real_mime) ? $real_mime : $content_type;
+        $extension = 'jpg'; // Default
+
+        $mime_map = array(
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
+            'image/webp' => 'webp'
+        );
+
+        if (isset($mime_map[$mime_type])) {
+            $extension = $mime_map[$mime_type];
+        }
+
+        $filename = $post_slug . '.' . $extension;
         
         // Use wp_upload_bits to handle file creation and uniqueness
         $upload = wp_upload_bits($filename, null, $image_data);
