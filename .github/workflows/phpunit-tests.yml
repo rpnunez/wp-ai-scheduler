@@ -55,13 +55,44 @@ jobs:
       - name: Display installed dependencies
         run: cd ai-post-scheduler && composer show
 
+      # Set up WordPress test library and core
+      - name: Install WordPress Test Library
+        run: |
+          # Create WordPress test directories
+          mkdir -p /tmp/wordpress-tests-lib
+          mkdir -p /tmp/wordpress
+          
+          # Clone WordPress develop repository
+          git clone --depth=1 https://github.com/WordPress/wordpress-develop.git /tmp/wordpress-develop
+          
+          # Copy test library files
+          cp -r /tmp/wordpress-develop/tests/phpunit/* /tmp/wordpress-tests-lib/
+          
+          # Copy WordPress core files
+          cp -r /tmp/wordpress-develop/src/* /tmp/wordpress/
+          
+          # Clean up
+          rm -rf /tmp/wordpress-develop
+
+      # Install the plugin in the WordPress test environment
+      - name: Install and Activate Plugin
+        run: |
+          # Create plugins directory in test WordPress
+          mkdir -p /tmp/wordpress/wp-content/plugins
+          
+          # Copy the plugin to WordPress plugins directory
+          cp -r ai-post-scheduler /tmp/wordpress/wp-content/plugins/
+          
+          # Verify plugin installation
+          ls -la /tmp/wordpress/wp-content/plugins/ai-post-scheduler/ai-post-scheduler.php
+
       - name: Run PHPUnit tests
-        run: cd ai-post-scheduler && composer test -- --testdox
+         run: cd ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress composer test -- --testdox
         continue-on-error: false
 
       - name: Generate code coverage report (PHP 8.3 only)
         if: matrix.php == '8.3'
-        run: cd ai-post-scheduler && composer test:coverage
+        run: cd ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress composer test:coverage
 
       - name: Upload coverage report
         if: matrix.php == '8.3'
