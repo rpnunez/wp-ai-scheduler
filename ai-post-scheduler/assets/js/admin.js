@@ -90,11 +90,24 @@
         copyToClipboard: function(e) {
             e.preventDefault();
             var $btn = $(this);
+
+            // Prevent re-entrancy if already copying
+            if ($btn.data('is-copying')) {
+                return;
+            }
+
             var text = $btn.data('clipboard-text');
-            var originalIcon = $btn.data('original-icon') || 'dashicons-admin-page';
-            var originalText = $btn.text();
+            var originalHtml = $btn.html();
 
             if (!text) return;
+
+            // Mark as copying
+            $btn.data('is-copying', true);
+
+            var resetBtn = function() {
+                $btn.html(originalHtml);
+                $btn.data('is-copying', false);
+            };
 
             // Fallback for older browsers
             if (!navigator.clipboard) {
@@ -105,11 +118,10 @@
                 try {
                     document.execCommand('copy');
                     $btn.text('Copied!');
-                    setTimeout(function() {
-                        $btn.text(originalText);
-                    }, 2000);
+                    setTimeout(resetBtn, 2000);
                 } catch (err) {
                     console.error('Fallback: Oops, unable to copy', err);
+                    $btn.data('is-copying', false);
                 }
                 document.body.removeChild(textArea);
                 return;
@@ -117,11 +129,10 @@
 
             navigator.clipboard.writeText(text).then(function() {
                 $btn.text('Copied!');
-                setTimeout(function() {
-                    $btn.text(originalText);
-                }, 2000);
+                setTimeout(resetBtn, 2000);
             }, function(err) {
                 console.error('Async: Could not copy text: ', err);
+                $btn.data('is-copying', false);
             });
         },
 
