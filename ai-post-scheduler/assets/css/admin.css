@@ -554,3 +554,9 @@
         width: 100px;
     }
 }
+
+/* Copy button styling */
+.aips-copy-btn {
+    margin-left: 10px;
+    vertical-align: middle;
+}
