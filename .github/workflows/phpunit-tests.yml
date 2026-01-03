@@ -87,7 +87,7 @@ jobs:
           ls -la /tmp/wordpress/wp-content/plugins/ai-post-scheduler/ai-post-scheduler.php
 
       - name: Run PHPUnit tests
-         run: cd ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress composer test -- --testdox
+        run: cd ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress composer test -- --testdox
         continue-on-error: false
 
       - name: Generate code coverage report (PHP 8.3 only)
