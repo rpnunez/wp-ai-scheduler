@@ -34,6 +34,18 @@ class AIPS_Generator {
     private $history_repository;
     private $prompt_builder;
     
+    /**
+     * Constructor.
+     *
+     * @param AIPS_Logger|null $logger Optional logger instance.
+     * @param AIPS_AI_Service|null $ai_service Optional AI service instance.
+     * @param AIPS_Template_Processor|null $template_processor Optional template processor.
+     * @param AIPS_Image_Service|null $image_service Optional image service.
+     * @param AIPS_Article_Structure_Manager|null $structure_manager Optional structure manager.
+     * @param AIPS_Post_Creator|null $post_creator Optional post creator.
+     * @param AIPS_History_Repository|null $history_repository Optional history repository (allows for deferred cache invalidation).
+     * @param AIPS_Prompt_Builder|null $prompt_builder Optional prompt builder.
+     */
     public function __construct(
         $logger = null,
         $ai_service = null,

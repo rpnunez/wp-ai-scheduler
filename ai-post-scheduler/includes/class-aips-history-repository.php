@@ -30,6 +30,16 @@ class AIPS_History_Repository {
      * @var wpdb WordPress database abstraction object
      */
     private $wpdb;
+
+    /**
+     * @var bool Whether to defer cache invalidation.
+     */
+    private $defer_cache_invalidation = false;
+
+    /**
+     * @var bool Whether a cache invalidation is pending.
+     */
+    private $cache_invalidation_pending = false;
     
     /**
      * Initialize the repository.
@@ -38,6 +48,31 @@ class AIPS_History_Repository {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_history';
+    }
+
+    /**
+     * Set whether to defer cache invalidation.
+     *
+     * @param bool $defer True to defer, false to process immediately.
+     */
+    public function set_defer_cache_invalidation($defer) {
+        $this->defer_cache_invalidation = $defer;
+
+        if (!$defer && $this->cache_invalidation_pending) {
+            $this->invalidate_cache();
+        }
+    }
+
+    /**
+     * Invalidate the history stats cache.
+     */
+    private function invalidate_cache() {
+        if ($this->defer_cache_invalidation) {
+            $this->cache_invalidation_pending = true;
+        } else {
+            delete_transient('aips_history_stats');
+            $this->cache_invalidation_pending = false;
+        }
     }
     
     /**
@@ -259,7 +294,7 @@ class AIPS_History_Repository {
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
         if ($result) {
-            delete_transient('aips_history_stats');
+            $this->invalidate_cache();
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -324,7 +359,7 @@ class AIPS_History_Repository {
         );
 
         if ($result !== false) {
-            delete_transient('aips_history_stats');
+            $this->invalidate_cache();
         }
 
         return $result !== false;
@@ -337,7 +372,7 @@ class AIPS_History_Repository {
      * @return int|false Number of rows affected or false on failure.
      */
     public function delete_by_status($status = '') {
-        delete_transient('aips_history_stats');
+        $this->invalidate_cache();
 
         if (empty($status)) {
             return $this->wpdb->query("TRUNCATE TABLE {$this->table_name}");
@@ -356,7 +391,7 @@ class AIPS_History_Repository {
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
 
         if ($result !== false) {
-            delete_transient('aips_history_stats');
+            $this->invalidate_cache();
         }
 
         return $result !== false;
@@ -386,7 +421,7 @@ class AIPS_History_Repository {
         $result = $this->wpdb->query("DELETE FROM {$this->table_name} WHERE id IN ($ids_sql)");
 
         if ($result !== false) {
-            delete_transient('aips_history_stats');
+            $this->invalidate_cache();
         }
 
         return $result;

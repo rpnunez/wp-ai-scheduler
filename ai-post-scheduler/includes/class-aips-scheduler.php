@@ -133,7 +133,11 @@ class AIPS_Scheduler {
             return;
         }
         
-        $generator = new AIPS_Generator();
+        // Optimization: Defer history stats cache invalidation during batch processing
+        $history_repo = new AIPS_History_Repository();
+        $history_repo->set_defer_cache_invalidation(true);
+
+        $generator = new AIPS_Generator(null, null, null, null, null, null, $history_repo);
         
         foreach ($due_schedules as $schedule) {
             // Dispatch schedule execution started event
@@ -217,5 +221,8 @@ class AIPS_Scheduler {
                 ), 'schedule_execution');
             }
         }
+
+        // Optimization: Invalidate cache once after batch processing is complete
+        $history_repo->set_defer_cache_invalidation(false);
     }
 }
