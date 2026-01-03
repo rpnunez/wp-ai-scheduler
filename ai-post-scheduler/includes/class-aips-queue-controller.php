@@ -25,8 +25,12 @@ class AIPS_Queue_Controller {
         $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
         $topics = isset($_POST['topics']) ? $_POST['topics'] : array();
 
-        if ($schedule_id <= 0 || empty($topics) || !is_array($topics)) {
-            wp_send_json_error(array('message' => 'Invalid data provided.'));
+        if ($schedule_id <= 0) {
+            wp_send_json_error(array('message' => __('Schedule ID is required.', 'ai-post-scheduler')));
+        } elseif (!is_array($topics)) {
+            wp_send_json_error(array('message' => __('Topics must be an array.', 'ai-post-scheduler')));
+        } elseif (empty($topics)) {
+            wp_send_json_error(array('message' => __('Topics array is empty.', 'ai-post-scheduler')));
         }
 
         global $wpdb;
