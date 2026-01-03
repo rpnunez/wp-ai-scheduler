@@ -19,7 +19,7 @@ Fires when the post generation process fails.
 *   **Arguments:**
     *   `int $template_id`: The ID of the template being used.
     *   `string $error_message`: The error message describing the failure.
-    *   `string $topic`: The topic of the post.
+    *   `string $topic`: The topic of the post (if applicable).
 
 #### `aips_post_generated`
 Fires after a post has been successfully generated and saved.
@@ -49,7 +49,7 @@ Fires when a schedule item is successfully executed.
 
 *   **Arguments:**
     *   `int $schedule_id`: The ID of the schedule.
-    *   `int|WP_Error $result`: The result of the execution (usually the post ID).
+    *   `int $result`: The result of the execution (post ID).
 
 ### Research & Trending Topics
 
