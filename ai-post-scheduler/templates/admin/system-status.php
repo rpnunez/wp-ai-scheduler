@@ -11,7 +11,12 @@ if (!defined('ABSPATH')) {
         <?php foreach ($system_info as $section => $checks) : ?>
             <?php if (empty($checks)) continue; ?>
 
-            <h2 class="title"><?php echo esc_html(ucfirst($section)); ?></h2>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 class="title"><?php echo esc_html(ucfirst($section)); ?></h2>
+                <?php if ($section === 'logs') : ?>
+                    <button type="button" class="button button-secondary aips-clear-logs"><?php esc_html_e('Clear All Logs', 'ai-post-scheduler'); ?></button>
+                <?php endif; ?>
+            </div>
 
             <table class="widefat striped health-check-table" cellspacing="0">
                 <thead>

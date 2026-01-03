@@ -19,6 +19,12 @@ class AIPS_Logger {
 
         $this->log_file = $log_dir . '/aips-' . date('Y-m-d') . '-' . $secret . '.log';
         $this->enabled = (bool) get_option('aips_enable_logging', true);
+
+        // HUNTER: Cleanup old logs occasionally (1% chance per instantiation)
+        // to prevent disk space exhaustion.
+        if (rand(1, 100) === 1) {
+            $this->cleanup_old_logs(30);
+        }
     }
 
     /**
@@ -156,6 +162,55 @@ class AIPS_Logger {
             unlink($this->log_file);
         }
         return true;
+    }
+
+    /**
+     * Clear all log files in the directory.
+     *
+     * @return bool True on success.
+     */
+    public function clear_all_logs() {
+        $upload_dir = wp_upload_dir();
+        $log_dir = $upload_dir['basedir'] . '/aips-logs';
+
+        if (!is_dir($log_dir)) {
+            return false;
+        }
+
+        $files = glob($log_dir . '/aips-*.log');
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                @unlink($file);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Delete logs older than X days.
+     *
+     * @param int $days Age in days.
+     */
+    public function cleanup_old_logs($days = 30) {
+        $upload_dir = wp_upload_dir();
+        $log_dir = $upload_dir['basedir'] . '/aips-logs';
+
+        if (!is_dir($log_dir)) {
+            return;
+        }
+
+        $files = glob($log_dir . '/aips-*.log');
+        $now = time();
+        $retention_period = $days * DAY_IN_SECONDS;
+
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                if ($now - filemtime($file) > $retention_period) {
+                    @unlink($file);
+                }
+            }
+        }
     }
     
     public function get_log_files() {

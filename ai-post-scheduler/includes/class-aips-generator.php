@@ -33,6 +33,7 @@ class AIPS_Generator {
     private $post_creator;
     private $history_repository;
     private $prompt_builder;
+    private $content_generator;
     
     public function __construct(
         $logger = null,
@@ -42,7 +43,8 @@ class AIPS_Generator {
         $structure_manager = null,
         $post_creator = null,
         $history_repository = null,
-        $prompt_builder = null
+        $prompt_builder = null,
+        $content_generator = null
     ) {
         $this->logger = $logger ?: new AIPS_Logger();
         $this->ai_service = $ai_service ?: new AIPS_AI_Service();
@@ -52,6 +54,9 @@ class AIPS_Generator {
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
         $this->history_repository = $history_repository ?: new AIPS_History_Repository();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
+
+        // Atlas: Use Content Generator for text generation operations
+        $this->content_generator = $content_generator ?: new AIPS_Content_Generator($this->ai_service, $this->logger, $this->prompt_builder);
 
         // Initialize session tracker
         $this->current_session = new AIPS_Generation_Session();
@@ -101,87 +106,6 @@ class AIPS_Generator {
         return $this->ai_service->is_available();
     }
     
-    /**
-     * Generate content using AI.
-     *
-     * Wrapper method that uses the AI Service to generate text content.
-     *
-     * @param string $prompt   The prompt to send to AI.
-     * @param array  $options  Optional AI generation options.
-     * @param string $log_type Optional type label for logging.
-     * @return string|WP_Error The generated content or WP_Error on failure.
-     */
-    public function generate_content($prompt, $options = array(), $log_type = 'content') {
-        $result = $this->ai_service->generate_text($prompt, $options);
-        
-        if (is_wp_error($result)) {
-            $this->log($result->get_error_message(), 'error', array(
-                'type' => $log_type,
-                'prompt' => $prompt,
-                'options' => $options,
-                'error' => $result->get_error_message()
-            ));
-        } else {
-            $this->log('Content generated successfully', 'info', array(
-                'type' => $log_type,
-                'prompt' => $prompt,
-                'response' => $result,
-                'options' => $options
-            ), array(
-                'prompt_length' => strlen($prompt),
-                'response_length' => strlen($result)
-            ));
-        }
-        
-        return $result;
-    }
-    
-    public function generate_title($prompt, $voice_title_prompt = null, $options = array()) {
-        if ($voice_title_prompt) {
-            $title_prompt = $voice_title_prompt . "\n\n" . $prompt;
-        } else {
-            $title_prompt = "Generate a compelling blog post title for the following topic. Return only the title, nothing else:\n\n" . $prompt;
-        }
-        
-        $options['max_tokens'] = 100;
-        
-        $result = $this->generate_content($title_prompt, $options, 'title');
-        
-        if (is_wp_error($result)) {
-            return $result;
-        }
-        
-        $title = trim($result);
-        $title = preg_replace('/^["\']|["\']$/', '', $title);
-
-        return $title;
-    }
-    
-    public function generate_excerpt($title, $content, $voice_excerpt_instructions = null, $options = array()) {
-        $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 characters. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
-        
-        if ($voice_excerpt_instructions) {
-            $excerpt_prompt .= $voice_excerpt_instructions . "\n\n";
-        }
-        
-        $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
-        $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
-        $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
-        
-        $options['max_tokens'] = 150;
-        
-        $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
-        
-        if (is_wp_error($result)) {
-            return '';
-        }
-        
-        $excerpt = trim($result);
-        $excerpt = preg_replace('/^["\']|["\']$/', '', $excerpt);
-
-        return substr($excerpt, 0, 160);
-    }
-    
     public function generate_post($template, $voice = null, $topic = null) {
         
         // Dispatch post generation started event
@@ -210,7 +134,7 @@ class AIPS_Generator {
         
         $content_prompt = $this->prompt_builder->build_content_prompt($template, $topic, $voice);
         
-        $content = $this->generate_content($content_prompt, array(), 'content');
+        $content = $this->content_generator->generate_content($content_prompt, array(), 'content');
         
         if (is_wp_error($content)) {
             // Complete session with failure result
@@ -263,9 +187,9 @@ class AIPS_Generator {
 
         if (!empty($template->title_prompt)) {
             $title_prompt = $this->template_processor->process($template->title_prompt, $topic);
-            $title = $this->generate_title($title_prompt, $voice_title_prompt);
+            $title = $this->content_generator->generate_title($title_prompt, $voice_title_prompt);
         } else {
-            $title = $this->generate_title($base_processed_prompt, $voice_title_prompt);
+            $title = $this->content_generator->generate_title($base_processed_prompt, $voice_title_prompt);
         }
         
         if (is_wp_error($title)) {
@@ -274,7 +198,7 @@ class AIPS_Generator {
         
         $voice_excerpt_instructions = $this->prompt_builder->build_excerpt_instructions($voice, $topic);
         
-        $excerpt = $this->generate_excerpt($title, $base_processed_prompt, $voice_excerpt_instructions);
+        $excerpt = $this->content_generator->generate_excerpt($title, $base_processed_prompt, $voice_excerpt_instructions);
         
         // Use Post Creator Service
         $post_creation_data = array(
