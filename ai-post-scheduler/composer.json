@@ -28,9 +28,9 @@
     ]
   },
   "scripts": {
-    "test": "phpunit",
-    "test:coverage": "phpunit --coverage-html coverage",
-    "test:verbose": "phpunit --verbose"
+    "test": "vendor/bin/phpunit",
+    "test:coverage": "vendor/bin/phpunit --coverage-html coverage",
+    "test:verbose": "vendor/bin/phpunit --verbose"
   },
   "config": {
     "allow-plugins": {
