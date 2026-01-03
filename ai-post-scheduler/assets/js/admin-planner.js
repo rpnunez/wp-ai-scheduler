@@ -183,8 +183,16 @@
         },
 
         addTimeInput: function() {
-            var html = '<div style="margin-top:5px;"><input type="time" name="times[]" value="12:00"> <button type="button" class="button button-small remove-time" onclick="$(this).parent().remove()">-</button></div>';
-            $('#matrix-times-container').append(html);
+            var $container = $('#matrix-times-container');
+            if (!$container.data('remove-time-bound')) {
+                $container.on('click', '.remove-time', function(e) {
+                    e.preventDefault();
+                    $(this).parent().remove();
+                });
+                $container.data('remove-time-bound', true);
+            }
+            var html = '<div style="margin-top:5px;"><input type="time" name="times[]" value="12:00"> <button type="button" class="button button-small remove-time">-</button></div>';
+            $container.append(html);
         },
 
         saveMatrix: function() {
