@@ -70,6 +70,7 @@ final class AI_Post_Scheduler {
         
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-processor.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-builder.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-type-selector.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-interval-calculator.php';
@@ -103,6 +104,9 @@ final class AI_Post_Scheduler {
     public function activate() {
         $this->set_default_options();
         $this->check_upgrades();
+
+        // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
+        AIPS_DB_Manager::install_tables();
         
         if (!wp_next_scheduled('aips_generate_scheduled_posts')) {
             wp_schedule_event(time(), 'hourly', 'aips_generate_scheduled_posts');
