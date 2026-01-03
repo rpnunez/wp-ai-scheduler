@@ -44,22 +44,43 @@ function aips_migration_1_7_0_schema_updates($wpdb) {
     $schedule_table = $wpdb->prefix . 'aips_schedule';
 
     // Check if columns exist before adding
-    $row = $wpdb->get_results("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{$schedule_table}' AND column_name = 'advanced_rules'");
+    $row = $wpdb->get_results($wpdb->prepare(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = %s AND column_name = 'advanced_rules'",
+        $schedule_table
+    ));
     if (empty($row)) {
-        $wpdb->query("ALTER TABLE {$schedule_table} ADD COLUMN advanced_rules text DEFAULT NULL AFTER frequency");
+        $result = $wpdb->query("ALTER TABLE {$schedule_table} ADD COLUMN advanced_rules text DEFAULT NULL AFTER frequency");
+        if ($result === false) {
+            error_log("AIPS Migration 1.7.0: Failed to add advanced_rules column to {$schedule_table}. Error: " . $wpdb->last_error);
+            return false;
+        }
     }
 
-    $row = $wpdb->get_results("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{$schedule_table}' AND column_name = 'schedule_type'");
+    $row = $wpdb->get_results($wpdb->prepare(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = %s AND column_name = 'schedule_type'",
+        $schedule_table
+    ));
     if (empty($row)) {
-        $wpdb->query("ALTER TABLE {$schedule_table} ADD COLUMN schedule_type varchar(50) DEFAULT 'simple' AFTER frequency");
+        $result = $wpdb->query("ALTER TABLE {$schedule_table} ADD COLUMN schedule_type varchar(50) DEFAULT 'simple' AFTER frequency");
+        if ($result === false) {
+            error_log("AIPS Migration 1.7.0: Failed to add schedule_type column to {$schedule_table}. Error: " . $wpdb->last_error);
+            return false;
+        }
     }
 
     // 3. Update aips_templates table
     $templates_table = $wpdb->prefix . 'aips_templates';
 
-    $row = $wpdb->get_results("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{$templates_table}' AND column_name = 'review_required'");
+    $row = $wpdb->get_results($wpdb->prepare(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = %s AND column_name = 'review_required'",
+        $templates_table
+    ));
     if (empty($row)) {
-        $wpdb->query("ALTER TABLE {$templates_table} ADD COLUMN review_required tinyint(1) NOT NULL DEFAULT 0 AFTER is_active");
+        $result = $wpdb->query("ALTER TABLE {$templates_table} ADD COLUMN review_required tinyint(1) NOT NULL DEFAULT 0 AFTER is_active");
+        if ($result === false) {
+            error_log("AIPS Migration 1.7.0: Failed to add review_required column to {$templates_table}. Error: " . $wpdb->last_error);
+            return false;
+        }
     }
 
     error_log("AIPS Migration 1.7.0: Schema updates completed");

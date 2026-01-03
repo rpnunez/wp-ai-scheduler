@@ -76,12 +76,11 @@ class AIPS_Calendar_Controller {
         $end_ts = strtotime($end);
 
         foreach ($schedules as $schedule) {
-            $next_run_ts = strtotime($schedule->next_run);
+            $current_run_ts = strtotime($schedule->next_run);
 
             // Loop while next run is before end date
             // We use a safety limit to prevent infinite loops on small intervals
             $limit = 100;
-            $current_run_ts = $next_run_ts;
 
             // Advance until we are inside or past the window
             while ($current_run_ts <= $end_ts && $limit > 0) {
@@ -99,13 +98,16 @@ class AIPS_Calendar_Controller {
                     );
                 }
 
+                // Store the previous timestamp to detect stalled calculations
+                $previous_run_ts = $current_run_ts;
+
                 // Calculate next
                 $rules = !empty($schedule->advanced_rules) ? json_decode($schedule->advanced_rules, true) : null;
                 $next_date_str = $interval_calc->calculate_next_run($schedule->frequency, date('Y-m-d H:i:s', $current_run_ts), $rules);
                 $current_run_ts = strtotime($next_date_str);
 
-                // If interval is 0 or error, break
-                if ($current_run_ts <= $next_run_ts) break;
+                // If interval calculation failed or returned same/earlier time, break
+                if ($current_run_ts <= $previous_run_ts) break;
                 $limit--;
             }
         }
