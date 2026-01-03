@@ -118,7 +118,11 @@ class AIPS_History_Repository {
         ", $query_args));
         
         // Query for total count
-        if (!empty($where_args)) {
+        // Optimization: Use cached stats for total count if available and no filters are applied
+        if (empty($where_args) && $where_sql === '1=1') {
+            $stats = $this->get_stats();
+            $total = $stats['total'];
+        } elseif (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
                 "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
                 $where_args
