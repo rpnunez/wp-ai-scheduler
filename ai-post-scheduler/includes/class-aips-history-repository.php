@@ -27,6 +27,11 @@ class AIPS_History_Repository {
     private $table_name;
     
     /**
+     * @var string The templates table name (with prefix)
+     */
+    private $templates_table;
+    
+    /**
      * @var wpdb WordPress database abstraction object
      */
     private $wpdb;
@@ -37,7 +42,8 @@ class AIPS_History_Repository {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_history';
+        $this->table_name = AIPS_DB_Manager::get_table_name('history');
+        $this->templates_table = AIPS_DB_Manager::get_table_name('templates');
     }
     
     /**
@@ -101,8 +107,6 @@ class AIPS_History_Repository {
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
         
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
-        
         // Query for items
         $query_args = $where_args;
         $query_args[] = $args['per_page'];
@@ -111,14 +115,40 @@ class AIPS_History_Repository {
         $results = $this->wpdb->get_results($this->wpdb->prepare("
             SELECT h.*, t.name as template_name 
             FROM {$this->table_name} h 
-            LEFT JOIN {$templates_table} t ON h.template_id = t.id 
+            LEFT JOIN {$this->templates_table} t ON h.template_id = t.id 
             WHERE $where_sql
             ORDER BY h.$orderby $order 
             LIMIT %d OFFSET %d
         ", $query_args));
         
         // Query for total count
-        if (!empty($where_args)) {
+        $use_cached_count = false;
+        $cached_total = 0;
+
+        // Optimization: Use cached stats for total count if filters match what we have in stats
+        // We can use cached stats if:
+        // 1. No search query
+        // 2. No template ID filter
+        // 3. Status is empty (total) OR status is one of the tracked statuses
+        // Note: get_stats() uses transient caching (aips_history_stats) which is invalidated on write.
+        if (empty($args['search']) && empty($args['template_id'])) {
+            $stats = $this->get_stats();
+
+            if (empty($args['status'])) {
+                $cached_total = $stats['total'];
+                $use_cached_count = true;
+            } elseif (in_array($args['status'], array('completed', 'failed', 'processing', 'pending'))) {
+                // Check if the status key exists in stats (it may be missing if the stats cache is stale).
+                if (isset($stats[$args['status']])) {
+                    $cached_total = $stats[$args['status']];
+                    $use_cached_count = true;
+                }
+            }
+        }
+
+        if ($use_cached_count) {
+            $total = $cached_total;
+        } elseif (!empty($where_args)) {
             $total = $this->wpdb->get_var($this->wpdb->prepare(
                 "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
                 $where_args
@@ -171,7 +201,8 @@ class AIPS_History_Repository {
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
+                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
             FROM {$this->table_name}
         ");
 
@@ -180,6 +211,7 @@ class AIPS_History_Repository {
             'completed' => (int) $results->completed,
             'failed' => (int) $results->failed,
             'processing' => (int) $results->processing,
+            'pending' => (int) $results->pending,
         );
         
         $stats['success_rate'] = $stats['total'] > 0 

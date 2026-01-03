@@ -40,6 +40,24 @@ class AIPS_DB_Manager {
         return $full_names;
     }
 
+    /**
+     * Get a specific table name with full prefix
+     * 
+     * @param string $table_name Table name without 'aips_' prefix (e.g., 'history', 'templates')
+     * @return string|null Full table name with prefix, or null if table not found
+     */
+    public static function get_table_name($table_name) {
+        static $tableNames = null;
+        
+        if ($tableNames === null) {
+            $tableNames = self::get_full_table_names();
+        }
+        
+        $full_table_key = 'aips_' . $table_name;
+        
+        return isset($tableNames[$full_table_key]) ? $tableNames[$full_table_key] : null;
+    }
+
     public function get_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
