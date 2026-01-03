@@ -240,6 +240,28 @@ class AIPS_Settings {
             );
         }
 
+        // Load Schedules component only on Schedule page
+        if ($hook === 'ai-post-scheduler_page_aips-schedule') {
+            wp_enqueue_script(
+                'aips-admin-schedules',
+                AIPS_PLUGIN_URL . 'assets/js/admin-schedules.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
+        // Load History component only on History page
+        if ($hook === 'ai-post-scheduler_page_aips-history') {
+            wp_enqueue_script(
+                'aips-admin-history',
+                AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
         // Load Research component only on Research/Trending Topics page
         if ($hook === 'ai-post-scheduler_page_aips-research') {
             wp_enqueue_script(
