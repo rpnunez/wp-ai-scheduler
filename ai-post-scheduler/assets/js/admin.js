@@ -225,12 +225,28 @@
 
         deleteTemplate: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this template?')) {
+            var $btn = $(this);
+            var id = $btn.data('id');
+            var $row = $btn.closest('tr');
+
+            // Soft Confirm Pattern
+            if (!$btn.data('is-confirming')) {
+                $btn.data('original-text', $btn.text());
+                $btn.text('Click again to confirm');
+                $btn.addClass('aips-confirm-delete');
+                $btn.data('is-confirming', true);
+
+                // Reset after 3 seconds
+                setTimeout(function() {
+                    $btn.text($btn.data('original-text'));
+                    $btn.removeClass('aips-confirm-delete');
+                    $btn.data('is-confirming', false);
+                }, 3000);
                 return;
             }
 
-            var id = $(this).data('id');
-            var $row = $(this).closest('tr');
+            // Confirmed, proceed with deletion
+            $btn.prop('disabled', true).text('Deleting...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -247,10 +263,20 @@
                         });
                     } else {
                         alert(response.data.message);
+                        // Reset button state on error
+                        $btn.text($btn.data('original-text'));
+                        $btn.removeClass('aips-confirm-delete');
+                        $btn.data('is-confirming', false);
+                        $btn.prop('disabled', false);
                     }
                 },
                 error: function() {
                     alert('An error occurred. Please try again.');
+                    // Reset button state on error
+                    $btn.text($btn.data('original-text'));
+                    $btn.removeClass('aips-confirm-delete');
+                    $btn.data('is-confirming', false);
+                    $btn.prop('disabled', false);
                 }
             });
         },

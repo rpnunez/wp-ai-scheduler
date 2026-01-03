@@ -116,9 +116,11 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
         <div class="aips-filters">
             <select id="filter-niche" class="aips-filter-select">
                 <option value=""><?php echo esc_html__('All Niches', 'ai-post-scheduler'); ?></option>
-                <?php foreach ($niches as $niche): ?>
-                    <option value="<?php echo esc_attr($niche['niche']); ?>">
-                        <?php echo esc_html($niche['niche']); ?> (<?php echo esc_html($niche['count']); ?>)
+                <?php foreach ($niches as $niche):
+                    $niche = (object) $niche;
+                ?>
+                    <option value="<?php echo esc_attr($niche->niche); ?>">
+                        <?php echo esc_html($niche->niche); ?> (<?php echo esc_html($niche->count); ?>)
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -157,9 +159,11 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
                         <td>
                             <select id="schedule-template" name="template_id" required>
                                 <option value=""><?php echo esc_html__('Select Template', 'ai-post-scheduler'); ?></option>
-                                <?php foreach ($templates as $template): ?>
-                                    <option value="<?php echo esc_attr($template['id']); ?>">
-                                        <?php echo esc_html($template['name']); ?>
+                                <?php foreach ($templates as $template):
+                                    $template = (object) $template;
+                                ?>
+                                    <option value="<?php echo esc_attr($template->id); ?>">
+                                        <?php echo esc_html($template->name); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
