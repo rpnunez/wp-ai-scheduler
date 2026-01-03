@@ -46,12 +46,19 @@
         var year = calendarState.currentDate.getFullYear();
         var month = calendarState.currentDate.getMonth();
 
-        // Update Header
-        var monthNames = ["January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ];
-        $('#current-month-label').text(monthNames[month] + ' ' + year);
+        // Update Header (use localized month names when available)
+        var monthLabelDate = new Date(year, month, 1);
+        var monthName;
 
+        if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
+            monthName = new Intl.DateTimeFormat(undefined, { month: 'long' }).format(monthLabelDate);
+        } else {
+            var monthNames = ["January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ];
+            monthName = monthNames[month];
+        }
+        $('#current-month-label').text(monthName + ' ' + year);
         // Fetch Events
         var startStr = formatDate(new Date(year, month, 1));
         var endStr = formatDate(new Date(year, month + 1, 0));
