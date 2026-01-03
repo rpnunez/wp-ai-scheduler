@@ -77,6 +77,11 @@ class AIPS_Interval_Calculator {
             'display' => __('Once', 'ai-post-scheduler')
         );
 
+        $intervals['custom'] = array(
+            'interval' => 86400, // Placeholder
+            'display' => __('Custom Schedule', 'ai-post-scheduler')
+        );
+
         // Add day-specific intervals
         $days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
         foreach ($days as $day) {
@@ -93,33 +98,32 @@ class AIPS_Interval_Calculator {
      * Calculate the next run time for a given frequency.
      *
      * Determines when a scheduled task should run next based on its frequency setting.
-     * Handles various interval types including hourly, daily, weekly, and day-specific schedules.
+     * Handles various interval types including hourly, daily, weekly, day-specific, and custom advanced schedules.
      *
      * @param string      $frequency  The frequency identifier (e.g., 'daily', 'hourly', 'every_monday').
      * @param string|null $start_time Optional. The base time to calculate from. Defaults to current time.
+     * @param array|null  $rules      Optional. Advanced rules for custom schedules.
      * @return string The next run time in MySQL datetime format (Y-m-d H:i:s).
      */
-    public function calculate_next_run($frequency, $start_time = null) {
+    public function calculate_next_run($frequency, $start_time = null, $rules = null) {
         $base_time = $start_time ? strtotime($start_time) : current_time('timestamp');
         $now = current_time('timestamp');
         
         // If start time is in the past, add intervals until future (Catch-up logic)
-        // This prevents schedule drift by preserving the phase of the schedule
         if ($base_time < $now) {
-            // Safety limit to prevent infinite loops if interval is 0 or very small/broken
             $limit = 100;
             while ($base_time <= $now && $limit > 0) {
-                $base_time = $this->calculate_next_timestamp($frequency, $base_time);
+                $base_time = $this->calculate_next_timestamp($frequency, $base_time, $rules);
                 $limit--;
             }
-            // If we hit the limit, just set to now + interval to ensure we don't stall
             if ($limit === 0) {
-                 $base_time = $this->calculate_next_timestamp($frequency, $now);
+                 // Fallback to calculating from NOW if we've looped too much
+                 $base_time = $this->calculate_next_timestamp($frequency, $now, $rules);
             }
             return date('Y-m-d H:i:s', $base_time);
         }
         
-        $next = $this->calculate_next_timestamp($frequency, $base_time);
+        $next = $this->calculate_next_timestamp($frequency, $base_time, $rules);
         
         return date('Y-m-d H:i:s', $next);
     }
@@ -129,11 +133,16 @@ class AIPS_Interval_Calculator {
      *
      * Internal method that performs the actual timestamp calculations.
      *
-     * @param string $frequency The frequency identifier.
-     * @param int    $base_time The base timestamp to calculate from.
+     * @param string     $frequency The frequency identifier.
+     * @param int        $base_time The base timestamp to calculate from.
+     * @param array|null $rules     Advanced rules.
      * @return int The next run timestamp.
      */
-    private function calculate_next_timestamp($frequency, $base_time) {
+    private function calculate_next_timestamp($frequency, $base_time, $rules = null) {
+        if ($frequency === 'custom' && !empty($rules)) {
+            return $this->calculate_custom_interval($base_time, $rules);
+        }
+
         switch ($frequency) {
             case 'hourly':
                 return strtotime('+1 hour', $base_time);
@@ -162,6 +171,114 @@ class AIPS_Interval_Calculator {
             default:
                 return $this->calculate_day_specific_interval($frequency, $base_time);
         }
+    }
+
+    /**
+     * Calculate next run for Custom Rules.
+     * Supported Rules:
+     * - specific_time: "09:00"
+     * - days_of_week: [1, 3, 5] (Mon, Wed, Fri)
+     * - day_of_month: 15
+     */
+    private function calculate_custom_interval($base_time, $rules) {
+        // Decode if JSON string
+        if (is_string($rules)) {
+            $rules = json_decode($rules, true);
+        }
+
+        $next_time = $base_time;
+
+        // 1. Specific Time Adjustment
+        // If we are strictly calculating "next interval", we usually move forward first.
+        // But if we just finished a run at 09:00, we want tomorrow 09:00.
+        // Logic: Advance 1 day, then set time? Or find next valid day?
+
+        // Simplest Strategy: Iterate days until we find a match.
+        // Limit iteration to 366 days to prevent infinite loops.
+        for ($i = 0; $i < 366; $i++) {
+            // Move to next candidate day (start with +1 day from base, since base was the last run)
+            // Or should we check TODAY if base_time is in the past?
+            // The calling function `calculate_next_run` handles the "catch up" loop.
+            // This function is responsible for "Given X, what is X + 1 interval".
+            // So we should always advance at least one unit.
+
+            // Advance by 1 day as the smallest unit for custom schedules usually
+            // Unless it's multiple times a day?
+            // "Twice a day" user request -> implies intraday.
+
+            if (isset($rules['times']) && is_array($rules['times']) && !empty($rules['times'])) {
+                // Multi-time support
+                // Sort times
+                sort($rules['times']);
+
+                // Check if any time later today is valid?
+                $date_str = date('Y-m-d', $base_time);
+                $current_time_str = date('H:i', $base_time);
+
+                foreach ($rules['times'] as $time) {
+                    if ($time > $current_time_str) {
+                        // Found a later time today!
+                        $candidate = strtotime("$date_str $time");
+                        if ($this->is_valid_custom_date($candidate, $rules)) {
+                            return $candidate;
+                        }
+                    }
+                }
+
+                // If no later time today, move to start of next day
+                $base_time = strtotime('+1 day', strtotime($date_str . ' 00:00:00'));
+                // Reset time for loop check
+
+            } else {
+                // Standard Daily increment
+                $base_time = strtotime('+1 day', $base_time);
+            }
+
+            // Now check if this day is valid
+            // If we have specific times, we try the first time of the day
+            $time_to_set = isset($rules['times']) ? $rules['times'][0] : (isset($rules['specific_time']) ? $rules['specific_time'] : date('H:i', $base_time));
+
+            $candidate_str = date('Y-m-d', $base_time) . ' ' . $time_to_set;
+            $candidate = strtotime($candidate_str);
+
+            if ($this->is_valid_custom_date($candidate, $rules)) {
+                return $candidate;
+            }
+        }
+
+        // Fallback
+        return strtotime('+1 day', $base_time);
+    }
+
+    private function is_valid_custom_date($timestamp, $rules) {
+        // Check Day of Week
+        if (!empty($rules['days_of_week'])) {
+            // 0=Sunday, 1=Monday in PHP w format? date('w') is 0(Sun)-6(Sat)
+            // ISO-8601 numeric representation of the day of the week: 1 (for Monday) through 7 (for Sunday) - date('N')
+            // Let's standardise on ISO (1-7) or 0-6. Let's assume user input is 0-6 or 1-7.
+            // Let's assume standard JS getDay() 0(Sun)-6(Sat) or PHP w.
+            $day_w = (int)date('w', $timestamp);
+            if (!in_array($day_w, $rules['days_of_week'])) {
+                return false;
+            }
+        }
+
+        // Check Day of Month
+        if (!empty($rules['day_of_month'])) {
+            $day_d = (int)date('j', $timestamp);
+            // Support array or single int
+            if (is_array($rules['day_of_month'])) {
+                if (!in_array($day_d, $rules['day_of_month'])) {
+                    return false;
+                }
+            } else {
+                if ($day_d !== (int)$rules['day_of_month']) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
     
     /**

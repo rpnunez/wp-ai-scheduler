@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2024-06-01
+
+### Added
+- **Topic Queue System:** Replaced messy bulk schedules with a "Queue" system. Topics are added to a queue and processed by a single schedule runner.
+- **Posting Matrix:** Advanced scheduling configuration modal supporting custom intervals (Specific Times, Days of Week, Day of Month).
+- **Calendar View:** New default view for Schedules showing Past (Published), Pending (Review), and Future (Projected) posts in a monthly grid.
+- **Topic Generator:** Enhanced "Planner" with an AJAX-powered "Generate & Append" workflow for brainstorming topics.
+- **Review Workflow:** Added "Require Review" option to Templates/Schedules, setting generated posts to "Pending" status for manual approval.
+
+### Changed
+- **Scheduler Logic:** Updated `AIPS_Scheduler` to respect `post_quantity` for batch generation (removed hardcoded limit of 1).
+- **Planner UI:** Complete overhaul of the Planner interface to support the new Queue and Matrix workflow.
+- **Database:** Added `aips_schedule_queue` table and updated `aips_schedule` with `advanced_rules`.
+
+### Fixed
+- **Batch Processing:** Fixed a bug where recurring schedules ignored the template's post quantity setting.
+
 ## [Unreleased]
 
 ### Added

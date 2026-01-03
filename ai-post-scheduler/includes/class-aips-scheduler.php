@@ -70,6 +70,16 @@ class AIPS_Scheduler {
             $next_run = date('Y-m-d H:i:s', strtotime($start_time));
         }
         
+        // Handle Advanced Rules and Schedule Type
+        $schedule_type = isset($data['schedule_type']) ? sanitize_text_field($data['schedule_type']) : 'simple';
+        $advanced_rules = isset($data['advanced_rules']) ? $data['advanced_rules'] : null;
+
+        if (is_array($advanced_rules)) {
+            $advanced_rules = json_encode($advanced_rules); // Store as JSON string
+        } else if ($advanced_rules === '') {
+            $advanced_rules = null;
+        }
+
         $schedule_data = array(
             'template_id' => absint($data['template_id']),
             'frequency' => $frequency,
@@ -78,6 +88,8 @@ class AIPS_Scheduler {
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
             'article_structure_id' => isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
             'rotation_pattern' => isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
+            'schedule_type' => $schedule_type,
+            'advanced_rules' => $advanced_rules,
         );
 
         if (!empty($data['id'])) {
@@ -105,10 +117,11 @@ class AIPS_Scheduler {
      *
      * @param string      $frequency  The frequency identifier.
      * @param string|null $start_time Optional start time.
+     * @param array|null  $rules      Optional rules for custom schedules.
      * @return string The next run time in MySQL datetime format.
      */
-    public function calculate_next_run($frequency, $start_time = null) {
-        return $this->interval_calculator->calculate_next_run($frequency, $start_time);
+    public function calculate_next_run($frequency, $start_time = null, $rules = null) {
+        return $this->interval_calculator->calculate_next_run($frequency, $start_time, $rules);
     }
     
     public function process_scheduled_posts() {
@@ -117,6 +130,7 @@ class AIPS_Scheduler {
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
+        // Fetch Due Schedules
         $due_schedules = $wpdb->get_results($wpdb->prepare("
             SELECT t.*, s.*, s.id AS schedule_id
             FROM {$this->schedule_table} s 
@@ -134,48 +148,120 @@ class AIPS_Scheduler {
         }
         
         $generator = new AIPS_Generator();
-        
+        $queue_table = $wpdb->prefix . 'aips_schedule_queue';
+
         foreach ($due_schedules as $schedule) {
-            // Dispatch schedule execution started event
+            // Dispatch execution started
             do_action('aips_schedule_execution_started', array(
                 'schedule_id' => $schedule->schedule_id,
                 'timestamp' => current_time('mysql'),
             ), 'schedule_execution');
             
+            // 1. Determine Post Quantity
+            // Use Template's quantity if set, otherwise default to 1.
+            $quantity_to_generate = isset($schedule->post_quantity) && intval($schedule->post_quantity) > 0
+                ? intval($schedule->post_quantity)
+                : 1;
+
             $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
                 'template_id' => $schedule->template_id,
-                'template_name' => $schedule->name,
-                'topic' => isset($schedule->topic) ? $schedule->topic : ''
+                'batch_size' => $quantity_to_generate,
+                'type' => isset($schedule->schedule_type) ? $schedule->schedule_type : 'simple'
             ));
+
+            $generated_count = 0;
+            $failed_count = 0;
+            $last_result = null;
+
+            // 2. Loop for Batch Generation
+            for ($i = 0; $i < $quantity_to_generate; $i++) {
+
+                // 3. Determine Topic (Queue vs Static vs None)
+                $topic = null;
+                $queue_item_id = null;
+
+                // Check Queue first
+                $queued_topic = $wpdb->get_row($wpdb->prepare("
+                    SELECT id, topic FROM {$queue_table}
+                    WHERE schedule_id = %d AND status = 'pending'
+                    ORDER BY id ASC LIMIT 1
+                ", $schedule->schedule_id));
+
+                if ($queued_topic) {
+                    $topic = $queued_topic->topic;
+                    $queue_item_id = $queued_topic->id;
+                    $logger->log("Using queued topic: $topic", 'info');
+                } else if (!empty($schedule->topic)) {
+                    // Fallback to static topic from Schedule definition
+                    $topic = $schedule->topic;
+                }
+
+                // If no topic found and we are relying on a queue (implied by empty static topic?),
+                // do we stop? Or generate generic?
+                // Logic: If static topic is empty, and queue is empty, we generate a generic post
+                // ONLY IF it's not strictly a "Queue Runner".
+                // But for now, let's assume if no topic, we let the generator handle it (it might generate random).
+
+                // 4. Select Article Structure
+                $article_structure_id = $this->template_type_selector->select_structure($schedule);
+
+                // 5. Determine Post Status (Review Workflow)
+                $post_status = $schedule->post_status;
+                if (!empty($schedule->review_required)) {
+                    $post_status = 'pending'; // Force pending if review required
+                }
+
+                $template = (object) array(
+                    'id' => $schedule->template_id,
+                    'name' => $schedule->name,
+                    'prompt_template' => $schedule->prompt_template,
+                    'title_prompt' => $schedule->title_prompt,
+                    'post_status' => $post_status,
+                    'post_category' => $schedule->post_category,
+                    'post_tags' => $schedule->post_tags,
+                    'post_author' => $schedule->post_author,
+                    'post_quantity' => 1, // Passed to generator as 1 because we are looping manually here
+                    'generate_featured_image' => isset($schedule->generate_featured_image) ? $schedule->generate_featured_image : 0,
+                    'image_prompt' => isset($schedule->image_prompt) ? $schedule->image_prompt : '',
+                    'article_structure_id' => $article_structure_id,
+                );
+
+                $result = $generator->generate_post($template, null, $topic);
+                $last_result = $result;
+
+                if (is_wp_error($result)) {
+                    $failed_count++;
+                    $logger->log('Post generation failed: ' . $result->get_error_message(), 'error');
+                } else {
+                    $generated_count++;
+                    // Mark queue item as processed
+                    if ($queue_item_id) {
+                        $wpdb->update($queue_table,
+                            array('status' => 'processed'),
+                            array('id' => $queue_item_id),
+                            array('%s'),
+                            array('%d')
+                        );
+                    }
+
+                    do_action('aips_schedule_execution_completed', array(
+                        'schedule_id' => $schedule->schedule_id,
+                        'post_id' => $result,
+                        'metadata' => array('topic' => $topic),
+                        'timestamp' => current_time('mysql'),
+                    ), 'schedule_execution');
+                }
+            }
             
-            // NEW: Select article structure for this execution
-            $article_structure_id = $this->template_type_selector->select_structure($schedule);
-            
-            $template = (object) array(
-                'id' => $schedule->template_id,
-                'name' => $schedule->name,
-                'prompt_template' => $schedule->prompt_template,
-                'title_prompt' => $schedule->title_prompt,
-                'post_status' => $schedule->post_status,
-                'post_category' => $schedule->post_category,
-                'post_tags' => $schedule->post_tags,
-                'post_author' => $schedule->post_author,
-                'post_quantity' => 1, // Schedules always run one at a time per interval
-                'generate_featured_image' => isset($schedule->generate_featured_image) ? $schedule->generate_featured_image : 0,
-                'image_prompt' => isset($schedule->image_prompt) ? $schedule->image_prompt : '',
-                'article_structure_id' => $article_structure_id, // NEW: Pass selected structure
-            );
-            
-            $topic = isset($schedule->topic) ? $schedule->topic : null;
-            $result = $generator->generate_post($template, null, $topic);
-            
-            if ($schedule->frequency === 'once' && !is_wp_error($result)) {
-                // If it's a one-time schedule and successful, delete it
+            // 6. Calculate Next Run
+            if ($schedule->frequency === 'once' && $failed_count === 0) {
+                // One-time schedule done
                 $this->repository->delete($schedule->schedule_id);
                 $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
-                // Otherwise calculate next run, passing existing next_run as start_time to preserve phase
-                $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run);
+                // Calculate next run
+                $rules = !empty($schedule->advanced_rules) ? json_decode($schedule->advanced_rules, true) : null;
+                $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run, $rules);
 
                 $this->repository->update($schedule->schedule_id, array(
                     'last_run' => current_time('mysql'),
@@ -183,36 +269,10 @@ class AIPS_Scheduler {
                 ));
             }
             
-            if (is_wp_error($result)) {
-                $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
-                    'schedule_id' => $schedule->schedule_id
-                ));
-                
-                // Dispatch schedule execution failed event
+            if ($failed_count > 0) {
                 do_action('aips_schedule_execution_failed', array(
                     'schedule_id' => $schedule->schedule_id,
-                    'error_code' => $result->get_error_code(),
-                    'error_message' => $result->get_error_message(),
-                    'metadata' => array(
-                        'template_id' => $schedule->template_id,
-                        'frequency' => $schedule->frequency,
-                    ),
-                    'timestamp' => current_time('mysql'),
-                ), 'schedule_execution');
-            } else {
-                $logger->log('Schedule completed successfully', 'info', array(
-                    'schedule_id' => $schedule->schedule_id,
-                    'post_id' => $result
-                ));
-                
-                // Dispatch schedule execution completed event
-                do_action('aips_schedule_execution_completed', array(
-                    'schedule_id' => $schedule->schedule_id,
-                    'post_id' => $result,
-                    'metadata' => array(
-                        'template_id' => $schedule->template_id,
-                        'frequency' => $schedule->frequency,
-                    ),
+                    'error_message' => "Failed to generate $failed_count of $quantity_to_generate posts.",
                     'timestamp' => current_time('mysql'),
                 ), 'schedule_execution');
             }

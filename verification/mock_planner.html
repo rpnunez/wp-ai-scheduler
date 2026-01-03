@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock Planner</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var aipsAjax = { ajaxUrl: '/mock-ajax', nonce: 'mock-nonce' };
+        window.wp = {};
+
+        // Mock $.ajax
+        $.ajax = function(options) {
+            console.log("Mock AJAX called", options);
+            if (options.data.action === 'aips_generate_topic_ideas') {
+                setTimeout(function() {
+                    options.success({
+                        success: true,
+                        data: { topics: ["Topic 1", "Topic 2"] }
+                    });
+                    if (options.complete) options.complete();
+                }, 100);
+            }
+            if (options.data.action === 'aips_save_schedule') {
+                 setTimeout(function() {
+                    options.success({
+                        success: true,
+                        data: { id: 123 }
+                    });
+                }, 100);
+            }
+            if (options.data.action === 'aips_add_to_queue') {
+                 setTimeout(function() {
+                    options.success({
+                        success: true,
+                        data: { count: 2 }
+                    });
+                    if (options.complete) options.complete();
+                }, 100);
+            }
+        };
+    </script>
+    <style>
+        .is-active { display: inline-block !important; }
+        .spinner { display: none; width: 20px; height: 20px; background: red; }
+    </style>
+</head>
+<body>
+    <div id="planner-niche-container">
+        <input type="text" id="planner-niche" value="Test Keywords">
+        <button id="btn-generate-topics">Generate</button>
+        <span class="spinner"></span>
+    </div>
+
+    <div id="planner-results" style="display:none;">
+        <div id="topics-list"></div>
+        <button id="btn-open-matrix">Schedule Selected</button>
+    </div>
+
+    <div id="aips-matrix-modal" style="display:none;">
+        <div class="aips-modal-content">
+            <button class="aips-modal-close">Close</button>
+            <form id="aips-matrix-form">
+                <select id="matrix-template"><option value="1">Template 1</option></select>
+                <select id="matrix-frequency">
+                    <option value="daily">Daily</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <div id="matrix-custom-rules" style="display:none;">
+                    Rules Here
+                </div>
+                <input type="datetime-local" id="matrix-start-date" value="2024-01-01T12:00">
+            </form>
+            <button id="btn-save-matrix">Save</button>
+        </div>
+    </div>
+
+    <script src="../ai-post-scheduler/assets/js/admin-planner.js"></script>
+</body>
+</html>
