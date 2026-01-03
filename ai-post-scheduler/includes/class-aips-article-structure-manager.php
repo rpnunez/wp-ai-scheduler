@@ -205,6 +205,8 @@ class AIPS_Article_Structure_Manager {
 			return new WP_Error('create_failed', __('Failed to create article structure.', 'ai-post-scheduler'));
 		}
 		
+		do_action('aips_structure_created', $id, $structure_data);
+
 		return $id;
 	}
 	
@@ -256,6 +258,8 @@ class AIPS_Article_Structure_Manager {
 			return new WP_Error('update_failed', __('Failed to update article structure.', 'ai-post-scheduler'));
 		}
 		
+		do_action('aips_structure_updated', $structure_id, $structure_data);
+
 		return true;
 	}
 	
@@ -289,6 +293,8 @@ class AIPS_Article_Structure_Manager {
 			return new WP_Error('delete_failed', __('Failed to delete article structure.', 'ai-post-scheduler'));
 		}
 		
+		do_action('aips_structure_deleted', $structure_id);
+
 		return true;
 	}
 	

@@ -151,11 +151,8 @@ class AIPS_Scheduler {
         $queue_table = $wpdb->prefix . 'aips_schedule_queue';
 
         foreach ($due_schedules as $schedule) {
-            // Dispatch execution started
-            do_action('aips_schedule_execution_started', array(
-                'schedule_id' => $schedule->schedule_id,
-                'timestamp' => current_time('mysql'),
-            ), 'schedule_execution');
+            // Dispatch schedule execution started event
+            do_action('aips_schedule_execution_started', $schedule->schedule_id);
             
             // 1. Determine Post Quantity
             // Use Template's quantity if set, otherwise default to 1.
@@ -269,12 +266,21 @@ class AIPS_Scheduler {
                 ));
             }
             
-            if ($failed_count > 0) {
-                do_action('aips_schedule_execution_failed', array(
+            if (is_wp_error($result)) {
+                $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
+                    'schedule_id' => $schedule->schedule_id
+                ));
+                
+                // Dispatch schedule execution failed event
+                do_action('aips_schedule_execution_failed', $schedule->schedule_id, $result->get_error_message());
+            } else {
+                $logger->log('Schedule completed successfully', 'info', array(
                     'schedule_id' => $schedule->schedule_id,
-                    'error_message' => "Failed to generate $failed_count of $quantity_to_generate posts.",
-                    'timestamp' => current_time('mysql'),
-                ), 'schedule_execution');
+                    'post_id' => $result
+                ));
+                
+                // Dispatch schedule execution completed event
+                do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
             }
         }
     }

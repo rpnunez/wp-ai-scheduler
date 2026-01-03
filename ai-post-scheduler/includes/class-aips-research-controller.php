@@ -241,12 +241,7 @@ class AIPS_Research_Controller {
                 $count++;
                 
                 // Fire event for schedule creation
-                do_action('aips_trending_topic_scheduled', array(
-                    'schedule_id' => $schedule_id,
-                    'topic' => $topic,
-                    'template_id' => $template_id,
-                    'next_run' => date('Y-m-d H:i:s', $next_run_time),
-                ));
+                do_action('aips_trending_topic_scheduled', $schedule_id, $topic, $template_id);
             }
         }
         
@@ -310,11 +305,7 @@ class AIPS_Research_Controller {
                 $this->logger->log("Saved {$saved_count} topics for {$niche}", 'info');
                 
                 // Fire event for completed research
-                do_action('aips_scheduled_research_completed', array(
-                    'niche' => $niche,
-                    'topics_count' => $saved_count,
-                    'topics' => $topics,
-                ));
+                do_action('aips_scheduled_research_completed', $niche, $saved_count, $topics);
             }
         }
         
