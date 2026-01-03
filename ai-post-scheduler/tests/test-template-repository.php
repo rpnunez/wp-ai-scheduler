@@ -18,6 +18,8 @@ class AIPS_Template_Repository_Test extends WP_UnitTestCase {
 		// Clean up test data
 		global $wpdb;
 		$table_name = AIPS_DB_Manager::get_table_name('templates');
+		// Note: Table name interpolation is safe here as it comes from trusted AIPS_DB_Manager
+		// wpdb->prepare() doesn't support table name placeholders, only value placeholders
 		$wpdb->query($wpdb->prepare("DELETE FROM {$table_name} WHERE name LIKE %s", 'Test%'));
 		parent::tearDown();
 	}
