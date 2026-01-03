@@ -134,7 +134,7 @@ class AIPS_History_Repository {
                 $cached_total = $stats['total'];
                 $use_cached_count = true;
             } elseif (in_array($args['status'], array('completed', 'failed', 'processing', 'pending'))) {
-                // Ensure key exists (pending might be 0 if not returned by older get_stats call during transition, but we are updating get_stats)
+                // Check if the status key exists in stats (it may be missing if the stats cache is stale).
                 if (isset($stats[$args['status']])) {
                     $cached_total = $stats[$args['status']];
                     $use_cached_count = true;
