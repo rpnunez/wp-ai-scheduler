@@ -150,7 +150,24 @@ class AIPS_Scheduler {
         $generator = new AIPS_Generator();
         $queue_table = $wpdb->prefix . 'aips_schedule_queue';
 
+        // Track execution metrics for monitoring
+        $execution_start = microtime(true);
+        $max_execution_time = 50; // Leave buffer before PHP timeout (usually 60s)
+        $total_generated = 0;
+        $total_failed = 0;
+
         foreach ($due_schedules as $schedule) {
+            // Check if we're approaching time limit - break to avoid timeout
+            $elapsed_time = microtime(true) - $execution_start;
+            if ($elapsed_time > $max_execution_time) {
+                $logger->log('Approaching execution time limit. Deferring remaining schedules to next run.', 'warning', array(
+                    'elapsed_seconds' => round($elapsed_time, 2),
+                    'schedules_processed' => $total_generated + $total_failed,
+                    'remaining_schedules' => count($due_schedules)
+                ));
+                break;
+            }
+
             // Dispatch schedule execution started event
             do_action('aips_schedule_execution_started', $schedule->schedule_id);
             
@@ -160,10 +177,25 @@ class AIPS_Scheduler {
                 ? intval($schedule->post_quantity)
                 : 1;
 
+            // Limit catch-up operations: If schedule is way behind, cap generation to avoid extended processing
+            $max_batch_size = 10; // Maximum posts per schedule run to prevent timeout
+            $schedule_behind_seconds = strtotime(current_time('mysql')) - strtotime($schedule->next_run);
+            
+            if ($quantity_to_generate > $max_batch_size) {
+                $logger->log('Large batch detected. Capping generation to prevent timeout.', 'warning', array(
+                    'schedule_id' => $schedule->schedule_id,
+                    'requested_quantity' => $quantity_to_generate,
+                    'capped_quantity' => $max_batch_size,
+                    'behind_hours' => round($schedule_behind_seconds / 3600, 1)
+                ));
+                $quantity_to_generate = $max_batch_size;
+            }
+
             $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
                 'template_id' => $schedule->template_id,
                 'batch_size' => $quantity_to_generate,
-                'type' => isset($schedule->schedule_type) ? $schedule->schedule_type : 'simple'
+                'type' => isset($schedule->schedule_type) ? $schedule->schedule_type : 'simple',
+                'behind_hours' => round($schedule_behind_seconds / 3600, 1)
             ));
 
             $generated_count = 0;
@@ -250,6 +282,10 @@ class AIPS_Scheduler {
                 }
             }
             
+            // Track totals for monitoring
+            $total_generated += $generated_count;
+            $total_failed += $failed_count;
+            
             // 6. Calculate Next Run
             if ($schedule->frequency === 'once' && $failed_count === 0) {
                 // One-time schedule done
@@ -283,5 +319,15 @@ class AIPS_Scheduler {
                 do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
             }
         }
+
+        // Log execution summary for monitoring
+        $execution_duration = microtime(true) - $execution_start;
+        $logger->log('Scheduled post generation completed', 'info', array(
+            'duration_seconds' => round($execution_duration, 2),
+            'schedules_processed' => count($due_schedules),
+            'total_generated' => $total_generated,
+            'total_failed' => $total_failed,
+            'memory_peak_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2)
+        ));
     }
 }
