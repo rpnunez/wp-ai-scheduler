@@ -57,6 +57,7 @@ if (!defined('ABSPATH')) {
                             <tr>
                                 <th><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></th>
+                                <th><?php esc_html_e('Last Run', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
                             </tr>
                         </thead>
@@ -65,6 +66,15 @@ if (!defined('ABSPATH')) {
                             <tr>
                                 <td><?php echo esc_html($item->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?></td>
                                 <td><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->next_run))); ?></td>
+                                <td>
+                                    <?php
+                                    if (!empty($item->last_run) && $item->last_run !== '0000-00-00 00:00:00') {
+                                        echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->last_run)));
+                                    } else {
+                                        echo '<span class="description">' . esc_html__('Never', 'ai-post-scheduler') . '</span>';
+                                    }
+                                    ?>
+                                </td>
                                 <td><?php echo esc_html(ucfirst($item->frequency)); ?></td>
                             </tr>
                             <?php endforeach; ?>
