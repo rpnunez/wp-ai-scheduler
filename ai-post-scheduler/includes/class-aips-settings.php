@@ -213,7 +213,7 @@ class AIPS_Settings {
         wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery'),
+            array('jquery', 'clipboard'),
             AIPS_VERSION,
             true
         );
