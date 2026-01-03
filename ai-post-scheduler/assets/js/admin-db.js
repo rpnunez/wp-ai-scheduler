@@ -113,6 +113,39 @@
                     $btn.prop('disabled', false).text('Wipe Plugin Data');
                 }
             });
+        },
+
+        clearLogs: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            if (!confirm('Are you sure you want to clear all log files?')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).text('Clearing...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_clear_logs',
+                    nonce: aipsAjax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Clear All Logs');
+                }
+            });
         }
     });
 
@@ -121,6 +154,7 @@
         $(document).on('click', '.aips-repair-db', window.AIPS.repairDb);
         $(document).on('click', '.aips-reinstall-db', window.AIPS.reinstallDb);
         $(document).on('click', '.aips-wipe-db', window.AIPS.wipeDb);
+        $(document).on('click', '.aips-clear-logs', window.AIPS.clearLogs);
     });
 
 })(jQuery);

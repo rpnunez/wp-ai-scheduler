@@ -23,6 +23,7 @@ class AIPS_Settings {
         add_action('admin_init', array($this, 'register_settings'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
         add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
+        add_action('wp_ajax_aips_clear_logs', array($this, 'ajax_clear_logs'));
     }
     
     /**
@@ -503,6 +504,26 @@ class AIPS_Settings {
             wp_send_json_error(array('message' => $result->get_error_message()));
         } else {
             wp_send_json_success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . $result));
+        }
+    }
+
+    /**
+     * Handle AJAX request to clear all logs.
+     *
+     * @return void
+     */
+    public function ajax_clear_logs() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+        }
+
+        $logger = new AIPS_Logger();
+        if ($logger->clear_all_logs()) {
+            wp_send_json_success(array('message' => __('All logs cleared successfully.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to clear logs.', 'ai-post-scheduler')));
         }
     }
 }
