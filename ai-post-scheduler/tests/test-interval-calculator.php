@@ -184,17 +184,81 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
     }
 
     /**
-     * Test calculate_next_run with past time uses current time
+     * Test calculate_next_run with past time uses catch-up logic
+     * 
+     * The new catch-up logic should:
+     * 1. Iteratively add intervals until reaching the future
+     * 2. Preserve the time of day to prevent drift when possible
+     * 3. Result in a timestamp that's in the future
      */
     public function test_calculate_next_run_with_past_time() {
-        $start = '2020-01-01 10:00:00';
+        // Use a recent past time (a few days ago) rather than years ago
+        $start = date('Y-m-d H:i:s', strtotime('-3 days', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('daily', $start);
         
-        // Should be in the future, not based on 2020
+        // Should be in the future
         $next_timestamp = strtotime($next);
         $current_timestamp = current_time('timestamp');
         
+        $this->assertGreaterThan($current_timestamp, $next_timestamp, 
+            'Next run should be in the future after catch-up');
+        
+        // Verify the time of day is preserved (no drift) for recent past times
+        $start_time = date('H:i:s', strtotime($start));
+        $actual_time = date('H:i:s', $next_timestamp);
+        $this->assertEquals($start_time, $actual_time, 
+            'Time of day should be preserved to prevent drift');
+    }
+
+    /**
+     * Test catch-up logic with hourly interval preserves time components
+     * 
+     * When catching up from a past time with hourly intervals,
+     * the minute and second components should be preserved.
+     */
+    public function test_calculate_next_run_hourly_catchup_preserves_time() {
+        // Use a recent past time (a few hours ago)
+        $start = date('Y-m-d H:i:s', strtotime('-5 hours', current_time('timestamp')));
+        $next = $this->calculator->calculate_next_run('hourly', $start);
+        
+        $next_timestamp = strtotime($next);
+        $current_timestamp = current_time('timestamp');
+        
+        // Should be in the future
         $this->assertGreaterThan($current_timestamp, $next_timestamp);
+        
+        // Verify minutes and seconds are preserved
+        $start_time_parts = explode(':', date('H:i:s', strtotime($start)));
+        $actual_time_parts = explode(':', date('H:i:s', $next_timestamp));
+        
+        $this->assertEquals($start_time_parts[1], $actual_time_parts[1],
+            'Minutes should be preserved during hourly catch-up');
+        $this->assertEquals($start_time_parts[2], $actual_time_parts[2],
+            'Seconds should be preserved during hourly catch-up');
+    }
+
+    /**
+     * Test catch-up logic with extreme past time still returns future time
+     * 
+     * Even with very old dates that exceed the catch-up limit,
+     * the safety mechanism should ensure a future time is returned.
+     */
+    public function test_calculate_next_run_catchup_safety_with_extreme_past() {
+        // Use a very old time to test the safety mechanism
+        $start = '1970-01-01 10:00:00';
+        $next = $this->calculator->calculate_next_run('daily', $start);
+        
+        $next_timestamp = strtotime($next);
+        $current_timestamp = current_time('timestamp');
+        
+        // Should still result in a future time even with ancient start date
+        $this->assertGreaterThan($current_timestamp, $next_timestamp,
+            'Even with ancient dates, should produce a future time');
+        
+        // Note: With extreme past dates that exceed max_catchups (1000),
+        // the safety fallback kicks in and recalculates from current time,
+        // which may not preserve the original time of day. This is acceptable
+        // since real-world schedules should never be that far in the past.
     }
 
     /**
