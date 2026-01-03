@@ -112,7 +112,7 @@ jobs:
       # Run PHPUnit tests
       - name: Run PHPUnit tests
         run: cd /tmp/wordpress/wp-content/plugins/ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress composer test -- --testdox
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Generate code coverage report (PHP 8.3 only)
         if: matrix.php == '8.3'
