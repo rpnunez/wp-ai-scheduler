@@ -58,7 +58,7 @@
     <div id="aips-matrix-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
-                <h2><?php esc_html__('Schedule Configuration (The Matrix)', 'ai-post-scheduler'); ?></h2>
+                <h2><?php esc_html_e('Schedule Configuration (The Matrix)', 'ai-post-scheduler'); ?></h2>
                 <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
