@@ -152,7 +152,11 @@ class AIPS_Schedule_Controller {
         $post_ids = array();
         $errors = array();
 
-        $generator = new AIPS_Generator();
+        // Optimization: Defer history stats cache invalidation during batch processing
+        $history_repo = new AIPS_History_Repository();
+        $history_repo->set_defer_cache_invalidation(true);
+
+        $generator = new AIPS_Generator(null, null, null, null, null, null, $history_repo);
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
         // Enforce hard limit of 5 to prevent timeouts (Bolt)
@@ -169,6 +173,9 @@ class AIPS_Schedule_Controller {
                 $post_ids[] = $result;
             }
         }
+
+        // Optimization: Invalidate cache once after batch processing is complete
+        $history_repo->set_defer_cache_invalidation(false);
 
         if (empty($post_ids) && !empty($errors)) {
             // All attempts failed
