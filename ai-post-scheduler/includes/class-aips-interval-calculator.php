@@ -250,29 +250,71 @@ class AIPS_Interval_Calculator {
         return strtotime('+1 day', $base_time);
     }
 
+    /**
+     * Validate whether a given timestamp matches the provided custom schedule rules.
+     *
+     * Expected structure of $rules:
+     * - 'days_of_week' (optional): int|int[]
+     *       Accepts either:
+     *       - 0–6 (Sunday=0, Monday=1, ...), matching PHP date('w') and JS getDay(), or
+     *       - 1–7 (Monday=1, ..., Sunday=7), matching ISO-8601 / PHP date('N').
+     *   Internally, all values are normalized to 0–6 (Sunday=0) to compare with date('w').
+     * - 'day_of_month' (optional): int|int[]
+     *
+     * @param int   $timestamp Unix timestamp to validate.
+     * @param array $rules     Custom schedule rules.
+     *
+     * @return bool True if the timestamp matches the rules, false otherwise.
+     */
     private function is_valid_custom_date($timestamp, $rules) {
         // Check Day of Week
         if (!empty($rules['days_of_week'])) {
-            // 0=Sunday, 1=Monday in PHP w format? date('w') is 0(Sun)-6(Sat)
-            // ISO-8601 numeric representation of the day of the week: 1 (for Monday) through 7 (for Sunday) - date('N')
-            // Let's standardise on ISO (1-7) or 0-6. Let's assume user input is 0-6 or 1-7.
-            // Let's assume standard JS getDay() 0(Sun)-6(Sat) or PHP w.
-            $day_w = (int)date('w', $timestamp);
-            if (!in_array($day_w, $rules['days_of_week'])) {
+            $day_w = (int) date('w', $timestamp); // 0 (Sun) - 6 (Sat)
+
+            // Normalize configured days_of_week to 0-6 (Sunday=0) to match date('w').
+            $days_of_week = $rules['days_of_week'];
+            if (!is_array($days_of_week)) {
+                $days_of_week = array($days_of_week);
+            }
+
+            $normalized_days = array();
+            foreach ($days_of_week as $day) {
+                $day = (int) $day;
+
+                // Support ISO 1–7 (Mon=1..Sun=7) and 0–6 (Sun=0..Sat=6).
+                if ($day >= 1 && $day <= 7) {
+                    // Convert ISO: 1–6 stay as 1–6, 7 (Sunday) becomes 0.
+                    $day = $day % 7;
+                } elseif ($day < 0 || $day > 6) {
+                    // Ignore out-of-range values.
+                    continue;
+                }
+
+                $normalized_days[] = $day;
+            }
+
+            $normalized_days = array_values(array_unique($normalized_days));
+
+            // If nothing valid remains after normalization, the rule cannot match.
+            if (empty($normalized_days)) {
+                return false;
+            }
+
+            if (!in_array($day_w, $normalized_days, true)) {
                 return false;
             }
         }
 
         // Check Day of Month
         if (!empty($rules['day_of_month'])) {
-            $day_d = (int)date('j', $timestamp);
+            $day_d = (int) date('j', $timestamp);
             // Support array or single int
             if (is_array($rules['day_of_month'])) {
                 if (!in_array($day_d, $rules['day_of_month'])) {
                     return false;
                 }
             } else {
-                if ($day_d !== (int)$rules['day_of_month']) {
+                if ($day_d !== (int) $rules['day_of_month']) {
                     return false;
                 }
             }
