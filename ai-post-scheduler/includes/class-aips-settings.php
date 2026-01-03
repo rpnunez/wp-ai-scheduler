@@ -218,6 +218,17 @@ class AIPS_Settings {
             true
         );
 
+        // Load Templates component only on Templates page
+        if ($hook === 'ai-post-scheduler_page_aips-templates') {
+            wp_enqueue_script(
+                'aips-admin-templates',
+                AIPS_PLUGIN_URL . 'assets/js/admin-templates.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
         // Load Voices component only on Voices page and Templates page (for voice search)
         if ($hook === 'ai-post-scheduler_page_aips-voices' || $hook === 'ai-post-scheduler_page_aips-templates') {
             wp_enqueue_script(
@@ -229,32 +240,39 @@ class AIPS_Settings {
             );
         }
 
-        wp_enqueue_script(
-            'aips-admin-research',
-            AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
-            array('aips-admin-script'),
-            AIPS_VERSION,
-            true
-        );
+        // Load Research component only on Research/Trending Topics page
+        if ($hook === 'ai-post-scheduler_page_aips-research') {
+            wp_enqueue_script(
+                'aips-admin-research',
+                AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
 
-        wp_localize_script('aips-admin-research', 'aipsResearchL10n', array(
-            'topicsSaved' => __('topics saved for', 'ai-post-scheduler'),
-            'topTopics' => __('Top 5 Topics:', 'ai-post-scheduler'),
-            'noTopicsFound' => __('No topics found matching your filters.', 'ai-post-scheduler'),
-            'deleteTopicConfirm' => __('Delete this topic?', 'ai-post-scheduler'),
-            'selectTopicSchedule' => __('Please select at least one topic to schedule.', 'ai-post-scheduler'),
-            'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
-            'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
-            'delete' => __('Delete', 'ai-post-scheduler'),
-        ));
+            wp_localize_script('aips-admin-research', 'aipsResearchL10n', array(
+                'topicsSaved' => __('topics saved for', 'ai-post-scheduler'),
+                'topTopics' => __('Top 5 Topics:', 'ai-post-scheduler'),
+                'noTopicsFound' => __('No topics found matching your filters.', 'ai-post-scheduler'),
+                'deleteTopicConfirm' => __('Delete this topic?', 'ai-post-scheduler'),
+                'selectTopicSchedule' => __('Please select at least one topic to schedule.', 'ai-post-scheduler'),
+                'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
+                'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
+                'delete' => __('Delete', 'ai-post-scheduler'),
+            ));
+        }
 
-        wp_enqueue_script(
-            'aips-admin-planner',
-            AIPS_PLUGIN_URL . 'assets/js/admin-planner.js',
-            array('aips-admin-script'),
-            AIPS_VERSION,
-            true
-        );
+        // Load Planner component only on Dashboard page (where planner is used)
+        // Note: Check which pages actually use the planner functionality
+        if ($hook === 'toplevel_page_ai-post-scheduler') {
+            wp_enqueue_script(
+                'aips-admin-planner',
+                AIPS_PLUGIN_URL . 'assets/js/admin-planner.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
 
         wp_enqueue_script(
             'aips-admin-db',
