@@ -85,6 +85,9 @@ if (!defined('ABSPATH')) {
                             <button class="button aips-run-now" data-id="<?php echo esc_attr($template->id); ?>">
                                 <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                             </button>
+                            <button class="button aips-clone-template" data-id="<?php echo esc_attr($template->id); ?>">
+                                <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
+                            </button>
                             <button class="button button-link-delete aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>">
                                 <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                             </button>
