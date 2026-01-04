@@ -165,7 +165,7 @@ class AIPS_Templates_Controller {
                     <tr>
                         <td>
                             <?php if ($item->post_id): ?>
-                                <a href="<?php echo get_permalink($item->post_id); ?>" target="_blank">
+                                <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" target="_blank">
                                     <?php echo esc_html($item->generated_title); ?>
                                 </a>
                             <?php else: ?>
@@ -174,7 +174,7 @@ class AIPS_Templates_Controller {
                         </td>
                         <td><?php echo esc_html($item->created_at); ?></td>
                         <td>
-                            <a href="<?php echo get_edit_post_link($item->post_id); ?>" class="button button-small" target="_blank">
+                            <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" class="button button-small" target="_blank">
                                 <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                             </a>
                         </td>

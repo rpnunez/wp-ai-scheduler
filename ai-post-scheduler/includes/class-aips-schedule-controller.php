@@ -28,7 +28,7 @@ class AIPS_Schedule_Controller {
             'template_id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
             'frequency' => isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily',
             'start_time' => isset($_POST['start_time']) ? sanitize_text_field($_POST['start_time']) : null,
-            'is_active' => isset($_POST['is_active']) ? 1 : 0,
+            'is_active' => !empty($_POST['is_active']) ? 1 : 0,
             'topic' => isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '',
             'article_structure_id' => isset($_POST['article_structure_id']) && $_POST['article_structure_id'] !== '' ? absint($_POST['article_structure_id']) : null,
             'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? sanitize_text_field($_POST['rotation_pattern']) : null,
@@ -90,20 +90,7 @@ class AIPS_Schedule_Controller {
         }
 
         // We use the new toggle_active method in Scheduler
-        if (method_exists($this->scheduler, 'toggle_active')) {
-             $result = $this->scheduler->toggle_active($id, $is_active);
-        } else {
-             // Fallback
-             global $wpdb;
-             $table_name = $wpdb->prefix . 'aips_schedule';
-             $result = $wpdb->update(
-                $table_name,
-                array('is_active' => $is_active),
-                array('id' => $id),
-                array('%d'),
-                array('%d')
-            );
-        }
+        $result = $this->scheduler->toggle_active($id, $is_active);
 
         if ($result !== false) {
             wp_send_json_success(array('message' => __('Schedule updated.', 'ai-post-scheduler')));
