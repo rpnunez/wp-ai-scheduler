@@ -166,10 +166,16 @@ class AIPS_Scheduler {
             $topic = isset($schedule->topic) ? $schedule->topic : null;
             $result = $generator->generate_post($template, null, $topic);
             
-            if ($schedule->frequency === 'once' && !is_wp_error($result)) {
-                // If it's a one-time schedule and successful, delete it
-                $this->repository->delete($schedule->schedule_id);
-                $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
+            if ($schedule->frequency === 'once') {
+                if (!is_wp_error($result)) {
+                    // If it's a one-time schedule and successful, delete it
+                    $this->repository->delete($schedule->schedule_id);
+                    $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
+                } else {
+                    // If it's a one-time schedule and failed, deactivate it (do not reschedule)
+                    $this->repository->set_active($schedule->schedule_id, 0);
+                    $logger->log('One-time schedule failed and deactivated', 'warning', array('schedule_id' => $schedule->schedule_id));
+                }
             } else {
                 // Otherwise calculate next run, passing existing next_run as start_time to preserve phase
                 $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run);
