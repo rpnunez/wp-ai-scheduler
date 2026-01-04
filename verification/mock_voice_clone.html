@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Clone Verification</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .aips-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+        .aips-modal-content { background: white; padding: 20px; width: 500px; border-radius: 5px; }
+        .aips-form-row { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], textarea { width: 100%; padding: 5px; }
+        .button { padding: 8px 15px; cursor: pointer; }
+        .button-primary { background: #2271b1; color: white; border: none; }
+    </style>
+</head>
+<body>
+
+    <h1>Voices</h1>
+
+    <table class="wp-list-table widefat fixed striped aips-voices-list">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Professional</td>
+                <td>
+                    <button class="button aips-edit-voice" data-id="123">Edit</button>
+                    <button class="button aips-clone-voice" data-id="123">Clone</button>
+                    <button class="button aips-delete-voice" data-id="123">Delete</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div id="aips-voice-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content">
+            <h2 id="aips-voice-modal-title">Add New Voice</h2>
+            <form id="aips-voice-form">
+                <input type="hidden" name="voice_id" id="voice_id" value="">
+
+                <div class="aips-form-row">
+                    <label for="voice_name">Voice Name</label>
+                    <input type="text" id="voice_name" name="name">
+                </div>
+
+                <div class="aips-form-row">
+                    <label for="voice_title_prompt">Title Prompt</label>
+                    <textarea id="voice_title_prompt" name="title_prompt"></textarea>
+                </div>
+
+                <div class="aips-form-row">
+                    <label for="voice_content_instructions">Content Instructions</label>
+                    <textarea id="voice_content_instructions" name="content_instructions"></textarea>
+                </div>
+
+                <div class="aips-form-row">
+                    <label>
+                        <input type="checkbox" id="voice_is_active" name="is_active"> Voice is active
+                    </label>
+                </div>
+
+                <button type="button" class="button button-primary aips-save-voice">Save Voice</button>
+                <button type="button" class="button aips-modal-close">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        var aipsAjax = {
+            ajaxUrl: '/wp-admin/admin-ajax.php',
+            nonce: 'test_nonce'
+        };
+    </script>
+    <!-- We will inject the admin.js content here via Playwright or include it -->
+    <!-- For simplicity, I'll copy the relevant parts of admin.js or rely on Playwright to inject it -->
+</body>
+</html>
