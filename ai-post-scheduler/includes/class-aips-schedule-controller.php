@@ -160,7 +160,17 @@ class AIPS_Schedule_Controller {
             $quantity = 5;
         }
 
+        // Initialize session for tracking (if supported by Generator)
+        $start_time = time();
+        $timeout_limit = 25; // 25 seconds soft timeout (assuming 30s max_execution_time)
+
         for ($i = 0; $i < $quantity; $i++) {
+            // Check for timeout
+            if (time() - $start_time > $timeout_limit) {
+                $errors[] = __('Time limit reached. Stopping execution to prevent timeout.', 'ai-post-scheduler');
+                break;
+            }
+
             $result = $generator->generate_post($template, $voice, $topic);
 
             if (is_wp_error($result)) {
