@@ -133,7 +133,21 @@ class AIPS_Scheduler {
             return;
         }
         
-        $generator = new AIPS_Generator();
+        // Optimize cache invalidation for batch processing
+        $this->repository->set_defer_cache_invalidation(true);
+        $history_repo = new AIPS_History_Repository();
+        $history_repo->set_defer_cache_invalidation(true);
+
+        // Inject shared history repository to generator
+        $generator = new AIPS_Generator(
+            $logger,
+            null, // ai_service (use default)
+            null, // template_processor (use default)
+            null, // image_service (use default)
+            null, // structure_manager (use default)
+            null, // post_creator (use default)
+            $history_repo // Use our custom repo instance
+        );
         
         foreach ($due_schedules as $schedule) {
             // Dispatch schedule execution started event
@@ -197,5 +211,12 @@ class AIPS_Scheduler {
                 do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
             }
         }
+
+        // Restore cache invalidation and clear caches once
+        $this->repository->set_defer_cache_invalidation(false);
+        $this->repository->clear_stats_cache();
+
+        $history_repo->set_defer_cache_invalidation(false);
+        $history_repo->clear_stats_cache();
     }
 }
