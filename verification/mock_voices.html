@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voices Verification</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; }
+        .aips-modal-content { background: white; padding: 20px; width: 500px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Voices</h1>
+        <table class="aips-voices-list">
+            <tbody>
+                <tr data-voice-id="123">
+                    <td class="column-name">Original Voice</td>
+                    <td class="column-actions">
+                        <button class="button aips-clone-voice" data-id="123">Clone</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="aips-voice-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content">
+            <h2 id="aips-voice-modal-title">Add New Voice</h2>
+            <form id="aips-voice-form">
+                <input type="hidden" id="voice_id" name="voice_id">
+                <label>Voice Name <input type="text" id="voice_name" name="name"></label><br>
+                <label>Title Prompt <textarea id="voice_title_prompt" name="title_prompt"></textarea></label><br>
+                <label>Content Instructions <textarea id="voice_content_instructions" name="content_instructions"></textarea></label><br>
+                <label>Excerpt Instructions <textarea id="voice_excerpt_instructions" name="excerpt_instructions"></textarea></label><br>
+                <label><input type="checkbox" id="voice_is_active" name="is_active"> Active</label>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        var aipsAjax = { ajaxUrl: '/ajax', nonce: 'test_nonce' };
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+</body>
+</html>
