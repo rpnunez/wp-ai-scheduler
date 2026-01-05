@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Planner</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Mock CSS for visibility */
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #ccc; border-top-color: #000; border-radius: 50%; display: none; }
+        .spinner.is-active { display: inline-block; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .screen-reader-text { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+        #planner-results { border: 1px solid #ddd; padding: 20px; }
+    </style>
+</head>
+<body>
+    <!-- Paste content from planner.php (simplified) -->
+    <div class="aips-planner-container">
+        <div class="aips-card">
+            <h3>Topic Brainstorming</h3>
+            <div class="aips-form-row">
+                <label for="planner-niche">Niche / Topic</label>
+                <input type="text" id="planner-niche" class="regular-text" value="Test Niche">
+            </div>
+            <div class="aips-form-row">
+                <label for="planner-count">Number of Topics</label>
+                <input type="number" id="planner-count" class="small-text" value="10">
+            </div>
+            <div class="aips-form-actions">
+                <button type="button" id="btn-generate-topics" class="button button-primary">
+                    Generate Topics
+                </button>
+                <span class="spinner"></span>
+            </div>
+        </div>
+
+        <div id="planner-results" class="aips-card" style="display:none; margin-top: 20px;">
+            <h3 id="planner-results-heading" tabindex="-1">Review & Schedule</h3>
+            <div class="aips-toolbar">
+                <div class="aips-toolbar-left">
+                    <label><input type="checkbox" id="check-all-topics"> Select All</label>
+                    <span class="selection-count" aria-live="polite"></span>
+                </div>
+                <div id="aips-planner-a11y-status" class="screen-reader-text" aria-live="polite"></div>
+            </div>
+            <div id="topics-list" class="aips-topics-grid"></div>
+        </div>
+    </div>
+
+    <!-- Mock global variables -->
+    <script>
+        var aipsAjax = {
+            ajaxUrl: '/wp-admin/admin-ajax.php',
+            nonce: 'mock-nonce'
+        };
+        window.AIPS = {};
+    </script>
+
+    <!-- Load JS -->
+    <script>
+    // Paste admin-planner.js content here (simplified or full)
+    (function($) {
+        'use strict';
+        window.AIPS = window.AIPS || {};
+        Object.assign(window.AIPS, {
+            generateTopics: function(e) {
+                e.preventDefault();
+                var niche = $('#planner-niche').val();
+                var count = $('#planner-count').val();
+                if (!niche) { alert('Please enter a niche or topic.'); return; }
+
+                var $btn = $(this);
+                var originalText = $btn.text();
+                // CHANGE: Text update
+                $btn.prop('disabled', true).text('Generating...');
+                $btn.next('.spinner').addClass('is-active');
+
+                // MOCK AJAX
+                setTimeout(function() {
+                    var response = {
+                        success: true,
+                        data: {
+                            topics: ['Topic 1', 'Topic 2', 'Topic 3'],
+                            message: 'Success'
+                        }
+                    };
+
+                    if (response.success) {
+                        window.AIPS.renderTopics(response.data.topics);
+                        // CHANGE: Aria status update
+                        $('#aips-planner-a11y-status').text(response.data.topics.length + ' topics generated successfully. Use Tab to review them.');
+                        // CHANGE: Focus management
+                        $('#planner-results').slideDown(400, function() {
+                            $('#planner-results-heading').trigger('focus');
+                        });
+                    }
+
+                    // CHANGE: Restore text
+                    $btn.prop('disabled', false).text(originalText);
+                    $btn.next('.spinner').removeClass('is-active');
+                }, 500);
+            },
+            renderTopics: function(topics, append) {
+                var html = '';
+                topics.forEach(function(topic) {
+                    html += '<div class="topic-item">' + topic + '</div>';
+                });
+                if (append) $('#topics-list').append(html);
+                else $('#topics-list').html(html);
+                window.AIPS.updateSelectionCount();
+            },
+            updateSelectionCount: function() {
+                $('.selection-count').text('3 selected'); // Mock
+            },
+            toggleAllTopics: function() {},
+            parseManualTopics: function() {},
+            clearTopics: function() {},
+            copySelectedTopics: function() {},
+            bulkSchedule: function() {}
+        });
+
+        $(document).ready(function() {
+            $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
+        });
+    })(jQuery);
+    </script>
+</body>
+</html>

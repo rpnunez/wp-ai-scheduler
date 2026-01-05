@@ -18,7 +18,8 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true);
+            var originalText = $btn.text();
+            $btn.prop('disabled', true).text('Generating...');
             $btn.next('.spinner').addClass('is-active');
 
             $.ajax({
@@ -33,7 +34,10 @@
                 success: function(response) {
                     if (response.success) {
                         window.AIPS.renderTopics(response.data.topics);
-                        $('#planner-results').slideDown();
+                        $('#aips-planner-a11y-status').text(response.data.topics.length + ' topics generated successfully. Use Tab to review them.');
+                        $('#planner-results').slideDown(400, function() {
+                            $('#planner-results-heading').trigger('focus');
+                        });
                     } else {
                         alert(response.data.message);
                     }
@@ -42,7 +46,7 @@
                     alert('An error occurred. Please try again.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false);
+                    $btn.prop('disabled', false).text(originalText);
                     $btn.next('.spinner').removeClass('is-active');
                 }
             });

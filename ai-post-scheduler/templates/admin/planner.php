@@ -32,13 +32,14 @@
     </div>
 
     <div id="planner-results" class="aips-card" style="display:none; margin-top: 20px;">
-        <h3><?php echo esc_html__('Review & Schedule', 'ai-post-scheduler'); ?></h3>
+        <h3 id="planner-results-heading" tabindex="-1"><?php echo esc_html__('Review & Schedule', 'ai-post-scheduler'); ?></h3>
 
         <div class="aips-toolbar">
             <div class="aips-toolbar-left">
                 <label><input type="checkbox" id="check-all-topics"> <?php echo esc_html__('Select All', 'ai-post-scheduler'); ?></label>
-                <span class="selection-count"></span>
+                <span class="selection-count" aria-live="polite"></span>
             </div>
+            <div id="aips-planner-a11y-status" class="screen-reader-text" aria-live="polite"></div>
             <div class="aips-toolbar-right">
                 <button type="button" id="btn-copy-topics" class="button button-secondary button-small"><?php echo esc_html__('Copy Selected', 'ai-post-scheduler'); ?></button>
                 <button type="button" id="btn-clear-topics" class="button button-link-delete button-small"><?php echo esc_html__('Clear List', 'ai-post-scheduler'); ?></button>
