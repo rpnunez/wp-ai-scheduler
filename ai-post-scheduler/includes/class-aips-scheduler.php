@@ -195,6 +195,9 @@ class AIPS_Scheduler {
                 
                 // Dispatch schedule execution completed event
                 do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
+
+                // ⚡ Bolt Optimization: Invalidate execution count cache
+                delete_transient('aips_sched_cnt_' . $schedule->schedule_id);
             }
         }
     }

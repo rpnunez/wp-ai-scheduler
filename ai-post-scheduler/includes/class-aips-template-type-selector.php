@@ -196,32 +196,58 @@ class AIPS_Template_Type_Selector {
 	private function get_schedule_execution_count($schedule) {
 		global $wpdb;
 		$table_history = $wpdb->prefix . 'aips_history';
-		$table_schedule = $wpdb->prefix . 'aips_schedule';
 		
 		// Handle ID or Object input to allow avoiding N+1 queries
 		if (is_numeric($schedule)) {
 			$schedule_id = (int) $schedule;
 			$schedule = $this->schedule_repository->get_by_id($schedule_id);
 		} else {
-			$schedule_id = $schedule->id;
+			// Ensure we have an ID for the object
+			$schedule_id = isset($schedule->id) ? (int) $schedule->id : (isset($schedule->schedule_id) ? (int) $schedule->schedule_id : 0);
 		}
 		
-		if (!$schedule) {
+		if (!$schedule || empty($schedule_id)) {
 			return 0;
+		}
+
+		// ⚡ Bolt Optimization: Use cached count if available to avoid expensive COUNT(*) query
+		$cache_key = 'aips_sched_cnt_' . $schedule_id;
+		$cached_count = get_transient($cache_key);
+		if ($cached_count !== false) {
+			return (int) $cached_count;
 		}
 		
 		// Count completed generations for this template
 		// Note: We use template_id since history doesn't directly link to schedule
-		$count = $wpdb->get_var($wpdb->prepare(
-			"SELECT COUNT(*) FROM $table_history 
-			WHERE template_id = %d 
-			AND status = 'completed' 
-			AND created_at >= (SELECT created_at FROM $table_schedule WHERE id = %d)",
-			$schedule->template_id,
-			$schedule_id
-		));
+		// ⚡ Bolt Optimization: Use created_at from object to avoid subquery
+		if (!empty($schedule->created_at)) {
+			$sql = $wpdb->prepare(
+				"SELECT COUNT(*) FROM $table_history
+				WHERE template_id = %d
+				AND status = 'completed'
+				AND created_at >= %s",
+				$schedule->template_id,
+				$schedule->created_at
+			);
+		} else {
+			// Fallback to subquery if created_at is missing from object
+			$table_schedule = $wpdb->prefix . 'aips_schedule';
+			$sql = $wpdb->prepare(
+				"SELECT COUNT(*) FROM $table_history
+				WHERE template_id = %d
+				AND status = 'completed'
+				AND created_at >= (SELECT created_at FROM $table_schedule WHERE id = %d)",
+				$schedule->template_id,
+				$schedule_id
+			);
+		}
+
+		$count = (int) $wpdb->get_var($sql);
+
+		// Cache the result for 24 hours (invalidated on successful generation)
+		set_transient($cache_key, $count, DAY_IN_SECONDS);
 		
-		return (int) $count;
+		return $count;
 	}
 	
 	/**
