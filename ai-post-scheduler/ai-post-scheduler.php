@@ -58,6 +58,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
         
         // Repository layer
@@ -155,6 +156,7 @@ final class AI_Post_Scheduler {
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Settings();
+            new AIPS_Settings_Controller();
             new AIPS_Voices();
             new AIPS_Templates();
             new AIPS_Templates_Controller();
