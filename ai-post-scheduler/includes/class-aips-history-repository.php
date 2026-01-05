@@ -124,7 +124,10 @@ class AIPS_History_Repository {
                 $where_args
             ));
         } else {
-            $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+            // Optimization: Use cached stats when no filters are applied
+            // This avoids running a COUNT(*) query on every page load
+            $stats = $this->get_stats();
+            $total = $stats['total'];
         }
         
         return array(

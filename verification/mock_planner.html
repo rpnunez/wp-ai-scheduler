@@ -1,0 +1,55 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock Planner</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .is-active { display: inline-block; width: 20px; height: 20px; background: blue; }
+        #planner-results { display: none; }
+    </style>
+    <script>
+        var aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: '123' };
+        window.AIPS = {};
+    </script>
+</head>
+<body>
+    <div class="aips-planner-container">
+        <!-- Mock Planner Form -->
+        <input type="text" id="planner-niche" value="Test Niche">
+        <input type="number" id="planner-count" value="10">
+        <div class="aips-form-actions">
+            <button id="btn-generate-topics">Generate</button>
+            <button id="btn-clear-form">Clear</button>
+            <span class="spinner"></span>
+        </div>
+
+        <div id="planner-results">
+            <div id="topics-list">
+                <div class="topic-item">Topic 1</div>
+            </div>
+        </div>
+
+        <!-- Mock Schedule Table -->
+        <table>
+            <tr data-schedule-id="1" data-template-id="5" data-frequency="daily" data-topic="My Topic" data-article-structure-id="" data-rotation-pattern="">
+                <td>
+                    <button class="aips-edit-schedule">Edit</button>
+                </td>
+            </tr>
+        </table>
+
+        <div id="aips-schedule-modal" style="display:none;">
+            <span id="aips-schedule-modal-title">Title</span>
+            <form id="aips-schedule-form">
+                <input type="hidden" id="schedule_id">
+                <input type="text" id="schedule_topic">
+                <input type="text" id="schedule_start_time">
+            </form>
+        </div>
+    </div>
+
+    <!-- Load Scripts -->
+    <!-- We inject the content of admin-planner.js and admin.js here in the playwright script -->
+</body>
+</html>

@@ -17,6 +17,9 @@
             <button type="button" id="btn-generate-topics" class="button button-primary">
                 <?php echo esc_html__('Generate Topics', 'ai-post-scheduler'); ?>
             </button>
+            <button type="button" id="btn-clear-form" class="button button-secondary">
+                <?php echo esc_html__('Clear', 'ai-post-scheduler'); ?>
+            </button>
             <span class="spinner"></span>
         </div>
 

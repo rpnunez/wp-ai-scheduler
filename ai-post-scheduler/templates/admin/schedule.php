@@ -103,6 +103,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         </label>
                     </td>
                     <td class="column-actions">
+                        <button class="button aips-edit-schedule" aria-label="<?php esc_attr_e('Edit schedule', 'ai-post-scheduler'); ?>">
+                            <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+                        </button>
                         <button class="button aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>">
                             <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
                         </button>

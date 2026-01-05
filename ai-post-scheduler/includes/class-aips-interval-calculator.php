@@ -127,25 +127,25 @@ class AIPS_Interval_Calculator {
     /**
      * Calculate the next run timestamp for a given frequency.
      *
-     * Internal method that performs the actual timestamp calculations.
+     * Public method that performs the actual timestamp calculations.
      *
      * @param string $frequency The frequency identifier.
      * @param int    $base_time The base timestamp to calculate from.
      * @return int The next run timestamp.
      */
-    private function calculate_next_timestamp($frequency, $base_time) {
+    public function calculate_next_timestamp($frequency, $base_time) {
         switch ($frequency) {
             case 'hourly':
-                return strtotime('+1 hour', $base_time);
+                return $base_time + 3600;
                 
             case 'every_4_hours':
-                return strtotime('+4 hours', $base_time);
+                return $base_time + 14400;
                 
             case 'every_6_hours':
-                return strtotime('+6 hours', $base_time);
+                return $base_time + 21600;
                 
             case 'every_12_hours':
-                return strtotime('+12 hours', $base_time);
+                return $base_time + 43200;
                 
             case 'daily':
                 return strtotime('+1 day', $base_time);
@@ -261,5 +261,64 @@ class AIPS_Interval_Calculator {
         }
 
         return $schedules;
+    }
+
+    /**
+     * Calculate the number of occurrences of a frequency within a time range.
+     *
+     * Uses O(1) mathematical calculation for fixed intervals to improve performance,
+     * falling back to iterative approach for variable intervals (like monthly).
+     *
+     * @param string $frequency The frequency identifier.
+     * @param int $start_timestamp The starting timestamp (e.g., next_run).
+     * @param int $end_timestamp The ending timestamp for the range.
+     * @return int The number of occurrences.
+     */
+    public function calculate_occurrences($frequency, $start_timestamp, $end_timestamp) {
+        if ($start_timestamp > $end_timestamp) {
+            return 0;
+        }
+
+        $fixed_intervals = array(
+            'hourly' => 3600,
+            'every_4_hours' => 14400,
+            'every_6_hours' => 21600,
+            'every_12_hours' => 43200,
+            'daily' => 86400,
+            'weekly' => 604800,
+            'bi_weekly' => 1209600,
+            'every_monday' => 604800,
+            'every_tuesday' => 604800,
+            'every_wednesday' => 604800,
+            'every_thursday' => 604800,
+            'every_friday' => 604800,
+            'every_saturday' => 604800,
+            'every_sunday' => 604800,
+        );
+
+        if (isset($fixed_intervals[$frequency])) {
+            $interval = $fixed_intervals[$frequency];
+            // +1 because if start <= end, it counts as at least one occurrence (the start itself)
+            // Example: Start 10:00, End 11:00, Interval 1hr.
+            // Occurrences: 10:00, 11:00 -> 2?
+            // Wait, the loop logic was:
+            // cursor = start;
+            // while (cursor <= end) { count++; cursor = next(cursor); }
+            // So yes, inclusive of start.
+            // Formula: floor((end - start) / interval) + 1
+            return floor(($end_timestamp - $start_timestamp) / $interval) + 1;
+        }
+
+        // Fallback for variable intervals (monthly, etc)
+        $count = 0;
+        $cursor = $start_timestamp;
+        $max_iterations = 100; // Safety break
+
+        while ($cursor <= $end_timestamp && $count < $max_iterations) {
+            $count++;
+            $cursor = $this->calculate_next_timestamp($frequency, $cursor);
+        }
+
+        return $count;
     }
 }

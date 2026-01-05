@@ -60,14 +60,25 @@ class AIPS_Scheduler {
         if (isset($data['next_run'])) {
             $next_run = sanitize_text_field($data['next_run']);
         } else {
-            // Use start_time as the initial run time if provided, otherwise start now.
-            // Using calculate_next_run here would skip the first interval (e.g., scheduling for "Tomorrow" if "Start Time" is "Now").
-            $start_time = isset($data['start_time']) && !empty($data['start_time'])
-                ? $data['start_time']
-                : current_time('mysql');
+            // Check if we are updating an existing schedule and start_time is NOT provided
+            // This prevents resetting next_run to NOW() when updating only other fields
+            if (!empty($data['id']) && empty($data['start_time'])) {
+                $existing = $this->repository->get_by_id(absint($data['id']));
+                if ($existing) {
+                    $next_run = $existing->next_run;
+                } else {
+                     $next_run = current_time('mysql');
+                }
+            } else {
+                // Use start_time as the initial run time if provided, otherwise start now.
+                // Using calculate_next_run here would skip the first interval (e.g., scheduling for "Tomorrow" if "Start Time" is "Now").
+                $start_time = isset($data['start_time']) && !empty($data['start_time'])
+                    ? $data['start_time']
+                    : current_time('mysql');
 
-            // Ensure proper MySQL format (handling 'T' from datetime-local inputs)
-            $next_run = date('Y-m-d H:i:s', strtotime($start_time));
+                // Ensure proper MySQL format (handling 'T' from datetime-local inputs)
+                $next_run = date('Y-m-d H:i:s', strtotime($start_time));
+            }
         }
         
         $schedule_data = array(

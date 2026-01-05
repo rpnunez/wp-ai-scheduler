@@ -263,6 +263,7 @@
     // Bind Planner Events
     $(document).ready(function() {
         $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
+        $(document).on('click', '#btn-clear-form', window.AIPS.clearTopics); // Map Clear button to clearTopics logic
         $(document).on('click', '#btn-parse-manual', window.AIPS.parseManualTopics);
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
         $(document).on('click', '#btn-clear-topics', window.AIPS.clearTopics);

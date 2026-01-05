@@ -144,79 +144,50 @@ class AIPS_Templates {
         $week_end = strtotime('+7 days', $now);
         $month_end = strtotime('+30 days', $now);
 
+        // Optimization: Use Interval Calculator for shared logic
+        $interval_calculator = new AIPS_Interval_Calculator();
+
         foreach ($schedules as $schedule) {
             $tid = $schedule->template_id;
             if (!isset($stats[$tid])) {
                 $stats[$tid] = array('today' => 0, 'week' => 0, 'month' => 0);
             }
 
-            $cursor = strtotime($schedule->next_run);
+            $next_run = strtotime($schedule->next_run);
             $frequency = $schedule->frequency;
 
-            // Limit iterations to prevent infinite loops or excessive processing
-            $max_iterations = 100;
-            $i = 0;
-
-            while ($cursor <= $month_end && $i < $max_iterations) {
-                // If cursor is in the past, it's considered imminent (Today)
-                if ($cursor <= $today_end) {
+            // Special handling for 'once' frequency
+            if ($frequency === 'once') {
+                if ($next_run <= $today_end) {
                     $stats[$tid]['today']++;
                 }
-
-                if ($cursor <= $week_end) {
+                if ($next_run <= $week_end) {
                     $stats[$tid]['week']++;
                 }
-
-                if ($cursor <= $month_end) {
+                if ($next_run <= $month_end) {
                     $stats[$tid]['month']++;
-                } else {
-                    break;
                 }
-
-                if ($frequency === 'once') {
-                    break;
-                }
-
-                // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
-                $i++;
+                continue;
             }
+
+            // Use O(1) calculation where possible
+            $stats[$tid]['today'] += $interval_calculator->calculate_occurrences($frequency, $next_run, $today_end);
+            $stats[$tid]['week'] += $interval_calculator->calculate_occurrences($frequency, $next_run, $week_end);
+            $stats[$tid]['month'] += $interval_calculator->calculate_occurrences($frequency, $next_run, $month_end);
         }
 
         set_transient('aips_pending_schedule_stats', $stats, HOUR_IN_SECONDS);
         return $stats;
     }
 
+    /**
+     * Deprecated: Use AIPS_Interval_Calculator::calculate_next_timestamp instead.
+     * Keeping this as a private helper wrapping the new service for backward compatibility if needed internally,
+     * though it's now largely unused in favor of bulk calculation.
+     */
     private function calculate_next_run($frequency, $base_time) {
-        switch ($frequency) {
-            case 'hourly':
-                return strtotime('+1 hour', $base_time);
-            case 'every_4_hours':
-                return strtotime('+4 hours', $base_time);
-            case 'every_6_hours':
-                return strtotime('+6 hours', $base_time);
-            case 'every_12_hours':
-                return strtotime('+12 hours', $base_time);
-            case 'daily':
-                return strtotime('+1 day', $base_time);
-            case 'weekly':
-                return strtotime('+1 week', $base_time);
-            case 'bi_weekly':
-                return strtotime('+2 weeks', $base_time);
-            case 'monthly':
-                return strtotime('+1 month', $base_time);
-            default:
-                if (strpos($frequency, 'every_') === 0) {
-                    $day = ucfirst(str_replace('every_', '', $frequency));
-                    $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
-
-                    if (in_array($day, $valid_days)) {
-                        $next = strtotime("next $day", $base_time);
-                        return strtotime(date('H:i:s', $base_time), $next);
-                    }
-                }
-                return strtotime('+1 day', $base_time);
-        }
+        $calculator = new AIPS_Interval_Calculator();
+        return $calculator->calculate_next_timestamp($frequency, $base_time);
     }
     
     public function render_page() {
