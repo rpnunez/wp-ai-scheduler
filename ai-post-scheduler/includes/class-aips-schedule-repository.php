@@ -99,6 +99,31 @@ class AIPS_Schedule_Repository {
     }
 
     /**
+     * Get due schedules where the template is also active.
+     * This ensures we don't process schedules for paused templates.
+     *
+     * @param string $current_time Optional. Current time in MySQL format.
+     * @param int    $limit        Optional. Limit number of results.
+     * @return array Array of schedule objects.
+     */
+    public function get_due_schedules_with_active_templates($current_time = null, $limit = 5) {
+        if ($current_time === null) {
+            $current_time = current_time('mysql');
+        }
+
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT t.*, s.*, s.id AS schedule_id
+            FROM {$this->schedule_table} s
+            INNER JOIN {$this->templates_table} t ON s.template_id = t.id
+            WHERE s.is_active = 1
+            AND s.next_run <= %s
+            AND t.is_active = 1
+            ORDER BY s.next_run ASC
+            LIMIT %d
+        ", $current_time, $limit));
+    }
+
+    /**
      * Get upcoming active schedules.
      *
      * @param int $limit Number of schedules to retrieve. Default 5.

@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>System Status Verification</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Mock WP admin styles */
+        body { font-family: sans-serif; background: #f1f1f1; padding: 20px; }
+        .wrap { background: #fff; padding: 20px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+        .title { font-size: 1.3em; margin: 1em 0; }
+        .button { display: inline-block; text-decoration: none; font-size: 13px; line-height: 2.15384615; min-height: 30px; margin: 0; padding: 0 10px; cursor: pointer; border-width: 1px; border-style: solid; -webkit-appearance: none; border-radius: 3px; white-space: nowrap; box-sizing: border-box; }
+        .button-secondary { color: #2271b1; border-color: #2271b1; background: #f6f7f7; vertical-align: top; }
+        .health-check-table { width: 100%; border: 1px solid #c3c4c7; box-shadow: 0 1px 1px rgba(0,0,0,.04); border-spacing: 0; background: #fff; }
+        .health-check-table td, .health-check-table th { padding: 8px 10px; border-bottom: 1px solid #c3c4c7; text-align: left; }
+        .dashicons { font-family: dashicons; display: inline-block; line-height: 1; font-weight: 400; font-style: normal; text-decoration: inherit; text-transform: none; text-rendering: auto; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; width: 20px; height: 20px; font-size: 20px; vertical-align: top; text-align: center; transition: color .1s ease-in; }
+    </style>
+    <script>
+        var ajaxurl = '/wp-admin/admin-ajax.php';
+        function wp_create_nonce(action) { return 'mock_nonce'; }
+
+        // Mock confirm
+        window.confirm = function(msg) { return true; };
+    </script>
+</head>
+<body>
+
+<div class="wrap">
+    <h1>System Status</h1>
+
+    <!-- Logs Section Mock -->
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 class="title">Logs</h2>
+        <button type="button" class="button button-secondary aips-clear-logs">Clear Logs</button>
+    </div>
+
+    <table class="widefat striped health-check-table">
+        <thead><tr><th>Check</th><th>Value</th><th>Status</th></tr></thead>
+        <tbody>
+            <tr>
+                <td>Plugin Log</td>
+                <td>20 errors found</td>
+                <td><span style="color:red">Warning</span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+jQuery(document).ready(function($) {
+    $('.aips-clear-logs').on('click', function(e) {
+        e.preventDefault();
+
+        // We override the confirm for the test script or assume true in mock
+        if (!confirm('Are you sure you want to clear the logs?')) {
+            return;
+        }
+
+        var $button = $(this);
+        $button.prop('disabled', true);
+        $button.text('Clearing...'); // Visual feedback added by me for test
+
+        // Simulate AJAX
+        console.log('AJAX request sent to clear logs');
+
+        setTimeout(function() {
+            // Simulate success
+            alert('Logs cleared successfully.');
+            $button.prop('disabled', false);
+            $button.text('Clear Logs');
+            // location.reload(); // Commented out for test stability
+        }, 500);
+    });
+});
+</script>
+
+</body>
+</html>

@@ -106,15 +106,43 @@ class AIPS_Interval_Calculator {
         // If start time is in the past, add intervals until future (Catch-up logic)
         // This prevents schedule drift by preserving the phase of the schedule
         if ($base_time < $now) {
-            // Safety limit to prevent infinite loops if interval is 0 or very small/broken
-            $limit = 100;
-            while ($base_time <= $now && $limit > 0) {
-                $base_time = $this->calculate_next_timestamp($frequency, $base_time);
-                $limit--;
-            }
-            // If we hit the limit, just set to now + interval to ensure we don't stall
-            if ($limit === 0) {
-                 $base_time = $this->calculate_next_timestamp($frequency, $now);
+            $interval_seconds = $this->get_interval_duration($frequency);
+
+            // Optimization (Bolt): Use math for fixed intervals instead of loops
+            // This allows handling long-paused schedules without hitting loop limits or resetting phase.
+            // Note: Monthly/Yearly or Day-specific (e.g., Every Monday) intervals vary in seconds, so we must loop for those.
+            $is_fixed_interval = ($interval_seconds > 0 && !in_array($frequency, ['monthly', 'yearly']) && strpos($frequency, 'every_') === false && $frequency !== 'once');
+
+            // Standard intervals (hourly, daily, weekly) are fixed seconds in this system.
+            // However, 'daily' adds 24 hours. Daylight savings might affect it if we strictly used seconds,
+            // but for a general scheduler, math projection is usually preferred for performance.
+            // Given the implementation of calculate_next_timestamp uses 'strtotime', it handles DST.
+            // Pure math might drift on DST.
+            // BUT, if the loop limit is hit (100), we lose the phase anyway.
+            // Let's stick to loop for DST-sensitive stuff unless we are sure.
+            // 'hourly', 'every_4_hours', etc are safe for math. 'daily' and 'weekly' might be affected by DST if we add seconds.
+            // However, PHP's strtotime('+1 day') handles DST.
+
+            // For now, let's optimize only small fixed intervals (hourly, 4h, 6h, 12h) where 100 iterations is only a few days/weeks.
+            // Actually, 100 hours is 4 days. If I pause for a week, hourly schedule loop breaks.
+            // So we MUST optimize hourly/4h/6h/12h.
+
+            if (in_array($frequency, ['hourly', 'every_4_hours', 'every_6_hours', 'every_12_hours'])) {
+                 $diff = $now - $base_time;
+                 $num_intervals = floor($diff / $interval_seconds) + 1;
+                 $base_time += $num_intervals * $interval_seconds;
+            } else {
+                // For variable intervals (daily, weekly, monthly, every_monday), we loop.
+                // We increase limit to 500 to cover ~1.5 years of daily schedules.
+                $limit = 500;
+                while ($base_time <= $now && $limit > 0) {
+                    $base_time = $this->calculate_next_timestamp($frequency, $base_time);
+                    $limit--;
+                }
+                // If we hit the limit, just set to now + interval to ensure we don't stall
+                if ($limit === 0) {
+                     $base_time = $this->calculate_next_timestamp($frequency, $now);
+                }
             }
             return date('Y-m-d H:i:s', $base_time);
         }

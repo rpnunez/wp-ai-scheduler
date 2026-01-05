@@ -117,16 +117,7 @@ class AIPS_Scheduler {
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
-        $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT t.*, s.*, s.id AS schedule_id
-            FROM {$this->schedule_table} s 
-            INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            AND s.next_run <= %s 
-            AND t.is_active = 1
-            ORDER BY s.next_run ASC
-            LIMIT 5
-        ", current_time('mysql')));
+        $due_schedules = $this->repository->get_due_schedules_with_active_templates(current_time('mysql'), 5);
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
@@ -166,10 +157,19 @@ class AIPS_Scheduler {
             $topic = isset($schedule->topic) ? $schedule->topic : null;
             $result = $generator->generate_post($template, null, $topic);
             
-            if ($schedule->frequency === 'once' && !is_wp_error($result)) {
-                // If it's a one-time schedule and successful, delete it
-                $this->repository->delete($schedule->schedule_id);
-                $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
+            if ($schedule->frequency === 'once') {
+                if (!is_wp_error($result)) {
+                    // If it's a one-time schedule and successful, delete it
+                    $this->repository->delete($schedule->schedule_id);
+                    $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
+                } else {
+                    // Deactivate to prevent infinite retry loops on failure
+                    $this->repository->set_active($schedule->schedule_id, 0);
+                    $logger->log('One-time schedule failed and was deactivated', 'warning', array(
+                        'schedule_id' => $schedule->schedule_id,
+                        'reason' => 'Generation failed'
+                    ));
+                }
             } else {
                 // Otherwise calculate next run, passing existing next_run as start_time to preserve phase
                 $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run);
