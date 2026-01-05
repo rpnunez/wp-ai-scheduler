@@ -11,3 +11,7 @@
 ## 2024-05-27 - History Bulk Actions
 **Learning:** The history table lacked bulk deletion capabilities, forcing users to delete failed/unwanted entries one by one or clear the entire history.
 **Action:** Implemented "Select All" / Individual checkboxes and a "Delete Selected" button in `history.php`, backed by a new `delete_bulk` repository method and AJAX handler.
+
+## 2024-05-29 - Copy Buttons for Template Variables
+**Learning:** The "Template Variables" table in settings was static, requiring users to manually select and copy variable names like `{{date}}`, which is error-prone.
+**Action:** Added "Copy to Clipboard" buttons for each variable in `settings.php`, utilizing the existing `admin.js` global clipboard handler and reusing the `.aips-copy-btn` class.

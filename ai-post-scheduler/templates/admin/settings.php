@@ -61,6 +61,7 @@ if (!defined('ABSPATH')) {
                     <th><?php esc_html_e('Variable', 'ai-post-scheduler'); ?></th>
                     <th><?php esc_html_e('Description', 'ai-post-scheduler'); ?></th>
                     <th><?php esc_html_e('Example', 'ai-post-scheduler'); ?></th>
+                    <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -68,41 +69,91 @@ if (!defined('ABSPATH')) {
                     <td><code>{{date}}</code></td>
                     <td><?php esc_html_e('Current date', 'ai-post-scheduler'); ?></td>
                     <td><?php echo esc_html(date('F j, Y')); ?></td>
+                    <td>
+                        <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{date}}" aria-label="<?php esc_attr_e('Copy {{date}} variable', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-admin-page" aria-hidden="true"></span> <?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
+                        </button>
+                    </td>
                 </tr>
                 <tr>
                     <td><code>{{year}}</code></td>
                     <td><?php esc_html_e('Current year', 'ai-post-scheduler'); ?></td>
                     <td><?php echo esc_html(date('Y')); ?></td>
+                    <td>
+                        <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{year}}" aria-label="<?php esc_attr_e('Copy {{year}} variable', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-admin-page" aria-hidden="true"></span> <?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
+                        </button>
+                    </td>
                 </tr>
                 <tr>
                     <td><code>{{month}}</code></td>
                     <td><?php esc_html_e('Current month', 'ai-post-scheduler'); ?></td>
                     <td><?php echo esc_html(date('F')); ?></td>
+                    <td>
+                        <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{month}}" aria-label="<?php esc_attr_e('Copy {{month}} variable', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-admin-page" aria-hidden="true"></span> <?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
+                        </button>
+                    </td>
                 </tr>
                 <tr>
                     <td><code>{{day}}</code></td>
                     <td><?php esc_html_e('Current day of week', 'ai-post-scheduler'); ?></td>
                     <td><?php echo esc_html(date('l')); ?></td>
+                    <td>
+                        <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{day}}" aria-label="<?php esc_attr_e('Copy {{day}} variable', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-admin-page" aria-hidden="true"></span> <?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
+                        </button>
+                    </td>
                 </tr>
                 <tr>
                     <td><code>{{time}}</code></td>
                     <td><?php esc_html_e('Current time', 'ai-post-scheduler'); ?></td>
                     <td><?php echo esc_html(current_time('H:i')); ?></td>
+                    <td>
+                        <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{time}}" aria-label="<?php esc_attr_e('Copy {{time}} variable', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-admin-page" aria-hidden="true"></span> <?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
+                        </button>
+                    </td>
                 </tr>
                 <tr>
                     <td><code>{{site_name}}</code></td>
                     <td><?php esc_html_e('Site name', 'ai-post-scheduler'); ?></td>
                     <td><?php echo esc_html(get_bloginfo('name')); ?></td>
+                    <td>
+                        <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{site_name}}" aria-label="<?php esc_attr_e('Copy {{site_name}} variable', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-admin-page" aria-hidden="true"></span> <?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
+                        </button>
+                    </td>
                 </tr>
                 <tr>
                     <td><code>{{site_description}}</code></td>
                     <td><?php esc_html_e('Site description', 'ai-post-scheduler'); ?></td>
                     <td><?php echo esc_html(get_bloginfo('description')); ?></td>
+                    <td>
+                        <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{site_description}}" aria-label="<?php esc_attr_e('Copy {{site_description}} variable', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-admin-page" aria-hidden="true"></span> <?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
+                        </button>
+                    </td>
                 </tr>
                 <tr>
                     <td><code>{{random_number}}</code></td>
                     <td><?php esc_html_e('Random number (1-1000)', 'ai-post-scheduler'); ?></td>
                     <td><?php echo esc_html(rand(1, 1000)); ?></td>
+                    <td>
+                        <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{random_number}}" aria-label="<?php esc_attr_e('Copy {{random_number}} variable', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-admin-page" aria-hidden="true"></span> <?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><code>{{topic}}</code></td>
+                    <td><?php esc_html_e('Topic Title', 'ai-post-scheduler'); ?></td>
+                    <td><?php esc_html_e('Topic title from schedule', 'ai-post-scheduler'); ?></td>
+                    <td>
+                        <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="{{topic}}" aria-label="<?php esc_attr_e('Copy {{topic}} variable', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-admin-page" aria-hidden="true"></span> <?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
+                        </button>
+                    </td>
                 </tr>
             </tbody>
         </table>

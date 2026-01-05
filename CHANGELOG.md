@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- 2024-05-29: Added "Copy to Clipboard" buttons to the Template Variables table in Settings for easier prompt construction.
 - 2024-05-27: Added bulk deletion functionality to the Generation History page (Select All/Individual checkboxes, Delete Selected button).
 
 ### Fixed
