@@ -140,6 +140,14 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
                 <?php echo esc_html__('Load Topics', 'ai-post-scheduler'); ?>
             </button>
         </div>
+
+        <!-- Bulk Actions -->
+        <div id="aips-research-bulk-actions" style="display: none; margin-bottom: 15px;">
+            <button type="button" class="button" id="copy-selected-topics" disabled>
+                <span class="dashicons dashicons-admin-page" style="line-height: 1.3;"></span>
+                <?php echo esc_html__('Copy Selected', 'ai-post-scheduler'); ?>
+            </button>
+        </div>
         
         <!-- Topics Table -->
         <div id="topics-container">

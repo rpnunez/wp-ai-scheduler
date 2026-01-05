@@ -1,0 +1,38 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Research Page Verification</title>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <style>
+            .button { padding: 5px 10px; border: 1px solid #ccc; background: #f0f0f1; cursor: pointer; }
+            .button:disabled { opacity: 0.5; cursor: default; }
+            .dashicons { font-family: monospace; }
+        </style>
+    </head>
+    <body>
+        <div id="topics-container"></div>
+        <div id="bulk-schedule-section" style="display: none;">Bulk Schedule</div>
+        <div id="aips-research-bulk-actions" style="display: none;">
+            <button type="button" class="button" id="copy-selected-topics" disabled>
+                <span class="dashicons dashicons-admin-page"></span>
+                Copy Selected
+            </button>
+        </div>
+
+        <script>
+            // Mock AIPS object and other globals
+            window.aipsResearchL10n = {
+                deleteTopicConfirm: "Are you sure?",
+                selectTopicSchedule: "Please select topics",
+                schedulingError: "Error",
+                delete: "Delete"
+            };
+            window.ajaxurl = "/wp-admin/admin-ajax.php";
+
+            // Injected JS content from admin-research.js (simulated)
+            // We will load the actual JS file in the test
+        </script>
+    </body>
+    </html>

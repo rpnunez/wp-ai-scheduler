@@ -1,67 +1,129 @@
-from playwright.sync_api import sync_playwright, expect
+
 import os
+from playwright.sync_api import sync_playwright
 
-def run(playwright):
-    browser = playwright.chromium.launch(headless=True)
-    page = browser.new_page()
+def verify_copy_button():
+    # Create a mock HTML file to test the research table logic
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Research Page Verification</title>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <style>
+            .button { padding: 5px 10px; border: 1px solid #ccc; background: #f0f0f1; cursor: pointer; }
+            .button:disabled { opacity: 0.5; cursor: default; }
+            .dashicons { font-family: monospace; }
+        </style>
+    </head>
+    <body>
+        <div id="topics-container"></div>
+        <div id="bulk-schedule-section" style="display: none;">Bulk Schedule</div>
+        <div id="aips-research-bulk-actions" style="display: none;">
+            <button type="button" class="button" id="copy-selected-topics" disabled>
+                <span class="dashicons dashicons-admin-page"></span>
+                Copy Selected
+            </button>
+        </div>
 
-    # Load the mock HTML
-    cwd = os.getcwd()
-    page.goto(f"file://{cwd}/verification/mock_admin_copy.html")
+        <script>
+            // Mock AIPS object and other globals
+            window.aipsResearchL10n = {
+                deleteTopicConfirm: "Are you sure?",
+                selectTopicSchedule: "Please select topics",
+                schedulingError: "Error",
+                delete: "Delete"
+            };
+            window.ajaxurl = "/wp-admin/admin-ajax.php";
 
-    # Force mock clipboard again just in case
-    page.evaluate("""
-        try {
-            Object.defineProperty(navigator, 'clipboard', {
-                value: {
-                    writeText: function(text) {
-                        console.log('Clipboard write:', text);
-                        return Promise.resolve();
-                    }
-                },
-                writable: true,
-                configurable: true
+            // Injected JS content from admin-research.js (simulated)
+            // We will load the actual JS file in the test
+        </script>
+    </body>
+    </html>
+    """
+
+    os.makedirs("verification", exist_ok=True)
+    with open("verification/mock_research.html", "w") as f:
+        f.write(html_content)
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        # Enable clipboard permissions
+        context = browser.new_context(permissions=['clipboard-read', 'clipboard-write'])
+        page = context.new_page()
+
+        # Load the mock page
+        page.goto(f"file://{os.getcwd()}/verification/mock_research.html")
+
+        # Inject the modified JS file
+        with open("ai-post-scheduler/assets/js/admin-research.js", "r") as f:
+            js_content = f.read()
+            page.add_script_tag(content=js_content)
+
+        # Simulate loading topics (mock the AJAX response handling)
+        page.evaluate("""
+            const topics = [
+                { id: 1, topic: 'AI Trends 2024', score: 95, niche: 'Tech', researched_at: '2024-05-27' },
+                { id: 2, topic: 'Machine Learning Basics', score: 85, niche: 'Tech', researched_at: '2024-05-27' }
+            ];
+            // Access the displayTopicsTable function directly if exposed, or trigger the AJAX success handler logic
+            // Since functions are local to the IIFE, we need to replicate the DOM update or expose the function.
+            // For verification, we can just manually trigger the DOM structure that the JS expects.
+
+            // Re-implement displayTopicsTable logic for the test since it is inside a closure
+            // OR simpler: we can just manually build the table to match what we expect, then test the listeners.
+
+            let html = '<table class="aips-topics-table">';
+            html += '<thead><tr><th><input type="checkbox" id="select-all-topics"></th><th>Topic</th><th>Score</th></tr></thead><tbody>';
+
+            topics.forEach(function(topic) {
+                html += '<tr>';
+                html += '<td><input type="checkbox" class="topic-checkbox" value="' + topic.id + '"></td>';
+                html += '<td><strong>' + topic.topic + '</strong></td>';
+                html += '<td>' + topic.score + '</td>';
+                html += '</tr>';
             });
-        } catch(e) { console.error(e); }
-    """)
+            html += '</tbody></table>';
 
-    # Click "View Details"
-    page.click('.aips-view-details')
+            $('#topics-container').html(html);
+            $('#bulk-schedule-section').show();
+            $('#aips-research-bulk-actions').show();
+        """)
 
-    # Wait for modal content
-    page.wait_for_selector('#aips-details-template table')
+        # 1. Verify Bulk Actions visible
+        print("Verifying Bulk Actions visibility...")
+        assert page.is_visible("#aips-research-bulk-actions")
+        assert page.is_disabled("#copy-selected-topics")
 
-    # Verify "Copy" buttons exist
-    copy_btns = page.locator('.aips-copy-btn')
-    count = copy_btns.count()
-    print(f"Found {count} copy buttons")
+        # 2. Select a topic
+        print("Selecting a topic...")
+        page.check("input[value='1']")
 
-    if count < 3:
-        print("FAILURE: Not enough copy buttons found")
-        # Snapshot anyway
-        page.screenshot(path="verification/verify_copy.png")
-        exit(1)
+        # 3. Verify button enabled
+        assert page.is_enabled("#copy-selected-topics")
 
-    # Screenshot of initial state
-    page.screenshot(path="verification/verify_copy_initial.png")
+        # 4. Click Copy
+        print("Clicking Copy...")
+        page.click("#copy-selected-topics")
 
-    # Test Click
-    msg_list = []
-    page.on("console", lambda msg: msg_list.append(msg.text))
+        # 5. Verify Clipboard Content
+        # Note: Playwright clipboard read might be tricky in headless without permissions,
+        # but we enabled them.
+        clipboard_text = page.evaluate("navigator.clipboard.readText()")
+        print(f"Clipboard text: {clipboard_text}")
+        assert "AI Trends 2024" in clipboard_text
 
-    first_btn = copy_btns.first
-    first_btn.click()
+        # 6. Verify Button Feedback
+        print("Verifying feedback...")
+        assert "Copied!" in page.inner_text("#copy-selected-topics")
 
-    # Wait for text change - wait explicitly
-    try:
-        expect(first_btn).to_have_text("Copied!")
-        print("SUCCESS: Button text changed to Copied!")
-    except:
-        print("WARNING: Button text did not change (Mock issue?)")
-        print("Console:", msg_list)
+        # Take screenshot
+        page.screenshot(path="verification/research_copy_verified.png")
+        print("Verification successful. Screenshot saved.")
 
-    page.screenshot(path="verification/verify_copy.png")
-    browser.close()
+        browser.close()
 
-with sync_playwright() as playwright:
-    run(playwright)
+if __name__ == "__main__":
+    verify_copy_button()

@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- 2024-05-27: Added "Copy Selected" button to Trending Topics research page for easier topic management.
 - 2024-05-27: Added bulk deletion functionality to the Generation History page (Select All/Individual checkboxes, Delete Selected button).
 
 ### Fixed

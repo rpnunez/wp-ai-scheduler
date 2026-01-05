@@ -156,8 +156,9 @@
             html += '</tbody></table>';
             $('#topics-container').html(html);
 
-            // Show bulk schedule section
+            // Show bulk schedule section and bulk actions
             $('#bulk-schedule-section').show();
+            $('#aips-research-bulk-actions').show();
         }
 
         // Select all topics
@@ -176,7 +177,65 @@
             selectedTopics = $('.topic-checkbox:checked').map(function() {
                 return $(this).val();
             }).get();
+
+            // Update copy button state
+            $('#copy-selected-topics').prop('disabled', selectedTopics.length === 0);
         }
+
+        // Copy selected topics
+        $(document).on('click', '#copy-selected-topics', function() {
+            const topics = [];
+            $('.topic-checkbox:checked').each(function() {
+                // Navigate from checkbox to the topic text cell (2nd column)
+                // Structure: tr > td > checkbox
+                // Target: tr > td:nth-child(2) > strong
+                const topicText = $(this).closest('tr').find('td:nth-child(2) strong').text();
+                if (topicText) {
+                    topics.push(topicText.trim());
+                }
+            });
+
+            if (topics.length === 0) {
+                return;
+            }
+
+            const textToCopy = topics.join('\n');
+            const $btn = $(this);
+            const originalHtml = $btn.html();
+
+            // Fallback copy mechanism (reused from planner)
+            const fallbackCopy = function() {
+                const $temp = $('<textarea>');
+                $temp.css({ position: 'fixed', top: '-9999px', left: '-9999px' });
+                $('body').append($temp);
+                $temp.val(textToCopy).trigger('focus').trigger('select');
+
+                let success = false;
+                try {
+                    success = document.execCommand('copy');
+                } catch (err) {
+                    success = false;
+                }
+
+                $temp.remove();
+                return success;
+            };
+
+            const showFeedback = function() {
+                $btn.html('<span class="dashicons dashicons-saved" style="line-height: 1.3;"></span> Copied!');
+                setTimeout(function() { $btn.html(originalHtml); }, 2000);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(showFeedback).catch(function() {
+                    if (fallbackCopy()) showFeedback();
+                    else alert('Unable to copy text. Please select topics and copy manually.');
+                });
+            } else {
+                if (fallbackCopy()) showFeedback();
+                else alert('Unable to copy text. Please select topics and copy manually.');
+            }
+        });
 
         // Delete topic
         $(document).on('click', '.delete-topic', function() {
