@@ -138,11 +138,22 @@
                 $.post(aipsAjax.ajaxUrl, {action: 'aips_get_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
                     if (response.success) {
                         var s = response.data.structure;
+                        var structureData = {};
+
+                        if (s.structure_data) {
+                            try {
+                                structureData = JSON.parse(s.structure_data) || {};
+                            } catch (e) {
+                                console.error('Invalid structure_data JSON for structure ID ' + s.id, e);
+                                structureData = {};
+                            }
+                        }
+
                         $('#structure_id').val(s.id);
                         $('#structure_name').val(s.name);
                         $('#structure_description').val(s.description);
-                        $('#prompt_template').val(s.structure_data ? (JSON.parse(s.structure_data).prompt_template || '') : '');
-                        var sections = s.structure_data ? JSON.parse(s.structure_data).sections || [] : [];
+                        $('#prompt_template').val(structureData.prompt_template || '');
+                        var sections = structureData.sections || [];
                         $('#structure_sections').val(sections);
                         $('#structure_is_active').prop('checked', s.is_active == 1);
                         $('#structure_is_default').prop('checked', s.is_default == 1);
