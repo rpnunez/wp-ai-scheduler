@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2025-01-06 - [Extract Settings Page] **Context:** `AIPS_Settings` was a 'God Class' handling global admin orchestration (menus, assets) alongside the specific logic for the "Settings" page (rendering, callbacks, options). This violated SRP and coupled the global admin state to specific page logic. **Decision:** Extracted the "Settings" page logic into a new `AIPS_Settings_Page` class. `AIPS_Settings` now acts as an Admin Manager/Orchestrator, instantiating `AIPS_Settings_Page` to handle that specific submenu. **Consequence:** Improved separation of concerns; `AIPS_Settings` is cleaner and focused on orchestration; the Settings page logic is encapsulated. Increased file count by 1.
