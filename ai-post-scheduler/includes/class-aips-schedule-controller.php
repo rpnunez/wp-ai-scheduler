@@ -89,21 +89,8 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
         }
 
-        // We use the new toggle_active method in Scheduler
-        if (method_exists($this->scheduler, 'toggle_active')) {
-             $result = $this->scheduler->toggle_active($id, $is_active);
-        } else {
-             // Fallback
-             global $wpdb;
-             $table_name = $wpdb->prefix . 'aips_schedule';
-             $result = $wpdb->update(
-                $table_name,
-                array('is_active' => $is_active),
-                array('id' => $id),
-                array('%d'),
-                array('%d')
-            );
-        }
+        // Use the toggle_active method in Scheduler
+        $result = $this->scheduler->toggle_active($id, $is_active);
 
         if ($result !== false) {
             wp_send_json_success(array('message' => __('Schedule updated.', 'ai-post-scheduler')));
@@ -154,11 +141,6 @@ class AIPS_Schedule_Controller {
 
         $generator = new AIPS_Generator();
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
-
-        // Enforce hard limit of 5 to prevent timeouts (Bolt)
-        if ($quantity > 5) {
-            $quantity = 5;
-        }
 
         for ($i = 0; $i < $quantity; $i++) {
             $result = $generator->generate_post($template, $voice, $topic);
