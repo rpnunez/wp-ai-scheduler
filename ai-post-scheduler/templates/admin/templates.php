@@ -164,13 +164,42 @@ if (!defined('ABSPATH')) {
                             <input type="checkbox" id="generate_featured_image" name="generate_featured_image" value="1">
                             <?php esc_html_e('Generate Featured Image?', 'ai-post-scheduler'); ?>
                         </label>
-                        <p class="description"><?php esc_html_e('If checked, an AI-generated image will be created and set as the featured image.', 'ai-post-scheduler'); ?></p>
+                        <p class="description"><?php esc_html_e('If checked, a featured image will be attached to the generated post.', 'ai-post-scheduler'); ?></p>
                     </div>
-                    
-                    <div class="aips-form-row">
-                        <label for="image_prompt"><?php esc_html_e('Image Prompt', 'ai-post-scheduler'); ?></label>
-                        <textarea id="image_prompt" name="image_prompt" rows="3" class="large-text" placeholder="<?php esc_attr_e('Describe the image you want generated...', 'ai-post-scheduler'); ?>" disabled></textarea>
-                        <p class="description"><?php esc_html_e('Enable "Generate Featured Image?" to edit this field. The image will be generated based on this prompt.', 'ai-post-scheduler'); ?></p>
+
+                    <div class="aips-featured-image-settings" style="display: none;">
+                        <div class="aips-form-row">
+                            <label for="featured_image_source"><?php esc_html_e('Featured Image Source', 'ai-post-scheduler'); ?></label>
+                            <select id="featured_image_source" name="featured_image_source">
+                                <option value="ai_prompt"><?php esc_html_e('Generate with AI Prompt', 'ai-post-scheduler'); ?></option>
+                                <option value="unsplash"><?php esc_html_e('Unsplash (keywords)', 'ai-post-scheduler'); ?></option>
+                                <option value="media_library"><?php esc_html_e('Media Library (select images)', 'ai-post-scheduler'); ?></option>
+                            </select>
+                            <p class="description"><?php esc_html_e('Choose how the featured image should be sourced for this template.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
+                        <div class="aips-form-row aips-image-source aips-image-source-ai">
+                            <label for="image_prompt"><?php esc_html_e('Image Prompt', 'ai-post-scheduler'); ?></label>
+                            <textarea id="image_prompt" name="image_prompt" rows="3" class="large-text" placeholder="<?php esc_attr_e('Describe the image you want generated...', 'ai-post-scheduler'); ?>"></textarea>
+                            <p class="description"><?php esc_html_e('Used when generating the image with AI.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
+                        <div class="aips-form-row aips-image-source aips-image-source-unsplash" style="display: none;">
+                            <label for="featured_image_unsplash_keywords"><?php esc_html_e('Unsplash Keywords', 'ai-post-scheduler'); ?></label>
+                            <input type="text" id="featured_image_unsplash_keywords" name="featured_image_unsplash_keywords" class="regular-text" placeholder="<?php esc_attr_e('e.g. sunrise, mountains, drone view', 'ai-post-scheduler'); ?>">
+                            <p class="description"><?php esc_html_e('Unsplash will return a random image that matches these keywords.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
+                        <div class="aips-form-row aips-image-source aips-image-source-media" style="display: none;">
+                            <label><?php esc_html_e('Media Library Images', 'ai-post-scheduler'); ?></label>
+                            <div class="aips-media-library-picker">
+                                <input type="hidden" id="featured_image_media_ids" name="featured_image_media_ids" value="">
+                                <button type="button" class="button" id="featured_image_media_select"><?php esc_html_e('Select Images', 'ai-post-scheduler'); ?></button>
+                                <button type="button" class="button-link" id="featured_image_media_clear"><?php esc_html_e('Clear Selection', 'ai-post-scheduler'); ?></button>
+                                <div id="featured_image_media_preview" class="description" style="margin-top: 6px;"><?php esc_html_e('No images selected.', 'ai-post-scheduler'); ?></div>
+                            </div>
+                            <p class="description"><?php esc_html_e('One image will be chosen at random from the selected media library items.', 'ai-post-scheduler'); ?></p>
+                        </div>
                     </div>
                     
                     <div class="aips-form-columns">

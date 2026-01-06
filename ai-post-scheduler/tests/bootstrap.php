@@ -118,6 +118,39 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             // No-op in test environment
         }
     }
+
+    if (!isset($GLOBALS['aips_test_options'])) {
+        $GLOBALS['aips_test_options'] = array();
+    }
+
+    if (!function_exists('get_option')) {
+        function get_option($option, $default = false) {
+            return isset($GLOBALS['aips_test_options'][$option]) ? $GLOBALS['aips_test_options'][$option] : $default;
+        }
+    }
+
+    if (!function_exists('add_option')) {
+        function add_option($option, $value) {
+            $GLOBALS['aips_test_options'][$option] = $value;
+            return true;
+        }
+    }
+
+    if (!function_exists('update_option')) {
+        function update_option($option, $value) {
+            $GLOBALS['aips_test_options'][$option] = $value;
+            return true;
+        }
+    }
+
+    if (!function_exists('delete_option')) {
+        function delete_option($option) {
+            if (isset($GLOBALS['aips_test_options'][$option])) {
+                unset($GLOBALS['aips_test_options'][$option]);
+            }
+            return true;
+        }
+    }
     
     if (!function_exists('current_time')) {
         function current_time($type = 'mysql', $gmt = 0) {
