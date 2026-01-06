@@ -98,6 +98,8 @@ class AIPS_DB_Manager {
             article_structure_id bigint(20) DEFAULT NULL,
             rotation_pattern varchar(50) DEFAULT NULL,
             frequency varchar(50) NOT NULL DEFAULT 'daily',
+            schedule_type varchar(20) NOT NULL DEFAULT 'interval',
+            rules longtext DEFAULT NULL,
             topic TEXT DEFAULT NULL,
             next_run datetime NOT NULL,
             last_run datetime DEFAULT NULL,

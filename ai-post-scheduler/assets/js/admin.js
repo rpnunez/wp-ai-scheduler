@@ -29,6 +29,10 @@
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
+            $(document).on('change', 'input[name="schedule_type"]', this.toggleScheduleType);
+            $(document).on('click', '#aips-add-rule', this.addRuleRow);
+            $(document).on('click', '.aips-remove-rule', this.removeRuleRow);
+            $(document).on('change', '.aips-rule-type', this.updateRuleFields);
 
             $(document).on('click', '.aips-clear-history', this.clearHistory);
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
@@ -528,6 +532,11 @@
             $('#aips-schedule-form')[0].reset();
             $('#schedule_id').val('');
             $('#aips-schedule-modal-title').text('Add New Schedule');
+            $('#schedule_type_interval').prop('checked', true);
+            $('#schedule_type_advanced').prop('checked', false);
+            $('#schedule_rules').val('');
+            AIPS.resetRulesBuilder();
+            AIPS.toggleScheduleType();
             $('#aips-schedule-modal').show();
         },
 
@@ -545,6 +554,8 @@
             var topic = $row.data('topic');
             var articleStructureId = $row.data('article-structure-id');
             var rotationPattern = $row.data('rotation-pattern');
+            var scheduleType = $row.data('schedule-type') || 'interval';
+            var rules = $row.attr('data-rules') || '';
 
             // Populate form
             $('#schedule_template').val(templateId);
@@ -552,6 +563,22 @@
             $('#schedule_topic').val(topic);
             $('#article_structure_id').val(articleStructureId);
             $('#rotation_pattern').val(rotationPattern);
+            $('#schedule_rules').val(rules);
+
+            if (scheduleType === 'advanced') {
+                $('#schedule_type_advanced').prop('checked', true);
+                $('#schedule_type_interval').prop('checked', false);
+            } else {
+                $('#schedule_type_interval').prop('checked', true);
+                $('#schedule_type_advanced').prop('checked', false);
+            }
+
+            AIPS.resetRulesBuilder();
+            AIPS.toggleScheduleType();
+
+            if (scheduleType === 'advanced' && rules) {
+                AIPS.populateRules(rules);
+            }
 
             // Clear start time to enforce "now" or user choice for new schedule
             $('#schedule_start_time').val('');
@@ -559,6 +586,197 @@
             // Update title and show
             $('#aips-schedule-modal-title').text('Clone Schedule');
             $('#aips-schedule-modal').show();
+        },
+
+        /**
+         * Reset advanced rule builder to a clean state.
+         */
+        resetRulesBuilder: function() {
+            $('#aips-rules-list').empty();
+            $('#aips-rules-mode').val('all');
+        },
+
+        /**
+         * Toggle schedule type UI between interval and advanced builders.
+         */
+        toggleScheduleType: function() {
+            var type = $('input[name="schedule_type"]:checked').val();
+            if (type === 'advanced') {
+                $('.aips-interval-settings').hide();
+                $('.aips-advanced-settings').show();
+                if ($('#aips-rules-list .aips-rule-row').length === 0) {
+                    AIPS.addRuleRow();
+                }
+            } else {
+                $('.aips-interval-settings').show();
+                $('.aips-advanced-settings').hide();
+                $('#schedule_rules').val('');
+            }
+        },
+
+        /**
+         * Add a new advanced rule row.
+         */
+        addRuleRow: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+
+            var days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            var dayCheckboxes = days.map(function(day) {
+                var label = day.charAt(0).toUpperCase() + day.slice(1);
+                return '<label class="aips-rule-day"><input type="checkbox" value="' + day + '"> ' + label + '</label>';
+            }).join('');
+
+            var row = $(
+                '<div class="aips-rule-row">' +
+                    '<div class="aips-rule-header">' +
+                        '<select class="aips-rule-type">' +
+                            '<option value="time_between">Between times</option>' +
+                            '<option value="days_of_week">Days of the week</option>' +
+                            '<option value="exclude_month_days">Exclude month days</option>' +
+                        '</select>' +
+                        '<button type="button" class="button-link aips-remove-rule" aria-label="Remove condition">&times;</button>' +
+                    '</div>' +
+                    '<div class="aips-rule-fields aips-rule-time">' +
+                        '<label>Start</label><input type="time" class="aips-rule-start"> ' +
+                        '<label>End</label><input type="time" class="aips-rule-end">' +
+                    '</div>' +
+                    '<div class="aips-rule-fields aips-rule-days" style="display:none;">' +
+                        '<div class="aips-rule-days-list">' + dayCheckboxes + '</div>' +
+                    '</div>' +
+                    '<div class="aips-rule-fields aips-rule-month-days" style="display:none;">' +
+                        '<label>Days to exclude (comma separated)</label>' +
+                        '<input type="text" class="aips-rule-month-days-input" placeholder="15, 30">' +
+                    '</div>' +
+                '</div>'
+            );
+
+            $('#aips-rules-list').append(row);
+            AIPS.updateRuleFields.call(row.find('.aips-rule-type')[0]);
+        },
+
+        /**
+         * Remove a rule row from the builder.
+         */
+        removeRuleRow: function(e) {
+            e.preventDefault();
+            $(this).closest('.aips-rule-row').remove();
+        },
+
+        /**
+         * Show only fields relevant to the selected rule type.
+         */
+        updateRuleFields: function() {
+            var $row = $(this).closest('.aips-rule-row');
+            var type = $(this).val();
+            $row.find('.aips-rule-fields').hide();
+
+            if (type === 'time_between') {
+                $row.find('.aips-rule-time').show();
+            } else if (type === 'days_of_week') {
+                $row.find('.aips-rule-days').show();
+            } else if (type === 'exclude_month_days') {
+                $row.find('.aips-rule-month-days').show();
+            }
+        },
+
+        /**
+         * Populate the builder from stored JSON rules.
+         */
+        populateRules: function(rulesJson) {
+            AIPS.resetRulesBuilder();
+            var payload = {};
+
+            try {
+                payload = JSON.parse(rulesJson);
+            } catch (err) {
+                payload = {};
+            }
+
+            if (payload.mode) {
+                $('#aips-rules-mode').val(payload.mode);
+            }
+
+            if (payload.conditions && Array.isArray(payload.conditions)) {
+                payload.conditions.forEach(function(condition) {
+                    AIPS.addRuleRow();
+                    var $row = $('#aips-rules-list .aips-rule-row').last();
+                    $row.find('.aips-rule-type').val(condition.type || 'time_between');
+                    AIPS.updateRuleFields.call($row.find('.aips-rule-type')[0]);
+
+                    if (condition.type === 'time_between') {
+                        $row.find('.aips-rule-start').val(condition.start || '');
+                        $row.find('.aips-rule-end').val(condition.end || '');
+                    }
+
+                    if (condition.type === 'days_of_week' && condition.days) {
+                        condition.days.forEach(function(day) {
+                            $row.find('.aips-rule-days input[value="' + day + '"]').prop('checked', true);
+                        });
+                    }
+
+                    if (condition.type === 'exclude_month_days' && condition.days) {
+                        $row.find('.aips-rule-month-days-input').val(condition.days.join(', '));
+                    }
+                });
+            }
+        },
+
+        /**
+         * Collect rules into a serializable object.
+         */
+        collectRules: function() {
+            var payload = {
+                mode: $('#aips-rules-mode').val(),
+                conditions: []
+            };
+
+            $('#aips-rules-list .aips-rule-row').each(function() {
+                var $row = $(this);
+                var type = $row.find('.aips-rule-type').val();
+                var condition = { type: type };
+                var isValid = true;
+
+                if (type === 'time_between') {
+                    condition.start = $row.find('.aips-rule-start').val();
+                    condition.end = $row.find('.aips-rule-end').val();
+                    if (!condition.start || !condition.end) {
+                        isValid = false;
+                    }
+                } else if (type === 'days_of_week') {
+                    condition.days = [];
+                    $row.find('.aips-rule-days input:checked').each(function() {
+                        condition.days.push($(this).val());
+                    });
+                    if (condition.days.length === 0) {
+                        isValid = false;
+                    }
+                } else if (type === 'exclude_month_days') {
+                    var raw = $row.find('.aips-rule-month-days-input').val();
+                    condition.days = [];
+                    if (raw) {
+                        raw.split(',').forEach(function(item) {
+                            var trimmed = item.trim();
+                            if (trimmed) {
+                                var parsed = parseInt(trimmed, 10);
+                                if (!isNaN(parsed)) {
+                                    condition.days.push(parsed);
+                                }
+                            }
+                        });
+                    }
+                    if (condition.days.length === 0) {
+                        isValid = false;
+                    }
+                }
+
+                if (isValid) {
+                    payload.conditions.push(condition);
+                }
+            });
+
+            return payload;
         },
 
         saveSchedule: function(e) {
@@ -571,6 +789,18 @@
                 return;
             }
 
+            var scheduleType = $('input[name="schedule_type"]:checked').val();
+            if (scheduleType === 'advanced') {
+                var rulesPayload = AIPS.collectRules();
+                if (!rulesPayload.conditions || rulesPayload.conditions.length === 0) {
+                    alert('Please add at least one condition for the advanced schedule.');
+                    return;
+                }
+                $('#schedule_rules').val(JSON.stringify(rulesPayload));
+            } else {
+                $('#schedule_rules').val('');
+            }
+
             $btn.prop('disabled', true).text('Saving...');
 
             $.ajax({
@@ -581,8 +811,13 @@
                     nonce: aipsAjax.nonce,
                     schedule_id: $('#schedule_id').val(),
                     template_id: $('#schedule_template').val(),
+                    schedule_type: scheduleType,
                     frequency: $('#schedule_frequency').val(),
                     start_time: $('#schedule_start_time').val(),
+                    topic: $('#schedule_topic').val(),
+                    article_structure_id: $('#article_structure_id').val(),
+                    rotation_pattern: $('#rotation_pattern').val(),
+                    rules: $('#schedule_rules').val(),
                     is_active: $('#schedule_is_active').is(':checked') ? 1 : 0
                 },
                 success: function(response) {
