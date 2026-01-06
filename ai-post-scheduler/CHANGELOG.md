@@ -66,3 +66,6 @@ All notable changes to this project will be documented in this file.
 
 ## [1.4.0] - 2025-12-21
 - Refactor: Split 'admin.js' into modular files 'admin-planner.js' and 'admin-db.js' for better maintainability.
+## [sentinel-secure-urls-template-controller] - 2024-05-23
+### Security
+- [2024-05-23] Fixed a potential XSS vulnerability in `AIPS_Templates_Controller::ajax_get_template_posts` by escaping URLs using `esc_url()`.
