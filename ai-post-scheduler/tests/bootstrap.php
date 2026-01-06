@@ -69,6 +69,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!defined('AIPS_PLUGIN_BASENAME')) {
         define('AIPS_PLUGIN_BASENAME', 'ai-post-scheduler/ai-post-scheduler.php');
     }
+
+    if (!isset($GLOBALS['aips_test_hooks'])) {
+        $GLOBALS['aips_test_hooks'] = array(
+            'actions' => array(),
+            'filters' => array(),
+        );
+    }
     
     // Mock WordPress functions if not available
     if (!function_exists('esc_html__')) {
@@ -97,25 +104,74 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     if (!function_exists('add_action')) {
         function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
-            // No-op in test environment
+            if (!isset($GLOBALS['aips_test_hooks']['actions'][$hook])) {
+                $GLOBALS['aips_test_hooks']['actions'][$hook] = array();
+            }
+
+            if (!isset($GLOBALS['aips_test_hooks']['actions'][$hook][$priority])) {
+                $GLOBALS['aips_test_hooks']['actions'][$hook][$priority] = array();
+            }
+
+            $GLOBALS['aips_test_hooks']['actions'][$hook][$priority][] = array(
+                'callback' => $callback,
+                'accepted_args' => $accepted_args,
+            );
         }
     }
     
     if (!function_exists('add_filter')) {
         function add_filter($hook, $callback, $priority = 10, $accepted_args = 1) {
-            // No-op in test environment
+            if (!isset($GLOBALS['aips_test_hooks']['filters'][$hook])) {
+                $GLOBALS['aips_test_hooks']['filters'][$hook] = array();
+            }
+
+            if (!isset($GLOBALS['aips_test_hooks']['filters'][$hook][$priority])) {
+                $GLOBALS['aips_test_hooks']['filters'][$hook][$priority] = array();
+            }
+
+            $GLOBALS['aips_test_hooks']['filters'][$hook][$priority][] = array(
+                'callback' => $callback,
+                'accepted_args' => $accepted_args,
+            );
         }
     }
     
     if (!function_exists('apply_filters')) {
         function apply_filters($hook, $value) {
+            $args = func_get_args();
+            $value = $args[1];
+
+            if (isset($GLOBALS['aips_test_hooks']['filters'][$hook])) {
+                ksort($GLOBALS['aips_test_hooks']['filters'][$hook]);
+
+                foreach ($GLOBALS['aips_test_hooks']['filters'][$hook] as $priority_callbacks) {
+                    foreach ($priority_callbacks as $callback) {
+                        $callback_args = array_slice($args, 1, $callback['accepted_args']);
+                        $callback_args[0] = $value;
+                        $value = call_user_func_array($callback['callback'], $callback_args);
+                    }
+                }
+            }
+
             return $value;
         }
     }
     
     if (!function_exists('do_action')) {
         function do_action($hook) {
-            // No-op in test environment
+            $args = func_get_args();
+            array_shift($args);
+
+            if (isset($GLOBALS['aips_test_hooks']['actions'][$hook])) {
+                ksort($GLOBALS['aips_test_hooks']['actions'][$hook]);
+
+                foreach ($GLOBALS['aips_test_hooks']['actions'][$hook] as $priority_callbacks) {
+                    foreach ($priority_callbacks as $callback) {
+                        $callback_args = array_slice($args, 0, $callback['accepted_args']);
+                        call_user_func_array($callback['callback'], $callback_args);
+                    }
+                }
+            }
         }
     }
     
@@ -212,10 +268,24 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         class WP_UnitTestCase extends \PHPUnit\Framework\TestCase {
             public function setUp(): void {
                 parent::setUp();
+                $this->reset_hooks();
             }
             
             public function tearDown(): void {
+                $this->reset_hooks();
                 parent::tearDown();
+            }
+
+            /**
+             * Reset mocked WordPress hooks to avoid cross-test pollution.
+             *
+             * @return void
+             */
+            private function reset_hooks() {
+                $GLOBALS['aips_test_hooks'] = array(
+                    'actions' => array(),
+                    'filters' => array(),
+                );
             }
         }
     }
