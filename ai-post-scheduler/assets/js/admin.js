@@ -85,6 +85,90 @@
 
             // Copy to Clipboard
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+
+            // Article Structures UI handlers
+
+            // @TODO: Refactor to use AIPS.addStructure
+            $(document).on('click', '.aips-add-structure-btn', function(e){
+                e.preventDefault();
+                $('#aips-structure-form')[0].reset();
+                $('#structure_id').val('');
+                $('#aips-structure-modal-title').text('Add New Article Structure');
+                $('#aips-structure-modal').show();
+            });
+
+            // @TODO: Refactor to AIPS.closeModal -- or use existing function
+            $(document).on('click', '.aips-modal-close', function(){
+                $(this).closest('.aips-modal').hide();
+            });
+
+            // @TODO: Refactor to AIPS.saveStructure
+            $(document).on('click', '.aips-save-structure', function(){
+                var $btn = $(this);
+                $btn.prop('disabled', true).text('Saving...');
+
+                var data = {
+                    action: 'aips_save_structure',
+                    nonce: aipsAjax.nonce,
+                    structure_id: $('#structure_id').val(),
+                    name: $('#structure_name').val(),
+                    description: $('#structure_description').val(),
+                    prompt_template: $('#prompt_template').val(),
+                    sections: $('#structure_sections').val() || [],
+                    is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
+                    is_default: $('#structure_is_default').is(':checked') ? 1 : 0,
+                };
+
+                $.post(aipsAjax.ajaxUrl, data, function(response){
+                    $btn.prop('disabled', false).text('Save Structure');
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message || 'Failed to save structure.');
+                    }
+                }).fail(function(){
+                    $btn.prop('disabled', false).text('Save Structure');
+                    alert('An error occurred. Please try again.');
+                });
+            });
+
+            // @TODO: Refactor to AIPS.saveStructure
+            $(document).on('click', '.aips-edit-structure', function(){
+                var id = $(this).data('id');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                    if (response.success) {
+                        var s = response.data.structure;
+                        $('#structure_id').val(s.id);
+                        $('#structure_name').val(s.name);
+                        $('#structure_description').val(s.description);
+                        $('#prompt_template').val(s.structure_data ? (JSON.parse(s.structure_data).prompt_template || '') : '');
+                        var sections = s.structure_data ? JSON.parse(s.structure_data).sections || [] : [];
+                        $('#structure_sections').val(sections);
+                        $('#structure_is_active').prop('checked', s.is_active == 1);
+                        $('#structure_is_default').prop('checked', s.is_default == 1);
+                        $('#aips-structure-modal-title').text('Edit Article Structure');
+                        $('#aips-structure-modal').show();
+                    } else {
+                        alert(response.data.message || 'Failed to load structure.');
+                    }
+                }).fail(function(){
+                    alert('An error occurred.');
+                });
+            });
+
+            // @TODO: Refactor to AIPS.deleteStructure
+            $(document).on('click', '.aips-delete-structure', function(){
+                if (!confirm('Are you sure you want to delete this structure?')) return;
+                var id = $(this).data('id');
+                var $row = $(this).closest('tr');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                    if (response.success) {
+                        $row.fadeOut(function(){ $(this).remove(); });
+                    } else {
+                        alert(response.data.message || 'Failed to delete structure.');
+                    }
+                }).fail(function(){ alert('An error occurred.'); });
+            });
         },
 
         copyToClipboard: function(e) {
@@ -1132,3 +1216,84 @@
     });
 
 })(jQuery);
+
+// Article Structures UI handlers
+(function($){
+    $(document).on('click', '.aips-add-structure-btn', function(e){
+        e.preventDefault();
+        $('#aips-structure-form')[0].reset();
+        $('#structure_id').val('');
+        $('#aips-structure-modal-title').text('Add New Article Structure');
+        $('#aips-structure-modal').show();
+    });
+
+    $(document).on('click', '.aips-modal-close', function(){
+        $(this).closest('.aips-modal').hide();
+    });
+
+    $(document).on('click', '.aips-save-structure', function(){
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('Saving...');
+
+        var data = {
+            action: 'aips_save_structure',
+            nonce: aipsAjax.nonce,
+            structure_id: $('#structure_id').val(),
+            name: $('#structure_name').val(),
+            description: $('#structure_description').val(),
+            prompt_template: $('#prompt_template').val(),
+            sections: $('#structure_sections').val() || [],
+            is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
+            is_default: $('#structure_is_default').is(':checked') ? 1 : 0,
+        };
+
+        $.post(aipsAjax.ajaxUrl, data, function(response){
+            $btn.prop('disabled', false).text('Save Structure');
+            if (response.success) {
+                location.reload();
+            } else {
+                alert(response.data.message || 'Failed to save structure.');
+            }
+        }).fail(function(){
+            $btn.prop('disabled', false).text('Save Structure');
+            alert('An error occurred. Please try again.');
+        });
+    });
+
+    $(document).on('click', '.aips-edit-structure', function(){
+        var id = $(this).data('id');
+        $.post(aipsAjax.ajaxUrl, {action: 'aips_get_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+            if (response.success) {
+                var s = response.data.structure;
+                $('#structure_id').val(s.id);
+                $('#structure_name').val(s.name);
+                $('#structure_description').val(s.description);
+                $('#prompt_template').val(s.structure_data ? (JSON.parse(s.structure_data).prompt_template || '') : '');
+                var sections = s.structure_data ? JSON.parse(s.structure_data).sections || [] : [];
+                $('#structure_sections').val(sections);
+                $('#structure_is_active').prop('checked', s.is_active == 1);
+                $('#structure_is_default').prop('checked', s.is_default == 1);
+                $('#aips-structure-modal-title').text('Edit Article Structure');
+                $('#aips-structure-modal').show();
+            } else {
+                alert(response.data.message || 'Failed to load structure.');
+            }
+        }).fail(function(){
+            alert('An error occurred.');
+        });
+    });
+
+    $(document).on('click', '.aips-delete-structure', function(){
+        if (!confirm('Are you sure you want to delete this structure?')) return;
+        var id = $(this).data('id');
+        var $row = $(this).closest('tr');
+        $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+            if (response.success) {
+                $row.fadeOut(function(){ $(this).remove(); });
+            } else {
+                alert(response.data.message || 'Failed to delete structure.');
+            }
+        }).fail(function(){ alert('An error occurred.'); });
+    });
+})(jQuery);
+
