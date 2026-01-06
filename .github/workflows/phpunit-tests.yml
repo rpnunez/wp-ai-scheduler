@@ -109,7 +109,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report-php${{ matrix.php }}
-          path: ai-post-scheduler/coverage/
+          path: /tmp/wordpress/wp-content/plugins/ai-post-scheduler/coverage/
           retention-days: 7
 
       # Test Results: Upload
@@ -119,7 +119,7 @@ jobs:
         with:
           name: test-results-php${{ matrix.php }}
           path: |
-            ai-post-scheduler/.phpunit.result.cache
+            /tmp/wordpress/wp-content/plugins/ai-post-scheduler/.phpunit.result.cache
           retention-days: 7
           if-no-files-found: ignore
 
