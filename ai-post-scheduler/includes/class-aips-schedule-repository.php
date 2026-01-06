@@ -37,6 +37,11 @@ class AIPS_Schedule_Repository {
     private $wpdb;
     
     /**
+     * @var bool Whether to defer cache invalidation.
+     */
+    private $defer_cache_invalidation = false;
+
+    /**
      * Initialize the repository.
      */
     public function __construct() {
@@ -44,6 +49,24 @@ class AIPS_Schedule_Repository {
         $this->wpdb = $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
+    }
+
+    /**
+     * Set whether to defer cache invalidation.
+     *
+     * Useful for batch operations to prevent cache thrashing.
+     *
+     * @param bool $defer True to defer, false to resume (does not auto-clear).
+     */
+    public function set_defer_cache_invalidation($defer) {
+        $this->defer_cache_invalidation = (bool) $defer;
+    }
+
+    /**
+     * Manually clear the stats cache.
+     */
+    public function clear_stats_cache() {
+        delete_transient('aips_pending_schedule_stats');
     }
     
     /**
@@ -166,7 +189,7 @@ class AIPS_Schedule_Repository {
         
         $result = $this->wpdb->insert($this->schedule_table, $insert_data, $format);
         
-        if ($result) {
+        if ($result && !$this->defer_cache_invalidation) {
             delete_transient('aips_pending_schedule_stats');
         }
 
@@ -236,7 +259,7 @@ class AIPS_Schedule_Repository {
             array('%d')
         );
 
-        if ($result !== false) {
+        if ($result !== false && !$this->defer_cache_invalidation) {
             delete_transient('aips_pending_schedule_stats');
         }
 
@@ -252,7 +275,7 @@ class AIPS_Schedule_Repository {
     public function delete($id) {
         $result = $this->wpdb->delete($this->schedule_table, array('id' => $id), array('%d'));
 
-        if ($result !== false) {
+        if ($result !== false && !$this->defer_cache_invalidation) {
             delete_transient('aips_pending_schedule_stats');
         }
 
@@ -268,7 +291,7 @@ class AIPS_Schedule_Repository {
     public function delete_by_template($template_id) {
         $result = $this->wpdb->delete($this->schedule_table, array('template_id' => $template_id), array('%d'));
 
-        if ($result !== false) {
+        if ($result !== false && !$this->defer_cache_invalidation) {
             delete_transient('aips_pending_schedule_stats');
         }
 
@@ -344,7 +367,7 @@ class AIPS_Schedule_Repository {
 
         $result = $this->wpdb->query($this->wpdb->prepare($query, $values));
 
-        if ($result) {
+        if ($result && !$this->defer_cache_invalidation) {
             delete_transient('aips_pending_schedule_stats');
         }
 
