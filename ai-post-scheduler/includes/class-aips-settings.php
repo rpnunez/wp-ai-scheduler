@@ -256,6 +256,10 @@ class AIPS_Settings {
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
+            'l10n' => array(
+                'cloneVoice' => __('Clone Voice', 'ai-post-scheduler'),
+                'copySuffix' => __(' (Copy)', 'ai-post-scheduler'),
+            ),
         ));
     }
     
