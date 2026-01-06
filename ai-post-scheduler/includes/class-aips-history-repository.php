@@ -118,13 +118,33 @@ class AIPS_History_Repository {
         ", $query_args));
         
         // Query for total count
-        if (!empty($where_args)) {
-            $total = $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
-                $where_args
-            ));
-        } else {
-            $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+        $total = null;
+
+        // Optimize count query if possible using cached stats
+        // We can use cached stats if:
+        // 1. No search query (checking specifically for empty string or null, as "0" is a valid search)
+        // 2. No template filter
+        // 3. Status is either empty (total) or one of the tracked statuses
+        $is_search_empty = !isset($args['search']) || $args['search'] === '';
+
+        if ($is_search_empty && empty($args['template_id'])) {
+            $stats = $this->get_stats();
+            if (empty($args['status'])) {
+                $total = $stats['total'];
+            } elseif (isset($stats[$args['status']])) {
+                $total = $stats[$args['status']];
+            }
+        }
+
+        if ($total === null) {
+            if (!empty($where_args)) {
+                $total = $this->wpdb->get_var($this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
+                    $where_args
+                ));
+            } else {
+                $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+            }
         }
         
         return array(
