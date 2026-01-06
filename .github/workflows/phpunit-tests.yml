@@ -69,7 +69,7 @@ jobs:
           # Copy files
           cp -r /tmp/wordpress-develop/tests/phpunit/* /tmp/wordpress-tests-lib/
           cp -r /tmp/wordpress-develop/src/* /tmp/wordpress/
-          cp /tmp/wordpress-tests-lib/wp-tests-config-sample.php /tmp/wordpress-tests-lib/wp-tests-config.php
+          cp /tmp/wordpress-develop/wp-tests-config-sample.php /tmp/wordpress-tests-lib/wp-tests-config.php
 
           rm -rf /tmp/wordpress-develop
           
