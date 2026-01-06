@@ -8,23 +8,23 @@ Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Schedule AI-generated posts using Meow Apps AI Engine. Create templates, set schedules, and automatically generate blog content.
+Schedule AI-generated posts using Meow Apps AI Engine. Build reusable templates, research topics, bulk-schedule content, and monitor every AI call from one dashboard.
 
 == Description ==
 
-AI Post Scheduler integrates with Meow Apps AI Engine to provide a powerful admin interface for scheduling AI-generated blog posts.
+AI Post Scheduler integrates with Meow Apps AI Engine to automate your content calendar end-to-end. It combines prompt templates, reusable writing voices, AI-powered topic research, bulk scheduling, and detailed history so you can generate, review, and publish posts on autopilot.
 
 = Features =
 
-* **Template System**: Create reusable prompt templates with dynamic variables
-* **Flexible Scheduling**: Schedule posts hourly, every 6 hours, every 12 hours, daily, or weekly
-* **Trending Topics Research** (NEW): AI-powered trend discovery and topic ranking
-* **Automated Research**: Schedule automatic topic research to run daily
-* **Bulk Scheduling**: Schedule multiple trending topics at once
-* **Post Configuration**: Set post status, category, tags, and author for generated content
-* **Generation History**: Track all generated posts with success/failure status
-* **Test Generation**: Preview AI output before scheduling
-* **Error Handling**: Automatic logging and retry capabilities
+* **Template Builder + Voices**: Create reusable prompt templates with dynamic variables, attach optional writing voices (personas with title/content/excerpt guidance), and batch-generate 1–20 posts per run. Use "Test Generate" to preview output before saving.
+* **Article Structures & Prompt Sections**: Compose long-form outlines from reusable prompt sections, and rotate structures per schedule (sequential, random, weighted, alternating) so recurring posts stay varied.
+* **Flexible Scheduler**: Schedule posts hourly, every 4/6/12 hours, daily, weekly, bi-weekly, monthly, once, or every specific weekday. Set start times, toggle activation, run one-off or recurring schedules, and bulk-insert schedules for many topics at once.
+* **Planner (Bulk Topic Scheduling)**: Brainstorm topics with AI, paste your own list, edit inline, and bulk schedule them with a chosen template, start date, and frequency. Uses the `{{topic}}` variable automatically.
+* **Trending Topics Research**: Discover and score trending topics (1–100), capture keywords/reasons, filter the library (niche, score, freshness), and bulk schedule selected topics. Includes daily automated research via cron.
+* **AI Generation Pipeline**: Builds content, title, excerpt, and optional featured image prompts; processes template variables; attaches category/tags/author/status; supports featured image generation with safety checks.
+* **Reliability & History**: Retry/backoff, circuit breaker, and structured generation sessions logged to the History table. View per-template generation counts, run-now actions, and generated posts.
+* **Seeder for Demo Data**: Generate sample voices, templates, schedules, and planner entries via the Seeder admin page to demo the UI quickly.
+* **System Status & Hooks**: Status page checks environment, DB tables, cron, and AI Engine dependency. Hooks documented in HOOKS.md let you extend generation, scheduling, research, and planner events.
 
 = Trending Topics Research =
 
@@ -47,6 +47,16 @@ Use this to "automate the automation" - let AI handle content strategy and topic
 * PHP 8.3 or higher
 * Meow Apps AI Engine plugin (required)
 
+= What You Can Do (and How) =
+
+1. **Set up voices and structures**: Define voices (writing personas) and article structures/prompt sections to control tone and outline. Structures can rotate automatically on recurring schedules.
+2. **Build templates**: Create templates with content/title/image prompts, choose voice, post status/category/tags/author, and enable featured image generation. Use **Test Generate** to preview and adjust.
+3. **Plan topics**: Use the Planner to have AI brainstorm 1–50 topics, or paste your own list. Select topics and bulk schedule them with a template, start date, and frequency.
+4. **Research trends**: Open **AI Post Scheduler → Trending Topics**, research a niche, review scored topics with keywords/reasons, filter the library, and bulk schedule selected items. Automated daily research is enabled via cron (`aips_scheduled_research`).
+5. **Schedule & run**: Create one-off or recurring schedules (hourly, 4h, 6h, 12h, daily, weekly, bi-weekly, monthly, or specific weekdays). Use "Run Now" to trigger a template immediately.
+6. **Review & monitor**: Check **History** for successes/failures with generation logs, and **System Status** for environment/DB/cron health. Use hooks (`aips_*`) to integrate with your workflows.
+7. **Demo fast**: Open the **Seeder** page to generate sample voices, templates, schedules, and planner entries for quick demos.
+
 = Template Variables =
 
 Use these variables in your prompts:
@@ -59,6 +69,9 @@ Use these variables in your prompts:
 * `{{site_name}}` - Your site's name
 * `{{site_description}}` - Your site's tagline
 * `{{random_number}}` - Random number between 1-1000
+* `{{topic}}` / `{{title}}` - Topic/title passed from Planner, schedules, or research
+
+Developers can extend variables via the `aips_template_variables` filter.
 
 == Installation ==
 
