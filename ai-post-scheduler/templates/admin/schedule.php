@@ -71,7 +71,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     data-frequency="<?php echo esc_attr($schedule->frequency); ?>"
                     data-topic="<?php echo esc_attr($schedule->topic); ?>"
                     data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
-                    data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
+                    data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>"
+                    data-schedule-type="<?php echo esc_attr(isset($schedule->schedule_type) ? $schedule->schedule_type : 'interval'); ?>"
+                    data-rules="<?php echo esc_attr(isset($schedule->rules) ? $schedule->rules : ''); ?>">
                     <td class="column-template">
                         <?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?>
                     </td>
@@ -82,7 +84,12 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         <?php endif; ?>
                     </td>
                     <td class="column-frequency">
-                        <?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->frequency))); ?>
+                        <?php if (!empty($schedule->schedule_type) && $schedule->schedule_type === 'advanced') : ?>
+                            <?php esc_html_e('Advanced Rules', 'ai-post-scheduler'); ?>
+                            <br><small style="color: #666;"><?php echo esc_html(ucfirst(isset($schedule->frequency) ? str_replace('_', ' ', $schedule->frequency) : '')); ?></small>
+                        <?php else : ?>
+                            <?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->frequency))); ?>
+                        <?php endif; ?>
                     </td>
                     <td class="column-next-run">
                         <?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($schedule->next_run))); ?>
@@ -155,29 +162,62 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
+
                     <div class="aips-form-row">
-                        <label for="schedule_frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></label>
-                        <select id="schedule_frequency" name="frequency">
-                            <?php
-                            $cron_schedules = wp_get_schedules();
-
-                            // Sort by interval
-                            uasort($cron_schedules, function($a, $b) {
-                                return $a['interval'] - $b['interval'];
-                            });
-
-                            foreach ($cron_schedules as $key => $schedule) {
-                                echo '<option value="' . esc_attr($key) . '" ' . selected('daily', $key, false) . '>' . esc_html($schedule['display']) . '</option>';
-                            }
-                            ?>
-                        </select>
+                        <label><?php esc_html_e('Schedule Type', 'ai-post-scheduler'); ?></label>
+                        <label style="display:block;margin-bottom:6px;">
+                            <input type="radio" name="schedule_type" id="schedule_type_interval" value="interval" checked>
+                            <?php esc_html_e('Interval (simple repeat)', 'ai-post-scheduler'); ?>
+                        </label>
+                        <label style="display:block;">
+                            <input type="radio" name="schedule_type" id="schedule_type_advanced" value="advanced">
+                            <?php esc_html_e('Advanced rules (AND/OR builder)', 'ai-post-scheduler'); ?>
+                        </label>
+                        <p class="description"><?php esc_html_e('Use advanced rules to combine day/time conditions without relying solely on fixed intervals.', 'ai-post-scheduler'); ?></p>
                     </div>
-                    
-                    <div class="aips-form-row">
-                        <label for="schedule_start_time"><?php esc_html_e('Start Time', 'ai-post-scheduler'); ?></label>
-                        <input type="datetime-local" id="schedule_start_time" name="start_time">
-                        <p class="description"><?php esc_html_e('Leave empty to start from now', 'ai-post-scheduler'); ?></p>
+
+                    <div class="aips-interval-settings">
+                        <div class="aips-form-row">
+                            <label for="schedule_frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></label>
+                            <select id="schedule_frequency" name="frequency">
+                                <?php
+                                $cron_schedules = wp_get_schedules();
+
+                                // Sort by interval
+                                uasort($cron_schedules, function($a, $b) {
+                                    return $a['interval'] - $b['interval'];
+                                });
+
+                                foreach ($cron_schedules as $key => $schedule) {
+                                    echo '<option value="' . esc_attr($key) . '" ' . selected('daily', $key, false) . '>' . esc_html($schedule['display']) . '</option>';
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        
+                        <div class="aips-form-row">
+                            <label for="schedule_start_time"><?php esc_html_e('Start Time', 'ai-post-scheduler'); ?></label>
+                            <input type="datetime-local" id="schedule_start_time" name="start_time">
+                            <p class="description"><?php esc_html_e('Leave empty to start from now', 'ai-post-scheduler'); ?></p>
+                        </div>
+                    </div>
+
+                    <div class="aips-advanced-settings" style="display:none;">
+                        <input type="hidden" id="schedule_rules" name="rules" value="">
+                        <div class="aips-form-row">
+                            <label for="aips-rules-mode"><?php esc_html_e('Condition Logic', 'ai-post-scheduler'); ?></label>
+                            <select id="aips-rules-mode">
+                                <option value="all"><?php esc_html_e('All conditions must match (AND)', 'ai-post-scheduler'); ?></option>
+                                <option value="any"><?php esc_html_e('Any condition can trigger (OR)', 'ai-post-scheduler'); ?></option>
+                            </select>
+                        </div>
+                        <div id="aips-rules-list" class="aips-rules-list"></div>
+                        <div class="aips-form-row">
+                            <button type="button" class="button" id="aips-add-rule"><?php esc_html_e('Add Condition', 'ai-post-scheduler'); ?></button>
+                            <p class="description">
+                                <?php esc_html_e('Examples: Between 8:00 and 10:00; Every Monday and Wednesday; Exclude the 15th day of the month.', 'ai-post-scheduler'); ?>
+                            </p>
+                        </div>
                     </div>
                     
                     <div class="aips-form-row">

@@ -137,6 +137,8 @@ class AIPS_Schedule_Repository {
      *     @type int    $article_structure_id  Optional article structure ID.
      *     @type string $rotation_pattern      Optional rotation pattern (sequential, random, weighted, alternating).
      *     @type string $frequency             Frequency identifier (daily, weekly, etc.).
+     *     @type string $schedule_type         Schedule type (interval|advanced).
+     *     @type string $rules                 Optional JSON rules for advanced scheduling.
      *     @type string $next_run              Next run datetime in MySQL format.
      *     @type int    $is_active             Active status (1 or 0).
      *     @type string $topic                 Optional topic for generation.
@@ -147,12 +149,14 @@ class AIPS_Schedule_Repository {
         $insert_data = array(
             'template_id' => absint($data['template_id']),
             'frequency' => sanitize_text_field($data['frequency']),
+            'schedule_type' => isset($data['schedule_type']) ? sanitize_text_field($data['schedule_type']) : 'interval',
+            'rules' => isset($data['rules']) ? wp_kses_post($data['rules']) : null,
             'next_run' => sanitize_text_field($data['next_run']),
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
         );
         
-        $format = array('%d', '%s', '%s', '%d', '%s');
+        $format = array('%d', '%s', '%s', '%s', '%s', '%d', '%s');
         
         if (isset($data['article_structure_id'])) {
             $insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
@@ -191,6 +195,16 @@ class AIPS_Schedule_Repository {
         
         if (isset($data['frequency'])) {
             $update_data['frequency'] = sanitize_text_field($data['frequency']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['schedule_type'])) {
+            $update_data['schedule_type'] = sanitize_text_field($data['schedule_type']);
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('rules', $data)) {
+            $update_data['rules'] = $data['rules'] !== null ? wp_kses_post($data['rules']) : null;
             $format[] = '%s';
         }
         
@@ -325,19 +339,21 @@ class AIPS_Schedule_Repository {
 
         $values = array();
         $placeholders = array();
-        $query = "INSERT INTO {$this->schedule_table} (template_id, frequency, next_run, is_active, topic, article_structure_id, rotation_pattern) VALUES ";
+        $query = "INSERT INTO {$this->schedule_table} (template_id, frequency, schedule_type, rules, next_run, is_active, topic, article_structure_id, rotation_pattern) VALUES ";
 
         foreach ($schedules as $data) {
             array_push($values,
                 absint($data['template_id']),
                 sanitize_text_field($data['frequency']),
+                isset($data['schedule_type']) ? sanitize_text_field($data['schedule_type']) : 'interval',
+                isset($data['rules']) ? wp_kses_post($data['rules']) : null,
                 sanitize_text_field($data['next_run']),
                 isset($data['is_active']) ? (int) $data['is_active'] : 0,
                 isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
                 isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
                 isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null
             );
-            $placeholders[] = "(%d, %s, %s, %d, %s, %d, %s)";
+            $placeholders[] = "(%d, %s, %s, %s, %s, %d, %s, %d, %s)";
         }
 
         $query .= implode(', ', $placeholders);

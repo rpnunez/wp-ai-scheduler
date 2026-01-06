@@ -8,6 +8,10 @@ class AIPS_Scheduler {
     private $schedule_table;
     private $templates_table;
     private $interval_calculator;
+    /**
+     * @var AIPS_Advanced_Schedule_Evaluator Evaluator for rule-based schedules.
+     */
+    private $rules_evaluator;
     private $template_type_selector;
     
     /**
@@ -20,6 +24,7 @@ class AIPS_Scheduler {
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
+        $this->rules_evaluator = new AIPS_Advanced_Schedule_Evaluator();
         $this->repository = new AIPS_Schedule_Repository();
         $this->template_type_selector = new AIPS_Template_Type_Selector();
         
@@ -56,8 +61,25 @@ class AIPS_Scheduler {
     
     public function save_schedule($data) {
         $frequency = sanitize_text_field($data['frequency']);
+        $schedule_type = (isset($data['schedule_type']) && $data['schedule_type'] === 'advanced') ? 'advanced' : 'interval';
+        $rules_payload = isset($data['rules']) ? $data['rules'] : array();
+        $sanitized_rules = $schedule_type === 'advanced'
+            ? $this->rules_evaluator->sanitize_rules($rules_payload)
+            : array();
 
-        if (isset($data['next_run'])) {
+        if ($schedule_type === 'advanced' && (empty($sanitized_rules['conditions']) || !is_array($sanitized_rules['conditions']))) {
+            return false;
+        }
+
+        if ($schedule_type === 'advanced') {
+            $start_time = isset($data['start_time']) && !empty($data['start_time'])
+                ? $data['start_time']
+                : (isset($data['next_run']) ? $data['next_run'] : current_time('mysql'));
+
+            $next_run = $this->rules_evaluator->calculate_next_run($sanitized_rules, $start_time);
+            // Persist a recognizable frequency marker while deferring execution to rules.
+            $frequency = 'advanced';
+        } elseif (isset($data['next_run'])) {
             $next_run = sanitize_text_field($data['next_run']);
         } else {
             // Use start_time as the initial run time if provided, otherwise start now.
@@ -73,6 +95,8 @@ class AIPS_Scheduler {
         $schedule_data = array(
             'template_id' => absint($data['template_id']),
             'frequency' => $frequency,
+            'schedule_type' => $schedule_type,
+            'rules' => $schedule_type === 'advanced' ? wp_json_encode($sanitized_rules) : null,
             'next_run' => $next_run,
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
@@ -166,13 +190,19 @@ class AIPS_Scheduler {
             $topic = isset($schedule->topic) ? $schedule->topic : null;
             $result = $generator->generate_post($template, null, $topic);
             
-            if ($schedule->frequency === 'once' && !is_wp_error($result)) {
+            if ($schedule->frequency === 'once' && !is_wp_error($result) && $schedule->schedule_type !== 'advanced') {
                 // If it's a one-time schedule and successful, delete it
                 $this->repository->delete($schedule->schedule_id);
                 $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
                 // Otherwise calculate next run, passing existing next_run as start_time to preserve phase
-                $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run);
+                if (!empty($schedule->schedule_type) && $schedule->schedule_type === 'advanced') {
+                    $rules = !empty($schedule->rules) ? $schedule->rules : array();
+                    $base_time = date('Y-m-d H:i:s', strtotime(current_time('mysql') . ' +1 day'));
+                    $next_run = $this->rules_evaluator->calculate_next_run($rules, $base_time);
+                } else {
+                    $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run);
+                }
 
                 $this->repository->update($schedule->schedule_id, array(
                     'last_run' => current_time('mysql'),

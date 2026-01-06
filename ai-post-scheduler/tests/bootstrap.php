@@ -234,6 +234,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-template-processor.php',
         'class-aips-article-structure-manager.php',
         'class-aips-template-type-selector.php',
+        'class-aips-advanced-schedule-evaluator.php',
         'class-aips-interval-calculator.php',
         'class-aips-resilience-service.php',
         'class-aips-ai-service.php',

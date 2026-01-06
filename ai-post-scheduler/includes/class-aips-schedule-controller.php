@@ -27,6 +27,8 @@ class AIPS_Schedule_Controller {
             'id' => isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0,
             'template_id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
             'frequency' => isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily',
+            'schedule_type' => (isset($_POST['schedule_type']) && $_POST['schedule_type'] === 'advanced') ? 'advanced' : 'interval',
+            'rules' => isset($_POST['rules']) ? wp_unslash($_POST['rules']) : '',
             'start_time' => isset($_POST['start_time']) ? sanitize_text_field($_POST['start_time']) : null,
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
             'topic' => isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '',
@@ -39,8 +41,12 @@ class AIPS_Schedule_Controller {
         }
 
         $interval_calculator = new AIPS_Interval_Calculator();
-        if (!$interval_calculator->is_valid_frequency($data['frequency'])) {
+        if ($data['schedule_type'] === 'interval' && !$interval_calculator->is_valid_frequency($data['frequency'])) {
             wp_send_json_error(array('message' => __('Invalid frequency selected.', 'ai-post-scheduler')));
+        }
+
+        if ($data['schedule_type'] === 'advanced' && empty($data['rules'])) {
+            wp_send_json_error(array('message' => __('Please provide at least one advanced scheduling condition.', 'ai-post-scheduler')));
         }
 
         $id = $this->scheduler->save_schedule($data);
@@ -51,7 +57,11 @@ class AIPS_Schedule_Controller {
                 'schedule_id' => $id
             ));
         } else {
-            wp_send_json_error(array('message' => __('Failed to save schedule.', 'ai-post-scheduler')));
+            $error_message = __('Failed to save schedule.', 'ai-post-scheduler');
+            if ($data['schedule_type'] === 'advanced') {
+                $error_message = __('Unable to save advanced schedule. Ensure each condition is complete.', 'ai-post-scheduler');
+            }
+            wp_send_json_error(array('message' => $error_message));
         }
     }
 
