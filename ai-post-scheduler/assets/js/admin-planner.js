@@ -20,6 +20,7 @@
             var $btn = $(this);
             $btn.prop('disabled', true);
             $btn.next('.spinner').addClass('is-active');
+            $('#aips-planner-a11y-status').text('Generating topics...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -33,13 +34,19 @@
                 success: function(response) {
                     if (response.success) {
                         window.AIPS.renderTopics(response.data.topics);
-                        $('#planner-results').slideDown();
+                        $('#planner-results').slideDown(400, function() {
+                            $('#planner-results h3').trigger('focus');
+                        });
+                        var count = response.data.topics.length;
+                        $('#aips-planner-a11y-status').text(count + ' topics generated. Review below.');
                     } else {
                         alert(response.data.message);
+                        $('#aips-planner-a11y-status').text('Error: ' + response.data.message);
                     }
                 },
                 error: function() {
                     alert('An error occurred. Please try again.');
+                    $('#aips-planner-a11y-status').text('An error occurred. Please try again.');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -226,6 +233,7 @@
             var $btn = $(this);
             $btn.prop('disabled', true);
             $btn.next('.spinner').addClass('is-active');
+            $('#aips-planner-a11y-status').text('Scheduling posts...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -241,16 +249,19 @@
                 success: function(response) {
                     if (response.success) {
                         alert(response.data.message);
+                        $('#aips-planner-a11y-status').text(response.data.message);
                         // Clear list after successful scheduling
                          $('#topics-list').html('');
                          $('#planner-results').slideUp();
                          $('#planner-niche').val('');
                     } else {
                         alert(response.data.message);
+                        $('#aips-planner-a11y-status').text('Error: ' + response.data.message);
                     }
                 },
                 error: function() {
                     alert('An error occurred. Please try again.');
+                    $('#aips-planner-a11y-status').text('An error occurred. Please try again.');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
