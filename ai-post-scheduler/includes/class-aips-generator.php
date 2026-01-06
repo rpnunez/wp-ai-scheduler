@@ -328,6 +328,10 @@ class AIPS_Generator {
             'content' => $content,
             'excerpt' => $excerpt,
             'template' => $template,
+            // Provide SEO context for downstream plugins.
+            'focus_keyword' => $topic ? $topic : $title,
+            'meta_description' => $excerpt,
+            'seo_title' => $title,
         );
 
         $post_id = $this->post_creator->create_post($post_creation_data);

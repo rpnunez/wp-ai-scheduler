@@ -981,6 +981,12 @@ These architectural improvements significantly enhance the plugin's maintainabil
 
 ---
 
+## 2026-01-06 - Centralize SEO Metadata on Post Creation
+**Context:** Generated posts were being created without populating SEO plugin metadata, leaving Yoast/RankMath focus keyword and meta description fields empty. SEO responsibilities were implicitly split across generator and templates with no dedicated handler, creating a gap in post-creation completeness.
+**Decision:** Added an SEO metadata pipeline inside `AIPS_Post_Creator` via a new `apply_seo_metadata()` helper and `sanitize_meta_description()` utility. The generator now passes SEO context (focus keyword, meta description, SEO title), and a new `aips_post_seo_metadata` filter allows extensions to adjust values. Fallback logic ensures meta descriptions default to excerpts or content, and both Yoast and RankMath meta keys are populated in one place.
+**Consequence:** SEO-critical fields are consistently filled without changing public APIs. This improves search readiness while keeping responsibilities localized to the post creation service. Trade-offs include additional meta writes even when plugins are inactive and slightly larger post creation logic, mitigated by isolating SEO work in dedicated helpers.
+**Tests:** Added `tests/test-post-creator-seo.php` covering explicit SEO inputs and default fallbacks (Yoast and RankMath meta assertions). Tests could not be executed in this environment due to lack of runtime tooling.
+
 ## 2025-12-26 - Extract Generation Session Tracker
 
 **Context:** The `AIPS_Generator` class contained a private property called `$generation_log` (a raw PHP array) that tracked runtime details of post generation. This created architectural confusion:

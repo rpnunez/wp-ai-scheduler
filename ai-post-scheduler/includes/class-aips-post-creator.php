@@ -29,6 +29,10 @@ class AIPS_Post_Creator {
      *     @type string $title    Post title.
      *     @type string $content  Post content.
      *     @type string $excerpt  Post excerpt.
+     *     @type string $focus_keyword Optional. Primary SEO focus keyword/keyphrase.
+     *     @type string $meta_description Optional. SEO meta description content.
+     *     @type string $seo_title Optional. SEO title override for plugins.
+     *     @type string $topic Optional. Topic used to infer focus keyword when none provided.
      *     @type object $template Template object containing settings.
      * }
      * @return int|WP_Error Post ID on success, WP_Error on failure.
@@ -70,6 +74,28 @@ class AIPS_Post_Creator {
             wp_set_post_tags($post_id, $tags);
         }
 
+        $seo_data = array(
+            'focus_keyword' => isset($data['focus_keyword']) ? $data['focus_keyword'] : (isset($data['topic']) ? $data['topic'] : $title),
+            'meta_description' => isset($data['meta_description']) ? $data['meta_description'] : $excerpt,
+            'seo_title' => isset($data['seo_title']) ? $data['seo_title'] : $title,
+        );
+
+        if (empty($seo_data['meta_description']) && !empty($content)) {
+            // Fall back to content when no excerpt or explicit meta description is provided.
+            $seo_data['meta_description'] = $content;
+        }
+
+        /**
+         * Allow third-parties to modify SEO metadata before it is saved.
+         *
+         * @param array $seo_data  SEO metadata array.
+         * @param int   $post_id   The post ID.
+         * @param object $template Template object.
+         */
+        $seo_data = apply_filters('aips_post_seo_metadata', $seo_data, $post_id, $template);
+
+        $this->apply_seo_metadata($post_id, $seo_data);
+
         return $post_id;
     }
 
@@ -85,5 +111,64 @@ class AIPS_Post_Creator {
             return false;
         }
         return set_post_thumbnail($post_id, $attachment_id);
+    }
+
+    /**
+     * Apply SEO metadata (Yoast and RankMath) to the created post.
+     *
+     * @param int   $post_id  Post ID.
+     * @param array $seo_data {
+     *     SEO data used to populate plugin-specific meta fields.
+     *
+     *     @type string $focus_keyword    Primary keyword/keyphrase.
+     *     @type string $meta_description Meta description text.
+     *     @type string $seo_title        SEO title override.
+     * }
+     * @return void
+     */
+    private function apply_seo_metadata($post_id, $seo_data) {
+        if (empty($post_id)) {
+            return;
+        }
+
+        $focus_keyword = isset($seo_data['focus_keyword']) ? sanitize_text_field($seo_data['focus_keyword']) : '';
+        $seo_title = isset($seo_data['seo_title']) ? sanitize_text_field($seo_data['seo_title']) : '';
+        $meta_description = isset($seo_data['meta_description']) ? $this->sanitize_meta_description($seo_data['meta_description']) : '';
+
+        if (!empty($focus_keyword)) {
+            // Yoast SEO focus keyword support (legacy and current keyphrase fields).
+            update_post_meta($post_id, '_yoast_wpseo_focuskw', $focus_keyword);
+            update_post_meta($post_id, '_yoast_wpseo_focuskeyphrase', $focus_keyword);
+            // RankMath focus keyword support.
+            update_post_meta($post_id, 'rank_math_focus_keyword', $focus_keyword);
+        }
+
+        if (!empty($meta_description)) {
+            // Populate meta description for Yoast and RankMath for better SERP snippets.
+            update_post_meta($post_id, '_yoast_wpseo_metadesc', $meta_description);
+            update_post_meta($post_id, 'rank_math_description', $meta_description);
+        }
+
+        if (!empty($seo_title)) {
+            // Set SEO title overrides when available.
+            update_post_meta($post_id, '_yoast_wpseo_title', $seo_title);
+            update_post_meta($post_id, 'rank_math_title', $seo_title);
+        }
+    }
+
+    /**
+     * Normalize and trim a meta description string for SEO plugins.
+     *
+     * @param string $description Raw description text.
+     * @return string Sanitized description trimmed to 160 characters.
+     */
+    private function sanitize_meta_description($description) {
+        $clean_description = sanitize_text_field(wp_strip_all_tags($description));
+
+        if (function_exists('mb_substr')) {
+            return mb_substr($clean_description, 0, 160);
+        }
+
+        return substr($clean_description, 0, 160);
     }
 }
