@@ -16,11 +16,13 @@ AI Post Scheduler integrates with Meow Apps AI Engine to automate your content c
 
 = Features =
 
-* **Template Builder + Voices**: Create reusable prompt templates with dynamic variables, attach optional writing voices (personas with title/content/excerpt guidance), and batch-generate 1–20 posts per run. Use "Test Generate" to preview output before saving.
+* **Template Builder**: Create reusable prompt templates with dynamic variables and preview them with "Test Generate" before saving.
+* **Voices & Batch Runs**: Attach optional writing voices (personas with title/content/excerpt guidance) and batch-generate between 1 and 20 posts per run.
 * **Article Structures & Prompt Sections**: Compose long-form outlines from reusable prompt sections, and rotate structures per schedule (sequential, random, weighted, alternating) so recurring posts stay varied.
-* **Flexible Scheduler**: Schedule posts hourly, every 4/6/12 hours, daily, weekly, bi-weekly, monthly, once, or every specific weekday. Set start times, toggle activation, run one-off or recurring schedules, and bulk-insert schedules for many topics at once.
+* **Scheduling Frequencies**: Schedule posts hourly, every 4 hours (plugin-added cron interval), every 6 hours, every 12 hours, daily, weekly, bi-weekly, monthly, once, or every specific weekday.
+* **Schedule Management**: Set start times, toggle activation, run one-off or recurring schedules, and bulk-insert schedules for many topics at once.
 * **Planner (Bulk Topic Scheduling)**: Brainstorm topics with AI, paste your own list, edit inline, and bulk schedule them with a chosen template, start date, and frequency. Uses the `{{topic}}` variable automatically.
-* **Trending Topics Research**: Discover and score trending topics (1–100), capture keywords/reasons, filter the library (niche, score, freshness), and bulk schedule selected topics. Includes daily automated research via cron.
+* **Trending Topics Research**: Discover and score trending topics (1-100, higher = more timely/relevant), capture keywords/reasons, filter the library (niche, score, freshness), and bulk schedule selected topics. Includes daily automated research via cron.
 * **AI Generation Pipeline**: Builds content, title, excerpt, and optional featured image prompts; processes template variables; attaches category/tags/author/status; supports featured image generation with safety checks.
 * **Reliability & History**: Retry/backoff, circuit breaker, and structured generation sessions logged to the History table. View per-template generation counts, run-now actions, and generated posts.
 * **Seeder for Demo Data**: Generate sample voices, templates, schedules, and planner entries via the Seeder admin page to demo the UI quickly.
@@ -51,8 +53,8 @@ Use this to "automate the automation" - let AI handle content strategy and topic
 
 1. **Set up voices and structures**: Define voices (writing personas) and article structures/prompt sections to control tone and outline. Structures can rotate automatically on recurring schedules.
 2. **Build templates**: Create templates with content/title/image prompts, choose voice, post status/category/tags/author, and enable featured image generation. Use **Test Generate** to preview and adjust.
-3. **Plan topics**: Use the Planner to have AI brainstorm 1–50 topics, or paste your own list. Select topics and bulk schedule them with a template, start date, and frequency.
-4. **Research trends**: Open **AI Post Scheduler → Trending Topics**, research a niche, review scored topics with keywords/reasons, filter the library, and bulk schedule selected items. Automated daily research is enabled via cron (`aips_scheduled_research`).
+3. **Plan topics**: Use the Planner to have AI brainstorm 1-50 topics (kept within this range for stable AI responses), or paste your own list. Select topics and bulk schedule them with a template, start date, and frequency.
+4. **Research trends**: Open **AI Post Scheduler → Trending Topics**, research a niche, review scored topics with keywords/reasons, filter the library, and bulk schedule selected items. For automated research, configure niches and the cron job (`aips_scheduled_research`) will run daily.
 5. **Schedule & run**: Create one-off or recurring schedules (hourly, 4h, 6h, 12h, daily, weekly, bi-weekly, monthly, or specific weekdays). Use "Run Now" to trigger a template immediately.
 6. **Review & monitor**: Check **History** for successes/failures with generation logs, and **System Status** for environment/DB/cron health. Use hooks (`aips_*`) to integrate with your workflows.
 7. **Demo fast**: Open the **Seeder** page to generate sample voices, templates, schedules, and planner entries for quick demos.
