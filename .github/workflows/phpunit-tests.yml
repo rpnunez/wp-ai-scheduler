@@ -62,13 +62,15 @@ jobs:
         run: |
           # Create WordPress test directories
           mkdir -p /tmp/wordpress-tests-lib /tmp/wordpress
+          mkdir -p /tmp/wordpress-tests-lib/src
 
           # Clone WordPress develop repository
           git clone --depth=1 https://github.com/WordPress/wordpress-develop.git /tmp/wordpress-develop
           
           # Copy files
           cp -r /tmp/wordpress-develop/tests/phpunit/* /tmp/wordpress-tests-lib/
-          cp -r /tmp/wordpress-develop/src/* /tmp/wordpress/
+          cp -r /tmp/wordpress-develop/src/* /tmp/wordpress-tests-lib/src/
+          
           cp /tmp/wordpress-develop/wp-tests-config-sample.php /tmp/wordpress-tests-lib/wp-tests-config.php
 
           rm -rf /tmp/wordpress-develop
