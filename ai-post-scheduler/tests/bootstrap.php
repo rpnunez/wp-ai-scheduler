@@ -69,6 +69,26 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!defined('AIPS_PLUGIN_BASENAME')) {
         define('AIPS_PLUGIN_BASENAME', 'ai-post-scheduler/ai-post-scheduler.php');
     }
+
+    if (!isset($GLOBALS['aips_test_hooks'])) {
+        $GLOBALS['aips_test_hooks'] = array(
+            'actions' => array(),
+            'filters' => array(),
+        );
+    }
+    
+    // WordPress constants
+    if (!defined('OBJECT')) {
+        define('OBJECT', 'OBJECT');
+    }
+    
+    if (!defined('ARRAY_A')) {
+        define('ARRAY_A', 'ARRAY_A');
+    }
+    
+    if (!defined('ARRAY_N')) {
+        define('ARRAY_N', 'ARRAY_N');
+    }
     
     // Mock WordPress functions if not available
     if (!function_exists('esc_html__')) {
@@ -97,25 +117,74 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     if (!function_exists('add_action')) {
         function add_action($hook, $callback, $priority = 10, $accepted_args = 1) {
-            // No-op in test environment
+            if (!isset($GLOBALS['aips_test_hooks']['actions'][$hook])) {
+                $GLOBALS['aips_test_hooks']['actions'][$hook] = array();
+            }
+
+            if (!isset($GLOBALS['aips_test_hooks']['actions'][$hook][$priority])) {
+                $GLOBALS['aips_test_hooks']['actions'][$hook][$priority] = array();
+            }
+
+            $GLOBALS['aips_test_hooks']['actions'][$hook][$priority][] = array(
+                'callback' => $callback,
+                'accepted_args' => $accepted_args,
+            );
         }
     }
     
     if (!function_exists('add_filter')) {
         function add_filter($hook, $callback, $priority = 10, $accepted_args = 1) {
-            // No-op in test environment
+            if (!isset($GLOBALS['aips_test_hooks']['filters'][$hook])) {
+                $GLOBALS['aips_test_hooks']['filters'][$hook] = array();
+            }
+
+            if (!isset($GLOBALS['aips_test_hooks']['filters'][$hook][$priority])) {
+                $GLOBALS['aips_test_hooks']['filters'][$hook][$priority] = array();
+            }
+
+            $GLOBALS['aips_test_hooks']['filters'][$hook][$priority][] = array(
+                'callback' => $callback,
+                'accepted_args' => $accepted_args,
+            );
         }
     }
     
     if (!function_exists('apply_filters')) {
         function apply_filters($hook, $value) {
+            $args = func_get_args();
+            $value = $args[1];
+
+            if (isset($GLOBALS['aips_test_hooks']['filters'][$hook])) {
+                ksort($GLOBALS['aips_test_hooks']['filters'][$hook]);
+
+                foreach ($GLOBALS['aips_test_hooks']['filters'][$hook] as $priority_callbacks) {
+                    foreach ($priority_callbacks as $callback) {
+                        $callback_args = array_slice($args, 1, $callback['accepted_args']);
+                        $callback_args[0] = $value;
+                        $value = call_user_func_array($callback['callback'], $callback_args);
+                    }
+                }
+            }
+
             return $value;
         }
     }
     
     if (!function_exists('do_action')) {
         function do_action($hook) {
-            // No-op in test environment
+            $args = func_get_args();
+            array_shift($args);
+
+            if (isset($GLOBALS['aips_test_hooks']['actions'][$hook])) {
+                ksort($GLOBALS['aips_test_hooks']['actions'][$hook]);
+
+                foreach ($GLOBALS['aips_test_hooks']['actions'][$hook] as $priority_callbacks) {
+                    foreach ($priority_callbacks as $callback) {
+                        $callback_args = array_slice($args, 0, $callback['accepted_args']);
+                        call_user_func_array($callback['callback'], $callback_args);
+                    }
+                }
+            }
         }
     }
     
@@ -210,14 +279,205 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!class_exists('WP_UnitTestCase')) {
         // Provide a basic test case for when WordPress test library is not available
         class WP_UnitTestCase extends \PHPUnit\Framework\TestCase {
+            protected $factory;
+            
             public function setUp(): void {
                 parent::setUp();
+                if (!isset($this->factory)) {
+                    $this->factory = new stdClass();
+                    $this->factory->user = new class {
+                        public function create($args = array()) {
+                            static $user_id = 1;
+                            $id = $user_id++;
+                            // Store user role in global
+                            global $test_users;
+                            if (!isset($test_users)) {
+                                $test_users = array();
+                            }
+                            $test_users[$id] = isset($args['role']) ? $args['role'] : 'subscriber';
+                            return $id;
+                        }
+                    };
+                }
             }
             
             public function tearDown(): void {
+                $this->reset_hooks();
                 parent::tearDown();
             }
+
+            /**
+             * Reset mocked WordPress hooks to avoid cross-test pollution.
+             *
+             * @return void
+             */
+            private function reset_hooks() {
+                $GLOBALS['aips_test_hooks'] = array(
+                    'actions' => array(),
+                    'filters' => array(),
+                );
+            }
         }
+    }
+    
+    // Mock AJAX functions
+    if (!function_exists('check_ajax_referer')) {
+        function check_ajax_referer($action = -1, $query_arg = '_wpnonce', $die = true) {
+            $nonce = isset($_REQUEST[$query_arg]) ? $_REQUEST[$query_arg] : '';
+            if ($nonce !== wp_create_nonce($action)) {
+                if ($die) {
+                    throw new WPAjaxDieStopException();
+                }
+                return false;
+            }
+            return 1;
+        }
+    }
+    
+    if (!function_exists('wp_create_nonce')) {
+        function wp_create_nonce($action = -1) {
+            return 'test_nonce_' . $action;
+        }
+    }
+    
+    if (!function_exists('wp_verify_nonce')) {
+        function wp_verify_nonce($nonce, $action = -1) {
+            return $nonce === wp_create_nonce($action) ? 1 : false;
+        }
+    }
+    
+    if (!function_exists('wp_send_json_success')) {
+        function wp_send_json_success($data = null, $status_code = null) {
+            echo json_encode(array('success' => true, 'data' => $data));
+            throw new WPAjaxDieContinueException();
+        }
+    }
+    
+    if (!function_exists('wp_send_json_error')) {
+        function wp_send_json_error($data = null, $status_code = null) {
+            echo json_encode(array('success' => false, 'data' => $data));
+            throw new WPAjaxDieContinueException();
+        }
+    }
+    
+    if (!function_exists('wp_set_current_user')) {
+        function wp_set_current_user($id, $name = '') {
+            global $current_user_id;
+            $current_user_id = $id;
+            return $id;
+        }
+    }
+    
+    if (!function_exists('current_user_can')) {
+        function current_user_can($capability) {
+            global $current_user_id, $test_users;
+            if (!isset($current_user_id) || !isset($test_users[$current_user_id])) {
+                return false;
+            }
+            // Check if user has admin role
+            $role = $test_users[$current_user_id];
+            if ($role === 'administrator' && $capability === 'manage_options') {
+                return true;
+            }
+            return false;
+        }
+    }
+    
+    if (!function_exists('sanitize_text_field')) {
+        function sanitize_text_field($str) {
+            return strip_tags($str);
+        }
+    }
+    
+    if (!function_exists('sanitize_textarea_field')) {
+        function sanitize_textarea_field($str) {
+            return strip_tags($str);
+        }
+    }
+    
+    if (!function_exists('wp_kses_post')) {
+        function wp_kses_post($data) {
+            // Allow some HTML tags
+            return strip_tags($data, '<a><strong><em><p><br><ul><ol><li>');
+        }
+    }
+    
+    if (!function_exists('absint')) {
+        function absint($maybeint) {
+            return abs(intval($maybeint));
+        }
+    }
+    
+    if (!function_exists('__')) {
+        function __($text, $domain = 'default') {
+            return $text;
+        }
+    }
+    
+    // AJAX exception classes for testing
+    if (!class_exists('WPAjaxDieContinueException')) {
+        class WPAjaxDieContinueException extends Exception {}
+    }
+    
+    if (!class_exists('WPAjaxDieStopException')) {
+        class WPAjaxDieStopException extends Exception {}
+    }
+    
+    // Mock global $wpdb
+    if (!isset($GLOBALS['wpdb'])) {
+        $GLOBALS['wpdb'] = new class {
+            public $prefix = 'wp_';
+            public $insert_id = 0;
+            private $data = array();
+            
+            public function prepare($query, ...$args) {
+                // Simple mock prepare - just return the query with args
+                // In real implementation, this would properly escape and format
+                if (empty($args)) {
+                    return $query;
+                }
+                // Replace placeholders in order
+                foreach ($args as $arg) {
+                    $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                }
+                return $query;
+            }
+            
+            public function get_results($query, $output = OBJECT) {
+                return array();
+            }
+            
+            public function get_row($query, $output = OBJECT, $y = 0) {
+                return null;
+            }
+            
+            public function get_var($query, $x = 0, $y = 0) {
+                return null;
+            }
+            
+            public function query($query) {
+                return true;
+            }
+            
+            public function insert($table, $data, $format = null) {
+                static $next_insert_id = 1;
+                $this->insert_id = $next_insert_id++;
+                return true;
+            }
+            
+            public function update($table, $data, $where, $format = null, $where_format = null) {
+                return true;
+            }
+            
+            public function delete($table, $where, $where_format = null) {
+                return true;
+            }
+        };
+    }
+    
+    // Mock global $wp_filter for action/filter hooks
+    if (!isset($GLOBALS['wp_filter'])) {
+        $GLOBALS['wp_filter'] = array();
     }
     
     // Load plugin classes
@@ -250,6 +510,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-templates.php',
         'class-aips-upgrades.php',
         'class-aips-voices.php',
+        'class-aips-structures-controller.php',
+        'class-aips-templates-controller.php',
+        'class-aips-research-controller.php',
     ];
     
     foreach ($files as $file) {

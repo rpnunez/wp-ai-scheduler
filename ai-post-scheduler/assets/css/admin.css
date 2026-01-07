@@ -800,3 +800,34 @@
     background: #fcf0f1;
     color: #d63638;
 }
+
+/* Multi-select styling */
+.aips-multiselect {
+    padding: 8px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    background-color: #fff;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 200px;
+}
+
+.aips-multiselect:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: 2px solid transparent;
+}
+
+.aips-multiselect option {
+    padding: 6px 8px;
+    border-radius: 2px;
+}
+
+.aips-multiselect option:hover {
+    background-color: #f0f0f1;
+}
+
+.aips-multiselect option:checked {
+    background-color: #2271b1;
+    color: #fff;
+}

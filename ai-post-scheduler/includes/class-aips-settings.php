@@ -97,6 +97,15 @@ class AIPS_Settings {
             'aips-activity',
             array($this, 'render_activity_page')
         );
+      
+      add_submenu_page(
+            'ai-post-scheduler',
+            __('Article Structures', 'ai-post-scheduler'),
+            __('Article Structures', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-structures',
+            array($this, 'render_structures_page')
+        );
         
         add_submenu_page(
             'ai-post-scheduler',
@@ -226,6 +235,15 @@ class AIPS_Settings {
             AIPS_VERSION,
             true
         );
+
+        wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
+            'deleteStructureConfirm' => __('Are you sure you want to delete this structure?', 'ai-post-scheduler'),
+            'saveStructureFailed' => __('Failed to save structure.', 'ai-post-scheduler'),
+            'loadStructureFailed' => __('Failed to load structure.', 'ai-post-scheduler'),
+            'deleteStructureFailed' => __('Failed to delete structure.', 'ai-post-scheduler'),
+            'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
+            'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+        ));
 
         wp_enqueue_script(
             'aips-admin-research',
@@ -484,6 +502,22 @@ class AIPS_Settings {
      */
     public function render_activity_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
+    }
+  
+     * Render the Article Structures page.
+     *
+     * Fetches structures and sections from repositories and passes them to the template.
+     *
+     * @return void
+     */
+    public function render_structures_page() {
+        $structure_repo = new AIPS_Article_Structure_Repository();
+        $section_repo = new AIPS_Prompt_Section_Repository();
+        
+        $structures = $structure_repo->get_all(false);
+        $sections = $section_repo->get_all(false);
+        
+        include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
     }
     
     /**

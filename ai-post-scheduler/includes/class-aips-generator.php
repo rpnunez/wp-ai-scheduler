@@ -330,6 +330,9 @@ class AIPS_Generator {
             'template' => $template,
         );
 
+        // Allow integrations to hook before the post is created.
+        do_action('aips_post_generation_before_post_create', $post_creation_data);
+
         $post_id = $this->post_creator->create_post($post_creation_data);
         
         if (is_wp_error($post_id)) {
