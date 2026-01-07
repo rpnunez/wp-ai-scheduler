@@ -275,6 +275,73 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return ($thing instanceof WP_Error);
         }
     }
+
+    if (!function_exists('sanitize_text_field')) {
+        function sanitize_text_field($str) {
+            $filtered = is_string($str) ? strip_tags($str) : $str;
+            return is_string($filtered) ? trim($filtered) : $filtered;
+        }
+    }
+
+    if (!function_exists('wp_strip_all_tags')) {
+        function wp_strip_all_tags($string) {
+            return trim(strip_tags($string));
+        }
+    }
+
+    if (!function_exists('absint')) {
+        function absint($maybeint) {
+            return abs(intval($maybeint));
+        }
+    }
+
+    if (!function_exists('get_option')) {
+        function get_option($option, $default = false) {
+            return $default;
+        }
+    }
+
+    if (!function_exists('get_current_user_id')) {
+        function get_current_user_id() {
+            return 1;
+        }
+    }
+
+    if (!function_exists('wp_insert_post')) {
+        function wp_insert_post($postarr, $wp_error = false) {
+            static $post_id = 1;
+            return $post_id++;
+        }
+    }
+
+    if (!function_exists('wp_set_post_tags')) {
+        function wp_set_post_tags($post_id, $tags) {
+            return true;
+        }
+    }
+
+    if (!function_exists('set_post_thumbnail')) {
+        function set_post_thumbnail($post_id, $attachment_id) {
+            return true;
+        }
+    }
+
+    if (!function_exists('update_post_meta')) {
+        function update_post_meta($post_id, $meta_key, $meta_value) {
+            global $aips_test_meta;
+
+            if (!isset($aips_test_meta)) {
+                $aips_test_meta = array();
+            }
+
+            if (!isset($aips_test_meta[$post_id])) {
+                $aips_test_meta[$post_id] = array();
+            }
+
+            $aips_test_meta[$post_id][$meta_key] = $meta_value;
+            return true;
+        }
+    }
     
     if (!class_exists('WP_UnitTestCase')) {
         // Provide a basic test case for when WordPress test library is not available
