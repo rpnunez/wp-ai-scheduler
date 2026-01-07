@@ -3,6 +3,11 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Ensure $structures is defined for static analysis and for direct includes
+if (!isset($structures) || !is_array($structures)) {
+    $structures = array();
+}
+
 // Ensure $sections is defined for static analysis and for direct includes
 if (!isset($sections) || !is_array($sections)) {
     $sections = array();
@@ -31,8 +36,8 @@ if (!isset($sections) || !is_array($sections)) {
                 <tr data-structure-id="<?php echo esc_attr($structure->id); ?>">
                     <td><?php echo esc_html($structure->name); ?></td>
                     <td><?php echo esc_html($structure->description); ?></td>
-                    <td><?php echo esc_html( $structure->is_active ? __('Yes', 'ai-post-scheduler') : __('No', 'ai-post-scheduler') ); ?></td>
-                    <td><?php echo esc_html( $structure->is_default ? __('Yes', 'ai-post-scheduler') : __('No', 'ai-post-scheduler') ); ?></td>
+                    <td><?php echo $structure->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
+                    <td><?php echo $structure->is_default ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
                     <td>
                         <button class="button aips-edit-structure" data-id="<?php echo esc_attr($structure->id); ?>"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></button>
                         <button class="button button-link-delete aips-delete-structure" data-id="<?php echo esc_attr($structure->id); ?>"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></button>
