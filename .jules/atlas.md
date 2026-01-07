@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-26 - [Refactor Templates Interval Calculation] **Context:** `AIPS_Templates` contained duplicated interval calculation logic (`calculate_next_run`) that was already present in `AIPS_Interval_Calculator`. This violated DRY and increased maintenance burden. **Decision:** Removed the duplicated private method from `AIPS_Templates` and injected `AIPS_Interval_Calculator` to handle timestamp calculations. Exposed `calculate_next_timestamp` as public in the calculator service. **Consequence:** Improved maintainability and consistency; `AIPS_Templates` now depends on the specialized service.
