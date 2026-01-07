@@ -71,13 +71,13 @@ class AIPS_Structures_Controller {
         $manager = new AIPS_Article_Structure_Manager();
 
         if ($id) {
-            $result = $manager->update_structure($id, $name, $sections, $prompt_template, $description);
+            $result = $manager->update_structure($id, $name, $sections, $prompt_template, $description, $is_active, $is_default);
             if (is_wp_error($result)) {
                 wp_send_json_error(array('message' => $result->get_error_message()));
             }
             wp_send_json_success(array('message' => __('Structure updated.', 'ai-post-scheduler'), 'structure_id' => $id));
         } else {
-            $new_id = $manager->create_structure($name, $sections, $prompt_template, $description, $is_default == 1);
+            $new_id = $manager->create_structure($name, $sections, $prompt_template, $description, $is_default == 1, $is_active == 1);
             if (is_wp_error($new_id)) {
                 wp_send_json_error(array('message' => $new_id->get_error_message()));
             }
