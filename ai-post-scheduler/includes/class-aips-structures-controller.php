@@ -71,7 +71,7 @@ class AIPS_Structures_Controller {
         $manager = new AIPS_Article_Structure_Manager();
 
         if ($id) {
-            $result = $manager->update_structure($id, $name, $sections, $prompt_template, $description, $is_active, $is_default);
+            $result = $manager->update_structure($id, $name, $sections, $prompt_template, $description, $is_default == 1, $is_active == 1);
             if (is_wp_error($result)) {
                 wp_send_json_error(array('message' => $result->get_error_message()));
             }
