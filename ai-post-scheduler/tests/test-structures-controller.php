@@ -33,7 +33,7 @@ class AIPS_Structures_Controller_Test extends WP_UnitTestCase {
 		// Clean up test data
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'aips_article_structures';
-		$wpdb->query("DELETE FROM $table_name WHERE name LIKE 'Test%'");
+		$wpdb->query($wpdb->prepare("DELETE FROM $table_name WHERE name LIKE %s", 'Test%'));
 		
 		// Clean up $_POST and $_REQUEST
 		$_POST = array();

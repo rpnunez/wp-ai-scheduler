@@ -370,7 +370,16 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             private $data = array();
             
             public function prepare($query, ...$args) {
-                return vsprintf(str_replace('%s', "'%s'", str_replace('%d', '%d', $query)), $args);
+                // Simple mock prepare - just return the query with args
+                // In real implementation, this would properly escape and format
+                if (empty($args)) {
+                    return $query;
+                }
+                // Replace placeholders in order
+                foreach ($args as $arg) {
+                    $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                }
+                return $query;
             }
             
             public function get_results($query, $output = OBJECT) {
