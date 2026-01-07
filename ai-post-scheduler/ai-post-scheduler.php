@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://example.com/ai-post-scheduler
  * Description: Schedule AI-generated posts using Meow Apps AI Engine
- * Version: 1.6.0
+ * Version: 1.7.0
  * Author: Your Name
  * Author URI: https://example.com
  * License: GPL v2 or later
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIPS_VERSION', '1.6.0');
+define('AIPS_VERSION', '1.7.0');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -67,6 +67,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-section-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-trending-topics-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-repository.php';
         
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates-controller.php';
@@ -84,6 +85,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-controller.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
@@ -161,6 +163,7 @@ final class AI_Post_Scheduler {
             new AIPS_History();
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
+            new AIPS_Activity_Controller();
             new AIPS_Research_Controller();
             new AIPS_Seeder_Admin();
         }
