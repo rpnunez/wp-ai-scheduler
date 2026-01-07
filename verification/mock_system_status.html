@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Status - Mock</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f1f1f1; padding: 20px; }
+        .wrap { background: #fff; padding: 20px; border: 1px solid #ccc; max-width: 1000px; margin: 0 auto; }
+        .aips-log-details { margin-top: 10px; }
+        .large-text { width: 100%; box-sizing: border-box; }
+        .button { cursor: pointer; padding: 5px 10px; background: #f7f7f7; border: 1px solid #ccc; border-radius: 3px; }
+        .button:hover { background: #fafafa; border-color: #999; }
+        .dashicons { font-family: "dashicons"; }
+        .code { font-family: monospace; }
+        /* Mock dashicons */
+        .dashicons-admin-page:before { content: "\f105"; font-family: FontAwesome; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>System Status</h1>
+
+        <!-- Mock Log Section -->
+        <div id="log-details-mock" class="aips-log-details">
+            <div class="aips-log-actions" style="margin-bottom: 5px; text-align: right;">
+                <button type="button" class="button button-small aips-copy-btn" data-clipboard-target="#log-details-textarea-mock">
+                    <span class="dashicons dashicons-admin-page"></span> Copy Log
+                </button>
+            </div>
+            <textarea id="log-details-textarea-mock" class="large-text code" rows="10" readonly>
+2024-05-28 10:00:00 [INFO] System check started.
+2024-05-28 10:00:01 [INFO] Database connection OK.
+2024-05-28 10:00:02 [WARNING] Memory limit low (128M).
+2024-05-28 10:00:03 [INFO] Check completed.
+            </textarea>
+        </div>
+
+    </div>
+
+    <script>
+        // Mock aipsAjax
+        var aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: 'mock_nonce' };
+        // Mock ajaxurl
+        var ajaxurl = '/wp-admin/admin-ajax.php';
+    </script>
+</body>
+</html>

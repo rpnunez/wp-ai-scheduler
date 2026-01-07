@@ -33,7 +33,12 @@ if (!defined('ABSPATH')) {
                                         <?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>
                                     </a>
                                     <div id="log-details-<?php echo esc_attr($key); ?>" class="aips-log-details" style="display:none; margin-top: 10px;">
-                                        <textarea class="large-text code" rows="10" readonly><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
+                                        <div class="aips-log-actions" style="margin-bottom: 5px; text-align: right;">
+                                            <button type="button" class="button button-small aips-copy-btn" data-clipboard-target="#log-details-textarea-<?php echo esc_attr($key); ?>">
+                                                <span class="dashicons dashicons-admin-page"></span> <?php esc_html_e('Copy Log', 'ai-post-scheduler'); ?>
+                                            </button>
+                                        </div>
+                                        <textarea id="log-details-textarea-<?php echo esc_attr($key); ?>" class="large-text code" rows="10" readonly><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
                                     </div>
                                 <?php endif; ?>
                             </td>
