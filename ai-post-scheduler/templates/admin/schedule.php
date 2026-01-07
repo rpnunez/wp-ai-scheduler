@@ -97,10 +97,41 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         ?>
                     </td>
                     <td class="column-status">
-                        <label class="aips-toggle">
-                            <input type="checkbox" class="aips-toggle-schedule" aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>" data-id="<?php echo esc_attr($schedule->id); ?>" <?php checked($schedule->is_active, 1); ?>>
-                            <span class="aips-toggle-slider"></span>
-                        </label>
+                        <?php 
+                        $status = isset($schedule->status) ? $schedule->status : 'active';
+                        $status_class = '';
+                        $status_icon = '';
+                        $status_text = '';
+                        
+                        switch ($status) {
+                            case 'failed':
+                                $status_class = 'aips-status-failed';
+                                $status_icon = 'dashicons-warning';
+                                $status_text = __('Failed', 'ai-post-scheduler');
+                                break;
+                            case 'inactive':
+                                $status_class = 'aips-status-inactive';
+                                $status_icon = 'dashicons-marker';
+                                $status_text = __('Inactive', 'ai-post-scheduler');
+                                break;
+                            case 'active':
+                            default:
+                                $status_class = 'aips-status-active';
+                                $status_icon = 'dashicons-yes';
+                                $status_text = __('Active', 'ai-post-scheduler');
+                                break;
+                        }
+                        ?>
+                        <div class="aips-schedule-status-wrapper">
+                            <span class="aips-schedule-status <?php echo esc_attr($status_class); ?>">
+                                <span class="dashicons <?php echo esc_attr($status_icon); ?>"></span>
+                                <?php echo esc_html($status_text); ?>
+                            </span>
+                            <label class="aips-toggle">
+                                <input type="checkbox" class="aips-toggle-schedule" aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>" data-id="<?php echo esc_attr($schedule->id); ?>" <?php checked($schedule->is_active, 1); ?>>
+                                <span class="aips-toggle-slider"></span>
+                            </label>
+                        </div>
                     </td>
                     <td class="column-actions">
                         <button class="button aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>">

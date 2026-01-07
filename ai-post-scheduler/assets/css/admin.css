@@ -554,3 +554,280 @@
         width: 100px;
     }
 }
+
+/* Activity Page Styles */
+.aips-activity-container {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    margin-top: 20px;
+}
+
+.aips-activity-filters {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.aips-filter-btn {
+    transition: all 0.2s;
+}
+
+.aips-filter-btn.active {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+
+.aips-activity-feed {
+    min-height: 200px;
+}
+
+.aips-activity-loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.aips-activity-loading .spinner {
+    float: none;
+    margin: 0 10px 0 0;
+}
+
+.aips-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.aips-activity-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.aips-activity-item:hover {
+    background: #f6f7f7;
+    border-color: #2271b1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.aips-activity-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+}
+
+.aips-activity-icon .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.aips-activity-icon.status-success {
+    background: #d7f0db;
+    color: #00a32a;
+}
+
+.aips-activity-icon.status-draft {
+    background: #f0f6fc;
+    color: #3582c4;
+}
+
+.aips-activity-icon.status-failed {
+    background: #fcf0f1;
+    color: #d63638;
+}
+
+.aips-activity-icon.status-info {
+    background: #f0f0f1;
+    color: #50575e;
+}
+
+.aips-activity-content {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.aips-activity-message {
+    font-weight: 500;
+    margin-bottom: 4px;
+    word-wrap: break-word;
+}
+
+.aips-activity-date {
+    font-size: 12px;
+    color: #646970;
+}
+
+.aips-activity-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.aips-activity-actions .button {
+    margin: 0;
+}
+
+.aips-activity-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #646970;
+}
+
+.aips-activity-empty .dashicons {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    opacity: 0.5;
+}
+
+.aips-activity-empty h3 {
+    margin: 20px 0 10px;
+    color: #1d2327;
+}
+
+/* Activity Detail Modal */
+.aips-post-meta {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #dcdcde;
+    font-size: 14px;
+}
+
+.aips-post-featured-image {
+    margin-bottom: 20px;
+}
+
+.aips-post-featured-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    border: 1px solid #dcdcde;
+}
+
+.aips-post-title h2 {
+    margin: 0 0 15px;
+    font-size: 24px;
+}
+
+.aips-post-excerpt-content {
+    padding: 15px;
+    background: #f6f7f7;
+    border-left: 4px solid #2271b1;
+    margin-bottom: 20px;
+    border-radius: 0 4px 4px 0;
+}
+
+.aips-post-content-preview {
+    padding: 15px;
+    background: #f6f7f7;
+    border-radius: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.aips-post-taxonomy {
+    padding-top: 15px;
+    border-top: 1px solid #dcdcde;
+    font-size: 14px;
+}
+
+.aips-post-categories,
+.aips-post-tags {
+    margin-bottom: 10px;
+}
+
+.aips-activity-detail-loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.aips-activity-detail-loading .spinner {
+    float: none;
+    margin: 0 10px 0 0;
+}
+
+/* Schedule Status Indicators */
+.aips-schedule-status-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.aips-schedule-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.aips-schedule-status .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.aips-schedule-status.aips-status-active {
+    background: #d7f0db;
+    color: #00a32a;
+}
+
+.aips-schedule-status.aips-status-inactive {
+    background: #f0f0f1;
+    color: #646970;
+}
+
+.aips-schedule-status.aips-status-failed {
+    background: #fcf0f1;
+    color: #d63638;
+}
+
+/* Multi-select styling */
+.aips-multiselect {
+    padding: 8px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    background-color: #fff;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 200px;
+}
+
+.aips-multiselect:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: 2px solid transparent;
+}
+
+.aips-multiselect option {
+    padding: 6px 8px;
+    border-radius: 2px;
+}
+
+.aips-multiselect option:hover {
+    background-color: #f0f0f1;
+}
+
+.aips-multiselect option:checked {
+    background-color: #2271b1;
+    color: #fff;
+}

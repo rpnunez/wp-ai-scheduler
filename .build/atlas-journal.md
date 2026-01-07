@@ -981,6 +981,18 @@ These architectural improvements significantly enhance the plugin's maintainabil
 
 ---
 
+## 2026-01-06 - Centralize SEO Metadata on Post Creation
+**Context:** Generated posts were being created without populating SEO plugin metadata, leaving Yoast/RankMath focus keyword and meta description fields empty. SEO responsibilities were implicitly split across generator and templates with no dedicated handler, creating a gap in post-creation completeness.
+**Decision:** Added an SEO metadata pipeline inside `AIPS_Post_Creator` via a new `apply_seo_metadata()` helper and `sanitize_meta_description()` utility. The generator now passes SEO context (focus keyword, meta description, SEO title), and a new `aips_post_seo_metadata` filter allows extensions to adjust values. Fallback logic ensures meta descriptions default to excerpts or content, and both Yoast and RankMath meta keys are populated in one place.
+**Consequence:** SEO-critical fields are consistently filled without changing public APIs. This improves search readiness while keeping responsibilities localized to the post creation service. Trade-offs include additional meta writes even when plugins are inactive and slightly larger post creation logic, mitigated by isolating SEO work in dedicated helpers.
+**Tests:** Added `tests/test-post-creator-seo.php` covering explicit SEO inputs and default fallbacks (Yoast and RankMath meta assertions). Tests could not be executed in this environment due to lack of runtime tooling.
+
+## 2026-01-06 - Guard SEO Metadata by Active Plugins
+**Context:** SEO meta fields were written unconditionally, even when Yoast or RankMath were not installed, risking unnecessary database bloat.
+**Decision:** Added lightweight plugin detection (`is_yoast_active()`, `is_rank_math_active()`) in `AIPS_Post_Creator` to gate all SEO meta writes. SEO metadata is now applied only when the respective plugin is active. Tests were expanded to cover both plugin-absent and plugin-present scenarios.
+**Consequence:** Prevents needless meta storage while keeping SEO enrichment intact when plugins are available. The change is backward compatible, isolating the guard inside the post creator without altering public APIs.
+**Tests:** Updated `test-post-creator-seo.php` to validate no meta writes when plugins are absent and correct writes when Yoast/RankMath are active. Tests could not be executed in this environment.
+
 ## 2025-12-26 - Extract Generation Session Tracker
 
 **Context:** The `AIPS_Generator` class contained a private property called `$generation_log` (a raw PHP array) that tracked runtime details of post generation. This created architectural confusion:
@@ -1137,3 +1149,13 @@ This refactoring eliminates the confusion between runtime session tracking (`gen
 **Decision:** Added schema support (`featured_image_source`, `featured_image_unsplash_keywords`, `featured_image_media_ids`) with a 1.7.0 migration and defaulted source to the existing AI prompt path for backwards compatibility. Extended `AIPS_Image_Service` with Unsplash retrieval and media-library selection helpers, and updated `AIPS_Generator` to route featured image creation based on the configured source. Updated the admin template modal and AJAX flow to capture the source-specific inputs, and introduced an Unsplash access key setting while enqueuing media assets for the selector.
 **Consequence:** Templates can now choose AI prompt generation, Unsplash keyword search, or random selection from chosen media items without changing public generator APIs. Existing templates continue to use AI prompts by default; new columns are optional and validated to avoid invalid sources. Trade-off: slightly broader schema/UI surface and dependency on an Unsplash access key for that path.
 **Tests:** Added safeguards in `test-image-service.php` for Unsplash key validation and empty media selections. Defaults and source validation ensure prior behavior when new fields are absent; backwards compatibility is preserved via default source (`ai_prompt`) and non-breaking schema migration.
+
+---
+
+## 2026-01-06 - Add Pre-Create Generation Hook
+**Context:** Post generation already exposed start/completion/failure hooks but lacked an extensibility point immediately before WordPress post creation. Integrations could not observe or react to the final payload, and the fallback test harness could not dispatch hooks to validate new events.
+**Decision:** Added `do_action('aips_post_generation_before_post_create', $post_creation_data)` right before `AIPS_Post_Creator` runs, and enhanced the fallback WordPress mocks to store/dispatch actions and filters with per-test resets. Added a focused unit test to assert the new hook fires with the expected data.
+**Consequence:** Provides a new, additive integration point with negligible runtime cost while preserving existing flows. Slightly increases bootstrap complexity only in limited test environments; hook state resets keep tests isolated. Backward compatibility is maintained because behavior is additive and core APIs remain unchanged.
+**Tests:** Added `tests/test-generator-hooks.php` to verify the hook dispatch and payload; enhanced bootstrap hook mocks ensure coverage without requiring a full WordPress environment.
+
+---

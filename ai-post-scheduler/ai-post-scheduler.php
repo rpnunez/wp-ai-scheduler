@@ -67,6 +67,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-section-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-trending-topics-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-repository.php';
         
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates-controller.php';
@@ -74,6 +75,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-builder.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-type-selector.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-structures-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-interval-calculator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-resilience-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-ai-service.php';
@@ -84,6 +86,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-controller.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
@@ -162,8 +165,11 @@ final class AI_Post_Scheduler {
             new AIPS_History();
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
+            new AIPS_Activity_Controller();
             new AIPS_Research_Controller();
             new AIPS_Seeder_Admin();
+            // Structures admin controller (CRUD endpoints for Article Structures UI)
+            new AIPS_Structures_Controller();
         }
         
         new AIPS_Scheduler();
