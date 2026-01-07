@@ -224,7 +224,7 @@ class AIPS_Post_Creator {
      * @return string Sanitized description trimmed to 160 characters.
      */
     private function sanitize_meta_description($description) {
-        $clean_description = sanitize_text_field(wp_strip_all_tags($description));
+        $clean_description = sanitize_text_field($description);
 
         if (function_exists('mb_substr')) {
             return mb_substr($clean_description, 0, 160);
