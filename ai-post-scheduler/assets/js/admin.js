@@ -28,6 +28,7 @@
             $(document).on('click', '.aips-save-voice', this.saveVoice);
 
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
+            $(document).on('click', '.aips-edit-schedule', this.editSchedule);
             $(document).on('click', '.aips-clone-schedule', this.cloneSchedule);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
@@ -638,6 +639,36 @@
             $('#aips-schedule-form')[0].reset();
             $('#schedule_id').val('');
             $('#aips-schedule-modal-title').text('Add New Schedule');
+            $('#aips-schedule-modal').show();
+        },
+
+        editSchedule: function(e) {
+            e.preventDefault();
+
+            // Reset form first
+            $('#aips-schedule-form')[0].reset();
+
+            // Get data from the row
+            var $row = $(this).closest('tr');
+            var scheduleId = $row.data('schedule-id');
+            var templateId = $row.data('template-id');
+            var frequency = $row.data('frequency');
+            var nextRun = $row.data('next-run');
+            var topic = $row.data('topic');
+            var articleStructureId = $row.data('article-structure-id');
+            var rotationPattern = $row.data('rotation-pattern');
+
+            // Populate form
+            $('#schedule_id').val(scheduleId);
+            $('#schedule_template').val(templateId);
+            $('#schedule_frequency').val(frequency);
+            $('#schedule_start_time').val(nextRun);
+            $('#schedule_topic').val(topic);
+            $('#article_structure_id').val(articleStructureId);
+            $('#rotation_pattern').val(rotationPattern);
+
+            // Update title and show
+            $('#aips-schedule-modal-title').text('Edit Schedule');
             $('#aips-schedule-modal').show();
         },
 

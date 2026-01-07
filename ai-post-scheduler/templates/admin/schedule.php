@@ -69,6 +69,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                 <tr data-schedule-id="<?php echo esc_attr($schedule->id); ?>"
                     data-template-id="<?php echo esc_attr($schedule->template_id); ?>"
                     data-frequency="<?php echo esc_attr($schedule->frequency); ?>"
+                    data-next-run="<?php echo esc_attr(date('Y-m-d\TH:i', strtotime($schedule->next_run))); ?>"
                     data-topic="<?php echo esc_attr($schedule->topic); ?>"
                     data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
                     data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
@@ -134,6 +135,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         </div>
                     </td>
                     <td class="column-actions">
+                        <button class="button aips-edit-schedule" aria-label="<?php esc_attr_e('Edit schedule', 'ai-post-scheduler'); ?>">
+                            <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+                        </button>
                         <button class="button aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>">
                             <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
                         </button>
