@@ -218,6 +218,15 @@ class AIPS_Settings {
             true
         );
 
+        wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
+            'deleteStructureConfirm' => __('Are you sure you want to delete this structure?', 'ai-post-scheduler'),
+            'saveStructureFailed' => __('Failed to save structure.', 'ai-post-scheduler'),
+            'loadStructureFailed' => __('Failed to load structure.', 'ai-post-scheduler'),
+            'deleteStructureFailed' => __('Failed to delete structure.', 'ai-post-scheduler'),
+            'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
+            'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+        ));
+
         wp_enqueue_script(
             'aips-admin-research',
             AIPS_PLUGIN_URL . 'assets/js/admin-research.js',

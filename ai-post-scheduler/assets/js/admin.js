@@ -124,11 +124,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message || 'Failed to save structure.');
+                        alert(response.data.message || aipsAdminL10n.saveStructureFailed);
                     }
                 }).fail(function(){
                     $btn.prop('disabled', false).text('Save Structure');
-                    alert('An error occurred. Please try again.');
+                    alert(aipsAdminL10n.errorTryAgain);
                 });
             });
 
@@ -160,25 +160,25 @@
                         $('#aips-structure-modal-title').text('Edit Article Structure');
                         $('#aips-structure-modal').show();
                     } else {
-                        alert(response.data.message || 'Failed to load structure.');
+                        alert(response.data.message || aipsAdminL10n.loadStructureFailed);
                     }
                 }).fail(function(){
-                    alert('An error occurred.');
+                    alert(aipsAdminL10n.errorOccurred);
                 });
             });
 
             // @TODO: Refactor to AIPS.deleteStructure
             $(document).on('click', '.aips-delete-structure', function(){
-                if (!confirm('Are you sure you want to delete this structure?')) return;
+                if (!confirm(aipsAdminL10n.deleteStructureConfirm)) return;
                 var id = $(this).data('id');
                 var $row = $(this).closest('tr');
                 $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
                     if (response.success) {
                         $row.fadeOut(function(){ $(this).remove(); });
                     } else {
-                        alert(response.data.message || 'Failed to delete structure.');
+                        alert(response.data.message || aipsAdminL10n.deleteStructureFailed);
                     }
-                }).fail(function(){ alert('An error occurred.'); });
+                }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
             });
         },
 
@@ -1227,4 +1227,3 @@
     });
 
 })(jQuery);
-
