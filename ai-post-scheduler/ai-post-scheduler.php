@@ -142,6 +142,7 @@ final class AI_Post_Scheduler {
             'aips_enable_logging' => 1,
             'aips_retry_max_attempts' => 3,
             'aips_ai_model' => '',
+            'aips_unsplash_access_key' => '',
             'aips_db_version' => AIPS_VERSION,
         );
         

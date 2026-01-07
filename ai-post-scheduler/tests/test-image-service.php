@@ -136,4 +136,26 @@ class Test_AIPS_Image_Service extends WP_UnitTestCase {
         // on filename sanitization
         $this->assertInstanceOf('WP_Error', $result);
     }
+
+    /**
+     * Ensure Unsplash integration validates missing access key.
+     */
+    public function test_fetch_unsplash_image_requires_key() {
+        delete_option('aips_unsplash_access_key');
+
+        $result = $this->service->fetch_and_upload_unsplash_image('mountains', 'Test Post');
+
+        $this->assertInstanceOf('WP_Error', $result);
+        $this->assertEquals('unsplash_key_missing', $result->get_error_code());
+    }
+
+    /**
+     * Ensure media library selection validates empty input.
+     */
+    public function test_select_media_library_image_without_ids() {
+        $result = $this->service->select_media_library_image('');
+
+        $this->assertInstanceOf('WP_Error', $result);
+        $this->assertEquals('no_media_images', $result->get_error_code());
+    }
 }

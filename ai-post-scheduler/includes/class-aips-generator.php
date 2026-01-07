@@ -365,18 +365,44 @@ class AIPS_Generator {
         
         $featured_image_id = null;
 
-        if ($template->generate_featured_image && !empty($template->image_prompt)) {
-            // When enabled, request image generation and attach to the post
-            $image_prompt = $this->template_processor->process($template->image_prompt, $topic);
-            $featured_image_result = $this->image_service->generate_and_upload_featured_image($image_prompt, $title);
-            
-            if (!is_wp_error($featured_image_result)) {
-                $featured_image_id = $featured_image_result;
-                $this->post_creator->set_featured_image($post_id, $featured_image_id);
-                $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
+        if ($template->generate_featured_image) {
+            $featured_image_source = isset($template->featured_image_source) ? $template->featured_image_source : 'ai_prompt';
+            $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
+
+            if (!in_array($featured_image_source, $allowed_sources, true)) {
+                $featured_image_source = 'ai_prompt';
+            }
+            $featured_image_result = null;
+
+            if ($featured_image_source === 'unsplash') {
+                $keywords = isset($template->featured_image_unsplash_keywords) ? $template->featured_image_unsplash_keywords : '';
+                $processed_keywords = $this->template_processor->process($keywords, $topic);
+                $featured_image_result = $this->image_service->fetch_and_upload_unsplash_image($processed_keywords, $title);
+                if (!is_wp_error($featured_image_result)) {
+                    $featured_image_id = $featured_image_result;
+                    $this->post_creator->set_featured_image($post_id, $featured_image_id);
+                }
+            } elseif ($featured_image_source === 'media_library') {
+                $featured_image_result = $this->image_service->select_media_library_image(isset($template->featured_image_media_ids) ? $template->featured_image_media_ids : '');
+                if (!is_wp_error($featured_image_result)) {
+                    $this->post_creator->set_featured_image($post_id, $featured_image_result);
+                    $featured_image_id = $featured_image_result;
+                }
+            } elseif (!empty($template->image_prompt)) {
+                $image_prompt = $this->template_processor->process($template->image_prompt, $topic);
+                $featured_image_result = $this->image_service->generate_and_upload_featured_image($image_prompt, $title);
+                
+                if (!is_wp_error($featured_image_result)) {
+                    $featured_image_id = $featured_image_result;
+                    $this->post_creator->set_featured_image($post_id, $featured_image_id);
+                    $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
+                }
             } else {
-                // Log image failures but do not abort the whole generation flow
-                $this->logger->log('Featured image generation failed: ' . $featured_image_result->get_error_message(), 'error');
+                $featured_image_result = new WP_Error('missing_image_prompt', __('Image prompt is required to generate a featured image.', 'ai-post-scheduler'));
+            }
+
+            if (is_wp_error($featured_image_result)) {
+                $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
                 $this->current_session->add_error('featured_image', $featured_image_result->get_error_message());
             }
         }

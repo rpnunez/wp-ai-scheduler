@@ -159,6 +159,9 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_ai_model', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
+        register_setting('aips_settings', 'aips_unsplash_access_key', array(
+            'sanitize_callback' => 'sanitize_text_field'
+        ));
         
         add_settings_section(
             'aips_general_section',
@@ -187,6 +190,14 @@ class AIPS_Settings {
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
             array($this, 'ai_model_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_unsplash_access_key',
+            __('Unsplash Access Key', 'ai-post-scheduler'),
+            array($this, 'unsplash_access_key_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -219,6 +230,10 @@ class AIPS_Settings {
     public function enqueue_admin_assets($hook) {
         if (strpos($hook, 'ai-post-scheduler') === false && strpos($hook, 'aips-') === false) {
             return;
+        }
+
+        if (function_exists('wp_enqueue_media')) {
+            wp_enqueue_media();
         }
         
         wp_enqueue_style(
@@ -362,6 +377,21 @@ class AIPS_Settings {
         ?>
         <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
         <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Unsplash access key field.
+     *
+     * Provides a place to store the Unsplash API key required for image searches.
+     *
+     * @return void
+     */
+    public function unsplash_access_key_field_callback() {
+        $value = get_option('aips_unsplash_access_key', '');
+        ?>
+        <input type="text" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
+        <p class="description"><?php esc_html_e('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'); ?></p>
         <?php
     }
     

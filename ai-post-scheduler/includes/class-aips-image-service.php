@@ -60,6 +60,118 @@ class AIPS_Image_Service {
         
         return $this->upload_image_from_url($image_url, $post_title);
     }
+
+    /**
+     * Fetch an Unsplash image by keywords and upload it to the media library.
+     *
+     * @param string $keywords   Keywords to search Unsplash.
+     * @param string $post_title Post title used for the attachment name.
+     * @return int|WP_Error Attachment ID on success, WP_Error on failure.
+     */
+    public function fetch_and_upload_unsplash_image($keywords, $post_title) {
+        $image_url = $this->fetch_unsplash_image_url($keywords);
+
+        if (is_wp_error($image_url)) {
+            return $image_url;
+        }
+
+        return $this->upload_image_from_url($image_url, $post_title);
+    }
+
+    /**
+     * Select a media library image from a list of IDs.
+     *
+     * When multiple IDs are provided, a random one is chosen to add variation.
+     *
+     * @param string|array $media_ids Comma-separated IDs or array of IDs.
+     * @return int|WP_Error Attachment ID on success, WP_Error on failure.
+     */
+    public function select_media_library_image($media_ids) {
+        if (empty($media_ids)) {
+            return new WP_Error('no_media_images', __('No media library images were provided.', 'ai-post-scheduler'));
+        }
+
+        if (!is_array($media_ids)) {
+            $media_ids = explode(',', $media_ids);
+        }
+
+        $sanitized_ids = array_filter(array_map('absint', $media_ids));
+        $valid_ids = array();
+
+        foreach ($sanitized_ids as $id) {
+            if ($id && function_exists('wp_attachment_is_image') && wp_attachment_is_image($id)) {
+                $valid_ids[] = $id;
+            }
+        }
+
+        if (empty($valid_ids)) {
+            return new WP_Error('invalid_media_images', __('No valid image attachments were found in the selected media items.', 'ai-post-scheduler'));
+        }
+
+        return $valid_ids[array_rand($valid_ids)];
+    }
+
+    /**
+     * Retrieve an Unsplash image URL using the configured API key.
+     *
+     * @param string $keywords Keywords to search for.
+     * @return string|WP_Error Image URL on success, WP_Error on failure.
+     */
+    private function fetch_unsplash_image_url($keywords) {
+        $access_key = trim(get_option('aips_unsplash_access_key', ''));
+
+        if (empty($access_key)) {
+            return new WP_Error('unsplash_key_missing', __('Unsplash access key is not configured.', 'ai-post-scheduler'));
+        }
+
+        if (empty($keywords)) {
+            return new WP_Error('unsplash_keywords_missing', __('Please provide keywords to search for an Unsplash image.', 'ai-post-scheduler'));
+        }
+
+        $keywords = sanitize_text_field($keywords);
+
+        $endpoint = add_query_arg(
+            array(
+                'query' => $keywords,
+                'client_id' => $access_key,
+                'orientation' => 'landscape',
+            ),
+            'https://api.unsplash.com/photos/random'
+        );
+
+        $response = wp_safe_remote_get($endpoint, array('timeout' => 15));
+
+        if (is_wp_error($response)) {
+            $this->logger->log($response->get_error_message(), 'error');
+            return new WP_Error('unsplash_request_failed', __('Failed to contact Unsplash API.', 'ai-post-scheduler'));
+        }
+
+        $status_code = wp_remote_retrieve_response_code($response);
+        if ($status_code !== 200) {
+            $this->logger->log('Unsplash API returned HTTP ' . $status_code, 'error');
+            return new WP_Error('unsplash_http_error', sprintf(__('Unsplash API returned HTTP %d.', 'ai-post-scheduler'), $status_code));
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+
+        if (empty($body) || !is_array($body)) {
+            return new WP_Error('unsplash_invalid_response', __('Invalid response from Unsplash API.', 'ai-post-scheduler'));
+        }
+
+        $image_url = '';
+
+        if (isset($body['urls']['regular'])) {
+            $image_url = $body['urls']['regular'];
+        } elseif (isset($body['urls']['full'])) {
+            $image_url = $body['urls']['full'];
+        }
+
+        if (empty($image_url)) {
+            return new WP_Error('unsplash_image_missing', __('Unsplash did not return a usable image URL.', 'ai-post-scheduler'));
+        }
+
+        return esc_url_raw($image_url);
+    }
     
     /**
      * Upload an image from a URL to WordPress media library.

@@ -1144,6 +1144,11 @@ public function get_completed_at()
 
 **Conclusion:**
 This refactoring eliminates the confusion between runtime session tracking (`generation_log`) and persistent history records (`History`). The new `AIPS_Generation_Session` class provides a clear, testable, and well-documented abstraction for tracking post generation sessions. The distinction between ephemeral runtime tracking and persistent database storage is now explicit in the code and documentation. This architectural improvement aligns with SOLID principles, enhances code clarity, and provides a foundation for future enhancements while maintaining 100% backward compatibility.
+## 2026-01-06 - Featured Image Source Abstraction
+**Context:** Featured image handling was limited to AI-generated prompts controlled by a single flag. There was no structured way to pull images from Unsplash or reuse curated media library assets, causing tight coupling and limited reuse.
+**Decision:** Added schema support (`featured_image_source`, `featured_image_unsplash_keywords`, `featured_image_media_ids`) with a 1.7.0 migration and defaulted source to the existing AI prompt path for backwards compatibility. Extended `AIPS_Image_Service` with Unsplash retrieval and media-library selection helpers, and updated `AIPS_Generator` to route featured image creation based on the configured source. Updated the admin template modal and AJAX flow to capture the source-specific inputs, and introduced an Unsplash access key setting while enqueuing media assets for the selector.
+**Consequence:** Templates can now choose AI prompt generation, Unsplash keyword search, or random selection from chosen media items without changing public generator APIs. Existing templates continue to use AI prompts by default; new columns are optional and validated to avoid invalid sources. Trade-off: slightly broader schema/UI surface and dependency on an Unsplash access key for that path.
+**Tests:** Added safeguards in `test-image-service.php` for Unsplash key validation and empty media selections. Defaults and source validation ensure prior behavior when new fields are absent; backwards compatibility is preserved via default source (`ai_prompt`) and non-breaking schema migration.
 
 ---
 
