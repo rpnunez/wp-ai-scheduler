@@ -219,11 +219,11 @@ class AIPS_Article_Structure_Manager {
 	 * @param array  $sections        Array of section keys.
 	 * @param string $prompt_template Prompt template with section placeholders.
 	 * @param string $description     Structure description.
-	 * @param bool   $is_active       Set structure as active.
 	 * @param bool   $is_default      Set as default structure.
+	 * @param bool   $is_active       Set structure as active.
 	 * @return bool|WP_Error True on success or error.
 	 */
-	public function update_structure($structure_id, $name, $sections, $prompt_template, $description = '', $is_active = null, $is_default = null) {
+	public function update_structure($structure_id, $name, $sections, $prompt_template, $description = '', $is_default = null, $is_active = null) {
 		$structure = $this->structure_repository->get_by_id($structure_id);
 		
 		if (!$structure) {
@@ -255,14 +255,14 @@ class AIPS_Article_Structure_Manager {
 			'structure_data' => wp_json_encode($structure_data),
 		);
 		
-		// Add is_active if provided
-		if ($is_active !== null) {
-			$data['is_active'] = $is_active ? 1 : 0;
-		}
-		
 		// Add is_default if provided
 		if ($is_default !== null) {
 			$data['is_default'] = $is_default ? 1 : 0;
+		}
+		
+		// Add is_active if provided
+		if ($is_active !== null) {
+			$data['is_active'] = $is_active ? 1 : 0;
 		}
 		
 		$result = $this->structure_repository->update($structure_id, $data);
