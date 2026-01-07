@@ -92,15 +92,23 @@ class AIPS_Post_Creator {
             $seo_title = $data['seo_title'];
         }
 
+        // Build initial meta description from provided meta_description or excerpt.
+        $meta_description = '';
+        if (isset($data['meta_description']) && $data['meta_description'] !== '') {
+            $meta_description = $data['meta_description'];
+        } elseif ($excerpt !== '') {
+            $meta_description = $excerpt;
+        }
+
         $seo_data = array(
-            'focus_keyword'     => $focus_keyword,
-            'meta_description'  => $meta_description,
-            'seo_title'         => $seo_title,
+            'focus_keyword'   => isset($data['focus_keyword']) ? $data['focus_keyword'] : (isset($data['topic']) ? $data['topic'] : $title),
+            'meta_description' => wp_strip_all_tags($meta_description),
+            'seo_title'       => isset($data['seo_title']) ? $data['seo_title'] : $title,
         );
 
         if (empty($seo_data['meta_description']) && !empty($content)) {
             // Fall back to content when no excerpt or explicit meta description is provided.
-            $seo_data['meta_description'] = $content;
+            $seo_data['meta_description'] = wp_strip_all_tags($content);
         }
 
         /**
