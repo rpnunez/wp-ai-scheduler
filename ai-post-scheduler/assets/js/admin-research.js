@@ -89,6 +89,12 @@
             const minScore = $('#filter-score').val();
             const freshOnly = $('#filter-fresh').is(':checked');
 
+            const $btn = $(this);
+            const $spinner = $btn.next('.spinner');
+
+            $btn.prop('disabled', true);
+            $spinner.addClass('is-active');
+
             $.ajax({
                 url: ajaxurl,
                 type: 'POST',
@@ -106,6 +112,10 @@
                     } else {
                         alert('Error: ' + response.data.message);
                     }
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                    $spinner.removeClass('is-active');
                 }
             });
         });

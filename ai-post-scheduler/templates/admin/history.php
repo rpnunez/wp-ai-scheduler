@@ -33,7 +33,7 @@ if (!defined('ABSPATH')) {
 
     <div class="tablenav top">
         <div class="alignleft actions">
-            <select id="aips-filter-status">
+            <select id="aips-filter-status" aria-label="<?php esc_attr_e('Filter by Status', 'ai-post-scheduler'); ?>">
                 <option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
                 <option value="completed" <?php selected($status_filter, 'completed'); ?>><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></option>
                 <option value="failed" <?php selected($status_filter, 'failed'); ?>><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option>

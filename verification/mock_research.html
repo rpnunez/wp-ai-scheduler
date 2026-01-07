@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock Research Page</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Mock CSS from admin.css and research.php */
+        body { font-family: sans-serif; background: #f1f1f1; padding: 20px; }
+        .button {
+            display: inline-block;
+            text-decoration: none;
+            font-size: 13px;
+            line-height: 2.15384615;
+            min-height: 30px;
+            margin: 0;
+            padding: 0 10px;
+            cursor: pointer;
+            border-width: 1px;
+            border-style: solid;
+            -webkit-appearance: none;
+            border-radius: 3px;
+            white-space: nowrap;
+            box-sizing: border-box;
+            color: #2271b1;
+            border-color: #2271b1;
+            background: #f6f7f7;
+        }
+        .button:disabled {
+            color: #a7aaad !important;
+            border-color: #dcdcde !important;
+            background: #f6f7f7 !important;
+            box-shadow: none !important;
+            cursor: default;
+            transform: none !important;
+        }
+        .spinner {
+            background: url('https://s.w.org/images/core/2.8/spinner.gif') no-repeat;
+            background-size: 20px 20px;
+            display: inline-block;
+            visibility: hidden;
+            float: left;
+            vertical-align: middle;
+            opacity: 0.7;
+            width: 20px;
+            height: 20px;
+            margin: 4px 10px 0;
+        }
+        .spinner.is-active {
+            visibility: visible;
+        }
+        .aips-filters { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .aips-filter-select { min-width: 200px; padding: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="aips-filters">
+        <select id="filter-niche" class="aips-filter-select" aria-label="Filter by Niche">
+            <option value="">All Niches</option>
+            <option value="Tech">Tech (10)</option>
+        </select>
+
+        <select id="filter-score" class="aips-filter-select" aria-label="Filter by Score">
+            <option value="0">All Scores</option>
+            <option value="80">Score 80+</option>
+        </select>
+
+        <label>
+            <input type="checkbox" id="filter-fresh" value="1">
+            Fresh Only (Last 7 Days)
+        </label>
+
+        <button type="button" class="button" id="load-topics">
+            Load Topics
+        </button>
+        <span class="spinner"></span>
+    </div>
+
+    <script>
+        var ajaxurl = '/wp-admin/admin-ajax.php';
+        // Mock aipsResearchL10n
+        var aipsResearchL10n = {
+            noTopicsFound: 'No topics found.',
+            deleteTopicConfirm: 'Are you sure?',
+            selectTopicSchedule: 'Select topics to schedule.',
+            schedulingError: 'Error scheduling.'
+        };
+    </script>
+
+    <!-- Injecting the JS logic manually since we can't easily include the file with relative paths and expect it to work without WP dependencies -->
+    <script>
+    (function($) {
+        // Mocking the relevant parts of admin-research.js for verification
+        $('#load-topics').on('click', function() {
+            const niche = $('#filter-niche').val();
+            const minScore = $('#filter-score').val();
+            const freshOnly = $('#filter-fresh').is(':checked');
+
+            const $btn = $(this);
+            const $spinner = $btn.next('.spinner');
+
+            $btn.prop('disabled', true);
+            $spinner.addClass('is-active');
+
+            console.log('AJAX request started...');
+
+            // Mock AJAX delay
+            setTimeout(function() {
+                console.log('AJAX request complete.');
+                $btn.prop('disabled', false);
+                $spinner.removeClass('is-active');
+            }, 2000);
+        });
+    })(jQuery);
+    </script>
+</body>
+</html>
