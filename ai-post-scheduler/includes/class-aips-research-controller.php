@@ -233,6 +233,7 @@ class AIPS_Research_Controller {
                 'next_run' => date('Y-m-d H:i:s', $next_run_time),
                 'active' => 1,
                 'created_at' => current_time('mysql'),
+                'topic' => $topic,
             );
             
             $schedule_id = $schedule_repository->create($schedule_data);
