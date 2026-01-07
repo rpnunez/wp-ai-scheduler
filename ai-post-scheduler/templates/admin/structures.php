@@ -72,12 +72,12 @@ if (!isset($sections) || !is_array($sections)) {
 
                     <div class="aips-form-row">
                         <label for="structure_sections"><?php esc_html_e('Sections (Select one or more)', 'ai-post-scheduler'); ?></label>
-                        <select id="structure_sections" name="sections[]" multiple>
+                        <select id="structure_sections" name="sections[]" multiple size="10" class="aips-multiselect">
                             <?php foreach ($sections as $section): ?>
                             <option value="<?php echo esc_attr($section->key); ?>"><?php echo esc_html($section->label); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="description"><?php esc_html_e('Choose sections that make up this article structure.', 'ai-post-scheduler'); ?></p>
+                        <p class="description"><?php esc_html_e('Choose sections that make up this article structure. Hold Ctrl (Cmd on Mac) to select multiple items.', 'ai-post-scheduler'); ?></p>
                     </div>
 
                     <div class="aips-form-row">
