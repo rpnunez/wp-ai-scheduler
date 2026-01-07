@@ -21,11 +21,17 @@ if (!isset($sections) || !is_array($sections)) {
 
     <div class="aips-structures-container">
         <?php if (!empty($structures)): ?>
-        <table class="wp-list-table widefat fixed striped">
+        <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+            <label class="screen-reader-text" for="aips-structure-search"><?php esc_html_e('Search Structures:', 'ai-post-scheduler'); ?></label>
+            <input type="search" id="aips-structure-search" class="regular-text" placeholder="<?php esc_attr_e('Search structures...', 'ai-post-scheduler'); ?>">
+            <button type="button" id="aips-structure-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+        </div>
+
+        <table class="wp-list-table widefat fixed striped aips-structures-list">
             <thead>
                 <tr>
-                    <th><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
-                    <th><?php esc_html_e('Description', 'ai-post-scheduler'); ?></th>
+                    <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
+                    <th class="column-description"><?php esc_html_e('Description', 'ai-post-scheduler'); ?></th>
                     <th><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
                     <th><?php esc_html_e('Default', 'ai-post-scheduler'); ?></th>
                     <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
@@ -34,8 +40,8 @@ if (!isset($sections) || !is_array($sections)) {
             <tbody>
                 <?php foreach ($structures as $structure): ?>
                 <tr data-structure-id="<?php echo esc_attr($structure->id); ?>">
-                    <td><?php echo esc_html($structure->name); ?></td>
-                    <td><?php echo esc_html($structure->description); ?></td>
+                    <td class="column-name"><?php echo esc_html($structure->name); ?></td>
+                    <td class="column-description"><?php echo esc_html($structure->description); ?></td>
                     <td><?php echo $structure->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
                     <td><?php echo $structure->is_default ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
                     <td>
@@ -46,6 +52,15 @@ if (!isset($sections) || !is_array($sections)) {
                 <?php endforeach; ?>
             </tbody>
         </table>
+
+        <div id="aips-structure-search-no-results" class="aips-empty-state" style="display: none;">
+            <span class="dashicons dashicons-search" aria-hidden="true"></span>
+            <h3><?php esc_html_e('No Structures Found', 'ai-post-scheduler'); ?></h3>
+            <p><?php esc_html_e('No structures match your search criteria.', 'ai-post-scheduler'); ?></p>
+            <button type="button" class="button button-primary aips-clear-structure-search-btn">
+                <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+            </button>
+        </div>
         <?php else: ?>
         <div class="aips-empty-state">
             <span class="dashicons dashicons-layout" aria-hidden="true"></span>
