@@ -1144,3 +1144,13 @@ public function get_completed_at()
 
 **Conclusion:**
 This refactoring eliminates the confusion between runtime session tracking (`generation_log`) and persistent history records (`History`). The new `AIPS_Generation_Session` class provides a clear, testable, and well-documented abstraction for tracking post generation sessions. The distinction between ephemeral runtime tracking and persistent database storage is now explicit in the code and documentation. This architectural improvement aligns with SOLID principles, enhances code clarity, and provides a foundation for future enhancements while maintaining 100% backward compatibility.
+
+---
+
+## 2026-01-06 - Add Pre-Create Generation Hook
+**Context:** Post generation already exposed start/completion/failure hooks but lacked an extensibility point immediately before WordPress post creation. Integrations could not observe or react to the final payload, and the fallback test harness could not dispatch hooks to validate new events.
+**Decision:** Added `do_action('aips_post_generation_before_post_create', $post_creation_data)` right before `AIPS_Post_Creator` runs, and enhanced the fallback WordPress mocks to store/dispatch actions and filters with per-test resets. Added a focused unit test to assert the new hook fires with the expected data.
+**Consequence:** Provides a new, additive integration point with negligible runtime cost while preserving existing flows. Slightly increases bootstrap complexity only in limited test environments; hook state resets keep tests isolated. Backward compatibility is maintained because behavior is additive and core APIs remain unchanged.
+**Tests:** Added `tests/test-generator-hooks.php` to verify the hook dispatch and payload; enhanced bootstrap hook mocks ensure coverage without requiring a full WordPress environment.
+
+---
