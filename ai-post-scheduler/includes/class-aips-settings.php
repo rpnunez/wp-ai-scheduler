@@ -91,6 +91,15 @@ class AIPS_Settings {
         
         add_submenu_page(
             'ai-post-scheduler',
+            __('Activity', 'ai-post-scheduler'),
+            __('Activity', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-activity',
+            array($this, 'render_activity_page')
+        );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
             'manage_options',
@@ -253,9 +262,26 @@ class AIPS_Settings {
             true
         );
         
+        wp_enqueue_script(
+            'aips-admin-activity',
+            AIPS_PLUGIN_URL . 'assets/js/admin-activity.js',
+            array('aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
+        
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
+        ));
+        
+        wp_localize_script('aips-admin-activity', 'aipsActivityL10n', array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('aips_activity_nonce'),
+            'confirmPublish' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
+            'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
+            'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
+            'loadingError' => __('Failed to load activity data.', 'ai-post-scheduler'),
         ));
     }
     
@@ -447,6 +473,17 @@ class AIPS_Settings {
      */
     public function render_research_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
+    }
+    
+    /**
+     * Render the Activity page.
+     *
+     * Includes the activity template file.
+     *
+     * @return void
+     */
+    public function render_activity_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
     }
     
     /**
