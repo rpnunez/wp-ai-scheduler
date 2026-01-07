@@ -106,11 +106,6 @@ class AIPS_Post_Creator {
             'seo_title'       => isset($data['seo_title']) ? $data['seo_title'] : $title,
         );
 
-        if (empty($seo_data['meta_description']) && !empty($content)) {
-            // Fall back to content when no excerpt or explicit meta description is provided.
-            $seo_data['meta_description'] = wp_strip_all_tags($content);
-        }
-
         /**
          * Allow third-parties to modify SEO metadata before it is saved.
          *
