@@ -133,7 +133,7 @@ class AIPS_Interval_Calculator {
      * @param int    $base_time The base timestamp to calculate from.
      * @return int The next run timestamp.
      */
-    private function calculate_next_timestamp($frequency, $base_time) {
+    public function calculate_next_timestamp($frequency, $base_time) {
         switch ($frequency) {
             case 'hourly':
                 return strtotime('+1 hour', $base_time);
