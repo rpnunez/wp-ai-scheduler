@@ -1,0 +1,52 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AIPS Planner Verification</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .spinner { display: none; }
+        .spinner.is-active { display: inline-block; }
+        #planner-results { display: none; margin-top: 20px; border: 1px solid #ccc; padding: 10px; }
+        .topic-item { margin-bottom: 5px; }
+        .selection-count { font-weight: bold; margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Planner Verification</h1>
+
+    <!-- Inputs -->
+    <textarea id="planner-manual-topics" rows="5" cols="50">
+Too long topic to be truncated...
+Short topic
+    </textarea>
+    <button id="btn-parse-manual" class="button">Parse Manual Topics</button>
+
+    <hr>
+
+    <div id="planner-results">
+        <div class="aips-toolbar">
+            <input type="checkbox" id="check-all-topics" checked> <label for="check-all-topics">Select All</label>
+            <span class="selection-count">0 selected</span>
+            <button id="btn-copy-topics" class="button">Copy Selected</button>
+            <button id="btn-bulk-schedule" class="button">Bulk Schedule</button>
+        </div>
+        <div id="topics-list"></div>
+    </div>
+
+    <!-- Hidden fields for Bulk Schedule -->
+    <input type="hidden" id="bulk-template" value="1">
+    <input type="hidden" id="bulk-start-date" value="2023-10-27">
+    <input type="hidden" id="bulk-frequency" value="daily">
+
+    <!-- Mock AIPS Object and AJAX -->
+    <script>
+        var aipsAjax = {
+            ajaxUrl: '/wp-admin/admin-ajax.php',
+            nonce: 'mock_nonce'
+        };
+    </script>
+</body>
+</html>

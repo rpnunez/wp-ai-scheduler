@@ -38,8 +38,9 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('AIPS: Generate Topics Error', textStatus, errorThrown);
+                    alert('An error occurred connecting to the server. Please check the console for details.');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -53,7 +54,10 @@
             var text = $('#planner-manual-topics').val();
             if (!text) return;
 
-            var topics = text.split('\n').map(function(t) { return t.trim(); }).filter(function(t) { return t.length > 0; });
+            var topics = text.split('\n')
+                .map(function(t) { return t.trim(); })
+                .filter(function(t) { return t.length > 0; })
+                .map(function(t) { return t.substring(0, 500); }); // Truncate to DB limit
 
             if (topics.length > 0) {
                 window.AIPS.renderTopics(topics, true); // true = append
@@ -249,8 +253,9 @@
                         alert(response.data.message);
                     }
                 },
-                error: function() {
-                    alert('An error occurred. Please try again.');
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('AIPS: Bulk Schedule Error', textStatus, errorThrown);
+                    alert('An error occurred while scheduling. Please try again.');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
