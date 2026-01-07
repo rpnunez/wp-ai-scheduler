@@ -43,6 +43,7 @@ if (!isset($sections) || !is_array($sections)) {
         </table>
         <?php else: ?>
         <div class="aips-empty-state">
+            <span class="dashicons dashicons-layout" aria-hidden="true"></span>
             <h3><?php esc_html_e('No Article Structures', 'ai-post-scheduler'); ?></h3>
             <p><?php esc_html_e('Create article structures to customize how templates assemble content.', 'ai-post-scheduler'); ?></p>
             <button class="button button-primary aips-add-structure-btn"><?php esc_html_e('Create Structure', 'ai-post-scheduler'); ?></button>
