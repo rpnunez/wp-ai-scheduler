@@ -149,10 +149,11 @@ class AIPS_Schedule_Repository {
             'frequency' => sanitize_text_field($data['frequency']),
             'next_run' => sanitize_text_field($data['next_run']),
             'is_active' => isset($data['is_active']) ? 1 : 0,
+            'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
         );
         
-        $format = array('%d', '%s', '%s', '%d', '%s');
+        $format = array('%d', '%s', '%s', '%d', '%s', '%s');
         
         if (isset($data['article_structure_id'])) {
             $insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
@@ -221,6 +222,11 @@ class AIPS_Schedule_Repository {
         
         if (isset($data['rotation_pattern'])) {
             $update_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
+            $format[] = '%s';
+        }
+        
+        if (isset($data['status'])) {
+            $update_data['status'] = sanitize_text_field($data['status']);
             $format[] = '%s';
         }
         
