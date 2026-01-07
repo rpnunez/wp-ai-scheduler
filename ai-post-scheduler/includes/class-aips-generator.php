@@ -378,6 +378,10 @@ class AIPS_Generator {
                 $keywords = isset($template->featured_image_unsplash_keywords) ? $template->featured_image_unsplash_keywords : '';
                 $processed_keywords = $this->template_processor->process($keywords, $topic);
                 $featured_image_result = $this->image_service->fetch_and_upload_unsplash_image($processed_keywords, $title);
+                if (!is_wp_error($featured_image_result)) {
+                    $featured_image_id = $featured_image_result;
+                    $this->post_creator->set_featured_image($post_id, $featured_image_id);
+                }
             } elseif ($featured_image_source === 'media_library') {
                 $featured_image_result = $this->image_service->select_media_library_image(isset($template->featured_image_media_ids) ? $template->featured_image_media_ids : '');
                 if (!is_wp_error($featured_image_result)) {
@@ -400,9 +404,6 @@ class AIPS_Generator {
             if (is_wp_error($featured_image_result)) {
                 $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
                 $this->current_session->add_error('featured_image', $featured_image_result->get_error_message());
-            } elseif ($featured_image_source === 'unsplash' && $featured_image_result) {
-                $featured_image_id = $featured_image_result;
-                $this->post_creator->set_featured_image($post_id, $featured_image_id);
             }
         }
         

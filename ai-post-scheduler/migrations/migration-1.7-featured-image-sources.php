@@ -16,10 +16,9 @@ $columns_to_add = array(
 require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
 foreach ($columns_to_add as $column => $sql) {
-    $column_exists = $wpdb->get_results(
+    $column_exists = $wpdb->get_var(
         $wpdb->prepare(
-            "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = %s AND COLUMN_NAME = %s",
-            $wpdb->prefix . 'aips_templates',
+            "SHOW COLUMNS FROM $table_templates LIKE %s",
             $column
         )
     );
