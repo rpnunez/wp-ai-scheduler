@@ -74,10 +74,28 @@ class AIPS_Post_Creator {
             wp_set_post_tags($post_id, $tags);
         }
 
+        $focus_keyword = $title;
+        if (isset($data['topic'])) {
+            $focus_keyword = $data['topic'];
+        }
+        if (isset($data['focus_keyword'])) {
+            $focus_keyword = $data['focus_keyword'];
+        }
+
+        $meta_description = $excerpt;
+        if (isset($data['meta_description'])) {
+            $meta_description = $data['meta_description'];
+        }
+
+        $seo_title = $title;
+        if (isset($data['seo_title'])) {
+            $seo_title = $data['seo_title'];
+        }
+
         $seo_data = array(
-            'focus_keyword' => isset($data['focus_keyword']) ? $data['focus_keyword'] : (isset($data['topic']) ? $data['topic'] : $title),
-            'meta_description' => isset($data['meta_description']) ? $data['meta_description'] : $excerpt,
-            'seo_title' => isset($data['seo_title']) ? $data['seo_title'] : $title,
+            'focus_keyword'     => $focus_keyword,
+            'meta_description'  => $meta_description,
+            'seo_title'         => $seo_title,
         );
 
         if (empty($seo_data['meta_description']) && !empty($content)) {
