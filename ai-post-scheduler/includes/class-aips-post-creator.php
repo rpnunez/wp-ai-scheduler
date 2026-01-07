@@ -131,29 +131,66 @@ class AIPS_Post_Creator {
             return;
         }
 
+        $yoast_active = $this->is_yoast_active();
+        $rank_math_active = $this->is_rank_math_active();
+
+        if (!$yoast_active && !$rank_math_active) {
+            return;
+        }
+
         $focus_keyword = isset($seo_data['focus_keyword']) ? sanitize_text_field($seo_data['focus_keyword']) : '';
         $seo_title = isset($seo_data['seo_title']) ? sanitize_text_field($seo_data['seo_title']) : '';
         $meta_description = isset($seo_data['meta_description']) ? $this->sanitize_meta_description($seo_data['meta_description']) : '';
 
         if (!empty($focus_keyword)) {
             // Yoast SEO focus keyword support (legacy and current keyphrase fields).
-            update_post_meta($post_id, '_yoast_wpseo_focuskw', $focus_keyword);
-            update_post_meta($post_id, '_yoast_wpseo_focuskeyphrase', $focus_keyword);
+            if ($yoast_active) {
+                update_post_meta($post_id, '_yoast_wpseo_focuskw', $focus_keyword);
+                update_post_meta($post_id, '_yoast_wpseo_focuskeyphrase', $focus_keyword);
+            }
             // RankMath focus keyword support.
-            update_post_meta($post_id, 'rank_math_focus_keyword', $focus_keyword);
+            if ($rank_math_active) {
+                update_post_meta($post_id, 'rank_math_focus_keyword', $focus_keyword);
+            }
         }
 
         if (!empty($meta_description)) {
             // Populate meta description for Yoast and RankMath for better SERP snippets.
-            update_post_meta($post_id, '_yoast_wpseo_metadesc', $meta_description);
-            update_post_meta($post_id, 'rank_math_description', $meta_description);
+            if ($yoast_active) {
+                update_post_meta($post_id, '_yoast_wpseo_metadesc', $meta_description);
+            }
+            if ($rank_math_active) {
+                update_post_meta($post_id, 'rank_math_description', $meta_description);
+            }
         }
 
         if (!empty($seo_title)) {
             // Set SEO title overrides when available.
-            update_post_meta($post_id, '_yoast_wpseo_title', $seo_title);
-            update_post_meta($post_id, 'rank_math_title', $seo_title);
+            if ($yoast_active) {
+                update_post_meta($post_id, '_yoast_wpseo_title', $seo_title);
+            }
+            if ($rank_math_active) {
+                update_post_meta($post_id, 'rank_math_title', $seo_title);
+            }
         }
+    }
+
+    /**
+     * Determine if Yoast SEO is active.
+     *
+     * @return bool True when Yoast SEO is installed and active.
+     */
+    private function is_yoast_active() {
+        return defined('WPSEO_VERSION') || class_exists('WPSEO_Meta');
+    }
+
+    /**
+     * Determine if Rank Math is active.
+     *
+     * @return bool True when Rank Math is installed and active.
+     */
+    private function is_rank_math_active() {
+        return defined('RANK_MATH_VERSION') || class_exists('RankMath');
     }
 
     /**
