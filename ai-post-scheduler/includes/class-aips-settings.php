@@ -91,6 +91,24 @@ class AIPS_Settings {
         
         add_submenu_page(
             'ai-post-scheduler',
+            __('Activity', 'ai-post-scheduler'),
+            __('Activity', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-activity',
+            array($this, 'render_activity_page')
+        );
+      
+      add_submenu_page(
+            'ai-post-scheduler',
+            __('Article Structures', 'ai-post-scheduler'),
+            __('Article Structures', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-structures',
+            array($this, 'render_structures_page')
+        );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
             'manage_options',
@@ -141,6 +159,9 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_ai_model', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
+        register_setting('aips_settings', 'aips_unsplash_access_key', array(
+            'sanitize_callback' => 'sanitize_text_field'
+        ));
         
         add_settings_section(
             'aips_general_section',
@@ -169,6 +190,14 @@ class AIPS_Settings {
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
             array($this, 'ai_model_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_unsplash_access_key',
+            __('Unsplash Access Key', 'ai-post-scheduler'),
+            array($this, 'unsplash_access_key_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -202,6 +231,10 @@ class AIPS_Settings {
         if (strpos($hook, 'ai-post-scheduler') === false && strpos($hook, 'aips-') === false) {
             return;
         }
+
+        if (function_exists('wp_enqueue_media')) {
+            wp_enqueue_media();
+        }
         
         wp_enqueue_style(
             'aips-admin-style',
@@ -217,6 +250,15 @@ class AIPS_Settings {
             AIPS_VERSION,
             true
         );
+
+        wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
+            'deleteStructureConfirm' => __('Are you sure you want to delete this structure?', 'ai-post-scheduler'),
+            'saveStructureFailed' => __('Failed to save structure.', 'ai-post-scheduler'),
+            'loadStructureFailed' => __('Failed to load structure.', 'ai-post-scheduler'),
+            'deleteStructureFailed' => __('Failed to delete structure.', 'ai-post-scheduler'),
+            'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
+            'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+        ));
 
         wp_enqueue_script(
             'aips-admin-research',
@@ -253,9 +295,26 @@ class AIPS_Settings {
             true
         );
         
+        wp_enqueue_script(
+            'aips-admin-activity',
+            AIPS_PLUGIN_URL . 'assets/js/admin-activity.js',
+            array('aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
+        
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
+        ));
+        
+        wp_localize_script('aips-admin-activity', 'aipsActivityL10n', array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('aips_activity_nonce'),
+            'confirmPublish' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
+            'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
+            'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
+            'loadingError' => __('Failed to load activity data.', 'ai-post-scheduler'),
         ));
     }
     
@@ -318,6 +377,21 @@ class AIPS_Settings {
         ?>
         <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
         <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render Unsplash access key field.
+     *
+     * Provides a place to store the Unsplash API key required for image searches.
+     *
+     * @return void
+     */
+    public function unsplash_access_key_field_callback() {
+        $value = get_option('aips_unsplash_access_key', '');
+        ?>
+        <input type="text" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
+        <p class="description"><?php esc_html_e('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'); ?></p>
         <?php
     }
     
@@ -447,6 +521,33 @@ class AIPS_Settings {
      */
     public function render_research_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
+    }
+    
+    /**
+     * Render the Activity page.
+     *
+     * Includes the activity template file.
+     *
+     * @return void
+     */
+    public function render_activity_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
+    }
+  
+     * Render the Article Structures page.
+     *
+     * Fetches structures and sections from repositories and passes them to the template.
+     *
+     * @return void
+     */
+    public function render_structures_page() {
+        $structure_repo = new AIPS_Article_Structure_Repository();
+        $section_repo = new AIPS_Prompt_Section_Repository();
+        
+        $structures = $structure_repo->get_all(false);
+        $sections = $section_repo->get_all(false);
+        
+        include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
     }
     
     /**

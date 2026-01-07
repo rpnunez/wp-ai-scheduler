@@ -27,6 +27,18 @@ class AIPS_Templates {
     }
     
     public function save($data) {
+        $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
+        $selected_source = isset($data['featured_image_source']) ? sanitize_text_field($data['featured_image_source']) : 'ai_prompt';
+        $featured_image_source = in_array($selected_source, $allowed_sources, true) ? $selected_source : 'ai_prompt';
+
+        $media_ids = '';
+        if (!empty($data['featured_image_media_ids'])) {
+            $parsed_ids = array_filter(array_map('absint', explode(',', $data['featured_image_media_ids'])));
+            if (!empty($parsed_ids)) {
+                $media_ids = implode(',', array_unique($parsed_ids));
+            }
+        }
+
         $template_data = array(
             'name' => sanitize_text_field($data['name']),
             'prompt_template' => wp_kses_post($data['prompt_template']),
@@ -35,6 +47,9 @@ class AIPS_Templates {
             'post_quantity' => isset($data['post_quantity']) ? absint($data['post_quantity']) : 1,
             'image_prompt' => isset($data['image_prompt']) ? wp_kses_post($data['image_prompt']) : '',
             'generate_featured_image' => isset($data['generate_featured_image']) ? 1 : 0,
+            'featured_image_source' => $featured_image_source,
+            'featured_image_unsplash_keywords' => isset($data['featured_image_unsplash_keywords']) ? sanitize_textarea_field($data['featured_image_unsplash_keywords']) : '',
+            'featured_image_media_ids' => $media_ids,
             'post_status' => sanitize_text_field($data['post_status']),
             'post_category' => absint($data['post_category']),
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',

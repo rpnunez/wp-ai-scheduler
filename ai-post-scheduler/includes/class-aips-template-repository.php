@@ -103,6 +103,9 @@ class AIPS_Template_Repository {
      *     @type int    $post_quantity           Number of posts to generate.
      *     @type string $image_prompt            Image generation prompt.
      *     @type int    $generate_featured_image Generate featured image flag.
+     *     @type string $featured_image_source   Source of featured image (ai_prompt|unsplash|media_library).
+     *     @type string $featured_image_unsplash_keywords Keywords for Unsplash image search.
+     *     @type string $featured_image_media_ids Comma-separated list of media library attachment IDs.
      *     @type string $post_status             Post status (draft, publish, etc.).
      *     @type int    $post_category           Post category ID.
      *     @type string $post_tags               Comma-separated tags.
@@ -112,6 +115,9 @@ class AIPS_Template_Repository {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
+        $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
+        $source = isset($data['featured_image_source']) ? sanitize_text_field($data['featured_image_source']) : 'ai_prompt';
+
         $insert_data = array(
             'name' => sanitize_text_field($data['name']),
             'prompt_template' => wp_kses_post($data['prompt_template']),
@@ -120,6 +126,9 @@ class AIPS_Template_Repository {
             'post_quantity' => isset($data['post_quantity']) ? absint($data['post_quantity']) : 1,
             'image_prompt' => isset($data['image_prompt']) ? wp_kses_post($data['image_prompt']) : '',
             'generate_featured_image' => isset($data['generate_featured_image']) ? 1 : 0,
+            'featured_image_source' => in_array($source, $allowed_sources, true) ? $source : 'ai_prompt',
+            'featured_image_unsplash_keywords' => isset($data['featured_image_unsplash_keywords']) ? sanitize_textarea_field($data['featured_image_unsplash_keywords']) : '',
+            'featured_image_media_ids' => isset($data['featured_image_media_ids']) ? sanitize_text_field($data['featured_image_media_ids']) : '',
             'post_status' => sanitize_text_field($data['post_status']),
             'post_category' => absint($data['post_category']),
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
@@ -127,7 +136,7 @@ class AIPS_Template_Repository {
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -144,6 +153,7 @@ class AIPS_Template_Repository {
     public function update($id, $data) {
         $update_data = array();
         $format = array();
+        $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
         
         if (isset($data['name'])) {
             $update_data['name'] = sanitize_text_field($data['name']);
@@ -178,6 +188,22 @@ class AIPS_Template_Repository {
         if (isset($data['generate_featured_image'])) {
             $update_data['generate_featured_image'] = $data['generate_featured_image'] ? 1 : 0;
             $format[] = '%d';
+        }
+
+        if (isset($data['featured_image_source'])) {
+            $source = sanitize_text_field($data['featured_image_source']);
+            $update_data['featured_image_source'] = in_array($source, $allowed_sources, true) ? $source : 'ai_prompt';
+            $format[] = '%s';
+        }
+
+        if (isset($data['featured_image_unsplash_keywords'])) {
+            $update_data['featured_image_unsplash_keywords'] = sanitize_textarea_field($data['featured_image_unsplash_keywords']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['featured_image_media_ids'])) {
+            $update_data['featured_image_media_ids'] = sanitize_text_field($data['featured_image_media_ids']);
+            $format[] = '%s';
         }
         
         if (isset($data['post_status'])) {

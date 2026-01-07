@@ -17,6 +17,9 @@
             $(document).on('click', '.aips-test-template', this.testTemplate);
             $(document).on('click', '.aips-run-now', this.runNow);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
+            $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
+            $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
+            $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
             $(document).on('keyup', '#voice_search', this.searchVoices);
 
             $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
@@ -85,6 +88,101 @@
 
             // Copy to Clipboard
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+
+            // Article Structures UI handlers
+
+            // @TODO: Refactor to use AIPS.addStructure
+            $(document).on('click', '.aips-add-structure-btn', function(e){
+                e.preventDefault();
+                $('#aips-structure-form')[0].reset();
+                $('#structure_id').val('');
+                $('#aips-structure-modal-title').text('Add New Article Structure');
+                $('#aips-structure-modal').show();
+            });
+
+            // @TODO: Refactor to AIPS.closeModal -- or use existing function
+            $(document).on('click', '.aips-modal-close', function(){
+                $(this).closest('.aips-modal').hide();
+            });
+
+            // @TODO: Refactor to AIPS.saveStructure
+            $(document).on('click', '.aips-save-structure', function(){
+                var $btn = $(this);
+                $btn.prop('disabled', true).text('Saving...');
+
+                var data = {
+                    action: 'aips_save_structure',
+                    nonce: aipsAjax.nonce,
+                    structure_id: $('#structure_id').val(),
+                    name: $('#structure_name').val(),
+                    description: $('#structure_description').val(),
+                    prompt_template: $('#prompt_template').val(),
+                    sections: $('#structure_sections').val() || [],
+                    is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
+                    is_default: $('#structure_is_default').is(':checked') ? 1 : 0,
+                };
+
+                $.post(aipsAjax.ajaxUrl, data, function(response){
+                    $btn.prop('disabled', false).text('Save Structure');
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message || aipsAdminL10n.saveStructureFailed);
+                    }
+                }).fail(function(){
+                    $btn.prop('disabled', false).text('Save Structure');
+                    alert(aipsAdminL10n.errorTryAgain);
+                });
+            });
+
+            // @TODO: Refactor to AIPS.saveStructure
+            $(document).on('click', '.aips-edit-structure', function(){
+                var id = $(this).data('id');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                    if (response.success) {
+                        var s = response.data.structure;
+                        var structureData = {};
+
+                        if (s.structure_data) {
+                            try {
+                                structureData = JSON.parse(s.structure_data) || {};
+                            } catch (e) {
+                                console.error('Invalid structure_data JSON for structure ID ' + s.id, e);
+                                structureData = {};
+                            }
+                        }
+
+                        $('#structure_id').val(s.id);
+                        $('#structure_name').val(s.name);
+                        $('#structure_description').val(s.description);
+                        $('#prompt_template').val(structureData.prompt_template || '');
+                        var sections = structureData.sections || [];
+                        $('#structure_sections').val(sections);
+                        $('#structure_is_active').prop('checked', s.is_active == 1);
+                        $('#structure_is_default').prop('checked', s.is_default == 1);
+                        $('#aips-structure-modal-title').text('Edit Article Structure');
+                        $('#aips-structure-modal').show();
+                    } else {
+                        alert(response.data.message || aipsAdminL10n.loadStructureFailed);
+                    }
+                }).fail(function(){
+                    alert(aipsAdminL10n.errorOccurred);
+                });
+            });
+
+            // @TODO: Refactor to AIPS.deleteStructure
+            $(document).on('click', '.aips-delete-structure', function(){
+                if (!confirm(aipsAdminL10n.deleteStructureConfirm)) return;
+                var id = $(this).data('id');
+                var $row = $(this).closest('tr');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                    if (response.success) {
+                        $row.fadeOut(function(){ $(this).remove(); });
+                    } else {
+                        alert(response.data.message || aipsAdminL10n.deleteStructureFailed);
+                    }
+                }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
+            });
         },
 
         copyToClipboard: function(e) {
@@ -175,6 +273,10 @@
             $('#aips-template-form')[0].reset();
             $('#template_id').val('');
             $('#aips-modal-title').text('Add New Template');
+            $('#featured_image_source').val('ai_prompt');
+            $('#featured_image_unsplash_keywords').val('');
+            AIPS.setMediaSelection([]);
+            AIPS.toggleImagePrompt();
             $('#aips-template-modal').show();
         },
 
@@ -202,12 +304,17 @@
                         $('#title_prompt').val(t.title_prompt);
                         $('#post_quantity').val(t.post_quantity || 1);
                         $('#generate_featured_image').prop('checked', t.generate_featured_image == 1);
-                        $('#image_prompt').val(t.image_prompt || '').prop('disabled', t.generate_featured_image != 1);
+                        $('#image_prompt').val(t.image_prompt || '');
+                        $('#featured_image_source').val(t.featured_image_source || 'ai_prompt');
+                        $('#featured_image_unsplash_keywords').val(t.featured_image_unsplash_keywords || '');
+                        AIPS.setMediaSelection(t.featured_image_media_ids || '');
                         $('#post_status').val(t.post_status);
                         $('#post_category').val(t.post_category);
                         $('#post_tags').val(t.post_tags);
                         $('#post_author').val(t.post_author);
                         $('#is_active').prop('checked', t.is_active == 1);
+                        AIPS.toggleImagePrompt();
+                        AIPS.toggleFeaturedImageSourceFields();
                         $('#aips-modal-title').text('Edit Template');
                         $('#aips-template-modal').show();
                     } else {
@@ -307,6 +414,9 @@
                     post_quantity: $('#post_quantity').val(),
                     generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
                     image_prompt: $('#image_prompt').val(),
+                    featured_image_source: $('#featured_image_source').val(),
+                    featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
+                    featured_image_media_ids: $('#featured_image_media_ids').val(),
                     post_status: $('#post_status').val(),
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
@@ -738,8 +848,79 @@
         },
 
         toggleImagePrompt: function(e) {
-            var isChecked = $(this).is(':checked');
-            $('#image_prompt').prop('disabled', !isChecked);
+            var isChecked = $('#generate_featured_image').is(':checked');
+            $('.aips-featured-image-settings').toggle(isChecked);
+            $('#featured_image_source').prop('disabled', !isChecked);
+
+            if (isChecked) {
+                AIPS.toggleFeaturedImageSourceFields();
+            }
+        },
+
+        toggleFeaturedImageSourceFields: function() {
+            var source = $('#featured_image_source').val();
+            $('.aips-image-source').hide();
+
+            if (source === 'unsplash') {
+                $('.aips-image-source-unsplash').show();
+            } else if (source === 'media_library') {
+                $('.aips-image-source-media').show();
+            } else {
+                $('.aips-image-source-ai').show();
+            }
+        },
+
+        setMediaSelection: function(ids) {
+            var parsedIds = [];
+
+            if (Array.isArray(ids)) {
+                parsedIds = ids;
+            } else if (typeof ids === 'string') {
+                parsedIds = ids.split(',').filter(function(id) {
+                    return id.trim().length > 0;
+                });
+            }
+
+            $('#featured_image_media_ids').val(parsedIds.join(','));
+            $('#featured_image_media_preview').text(parsedIds.length ? parsedIds.join(', ') : 'No images selected.');
+        },
+
+        openMediaLibrary: function(e) {
+            e.preventDefault();
+
+            if (typeof wp === 'undefined' || !wp.media) {
+                alert('Media library is not available.');
+                return;
+            }
+
+            if (!AIPS.mediaFrame) {
+                AIPS.mediaFrame = wp.media({
+                    title: 'Select Images',
+                    multiple: true,
+                    library: { type: 'image' },
+                    button: { text: 'Use these images' }
+                });
+
+                AIPS.mediaFrame.on('select', function() {
+                    var selection = AIPS.mediaFrame.state().get('selection');
+                    var ids = [];
+
+                    selection.each(function(attachment) {
+                        ids.push(attachment.id);
+                    });
+
+                    AIPS.setMediaSelection(ids);
+                });
+            }
+
+            AIPS.mediaFrame.open();
+        },
+
+        clearMediaSelection: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+            AIPS.setMediaSelection([]);
         },
 
         filterTemplates: function() {
