@@ -107,11 +107,14 @@ class AIPS_Post_Creator {
         );
 
         /**
-         * Allow third-parties to modify SEO metadata before it is saved.
+         * Filter hook: allow third-parties to modify SEO metadata before it is saved.
          *
-         * @param array $seo_data  SEO metadata array.
-         * @param int   $post_id   The post ID.
-         * @param object $template Template object.
+         * The following parameters are passed to callbacks attached to the
+         * {@see 'aips_post_seo_metadata'} filter.
+         *
+         * @param array  $seo_data  SEO metadata array passed to the filter callback.
+         * @param int    $post_id   The post ID passed to the filter callback.
+         * @param object $template  Template object passed to the filter callback.
          */
         $seo_data = apply_filters('aips_post_seo_metadata', $seo_data, $post_id, $template);
 
