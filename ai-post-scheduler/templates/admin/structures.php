@@ -3,6 +3,11 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Ensure $structures is defined for static analysis and for direct includes
+if (!isset($structures) || !is_array($structures)) {
+    $structures = array();
+}
+
 // Ensure $sections is defined for static analysis and for direct includes
 if (!isset($sections) || !is_array($sections)) {
     $sections = array();

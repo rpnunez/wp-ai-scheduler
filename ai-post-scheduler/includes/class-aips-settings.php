@@ -91,6 +91,15 @@ class AIPS_Settings {
         
         add_submenu_page(
             'ai-post-scheduler',
+            __('Article Structures', 'ai-post-scheduler'),
+            __('Article Structures', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-structures',
+            array($this, 'render_structures_page')
+        );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
             'manage_options',
@@ -447,6 +456,23 @@ class AIPS_Settings {
      */
     public function render_research_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
+    }
+    
+    /**
+     * Render the Article Structures page.
+     *
+     * Fetches structures and sections from repositories and passes them to the template.
+     *
+     * @return void
+     */
+    public function render_structures_page() {
+        $structure_repo = new AIPS_Article_Structure_Repository();
+        $section_repo = new AIPS_Prompt_Section_Repository();
+        
+        $structures = $structure_repo->get_all(false);
+        $sections = $section_repo->get_all(false);
+        
+        include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
     }
     
     /**
