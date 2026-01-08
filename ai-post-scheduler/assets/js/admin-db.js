@@ -10,18 +10,19 @@
         repairDb: function(e) {
             e.preventDefault();
             var $btn = $(this);
-            if (!confirm('Are you sure you want to run the database repair? This will attempt to create missing tables and columns.')) {
+            var confirmMsg = aipsAdminL10n.repairDbConfirm;
+            if (!confirm(confirmMsg)) {
                 return;
             }
 
-            $btn.prop('disabled', true).text('Repairing...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.repairing);
 
             $.ajax({
-                url: aipsAjax.ajaxUrl,
+                url: window.AIPS.resolveAjaxUrl(),
                 type: 'POST',
                 data: {
                     action: 'aips_repair_db',
-                    nonce: aipsAjax.nonce
+                    nonce: window.AIPS.resolveNonce()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -32,10 +33,10 @@
                     }
                 },
                 error: function() {
-                    alert('An error occurred.');
+                    alert(aipsAdminL10n.errorOccurred);
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Repair DB Tables');
+                    $btn.prop('disabled', false).text(aipsAdminL10n.repairDbLabel);
                 }
             });
         },
@@ -44,25 +45,25 @@
             e.preventDefault();
             var $btn = $(this);
             var backup = $('#aips-backup-db').is(':checked');
-            var msg = 'Are you sure you want to reinstall the database tables?';
+            var msg = aipsAdminL10n.reinstallDbConfirm;
             if (!backup) {
-                msg += '\n\nWARNING: ALL DATA WILL BE LOST unless you check the backup option!';
+                msg += '\n\n' + aipsAdminL10n.reinstallDbWarning;
             } else {
-                msg += '\n\nData will be backed up and restored.';
+                msg += '\n\n' + aipsAdminL10n.reinstallDbWithBackup;
             }
 
             if (!confirm(msg)) {
                 return;
             }
 
-            $btn.prop('disabled', true).text('Reinstalling...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.reinstalling);
 
             $.ajax({
-                url: aipsAjax.ajaxUrl,
+                url: window.AIPS.resolveAjaxUrl(),
                 type: 'POST',
                 data: {
                     action: 'aips_reinstall_db',
-                    nonce: aipsAjax.nonce,
+                    nonce: window.AIPS.resolveNonce(),
                     backup: backup
                 },
                 success: function(response) {
@@ -74,10 +75,10 @@
                     }
                 },
                 error: function() {
-                    alert('An error occurred.');
+                    alert(aipsAdminL10n.errorOccurred);
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Reinstall DB Tables');
+                    $btn.prop('disabled', false).text(aipsAdminL10n.reinstallDbLabel);
                 }
             });
         },
@@ -85,18 +86,19 @@
         wipeDb: function(e) {
             e.preventDefault();
             var $btn = $(this);
-            if (!confirm('Are you sure you want to WIPE ALL DATA? This cannot be undone.')) {
+            var wipeMsg = aipsAdminL10n.wipeDbConfirm;
+            if (!confirm(wipeMsg)) {
                 return;
             }
 
-            $btn.prop('disabled', true).text('Wiping...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.wiping);
 
             $.ajax({
-                url: aipsAjax.ajaxUrl,
+                url: window.AIPS.resolveAjaxUrl(),
                 type: 'POST',
                 data: {
                     action: 'aips_wipe_db',
-                    nonce: aipsAjax.nonce
+                    nonce: window.AIPS.resolveNonce()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -107,10 +109,10 @@
                     }
                 },
                 error: function() {
-                    alert('An error occurred.');
+                    alert(aipsAdminL10n.errorOccurred);
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Wipe Plugin Data');
+                    $btn.prop('disabled', false).text(aipsAdminL10n.wipeDbLabel);
                 }
             });
         }

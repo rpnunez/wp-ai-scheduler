@@ -258,7 +258,73 @@ class AIPS_Settings {
             'deleteStructureFailed' => __('Failed to delete structure.', 'ai-post-scheduler'),
             'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
             'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
-        ));
+            // Additional localized strings used by admin JS
+            'saving' => __('Saving...', 'ai-post-scheduler'),
+            'saveStructure' => __('Save Structure', 'ai-post-scheduler'),
+            'saveTemplate' => __('Save Template', 'ai-post-scheduler'),
+            'saveTemplateFailed' => __('Failed to save template.', 'ai-post-scheduler'),
+            'saveVoice' => __('Save Voice', 'ai-post-scheduler'),
+            'saveVoiceFailed' => __('Failed to save voice.', 'ai-post-scheduler'),
+            'copied' => __('Copied!', 'ai-post-scheduler'),
+            'generating' => __('Generating...', 'ai-post-scheduler'),
+            'runNow' => __('Run Now', 'ai-post-scheduler'),
+            'runNowSuccess' => __('Operation succeeded.', 'ai-post-scheduler'),
+            'runNowFailed' => __('Operation failed.', 'ai-post-scheduler'),
+            'testGenerate' => __('Test Generate', 'ai-post-scheduler'),
+            'testTemplateFailed' => __('Failed to test template.', 'ai-post-scheduler'),
+            'clickAgainConfirm' => __('Click again to confirm', 'ai-post-scheduler'),
+            'deleting' => __('Deleting...', 'ai-post-scheduler'),
+            'deleteTemplateFailed' => __('Failed to delete template.', 'ai-post-scheduler'),
+            'deleteVoiceConfirm' => __('Are you sure you want to delete this voice?', 'ai-post-scheduler'),
+            'deleteVoiceFailed' => __('Failed to delete voice.', 'ai-post-scheduler'),
+            'addTemplate' => __('Add New Template', 'ai-post-scheduler'),
+            'addVoice' => __('Add New Voice', 'ai-post-scheduler'),
+            'editVoice' => __('Edit Voice', 'ai-post-scheduler'),
+            'addSchedule' => __('Add New Schedule', 'ai-post-scheduler'),
+            'deleteScheduleConfirm' => __('Are you sure you want to delete this schedule?', 'ai-post-scheduler'),
+            'deleteScheduleFailed' => __('Failed to delete schedule.', 'ai-post-scheduler'),
+            'clearHistory' => __('Are you sure you want to clear all history?', 'ai-post-scheduler'),
+            'clearHistoryStatus' => __('Are you sure you want to clear all {status} history?', 'ai-post-scheduler'),
+            'clearHistoryFailed' => __('Failed to clear history.', 'ai-post-scheduler'),
+            'retrying' => __('Retrying...', 'ai-post-scheduler'),
+            'retry' => __('Retry', 'ai-post-scheduler'),
+            'retrySuccess' => __('Retry queued.', 'ai-post-scheduler'),
+            'retryFailed' => __('Retry failed.', 'ai-post-scheduler'),
+            'deleteConfirmMultiple' => __('Are you sure you want to delete {count} item(s)?', 'ai-post-scheduler'),
+            'deleteSelected' => __('Delete Selected', 'ai-post-scheduler'),
+            'bulkDeleteFailed' => __('Failed to delete items.', 'ai-post-scheduler'),
+            // Media strings
+            'mediaLibraryUnavailable' => __('Media library is not available.', 'ai-post-scheduler'),
+            'selectImages' => __('Select Images', 'ai-post-scheduler'),
+            'useTheseImages' => __('Use these images', 'ai-post-scheduler'),
+            'noVoiceUseDefault' => __('No Voice (Use Default)', 'ai-post-scheduler'),
+            // Database management strings
+            'repairDbConfirm' => __('Are you sure you want to run the database repair? This will attempt to create missing tables and columns.', 'ai-post-scheduler'),
+            'repairing' => __('Repairing...', 'ai-post-scheduler'),
+            'repairDbLabel' => __('Repair DB Tables', 'ai-post-scheduler'),
+            'reinstallDbConfirm' => __('Are you sure you want to reinstall the database tables?', 'ai-post-scheduler'),
+            'reinstallDbWarning' => __('WARNING: ALL DATA WILL BE LOST unless you check the backup option!', 'ai-post-scheduler'),
+            'reinstallDbWithBackup' => __('Data will be backed up and restored.', 'ai-post-scheduler'),
+            'reinstalling' => __('Reinstalling...', 'ai-post-scheduler'),
+            'reinstallDbLabel' => __('Reinstall DB Tables', 'ai-post-scheduler'),
+            'wipeDbConfirm' => __('Are you sure you want to WIPE ALL DATA? This cannot be undone.', 'ai-post-scheduler'),
+            'wiping' => __('Wiping...', 'ai-post-scheduler'),
+            'wipeDbLabel' => __('Wipe Plugin Data', 'ai-post-scheduler'),
+            // Modal titles and small UI strings
+            'addStructure' => __('Add New Article Structure', 'ai-post-scheduler'),
+            'editStructure' => __('Edit Article Structure', 'ai-post-scheduler'),
+            'editTemplate' => __('Edit Template', 'ai-post-scheduler'),
+            'cloneSchedule' => __('Clone Schedule', 'ai-post-scheduler'),
+            'noImagesSelected' => __('No images selected.', 'ai-post-scheduler'),
+            // Planner / topic UI strings
+            'pleaseEnterNiche' => __('Please enter a niche or topic.', 'ai-post-scheduler'),
+            'pleaseSelectTopic' => __('Please select at least one topic.', 'ai-post-scheduler'),
+            'pleaseSelectTemplate' => __('Please select a template.', 'ai-post-scheduler'),
+            'pleaseSelectDate' => __('Please select a start date.', 'ai-post-scheduler'),
+            'clipboardFallback' => __('Unable to copy text automatically. Please select the topics and copy them manually (Ctrl+C or Cmd+C on Mac).', 'ai-post-scheduler'),
+            'copied' => __('Copied!', 'ai-post-scheduler'),
+            'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
+         ));
 
         wp_enqueue_script(
             'aips-admin-research',
@@ -276,7 +342,7 @@ class AIPS_Settings {
             'selectTopicSchedule' => __('Please select at least one topic to schedule.', 'ai-post-scheduler'),
             'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
             'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
-            'delete' => __('Delete', 'ai-post-scheduler'),
+            'unknownError' => __('Unknown error', 'ai-post-scheduler'),
         ));
 
         wp_enqueue_script(
@@ -459,7 +525,6 @@ class AIPS_Settings {
         // Note: AIPS_Schedule_Repository doesn't have a direct "get upcoming limit 5" method that returns joined data like the original query exactly,
         // but get_due_schedules returns based on current time.
         // We need a method to get upcoming active schedules.
-        // Let's check if get_due_schedules works or if we need to add a method.
         // The original query was: WHERE s.is_active = 1 ORDER BY s.next_run ASC LIMIT 5.
         // get_due_schedules has WHERE s.next_run <= %s. We want future ones too.
         // Let's use get_all and array_slice for now, or add a method to repo.

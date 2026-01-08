@@ -391,7 +391,7 @@ class AIPS_Generator {
             } elseif (!empty($template->image_prompt)) {
                 $image_prompt = $this->template_processor->process($template->image_prompt, $topic);
                 $featured_image_result = $this->image_service->generate_and_upload_featured_image($image_prompt, $title);
-                
+
                 if (!is_wp_error($featured_image_result)) {
                     $featured_image_id = $featured_image_result;
                     $this->post_creator->set_featured_image($post_id, $featured_image_id);
