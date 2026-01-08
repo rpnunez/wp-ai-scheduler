@@ -322,7 +322,6 @@ class AIPS_Settings {
             'pleaseSelectTemplate' => __('Please select a template.', 'ai-post-scheduler'),
             'pleaseSelectDate' => __('Please select a start date.', 'ai-post-scheduler'),
             'clipboardFallback' => __('Unable to copy text automatically. Please select the topics and copy them manually (Ctrl+C or Cmd+C on Mac).', 'ai-post-scheduler'),
-            'copied' => __('Copied!', 'ai-post-scheduler'),
             'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
          ));
 
@@ -344,6 +343,15 @@ class AIPS_Settings {
             'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
             'unknownError' => __('Unknown error', 'ai-post-scheduler'),
         ));
+
+        // Enqueue Templates module
+        wp_enqueue_script(
+            'aips-admin-templates',
+            AIPS_PLUGIN_URL . 'assets/js/admin-templates.js',
+            array('aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
 
         wp_enqueue_script(
             'aips-admin-planner',
