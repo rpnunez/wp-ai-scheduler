@@ -14,11 +14,17 @@
          */
         seederAppendLog: function(message, color) {
             var $log = $('#aips-seeder-log');
-            if (!$log.length) return;
+
+            if (!$log.length) {
+                return;
+            }
+
             var $el = $('<div></div>').html(message);
+
             if (color) {
                 $el.css('color', color);
             }
+
             $log.append($el);
         },
 
@@ -37,7 +43,7 @@
 
             if (queue.length === 0) {
                 // Use localized "all done" text when available
-                var doneHtml = (typeof aipsSeederL10n !== 'undefined' && aipsSeederL10n.allDone) ? aipsSeederL10n.allDone : '<strong>All Done!</strong>';
+                var doneHtml = aipsSeederL10n.allDone;
 
                 window.AIPS.seederAppendLog(doneHtml);
 
@@ -49,7 +55,10 @@
 
             var task = queue.shift();
 
-            window.AIPS.seederAppendLog((typeof aipsSeederL10n !== 'undefined' && aipsSeederL10n.generating) ? aipsSeederL10n.generating.replace('%count%', window.AIPS.escapeHtml(String(task.count))).replace('%label%', window.AIPS.escapeHtml(task.label)) : 'Generating ' + window.AIPS.escapeHtml(String(task.count)) + ' ' + window.AIPS.escapeHtml(task.label) + '...');
+            window.AIPS.seederAppendLog(aipsSeederL10n.generating
+                .replace('%count%', window.AIPS.escapeHtml(String(task.count)))
+                .replace('%label%', window.AIPS.escapeHtml(task.label) + '...')
+            );
 
             $.ajax({
                 url: window.AIPS.resolveAjaxUrl(),
@@ -63,11 +72,11 @@
                 },
                 success: function(response) {
                     if (response && response.success) {
-                        var msg = response.data && response.data.message ? response.data.message : ((typeof aipsSeederL10n !== 'undefined' && aipsSeederL10n.completedDefault) ? aipsSeederL10n.completedDefault + ' ' + task.label : 'Completed ' + task.label);
+                        var msg = response.data && response.data.message ? response.data.message : aipsSeederL10n.completedDefault + ' ' + task.label;
 
                         window.AIPS.seederAppendLog('- ' + window.AIPS.escapeHtml(msg), 'green');
                     } else {
-                        var err = response && response.data && response.data.message ? response.data.message : ((typeof aipsSeederL10n !== 'undefined' && aipsSeederL10n.unknownError) ? aipsSeederL10n.unknownError : 'Unknown error');
+                        var err = response && response.data && response.data.message ? response.data.message : aipsSeederL10n.unknownError;
 
                         window.AIPS.seederAppendLog('! Error: ' + window.AIPS.escapeHtml(err), 'red');
                     }
@@ -76,8 +85,7 @@
                     window.AIPS.processSeederQueue(queue);
                 },
                 error: function(xhr, status, error) {
-                    var ajaxErrPrefix = (typeof aipsSeederL10n !== 'undefined' && aipsSeederL10n.ajaxErrorPrefix) ? aipsSeederL10n.ajaxErrorPrefix : '- AJAX Error: ';
-                    window.AIPS.seederAppendLog(ajaxErrPrefix + window.AIPS.escapeHtml(error), 'red');
+                    window.AIPS.seederAppendLog(aipsSeederL10n.ajaxErrorPrefix + window.AIPS.escapeHtml(error), 'red');
 
                     // Continue anyway
                     window.AIPS.processSeederQueue(queue);
@@ -129,9 +137,7 @@
                 return;
             }
 
-            var confirmMsg = (typeof aipsSeederL10n !== 'undefined' && aipsSeederL10n.confirmMessage) ? aipsSeederL10n.confirmMessage : 'This will generate dummy data in your database. Are you sure?';
-
-            if (!confirm(confirmMsg)) {
+            if (!confirm(aipsSeederL10n.confirmMessage)) {
                 return;
             }
 
@@ -140,8 +146,8 @@
             $results.show();
             $log.empty();
 
-            var startingMsg = (typeof aipsSeederL10n !== 'undefined' && aipsSeederL10n.startingSeeder) ? aipsSeederL10n.startingSeeder : 'Starting Seeder...';
-            window.AIPS.seederAppendLog(startingMsg);
+            // Append to seeder log
+            window.AIPS.seederAppendLog(aipsSeederL10n.startingSeeder);
 
             // Start processing the queue
             window.AIPS.processSeederQueue(queue);
