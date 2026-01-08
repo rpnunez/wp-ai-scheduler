@@ -699,11 +699,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Schedule');
@@ -1292,15 +1292,53 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.showToast(response.data.message, 'error');
                         $btn.prop('disabled', false).text('Delete Selected');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.showToast('An error occurred. Please try again.', 'error');
                     $btn.prop('disabled', false).text('Delete Selected');
                 }
             });
+        },
+
+        showToast: function(message, type) {
+            type = type || 'info';
+            var icon = 'dashicons-info';
+
+            if (type === 'success') {
+                icon = 'dashicons-yes';
+            } else if (type === 'error') {
+                icon = 'dashicons-warning';
+            }
+
+            var $container = $('.aips-toast-container');
+            if (!$container.length) {
+                $container = $('<div class="aips-toast-container"></div>').appendTo('body');
+            }
+
+            var $toast = $('<div class="aips-toast aips-toast-' + type + '">' +
+                '<span class="dashicons ' + icon + '"></span>' +
+                '<span class="aips-toast-message">' + message + '</span>' +
+                '</div>');
+
+            $container.append($toast);
+
+            // Trigger reflow
+            $toast[0].offsetHeight;
+
+            $toast.addClass('show');
+
+            setTimeout(function() {
+                $toast.removeClass('show');
+                setTimeout(function() {
+                    $toast.remove();
+                    if ($('.aips-toast').length === 0) {
+                        $('.aips-toast-container').remove();
+                    }
+                }, 300);
+            }, 3000);
         }
     });
 

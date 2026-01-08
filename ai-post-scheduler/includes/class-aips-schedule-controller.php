@@ -90,20 +90,7 @@ class AIPS_Schedule_Controller {
         }
 
         // We use the new toggle_active method in Scheduler
-        if (method_exists($this->scheduler, 'toggle_active')) {
-             $result = $this->scheduler->toggle_active($id, $is_active);
-        } else {
-             // Fallback
-             global $wpdb;
-             $table_name = $wpdb->prefix . 'aips_schedule';
-             $result = $wpdb->update(
-                $table_name,
-                array('is_active' => $is_active),
-                array('id' => $id),
-                array('%d'),
-                array('%d')
-            );
-        }
+        $result = $this->scheduler->toggle_active($id, $is_active);
 
         if ($result !== false) {
             wp_send_json_success(array('message' => __('Schedule updated.', 'ai-post-scheduler')));

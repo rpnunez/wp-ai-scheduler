@@ -99,6 +99,25 @@ class AIPS_Schedule_Repository {
     }
 
     /**
+     * Get due schedules that are linked to active templates.
+     *
+     * @param int $limit Max number of schedules to retrieve.
+     * @return array Array of schedule objects with joined template data.
+     */
+    public function get_due_schedules_with_active_templates($limit = 5) {
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT t.*, s.*, s.id AS schedule_id
+            FROM {$this->schedule_table} s
+            INNER JOIN {$this->templates_table} t ON s.template_id = t.id
+            WHERE s.is_active = 1
+            AND s.next_run <= %s
+            AND t.is_active = 1
+            ORDER BY s.next_run ASC
+            LIMIT %d
+        ", current_time('mysql'), $limit));
+    }
+
+    /**
      * Get upcoming active schedules.
      *
      * @param int $limit Number of schedules to retrieve. Default 5.
