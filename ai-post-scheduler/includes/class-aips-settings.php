@@ -533,7 +533,8 @@ class AIPS_Settings {
     public function render_activity_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
     }
-  
+
+    /*
      * Render the Article Structures page.
      *
      * Fetches structures and sections from repositories and passes them to the template.
