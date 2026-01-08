@@ -320,7 +320,9 @@ class AIPS_Generator {
         // Build voice-aware excerpt instructions and request an excerpt
         $voice_excerpt_instructions = $this->prompt_builder->build_excerpt_instructions($voice, $topic);
         
-        $excerpt = $this->generate_excerpt($title, $base_processed_prompt, $voice_excerpt_instructions);
+        // Use actual generated content for excerpt, truncated to prevent token limits
+        $excerpt_content = mb_substr($content, 0, 6000);
+        $excerpt = $this->generate_excerpt($title, $excerpt_content, $voice_excerpt_instructions);
         
         // Use Post Creator Service to save the generated post in WP
         $post_creation_data = array(
