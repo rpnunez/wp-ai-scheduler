@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- 2024-05-28: Added Toast Notification system to the admin interface for improved user feedback, replacing native browser alerts.
+
+### Performance
+- 2024-05-28: Optimized scheduled post processing by replacing the fixed item limit (5) with a time-bucketed loop (max 20s) to efficiently handle large backlogs.
+- 2024-05-28: Added `active_next_run` composite index to the `aips_schedule` table to optimize query performance for due schedules.
+
+### Refactor
+- 2024-05-28: Refactored `AIPS_Scheduler` to delegate complex schedule retrieval logic to `AIPS_Schedule_Repository`, removing raw SQL queries from the service layer.
+- 2024-05-28: Cleaned up `AIPS_Schedule_Controller` by removing dead fallback code for `toggle_active` operations.
+
 ### Fixed
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
 

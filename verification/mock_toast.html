@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Toast Verification</title>
+    <style>
+        /* Styles from admin.css */
+        .aips-toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100001;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .aips-toast {
+            background: #1d2327;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            min-width: 250px;
+            max-width: 400px;
+            animation: aips-toast-slide-in 0.3s cubic-bezier(0.21, 1.02, 0.73, 1);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .aips-toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .aips-toast-success {
+            border-left: 4px solid #00a32a;
+        }
+
+        .aips-toast-error {
+            border-left: 4px solid #d63638;
+        }
+
+        .aips-toast-info {
+            border-left: 4px solid #2271b1;
+        }
+
+        .aips-toast .dashicons {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+        }
+
+        .aips-toast-success .dashicons {
+            color: #00a32a;
+        }
+
+        .aips-toast-error .dashicons {
+            color: #d63638;
+        }
+
+        .aips-toast-info .dashicons {
+            color: #72aee6;
+        }
+
+        @keyframes aips-toast-slide-in {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Dashicons mock */
+        .dashicons {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background-color: currentColor; /* Mock icon */
+        }
+        .dashicons-yes { background-color: #00a32a; }
+        .dashicons-warning { background-color: #d63638; }
+        .dashicons-info { background-color: #72aee6; }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        window.AIPS = window.AIPS || {};
+        // Mock the showToast function from admin.js
+        window.AIPS.showToast = function(message, type) {
+            type = type || 'info';
+            var icon = 'dashicons-info';
+
+            if (type === 'success') {
+                icon = 'dashicons-yes';
+            } else if (type === 'error') {
+                icon = 'dashicons-warning';
+            }
+
+            var $container = $('.aips-toast-container');
+            if (!$container.length) {
+                $container = $('<div class="aips-toast-container"></div>').appendTo('body');
+            }
+
+            var $toast = $('<div class="aips-toast aips-toast-' + type + '">' +
+                '<span class="dashicons ' + icon + '"></span>' +
+                '<span class="aips-toast-message">' + message + '</span>' +
+                '</div>');
+
+            $container.append($toast);
+
+            // Trigger reflow
+            $toast[0].offsetHeight;
+
+            $toast.addClass('show');
+
+            setTimeout(function() {
+                $toast.removeClass('show');
+                setTimeout(function() {
+                    $toast.remove();
+                    if ($('.aips-toast').length === 0) {
+                        $('.aips-toast-container').remove();
+                    }
+                }, 300);
+            }, 3000);
+        };
+    </script>
+</head>
+<body>
+    <h1>Toast Verification</h1>
+    <button onclick="AIPS.showToast('Success Message', 'success')">Show Success</button>
+    <button onclick="AIPS.showToast('Error Message', 'error')">Show Error</button>
+    <button onclick="AIPS.showToast('Info Message', 'info')">Show Info</button>
+</body>
+</html>
