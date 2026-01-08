@@ -2,6 +2,46 @@
     'use strict';
 
     window.AIPS = window.AIPS || {};
+
+    // Global helpers used by multiple admin modules
+    Object.assign(window.AIPS, {
+        /**
+         * Resolve AJAX URL to use for admin requests. Falls back to `ajaxurl`.
+         * @return {string}
+         */
+        resolveAjaxUrl: function() {
+            if (typeof aipsAjax !== 'undefined' && aipsAjax.ajaxUrl) return aipsAjax.ajaxUrl;
+            if (typeof ajaxurl !== 'undefined') return ajaxurl;
+            return '';
+        },
+
+        /**
+         * Resolve the plugin nonce for AJAX security.
+         * Uses `aipsAjax.nonce` when available or reads a DOM element `#aips_nonce` as a fallback.
+         * @return {string}
+         */
+        resolveNonce: function() {
+            if (typeof aipsAjax !== 'undefined' && aipsAjax.nonce) return aipsAjax.nonce;
+            if ($('#aips_nonce').length) return $('#aips_nonce').val();
+            return '';
+        },
+
+        /**
+         * Escape HTML for safe insertion into the DOM. Shared across admin scripts.
+         * @param {string} text
+         * @return {string}
+         */
+        escapeHtml: function(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    });
+
     var AIPS = window.AIPS;
 
     Object.assign(AIPS, {
@@ -1231,13 +1271,6 @@
             $('#aips-details-content').show();
         },
 
-        escapeHtml: function(text) {
-            if (!text) return '';
-            var div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        },
-
         closeModal: function() {
             var $target = $(this).closest('.aips-modal');
             if ($target.length) {
@@ -1313,3 +1346,4 @@
     });
 
 })(jQuery);
+
