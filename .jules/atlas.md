@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-26 - [Refactor AIPS_Templates Logic] **Context:** `AIPS_Templates` contained duplicated logic for interval calculation (violating DRY) and performed direct SQL queries on the schedule table (violating separation of concerns). **Decision:** Refactored `AIPS_Templates` to use `AIPS_Interval_Calculator` for math and `AIPS_Schedule_Repository` for data access. **Consequence:** `AIPS_Templates` is now decoupled from low-level scheduling details and the database schema, improving maintainability and testing.
