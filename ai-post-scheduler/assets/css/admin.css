@@ -831,3 +831,9 @@
     background-color: #2271b1;
     color: #fff;
 }
+
+.aips-variable-code-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}

@@ -188,11 +188,21 @@
         copyToClipboard: function(e) {
             e.preventDefault();
             var $btn = $(this);
+            if ($btn.data('is-copying')) return;
+
             var text = $btn.data('clipboard-text');
-            var originalIcon = $btn.data('original-icon') || 'dashicons-admin-page';
-            var originalText = $btn.text();
+            var originalHtml = $btn.html();
 
             if (!text) return;
+
+            var showSuccess = function() {
+                $btn.data('is-copying', true);
+                $btn.text('Copied!');
+                setTimeout(function() {
+                    $btn.html(originalHtml);
+                    $btn.data('is-copying', false);
+                }, 2000);
+            };
 
             // Fallback for older browsers
             if (!navigator.clipboard) {
@@ -202,10 +212,7 @@
                 textArea.select();
                 try {
                     document.execCommand('copy');
-                    $btn.text('Copied!');
-                    setTimeout(function() {
-                        $btn.text(originalText);
-                    }, 2000);
+                    showSuccess();
                 } catch (err) {
                     console.error('Fallback: Oops, unable to copy', err);
                 }
@@ -213,12 +220,7 @@
                 return;
             }
 
-            navigator.clipboard.writeText(text).then(function() {
-                $btn.text('Copied!');
-                setTimeout(function() {
-                    $btn.text(originalText);
-                }, 2000);
-            }, function(err) {
+            navigator.clipboard.writeText(text).then(showSuccess, function(err) {
                 console.error('Async: Could not copy text: ', err);
             });
         },
