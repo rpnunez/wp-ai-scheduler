@@ -106,8 +106,21 @@ class AIPS_Interval_Calculator {
         // If start time is in the past, add intervals until future (Catch-up logic)
         // This prevents schedule drift by preserving the phase of the schedule
         if ($base_time < $now) {
+            // Optimization: For fixed-second intervals, calculate catch-up in O(1)
+            $fixed_intervals = array('hourly', 'every_4_hours', 'every_6_hours', 'every_12_hours');
+            if (in_array($frequency, $fixed_intervals)) {
+                $interval_seconds = $this->get_interval_duration($frequency);
+                if ($interval_seconds > 0) {
+                    $elapsed = $now - $base_time;
+                    $intervals_missed = floor($elapsed / $interval_seconds) + 1;
+                    $base_time += $intervals_missed * $interval_seconds;
+                    return date('Y-m-d H:i:s', $base_time);
+                }
+            }
+
             // Safety limit to prevent infinite loops if interval is 0 or very small/broken
-            $limit = 100;
+            // Increased limit to 500 to better handle catch-up for shorter intervals
+            $limit = 500;
             while ($base_time <= $now && $limit > 0) {
                 $base_time = $this->calculate_next_timestamp($frequency, $base_time);
                 $limit--;
