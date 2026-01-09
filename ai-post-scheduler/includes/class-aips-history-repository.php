@@ -117,14 +117,36 @@ class AIPS_History_Repository {
             LIMIT %d OFFSET %d
         ", $query_args));
         
-        // Query for total count
-        if (!empty($where_args)) {
-            $total = $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
-                $where_args
-            ));
-        } else {
-            $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+        // Optimization: Use cached stats for total count to avoid expensive COUNT(*) queries
+        // Only applicable when not searching and not filtering by template (where cached stats match)
+        $use_cached_count = false;
+
+        if (empty($args['search']) && empty($args['template_id'])) {
+            $stats = $this->get_stats();
+
+            if (is_array($stats)) {
+                if (empty($args['status']) && isset($stats['total'])) {
+                    // No status filter = Total count
+                    $total = $stats['total'];
+                    $use_cached_count = true;
+                } elseif (!empty($args['status']) && isset($stats[$args['status']])) {
+                    // Specific status filter (completed, failed, processing)
+                    $total = $stats[$args['status']];
+                    $use_cached_count = true;
+                }
+            }
+        }
+
+        // Query for total count if cache wasn't used
+        if (!$use_cached_count) {
+            if (!empty($where_args)) {
+                $total = $this->wpdb->get_var($this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
+                    $where_args
+                ));
+            } else {
+                $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+            }
         }
         
         return array(
