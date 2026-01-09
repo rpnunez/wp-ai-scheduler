@@ -200,7 +200,8 @@
             e.preventDefault();
 
             if (!window.AIPS.selectedTopics || window.AIPS.selectedTopics.length === 0) {
-                alert((typeof aipsResearchL10n !== 'undefined' ? aipsResearchL10n.selectTopicSchedule : 'Please select at least one topic to schedule.'));
+                alert(aipsResearchL10n.selectTopicSchedule);
+
                 return;
             }
 
@@ -243,9 +244,30 @@
         }
     });
 
-    // Auto-load topics on page load if elements exist
-    if ($('#load-topics').length > 0) {
-        $('#load-topics').trigger('click');
-    }
+    // Bind Template Events on DOM Ready
+    $(document).ready(function() {
+
+        $(document).on('submit', '#aips-research-form', window.AIPS.handleResearchSubmit);
+        $(document).on('click','#load-topics', window.AIPS.loadTopics);
+        $(document).on('submit', '#bulk-schedule-form', window.AIPS.handleBulkSchedule);
+        $(document).on('click', '.delete-topic', window.AIPS.deleteTopic);
+
+        // Select all topics
+        $(document).on('change', '#select-all-topics', function() {
+            $('.topic-checkbox').prop('checked', $(this).is(':checked'));
+
+            window.AIPS.updateSelectedTopics();
+        });
+
+        // Individual checkbox change
+        $(document).on('change', '.topic-checkbox', function() {
+            window.AIPS.updateSelectedTopics();
+        });
+
+        // Auto-load topics on page load if elements exist
+        if ($('#load-topics').length > 0) {
+            $('#load-topics').trigger('click');
+        }
+    });
 
  })(jQuery);
