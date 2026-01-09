@@ -38,6 +38,20 @@ class AIPS_Seeder_Admin {
             AIPS_VERSION,
             true
         );
+
+        // Localize strings for the seeder UI
+        $l10n = array(
+            'enterQuantity' => __('Please enter at least one quantity.', 'ai-post-scheduler'),
+            'confirmMessage' => __('This will generate dummy data in your database. Are you sure?', 'ai-post-scheduler'),
+            'startingSeeder' => __('Starting Seeder...', 'ai-post-scheduler'),
+            'allDone' => __('All Done!', 'ai-post-scheduler'),
+            'generating' => __('Generating %count% %label%...', 'ai-post-scheduler'),
+            'completedDefault' => __('Completed', 'ai-post-scheduler'),
+            'unknownError' => __('Unknown error', 'ai-post-scheduler'),
+            'ajaxErrorPrefix' => __('AJAX Error: ', 'ai-post-scheduler'),
+        );
+
+        wp_localize_script('aips-admin-seeder', 'aipsSeederL10n', $l10n);
     }
 
     public function render_page() {

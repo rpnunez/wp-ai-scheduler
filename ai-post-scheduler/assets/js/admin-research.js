@@ -1,78 +1,73 @@
 (function($) {
     'use strict';
 
-    $(document).ready(function() {
-        let selectedTopics = [];
+    // Ensure AIPS object exists
+    window.AIPS = window.AIPS || {};
 
-        // Local helper for HTML escaping to prevent XSS
-        function escapeHtml(text) {
-            if (text === null || text === undefined) return '';
-            return String(text)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
+    // Extend AIPS with Research functionality
+    Object.assign(window.AIPS, {
+        // Selected topics state shared across methods
+        selectedTopics: [],
 
-        // Research form submission
-        $('#aips-research-form').on('submit', function(e) {
+        // Handle research form submission
+        handleResearchSubmit: function (e) {
             e.preventDefault();
 
-            const $form = $(this);
-            const $submit = $('#research-submit');
-            const $spinner = $form.find('.spinner');
+            var $form = $('#aips-research-form');
+            var $submit = $('#research-submit');
+            var $spinner = $form.find('.spinner');
 
-            const niche = $('#research-niche').val();
-            const count = $('#research-count').val();
-            const keywordsStr = $('#research-keywords').val();
-            const keywords = keywordsStr ? keywordsStr.split(',').map(k => k.trim()) : [];
+            var niche = $('#research-niche').val();
+            var count = $('#research-count').val();
+            var keywordsStr = $('#research-keywords').val();
+            var keywords = keywordsStr ? keywordsStr.split(',').map(function (k) {
+                return k.trim();
+            }) : [];
 
             $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
 
             $.ajax({
-                url: ajaxurl,
+                url: (window.AIPS && window.AIPS.resolveAjaxUrl) ? window.AIPS.resolveAjaxUrl() : '',
                 type: 'POST',
                 data: {
                     action: 'aips_research_topics',
-                    nonce: $('#aips_nonce').val(),
+                    nonce: (window.AIPS && window.AIPS.resolveNonce) ? window.AIPS.resolveNonce() : '',
                     niche: niche,
                     count: count,
                     keywords: keywords
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
-                        displayResearchResults(response.data);
+                        window.AIPS.displayResearchResults(response.data);
                         $('#load-topics').trigger('click'); // Refresh topics list
                     } else {
-                        alert('Error: ' + response.data.message);
+                        alert((response.data && response.data.message) ? response.data.message : (typeof aipsResearchL10n !== 'undefined' ? aipsResearchL10n.unknownError : 'Unknown error'));
                     }
                 },
-                error: function() {
-                    alert(aipsResearchL10n.researchError);
+                error: function () {
+                    alert(typeof aipsResearchL10n !== 'undefined' ? aipsResearchL10n.researchError : 'An error occurred during research.');
                 },
-                complete: function() {
+                complete: function () {
                     $submit.prop('disabled', false).removeClass('is-loading');
                     $spinner.removeClass('is-active');
                 }
             });
-        });
+        },
 
-        // Display research results
-        function displayResearchResults(data) {
-            const $container = $('#research-results-content');
-            // Security: Escape HTML using local escapeHtml helper
-            let html = '<p><strong>' + escapeHtml(data.saved_count) + ' ' + aipsResearchL10n.topicsSaved + ' "' + escapeHtml(data.niche) + '"</strong></p>';
+        // Display research results in UI
+        displayResearchResults: function (data) {
+            var $container = $('#research-results-content');
+            var html = '<p><strong>' + (window.AIPS && window.AIPS.escapeHtml ? window.AIPS.escapeHtml(data.saved_count) : String(data.saved_count)) + ' ' + (typeof aipsResearchL10n !== 'undefined' ? aipsResearchL10n.topicsSaved : 'topics saved for') + ' "' + (window.AIPS && window.AIPS.escapeHtml ? window.AIPS.escapeHtml(data.niche) : String(data.niche)) + '"</strong></p>';
 
             if (data.top_topics && data.top_topics.length > 0) {
-                html += '<h4>' + aipsResearchL10n.topTopics + '</h4><ol>';
-                data.top_topics.forEach(function(topic) {
-                    const scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
-                    html += '<li><strong>' + escapeHtml(topic.topic) + '</strong> ';
-                    html += '<span class="aips-score-badge aips-score-' + scoreClass + '">' + escapeHtml(topic.score) + '</span>';
+                html += '<h4>' + (typeof aipsResearchL10n !== 'undefined' ? aipsResearchL10n.topTopics : 'Top Topics') + '</h4><ol>';
+                data.top_topics.forEach(function (topic) {
+                    var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
+                    html += '<li><strong>' + (window.AIPS && window.AIPS.escapeHtml ? window.AIPS.escapeHtml(topic.topic) : String(topic.topic)) + '</strong> ';
+                    html += '<span class="aips-score-badge aips-score-' + scoreClass + '">' + (window.AIPS && window.AIPS.escapeHtml ? window.AIPS.escapeHtml(topic.score) : String(topic.score)) + '</span>';
                     if (topic.reason) {
-                        html += '<br><small><em>' + escapeHtml(topic.reason) + '</em></small>';
+                        html += '<br><small><em>' + (window.AIPS && window.AIPS.escapeHtml ? window.AIPS.escapeHtml(topic.reason) : String(topic.reason)) + '</em></small>';
                     }
                     html += '</li>';
                 });
@@ -81,43 +76,50 @@
 
             $container.html(html);
             $('#research-results').slideDown();
-        }
+        },
 
-        // Load topics
-        $('#load-topics').on('click', function() {
-            const niche = $('#filter-niche').val();
-            const minScore = $('#filter-score').val();
-            const freshOnly = $('#filter-fresh').is(':checked');
+        // Load topics list from server
+        loadTopics: function (e) {
+            if (e && e.preventDefault) e.preventDefault();
+
+            // Cache selectors for slightly better performance
+            var $niche = $('#filter-niche');
+            var $minScore = $('#filter-score');
+            var $fresh = $('#filter-fresh');
+
+            var niche = $niche.val();
+            var minScore = $minScore.val();
+            var freshOnly = $fresh.is(':checked');
 
             $.ajax({
-                url: ajaxurl,
+                url: (window.AIPS && window.AIPS.resolveAjaxUrl) ? window.AIPS.resolveAjaxUrl() : '',
                 type: 'POST',
                 data: {
                     action: 'aips_get_trending_topics',
-                    nonce: $('#aips_nonce').val(),
+                    nonce: (window.AIPS && window.AIPS.resolveNonce) ? window.AIPS.resolveNonce() : '',
                     niche: niche,
                     min_score: minScore,
                     fresh_only: freshOnly,
                     limit: 50
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
-                        displayTopicsTable(response.data.topics);
+                        window.AIPS.displayTopicsTable(response.data.topics);
                     } else {
-                        alert('Error: ' + response.data.message);
+                        alert((response.data && response.data.message) ? response.data.message : (typeof aipsResearchL10n !== 'undefined' ? aipsResearchL10n.unknownError : 'Unknown error'));
                     }
                 }
             });
-        });
+        },
 
-        // Display topics table
-        function displayTopicsTable(topics) {
+        // Render topics into the DOM
+        displayTopicsTable: function (topics) {
             if (!topics || topics.length === 0) {
-                $('#topics-container').html('<p>' + aipsResearchL10n.noTopicsFound + '</p>');
+                $('#topics-container').html('<p>' + (typeof aipsResearchL10n !== 'undefined' ? aipsResearchL10n.noTopicsFound : 'No topics found matching your filters.') + '</p>');
                 return;
             }
 
-            let html = '<table class="aips-topics-table">';
+            var html = '<table class="aips-topics-table">';
             html += '<thead><tr>';
             html += '<th><input type="checkbox" id="select-all-topics"></th>';
             html += '<th>Topic</th>';
@@ -128,27 +130,27 @@
             html += '<th>Actions</th>';
             html += '</tr></thead><tbody>';
 
-            topics.forEach(function(topic) {
-                const scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
-                const keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
+            topics.forEach(function (topic) {
+                var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
+                var keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
 
                 html += '<tr>';
-                html += '<td><input type="checkbox" class="topic-checkbox" value="' + escapeHtml(topic.id) + '"></td>';
-                html += '<td><strong>' + escapeHtml(topic.topic) + '</strong>';
+                html += '<td><input type="checkbox" class="topic-checkbox" value="' + window.AIPS.escapeHtml(topic.id) + '"></td>';
+                html += '<td><strong>' + window.AIPS.escapeHtml(topic.topic) + '</strong>';
                 if (topic.reason) {
-                    html += '<br><small>' + escapeHtml(topic.reason) + '</small>';
+                    html += '<br><small>' + window.AIPS.escapeHtml(topic.reason) + '</small>';
                 }
                 html += '</td>';
-                html += '<td><span class="aips-score-badge aips-score-' + scoreClass + '">' + escapeHtml(topic.score) + '</span></td>';
-                html += '<td>' + escapeHtml(topic.niche) + '</td>';
+                html += '<td><span class="aips-score-badge aips-score-' + scoreClass + '">' + window.AIPS.escapeHtml(topic.score) + '</span></td>';
+                html += '<td>' + window.AIPS.escapeHtml(topic.niche) + '</td>';
                 html += '<td><div class="aips-keywords-list">';
-                keywords.forEach(function(kw) {
-                    html += '<span class="aips-keyword-tag">' + escapeHtml(kw) + '</span>';
+                keywords.forEach(function (kw) {
+                    html += '<span class="aips-keyword-tag">' + window.AIPS.escapeHtml(kw) + '</span>';
                 });
                 html += '</div></td>';
-                html += '<td>' + new Date(topic.researched_at).toLocaleDateString() + '</td>';
+                html += '<td>' + (topic.researched_at ? new Date(topic.researched_at).toLocaleDateString() : '') + '</td>';
                 html += '<td><div class="aips-topic-actions">';
-                html += '<button class="button button-small delete-topic" data-id="' + escapeHtml(topic.id) + '">' + aipsResearchL10n.delete + '</button>';
+                html += '<button class="button button-small delete-topic" data-id="' + window.AIPS.escapeHtml(topic.id) + '">' + (typeof aipsResearchL10n !== 'undefined' ? aipsResearchL10n.delete : 'Delete') + '</button>';
                 html += '</div></td>';
                 html += '</tr>';
             });
@@ -158,97 +160,108 @@
 
             // Show bulk schedule section
             $('#bulk-schedule-section').show();
-        }
+        },
 
-        // Select all topics
-        $(document).on('change', '#select-all-topics', function() {
-            $('.topic-checkbox').prop('checked', $(this).is(':checked'));
-            updateSelectedTopics();
-        });
+        // Update selected topics state
+        updateSelectedTopics: function () {
+            // Cache selection lookup
+            window.AIPS.selectedTopics = $('.topic-checkbox:checked').map(function () { return $(this).val(); }).get();
+        },
 
-        // Individual checkbox change
-        $(document).on('change', '.topic-checkbox', function() {
-            updateSelectedTopics();
-        });
+        // Delete a single trending topic
+        deleteTopic: function (e) {
+            e.preventDefault();
+            var topicId = $(this).data('id');
 
-        // Update selected topics
-        function updateSelectedTopics() {
-            selectedTopics = $('.topic-checkbox:checked').map(function() {
-                return $(this).val();
-            }).get();
-        }
-
-        // Delete topic
-        $(document).on('click', '.delete-topic', function() {
-            if (!confirm(aipsResearchL10n.deleteTopicConfirm)) {
+            if (!confirm((typeof aipsResearchL10n !== 'undefined' ? aipsResearchL10n.deleteTopicConfirm : 'Delete this topic?'))) {
                 return;
             }
 
-            const topicId = $(this).data('id');
-
             $.ajax({
-                url: ajaxurl,
+                url: (window.AIPS && window.AIPS.resolveAjaxUrl) ? window.AIPS.resolveAjaxUrl() : '',
                 type: 'POST',
                 data: {
                     action: 'aips_delete_trending_topic',
-                    nonce: $('#aips_nonce').val(),
+                    nonce: (window.AIPS && window.AIPS.resolveNonce) ? window.AIPS.resolveNonce() : '',
                     topic_id: topicId
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         $('#load-topics').trigger('click');
                     } else {
-                        alert('Error: ' + response.data.message);
+                        alert((response.data && response.data.message) ? response.data.message : (typeof aipsResearchL10n !== 'undefined' ? aipsResearchL10n.unknownError : 'Unknown error'));
                     }
                 }
             });
-        });
+        },
 
-        // Bulk schedule
-        $('#bulk-schedule-form').on('submit', function(e) {
+        // Bulk schedule selected topics
+        handleBulkSchedule: function (e) {
             e.preventDefault();
 
-            if (selectedTopics.length === 0) {
+            if (!window.AIPS.selectedTopics || window.AIPS.selectedTopics.length === 0) {
                 alert(aipsResearchL10n.selectTopicSchedule);
+
                 return;
             }
 
-            const $form = $(this);
-            const $submit = $form.find('button[type="submit"]');
-            const $spinner = $form.find('.spinner');
+            var $form = $('#bulk-schedule-form');
+            var $submit = $form.find('button[type="submit"]');
+            var $spinner = $form.find('.spinner');
 
             $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
 
             $.ajax({
-                url: ajaxurl,
+                url: (window.AIPS && window.AIPS.resolveAjaxUrl) ? window.AIPS.resolveAjaxUrl() : '',
                 type: 'POST',
                 data: {
                     action: 'aips_schedule_trending_topics',
-                    nonce: $('#aips_nonce').val(),
-                    topic_ids: selectedTopics,
+                    nonce: (window.AIPS && window.AIPS.resolveNonce) ? window.AIPS.resolveNonce() : '',
+                    topic_ids: window.AIPS.selectedTopics,
                     template_id: $('#schedule-template').val(),
                     start_date: $('#schedule-start-date').val(),
                     frequency: $('#schedule-frequency').val()
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         alert(response.data.message);
-                        selectedTopics = [];
+                        window.AIPS.selectedTopics = [];
                         $('.topic-checkbox').prop('checked', false);
                         $('#select-all-topics').prop('checked', false);
                     } else {
-                        alert('Error: ' + response.data.message);
+                        alert((response.data && response.data.message) ? response.data.message : 'Unknown error');
                     }
                 },
-                error: function() {
+                error: function () {
                     alert(aipsResearchL10n.schedulingError);
                 },
-                complete: function() {
+                complete: function () {
                     $submit.prop('disabled', false).removeClass('is-loading');
                     $spinner.removeClass('is-active');
                 }
             });
+        }
+    });
+
+    // Bind Template Events on DOM Ready
+    $(document).ready(function() {
+
+        $(document).on('submit', '#aips-research-form', window.AIPS.handleResearchSubmit);
+        $(document).on('click','#load-topics', window.AIPS.loadTopics);
+        $(document).on('submit', '#bulk-schedule-form', window.AIPS.handleBulkSchedule);
+        $(document).on('click', '.delete-topic', window.AIPS.deleteTopic);
+
+        // Select all topics
+        $(document).on('change', '#select-all-topics', function() {
+            $('.topic-checkbox').prop('checked', $(this).is(':checked'));
+
+            window.AIPS.updateSelectedTopics();
+        });
+
+        // Individual checkbox change
+        $(document).on('change', '.topic-checkbox', function() {
+            window.AIPS.updateSelectedTopics();
         });
 
         // Auto-load topics on page load if elements exist
@@ -257,4 +270,4 @@
         }
     });
 
-})(jQuery);
+ })(jQuery);

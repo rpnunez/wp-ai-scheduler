@@ -9,11 +9,13 @@
 
         generateTopics: function(e) {
             e.preventDefault();
+
             var niche = $('#planner-niche').val();
             var count = $('#planner-count').val();
 
             if (!niche) {
-                alert('Please enter a niche or topic.');
+                alert(aipsAdminL10n.pleaseEnterNiche);
+
                 return;
             }
 
@@ -22,24 +24,25 @@
             $btn.next('.spinner').addClass('is-active');
 
             $.ajax({
-                url: aipsAjax.ajaxUrl,
+                url: window.AIPS.resolveAjaxUrl(),
                 type: 'POST',
                 data: {
                     action: 'aips_generate_topics',
-                    nonce: aipsAjax.nonce,
+                    nonce: window.AIPS.resolveNonce(),
                     niche: niche,
                     count: count
                 },
                 success: function(response) {
                     if (response.success) {
                         window.AIPS.renderTopics(response.data.topics);
+
                         $('#planner-results').slideDown();
                     } else {
-                        alert(response.data.message);
+                        alert(response.data.message || aipsAdminL10n.errorOccurred);
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    alert(aipsAdminL10n.errorTryAgain);
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -50,24 +53,36 @@
 
         parseManualTopics: function(e) {
             e.preventDefault();
-            var text = $('#planner-manual-topics').val();
+
+            var $manual = $('#planner-manual-topics');
+            var text = $manual.val();
             if (!text) return;
 
-            var topics = text.split('\n').map(function(t) { return t.trim(); }).filter(function(t) { return t.length > 0; });
+            var topics = text.split('\n')
+                                    .map(function(t) {
+                                        return t.trim();
+                                    })
+                                    .filter(function(t) {
+                                        return t.length > 0;
+                                    });
 
             if (topics.length > 0) {
-                window.AIPS.renderTopics(topics, true); // true = append
+                window.AIPS.renderTopics(topics, true);
+
                 $('#planner-results').slideDown();
-                $('#planner-manual-topics').val('');
+
+                $manual.val('');
             }
         },
 
         renderTopics: function(topics, append) {
             var html = '';
+
             topics.forEach(function(topic) {
                 // Escape HTML for value attribute
                 var div = document.createElement('div');
                 div.textContent = topic;
+
                 var safeTopic = div.innerHTML.replace(/"/g, '&quot;');
 
                 html += '<div class="topic-item">';
@@ -87,12 +102,15 @@
 
         toggleAllTopics: function() {
             var isChecked = $(this).is(':checked');
+
             $('.topic-checkbox').prop('checked', isChecked);
+
             window.AIPS.updateSelectionCount();
         },
 
         updateSelectionCount: function() {
             var count = $('.topic-checkbox:checked').length;
+
             $('.selection-count').text(count + ' selected');
         },
 
@@ -111,15 +129,17 @@
                 $('#planner-results').slideUp();
                 $('#planner-niche').val('');
                 $('#planner-manual-topics').val('');
+
                 window.AIPS.updateSelectionCount();
 
                 // Reset button
                 $btn.text(originalText);
                 $btn.removeData('is-confirming');
+
                 clearTimeout($btn.data('timeout'));
             } else {
                 // First click - Ask for confirmation
-                $btn.text('Click again to confirm');
+                $btn.text(aipsAdminL10n.clickAgainConfirm);
                 $btn.data('is-confirming', true);
 
                 // Reset after 3 seconds
@@ -134,15 +154,17 @@
 
         copySelectedTopics: function() {
             var topics = [];
+
             $('.topic-checkbox:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
+
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
                 }
             });
 
             if (topics.length === 0) {
-                alert('Please select at least one topic.');
+                alert(aipsAdminL10n.pleaseSelectTopic);
                 return;
             }
 
@@ -152,16 +174,20 @@
 
             var fallbackCopy = function() {
                 var $temp = $('<textarea>');
+
                 // Position off-screen to avoid layout issues
                 $temp.css({
                     position: 'fixed',
                     top: '-9999px',
                     left: '-9999px'
                 });
+
                 $('body').append($temp);
+
                 $temp.val(textToCopy).trigger('focus').trigger('select');
 
                 var success = false;
+
                 try {
                     if (typeof document.queryCommandSupported !== 'function' || document.queryCommandSupported('copy')) {
                         success = document.execCommand('copy');
@@ -173,17 +199,23 @@
                 $temp.remove();
 
                 if (success) {
-                    $btn.text('Copied!');
-                    setTimeout(function() { $btn.text(originalText); }, 2000);
+                    $btn.text(aipsAdminL10n.copied);
+
+                    setTimeout(function() {
+                        $btn.text(originalText);
+                    }, 2000);
                 } else {
-                    alert('Unable to copy text automatically. Please select the topics and copy them manually (Ctrl+C or Cmd+C on Mac).');
+                    alert(aipsAdminL10n.clipboardFallback);
                 }
             };
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(textToCopy).then(function() {
-                    $btn.text('Copied!');
-                    setTimeout(function() { $btn.text(originalText); }, 2000);
+                    $btn.text(aipsAdminL10n.copied);
+
+                    setTimeout(function() {
+                        $btn.text(originalText);
+                    }, 2000);
                 }).catch(function() {
                     // If the modern API fails, attempt the legacy fallback
                     fallbackCopy();
@@ -196,18 +228,21 @@
 
         bulkSchedule: function(e) {
             e.preventDefault();
+
             var topics = [];
 
             // Iterate over checked checkboxes and get the value from the sibling text input
             $('.topic-checkbox:checked').each(function() {
                 var val = $(this).siblings('.topic-text-input').val();
+
                 if (val && val.trim().length > 0) {
                     topics.push(val.trim());
                 }
             });
 
             if (topics.length === 0) {
-                alert('Please select at least one topic.');
+                alert(aipsAdminL10n.pleaseSelectTopic);
+
                 return;
             }
 
@@ -215,11 +250,13 @@
             var startDate = $('#bulk-start-date').val();
 
             if (!templateId) {
-                alert('Please select a template.');
+                alert(aipsAdminL10n.pleaseSelectTemplate);
+
                 return;
             }
             if (!startDate) {
-                alert('Please select a start date.');
+                alert(aipsAdminL10n.pleaseSelectDate);
+
                 return;
             }
 
@@ -228,11 +265,11 @@
             $btn.next('.spinner').addClass('is-active');
 
             $.ajax({
-                url: aipsAjax.ajaxUrl,
+                url: window.AIPS.resolveAjaxUrl(),
                 type: 'POST',
                 data: {
                     action: 'aips_bulk_schedule',
-                    nonce: aipsAjax.nonce,
+                    nonce: window.AIPS.resolveNonce(),
                     topics: topics,
                     template_id: templateId,
                     start_date: startDate,
@@ -241,16 +278,17 @@
                 success: function(response) {
                     if (response.success) {
                         alert(response.data.message);
+
                         // Clear list after successful scheduling
-                         $('#topics-list').html('');
-                         $('#planner-results').slideUp();
-                         $('#planner-niche').val('');
+                        $('#topics-list').html('');
+                        $('#planner-results').slideUp();
+                        $('#planner-niche').val('');
                     } else {
-                        alert(response.data.message);
+                        alert(response.data.message || aipsAdminL10n.schedulingError);
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    alert(aipsAdminL10n.errorTryAgain);
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
