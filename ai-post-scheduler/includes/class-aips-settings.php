@@ -604,7 +604,9 @@ class AIPS_Settings {
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));
         } else {
-            wp_send_json_success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . $result));
+            // SECURITY: Escape the AI response before sending it to the browser to prevent XSS.
+            // Even though the prompt is hardcoded ("Say Hello World"), the AI response should be treated as untrusted.
+            wp_send_json_success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . esc_html($result)));
         }
     }
 }
