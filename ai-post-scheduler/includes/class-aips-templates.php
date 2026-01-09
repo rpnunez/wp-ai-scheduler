@@ -109,7 +109,15 @@ class AIPS_Templates {
 
             while ($cursor <= $month_end && $i < $max_iterations) {
                 if ($cursor < $now) {
-                    // Skip past events that haven't run yet
+                    // Skip past events - move to next occurrence
+                    if ($frequency === 'once') {
+                        // One-time schedules in the past have no future occurrences
+                        break;
+                    }
+                    $next_run_str = $this->interval_calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $cursor));
+                    $cursor = strtotime($next_run_str);
+                    $i++;
+                    continue;
                 }
 
                 if ($cursor <= $today_end) {
