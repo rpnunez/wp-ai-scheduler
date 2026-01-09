@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2025-01-09 - [Extract Settings Page] **Context:** `AIPS_Settings` was a 'God Class' handling both the global admin menu/asset orchestration and the implementation details of the Settings page. **Decision:** Extracted the Settings page implementation (rendering, callbacks, registration) into a new class `AIPS_Settings_Page`. **Consequence:** `AIPS_Settings` is now focused on high-level admin orchestration, while `AIPS_Settings_Page` adheres to SRP for the settings interface. Leveraged existing `AIPS_Schedule_Repository::get_upcoming` to support dashboard rendering.
