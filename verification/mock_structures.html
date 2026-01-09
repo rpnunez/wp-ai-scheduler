@@ -1,0 +1,68 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Mock Structures Search</title>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <style>
+            .screen-reader-text { display: none; }
+            .aips-empty-state { display: none; text-align: center; padding: 20px; }
+            .button { display: inline-block; padding: 5px 10px; cursor: pointer; }
+        </style>
+    </head>
+    <body>
+        <div class="wrap aips-wrap">
+            <div class="aips-structures-container">
+                <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+                    <label class="screen-reader-text" for="aips-structure-search">Search Structures:</label>
+                    <input type="search" id="aips-structure-search" class="regular-text" placeholder="Search structures...">
+                    <button type="button" id="aips-structure-search-clear" class="button" style="display: none;">Clear</button>
+                </div>
+
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th class="column-name">Name</th>
+                            <th class="column-description">Description</th>
+                            <th>Active</th>
+                            <th>Default</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-structure-id="1">
+                            <td class="column-name">Standard Blog Post</td>
+                            <td class="column-description">A standard blog post structure with intro, body, and conclusion.</td>
+                            <td>Yes</td>
+                            <td>Yes</td>
+                            <td><button>Edit</button></td>
+                        </tr>
+                        <tr data-structure-id="2">
+                            <td class="column-name">Listicle</td>
+                            <td class="column-description">Top 10 list format.</td>
+                            <td>Yes</td>
+                            <td>No</td>
+                            <td><button>Edit</button></td>
+                        </tr>
+                        <tr data-structure-id="3">
+                            <td class="column-name">How-To Guide</td>
+                            <td class="column-description">Step-by-step instructions.</td>
+                            <td>No</td>
+                            <td>No</td>
+                            <td><button>Edit</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div id="aips-structure-search-no-results" class="aips-empty-state" style="display: none;">
+                    <h3>No Structures Found</h3>
+                    <p>No structures match your search criteria.</p>
+                    <button type="button" class="button button-primary aips-clear-structure-search-btn">
+                        Clear Search
+                    </button>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
