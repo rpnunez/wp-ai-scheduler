@@ -314,7 +314,12 @@ class AIPS_Generator {
         
         if (is_wp_error($title)) {
             // Fall back to a safe default title when AI fails
-            $title = __('AI Generated Post', 'ai-post-scheduler') . ' - ' . date('Y-m-d H:i:s');
+            $base_title = __('AI Generated Post', 'ai-post-scheduler');
+            if (!empty($topic)) {
+                // Include topic in fallback title for context, truncated for safety
+                $base_title .= ': ' . mb_substr($topic, 0, 50) . (mb_strlen($topic) > 50 ? '...' : '');
+            }
+            $title = $base_title . ' - ' . date('Y-m-d H:i:s');
         }
         
         // Build voice-aware excerpt instructions and request an excerpt

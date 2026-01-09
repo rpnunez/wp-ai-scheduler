@@ -7,8 +7,8 @@ class AIPS_Schedule_Controller {
 
     private $scheduler;
 
-    public function __construct() {
-        $this->scheduler = new AIPS_Scheduler();
+    public function __construct($scheduler = null) {
+        $this->scheduler = $scheduler ?: new AIPS_Scheduler();
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
@@ -89,21 +89,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
         }
 
-        // We use the new toggle_active method in Scheduler
-        if (method_exists($this->scheduler, 'toggle_active')) {
-             $result = $this->scheduler->toggle_active($id, $is_active);
-        } else {
-             // Fallback
-             global $wpdb;
-             $table_name = $wpdb->prefix . 'aips_schedule';
-             $result = $wpdb->update(
-                $table_name,
-                array('is_active' => $is_active),
-                array('id' => $id),
-                array('%d'),
-                array('%d')
-            );
-        }
+        $result = $this->scheduler->toggle_active($id, $is_active);
 
         if ($result !== false) {
             wp_send_json_success(array('message' => __('Schedule updated.', 'ai-post-scheduler')));
