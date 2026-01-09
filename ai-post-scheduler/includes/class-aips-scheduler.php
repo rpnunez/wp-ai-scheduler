@@ -123,6 +123,11 @@ class AIPS_Scheduler {
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
+        // Use a time limit to process backlog without timing out
+        $start_time = microtime(true);
+        $max_execution_time = 20; // seconds
+
+        // Fetch a larger batch to handle backlogs
         $due_schedules = $wpdb->get_results($wpdb->prepare("
             SELECT t.*, s.*, s.id AS schedule_id
             FROM {$this->schedule_table} s 
@@ -131,7 +136,7 @@ class AIPS_Scheduler {
             AND s.next_run <= %s 
             AND t.is_active = 1
             ORDER BY s.next_run ASC
-            LIMIT 5
+            LIMIT 50
         ", current_time('mysql')));
         
         if (empty($due_schedules)) {
@@ -140,8 +145,15 @@ class AIPS_Scheduler {
         }
         
         $generator = new AIPS_Generator();
+        $processed_count = 0;
         
         foreach ($due_schedules as $schedule) {
+            // Check time limit
+            if ((microtime(true) - $start_time) > $max_execution_time) {
+                $logger->log("Time limit reached ({$max_execution_time}s). Stopping batch processing.", 'info');
+                break;
+            }
+
             // Dispatch schedule execution started event
             do_action('aips_schedule_execution_started', $schedule->schedule_id);
             
@@ -272,6 +284,9 @@ class AIPS_Scheduler {
                 // Dispatch schedule execution completed event
                 do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
             }
+            $processed_count++;
         }
+
+        $logger->log("Processed {$processed_count} schedules in this batch.", 'info');
     }
 }

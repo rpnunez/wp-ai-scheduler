@@ -7,8 +7,8 @@ class AIPS_Schedule_Controller {
 
     private $scheduler;
 
-    public function __construct() {
-        $this->scheduler = new AIPS_Scheduler();
+    public function __construct($scheduler = null) {
+        $this->scheduler = $scheduler ?: new AIPS_Scheduler();
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));

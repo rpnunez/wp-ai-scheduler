@@ -54,6 +54,7 @@ class AIPS_Research_Controller {
         add_action('wp_ajax_aips_research_topics', array($this, 'ajax_research_topics'));
         add_action('wp_ajax_aips_get_trending_topics', array($this, 'ajax_get_trending_topics'));
         add_action('wp_ajax_aips_delete_trending_topic', array($this, 'ajax_delete_trending_topic'));
+        add_action('wp_ajax_aips_delete_trending_topic_bulk', array($this, 'ajax_delete_trending_topic_bulk'));
         add_action('wp_ajax_aips_schedule_trending_topics', array($this, 'ajax_schedule_trending_topics'));
         
         // Scheduled research cron
@@ -173,6 +174,31 @@ class AIPS_Research_Controller {
             wp_send_json_success(array('message' => __('Topic deleted successfully.', 'ai-post-scheduler')));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete topic.', 'ai-post-scheduler')));
+        }
+    }
+
+    /**
+     * AJAX handler: Bulk delete trending topics.
+     */
+    public function ajax_delete_trending_topic_bulk() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
+
+        if (empty($topic_ids)) {
+            wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+        }
+
+        $result = $this->repository->delete_bulk($topic_ids);
+
+        if ($result !== false) {
+            wp_send_json_success(array('message' => sprintf(__('%d topics deleted successfully.', 'ai-post-scheduler'), count($topic_ids))));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to delete topics.', 'ai-post-scheduler')));
         }
     }
     
