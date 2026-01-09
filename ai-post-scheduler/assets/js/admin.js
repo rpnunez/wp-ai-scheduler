@@ -59,6 +59,11 @@
             $(document).on('click', '#aips-schedule-search-clear', this.clearScheduleSearch);
             $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
 
+            // Structure Search
+            $(document).on('keyup search', '#aips-structure-search', this.filterStructures);
+            $(document).on('click', '#aips-structure-search-clear', this.clearStructureSearch);
+            $(document).on('click', '.aips-clear-structure-search-btn', this.clearStructureSearch);
+
             // Voice Search
             $(document).on('keyup search', '#aips-voice-search', this.filterVoices);
             $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
@@ -1004,6 +1009,47 @@
         clearScheduleSearch: function(e) {
             e.preventDefault();
             $('#aips-schedule-search').val('').trigger('keyup');
+        },
+
+        filterStructures: function() {
+            var term = $('#aips-structure-search').val().toLowerCase().trim();
+            var $rows = $('.aips-structures-container table tbody tr');
+            var $noResults = $('#aips-structure-search-no-results');
+            var $table = $('.aips-structures-container table');
+            var $clearBtn = $('#aips-structure-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                var name = $row.find('.column-name').text().toLowerCase();
+                var description = $row.find('.column-description').text().toLowerCase();
+
+                if (name.indexOf(term) > -1 || description.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearStructureSearch: function(e) {
+            e.preventDefault();
+            $('#aips-structure-search').val('').trigger('keyup');
         },
 
         filterVoices: function() {
