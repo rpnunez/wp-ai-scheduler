@@ -76,8 +76,8 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 		$mock_post_creator = new stdClass();
 		$mock_post_creator->action_called =& $action_called;
 		$mock_post_creator->received_data = null;
-		$mock_post_creator->create_post = function($data) use ($mock_post_creator, &$action_called) {
-			if (!$action_called) {
+		$mock_post_creator->create_post = function($data) use ($mock_post_creator) {
+			if (!$mock_post_creator->action_called) {
 				throw new Exception('Expected pre-create action to fire before post creation.');
 			}
 			$mock_post_creator->received_data = $data;
