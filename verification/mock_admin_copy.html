@@ -329,7 +329,7 @@
             });
         },
 
-        runNow: function(e) {
+        runScheduleNow: function(e) {
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
@@ -614,7 +614,7 @@
             });
         },
 
-        retryGeneration: function(e) {
+        retryHistoryGeneration: function(e) {
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
@@ -856,7 +856,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.renderDetails(response.data);
+                        AIPS.renderHistoryDetails(response.data);
                     } else {
                         alert(response.data.message);
                         $('#aips-details-modal').hide();
@@ -873,7 +873,7 @@
             });
         },
 
-        renderDetails: function(data) {
+        renderHistoryDetails: function(data) {
             var log = data.generation_log || {};
 
             var summaryHtml = '<table class="aips-details-table">';
