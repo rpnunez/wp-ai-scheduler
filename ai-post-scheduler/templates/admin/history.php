@@ -9,7 +9,7 @@ $history_base_args = isset($history_base_args) && is_array($history_base_args) ?
 $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=' . $history_base_page));
 $history_heading_tag = $is_history_tab ? 'h2' : 'h1';
 ?>
-<div class="<?php echo $is_history_tab ? 'aips-history-tab' : 'wrap aips-wrap'; ?>">
+<div class="<?php echo esc_attr( $is_history_tab ? 'aips-history-tab' : 'wrap aips-wrap' ); ?>">
     <<?php echo esc_attr($history_heading_tag); ?>><?php esc_html_e('Generation History', 'ai-post-scheduler'); ?></<?php echo esc_attr($history_heading_tag); ?>>
     
     <div class="aips-history-stats">
