@@ -332,6 +332,10 @@
             e.preventDefault();
             var tabId = $(this).data('tab');
 
+            var url = new URL(window.location.href);
+            url.searchParams.set('tab', tabId);
+            window.history.replaceState({}, '', url.toString());
+
             $('.nav-tab').removeClass('nav-tab-active');
             $(this).addClass('nav-tab-active');
 
@@ -914,6 +918,7 @@
             }
 
             url.searchParams.delete('paged');
+            url.searchParams.set('tab', 'history');
             
             window.location.href = url.toString();
         },

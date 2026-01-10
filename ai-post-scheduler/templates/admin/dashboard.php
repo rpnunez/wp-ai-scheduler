@@ -114,7 +114,7 @@ if (!defined('ABSPATH')) {
                         </tbody>
                     </table>
                     <p>
-                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-history')); ?>">
+                        <a href="<?php echo esc_url(add_query_arg('tab', 'history', admin_url('admin.php?page=aips-templates'))); ?>">
                             <?php esc_html_e('View All History', 'ai-post-scheduler'); ?> &rarr;
                         </a>
                     </p>

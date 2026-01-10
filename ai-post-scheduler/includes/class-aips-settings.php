@@ -29,7 +29,7 @@ class AIPS_Settings {
      * Add menu pages to the WordPress admin dashboard.
      *
      * Registers the main menu page and subpages for Dashboard, Voices, Templates,
-     * Schedule, History, Settings, and System Status.
+     * Schedule, Research, Settings, and System Status.
      *
      * @return void
      */
@@ -80,14 +80,14 @@ class AIPS_Settings {
             array($this, 'render_schedule_page')
         );
         
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Trending Topics', 'ai-post-scheduler'),
-            __('Trending Topics', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-research',
-            array($this, 'render_research_page')
-        );
+         add_submenu_page(
+             'ai-post-scheduler',
+             __('Research', 'ai-post-scheduler'),
+             __('Research', 'ai-post-scheduler'),
+             'manage_options',
+             'aips-research',
+             array($this, 'render_research_page')
+         );
         
         add_submenu_page(
             'ai-post-scheduler',
@@ -114,15 +114,6 @@ class AIPS_Settings {
             'manage_options',
             'aips-prompt-sections',
             array($this, 'render_prompt_sections_page')
-        );
-        
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('History', 'ai-post-scheduler'),
-            __('History', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-history',
-            array($this, 'render_history_page')
         );
         
         add_submenu_page(

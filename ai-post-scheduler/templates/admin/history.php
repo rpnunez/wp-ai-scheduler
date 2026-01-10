@@ -2,9 +2,15 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+$is_history_tab = isset($is_history_tab) && $is_history_tab;
+$history_base_page = isset($history_base_page) ? $history_base_page : 'aips-history';
+$history_base_args = isset($history_base_args) && is_array($history_base_args) ? $history_base_args : array();
+$history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=' . $history_base_page));
+$history_heading_tag = $is_history_tab ? 'h2' : 'h1';
 ?>
-<div class="wrap aips-wrap">
-    <h1><?php esc_html_e('Generation History', 'ai-post-scheduler'); ?></h1>
+<div class="<?php echo $is_history_tab ? 'aips-history-tab' : 'wrap aips-wrap'; ?>">
+    <<?php echo esc_attr($history_heading_tag); ?>><?php esc_html_e('Generation History', 'ai-post-scheduler'); ?></<?php echo esc_attr($history_heading_tag); ?>>
     
     <div class="aips-history-stats">
         <div class="aips-stat-inline">
@@ -117,14 +123,14 @@ if (!defined('ABSPATH')) {
     <div class="tablenav bottom">
         <div class="tablenav-pages">
             <span class="displaying-num">
-                <?php printf(
-                    esc_html__('%d items', 'ai-post-scheduler'),
-                    $history['total']
-                ); ?>
-            </span>
-            <span class="pagination-links">
-                <?php
-                $base_url = admin_url('admin.php?page=aips-history');
+                 <?php printf(
+                     esc_html__('%d items', 'ai-post-scheduler'),
+                     $history['total']
+                 ); ?>
+             </span>
+             <span class="pagination-links">
+                 <?php
+                $base_url = $history_base_url;
                 if ($status_filter) {
                     $base_url .= '&status=' . urlencode($status_filter);
                 }
