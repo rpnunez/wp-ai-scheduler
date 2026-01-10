@@ -293,11 +293,12 @@ class AIPS_Scheduler {
                 
                 // Dispatch schedule execution completed event
                 do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
-            }
 
-            // Invalidate the schedule execution count cache (Bolt)
-            // This ensures rotation logic uses fresh counts on next run
-            $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+                // Invalidate the schedule execution count cache (Bolt)
+                // This ensures rotation logic uses fresh counts on next run,
+                // and only after a successful post generation.
+                $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+            }
         }
     }
 }
