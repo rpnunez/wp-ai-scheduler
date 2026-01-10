@@ -29,6 +29,7 @@
 
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
             $(document).on('click', '.aips-clone-schedule', this.cloneSchedule);
+            $(document).on('click', '.aips-run-schedule-now', this.runScheduleNow);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
@@ -669,6 +670,45 @@
             // Update title and show
             $('#aips-schedule-modal-title').text('Clone Schedule');
             $('#aips-schedule-modal').show();
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+
+            if (!confirm('Run this schedule immediately? This will generate 1 post.')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).text('Running...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                        $btn.prop('disabled', false).html(originalText);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
         },
 
         saveSchedule: function(e) {

@@ -123,16 +123,8 @@ class AIPS_Scheduler {
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
-        $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT t.*, s.*, s.id AS schedule_id
-            FROM {$this->schedule_table} s 
-            INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            AND s.next_run <= %s 
-            AND t.is_active = 1
-            ORDER BY s.next_run ASC
-            LIMIT 5
-        ", current_time('mysql')));
+        $batch_size = (int) get_option('aips_batch_size', 5);
+        $due_schedules = $this->repository->get_due_schedules_with_active_templates(current_time('mysql'), $batch_size);
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');

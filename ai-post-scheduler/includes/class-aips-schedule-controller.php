@@ -105,10 +105,25 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+        $schedule = null;
+
+        // If schedule_id provided, prioritize schedule settings
+        if ($schedule_id) {
+            $schedule = $this->scheduler->get_schedule($schedule_id);
+            if ($schedule) {
+                $template_id = $schedule->template_id;
+                // Use schedule's topic if not explicitly overridden by POST param
+                if (empty($topic) && !empty($schedule->topic)) {
+                    $topic = $schedule->topic;
+                }
+            }
+        }
 
         if (!$template_id) {
-            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
+            wp_send_json_error(array('message' => __('Invalid template ID or Schedule ID.', 'ai-post-scheduler')));
         }
 
         $templates = new AIPS_Templates();
@@ -118,13 +133,40 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
         }
 
+        // Apply schedule overrides to template if running a schedule
+        if ($schedule) {
+            // Check for structure override
+            if (!empty($schedule->article_structure_id)) {
+                $template->article_structure_id = $schedule->article_structure_id;
+            } elseif (!empty($schedule->rotation_pattern)) {
+                // If using rotation, we need to select a structure
+                // Use the selector service to pick one (Bolt: reuse existing logic)
+                $selector = new AIPS_Template_Type_Selector();
+                $structure_id = $selector->select_structure($schedule);
+                if ($structure_id) {
+                    $template->article_structure_id = $structure_id;
+                }
+            }
+        }
+
         $voice = null;
         if (!empty($template->voice_id)) {
             $voices = new AIPS_Voices();
             $voice = $voices->get($template->voice_id);
         }
 
+        // If running a specific schedule, we usually run it ONCE regardless of template quantity
+        // unless explicitly requested otherwise. But "Run Now" usually implies "Run one instance".
+        // However, existing logic respects template quantity.
+        // For schedule-specific runs, we often want just one to test that schedule.
+        // Let's default to 1 if schedule_id is present, but respect template quantity if just running template.
+        // Actually, to avoid confusion, let's keep existing behavior but cap it.
         $quantity = $template->post_quantity ?: 1;
+
+        if ($schedule_id) {
+            // For single schedule testing/running, force 1 post to match schedule execution behavior
+            $quantity = 1;
+        }
 
         // SECURITY: Enforce a hard limit for immediate execution to prevent PHP timeouts
         // and potential API rate limiting issues.
@@ -139,7 +181,6 @@ class AIPS_Schedule_Controller {
         $errors = array();
 
         $generator = new AIPS_Generator();
-        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
         // Enforce hard limit of 5 to prevent timeouts (Bolt)
         if ($quantity > 5) {
