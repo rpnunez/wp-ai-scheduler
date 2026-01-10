@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Refactor Verification</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+        .aips-modal { display: none; border: 1px solid black; padding: 20px; position: fixed; top: 10px; left: 10px; background: white; z-index: 1000; }
+        .spinner { display: inline-block; width: 20px; height: 20px; background: #ccc; }
+        .is-active { background: blue; }
+        .aips-featured-image-settings, .aips-image-source-unsplash, .aips-image-source-media, .aips-image-source-ai { display: none; }
+    </style>
+    <script>
+        // Mock Globals
+        var aipsAjax = {
+            ajaxUrl: 'http://mock-ajax-url.com',
+            nonce: 'mock-nonce'
+        };
+        var aipsAdminL10n = {
+            errorOccurred: 'Error',
+            saveStructureFailed: 'Fail',
+            deleteStructureConfirm: 'Confirm delete?'
+        };
+    </script>
+</head>
+<body>
+    <h1>Refactor Verification</h1>
+
+    <!-- Buttons -->
+    <button class="aips-add-template-btn">Add Template</button>
+    <button class="aips-add-schedule-btn">Add Schedule</button>
+    <button class="aips-copy-btn" data-clipboard-text="Copy Me">Copy Test</button>
+    <button class="aips-run-now" data-id="123">Run Now</button>
+    <button class="aips-test-template">Test Template</button>
+
+    <!-- Modals -->
+    <div id="aips-template-modal" class="aips-modal">
+        <h2 id="aips-modal-title">Title</h2>
+        <form id="aips-template-form">
+            <input type="hidden" id="template_id">
+            <input type="text" id="template_name" value="Test Template">
+            <textarea id="prompt_template"></textarea>
+            <textarea id="title_prompt"></textarea>
+            <input type="number" id="post_quantity" value="1">
+            <input type="checkbox" id="generate_featured_image">
+            <input type="text" id="image_prompt">
+            <select id="featured_image_source">
+                <option value="ai_prompt">AI</option>
+                <option value="unsplash">Unsplash</option>
+                <option value="media_library">Media Library</option>
+            </select>
+            <input type="text" id="featured_image_unsplash_keywords">
+            <input type="hidden" id="featured_image_media_ids">
+            <span id="featured_image_media_preview"></span>
+
+            <input type="text" id="post_status" value="draft">
+            <input type="text" id="post_category" value="1">
+            <input type="text" id="post_tags">
+            <input type="text" id="post_author" value="1">
+            <input type="checkbox" id="is_active">
+        </form>
+    </div>
+
+    <div id="aips-schedule-modal" class="aips-modal">
+        <h2 id="aips-schedule-modal-title">Title</h2>
+        <form id="aips-schedule-form">
+            <input type="hidden" id="schedule_id">
+            <select id="schedule_template"></select>
+            <select id="schedule_frequency"></select>
+            <input type="text" id="schedule_topic">
+            <select id="article_structure_id"></select>
+            <select id="rotation_pattern"></select>
+            <input type="datetime-local" id="schedule_start_time">
+            <input type="checkbox" id="schedule_is_active">
+        </form>
+    </div>
+
+    <!-- Lists -->
+    <div class="aips-templates-list">
+        <input type="search" id="aips-template-search">
+        <button id="aips-template-search-clear">Clear</button>
+        <table>
+            <tbody>
+                <tr>
+                    <td class="column-name">Test Template A</td>
+                    <td class="column-category">Category 1</td>
+                </tr>
+                <tr>
+                    <td class="column-name">Another Template</td>
+                    <td class="column-category">Category 2</td>
+                </tr>
+            </tbody>
+        </table>
+        <div id="aips-template-search-no-results" style="display:none;">No results</div>
+    </div>
+
+    <!-- Scripts will be injected by Playwright or loaded relatively -->
+</body>
+</html>

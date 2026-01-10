@@ -274,6 +274,22 @@ class AIPS_Settings {
         ));
 
         wp_enqueue_script(
+            'aips-admin-templates',
+            AIPS_PLUGIN_URL . 'assets/js/admin-templates.js',
+            array('aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'aips-admin-schedules',
+            AIPS_PLUGIN_URL . 'assets/js/admin-schedules.js',
+            array('aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-admin-research',
             AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
             array('aips-admin-script'),
