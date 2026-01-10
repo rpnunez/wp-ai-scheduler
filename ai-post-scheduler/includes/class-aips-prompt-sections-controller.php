@@ -12,8 +12,23 @@ if (!defined('ABSPATH')) {
  */
 class AIPS_Prompt_Sections_Controller {
 
+	/**
+	 * Repository used to manage prompt section records.
+	 *
+	 * @var AIPS_Prompt_Section_Repository
+	 */
 	private $repo;
 
+	/**
+	 * Constructor.
+	 *
+	 * Initializes the controller with a prompt section repository and
+	 * registers the AJAX actions used to manage prompt sections.
+	 *
+	 * @param AIPS_Prompt_Section_Repository|null $repo Optional repository instance for dependency injection.
+	 *
+	 * @return void
+	 */
 	public function __construct($repo = null) {
 		$this->repo = $repo ?: new AIPS_Prompt_Section_Repository();
 
