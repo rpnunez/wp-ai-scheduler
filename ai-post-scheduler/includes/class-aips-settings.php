@@ -98,13 +98,22 @@ class AIPS_Settings {
             array($this, 'render_activity_page')
         );
       
-      add_submenu_page(
+        add_submenu_page(
             'ai-post-scheduler',
             __('Article Structures', 'ai-post-scheduler'),
             __('Article Structures', 'ai-post-scheduler'),
             'manage_options',
             'aips-structures',
             array($this, 'render_structures_page')
+        );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Article Structure Sections', 'ai-post-scheduler'),
+            __('Article Structure Sections', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-prompt-sections',
+            array($this, 'render_prompt_sections_page')
         );
         
         add_submenu_page(
@@ -256,6 +265,10 @@ class AIPS_Settings {
             'saveStructureFailed' => __('Failed to save structure.', 'ai-post-scheduler'),
             'loadStructureFailed' => __('Failed to load structure.', 'ai-post-scheduler'),
             'deleteStructureFailed' => __('Failed to delete structure.', 'ai-post-scheduler'),
+            'deleteSectionConfirm' => __('Are you sure you want to delete this prompt section?', 'ai-post-scheduler'),
+            'saveSectionFailed' => __('Failed to save prompt section.', 'ai-post-scheduler'),
+            'loadSectionFailed' => __('Failed to load prompt section.', 'ai-post-scheduler'),
+            'deleteSectionFailed' => __('Failed to delete prompt section.', 'ai-post-scheduler'),
             'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
             'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
         ));
@@ -549,6 +562,20 @@ class AIPS_Settings {
         $sections = $section_repo->get_all(false);
         
         include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
+    }
+    
+    /**
+     * Render the Prompt Sections page.
+     *
+     * Fetches prompt sections and passes them to the template.
+     *
+     * @return void
+     */
+    public function render_prompt_sections_page() {
+        $section_repo = new AIPS_Prompt_Section_Repository();
+        $sections = $section_repo->get_all(false);
+        
+        include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
     }
     
     /**
