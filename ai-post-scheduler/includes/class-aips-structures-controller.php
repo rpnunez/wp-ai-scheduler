@@ -18,23 +18,21 @@ class AIPS_Structures_Controller {
         add_action('wp_ajax_aips_toggle_structure_active', array($this, 'ajax_toggle_structure_active'));
     }
 
+    /**
+     * Handle AJAX request to retrieve available article structures.
+     */
     public function ajax_get_structures() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
+        $this->validate_manage_options_request();
 
         $structures = $this->repo->get_all(false);
         wp_send_json_success(array('structures' => $structures));
     }
 
+    /**
+     * Handle AJAX request to retrieve a single article structure.
+     */
     public function ajax_get_structure() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
+        $this->validate_manage_options_request();
 
         $id = isset($_POST['structure_id']) ? absint($_POST['structure_id']) : 0;
         if (!$id) {
@@ -49,12 +47,11 @@ class AIPS_Structures_Controller {
         wp_send_json_success(array('structure' => $structure));
     }
 
+    /**
+     * Handle AJAX request to save or update an article structure.
+     */
     public function ajax_save_structure() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
+        $this->validate_manage_options_request();
 
         $id = isset($_POST['structure_id']) ? absint($_POST['structure_id']) : 0;
         $name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
@@ -85,12 +82,11 @@ class AIPS_Structures_Controller {
         }
     }
 
+    /**
+     * Handle AJAX request to delete an article structure.
+     */
     public function ajax_delete_structure() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
+        $this->validate_manage_options_request();
 
         $id = isset($_POST['structure_id']) ? absint($_POST['structure_id']) : 0;
         if (!$id) {
@@ -106,12 +102,11 @@ class AIPS_Structures_Controller {
         wp_send_json_success(array('message' => __('Structure deleted.', 'ai-post-scheduler')));
     }
 
+    /**
+     * Handle AJAX request to mark a structure as default.
+     */
     public function ajax_set_structure_default() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
+        $this->validate_manage_options_request();
 
         $id = isset($_POST['structure_id']) ? absint($_POST['structure_id']) : 0;
         if (!$id) {
@@ -126,12 +121,11 @@ class AIPS_Structures_Controller {
         wp_send_json_success(array('message' => __('Default structure updated.', 'ai-post-scheduler')));
     }
 
+    /**
+     * Handle AJAX request to toggle a structure's active status.
+     */
     public function ajax_toggle_structure_active() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
+        $this->validate_manage_options_request();
 
         $id = isset($_POST['structure_id']) ? absint($_POST['structure_id']) : 0;
         $is_active = isset($_POST['is_active']) ? 1 : 0;
@@ -146,6 +140,17 @@ class AIPS_Structures_Controller {
         }
 
         wp_send_json_success(array('message' => __('Structure status updated.', 'ai-post-scheduler')));
+    }
+
+    /**
+     * Validate nonce and capability for structure management requests.
+     */
+    private function validate_manage_options_request() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
     }
 }
 
