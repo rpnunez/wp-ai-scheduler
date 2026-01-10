@@ -76,6 +76,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-type-selector.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-structures-controller.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-sections-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-interval-calculator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-resilience-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-ai-service.php';
@@ -170,6 +171,8 @@ final class AI_Post_Scheduler {
             new AIPS_Seeder_Admin();
             // Structures admin controller (CRUD endpoints for Article Structures UI)
             new AIPS_Structures_Controller();
+            // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
+            new AIPS_Prompt_Sections_Controller();
         }
         
         new AIPS_Scheduler();
