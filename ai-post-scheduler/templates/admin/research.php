@@ -19,22 +19,6 @@ $niches = $repository->get_niche_list();
 $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
 $interval_calculator = new AIPS_Interval_Calculator();
 $default_research_frequency = 'daily';
-if ( ! function_exists( 'aips_render_frequency_dropdown' ) ) {
-    function aips_render_frequency_dropdown( $field_id, $field_name, $selected, $label_text, $allowed = array() ) {
-        $calculator = new AIPS_Interval_Calculator();
-        $options = $calculator->get_all_interval_displays( $allowed );
-        ?>
-        <label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( $label_text ); ?></label>
-        <select id="<?php echo esc_attr( $field_id ); ?>" name="<?php echo esc_attr( $field_name ); ?>">
-            <?php foreach ( $options as $frequency_key => $display ): ?>
-                <option value="<?php echo esc_attr( $frequency_key ); ?>" <?php selected( $frequency_key, $selected ); ?>>
-                    <?php echo esc_html( $display ); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-        <?php
-    }
-}
 $active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'trending';
 $valid_tabs = array('trending', 'planner');
 if (!in_array($active_tab, $valid_tabs, true)) {
@@ -213,7 +197,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                             <?php echo esc_html__( 'Frequency', 'ai-post-scheduler' ); ?>
                         </th>
                         <td>
-                            <?php aips_render_frequency_dropdown( 'schedule-frequency', 'frequency', $default_research_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
+                            <?php AIPS_Template_Helper::render_frequency_dropdown( 'schedule-frequency', 'frequency', $default_research_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
                         </td>
                     </tr>
                 </table>

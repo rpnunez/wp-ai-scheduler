@@ -78,6 +78,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-structures-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-sections-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-interval-calculator.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-helper.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-resilience-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-ai-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-image-service.php';

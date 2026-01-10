@@ -74,7 +74,7 @@ $default_planner_frequency = 'daily';
 
                 <div class="aips-col">
                     <label for="bulk-frequency"><?php echo esc_html__('Frequency', 'ai-post-scheduler'); ?></label>
-                    <?php aips_render_frequency_dropdown( 'bulk-frequency', 'bulk-frequency', $default_planner_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
+                    <?php AIPS_Template_Helper::render_frequency_dropdown( 'bulk-frequency', 'bulk-frequency', $default_planner_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
                 </div>
             </div>
 
