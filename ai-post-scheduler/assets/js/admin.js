@@ -1198,14 +1198,14 @@
             
             var summaryHtml = '<table class="aips-details-table">';
             summaryHtml += '<tr><th>Status:</th><td><span class="aips-status aips-status-' + data.status + '">' + data.status.charAt(0).toUpperCase() + data.status.slice(1) + '</span></td></tr>';
-            summaryHtml += '<tr><th>Title:</th><td>' + (data.generated_title || '-') + '</td></tr>';
+            summaryHtml += '<tr><th>Title:</th><td>' + AIPS.escapeHtml(data.generated_title || '-') + '</td></tr>';
             if (data.post_id) {
                 summaryHtml += '<tr><th>Post ID:</th><td>' + data.post_id + '</td></tr>';
             }
             summaryHtml += '<tr><th>Started:</th><td>' + (log.started_at || data.created_at) + '</td></tr>';
             summaryHtml += '<tr><th>Completed:</th><td>' + (log.completed_at || data.completed_at || '-') + '</td></tr>';
             if (data.error_message) {
-                summaryHtml += '<tr><th>Error:</th><td class="aips-error-text">' + data.error_message + '</td></tr>';
+                summaryHtml += '<tr><th>Error:</th><td class="aips-error-text">' + AIPS.escapeHtml(data.error_message) + '</td></tr>';
             }
             summaryHtml += '</table>';
             $('#aips-details-summary').html(summaryHtml);

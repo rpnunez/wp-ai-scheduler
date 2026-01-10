@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>XSS Test</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div id="aips-details-summary"></div>
+    <div id="aips-details-template"></div>
+    <div id="aips-details-voice"></div>
+    <div id="aips-details-voice-section" style="display:none;"></div>
+    <div id="aips-details-ai-calls"></div>
+    <div id="aips-details-errors"></div>
+    <div id="aips-details-errors-section" style="display:none;"></div>
+    <div id="aips-details-content" style="display:none;"></div>
+
+    <script>
+        window.AIPS = {
+            // Copied from admin.js (PATCHED VERSION)
+            renderDetails: function(data) {
+                var log = data.generation_log || {};
+
+                var summaryHtml = '<table class="aips-details-table">';
+                summaryHtml += '<tr><th>Status:</th><td><span class="aips-status aips-status-' + data.status + '">' + data.status.charAt(0).toUpperCase() + data.status.slice(1) + '</span></td></tr>';
+                // FIXED LINE:
+                summaryHtml += '<tr><th>Title:</th><td>' + this.escapeHtml(data.generated_title || '-') + '</td></tr>';
+                if (data.post_id) {
+                    summaryHtml += '<tr><th>Post ID:</th><td>' + data.post_id + '</td></tr>';
+                }
+                summaryHtml += '<tr><th>Started:</th><td>' + (log.started_at || data.created_at) + '</td></tr>';
+                summaryHtml += '<tr><th>Completed:</th><td>' + (log.completed_at || data.completed_at || '-') + '</td></tr>';
+                if (data.error_message) {
+                    // FIXED LINE:
+                    summaryHtml += '<tr><th>Error:</th><td class="aips-error-text">' + this.escapeHtml(data.error_message) + '</td></tr>';
+                }
+                summaryHtml += '</table>';
+                $('#aips-details-summary').html(summaryHtml);
+
+                // ... (rest omitted)
+            },
+
+            escapeHtml: function(text) {
+                if (!text) return '';
+                var div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            },
+
+            escapeAttribute: function(text) {
+                if (!text) return '';
+                return text.replace(/"/g, '&quot;');
+            }
+        };
+
+        // Trigger the vulnerability
+        var maliciousData = {
+            status: 'failed',
+            generated_title: '<img src=x onerror=window.xssTriggered=true>',
+            error_message: '<span onmouseover=window.xssTriggeredError=true>Error</span>',
+            created_at: '2023-01-01'
+        };
+
+        window.AIPS.renderDetails(maliciousData);
+    </script>
+</body>
+</html>
