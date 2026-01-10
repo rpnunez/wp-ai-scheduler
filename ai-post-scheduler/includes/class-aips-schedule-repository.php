@@ -126,6 +126,32 @@ class AIPS_Schedule_Repository {
             SELECT * FROM {$this->schedule_table} WHERE template_id = %d ORDER BY next_run ASC
         ", $template_id));
     }
+
+    /**
+     * Get active schedules by template ID.
+     *
+     * @param int $template_id Template ID.
+     * @return array Array of active schedule objects for this template.
+     */
+    public function get_active_by_template($template_id) {
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT * FROM {$this->schedule_table} WHERE template_id = %d AND is_active = 1 ORDER BY next_run ASC
+        ", $template_id));
+    }
+
+    /**
+     * Get all active schedules optimized for stats calculation.
+     *
+     * @return array Array of objects with template_id, next_run, and frequency.
+     */
+    public function get_all_active_for_stats() {
+        return $this->wpdb->get_results("
+            SELECT template_id, next_run, frequency
+            FROM {$this->schedule_table}
+            WHERE is_active = 1
+            ORDER BY template_id
+        ");
+    }
     
     /**
      * Create a new schedule.

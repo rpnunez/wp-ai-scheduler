@@ -11,11 +11,23 @@ class AIPS_Templates {
      * @var AIPS_Template_Repository Repository for database operations
      */
     private $repository;
+
+    /**
+     * @var AIPS_Schedule_Repository Repository for schedule operations
+     */
+    private $schedule_repository;
+
+    /**
+     * @var AIPS_Interval_Calculator Service for interval calculations
+     */
+    private $interval_calculator;
     
-    public function __construct() {
+    public function __construct(AIPS_Interval_Calculator $interval_calculator = null) {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_templates';
         $this->repository = new AIPS_Template_Repository();
+        $this->schedule_repository = new AIPS_Schedule_Repository();
+        $this->interval_calculator = $interval_calculator ?: new AIPS_Interval_Calculator();
     }
     
     public function get_all($active_only = false) {
@@ -70,13 +82,7 @@ class AIPS_Templates {
     }
     
     public function get_pending_stats($template_id) {
-        global $wpdb;
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
-
-        $schedules = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table_schedule WHERE template_id = %d AND is_active = 1",
-            $template_id
-        ));
+        $schedules = $this->schedule_repository->get_active_by_template($template_id);
 
         $stats = array(
             'today' => 0,
@@ -103,9 +109,7 @@ class AIPS_Templates {
 
             while ($cursor <= $month_end && $i < $max_iterations) {
                 if ($cursor < $now) {
-                    // Skip past events that haven't run yet but update cursor?
-                    // Actually if next_run is in past, it will run next cron.
-                    // So count it as imminent.
+                    // Skip past events that haven't run yet
                 }
 
                 if ($cursor <= $today_end) {
@@ -126,8 +130,9 @@ class AIPS_Templates {
                     break;
                 }
 
-                // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
+                $next_run_str = $this->interval_calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $cursor));
+                $cursor = strtotime($next_run_str);
+
                 $i++;
             }
         }
@@ -141,12 +146,8 @@ class AIPS_Templates {
             return $cached_stats;
         }
 
-        global $wpdb;
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
-
         // Get all active schedules ordered by template_id
-        // OPTIMIZATION: Only select necessary columns to reduce memory usage (Bolt)
-        $schedules = $wpdb->get_results("SELECT template_id, next_run, frequency FROM $table_schedule WHERE is_active = 1 ORDER BY template_id");
+        $schedules = $this->schedule_repository->get_all_active_for_stats();
 
         $stats = array();
         if (empty($schedules)) {
@@ -192,46 +193,15 @@ class AIPS_Templates {
                     break;
                 }
 
-                // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
+                $next_run_str = $this->interval_calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $cursor));
+                $cursor = strtotime($next_run_str);
+
                 $i++;
             }
         }
 
         set_transient('aips_pending_schedule_stats', $stats, HOUR_IN_SECONDS);
         return $stats;
-    }
-
-    private function calculate_next_run($frequency, $base_time) {
-        switch ($frequency) {
-            case 'hourly':
-                return strtotime('+1 hour', $base_time);
-            case 'every_4_hours':
-                return strtotime('+4 hours', $base_time);
-            case 'every_6_hours':
-                return strtotime('+6 hours', $base_time);
-            case 'every_12_hours':
-                return strtotime('+12 hours', $base_time);
-            case 'daily':
-                return strtotime('+1 day', $base_time);
-            case 'weekly':
-                return strtotime('+1 week', $base_time);
-            case 'bi_weekly':
-                return strtotime('+2 weeks', $base_time);
-            case 'monthly':
-                return strtotime('+1 month', $base_time);
-            default:
-                if (strpos($frequency, 'every_') === 0) {
-                    $day = ucfirst(str_replace('every_', '', $frequency));
-                    $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
-
-                    if (in_array($day, $valid_days)) {
-                        $next = strtotime("next $day", $base_time);
-                        return strtotime(date('H:i:s', $base_time), $next);
-                    }
-                }
-                return strtotime('+1 day', $base_time);
-        }
     }
     
     public function render_page() {

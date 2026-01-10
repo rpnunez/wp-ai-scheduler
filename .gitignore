@@ -7,6 +7,8 @@ composer.lock
 # PHPUnit
 ai-post-scheduler/coverage/
 ai-post-scheduler/.phpunit.result.cache
+coverage/
+.phpunit.result.cache
 
 # IDE
 .idea/
