@@ -12,3 +12,8 @@
 **Vulnerability:** Unescaped concatenation of AI service response into a JSON success message which was rendered via `.html()` in JavaScript.
 **Learning:** AI text generation outputs must be treated as untrusted user input. If a model is manipulated or hallucinating, it can return malicious HTML/JS.
 **Prevention:** Always escape text content from external services using `esc_html()` before sending it to the client, especially if the client renders it as HTML.
+
+## 2024-05-24 - [Stored XSS in History Details]
+**Vulnerability:** The history details modal in the admin dashboard rendered `generated_title` and `error_message` using raw string concatenation into `.html()`, allowing potential XSS if the database contained malicious HTML.
+**Learning:** Even data retrieved from the database and previously sanitized with `sanitize_text_field` should be escaped on output, especially when dynamically injecting it into the DOM with `.html()`.
+**Prevention:** Use a client-side escaping function (like `AIPS.escapeHtml`) for all dynamic variables when building HTML strings in JavaScript.
