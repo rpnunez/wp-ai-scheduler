@@ -72,11 +72,11 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			1
 		);
 
-		$post_creator = new class(&$action_called) {
+		$post_creator = new class($action_called) use (&$action_called) {
 			private $action_called;
 			public $received_data;
 
-			public function __construct(&$action_called) {
+			public function __construct($action_called) {
 				$this->action_called =& $action_called;
 			}
 
