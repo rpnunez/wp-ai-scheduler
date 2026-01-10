@@ -239,6 +239,45 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return time();
         }
     }
+
+    if (!isset($GLOBALS['aips_test_cron'])) {
+        $GLOBALS['aips_test_cron'] = array();
+    }
+
+    if (!function_exists('wp_schedule_single_event')) {
+        function wp_schedule_single_event($timestamp, $hook, $args = array()) {
+            $GLOBALS['aips_test_cron'][] = array(
+                'timestamp' => $timestamp,
+                'hook' => $hook,
+                'args' => $args,
+            );
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_next_scheduled')) {
+        function wp_next_scheduled($hook, $args = array()) {
+            foreach ($GLOBALS['aips_test_cron'] as $event) {
+                if ($event['hook'] === $hook && $event['args'] === $args) {
+                    return $event['timestamp'];
+                }
+            }
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_unschedule_event')) {
+        function wp_unschedule_event($timestamp, $hook, $args = array()) {
+            foreach ($GLOBALS['aips_test_cron'] as $index => $event) {
+                if ($event['timestamp'] === $timestamp && $event['hook'] === $hook && $event['args'] === $args) {
+                    unset($GLOBALS['aips_test_cron'][$index]);
+                    $GLOBALS['aips_test_cron'] = array_values($GLOBALS['aips_test_cron']);
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
     
     if (!function_exists('wp_json_encode')) {
         function wp_json_encode($data, $options = 0, $depth = 512) {
