@@ -34,14 +34,16 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     <!-- History Tab -->
     <div id="history-tab" class="aips-tab-content<?php echo $active_tab === 'history' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'history' ? '' : 'display:none;'; ?>">
         <?php
-        $is_history_tab = true;
-        if (!isset($history_base_page)) {
-            $history_base_page = 'aips-templates';
+        if ( $active_tab === 'history' ) {
+            $is_history_tab = true;
+            if ( ! isset( $history_base_page ) ) {
+                $history_base_page = 'aips-templates';
+            }
+            if ( ! isset( $history_base_args ) ) {
+                $history_base_args = array( 'tab' => 'history' );
+            }
+            include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
         }
-        if (!isset($history_base_args)) {
-            $history_base_args = array('tab' => 'history');
-        }
-        include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
         ?>
     </div>
 </div>
