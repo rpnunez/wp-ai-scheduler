@@ -72,7 +72,7 @@ if (!isset($sections) || !is_array($sections)) {
 		</h2>
 
 		<div class="aips-structures-container">
-			<?php if (!empty($sections)) : ?>
+			<?php if (!empty($sections)): ?>
 			<table class="wp-list-table widefat fixed striped">
 				<thead>
 					<tr>
