@@ -159,13 +159,17 @@ class AIPS_Scheduler {
             }
 
             // Update next_run immediately to lock this schedule from concurrent runs
-            $lock_result = $this->repository->update($schedule->schedule_id, array(
-                'next_run' => $new_next_run
-            ));
+            // Use atomic update to prevent race conditions (Hunter)
+            $lock_result = $this->repository->update_next_run_atomic(
+                $schedule->schedule_id,
+                $new_next_run,
+                $original_next_run
+            );
 
-            if ($lock_result === false) {
-                $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
-                continue; // Skip generation if we couldn't lock
+            if (!$lock_result) {
+                // If atomic update failed, it means another process already claimed this schedule
+                $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id . ' (Race condition detected)', 'warning');
+                continue; // Skip generation
             }
 
             // Dispatch schedule execution started event

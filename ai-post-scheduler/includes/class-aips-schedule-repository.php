@@ -297,6 +297,27 @@ class AIPS_Schedule_Repository {
     }
     
     /**
+     * Update next_run only if it matches the expected value.
+     * Prevents race conditions by ensuring the schedule hasn't been modified/claimed by another process.
+     *
+     * @param int    $id           Schedule ID.
+     * @param string $new_next_run New next_run timestamp.
+     * @param string $old_next_run Old next_run timestamp (to check against).
+     * @return bool True if update succeeded (row was modified), False otherwise.
+     */
+    public function update_next_run_atomic($id, $new_next_run, $old_next_run) {
+        $result = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->schedule_table} SET next_run = %s WHERE id = %d AND next_run = %s",
+            $new_next_run,
+            $id,
+            $old_next_run
+        ));
+
+        // $result is number of rows affected. If 0, it means the condition failed (already updated).
+        return $result > 0;
+    }
+
+    /**
      * Update the next_run timestamp for a schedule.
      *
      * @param int    $id        Schedule ID.
