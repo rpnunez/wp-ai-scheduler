@@ -109,15 +109,6 @@ class AIPS_Settings {
         
         add_submenu_page(
             'ai-post-scheduler',
-            __('Article Structure Sections', 'ai-post-scheduler'),
-            __('Article Structure Sections', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-prompt-sections',
-            array($this, 'render_prompt_sections_page')
-        );
-        
-        add_submenu_page(
-            'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
             __('History', 'ai-post-scheduler'),
             'manage_options',
