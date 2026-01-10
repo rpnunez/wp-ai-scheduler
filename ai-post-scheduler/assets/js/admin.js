@@ -334,7 +334,7 @@
 
             var url = new URL(window.location.href);
             url.searchParams.set('tab', tabId);
-            window.history.replaceState({}, '', url.toString());
+            window.history.pushState({}, '', url.toString());
 
             $('.nav-tab').removeClass('nav-tab-active');
             $(this).addClass('nav-tab-active');

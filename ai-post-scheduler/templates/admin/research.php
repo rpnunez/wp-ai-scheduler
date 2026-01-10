@@ -17,6 +17,9 @@ $stats = $research_controller->get_research_stats();
 $repository = new AIPS_Trending_Topics_Repository();
 $niches = $repository->get_niche_list();
 $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
+$interval_calculator = new AIPS_Interval_Calculator();
+$research_frequencies = array('hourly', 'every_6_hours', 'every_12_hours', 'daily', 'weekly');
+$default_research_frequency = 'daily';
 $active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'trending';
 $valid_tabs = array('trending', 'planner');
 if (!in_array($active_tab, $valid_tabs, true)) {
@@ -195,13 +198,13 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                                 <label for="schedule-frequency"><?php echo esc_html__('Frequency', 'ai-post-scheduler'); ?></label>
                             </th>
                             <td>
-                                <select id="schedule-frequency" name="frequency">
-                                    <option value="hourly"><?php echo esc_html__('Hourly', 'ai-post-scheduler'); ?></option>
-                                    <option value="every_6_hours"><?php echo esc_html__('Every 6 Hours', 'ai-post-scheduler'); ?></option>
-                                    <option value="every_12_hours"><?php echo esc_html__('Every 12 Hours', 'ai-post-scheduler'); ?></option>
-                                    <option value="daily" selected><?php echo esc_html__('Daily', 'ai-post-scheduler'); ?></option>
-                                    <option value="weekly"><?php echo esc_html__('Weekly', 'ai-post-scheduler'); ?></option>
-                                </select>
+                            <select id="schedule-frequency" name="frequency">
+                                <?php foreach ($research_frequencies as $frequency_key): ?>
+                                    <option value="<?php echo esc_attr($frequency_key); ?>" <?php selected($frequency_key, $default_research_frequency); ?>>
+                                        <?php echo esc_html($interval_calculator->get_interval_display($frequency_key)); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                             </td>
                         </tr>
                     </table>
