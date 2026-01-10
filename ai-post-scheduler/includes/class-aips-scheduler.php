@@ -142,6 +142,32 @@ class AIPS_Scheduler {
         $generator = new AIPS_Generator();
         
         foreach ($due_schedules as $schedule) {
+            // Claim-First Locking Strategy (Hunter)
+            // Immediately calculate and update next_run to lock this schedule from concurrent processes.
+
+            $original_next_run = $schedule->next_run;
+            $new_next_run = null;
+
+            if ($schedule->frequency === 'once') {
+                // For one-time schedules, "claim" it by pushing next_run forward (e.g., 1 hour)
+                // If the process crashes, it will be retried in 1 hour.
+                // If it succeeds, it will be deleted.
+                $new_next_run = date('Y-m-d H:i:s', current_time('timestamp') + HOUR_IN_SECONDS);
+            } else {
+                 // Calculate next run using original next_run to preserve phase
+                 $new_next_run = $this->calculate_next_run($schedule->frequency, $original_next_run);
+            }
+
+            // Update next_run immediately to lock this schedule from concurrent runs
+            $lock_result = $this->repository->update($schedule->schedule_id, array(
+                'next_run' => $new_next_run
+            ));
+
+            if ($lock_result === false) {
+                 $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
+                 continue; // Skip generation if we couldn't lock
+            }
+
             // Dispatch schedule execution started event
             do_action('aips_schedule_execution_started', $schedule->schedule_id);
             
@@ -203,13 +229,9 @@ class AIPS_Scheduler {
                     ));
                 }
             } else {
-                // Otherwise calculate next run, passing existing next_run as start_time to preserve phase
-                $next_run = $this->calculate_next_run($schedule->frequency, $schedule->next_run);
-
-                $this->repository->update($schedule->schedule_id, array(
-                    'last_run' => current_time('mysql'),
-                    'next_run' => $next_run,
-                ));
+                // For recurring schedules, we ONLY update last_run here.
+                // next_run was already updated at the start (Claim-First).
+                $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
             }
             
             if (is_wp_error($result)) {
@@ -272,6 +294,10 @@ class AIPS_Scheduler {
                 // Dispatch schedule execution completed event
                 do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
             }
+
+            // Invalidate the schedule execution count cache (Bolt)
+            // This ensures rotation logic uses fresh counts on next run
+            $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
         }
     }
 }

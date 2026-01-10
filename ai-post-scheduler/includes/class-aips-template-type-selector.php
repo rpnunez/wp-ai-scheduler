@@ -210,6 +210,15 @@ class AIPS_Template_Type_Selector {
 			return 0;
 		}
 		
+		// Check transient cache to prevent N+1 queries during batch processing
+		// Bolt Optimization (Cache for 24 hours, invalidated on run)
+		$cache_key = 'aips_sched_cnt_' . $schedule_id;
+		$cached_count = get_transient($cache_key);
+
+		if ($cached_count !== false) {
+			return (int) $cached_count;
+		}
+
 		// Count completed generations for this template
 		// Note: We use template_id since history doesn't directly link to schedule
 		$count = $wpdb->get_var($wpdb->prepare(
@@ -221,7 +230,24 @@ class AIPS_Template_Type_Selector {
 			$schedule_id
 		));
 		
-		return (int) $count;
+		$count = (int) $count;
+
+		// Cache the result
+		set_transient($cache_key, $count, DAY_IN_SECONDS);
+
+		return $count;
+	}
+
+	/**
+	 * Invalidate the execution count cache for a schedule.
+	 *
+	 * Should be called after a new post is generated.
+	 *
+	 * @param int $schedule_id Schedule ID.
+	 * @return void
+	 */
+	public function invalidate_count_cache($schedule_id) {
+		delete_transient('aips_sched_cnt_' . $schedule_id);
 	}
 	
 	/**
