@@ -29,6 +29,7 @@
 
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
             $(document).on('click', '.aips-clone-schedule', this.cloneSchedule);
+            $(document).on('click', '.aips-run-schedule-now', this.runScheduleNow);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
@@ -328,6 +329,26 @@
             });
         },
 
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+
         switchTab: function(e) {
             e.preventDefault();
             var tabId = $(this).data('tab');
@@ -511,25 +532,1505 @@
         },
 
         testTemplate: function(e) {
+        runNow: function(e) {
             e.preventDefault();
-            var prompt = $('#prompt_template').val();
-            
-            if (!prompt) {
-                alert('Please enter a prompt template first.');
-                return;
-            }
-
+            var id = $(this).data('id');
             var $btn = $(this);
-            $btn.prop('disabled', true).text('Generating...');
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_test_template',
+                    action: 'aips_run_now',
                     nonce: aipsAjax.nonce,
-                    prompt_template: prompt
+                    template_id: id
                 },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+            e.preventDefault();
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+            var prompt = $('#prompt_template').val();
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+            
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+            if (!prompt) {
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+                alert('Please enter a prompt template first.');
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+                return;
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+            }
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+            var $btn = $(this);
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+            $btn.prop('disabled', true).text('Generating...');
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+            $.ajax({
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+                url: aipsAjax.ajaxUrl,
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+                type: 'POST',
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+                data: {
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+                    action: 'aips_test_template',
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+                    nonce: aipsAjax.nonce,
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+                    prompt_template: prompt
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+                },
+        runNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            var originalText = $btn.html();
+            var generatingText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.generating : 'Generating...';
+            var errorText = typeof aipsAdminL10n !== 'undefined' ? aipsAdminL10n.errorTryAgain : 'An error occurred. Please try again.';
+
+            $btn.prop('disabled', true).text(generatingText);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert(errorText);
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
                 success: function(response) {
                     if (response.success) {
                         $('#aips-test-content').text(response.data.content);
@@ -547,21 +2048,6 @@
             });
         },
 
-        runNow: function(e) {
-            e.preventDefault();
-            var id = $(this).data('id');
-            var $btn = $(this);
-
-            $btn.prop('disabled', true).text('Generating...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_run_now',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
                 success: function(response) {
                     if (response.success) {
                         alert(response.data.message);
