@@ -1,0 +1,97 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Schedule Page</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/4.6.3/css/dashicons.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Mock CSS from admin.css */
+        .aips-wrap { max-width: 1200px; margin: 20px auto; font-family: sans-serif; }
+        .wp-list-table { width: 100%; border-collapse: collapse; }
+        .wp-list-table th, .wp-list-table td { text-align: left; padding: 10px; border-bottom: 1px solid #ccc; }
+        .button-link-delete { color: #b32d2e; background: none; border: none; cursor: pointer; text-decoration: underline; }
+        .aips-confirm-delete { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+    <h1>
+        Post Schedules        <button class="page-title-action aips-add-schedule-btn">Add New</button>
+    </h1>
+
+
+    <div class="aips-schedules-container">
+                <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+            <label class="screen-reader-text" for="aips-schedule-search">Search Schedules:</label>
+            <input type="search" id="aips-schedule-search" class="regular-text" placeholder="Search schedules...">
+            <button type="button" id="aips-schedule-search-clear" class="button" style="display: none;">Clear</button>
+        </div>
+
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th class="column-template">Template</th>
+                    <th class="column-structure">Article Structure</th>
+                    <th class="column-frequency">Frequency</th>
+                    <th class="column-next-run">Next Run</th>
+                    <th class="column-last-run">Last Run</th>
+                    <th class="column-status">Status</th>
+                    <th class="column-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                                <tr data-schedule-id="1"
+                    data-template-id="101"
+                    data-frequency="daily"
+                    data-topic="Tech Trends"
+                    data-article-structure-id=""
+                    data-rotation-pattern="">
+                    <td class="column-template">
+                        Tech News Daily                    </td>
+                    <td class="column-structure">
+                        Default                                            </td>
+                    <td class="column-frequency">
+                        Daily                    </td>
+                    <td class="column-next-run">
+                        2025-05-20 12:00                    </td>
+                    <td class="column-last-run">
+                        2025-05-19 12:00                    </td>
+                    <td class="column-status">
+                                                <div class="aips-schedule-status-wrapper">
+                            <span class="aips-schedule-status aips-status-active">
+                                <span class="dashicons dashicons-yes" aria-hidden="true"></span>
+                                Active                            </span>
+                            <label class="aips-toggle">
+                                <input type="checkbox" class="aips-toggle-schedule" aria-label="Toggle schedule status" data-id="1" checked='checked'>
+                                <span class="aips-toggle-slider"></span>
+                            </label>
+                        </div>
+                    </td>
+                    <td class="column-actions">
+                        <button class="button aips-clone-schedule" aria-label="Clone schedule">
+                            Clone                        </button>
+                        <button class="button button-link-delete aips-delete-schedule" data-id="1" aria-label="Delete schedule for Tech News Daily">
+                            Delete                        </button>
+                    </td>
+                </tr>
+                            </tbody>
+        </table>
+    </div>
+</div>
+    <script>
+        var aipsAjax = { ajaxUrl: '/mock-ajax', nonce: 'mock_nonce' };
+        // Mock L10n
+        var aipsAdminL10n = {
+            clickToConfirm: 'Click again to confirm',
+            errorOccurred: 'Error',
+            deleteStructureFailed: 'Failed'
+        };
+    </script>
+    <script>
+    // Inject the admin.js content here for testing
+    // I will read admin.js from the filesystem in python and inject it
+    </script>
+</body>
+</html>
