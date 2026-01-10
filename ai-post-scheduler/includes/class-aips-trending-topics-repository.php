@@ -331,6 +331,27 @@ class AIPS_Trending_Topics_Repository {
         
         return $result !== false;
     }
+
+    /**
+     * Delete multiple trending topics by ID.
+     *
+     * @param array $ids Array of topic IDs.
+     * @return int|false Number of deleted records, or false on failure.
+     */
+    public function delete_bulk($ids) {
+        if (empty($ids) || !is_array($ids)) {
+            return false;
+        }
+
+        $ids = array_map('absint', $ids);
+        $ids_string = implode(',', $ids);
+
+        $result = $this->wpdb->query(
+            "DELETE FROM {$this->table_name} WHERE id IN ($ids_string)"
+        );
+
+        return $result;
+    }
     
     /**
      * Delete a trending topic record.
