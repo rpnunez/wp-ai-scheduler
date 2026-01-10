@@ -128,12 +128,13 @@ class AIPS_Interval_Calculator {
      * Calculate the next run timestamp for a given frequency.
      *
      * Internal method that performs the actual timestamp calculations.
+     * Public visibility to allow usage by other classes (Atlas).
      *
      * @param string $frequency The frequency identifier.
      * @param int    $base_time The base timestamp to calculate from.
      * @return int The next run timestamp.
      */
-    private function calculate_next_timestamp($frequency, $base_time) {
+    public function calculate_next_timestamp($frequency, $base_time) {
         switch ($frequency) {
             case 'hourly':
                 return strtotime('+1 hour', $base_time);
