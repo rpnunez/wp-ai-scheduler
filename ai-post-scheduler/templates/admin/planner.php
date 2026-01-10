@@ -1,6 +1,4 @@
 <?php
-$interval_calculator = new AIPS_Interval_Calculator();
-$planner_frequencies = array('hourly', 'every_4_hours', 'daily', 'weekly');
 $default_planner_frequency = 'daily';
 ?>
 <div class="aips-planner-container">
@@ -76,13 +74,7 @@ $default_planner_frequency = 'daily';
 
                 <div class="aips-col">
                     <label for="bulk-frequency"><?php echo esc_html__('Frequency', 'ai-post-scheduler'); ?></label>
-                    <select id="bulk-frequency">
-                        <?php foreach ($planner_frequencies as $frequency_key): ?>
-                            <option value="<?php echo esc_attr($frequency_key); ?>" <?php selected($frequency_key, $default_planner_frequency); ?>>
-                                <?php echo esc_html($interval_calculator->get_interval_display($frequency_key)); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php aips_render_frequency_dropdown( 'bulk-frequency', 'bulk-frequency', $default_planner_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
                 </div>
             </div>
 

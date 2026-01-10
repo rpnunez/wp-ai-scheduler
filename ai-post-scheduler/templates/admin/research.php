@@ -18,8 +18,23 @@ $repository = new AIPS_Trending_Topics_Repository();
 $niches = $repository->get_niche_list();
 $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
 $interval_calculator = new AIPS_Interval_Calculator();
-$research_frequencies = array('hourly', 'every_6_hours', 'every_12_hours', 'daily', 'weekly');
 $default_research_frequency = 'daily';
+if ( ! function_exists( 'aips_render_frequency_dropdown' ) ) {
+    function aips_render_frequency_dropdown( $field_id, $field_name, $selected, $label_text, $allowed = array() ) {
+        $calculator = new AIPS_Interval_Calculator();
+        $options = $calculator->get_all_interval_displays( $allowed );
+        ?>
+        <label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( $label_text ); ?></label>
+        <select id="<?php echo esc_attr( $field_id ); ?>" name="<?php echo esc_attr( $field_name ); ?>">
+            <?php foreach ( $options as $frequency_key => $display ): ?>
+                <option value="<?php echo esc_attr( $frequency_key ); ?>" <?php selected( $frequency_key, $selected ); ?>>
+                    <?php echo esc_html( $display ); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <?php
+    }
+}
 $active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'trending';
 $valid_tabs = array('trending', 'planner');
 if (!in_array($active_tab, $valid_tabs, true)) {
@@ -171,43 +186,37 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                                 <label for="schedule-template"><?php echo esc_html__('Template', 'ai-post-scheduler'); ?></label>
                             </th>
                             <td>
-                                <select id="schedule-template" name="template_id" required>
-                                    <option value=""><?php echo esc_html__('Select Template', 'ai-post-scheduler'); ?></option>
-                                    <?php foreach ($templates as $template):
-                                        $template = (object) $template;
-                                    ?>
-                                        <option value="<?php echo esc_attr($template->id); ?>">
-                                            <?php echo esc_html($template->name); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </td>
-                        </tr>
-                        
-                        <tr>
-                            <th scope="row">
-                                <label for="schedule-start-date"><?php echo esc_html__('Start Date', 'ai-post-scheduler'); ?></label>
-                            </th>
-                            <td>
-                                <input type="datetime-local" id="schedule-start-date" name="start_date" required>
-                            </td>
-                        </tr>
-                        
-                        <tr>
-                            <th scope="row">
-                                <label for="schedule-frequency"><?php echo esc_html__('Frequency', 'ai-post-scheduler'); ?></label>
-                            </th>
-                            <td>
-                            <select id="schedule-frequency" name="frequency">
-                                <?php foreach ($research_frequencies as $frequency_key): ?>
-                                    <option value="<?php echo esc_attr($frequency_key); ?>" <?php selected($frequency_key, $default_research_frequency); ?>>
-                                        <?php echo esc_html($interval_calculator->get_interval_display($frequency_key)); ?>
+                            <select id="schedule-template" name="template_id" required>
+                                <option value=""><?php echo esc_html__('Select Template', 'ai-post-scheduler'); ?></option>
+                                <?php foreach ($templates as $template):
+                                    $template = (object) $template;
+                                ?>
+                                    <option value="<?php echo esc_attr($template->id); ?>">
+                                        <?php echo esc_html($template->name); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            </td>
-                        </tr>
-                    </table>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <label for="schedule-start-date"><?php echo esc_html__('Start Date', 'ai-post-scheduler'); ?></label>
+                        </th>
+                        <td>
+                            <input type="datetime-local" id="schedule-start-date" name="start_date" required>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">
+                            <?php echo esc_html__( 'Frequency', 'ai-post-scheduler' ); ?>
+                        </th>
+                        <td>
+                            <?php aips_render_frequency_dropdown( 'schedule-frequency', 'frequency', $default_research_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
+                        </td>
+                    </tr>
+                </table>
                     
                     <p class="submit">
                         <button type="submit" class="button button-primary">

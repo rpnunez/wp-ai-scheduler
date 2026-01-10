@@ -230,6 +230,27 @@ class AIPS_Interval_Calculator {
     }
     
     /**
+     * Get an associative array of all frequency IDs to their display labels.
+     *
+     * @param array $allowed Optional subset of frequency IDs to include.
+     * @return array Key/value pairs of frequency => display label.
+     */
+    public function get_all_interval_displays($allowed = array()) {
+        $intervals = $this->get_intervals();
+
+        if (!empty($allowed)) {
+            $intervals = array_intersect_key($intervals, array_flip($allowed));
+        }
+
+        $displays = array();
+        foreach ($intervals as $key => $data) {
+            $displays[$key] = isset($data['display']) ? $data['display'] : $key;
+        }
+
+        return $displays;
+    }
+    
+    /**
      * Validate that a frequency identifier is valid.
      *
      * @param string $frequency The frequency identifier to validate.
