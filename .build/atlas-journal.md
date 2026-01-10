@@ -1158,4 +1158,10 @@ This refactoring eliminates the confusion between runtime session tracking (`gen
 **Consequence:** Provides a new, additive integration point with negligible runtime cost while preserving existing flows. Slightly increases bootstrap complexity only in limited test environments; hook state resets keep tests isolated. Backward compatibility is maintained because behavior is additive and core APIs remain unchanged.
 **Tests:** Added `tests/test-generator-hooks.php` to verify the hook dispatch and payload; enhanced bootstrap hook mocks ensure coverage without requiring a full WordPress environment.
 
+## 2026-01-10 - Align Scheduler with WP-Cron Single Events
+**Context:** Scheduling relied on an hourly poll plus manual catch-up math in the interval calculator. The scheduler queried due rows directly and advanced next runs itself, leading to drift risk when traffic was low and duplicative logic around “missed” intervals.
+**Decision:** Shifted scheduling to WP-Cron single events per schedule. The scheduler now queues/clears per-schedule cron events when saving, toggling, or completing runs, and both the hourly runner and a new `aips_run_single_schedule` hook delegate to a shared `handle_schedule()` executor. Added dependency-injection-friendly constructor parameters to keep responsibilities decoupled and reusable.
+**Consequence:** Reduces bespoke catch-up logic and leverages WordPress’ cron persistence for missed runs. Trade-off: more fine-grained cron entries per schedule, but with clearer ownership and automatic cleanup on deletion/deactivation.
+**Tests:** Added `tests/test-scheduler-cron.php` with cron stubs in the bootstrap to validate single-event scheduling and replacement behavior (full suite execution unavailable in this environment).
+
 ---
