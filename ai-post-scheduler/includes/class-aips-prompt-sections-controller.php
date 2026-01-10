@@ -3,6 +3,13 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+/**
+ * Controller for managing prompt sections via AJAX in the WordPress admin.
+ *
+ * @package AI_Post_Scheduler
+ * @subpackage Controllers
+ * @since 1.0.0
+ */
 class AIPS_Prompt_Sections_Controller {
 
 	private $repo;
