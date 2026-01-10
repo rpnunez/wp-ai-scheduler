@@ -164,8 +164,8 @@ class AIPS_Scheduler {
             ));
 
             if ($lock_result === false) {
-                 $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
-                 continue; // Skip generation if we couldn't lock
+                $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
+                continue; // Skip generation if we couldn't lock
             }
 
             // Dispatch schedule execution started event
