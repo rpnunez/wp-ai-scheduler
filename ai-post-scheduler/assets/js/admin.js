@@ -20,7 +20,7 @@
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
             $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
-            $(document).on('keyup', '#voice_search', this.searchVoices);
+            $(document).on('keyup', '#voice_search', this.debounce(this.searchVoices, 500));
 
             $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
             $(document).on('click', '.aips-edit-voice', this.editVoice);
@@ -50,17 +50,17 @@
             $(document).on('click', '#aips-delete-selected-btn', this.deleteSelectedHistory);
 
             // Template Search
-            $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
+            $(document).on('keyup search', '#aips-template-search', this.debounce(this.filterTemplates, 300));
             $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
             $(document).on('click', '.aips-clear-search-btn', this.clearTemplateSearch);
 
             // Schedule Search
-            $(document).on('keyup search', '#aips-schedule-search', this.filterSchedules);
+            $(document).on('keyup search', '#aips-schedule-search', this.debounce(this.filterSchedules, 300));
             $(document).on('click', '#aips-schedule-search-clear', this.clearScheduleSearch);
             $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
 
             // Voice Search
-            $(document).on('keyup search', '#aips-voice-search', this.filterVoices);
+            $(document).on('keyup search', '#aips-voice-search', this.debounce(this.filterVoices, 300));
             $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
             $(document).on('click', '.aips-clear-voice-search-btn', this.clearVoiceSearch);
 
@@ -1320,6 +1320,20 @@
         escapeAttribute: function(text) {
             if (!text) return '';
             return text.replace(/"/g, '&quot;');
+        },
+
+        debounce: function(func, wait) {
+            var timeout;
+            return function() {
+                var context = this;
+                var args = arguments;
+                var later = function() {
+                    timeout = null;
+                    func.apply(context, args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
         },
 
         closeModal: function() {

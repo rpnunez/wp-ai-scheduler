@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-26 - Frontend Search Debouncing
+**Learning:** Client-side search filters and AJAX search inputs were firing on every keystroke (`keyup`), causing unnecessary DOM reflows and excessive API calls.
+**Action:** Implemented a reusable `AIPS.debounce` utility in `admin.js` and applied it to all search inputs (Wait: 300-500ms).

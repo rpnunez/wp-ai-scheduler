@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Performance
+- 2024-05-26: Implemented debouncing for all admin search inputs (Templates, Schedules, Voices, History) to reduce AJAX calls and DOM reflows.
+
 ### Fixed
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
 
