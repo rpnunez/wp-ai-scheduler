@@ -72,25 +72,37 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			1
 		);
 
-		$post_creator = new class(&$action_called) {
-			private $action_called;
+		// Create a simple mock class instead of anonymous class with reference passing
+		$mock_post_creator = new stdClass();
+		$mock_post_creator->action_called =& $action_called;
+		$mock_post_creator->received_data = null;
+		$mock_post_creator->create_post = function($data) use ($mock_post_creator) {
+			if (!$mock_post_creator->action_called) {
+				throw new Exception('Expected pre-create action to fire before post creation.');
+			}
+			$mock_post_creator->received_data = $data;
+			return 321;
+		};
+		$mock_post_creator->set_featured_image = function($post_id, $attachment_id) {
+			// No-op for tests.
+		};
+
+		$post_creator = new class($mock_post_creator) {
+			private $mock;
 			public $received_data;
 
-			public function __construct(&$action_called) {
-				$this->action_called =& $action_called;
+			public function __construct($mock) {
+				$this->mock = $mock;
 			}
 
 			public function create_post($data) {
-				if (!$this->action_called) {
-					throw new Exception('Expected pre-create action to fire before post creation.');
-				}
-
-				$this->received_data = $data;
-				return 321;
+				$result = ($this->mock->create_post)($data);
+				$this->received_data = $this->mock->received_data;
+				return $result;
 			}
 
 			public function set_featured_image($post_id, $attachment_id) {
-				// No-op for tests.
+				return ($this->mock->set_featured_image)($post_id, $attachment_id);
 			}
 		};
 
