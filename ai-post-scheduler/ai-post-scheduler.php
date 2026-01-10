@@ -11,7 +11,7 @@
  * Text Domain: ai-post-scheduler
  * Domain Path: /languages
  * Requires at least: 5.8
- * Requires PHP: 8.3
+ * Requires PHP: 8.2
  */
 
 if (!defined('ABSPATH')) {

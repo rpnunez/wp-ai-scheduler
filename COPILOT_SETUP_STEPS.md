@@ -12,7 +12,7 @@ Created `.github/workflows/copilot-setup-steps.yml` which runs **before** the fi
 1. **GitHub Actions starts Copilot agent session**
 2. **Copilot Setup Steps workflow runs first** (before firewall is enabled)
    - Checks out repository
-   - Sets up PHP 8.1 with required extensions
+   - Sets up PHP 8.2 with required extensions
    - Runs `composer install` with access to external URLs
    - Caches dependencies for faster subsequent runs
 3. **Firewall is enabled** (blocks external connections)

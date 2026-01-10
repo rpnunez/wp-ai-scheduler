@@ -250,7 +250,7 @@ header('Content-Type: text/html; charset=UTF-8');
                     <h2>Requirements</h2>
                     <ul>
                         <li>WordPress 5.8 or higher</li>
-                        <li>PHP 8.3 or higher</li>
+                        <li>PHP 8.2 or higher</li>
                         <li><strong>Meow Apps AI Engine plugin</strong> (required)</li>
                     </ul>
                     <div class="notice">

@@ -27,7 +27,7 @@ class AIPS_System_Status {
             'php_version' => array(
                 'label' => 'PHP Version',
                 'value' => phpversion(),
-                'status' => version_compare(phpversion(), '8.3', '>=') ? 'ok' : 'warning',
+                'status' => version_compare(phpversion(), '8.2', '>=') ? 'ok' : 'warning',
             ),
             'wp_version' => array(
                 'label' => 'WordPress Version',

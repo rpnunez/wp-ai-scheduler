@@ -3,7 +3,7 @@ Contributors: yourname
 Tags: ai, content, automation, scheduling, meow apps, ai engine
 Requires at least: 5.8
 Tested up to: 6.4
-Requires PHP: 8.3
+Requires PHP: 8.2
 Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -46,7 +46,7 @@ Use this to "automate the automation" - let AI handle content strategy and topic
 = Requirements =
 
 * WordPress 5.8 or higher
-* PHP 8.3 or higher
+* PHP 8.2 or higher
 * Meow Apps AI Engine plugin (required)
 
 = What You Can Do (and How) =
