@@ -12,10 +12,16 @@ class AIPS_Templates {
      */
     private $repository;
     
+    /**
+     * @var AIPS_Interval_Calculator Handles schedule interval calculations
+     */
+    private $interval_calculator;
+    
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_templates';
         $this->repository = new AIPS_Template_Repository();
+        $this->interval_calculator = new AIPS_Interval_Calculator();
     }
     
     public function get_all($active_only = false) {
@@ -203,35 +209,8 @@ class AIPS_Templates {
     }
 
     private function calculate_next_run($frequency, $base_time) {
-        switch ($frequency) {
-            case 'hourly':
-                return strtotime('+1 hour', $base_time);
-            case 'every_4_hours':
-                return strtotime('+4 hours', $base_time);
-            case 'every_6_hours':
-                return strtotime('+6 hours', $base_time);
-            case 'every_12_hours':
-                return strtotime('+12 hours', $base_time);
-            case 'daily':
-                return strtotime('+1 day', $base_time);
-            case 'weekly':
-                return strtotime('+1 week', $base_time);
-            case 'bi_weekly':
-                return strtotime('+2 weeks', $base_time);
-            case 'monthly':
-                return strtotime('+1 month', $base_time);
-            default:
-                if (strpos($frequency, 'every_') === 0) {
-                    $day = ucfirst(str_replace('every_', '', $frequency));
-                    $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
-
-                    if (in_array($day, $valid_days)) {
-                        $next = strtotime("next $day", $base_time);
-                        return strtotime(date('H:i:s', $base_time), $next);
-                    }
-                }
-                return strtotime('+1 day', $base_time);
-        }
+        $next_run = $this->interval_calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $base_time));
+        return strtotime($next_run);
     }
     
     public function render_page() {
