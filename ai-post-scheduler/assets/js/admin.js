@@ -183,6 +183,77 @@
                     }
                 }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
             });
+
+            // Prompt Sections UI handlers
+            $(document).on('click', '.aips-add-section-btn', function(e){
+                e.preventDefault();
+                $('#aips-section-form')[0].reset();
+                $('#section_id').val('');
+                $('#aips-section-modal-title').text('Add New Prompt Section');
+                $('#aips-section-modal').show();
+            });
+
+            $(document).on('click', '.aips-save-section', function(){
+                var $btn = $(this);
+                $btn.prop('disabled', true).text('Saving...');
+
+                var data = {
+                    action: 'aips_save_prompt_section',
+                    nonce: aipsAjax.nonce,
+                    section_id: $('#section_id').val(),
+                    name: $('#section_name').val(),
+                    section_key: $('#section_key').val(),
+                    description: $('#section_description').val(),
+                    content: $('#section_content').val(),
+                    is_active: $('#section_is_active').is(':checked') ? 1 : 0
+                };
+
+                $.post(aipsAjax.ajaxUrl, data, function(response){
+                    $btn.prop('disabled', false).text('Save Section');
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message || aipsAdminL10n.saveSectionFailed);
+                    }
+                }).fail(function(){
+                    $btn.prop('disabled', false).text('Save Section');
+                    alert(aipsAdminL10n.errorTryAgain);
+                });
+            });
+
+            $(document).on('click', '.aips-edit-section', function(){
+                var id = $(this).data('id');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                    if (response.success) {
+                        var s = response.data.section;
+                        $('#section_id').val(s.id);
+                        $('#section_name').val(s.name);
+                        $('#section_key').val(s.section_key);
+                        $('#section_description').val(s.description);
+                        $('#section_content').val(s.content);
+                        $('#section_is_active').prop('checked', s.is_active == 1);
+                        $('#aips-section-modal-title').text('Edit Prompt Section');
+                        $('#aips-section-modal').show();
+                    } else {
+                        alert(response.data.message || aipsAdminL10n.loadSectionFailed);
+                    }
+                }).fail(function(){
+                    alert(aipsAdminL10n.errorOccurred);
+                });
+            });
+
+            $(document).on('click', '.aips-delete-section', function(){
+                if (!confirm(aipsAdminL10n.deleteSectionConfirm)) return;
+                var id = $(this).data('id');
+                var $row = $(this).closest('tr');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                    if (response.success) {
+                        $row.fadeOut(function(){ $(this).remove(); });
+                    } else {
+                        alert(response.data.message || aipsAdminL10n.deleteSectionFailed);
+                    }
+                }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
+            });
         },
 
         copyToClipboard: function(e) {
