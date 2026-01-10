@@ -93,7 +93,7 @@ class AIPS_Interval_Calculator {
      * Calculate the next run time for a given frequency.
      *
      * Determines when a scheduled task should run next based on its frequency setting.
-     * Handles various interval types including hourly, daily, weekly, and day-specific schedules.
+     * Handles catch-up logic using O(1) math where possible.
      *
      * @param string      $frequency  The frequency identifier (e.g., 'daily', 'hourly', 'every_monday').
      * @param string|null $start_time Optional. The base time to calculate from. Defaults to current time.
@@ -103,25 +103,89 @@ class AIPS_Interval_Calculator {
         $base_time = $start_time ? strtotime($start_time) : current_time('timestamp');
         $now = current_time('timestamp');
         
-        // If start time is in the past, add intervals until future (Catch-up logic)
-        // This prevents schedule drift by preserving the phase of the schedule
-        if ($base_time < $now) {
-            // Safety limit to prevent infinite loops if interval is 0 or very small/broken
-            $limit = 100;
-            while ($base_time <= $now && $limit > 0) {
-                $base_time = $this->calculate_next_timestamp($frequency, $base_time);
+        // If the base time is already in the future, we don't need to do anything.
+        // However, if we are strictly calculating the *next* interval from a *previous* run time,
+        // we might still want to advance it if the "previous run" was e.g. scheduled for 10:00
+        // and it is now 09:55 (premature call?), but usually this is called after execution.
+        // If called with a future time, we usually just return the next one relative to that.
+        // BUT, for catch-up logic: if base_time < now, we need to find the first occurrence > now.
+
+        if ($base_time > $now) {
+            // It's already in the future, so calculate the next one from there?
+            // Or just return it?
+            // Standard behavior: calculate the NEXT run after the base_time.
+            // If the user passes "Tomorrow 10am" as start_time, the "next run" is "Tomorrow 10am" (Wait, no).
+            // Usually this function is used to UPDATE the schedule AFTER a run.
+            // So if it ran at 10:00 (base_time), we want 11:00.
+            // If it was supposed to run at 09:00 (base_time) but ran at 10:05 (late),
+            // we want the next run relative to 09:00 that is > 10:05.
+
+            // Let's standardise: We always want the first occurrence > NOW, preserving phase from base_time.
+            // EXCEPT if base_time is ALREADY > NOW, then we assume that IS the next run.
+            // Wait, if I save a schedule for tomorrow, calculate_next_run('daily', 'tomorrow') should return 'tomorrow'?
+            // Or 'day after tomorrow'?
+            // The Scheduler calls this:
+            // 1. Initial Save: uses start_time directly.
+            // 2. Post-Process: passes $schedule->next_run (which was just processed).
+            //    So base_time is <= now (usually).
+            //    We want result > now.
+
+            // If base_time > now, it implies we are projecting further into the future.
+            // Logic: Just calculate one step forward.
+             $next = $this->calculate_next_timestamp($frequency, $base_time);
+             return date('Y-m-d H:i:s', $next);
+        }
+
+        // Catch-up Logic: base_time <= now
+
+        // Strategy 1: Fixed Interval (Seconds) - O(1) Math
+        $interval_seconds = $this->get_interval_duration($frequency);
+
+        // We use Math for fixed seconds intervals, but NOT for monthly/flexible ones
+        $is_fixed_math_safe = !in_array($frequency, array('monthly', 'yearly')) && strpos($frequency, 'every_') !== 0; // Days of week are special
+        // Note: 'every_4_hours' etc are in the seconds array, so they are fixed.
+        // 'every_monday' is special.
+
+        if ($is_fixed_math_safe && $interval_seconds > 0) {
+            $diff = $now - $base_time;
+            $steps_needed = floor($diff / $interval_seconds) + 1;
+            $next_timestamp = $base_time + ($steps_needed * $interval_seconds);
+
+            return date('Y-m-d H:i:s', $next_timestamp);
+        }
+
+        // Strategy 2: Variable Intervals (Monthly, Weekly-Specific) - Optimized Iteration
+        // Since we can't do pure math, we iterate, but we can jump ahead if far behind.
+
+        $next_timestamp = $this->calculate_next_timestamp($frequency, $base_time);
+
+        // If one step wasn't enough to pass NOW...
+        if ($next_timestamp <= $now) {
+
+            // Special optimization for Monthly to avoid 100 loops
+            if ($frequency === 'monthly') {
+                // Approximate jumps
+                $months_behind = floor(($now - $base_time) / 2592000); // 30 days approx
+                if ($months_behind > 1) {
+                    $base_time = strtotime("+$months_behind months", $base_time);
+                    $next_timestamp = $this->calculate_next_timestamp($frequency, $base_time);
+                }
+            }
+
+            // Fallback safety loop (should run very few times now)
+            $limit = 50;
+            while ($next_timestamp <= $now && $limit > 0) {
+                $next_timestamp = $this->calculate_next_timestamp($frequency, $next_timestamp);
                 $limit--;
             }
-            // If we hit the limit, just set to now + interval to ensure we don't stall
+
+            // Hard fallback
             if ($limit === 0) {
-                 $base_time = $this->calculate_next_timestamp($frequency, $now);
+                 $next_timestamp = $this->calculate_next_timestamp($frequency, $now);
             }
-            return date('Y-m-d H:i:s', $base_time);
         }
         
-        $next = $this->calculate_next_timestamp($frequency, $base_time);
-        
-        return date('Y-m-d H:i:s', $next);
+        return date('Y-m-d H:i:s', $next_timestamp);
     }
     
     /**
@@ -136,25 +200,25 @@ class AIPS_Interval_Calculator {
     private function calculate_next_timestamp($frequency, $base_time) {
         switch ($frequency) {
             case 'hourly':
-                return strtotime('+1 hour', $base_time);
+                return $base_time + 3600;
                 
             case 'every_4_hours':
-                return strtotime('+4 hours', $base_time);
+                return $base_time + 14400;
                 
             case 'every_6_hours':
-                return strtotime('+6 hours', $base_time);
+                return $base_time + 21600;
                 
             case 'every_12_hours':
-                return strtotime('+12 hours', $base_time);
+                return $base_time + 43200;
                 
             case 'daily':
-                return strtotime('+1 day', $base_time);
+                return $base_time + 86400;
                 
             case 'weekly':
-                return strtotime('+1 week', $base_time);
+                return $base_time + 604800;
                 
             case 'bi_weekly':
-                return strtotime('+2 weeks', $base_time);
+                return $base_time + 1209600;
                 
             case 'monthly':
                 return strtotime('+1 month', $base_time);
@@ -176,23 +240,34 @@ class AIPS_Interval_Calculator {
      */
     private function calculate_day_specific_interval($frequency, $base_time) {
         if (strpos($frequency, 'every_') !== 0) {
-            return strtotime('+1 day', $base_time);
+            return $base_time + 86400; // Default to daily
         }
         
         $day = ucfirst(str_replace('every_', '', $frequency));
         $valid_days = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
 
         if (!in_array($day, $valid_days)) {
-            return strtotime('+1 day', $base_time);
+             return $base_time + 86400;
         }
         
         // Calculate next occurrence of the day while preserving time
+        // Note: 'next Monday' from a Monday is next week.
         $next = strtotime("next $day", $base_time);
         
         // Reset the time to the base_time's time
-        $next = strtotime(date('H:i:s', $base_time), $next);
+        // This is important because "next Monday" might reset time to 00:00 depending on PHP version/context?
+        // Actually "next Monday" usually takes current time if not specified, but we pass base_time.
+        // But strtotime("next Monday", $base_time) keeps the time?
+        // Let's verify: date('Y-m-d H:i:s', strtotime("next Monday", strtotime("2023-01-01 10:00:00")))
+        // Output: 2023-01-02 00:00:00.
+        // Correct, relative formats like "next Monday" reset time to 00:00 usually.
+
+        // We must restore the time.
+        $h = date('H', $base_time);
+        $m = date('i', $base_time);
+        $s = date('s', $base_time);
         
-        return $next;
+        return strtotime(date("Y-m-d $h:$m:$s", $next));
     }
     
     /**
@@ -253,7 +328,6 @@ class AIPS_Interval_Calculator {
         $intervals = $this->get_intervals();
 
         // Merge our intervals into WP schedules
-        // Note: 'hourly' is a default WP interval, so we might overlap, but that's fine.
         foreach ($intervals as $key => $data) {
             if (!isset($schedules[$key])) {
                 $schedules[$key] = $data;
