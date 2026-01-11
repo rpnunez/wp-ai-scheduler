@@ -61,30 +61,47 @@ class AIPS_Prompt_Builder {
      * @param string $base_prompt The base content prompt (processed).
      * @return string The title prompt.
      */
-    public function build_title_prompt($template, $topic, $voice = null, $base_prompt = '') {
-        $voice_title_prompt = null;
+    /**
+     * Builds the prompt instruction for title generation.
+     *
+     * Returns the specific instruction to give to the AI for generating the title.
+     * This combines voice instructions and template title prompt instructions.
+     * It does NOT include the base content context.
+     *
+     * @param object $template
+     * @param string $topic
+     * @param object $voice
+     * @return string|null The specific title instruction, or null if none exists.
+     */
+    public function build_title_instruction($template, $topic, $voice = null) {
+        $voice_title_instruction = null;
         if ($voice) {
-            $voice_title_prompt = $this->template_processor->process($voice->title_prompt, $topic);
+            $voice_title_instruction = $this->template_processor->process($voice->title_prompt, $topic);
         }
 
+        $template_title_instruction = null;
         if (!empty($template->title_prompt)) {
-            $title_prompt = $this->template_processor->process($template->title_prompt, $topic);
-
-            if ($voice_title_prompt) {
-                return $voice_title_prompt . "\n\n" . $title_prompt;
-            }
-            return $title_prompt; // AIPS_Generator::generate_title handles the "Generate a compelling..." wrapper if strict arg is not passed, but let's check.
-            // Actually, AIPS_Generator::generate_title logic is:
-            // if ($voice_title_prompt) $title_prompt = $voice_title_prompt . "\n\n" . $prompt;
-            // else $title_prompt = "Generate a compelling... " . $prompt;
-
-            // So this method should just return the "prompt" part, and AIPS_Generator handles the wrapper?
-            // Or should we move that logic here?
-            // Let's keep it simple: return the specific instruction part.
+            $template_title_instruction = $this->template_processor->process($template->title_prompt, $topic);
         }
 
-        // If no template title prompt, we use the base prompt.
-        return $base_prompt;
+        if ($voice_title_instruction && $template_title_instruction) {
+            return $voice_title_instruction . "\n\n" . $template_title_instruction;
+        }
+
+        if ($voice_title_instruction) {
+            return $voice_title_instruction;
+        }
+
+        return $template_title_instruction;
+    }
+
+    /**
+     * Legacy method for backward compatibility, but we are refactoring away from it.
+     * @deprecated Use build_title_instruction instead.
+     */
+    public function build_title_prompt($template, $topic, $voice = null, $base_prompt = '') {
+        $instruction = $this->build_title_instruction($template, $topic, $voice);
+        return $instruction ? $instruction : $base_prompt;
     }
 
     /**
