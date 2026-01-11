@@ -43,6 +43,11 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Invalid frequency selected.', 'ai-post-scheduler')));
         }
 
+        // Validate start_time format if provided
+        if (!empty($data['start_time']) && !strtotime($data['start_time'])) {
+            wp_send_json_error(array('message' => __('Invalid start time format.', 'ai-post-scheduler')));
+        }
+
         $id = $this->scheduler->save_schedule($data);
 
         if ($id) {
