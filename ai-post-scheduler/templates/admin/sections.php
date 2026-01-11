@@ -34,6 +34,7 @@ if (!isset($sections) || !is_array($sections)) {
 					<td><?php echo $section->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
 					<td>
 						<button class="button aips-edit-section" data-id="<?php echo esc_attr($section->id); ?>"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></button>
+						<button class="button aips-clone-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Clone Section', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clone', 'ai-post-scheduler'); ?></button>
 						<button class="button button-link-delete aips-delete-section" data-id="<?php echo esc_attr($section->id); ?>"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></button>
 					</td>
 				</tr>

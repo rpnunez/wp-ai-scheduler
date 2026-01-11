@@ -254,6 +254,29 @@
                     }
                 }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
             });
+
+            $(document).on('click', '.aips-clone-section', function(){
+                var id = $(this).data('id');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                    if (response.success) {
+                        var s = response.data.section;
+
+                        $('#section_id').val(''); // Clear ID for new creation
+                        $('#section_name').val(s.name + ' (Copy)');
+                        $('#section_key').val(s.section_key + '_copy');
+                        $('#section_description').val(s.description);
+                        $('#section_content').val(s.content);
+                        $('#section_is_active').prop('checked', s.is_active == 1);
+
+                        $('#aips-section-modal-title').text('Clone Prompt Section');
+                        $('#aips-section-modal').show();
+                    } else {
+                        alert(response.data.message || aipsAdminL10n.loadSectionFailed);
+                    }
+                }).fail(function(){
+                    alert(aipsAdminL10n.errorOccurred);
+                });
+            });
         },
 
         copyToClipboard: function(e) {

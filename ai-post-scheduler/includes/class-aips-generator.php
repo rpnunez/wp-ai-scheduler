@@ -156,24 +156,23 @@ class AIPS_Generator {
     }
     
     /**
-     * Generate a title from a prompt. Optionally accept voice-specific title prompt
-     * which will be prepended to the prompt that becomes the input to the AI.
+     * Generate a title from context (e.g. content prompt or topic) and optional specific instructions.
      *
-     * @param string      $prompt The prompt or context for title generation.
-     * @param string|null $voice_title_prompt Optional voice-specific title instructions.
-     * @param array       $options AI options (e.g., model, max_tokens override).
+     * @param string      $context     The context for the title (usually the content prompt).
+     * @param string|null $instruction Specific instructions for title generation (Voice/Template).
+     * @param array       $options     AI options (e.g., model, max_tokens override).
      * @return string|WP_Error Generated title string or WP_Error on failure.
      */
-    public function generate_title($prompt, $voice_title_prompt = null, $options = array()) {
-        if ($voice_title_prompt) {
-            $title_prompt = $voice_title_prompt . "\n\n" . $prompt;
+    public function generate_title($context, $instruction = null, $options = array()) {
+        if ($instruction) {
+            $final_prompt = $instruction . "\n\n" . $context;
         } else {
-            $title_prompt = "Generate a compelling blog post title for the following topic. Return only the title, nothing else:\n\n" . $prompt;
+            $final_prompt = "Generate a compelling blog post title for the following topic. Return only the title, nothing else:\n\n" . $context;
         }
         
         $options['max_tokens'] = 100;
         
-        $result = $this->generate_content($title_prompt, $options, 'title');
+        $result = $this->generate_content($final_prompt, $options, 'title');
         
         if (is_wp_error($result)) {
             return $result;
@@ -181,8 +180,8 @@ class AIPS_Generator {
         
         $title = trim($result);
 
-        // Strip surrounding quotes from AI responses
-        $title = preg_replace('/^["\']|["\']$/', '', $title);
+        // Strip surrounding quotes from AI responses (handles multiple quotes)
+        $title = preg_replace('/^["\']+|["\']+$/', '', $title);
 
         return $title;
     }
@@ -220,7 +219,8 @@ class AIPS_Generator {
         }
         
         $excerpt = trim($result);
-        $excerpt = preg_replace('/^["\']|["\']$/', '', $excerpt);
+        // Strip surrounding quotes (handles multiple quotes)
+        $excerpt = preg_replace('/^["\']+|["\']+$/', '', $excerpt);
 
         return substr($excerpt, 0, 160);
     }
@@ -304,13 +304,11 @@ class AIPS_Generator {
              $base_processed_prompt = $voice_instructions . "\n\n" . $base_processed_prompt;
         }
 
-        // Determine title source: template-specific title prompt or generated from content/context
-        if (!empty($template->title_prompt)) {
-            $title_prompt = $this->template_processor->process($template->title_prompt, $topic);
-            $title = $this->generate_title($title_prompt, $voice_title_prompt);
-        } else {
-            $title = $this->generate_title($base_processed_prompt, $voice_title_prompt);
-        }
+        // Build specific title generation instruction from template and voice
+        $title_instruction = $this->prompt_builder->build_title_instruction($template, $topic, $voice);
+
+        // Generate title using base prompt as context and specific instruction if available
+        $title = $this->generate_title($base_processed_prompt, $title_instruction);
         
         if (is_wp_error($title)) {
             // Fall back to a safe default title when AI fails
