@@ -106,6 +106,38 @@ class AIPS_Interval_Calculator {
         // If start time is in the past, add intervals until future (Catch-up logic)
         // This prevents schedule drift by preserving the phase of the schedule
         if ($base_time < $now) {
+            $is_fixed_interval = in_array($frequency, array(
+                'hourly',
+                'every_4_hours',
+                'every_6_hours',
+                'every_12_hours',
+                'daily',
+                'weekly',
+                'bi_weekly',
+                'every_monday', 'every_tuesday', 'every_wednesday', 'every_thursday', 'every_friday', 'every_saturday', 'every_sunday'
+            ));
+
+            // Fixed intervals can be calculated mathematically (O(1))
+            // This is crucial for old schedules to avoid iterating thousands of times
+            if ($is_fixed_interval) {
+                $interval_seconds = $this->get_interval_duration($frequency);
+
+                // Safety check to prevent division by zero
+                if ($interval_seconds > 0) {
+                    $diff = $now - $base_time;
+                    $intervals_passed = floor($diff / $interval_seconds);
+
+                    // Jump to the last passed interval
+                    $base_time += ($intervals_passed * $interval_seconds);
+
+                    // Add one more interval to get to the future
+                    $base_time += $interval_seconds;
+
+                    return date('Y-m-d H:i:s', $base_time);
+                }
+            }
+
+            // Fallback for variable intervals (e.g. monthly) or unknown types
             // Safety limit to prevent infinite loops if interval is 0 or very small/broken
             $limit = 100;
             while ($base_time <= $now && $limit > 0) {
