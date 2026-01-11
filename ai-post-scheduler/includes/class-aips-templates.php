@@ -209,6 +209,14 @@ class AIPS_Templates {
     }
 
     private function calculate_next_run($frequency, $base_time) {
+        // Optimization: Avoid string parsing overhead for future dates (Bolt)
+        // If the base time is already in the future (or now), we don't need catch-up logic,
+        // so we can use the integer-based calculation directly.
+        if ($base_time >= current_time('timestamp', 1)) {
+            return $this->interval_calculator->calculate_next_timestamp($frequency, $base_time);
+        }
+
+        // Fallback to string-based calculation for past dates to handle catch-up logic
         $next_run = $this->interval_calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $base_time));
         return strtotime($next_run);
     }

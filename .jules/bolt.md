@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-26 - [Timestamp Math Optimization]
+**Learning:** PHP's 'strtotime' handles DST/Calendar logic, but 'hourly' intervals are usually fixed. Optimizing these to simple math (O(1)) matches user expectation and saves CPU cycles.
+**Action:** Use fixed-interval math for hourly/minute based frequencies, but always fallback to 'strtotime' for Daily/Weekly to respect DST.
