@@ -63,6 +63,15 @@ class AIPS_Research_Service {
             return new WP_Error('missing_niche', __('Niche parameter is required for research.', 'ai-post-scheduler'));
         }
 
+        // SECURITY: Input validation to prevent token exhaustion
+        if (strlen($niche) > 200) {
+            $niche = substr($niche, 0, 200);
+        }
+
+        if (is_array($keywords) && count($keywords) > 20) {
+            $keywords = array_slice($keywords, 0, 20);
+        }
+
         if (!$this->ai_service->is_available()) {
             return new WP_Error('ai_unavailable', __('AI Engine is not available for research.', 'ai-post-scheduler'));
         }

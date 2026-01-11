@@ -73,8 +73,22 @@ class AIPS_Research_Controller {
         }
         
         $niche = isset($_POST['niche']) ? sanitize_text_field($_POST['niche']) : '';
+        // SECURITY: Limit niche length to prevent excessive prompt size
+        if (strlen($niche) > 200) {
+            $niche = substr($niche, 0, 200);
+        }
+
         $count = isset($_POST['count']) ? absint($_POST['count']) : 10;
-        $keywords = isset($_POST['keywords']) ? array_map('sanitize_text_field', (array) $_POST['keywords']) : array();
+
+        $keywords = isset($_POST['keywords']) ? (array) $_POST['keywords'] : array();
+        // SECURITY: Limit number of keywords and their length to prevent DoS/Cost exhaustion
+        if (count($keywords) > 20) {
+            $keywords = array_slice($keywords, 0, 20);
+        }
+
+        $keywords = array_map(function($k) {
+            return substr(sanitize_text_field($k), 0, 100);
+        }, $keywords);
         
         if (empty($niche)) {
             wp_send_json_error(array('message' => __('Niche is required.', 'ai-post-scheduler')));
