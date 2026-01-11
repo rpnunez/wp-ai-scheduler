@@ -88,6 +88,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-controller.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-listener.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
@@ -176,6 +177,7 @@ final class AI_Post_Scheduler {
         }
         
         new AIPS_Scheduler();
+        new AIPS_Activity_Listener();
     }
 }
 

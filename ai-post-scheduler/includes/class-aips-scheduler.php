@@ -15,18 +15,12 @@ class AIPS_Scheduler {
      */
     private $repository;
     
-    /**
-     * @var AIPS_Activity_Repository Repository for activity logging
-     */
-    private $activity_repository;
-    
     public function __construct() {
         global $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->repository = new AIPS_Schedule_Repository();
-        $this->activity_repository = new AIPS_Activity_Repository();
         $this->template_type_selector = new AIPS_Template_Type_Selector();
         
         add_action('aips_generate_scheduled_posts', array($this, 'process_scheduled_posts'));
@@ -123,6 +117,8 @@ class AIPS_Scheduler {
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
+        $batch_size = apply_filters('aips_schedule_batch_size', 5);
+
         $due_schedules = $wpdb->get_results($wpdb->prepare("
             SELECT t.*, s.*, s.id AS schedule_id
             FROM {$this->schedule_table} s 
@@ -131,8 +127,8 @@ class AIPS_Scheduler {
             AND s.next_run <= %s 
             AND t.is_active = 1
             ORDER BY s.next_run ASC
-            LIMIT 5
-        ", current_time('mysql')));
+            LIMIT %d
+        ", current_time('mysql'), $batch_size));
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
@@ -212,21 +208,8 @@ class AIPS_Scheduler {
                     ));
                     $logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
                     
-                    // Log to activity feed
-                    $this->activity_repository->create(array(
-                        'event_type' => 'schedule_failed',
-                        'event_status' => 'failed',
-                        'schedule_id' => $schedule->schedule_id,
-                        'template_id' => $schedule->template_id,
-                        'message' => sprintf(
-                            __('One-time schedule "%s" failed and was deactivated', 'ai-post-scheduler'),
-                            $schedule->template_name
-                        ),
-                        'metadata' => array(
-                            'error' => $result->get_error_message(),
-                            'frequency' => $schedule->frequency,
-                        ),
-                    ));
+                    // Dispatch schedule execution failed event
+                    do_action('aips_schedule_execution_failed', $schedule->schedule_id, $result->get_error_message());
                 }
             } else {
                 // For recurring schedules, we ONLY update last_run here.
@@ -239,24 +222,6 @@ class AIPS_Scheduler {
                     'schedule_id' => $schedule->schedule_id
                 ));
                 
-                // Log recurring schedule failures to activity feed
-                if ($schedule->frequency !== 'once') {
-                    $this->activity_repository->create(array(
-                        'event_type' => 'schedule_failed',
-                        'event_status' => 'failed',
-                        'schedule_id' => $schedule->schedule_id,
-                        'template_id' => $schedule->template_id,
-                        'message' => sprintf(
-                            __('Schedule "%s" failed to generate post', 'ai-post-scheduler'),
-                            $schedule->template_name
-                        ),
-                        'metadata' => array(
-                            'error' => $result->get_error_message(),
-                            'frequency' => $schedule->frequency,
-                        ),
-                    ));
-                }
-                
                 // Dispatch schedule execution failed event
                 do_action('aips_schedule_execution_failed', $schedule->schedule_id, $result->get_error_message());
             } else {
@@ -264,32 +229,6 @@ class AIPS_Scheduler {
                     'schedule_id' => $schedule->schedule_id,
                     'post_id' => $result
                 ));
-                
-                // Get the post to check its status
-                $post = get_post($result);
-                if ($post) {
-                    $event_status = ($post->post_status === 'draft') ? 'draft' : 'success';
-                    $event_type = ($post->post_status === 'draft') ? 'post_draft' : 'post_published';
-                    
-                    // Log to activity feed
-                    $this->activity_repository->create(array(
-                        'event_type' => $event_type,
-                        'event_status' => $event_status,
-                        'schedule_id' => $schedule->schedule_id,
-                        'post_id' => $result,
-                        'template_id' => $schedule->template_id,
-                        'message' => sprintf(
-                            __('%s created by schedule "%s": %s', 'ai-post-scheduler'),
-                            ($post->post_status === 'draft') ? __('Draft', 'ai-post-scheduler') : __('Post', 'ai-post-scheduler'),
-                            $schedule->template_name,
-                            $post->post_title
-                        ),
-                        'metadata' => array(
-                            'post_status' => $post->post_status,
-                            'frequency' => $schedule->frequency,
-                        ),
-                    ));
-                }
                 
                 // Dispatch schedule execution completed event
                 do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
