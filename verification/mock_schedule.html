@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Schedule Page</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/3.2.0/css/dashicons.min.css">
+    <style>
+        /* Mock some WP Admin styles */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f1f1f1; padding: 20px; }
+        .wrap { background: #fff; padding: 20px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,0.04); }
+        .wp-list-table { width: 100%; border-collapse: collapse; border: 1px solid #ccd0d4; }
+        .wp-list-table th, .wp-list-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #ccd0d4; }
+        .wp-list-table th { border-bottom: 1px solid #ccd0d4; font-weight: 400; color: #1d2327; }
+        .wp-list-table tr:nth-child(odd) { background-color: #f9f9f9; }
+        .button { display: inline-block; text-decoration: none; font-size: 13px; line-height: 2.15384615; min-height: 30px; margin: 0; padding: 0 10px; cursor: pointer; border-width: 1px; border-style: solid; -webkit-appearance: none; border-radius: 3px; white-space: nowrap; box-sizing: border-box; }
+        .button-link-delete { color: #b32d2e; border-color: transparent; background: transparent; }
+        .button-link-delete:disabled { color: #a0a5aa; cursor: default; }
+        .screen-reader-text { clip: rect(1px, 1px, 1px, 1px); height: 1px; overflow: hidden; position: absolute; width: 1px; word-wrap: normal; }
+        .aips-bulk-actions { margin-bottom: 10px; }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var aipsAjax = { ajaxUrl: '/mock-ajax', nonce: 'mock-nonce' };
+        var aipsAdminL10n = {
+            errorTryAgain: 'Error try again',
+            errorOccurred: 'Error occurred'
+        };
+    </script>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Post Schedules</h1>
+
+        <div class="aips-search-box" style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="aips-bulk-actions">
+                <button type="button" id="aips-delete-selected-schedules-btn" class="button button-link-delete" disabled>
+                    Delete Selected
+                </button>
+            </div>
+            <div>
+                <input type="search" id="aips-schedule-search" class="regular-text" placeholder="Search schedules...">
+            </div>
+        </div>
+
+        <table class="wp-list-table widefat fixed striped aips-schedule-table">
+            <thead>
+                <tr>
+                    <th scope="col" id="cb" class="manage-column column-cb check-column">
+                        <input id="cb-select-all-1" type="checkbox">
+                    </th>
+                    <th class="column-template">Template</th>
+                    <th class="column-frequency">Frequency</th>
+                    <th class="column-next-run">Next Run</th>
+                    <th class="column-status">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-schedule-id="101">
+                    <th scope="row" class="check-column">
+                        <input id="cb-select-101" type="checkbox" name="schedule[]" value="101">
+                    </th>
+                    <td>Daily News</td>
+                    <td>Daily</td>
+                    <td>2024-05-28 10:00:00</td>
+                    <td>Active</td>
+                </tr>
+                <tr data-schedule-id="102">
+                    <th scope="row" class="check-column">
+                        <input id="cb-select-102" type="checkbox" name="schedule[]" value="102">
+                    </th>
+                    <td>Weekly Review</td>
+                    <td>Weekly</td>
+                    <td>2024-05-30 09:00:00</td>
+                    <td>Inactive</td>
+                </tr>
+                <tr data-schedule-id="103">
+                    <th scope="row" class="check-column">
+                        <input id="cb-select-103" type="checkbox" name="schedule[]" value="103">
+                    </th>
+                    <td>Tech Tips</td>
+                    <td>Daily</td>
+                    <td>2024-05-28 12:00:00</td>
+                    <td>Active</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

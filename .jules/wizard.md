@@ -11,3 +11,7 @@
 ## 2024-05-27 - History Bulk Actions
 **Learning:** The history table lacked bulk deletion capabilities, forcing users to delete failed/unwanted entries one by one or clear the entire history.
 **Action:** Implemented "Select All" / Individual checkboxes and a "Delete Selected" button in `history.php`, backed by a new `delete_bulk` repository method and AJAX handler.
+
+## 2024-05-28 - Schedule Bulk Actions
+**Learning:** The schedule table lacked bulk deletion, making it tedious to manage test or obsolete schedules, especially after bulk generation from the planner.
+**Action:** Implemented "Select All" / Individual checkboxes and a "Delete Selected" button in `schedule.php`, reusing the backend pattern from History for consistency.
