@@ -91,6 +91,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-controller.php'; // New Controller
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
 
         // Seeder Feature
@@ -163,7 +164,8 @@ final class AI_Post_Scheduler {
             new AIPS_Voices();
             new AIPS_Templates();
             new AIPS_Templates_Controller();
-            new AIPS_History();
+            new AIPS_History(); // Keep for backward compatibility/Facade
+            new AIPS_History_Controller(); // New Controller for AJAX/Admin
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
             new AIPS_Activity_Controller();

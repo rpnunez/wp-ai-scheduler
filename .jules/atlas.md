@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-26 - [Extract History Controller] **Context:** `AIPS_History` was violating SRP by mixing Service logic (repository wrapper), AJAX handling, and View rendering. **Decision:** Extracted AJAX handlers and rendering logic into `AIPS_History_Controller`. Retained `AIPS_History` as a lightweight Service/Facade for backward compatibility. **Consequence:** Improved separation of concerns; Controller logic is now distinct from Service logic. Increased file count by 1.

@@ -469,22 +469,6 @@ class AIPS_Settings {
         $recent_posts = $recent_posts_data['items'];
         
         // Get upcoming schedules
-        // Note: AIPS_Schedule_Repository doesn't have a direct "get upcoming limit 5" method that returns joined data like the original query exactly,
-        // but get_due_schedules returns based on current time.
-        // We need a method to get upcoming active schedules.
-        // Let's check if get_due_schedules works or if we need to add a method.
-        // The original query was: WHERE s.is_active = 1 ORDER BY s.next_run ASC LIMIT 5.
-        // get_due_schedules has WHERE s.next_run <= %s. We want future ones too.
-        // Let's use get_all and array_slice for now, or add a method to repo.
-        // Given I cannot modify repo in this step easily without another tool call, I will use a direct query via wpdb if strictly necessary,
-        // BUT the goal is to refactor.
-        // A better approach: The memory mentions AIPS_Schedule_Repository::get_upcoming($limit). Let's verify if it exists.
-        // Reading the file I just read: It does NOT have get_upcoming.
-        // So I will stick to what I have or modify the repo. I'll modify the repo first in a separate step or just do it here if I can't.
-        // Actually, I should probably add `get_upcoming` to `AIPS_Schedule_Repository` as part of this refactor.
-        // But for now, I will use `get_all(true)` and slice it. It might be less performant if there are thousands of schedules,
-        // but typically schedules are limited.
-
         $upcoming = $schedule_repo->get_upcoming(5);
         
         include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
@@ -581,13 +565,13 @@ class AIPS_Settings {
     /**
      * Render the History page.
      *
-     * Delegates rendering to the AIPS_History class.
+     * Delegates rendering to the AIPS_History_Controller class.
      *
      * @return void
      */
     public function render_history_page() {
-        $history_handler = new AIPS_History();
-        $history_handler->render_page();
+        $history_controller = new AIPS_History_Controller();
+        $history_controller->render_page();
     }
     
     /**
