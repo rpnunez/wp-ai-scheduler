@@ -12,3 +12,8 @@
 **Vulnerability:** Unescaped concatenation of AI service response into a JSON success message which was rendered via `.html()` in JavaScript.
 **Learning:** AI text generation outputs must be treated as untrusted user input. If a model is manipulated or hallucinating, it can return malicious HTML/JS.
 **Prevention:** Always escape text content from external services using `esc_html()` before sending it to the client, especially if the client renders it as HTML.
+
+## 2024-05-24 - [Log Injection via Unsanitized Input]
+**Vulnerability:** The `AIPS_Logger::log` method directly wrote the `$message` parameter to the log file without sanitization.
+**Learning:** If a log message contains newline characters (e.g., from user input or external API errors), an attacker can inject fake log entries, confusing administrators or corrupting log analysis tools.
+**Prevention:** Always sanitize log messages by replacing newline characters (`\r`, `\n`) with spaces or a placeholder to ensure each log event occupies exactly one line.
