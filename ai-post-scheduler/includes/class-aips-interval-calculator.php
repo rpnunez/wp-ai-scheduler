@@ -128,24 +128,25 @@ class AIPS_Interval_Calculator {
      * Calculate the next run timestamp for a given frequency.
      *
      * Internal method that performs the actual timestamp calculations.
+     * Optimized to use O(1) math for fixed intervals instead of slow date parsing.
      *
      * @param string $frequency The frequency identifier.
      * @param int    $base_time The base timestamp to calculate from.
      * @return int The next run timestamp.
      */
-    private function calculate_next_timestamp($frequency, $base_time) {
+    public function calculate_next_timestamp($frequency, $base_time) {
         switch ($frequency) {
             case 'hourly':
-                return strtotime('+1 hour', $base_time);
+                return $base_time + 3600;
                 
             case 'every_4_hours':
-                return strtotime('+4 hours', $base_time);
+                return $base_time + 14400;
                 
             case 'every_6_hours':
-                return strtotime('+6 hours', $base_time);
+                return $base_time + 21600;
                 
             case 'every_12_hours':
-                return strtotime('+12 hours', $base_time);
+                return $base_time + 43200;
                 
             case 'daily':
                 return strtotime('+1 day', $base_time);
