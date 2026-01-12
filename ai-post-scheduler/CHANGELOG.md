@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.1] - 2024-05-26
+### Refactored
+- Extracted Dashboard logic from `AIPS_Settings` to a new `AIPS_Dashboard` class to improve separation of concerns and maintainability.
+
 ## [1.6.0] - 2025-12-24
 ### Added - Trending Topics Research Feature
 - **NEW FEATURE:** AI-powered Trending Topics Research system

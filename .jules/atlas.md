@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-26 - [Extract Dashboard Controller] **Context:** `AIPS_Settings` was acting as a 'God Class' for the admin UI, handling menu registration, asset enqueuing, and the data fetching/rendering logic for the Dashboard page. **Decision:** Extracted the dashboard rendering logic into a new `AIPS_Dashboard` class. **Consequence:** `AIPS_Settings` is now more focused on configuration and routing. Dashboard logic is isolated and easier to test/maintain. Increased file count by 1.
