@@ -34,7 +34,15 @@ if (!isset($sections) || !is_array($sections)) {
             <tbody>
                 <?php foreach ($structures as $structure): ?>
                 <tr data-structure-id="<?php echo esc_attr($structure->id); ?>">
-                    <td><?php echo esc_html($structure->name); ?></td>
+                    <td>
+                        <strong><?php echo esc_html($structure->name); ?></strong>
+                        <div class="aips-id-badge">
+                            ID: <?php echo esc_html($structure->id); ?>
+                            <button type="button" class="aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($structure->id); ?>" aria-label="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>">
+                                <span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </td>
                     <td><?php echo esc_html($structure->description); ?></td>
                     <td><?php echo $structure->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
                     <td><?php echo $structure->is_default ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>

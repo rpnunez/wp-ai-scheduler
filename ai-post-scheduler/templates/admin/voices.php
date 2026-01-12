@@ -31,6 +31,12 @@ if (!defined('ABSPATH')) {
                 <tr data-voice-id="<?php echo esc_attr($voice->id); ?>">
                     <td class="column-name">
                         <strong><?php echo esc_html($voice->name); ?></strong>
+                        <div class="aips-id-badge">
+                            ID: <?php echo esc_html($voice->id); ?>
+                            <button type="button" class="aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($voice->id); ?>" aria-label="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>">
+                                <span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+                            </button>
+                        </div>
                     </td>
                     <td class="column-title-prompt">
                         <small><?php echo esc_html(substr($voice->title_prompt, 0, 60)) . (strlen($voice->title_prompt) > 60 ? '...' : ''); ?></small>

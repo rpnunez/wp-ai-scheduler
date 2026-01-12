@@ -45,6 +45,12 @@ if (!defined('ABSPATH')) {
                     <tr data-template-id="<?php echo esc_attr($template->id); ?>">
                         <td class="column-name">
                             <strong><?php echo esc_html($template->name); ?></strong>
+                            <div class="aips-id-badge">
+                                ID: <?php echo esc_html($template->id); ?>
+                                <button type="button" class="aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($template->id); ?>" aria-label="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>">
+                                    <span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+                                </button>
+                            </div>
                         </td>
                         <td class="column-status">
                             <?php echo esc_html(ucfirst($template->post_status)); ?>

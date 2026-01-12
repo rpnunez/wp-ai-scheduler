@@ -865,3 +865,40 @@
     box-shadow: 0 0 0 1px #fff, 0 0 0 3px #2271b1;
     outline: 2px solid transparent;
 }
+
+/* Compact Copy Button & ID Badge */
+.aips-copy-btn-small {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    margin-left: 4px;
+    color: #a7aaad;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    transition: all 0.2s;
+    vertical-align: middle;
+}
+
+.aips-copy-btn-small:hover {
+    color: #2271b1;
+    background: rgba(34, 113, 177, 0.1);
+    border-radius: 3px;
+}
+
+.aips-copy-btn-small .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.aips-id-badge {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #646970;
+    display: flex;
+    align-items: center;
+}

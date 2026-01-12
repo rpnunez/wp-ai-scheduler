@@ -73,7 +73,13 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
                     data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
                     <td class="column-template">
-                        <?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?>
+                        <strong><?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?></strong>
+                        <div class="aips-id-badge">
+                            ID: <?php echo esc_html($schedule->id); ?>
+                            <button type="button" class="aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Copy Schedule ID', 'ai-post-scheduler'); ?>">
+                                <span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+                            </button>
+                        </div>
                     </td>
                     <td class="column-structure">
                         <?php echo esc_html($structure_display); ?>
