@@ -347,6 +347,32 @@ class AIPS_Trending_Topics_Repository {
         
         return $result !== false;
     }
+
+    /**
+     * Delete multiple topics by ID or all topics.
+     *
+     * @param array|string $ids Array of IDs or 'all'.
+     * @return int|false Number of deleted records.
+     */
+    public function delete_bulk($ids) {
+        if ($ids === 'all') {
+            return $this->wpdb->query("TRUNCATE TABLE {$this->table_name}");
+        }
+
+        if (empty($ids) || !is_array($ids)) {
+            return 0;
+        }
+
+        $ids = array_map('absint', $ids);
+        $ids = array_filter($ids);
+
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $ids_sql = implode(',', $ids);
+        return $this->wpdb->query("DELETE FROM {$this->table_name} WHERE id IN ($ids_sql)");
+    }
     
     /**
      * Delete all topics for a specific niche.

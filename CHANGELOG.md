@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- 2026-05-24: Added "Clear All" functionality to the Trending Topics Research tab for easier data management.
+- 2026-05-24: Added database index on `created_at` column in `aips_history` table to improve performance of history logs sorting.
+
+### Security
+- 2026-05-24: Enhanced input validation for schedule toggling and improved output sanitization for template testing.
+
 ### Fixed
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
 

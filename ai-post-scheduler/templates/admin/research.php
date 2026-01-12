@@ -139,6 +139,9 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
             <button type="button" class="button" id="load-topics">
                 <?php echo esc_html__('Load Topics', 'ai-post-scheduler'); ?>
             </button>
+            <button type="button" class="button" id="clear-all-topics" style="margin-left: 10px;">
+                <?php echo esc_html__('Clear All', 'ai-post-scheduler'); ?>
+            </button>
         </div>
         
         <!-- Topics Table -->
