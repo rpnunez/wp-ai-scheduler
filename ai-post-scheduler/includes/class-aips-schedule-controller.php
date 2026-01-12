@@ -106,6 +106,25 @@ class AIPS_Schedule_Controller {
         }
 
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
+        $schedule = null;
+        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+
+        // If schedule_id is provided, fetch schedule data to override template
+        if ($schedule_id) {
+            $schedule_repo = new AIPS_Schedule_Repository();
+            $schedule = $schedule_repo->get_by_id($schedule_id);
+
+            if ($schedule) {
+                $template_id = $schedule->template_id;
+                // Use schedule's topic if no manual topic provided
+                if (empty($topic) && !empty($schedule->topic)) {
+                    $topic = $schedule->topic;
+                }
+            } else {
+                wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
+            }
+        }
 
         if (!$template_id) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
@@ -116,6 +135,11 @@ class AIPS_Schedule_Controller {
 
         if (!$template) {
             wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+        }
+
+        // Apply schedule overrides if applicable
+        if ($schedule && !empty($schedule->article_structure_id)) {
+            $template->article_structure_id = $schedule->article_structure_id;
         }
 
         $voice = null;

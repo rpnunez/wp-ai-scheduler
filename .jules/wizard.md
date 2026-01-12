@@ -11,3 +11,7 @@
 ## 2024-05-27 - History Bulk Actions
 **Learning:** The history table lacked bulk deletion capabilities, forcing users to delete failed/unwanted entries one by one or clear the entire history.
 **Action:** Implemented "Select All" / Individual checkboxes and a "Delete Selected" button in `history.php`, backed by a new `delete_bulk` repository method and AJAX handler.
+
+## 2024-05-29 - Run Schedule Now
+**Learning:** Reusing existing AJAX handlers with a `data-context` attribute is a clean way to support multiple triggers for similar backend actions without duplicating JS code.
+**Action:** Apply this pattern when adding context-specific triggers to existing features.

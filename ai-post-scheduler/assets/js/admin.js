@@ -550,18 +550,26 @@
         runNow: function(e) {
             e.preventDefault();
             var id = $(this).data('id');
+            var context = $(this).data('context') || 'template';
             var $btn = $(this);
 
             $btn.prop('disabled', true).text('Generating...');
 
+            var data = {
+                action: 'aips_run_now',
+                nonce: aipsAjax.nonce
+            };
+
+            if (context === 'schedule') {
+                data.schedule_id = id;
+            } else {
+                data.template_id = id;
+            }
+
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
-                data: {
-                    action: 'aips_run_now',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
+                data: data,
                 success: function(response) {
                     if (response.success) {
                         alert(response.data.message);
