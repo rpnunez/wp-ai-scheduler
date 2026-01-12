@@ -313,9 +313,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        $result.addClass('aips-status-ok').html('<span class="dashicons dashicons-yes"></span> ' + response.data.message);
+                        $result.addClass('aips-status-ok').html('<span class="dashicons dashicons-yes" aria-hidden="true"></span> ' + response.data.message);
                     } else {
-                        $result.addClass('aips-status-error').html('<span class="dashicons dashicons-warning"></span> ' + response.data.message);
+                        $result.addClass('aips-status-error').html('<span class="dashicons dashicons-warning" aria-hidden="true"></span> ' + response.data.message);
                     }
                 },
                 error: function() {
@@ -1214,11 +1214,11 @@
                 var templateHtml = '<table class="aips-details-table">';
                 templateHtml += '<tr><th>Name:</th><td>' + (log.template.name || '-') + '</td></tr>';
                 templateHtml += '<tr><th>Prompt Template:</th><td>';
-                templateHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.template.prompt_template || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                templateHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.template.prompt_template || '') + '"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span> Copy</button>';
                 templateHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.prompt_template || '') + '</pre></td></tr>';
                 if (log.template.title_prompt) {
                     templateHtml += '<tr><th>Title Prompt:</th><td>';
-                    templateHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.template.title_prompt) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                    templateHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.template.title_prompt) + '"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span> Copy</button>';
                     templateHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.title_prompt) + '</pre></td></tr>';
                 }
                 templateHtml += '<tr><th>Post Status:</th><td>' + (log.template.post_status || 'draft') + '</td></tr>';
@@ -1236,14 +1236,14 @@
                 var voiceHtml = '<table class="aips-details-table">';
                 voiceHtml += '<tr><th>Name:</th><td>' + (log.voice.name || '-') + '</td></tr>';
                 voiceHtml += '<tr><th>Title Prompt:</th><td>';
-                voiceHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.voice.title_prompt || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                voiceHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.voice.title_prompt || '') + '"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span> Copy</button>';
                 voiceHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.title_prompt || '') + '</pre></td></tr>';
                 voiceHtml += '<tr><th>Content Instructions:</th><td>';
-                voiceHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.voice.content_instructions || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                voiceHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.voice.content_instructions || '') + '"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span> Copy</button>';
                 voiceHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.content_instructions || '') + '</pre></td></tr>';
                 if (log.voice.excerpt_instructions) {
                     voiceHtml += '<tr><th>Excerpt Instructions:</th><td>';
-                    voiceHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.voice.excerpt_instructions) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                    voiceHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.voice.excerpt_instructions) + '"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span> Copy</button>';
                     voiceHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.excerpt_instructions) + '</pre></td></tr>';
                 }
                 voiceHtml += '</table>';
@@ -1265,7 +1265,7 @@
                     callsHtml += '<div class="aips-call-section">';
                     callsHtml += '<div class="aips-call-section-header">';
                     callsHtml += '<h4>Request</h4>';
-                    callsHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(call.request.prompt || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                    callsHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(call.request.prompt || '') + '"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span> Copy</button>';
                     callsHtml += '</div>';
                     callsHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(call.request.prompt || '') + '</pre>';
                     if (call.request.options && Object.keys(call.request.options).length > 0) {
@@ -1276,7 +1276,7 @@
                     callsHtml += '<div class="aips-call-section-header">';
                     callsHtml += '<h4>Response</h4>';
                     if (call.response.success) {
-                        callsHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(call.response.content || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                        callsHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(call.response.content || '') + '"><span class="dashicons dashicons-admin-page" aria-hidden="true"></span> Copy</button>';
                     }
                     callsHtml += '</div>';
                     if (call.response.success) {
