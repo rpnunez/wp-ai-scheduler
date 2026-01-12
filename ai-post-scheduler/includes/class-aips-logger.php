@@ -68,11 +68,15 @@ class AIPS_Logger {
         $timestamp = current_time('mysql');
         $level = strtoupper($level);
         
+        // SECURITY: Sanitize message to prevent Log Injection
+        // Replace newlines with spaces to ensure one log entry per line
+        $clean_message = str_replace(array("\r\n", "\r", "\n"), ' ', $message);
+
         $log_entry = sprintf(
             "[%s] [%s] %s",
             $timestamp,
             $level,
-            $message
+            $clean_message
         );
         
         if (!empty($context)) {
