@@ -358,6 +358,32 @@ class AIPS_Schedule_Repository {
     }
     
     /**
+     * Update the next_run timestamp for a schedule atomically.
+     *
+     * Only updates if the current next_run matches the expected old_next_run.
+     * This provides optimistic locking for concurrent processing.
+     *
+     * @param int    $id           Schedule ID.
+     * @param string $new_next_run New timestamp in MySQL format.
+     * @param string $old_next_run Expected old timestamp in MySQL format.
+     * @return bool True if updated, false if not (e.g. record changed or not found).
+     */
+    public function update_next_run_atomic($id, $new_next_run, $old_next_run) {
+        $result = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->schedule_table} SET next_run = %s WHERE id = %d AND next_run = %s",
+            $new_next_run,
+            $id,
+            $old_next_run
+        ));
+
+        if ($result) {
+            delete_transient('aips_pending_schedule_stats');
+        }
+
+        return $result > 0;
+    }
+
+    /**
      * Count schedules by status.
      *
      * @return array {
