@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
     <div class="aips-dashboard">
         <div class="aips-stats-grid">
             <div class="aips-stat-card">
-                <div class="aips-stat-icon dashicons dashicons-edit"></div>
+                <div class="aips-stat-icon dashicons dashicons-edit" aria-hidden="true"></div>
                 <div class="aips-stat-content">
                     <span class="aips-stat-number"><?php echo esc_html($total_generated); ?></span>
                     <span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
             </div>
             
             <div class="aips-stat-card">
-                <div class="aips-stat-icon dashicons dashicons-clock"></div>
+                <div class="aips-stat-icon dashicons dashicons-clock" aria-hidden="true"></div>
                 <div class="aips-stat-content">
                     <span class="aips-stat-number"><?php echo esc_html($pending_scheduled); ?></span>
                     <span class="aips-stat-label"><?php esc_html_e('Active Schedules', 'ai-post-scheduler'); ?></span>
@@ -31,7 +31,7 @@ if (!defined('ABSPATH')) {
             </div>
             
             <div class="aips-stat-card">
-                <div class="aips-stat-icon dashicons dashicons-media-document"></div>
+                <div class="aips-stat-icon dashicons dashicons-media-document" aria-hidden="true"></div>
                 <div class="aips-stat-content">
                     <span class="aips-stat-number"><?php echo esc_html($total_templates); ?></span>
                     <span class="aips-stat-label"><?php esc_html_e('Active Templates', 'ai-post-scheduler'); ?></span>
@@ -39,7 +39,7 @@ if (!defined('ABSPATH')) {
             </div>
             
             <div class="aips-stat-card aips-stat-warning">
-                <div class="aips-stat-icon dashicons dashicons-warning"></div>
+                <div class="aips-stat-icon dashicons dashicons-warning" aria-hidden="true"></div>
                 <div class="aips-stat-content">
                     <span class="aips-stat-number"><?php echo esc_html($failed_count); ?></span>
                     <span class="aips-stat-label"><?php esc_html_e('Failed Generations', 'ai-post-scheduler'); ?></span>
@@ -55,9 +55,9 @@ if (!defined('ABSPATH')) {
                     <table class="widefat striped">
                         <thead>
                             <tr>
-                                <th><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
-                                <th><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></th>
-                                <th><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
+                                <th scope="col"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
+                                <th scope="col"><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></th>
+                                <th scope="col"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -86,9 +86,9 @@ if (!defined('ABSPATH')) {
                     <table class="widefat striped">
                         <thead>
                             <tr>
-                                <th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
-                                <th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
-                                <th><?php esc_html_e('Date', 'ai-post-scheduler'); ?></th>
+                                <th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
+                                <th scope="col"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+                                <th scope="col"><?php esc_html_e('Date', 'ai-post-scheduler'); ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -129,15 +129,15 @@ if (!defined('ABSPATH')) {
             <h2><?php esc_html_e('Quick Actions', 'ai-post-scheduler'); ?></h2>
             <div class="aips-button-group">
                 <a href="<?php echo esc_url(admin_url('admin.php?page=aips-templates')); ?>" class="button button-primary button-large">
-                    <span class="dashicons dashicons-plus-alt"></span>
+                    <span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
                     <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
                 </a>
                 <a href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule')); ?>" class="button button-secondary button-large">
-                    <span class="dashicons dashicons-calendar-alt"></span>
+                    <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
                     <?php esc_html_e('Add Schedule', 'ai-post-scheduler'); ?>
                 </a>
                 <a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings')); ?>" class="button button-secondary button-large">
-                    <span class="dashicons dashicons-admin-generic"></span>
+                    <span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>
                     <?php esc_html_e('Settings', 'ai-post-scheduler'); ?>
                 </a>
             </div>
