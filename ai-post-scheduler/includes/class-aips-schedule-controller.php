@@ -106,6 +106,15 @@ class AIPS_Schedule_Controller {
         }
 
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
+
+        // If schedule_id is provided, look up the template_id from it
+        if ($schedule_id && !$template_id) {
+            $schedule = $this->scheduler->get_schedule($schedule_id);
+            if ($schedule) {
+                $template_id = $schedule->template_id;
+            }
+        }
 
         if (!$template_id) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
@@ -116,6 +125,19 @@ class AIPS_Schedule_Controller {
 
         if (!$template) {
             wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+        }
+
+        // Apply schedule-specific overrides if running from a schedule
+        if ($schedule_id) {
+            $schedule = $this->scheduler->get_schedule($schedule_id);
+            if ($schedule) {
+                 if (!empty($schedule->article_structure_id)) {
+                     $template->article_structure_id = $schedule->article_structure_id;
+                 }
+                 if (!empty($schedule->topic)) {
+                     $_POST['topic'] = $schedule->topic; // Simulate posted topic
+                 }
+            }
         }
 
         $voice = null;
@@ -141,12 +163,28 @@ class AIPS_Schedule_Controller {
         $generator = new AIPS_Generator();
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
+        // FIX: If a topic is provided, prevent duplicates by forcing quantity to 1.
+        if (!empty($topic)) {
+            $quantity = 1;
+            $capped = false; // Reset cap flag since we are explicitly running 1
+        }
+
         // Enforce hard limit of 5 to prevent timeouts (Bolt)
         if ($quantity > 5) {
             $quantity = 5;
         }
 
+        // Time budget: 25 seconds (safe buffer for 30s timeout)
+        $time_start = microtime(true);
+        $time_limit = 25;
+
         for ($i = 0; $i < $quantity; $i++) {
+            // Check if we are running out of time
+            if ((microtime(true) - $time_start) > $time_limit) {
+                $errors[] = __('Time limit reached. Some posts may not have been generated.', 'ai-post-scheduler');
+                break;
+            }
+
             $result = $generator->generate_post($template, $voice, $topic);
 
             if (is_wp_error($result)) {
