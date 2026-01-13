@@ -118,13 +118,37 @@ class AIPS_History_Repository {
         ", $query_args));
         
         // Query for total count
-        if (!empty($where_args)) {
-            $total = $this->wpdb->get_var($this->wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
-                $where_args
-            ));
-        } else {
-            $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+        // OPTIMIZATION (Bolt): Use cached stats when possible to avoid expensive COUNT(*) queries
+        $total = 0;
+        $stats_used = false;
+
+        // Only use stats if we're not searching and not filtering by template (standard view)
+        if (empty($args['search']) && empty($args['template_id'])) {
+            $stats = $this->get_stats();
+
+            // Ensure stats is a valid array before accessing keys
+            if (is_array($stats)) {
+                // Map status filter to stats keys
+                if (empty($args['status']) && isset($stats['total'])) {
+                    $total = $stats['total'];
+                    $stats_used = true;
+                } elseif (!empty($args['status']) && isset($stats[$args['status']])) {
+                    $total = $stats[$args['status']];
+                    $stats_used = true;
+                }
+            }
+        }
+
+        // Fallback to query if stats couldn't be used
+        if (!$stats_used) {
+            if (!empty($where_args)) {
+                $total = $this->wpdb->get_var($this->wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql",
+                    $where_args
+                ));
+            } else {
+                $total = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} h WHERE $where_sql");
+            }
         }
         
         return array(
