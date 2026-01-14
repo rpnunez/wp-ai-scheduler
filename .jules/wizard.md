@@ -11,3 +11,7 @@
 ## 2024-05-27 - History Bulk Actions
 **Learning:** The history table lacked bulk deletion capabilities, forcing users to delete failed/unwanted entries one by one or clear the entire history.
 **Action:** Implemented "Select All" / Individual checkboxes and a "Delete Selected" button in `history.php`, backed by a new `delete_bulk` repository method and AJAX handler.
+
+## 2024-05-28 - Prompt Sections Search
+**Learning:** Inconsistent list view features (search/filter) confuse users who expect similar behavior across all admin pages. `sections.php` was missing search, unlike Voices and Templates.
+**Action:** Implemented client-side filtering for Prompt Sections matching the `voices.php` pattern, ensuring to add specific CSS classes (e.g., `column-name`) to table cells to enable reliable JS targeting.
