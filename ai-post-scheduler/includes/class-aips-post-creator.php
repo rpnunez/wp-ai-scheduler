@@ -49,8 +49,9 @@ class AIPS_Post_Creator {
 
         $post_data = array(
             'post_title' => $title,
-            'post_content' => $content,
-            'post_excerpt' => $excerpt,
+            // SECURITY: Sanitize content to prevent Stored XSS from AI output (e.g. malicious scripts).
+            'post_content' => wp_kses_post($content),
+            'post_excerpt' => wp_kses_post($excerpt),
             'post_status' => !empty($template->post_status) ? $template->post_status : get_option('aips_default_post_status', 'draft'),
             'post_author' => !empty($template->post_author) ? $template->post_author : get_current_user_id(),
             'post_type' => 'post',
