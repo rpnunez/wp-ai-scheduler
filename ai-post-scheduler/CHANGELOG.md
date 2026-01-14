@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [bolt-optimize-db-indexes] - 2025-12-24
+### Improved
+- Added `KEY created_at (created_at)` to `aips_history` table to optimize history listing queries sorting by date.
+- Added `KEY is_active_next_run (is_active, next_run)` to `aips_schedule` table to optimize the polling query for due schedules.
+
 ## [1.6.0] - 2025-12-24
 ### Added - Trending Topics Research Feature
 - **NEW FEATURE:** AI-powered Trending Topics Research system

@@ -70,7 +70,8 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY post_id (post_id),
             KEY template_id (template_id),
-            KEY status (status)
+            KEY status (status),
+            KEY created_at (created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_templates (
@@ -109,7 +110,8 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY template_id (template_id),
             KEY article_structure_id (article_structure_id),
-            KEY next_run (next_run)
+            KEY next_run (next_run),
+            KEY is_active_next_run (is_active, next_run)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_voices (
