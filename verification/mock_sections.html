@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Sections Mock</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/4.0.0/css/dashicons.min.css">
+    <style>
+        /* Basic WP Admin Mock Styles */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f1f1f1; padding: 20px; }
+        .wrap { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .wp-list-table { border-collapse: collapse; width: 100%; margin-top: 10px; border: 1px solid #c3c4c7; }
+        .wp-list-table th, .wp-list-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #c3c4c7; }
+        .wp-list-table th { background: #f6f7f7; font-weight: 600; }
+        .button { background: #f6f7f7; border: 1px solid #dcdcde; color: #2271b1; cursor: pointer; padding: 4px 10px; border-radius: 3px; font-size: 13px; text-decoration: none; display: inline-block; }
+        .button-primary { background: #2271b1; border-color: #2271b1; color: #fff; }
+        .button-small { padding: 0 5px; font-size: 11px; height: auto; min-height: 20px; line-height: 18px; }
+        .screen-reader-text { clip: rect(1px, 1px, 1px, 1px); height: 1px; overflow: hidden; position: absolute; width: 1px; }
+        .regular-text { width: 25em; }
+
+        /* Styles from CSS */
+        .aips-variable-code-cell { display: flex; align-items: center; justify-content: space-between; }
+        .aips-copy-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 5px; margin-left: 10px; color: #555; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; transition: all 0.2s; }
+        .aips-empty-state { text-align: center; padding: 60px 20px; background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; display: none; }
+        .aips-empty-state .dashicons { font-size: 60px; width: 60px; height: 60px; color: #c3c4c7; margin-bottom: 15px; }
+
+        /* Helper for testing */
+        code { background: #f0f0f1; padding: 2px 4px; border-radius: 3px; }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<div class="wrap aips-wrap">
+	<h1>
+		Prompt Sections		<button class="page-title-action aips-add-section-btn button">Add New</button>
+	</h1>
+
+	<div class="aips-structures-container">
+		<div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+			<label class="screen-reader-text" for="aips-section-search">Search Sections:</label>
+			<input type="search" id="aips-section-search" class="regular-text" placeholder="Search sections...">
+			<button type="button" id="aips-section-search-clear" class="button" style="display: none;">Clear</button>
+		</div>
+
+		<table class="wp-list-table widefat fixed striped aips-sections-list">
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th class="column-key">Key</th>
+					<th>Description</th>
+					<th>Active</th>
+					<th>Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr data-section-id="1">
+					<td>Introduction</td>
+					<td class="column-key">
+						<div class="aips-variable-code-cell">
+							<code>introduction</code>
+							<button type="button" class="button button-small aips-copy-btn" data-clipboard-text="introduction" aria-label="Copy key">
+								<span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+							</button>
+						</div>
+					</td>
+					<td>Writes an engaging intro</td>
+					<td>Yes</td>
+					<td>
+						<button class="button aips-edit-section" data-id="1">Edit</button>
+						<button class="button button-link-delete aips-delete-section" data-id="1">Delete</button>
+					</td>
+				</tr>
+				<tr data-section-id="2">
+					<td>Conclusion</td>
+					<td class="column-key">
+						<div class="aips-variable-code-cell">
+							<code>conclusion</code>
+							<button type="button" class="button button-small aips-copy-btn" data-clipboard-text="conclusion" aria-label="Copy key">
+								<span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+							</button>
+						</div>
+					</td>
+					<td>Summarizes the post</td>
+					<td>Yes</td>
+					<td>
+						<button class="button aips-edit-section" data-id="2">Edit</button>
+						<button class="button button-link-delete aips-delete-section" data-id="2">Delete</button>
+					</td>
+				</tr>
+                <tr data-section-id="3">
+					<td>Key Takeaways</td>
+					<td class="column-key">
+						<div class="aips-variable-code-cell">
+							<code>key_takeaways</code>
+							<button type="button" class="button button-small aips-copy-btn" data-clipboard-text="key_takeaways" aria-label="Copy key">
+								<span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+							</button>
+						</div>
+					</td>
+					<td>Bullet points of main ideas</td>
+					<td>No</td>
+					<td>
+						<button class="button aips-edit-section" data-id="3">Edit</button>
+						<button class="button button-link-delete aips-delete-section" data-id="3">Delete</button>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+		<div id="aips-section-search-no-results" class="aips-empty-state" style="display: none;">
+			<span class="dashicons dashicons-search" aria-hidden="true"></span>
+			<h3>No Sections Found</h3>
+			<p>No sections match your search criteria.</p>
+			<button type="button" class="button button-primary aips-clear-section-search-btn">
+				Clear Search			</button>
+		</div>
+	</div>
+</div>
+
+<script>
+// Mock AIPS object
+window.AIPS = window.AIPS || {};
+var AIPS = window.AIPS;
+
+// Simplified version of the logic we added
+Object.assign(AIPS, {
+    init: function() {
+        this.bindEvents();
+    },
+    bindEvents: function() {
+        $(document).on('keyup search', '#aips-section-search', this.filterSections);
+        $(document).on('click', '#aips-section-search-clear', this.clearSectionSearch);
+        $(document).on('click', '.aips-clear-section-search-btn', this.clearSectionSearch);
+        $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+    },
+    filterSections: function() {
+        var term = $('#aips-section-search').val().toLowerCase().trim();
+        var $rows = $('.aips-sections-list tbody tr');
+        var $noResults = $('#aips-section-search-no-results');
+        var $table = $('.aips-sections-list');
+        var $clearBtn = $('#aips-section-search-clear');
+        var hasVisible = false;
+
+        if (term.length > 0) {
+            $clearBtn.show();
+        } else {
+            $clearBtn.hide();
+        }
+
+        $rows.each(function() {
+            var $row = $(this);
+            var name = $row.find('td:first-child').text().toLowerCase();
+            var key = $row.find('.column-key').text().toLowerCase();
+
+            if (name.indexOf(term) > -1 || key.indexOf(term) > -1) {
+                $row.show();
+                hasVisible = true;
+            } else {
+                $row.hide();
+            }
+        });
+
+        if (!hasVisible && term.length > 0) {
+            $table.hide();
+            $noResults.show();
+        } else {
+            $table.show();
+            $noResults.hide();
+        }
+    },
+    clearSectionSearch: function(e) {
+        e.preventDefault();
+        $('#aips-section-search').val('').trigger('keyup');
+    },
+    copyToClipboard: function(e) {
+        e.preventDefault();
+        var $btn = $(this);
+        var originalText = $btn.html(); // Save icon
+        $btn.text('Copied!');
+        setTimeout(function() {
+            $btn.html(originalText);
+        }, 1000);
+    }
+});
+
+$(document).ready(function() {
+    AIPS.init();
+});
+</script>
+
+</body>
+</html>
