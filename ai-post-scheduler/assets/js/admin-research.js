@@ -204,6 +204,36 @@
             });
         });
 
+        // Clear all topics
+        $(document).on('click', '#clear-all-topics', function() {
+            if (!confirm(aipsResearchL10n.clearAllConfirm || 'Are you sure you want to delete ALL topics?')) {
+                return;
+            }
+
+            const $btn = $(this);
+            $btn.prop('disabled', true).text('Clearing...');
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'aips_delete_trending_topic_bulk',
+                    nonce: $('#aips_nonce').val(),
+                    ids: 'all'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#load-topics').trigger('click');
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Clear All');
+                }
+            });
+        });
+
         // Bulk schedule
         $('#bulk-schedule-form').on('submit', function(e) {
             e.preventDefault();

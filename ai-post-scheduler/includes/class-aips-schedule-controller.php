@@ -83,11 +83,16 @@ class AIPS_Schedule_Controller {
         }
 
         $id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
-        $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
 
         if (!$id) {
             wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
         }
+
+        if (!isset($_POST['is_active'])) {
+            wp_send_json_error(array('message' => __('Missing active status.', 'ai-post-scheduler')));
+        }
+
+        $is_active = absint($_POST['is_active']);
 
         $result = $this->scheduler->toggle_active($id, $is_active);
 

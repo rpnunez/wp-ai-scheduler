@@ -125,8 +125,11 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => $result->get_error_message()));
         }
 
+        // Sanitize content for safety, even though client should handle escaping
+        $safe_content = wp_kses_post($result);
+
         wp_send_json_success(array(
-            'content' => $result,
+            'content' => $safe_content,
             'message' => __('Test generation successful.', 'ai-post-scheduler')
         ));
     }
