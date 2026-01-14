@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Admin Schedule</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; }
+        .aips-toast { background: #333; color: #fff; padding: 12px 24px; border-radius: 4px; margin-top: 10px; display: none; }
+        .aips-toast-success { background: #46b450; }
+    </style>
+</head>
+<body>
+    <button class="aips-run-now" data-id="123">Run Now</button>
+    <div class="aips-toast-container"></div>
+    <script>
+        var aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: '12345' };
+        var aipsAdminL10n = { generating: 'Generating...' };
+
+        window.AIPS = window.AIPS || {};
+        window.AIPS.showToast = function(message, type) {
+            var $toast = $('<div class="aips-toast aips-toast-' + type + '">' + message + '</div>');
+            $('.aips-toast-container').append($toast);
+            $toast.fadeIn().delay(3000).fadeOut(function() { $(this).remove(); });
+        };
+    </script>
+</body>
+</html>

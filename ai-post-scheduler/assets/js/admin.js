@@ -551,8 +551,9 @@
             e.preventDefault();
             var id = $(this).data('id');
             var $btn = $(this);
+            var originalText = $btn.text();
 
-            $btn.prop('disabled', true).text('Generating...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.generating || 'Generating...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -564,11 +565,14 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
+                        AIPS.showToast(response.data.message, 'success');
                         if (response.data.edit_url) {
                             window.open(response.data.edit_url, '_blank');
                         }
-                        location.reload();
+                        // Reload after a delay to show the toast
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000);
                     } else {
                         alert(response.data.message);
                     }
@@ -577,7 +581,7 @@
                     alert('An error occurred. Please try again.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Run Now');
+                    $btn.prop('disabled', false).text(originalText);
                 }
             });
         },
