@@ -378,4 +378,26 @@ class AIPS_Schedule_Repository {
             'active' => (int) $results->active,
         );
     }
+
+    /**
+     * Update the next_run timestamp for a schedule atomically.
+     * This is used for the "claim-first" locking strategy to prevent race conditions.
+     *
+     * @param int    $id           Schedule ID.
+     * @param string $new_next_run New timestamp in MySQL format.
+     * @param string $old_next_run Expected old timestamp in MySQL format.
+     * @return bool True if update succeeded (row was modified), false otherwise.
+     */
+    public function update_next_run_atomic($id, $new_next_run, $old_next_run) {
+        $result = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->schedule_table} SET next_run = %s WHERE id = %d AND next_run = %s",
+            $new_next_run,
+            $id,
+            $old_next_run
+        ));
+
+        // Returns true only if rows were actually affected (1).
+        // If 0, it means either ID didn't exist OR next_run didn't match (already changed).
+        return $result > 0;
+    }
 }
