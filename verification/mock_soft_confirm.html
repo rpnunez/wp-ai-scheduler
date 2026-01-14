@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock Admin</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-confirm-delete { color: red; }
+    </style>
+</head>
+<body>
+    <button id="delete-template" class="aips-delete-template">Delete Template</button>
+    <button id="delete-schedule" class="aips-delete-schedule">Delete Schedule</button>
+    <button id="delete-voice" class="aips-delete-voice">Delete Voice</button>
+
+    <script>
+        // Mock WordPress variables
+        var aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: '12345' };
+        var aipsAdminL10n = {
+            deleteStructureConfirm: 'Confirm?',
+            clickToConfirm: 'Click again to confirm (Localized)'
+        };
+
+        // Inject the softConfirm logic as we implemented it
+        window.AIPS = window.AIPS || {};
+        var AIPS = window.AIPS;
+
+        Object.assign(AIPS, {
+            softConfirm: function($btn) {
+                if ($btn.data('is-confirming')) {
+                    return true;
+                }
+
+                $btn.data('original-text', $btn.text());
+                $btn.text(aipsAdminL10n.clickToConfirm || 'Click again to confirm');
+                $btn.addClass('aips-confirm-delete');
+                $btn.data('is-confirming', true);
+
+                setTimeout(function() {
+                    $btn.text($btn.data('original-text'));
+                    $btn.removeClass('aips-confirm-delete');
+                    $btn.data('is-confirming', false);
+                }, 3000);
+
+                return false;
+            }
+        });
+
+        // Mock usage
+        $(document).on('click', '#delete-template', function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            if (!AIPS.softConfirm($btn)) return;
+            console.log("Template Deleted!");
+            $btn.text("Deleted");
+        });
+    </script>
+</body>
+</html>
