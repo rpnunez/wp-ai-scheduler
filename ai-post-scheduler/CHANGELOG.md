@@ -69,3 +69,7 @@ All notable changes to this project will be documented in this file.
 ## [sentinel-secure-urls-template-controller] - 2024-05-23
 ### Security
 - [2024-05-23] Fixed a potential XSS vulnerability in `AIPS_Templates_Controller::ajax_get_template_posts` by escaping URLs using `esc_url()`.
+
+## [sentinel-prevent-directory-listing] - 2024-05-24
+### Security
+- [2024-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
