@@ -20,3 +20,8 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-26 - Refactor Settings God Class
+**Context:** `AIPS_Settings` was a 'God Class' handling Admin Menu registration, Asset Enqueueing, Page Rendering (Dashboard, Voices, etc.), and Settings management, violating SRP.
+**Decision:** Split `AIPS_Settings` into `AIPS_Admin_UI` (for menu/assets/general UI) and `AIPS_Settings_Page` (specifically for the Settings page logic). Deleted `AIPS_Settings`.
+**Consequence:** Improved separation of concerns. `AIPS_Admin_UI` now acts as the admin shell, while `AIPS_Settings_Page` focuses on the settings domain. Increased file count by 1 (2 created, 1 deleted).
