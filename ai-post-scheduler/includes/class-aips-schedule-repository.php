@@ -306,6 +306,34 @@ class AIPS_Schedule_Repository {
     public function update_next_run($id, $timestamp) {
         return $this->update($id, array('next_run' => $timestamp));
     }
+
+    /**
+     * Atomically update the next_run timestamp.
+     *
+     * Only updates if the current next_run matches the expected old value.
+     * Used for optimistic locking to prevent race conditions.
+     *
+     * @param int    $id           Schedule ID.
+     * @param string $new_next_run New timestamp.
+     * @param string $old_next_run Expected old timestamp.
+     * @return bool True if updated, false if not (e.g. race condition lost).
+     */
+    public function update_next_run_atomic($id, $new_next_run, $old_next_run) {
+        $result = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->schedule_table}
+             SET next_run = %s
+             WHERE id = %d AND next_run = %s",
+            $new_next_run,
+            $id,
+            $old_next_run
+        ));
+
+        if ($result) {
+            delete_transient('aips_pending_schedule_stats');
+        }
+
+        return $result > 0;
+    }
     
     /**
      * Toggle schedule active status.

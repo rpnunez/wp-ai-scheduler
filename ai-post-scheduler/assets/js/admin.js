@@ -170,18 +170,29 @@
                 });
             });
 
-            // @TODO: Refactor to AIPS.deleteStructure
-            $(document).on('click', '.aips-delete-structure', function(){
-                if (!confirm(aipsAdminL10n.deleteStructureConfirm)) return;
-                var id = $(this).data('id');
-                var $row = $(this).closest('tr');
+            // Refactored to use AIPS.softConfirm
+            $(document).on('click', '.aips-delete-structure', function(e){
+                e.preventDefault();
+                var $btn = $(this);
+
+                if (!AIPS.softConfirm($btn)) return;
+
+                var id = $btn.data('id');
+                var $row = $btn.closest('tr');
+
+                $btn.prop('disabled', true).text('Deleting...');
+
                 $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
                     if (response.success) {
                         $row.fadeOut(function(){ $(this).remove(); });
                     } else {
                         alert(response.data.message || aipsAdminL10n.deleteStructureFailed);
+                        AIPS.resetButton($btn);
                     }
-                }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
+                }).fail(function(){
+                    alert(aipsAdminL10n.errorOccurred);
+                    AIPS.resetButton($btn);
+                });
             });
 
             // Prompt Sections UI handlers
@@ -242,18 +253,57 @@
                 });
             });
 
-            $(document).on('click', '.aips-delete-section', function(){
-                if (!confirm(aipsAdminL10n.deleteSectionConfirm)) return;
-                var id = $(this).data('id');
-                var $row = $(this).closest('tr');
+            // Refactored to use AIPS.softConfirm
+            $(document).on('click', '.aips-delete-section', function(e){
+                e.preventDefault();
+                var $btn = $(this);
+
+                if (!AIPS.softConfirm($btn)) return;
+
+                var id = $btn.data('id');
+                var $row = $btn.closest('tr');
+
+                $btn.prop('disabled', true).text('Deleting...');
+
                 $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
                     if (response.success) {
                         $row.fadeOut(function(){ $(this).remove(); });
                     } else {
                         alert(response.data.message || aipsAdminL10n.deleteSectionFailed);
+                        AIPS.resetButton($btn);
                     }
-                }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
+                }).fail(function(){
+                    alert(aipsAdminL10n.errorOccurred);
+                    AIPS.resetButton($btn);
+                });
             });
+        },
+
+        softConfirm: function($btn) {
+            if (!$btn.data('is-confirming')) {
+                $btn.data('original-text', $btn.text());
+                $btn.text('Click again to confirm');
+                $btn.addClass('aips-confirm-delete');
+                $btn.data('is-confirming', true);
+
+                setTimeout(function() {
+                    // Only reset if still confirming (not yet clicked again which would disable it)
+                    if ($btn.data('is-confirming') && !$btn.prop('disabled')) {
+                         AIPS.resetButton($btn);
+                    }
+                }, 3000);
+                return false;
+            }
+            return true;
+        },
+
+        resetButton: function($btn) {
+            if ($btn.data('original-text')) {
+                $btn.text($btn.data('original-text'));
+            }
+            $btn.removeClass('aips-confirm-delete');
+            $btn.data('is-confirming', false);
+            $btn.prop('disabled', false);
         },
 
         copyToClipboard: function(e) {
@@ -408,20 +458,7 @@
             var $row = $btn.closest('tr');
 
             // Soft Confirm Pattern
-            if (!$btn.data('is-confirming')) {
-                $btn.data('original-text', $btn.text());
-                $btn.text('Click again to confirm');
-                $btn.addClass('aips-confirm-delete');
-                $btn.data('is-confirming', true);
-
-                // Reset after 3 seconds
-                setTimeout(function() {
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                }, 3000);
-                return;
-            }
+            if (!AIPS.softConfirm($btn)) return;
 
             // Confirmed, proceed with deletion
             $btn.prop('disabled', true).text('Deleting...');
@@ -442,19 +479,13 @@
                     } else {
                         alert(response.data.message);
                         // Reset button state on error
-                        $btn.text($btn.data('original-text'));
-                        $btn.removeClass('aips-confirm-delete');
-                        $btn.data('is-confirming', false);
-                        $btn.prop('disabled', false);
+                        AIPS.resetButton($btn);
                     }
                 },
                 error: function() {
                     alert('An error occurred. Please try again.');
                     // Reset button state on error
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                    $btn.prop('disabled', false);
+                    AIPS.resetButton($btn);
                 }
             });
         },
@@ -643,11 +674,16 @@
 
         deleteVoice: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this voice?')) {
+            var $btn = $(this);
+            if (!AIPS.softConfirm($btn)) {
                 return;
             }
-            var id = $(this).data('id');
-            var $row = $(this).closest('tr');
+
+            var id = $btn.data('id');
+            var $row = $btn.closest('tr');
+
+            $btn.prop('disabled', true).text('Deleting...');
+
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
@@ -661,7 +697,12 @@
                         $row.fadeOut(function() { $(this).remove(); });
                     } else {
                         alert(response.data.message);
+                        AIPS.resetButton($btn);
                     }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    AIPS.resetButton($btn);
                 }
             });
         },
@@ -784,12 +825,15 @@
 
         deleteSchedule: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this schedule?')) {
+            var $btn = $(this);
+            if (!AIPS.softConfirm($btn)) {
                 return;
             }
 
             var id = $(this).data('id');
             var $row = $(this).closest('tr');
+
+            $btn.prop('disabled', true).text('Deleting...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -806,10 +850,12 @@
                         });
                     } else {
                         alert(response.data.message);
+                        AIPS.resetButton($btn);
                     }
                 },
                 error: function() {
                     alert('An error occurred. Please try again.');
+                    AIPS.resetButton($btn);
                 }
             });
         },

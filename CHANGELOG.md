@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Stability
+- 2024-05-29: Fixed race condition in schedule locking using atomic updates (Hunter).
+
+### Added
+- 2024-05-29: Added "Soft Confirm" UX pattern to all delete actions in the admin interface (Wizard).
+
+### Performance
+- 2024-05-29: Added database index on `(is_active, next_run)` to optimize scheduler polling query (Bolt).
+
 ### Fixed
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
 
