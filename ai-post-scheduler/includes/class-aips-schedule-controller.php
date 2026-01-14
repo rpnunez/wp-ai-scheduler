@@ -105,7 +105,17 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+        $schedule = null;
+
+        if ($schedule_id) {
+            $schedule = $this->scheduler->get_schedule($schedule_id);
+            if (!$schedule) {
+                wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
+            }
+            $template_id = $schedule->template_id;
+        }
 
         if (!$template_id) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
@@ -116,6 +126,15 @@ class AIPS_Schedule_Controller {
 
         if (!$template) {
             wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+        }
+
+        // Apply schedule overrides if running from a schedule
+        if ($schedule) {
+            $template_type_selector = new AIPS_Template_Type_Selector();
+            $article_structure_id = $template_type_selector->select_structure($schedule);
+
+            // Override template properties
+            $template->article_structure_id = $article_structure_id;
         }
 
         $voice = null;
@@ -140,6 +159,10 @@ class AIPS_Schedule_Controller {
 
         $generator = new AIPS_Generator();
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+
+        if (empty($topic) && $schedule && !empty($schedule->topic)) {
+            $topic = $schedule->topic;
+        }
 
         // Enforce hard limit of 5 to prevent timeouts (Bolt)
         if ($quantity > 5) {

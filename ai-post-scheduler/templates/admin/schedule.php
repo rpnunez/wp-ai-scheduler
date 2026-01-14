@@ -137,6 +137,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         <button class="button aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>">
                             <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
                         </button>
+                        <button class="button aips-run-now" data-id="<?php echo esc_attr($schedule->id); ?>" data-type="schedule">
+                            <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
+                        </button>
                         <button class="button button-link-delete aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>">
                             <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                         </button>
