@@ -260,6 +260,19 @@
             e.preventDefault();
             var $btn = $(this);
             var text = $btn.data('clipboard-text');
+            var target = $btn.data('clipboard-target');
+
+            if (!text && target) {
+                var $target = $(target);
+                if ($target.length) {
+                    if ($target.is('input') || $target.is('textarea') || $target.is('select')) {
+                        text = $target.val();
+                    } else {
+                        text = $target.text();
+                    }
+                }
+            }
+
             var originalIcon = $btn.data('original-icon') || 'dashicons-admin-page';
             var originalText = $btn.text();
 

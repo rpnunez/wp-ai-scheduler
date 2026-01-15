@@ -2,10 +2,29 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// Generate System Report for Clipboard
+$report_text = "### AI Post Scheduler System Report ###\n\n";
+foreach ($system_info as $section => $checks) {
+    if (empty($checks)) continue;
+    $report_text .= "### " . ucfirst($section) . "\n";
+    foreach ($checks as $key => $check) {
+        $report_text .= $check['label'] . ": " . $check['value'] . " (" . strtoupper($check['status']) . ")\n";
+        if (!empty($check['details'])) {
+             $report_text .= "Details:\n" . implode("\n", $check['details']) . "\n";
+        }
+    }
+    $report_text .= "\n";
+}
 ?>
 <div class="wrap">
     <h1 class="wp-heading-inline"><?php esc_html_e('System Status', 'ai-post-scheduler'); ?></h1>
+    <button type="button" class="button aips-copy-btn page-title-action" data-clipboard-target="#aips-system-report-raw">
+        <?php esc_html_e('Copy System Report', 'ai-post-scheduler'); ?>
+    </button>
     <hr class="wp-header-end">
+
+    <textarea id="aips-system-report-raw" style="display:none;" aria-hidden="true"><?php echo esc_textarea($report_text); ?></textarea>
 
     <div class="aips-status-page">
         <?php foreach ($system_info as $section => $checks) : ?>
