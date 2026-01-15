@@ -105,7 +105,23 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+
+        // If schedule_id provided, get details from schedule
+        if ($schedule_id) {
+            $schedule = $this->scheduler->get_schedule($schedule_id);
+            if (!$schedule) {
+                wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
+            }
+            $template_id = $schedule->template_id;
+
+            // Override topic if set in schedule
+            if (!empty($schedule->topic)) {
+                $topic = $schedule->topic;
+            }
+        }
 
         if (!$template_id) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
@@ -116,6 +132,22 @@ class AIPS_Schedule_Controller {
 
         if (!$template) {
             wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+        }
+
+        // Apply schedule-specific overrides to template
+        if ($schedule_id && isset($schedule)) {
+            // If schedule has specific structure, use it
+            if (!empty($schedule->article_structure_id)) {
+                $template->article_structure_id = $schedule->article_structure_id;
+            }
+            // If rotation pattern, select structure
+            else if (!empty($schedule->rotation_pattern)) {
+                $selector = new AIPS_Template_Type_Selector();
+                $template->article_structure_id = $selector->select_structure($schedule);
+            }
+
+            // Force quantity to 1 for schedule runs
+            $template->post_quantity = 1;
         }
 
         $voice = null;
@@ -139,7 +171,6 @@ class AIPS_Schedule_Controller {
         $errors = array();
 
         $generator = new AIPS_Generator();
-        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
         // Enforce hard limit of 5 to prevent timeouts (Bolt)
         if ($quantity > 5) {

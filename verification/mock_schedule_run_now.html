@@ -1,21 +1,4 @@
-from playwright.sync_api import sync_playwright
 
-def verify_frontend_mock():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-
-        # Load the mock admin page
-        # Note: We are using a mock HTML file that mimics the admin structure
-        # We need to make sure the mock file exists and has the elements we need.
-        # Since I cannot easily inject my new "Run Now" button into the mock HTML without editing it,
-        # I will create a new mock HTML file that includes the Run Now button structure.
-
-        # But first, I will just inspect the existing mock to see if I can use it.
-        # The existing mock seems to focus on history details.
-
-        # I will create a specific mock for Schedule Run Now button
-        html_content = """
         <!DOCTYPE html>
         <html>
         <head>
@@ -78,30 +61,3 @@ def verify_frontend_mock():
             </script>
         </body>
         </html>
-        """
-
-        with open("verification/mock_schedule_run_now.html", "w") as f:
-            f.write(html_content)
-
-        page.goto("file:///app/verification/mock_schedule_run_now.html")
-
-        # Verify button exists
-        button = page.locator(".aips-run-now")
-        if button.count() > 0:
-            print("Button found")
-
-            # Click button
-            # We want to verify that the click triggers the correct logic (simulated by console log or alert)
-            # Since we can't easily capture console logs in this simple script without event listeners,
-            # we will rely on visual confirmation that the button is there and looks right.
-
-            # Take screenshot
-            page.screenshot(path="verification/run_now_button.png")
-            print("Screenshot taken")
-        else:
-            print("Button not found")
-
-        browser.close()
-
-if __name__ == "__main__":
-    verify_frontend_mock()

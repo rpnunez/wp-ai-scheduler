@@ -134,6 +134,10 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         </div>
                     </td>
                     <td class="column-actions">
+                        <button class="button aips-run-now" data-type="schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Run schedule now', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-controls-play" style="line-height: 1.3;"></span>
+                            <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
+                        </button>
                         <button class="button aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>">
                             <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
                         </button>
