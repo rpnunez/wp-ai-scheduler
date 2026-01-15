@@ -1,29 +1,58 @@
-from playwright.sync_api import sync_playwright, expect
-import os
+import re
 
-def run(playwright):
-    browser = playwright.chromium.launch(headless=True)
-    page = browser.new_page()
+def verify_sections_search():
+    try:
+        with open('ai-post-scheduler/templates/admin/sections.php', 'r') as f:
+            content = f.read()
 
-    # Load the static mock file
-    file_path = os.path.abspath("mock_history_static.html")
-    page.goto(f"file://{file_path}")
+        checks = {
+            'Search Input': 'id="aips-section-search"',
+            'Clear Button': 'id="aips-section-search-clear"',
+            'Table Class': 'class="wp-list-table widefat fixed striped aips-sections-list"',
+            'Empty State': 'id="aips-section-search-no-results"',
+            'Copy Button': 'class="button button-small aips-copy-btn"'
+        }
 
-    # Check if search box exists
-    search_input = page.locator("#aips-history-search-input")
-    expect(search_input).to_be_visible()
+        all_passed = True
+        for name, pattern in checks.items():
+            if pattern in content:
+                print(f"✅ {name} found")
+            else:
+                print(f"❌ {name} NOT found")
+                all_passed = False
 
-    # Check if search button exists
-    search_btn = page.locator("#aips-history-search-btn")
-    expect(search_btn).to_be_visible()
+        if all_passed:
+            print("\nSUCCESS: All required elements are present in sections.php")
+        else:
+            print("\nFAILURE: Some elements are missing in sections.php")
+            exit(1)
 
-    # Take screenshot
-    if not os.path.exists("/home/jules/verification"):
-        os.makedirs("/home/jules/verification")
-    page.screenshot(path="/home/jules/verification/history_search.png")
+        # Check JS
+        with open('ai-post-scheduler/assets/js/admin.js', 'r') as f:
+            js_content = f.read()
 
-    print("Verification successful, screenshot saved.")
-    browser.close()
+        js_checks = {
+            'Event Binding': "#aips-section-search",
+            'Filter Function': "filterSections: function()",
+            'Clear Function': "clearSectionSearch: function(e)"
+        }
 
-with sync_playwright() as playwright:
-    run(playwright)
+        for name, pattern in js_checks.items():
+            if pattern in js_content or pattern.replace("'", '"') in js_content:
+                print(f"✅ JS {name} found")
+            else:
+                print(f"❌ JS {name} NOT found")
+                all_passed = False
+
+        if all_passed:
+             print("\nSUCCESS: JS modifications verified")
+        else:
+             print("\nFAILURE: Some JS elements are missing")
+             exit(1)
+
+    except Exception as e:
+        print(f"Error during verification: {e}")
+        exit(1)
+
+if __name__ == "__main__":
+    verify_sections_search()
