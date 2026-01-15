@@ -101,6 +101,7 @@ class AIPS_Interval_Calculator {
      */
     public function calculate_next_run($frequency, $start_time = null) {
         $base_time = $start_time ? strtotime($start_time) : current_time('timestamp');
+        $original_start_timestamp = $base_time;
         $now = current_time('timestamp');
         
         // If start time is in the past, add intervals until future (Catch-up logic)
@@ -112,9 +113,26 @@ class AIPS_Interval_Calculator {
                 $base_time = $this->calculate_next_timestamp($frequency, $base_time);
                 $limit--;
             }
-            // If we hit the limit, just set to now + interval to ensure we don't stall
+            // If we hit the limit, calculate relative to NOW but try to restore phase
             if ($limit === 0) {
                  $base_time = $this->calculate_next_timestamp($frequency, $now);
+                 $interval_duration = $this->get_interval_duration($frequency);
+
+                 if ($interval_duration >= 86400) {
+                     // For daily or larger intervals, restore the Time of Day (H:i:s)
+                     $original_time = date('H:i:s', $original_start_timestamp);
+                     $base_time = strtotime($original_time, $base_time);
+                 } else {
+                     // For sub-daily intervals (hourly, etc.), restore the Minutes/Seconds
+                     $base_H = date('H', $base_time);
+                     $original_i_s = date('i:s', $original_start_timestamp);
+                     $base_time = strtotime("$base_H:$original_i_s", $base_time);
+                 }
+
+                 // Ensure we didn't drift back into the past by restoring phase
+                 if ($base_time <= $now) {
+                     $base_time = $this->calculate_next_timestamp($frequency, $base_time);
+                 }
             }
             return date('Y-m-d H:i:s', $base_time);
         }
