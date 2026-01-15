@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Sections</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+        .screen-reader-text { display: none; }
+        .aips-empty-state { display: none; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <div class="aips-structures-container">
+            <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+                <label class="screen-reader-text" for="aips-section-search">Search Sections:</label>
+                <input type="search" id="aips-section-search" class="regular-text" placeholder="Search sections...">
+                <button type="button" id="aips-section-search-clear" class="button" style="display: none;">Clear</button>
+            </div>
+
+            <table class="wp-list-table widefat fixed striped aips-sections-list">
+                <thead>
+                    <tr>
+                        <th class="column-name">Name</th>
+                        <th class="column-key">Key</th>
+                        <th class="column-description">Description</th>
+                        <th class="column-active">Active</th>
+                        <th class="column-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-section-id="1">
+                        <td class="column-name">Introduction</td>
+                        <td class="column-key"><code>intro</code></td>
+                        <td class="column-description">The intro paragraph</td>
+                        <td class="column-active">Yes</td>
+                        <td class="column-actions"><button>Edit</button></td>
+                    </tr>
+                    <tr data-section-id="2">
+                        <td class="column-name">Conclusion</td>
+                        <td class="column-key"><code>conclusion</code></td>
+                        <td class="column-description">The final thoughts</td>
+                        <td class="column-active">Yes</td>
+                        <td class="column-actions"><button>Edit</button></td>
+                    </tr>
+                    <tr data-section-id="3">
+                        <td class="column-name">Body</td>
+                        <td class="column-key"><code>body_main</code></td>
+                        <td class="column-description">Main content area</td>
+                        <td class="column-active">Yes</td>
+                        <td class="column-actions"><button>Edit</button></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div id="aips-section-search-no-results" class="aips-empty-state" style="display: none;">
+                <h3>No Sections Found</h3>
+                <button type="button" class="button button-primary aips-clear-section-search-btn">Clear Search</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock global objects
+        window.aipsAjax = { nonce: '123', ajaxUrl: 'mock_url' };
+        window.aipsAdminL10n = {};
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+</body>
+</html>
