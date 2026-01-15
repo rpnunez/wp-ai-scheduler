@@ -11,3 +11,7 @@
 ## 2024-05-27 - History Bulk Actions
 **Learning:** The history table lacked bulk deletion capabilities, forcing users to delete failed/unwanted entries one by one or clear the entire history.
 **Action:** Implemented "Select All" / Individual checkboxes and a "Delete Selected" button in `history.php`, backed by a new `delete_bulk` repository method and AJAX handler.
+
+## 2024-05-29 - System Status Copy
+**Learning:** Complex system status data is hard to share for support. Putting large blobs of text in `data-clipboard-text` attribute is messy.
+**Action:** Enhanced `admin.js` to support `data-clipboard-target` (reading from a hidden input/textarea) and added a "Copy System Report" button to `system-status.php` backed by a generated hidden textarea.

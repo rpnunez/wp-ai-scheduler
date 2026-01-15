@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-modal { display: none; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <h1 class="wp-heading-inline">System Status</h1>
+        <button type="button" class="button aips-copy-btn page-title-action" data-clipboard-target="#aips-system-report-raw">
+            Copy System Report
+        </button>
+        <hr class="wp-header-end">
+
+        <textarea id="aips-system-report-raw" style="display:none;" aria-hidden="true">### AI Post Scheduler System Report ###
+
+### Environment
+PHP Version: 8.2 (OK)
+WordPress Version: 6.5 (OK)
+MySQL Version: 8.0 (OK)
+Web Server: nginx (INFO)
+
+### Plugin
+Plugin Version: 1.0.0 (OK)
+Database Version: 1.0.0 (OK)
+AI Engine Plugin: Active (OK)
+
+### Database
+Table: aips_history: OK (OK)
+Table: aips_templates: OK (OK)
+Table: aips_schedule: OK (OK)
+Table: aips_voices: OK (OK)
+
+### Filesystem
+Log Directory: Writable (OK)
+
+### Cron
+Cron Event: 2024-05-28 12:00:00 (OK)
+
+### Logs
+Plugin Log (aips-log-123.log): No recent errors (OK)
+WP Debug Log: No recent errors from this plugin (OK)
+</textarea>
+
+        <div class="aips-status-page">
+            <!-- Mock content -->
+        </div>
+    </div>
+
+    <!-- Inject admin.js logic mock -->
+    <script>
+    (function($) {
+        window.AIPS = window.AIPS || {};
+        var AIPS = window.AIPS;
+
+        AIPS.copyToClipboard = function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var text = $btn.data('clipboard-text');
+            var target = $btn.data('clipboard-target');
+
+            console.log('Copy triggered. Target:', target);
+
+            if (!text && target) {
+                var $target = $(target);
+                if ($target.length) {
+                    if ($target.is('input') || $target.is('textarea') || $target.is('select')) {
+                        text = $target.val();
+                    } else {
+                        text = $target.text();
+                    }
+                }
+            }
+
+            console.log('Text to copy:', text);
+
+            var originalIcon = $btn.data('original-icon') || 'dashicons-admin-page';
+            var originalText = $btn.text();
+
+            if (!text) return;
+
+            // Mock clipboard for verification
+            window.lastCopiedText = text;
+            $btn.text('Copied!');
+            setTimeout(function() {
+                $btn.text(originalText);
+            }, 2000);
+        };
+
+        $(document).on('click', '.aips-copy-btn', AIPS.copyToClipboard);
+    })(jQuery);
+    </script>
+</body>
+</html>
