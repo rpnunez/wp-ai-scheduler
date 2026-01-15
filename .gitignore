@@ -24,3 +24,4 @@ Thumbs.db
 *.tmp
 /tmp/
 /vendor/
+coverage/
