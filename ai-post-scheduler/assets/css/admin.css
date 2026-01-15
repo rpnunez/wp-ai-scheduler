@@ -399,6 +399,11 @@
     100% { transform: rotate(360deg); }
 }
 
+.aips-spin {
+    animation: aips-spin 2s infinite linear;
+    display: inline-block;
+}
+
 .aips-modal-large {
     max-width: 900px;
     max-height: 90vh;

@@ -9,6 +9,20 @@
             this.bindEvents();
         },
 
+        setLoading: function($btn, isLoading, text) {
+            if (isLoading) {
+                $btn.prop('disabled', true);
+                $btn.data('aips-loading-text', $btn.html());
+                $btn.html('<span class="dashicons dashicons-update aips-spin"></span> ' + text);
+            } else {
+                $btn.prop('disabled', false);
+                var original = $btn.data('aips-loading-text');
+                if (original) {
+                    $btn.html(original);
+                }
+            }
+        },
+
         bindEvents: function() {
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
@@ -108,7 +122,7 @@
             // @TODO: Refactor to AIPS.saveStructure
             $(document).on('click', '.aips-save-structure', function(){
                 var $btn = $(this);
-                $btn.prop('disabled', true).text('Saving...');
+                AIPS.setLoading($btn, true, aipsAdminL10n.saving);
 
                 var data = {
                     action: 'aips_save_structure',
@@ -123,14 +137,14 @@
                 };
 
                 $.post(aipsAjax.ajaxUrl, data, function(response){
-                    $btn.prop('disabled', false).text('Save Structure');
+                    AIPS.setLoading($btn, false);
                     if (response.success) {
                         location.reload();
                     } else {
                         alert(response.data.message || aipsAdminL10n.saveStructureFailed);
                     }
                 }).fail(function(){
-                    $btn.prop('disabled', false).text('Save Structure');
+                    AIPS.setLoading($btn, false);
                     alert(aipsAdminL10n.errorTryAgain);
                 });
             });
@@ -195,7 +209,7 @@
 
             $(document).on('click', '.aips-save-section', function(){
                 var $btn = $(this);
-                $btn.prop('disabled', true).text('Saving...');
+                AIPS.setLoading($btn, true, aipsAdminL10n.saving);
 
                 var data = {
                     action: 'aips_save_prompt_section',
@@ -209,14 +223,14 @@
                 };
 
                 $.post(aipsAjax.ajaxUrl, data, function(response){
-                    $btn.prop('disabled', false).text('Save Section');
+                    AIPS.setLoading($btn, false);
                     if (response.success) {
                         location.reload();
                     } else {
                         alert(response.data.message || aipsAdminL10n.saveSectionFailed);
                     }
                 }).fail(function(){
-                    $btn.prop('disabled', false).text('Save Section');
+                    AIPS.setLoading($btn, false);
                     alert(aipsAdminL10n.errorTryAgain);
                 });
             });
@@ -424,7 +438,7 @@
             }
 
             // Confirmed, proceed with deletion
-            $btn.prop('disabled', true).text('Deleting...');
+            AIPS.setLoading($btn, true, aipsAdminL10n.deleting);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -442,19 +456,22 @@
                     } else {
                         alert(response.data.message);
                         // Reset button state on error
-                        $btn.text($btn.data('original-text'));
+                        // Note: setLoading overrides text, so we restore manually here if we want strict original text restoration,
+                        // but setLoading(false) restores original html which includes the icon.
+                        // However, soft confirm logic changed the text before.
+                        // Let's just reset fully.
+                        $btn.prop('disabled', false);
+                        $btn.text($btn.data('original-text')); // This refers to 'Delete' probably, not 'Click again'
                         $btn.removeClass('aips-confirm-delete');
                         $btn.data('is-confirming', false);
-                        $btn.prop('disabled', false);
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
-                    // Reset button state on error
+                    alert(aipsAdminL10n.errorTryAgain);
+                    $btn.prop('disabled', false);
                     $btn.text($btn.data('original-text'));
                     $btn.removeClass('aips-confirm-delete');
                     $btn.data('is-confirming', false);
-                    $btn.prop('disabled', false);
                 }
             });
         },
@@ -469,7 +486,7 @@
                 return;
             }
 
-            $btn.prop('disabled', true).text('Saving...');
+            AIPS.setLoading($btn, true, aipsAdminL10n.saving);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -505,7 +522,7 @@
                     alert('An error occurred. Please try again.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Save Template');
+                    AIPS.setLoading($btn, false);
                 }
             });
         },
@@ -520,7 +537,7 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true).text('Generating...');
+            AIPS.setLoading($btn, true, aipsAdminL10n.generating);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -542,7 +559,7 @@
                     alert('An error occurred. Please try again.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Test Generate');
+                    AIPS.setLoading($btn, false);
                 }
             });
         },
@@ -552,7 +569,7 @@
             var id = $(this).data('id');
             var $btn = $(this);
 
-            $btn.prop('disabled', true).text('Generating...');
+            AIPS.setLoading($btn, true, aipsAdminL10n.running);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -577,7 +594,7 @@
                     alert('An error occurred. Please try again.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Run Now');
+                    AIPS.setLoading($btn, false);
                 }
             });
         },
@@ -674,7 +691,7 @@
                 $form[0].reportValidity();
                 return;
             }
-            $btn.prop('disabled', true).text('Saving...');
+            AIPS.setLoading($btn, true, aipsAdminL10n.saving);
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
@@ -699,7 +716,7 @@
                     alert('An error occurred. Please try again.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Save Voice');
+                    AIPS.setLoading($btn, false);
                 }
             });
         },
@@ -752,7 +769,7 @@
                 return;
             }
 
-            $btn.prop('disabled', true).text('Saving...');
+            AIPS.setLoading($btn, true, aipsAdminL10n.saving);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -777,7 +794,7 @@
                     alert('An error occurred. Please try again.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Save Schedule');
+                    AIPS.setLoading($btn, false);
                 }
             });
         },
@@ -868,7 +885,7 @@
             var id = $(this).data('id');
             var $btn = $(this);
 
-            $btn.prop('disabled', true).text('Retrying...');
+            AIPS.setLoading($btn, true, aipsAdminL10n.generating);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -890,7 +907,7 @@
                     alert('An error occurred. Please try again.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Retry');
+                    AIPS.setLoading($btn, false);
                 }
             });
         },
@@ -1362,7 +1379,7 @@
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true).text('Deleting...');
+            AIPS.setLoading($btn, true, aipsAdminL10n.deleting);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1377,12 +1394,12 @@
                         location.reload();
                     } else {
                         alert(response.data.message);
-                        $btn.prop('disabled', false).text('Delete Selected');
+                        AIPS.setLoading($btn, false);
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
-                    $btn.prop('disabled', false).text('Delete Selected');
+                    alert(aipsAdminL10n.errorTryAgain);
+                    AIPS.setLoading($btn, false);
                 }
             });
         }
