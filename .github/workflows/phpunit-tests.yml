@@ -60,8 +60,8 @@ jobs:
       # WordPress: Set up WordPress test library
       - name: Install WordPress Test Library
         run: |
-          # Create WordPress test directories
-          mkdir -p /tmp/wordpress-tests-lib /tmp/wordpress
+          # Create WordPress test directory
+          mkdir -p /tmp/wordpress-tests-lib
 
           # Download pre-built WordPress core from wordpress.org (includes build artifacts)
           wget -q https://wordpress.org/latest.tar.gz -O /tmp/wordpress-latest.tar.gz
@@ -90,33 +90,33 @@ jobs:
           sed -i "s/yourpasswordhere//" /tmp/wordpress-tests-lib/wp-tests-config.php
           sed -i "s|localhost|127.0.0.1|" /tmp/wordpress-tests-lib/wp-tests-config.php
           
-          # Add explicit ABSPATH definition before the bootstrap include
-          echo "define( 'ABSPATH', '/tmp/wordpress-tests-lib/src/' );" >> /tmp/wordpress-tests-lib/wp-tests-config.php
+          # Add explicit ABSPATH definition before the bootstrap include line
+          sed -i "/require.*bootstrap\.php/i define( 'ABSPATH', '/tmp/wordpress-tests-lib/src/' );" /tmp/wordpress-tests-lib/wp-tests-config.php
 
       # NunezScheduler: Install the plugin in WordPress
       - name: Install and Activate Plugin
         run: |
           # Create plugins directory in test WordPress
-          mkdir -p /tmp/wordpress/wp-content/plugins
+          mkdir -p /tmp/wordpress-tests-lib/src/wp-content/plugins
           
           # Copy the plugin to WordPress plugins directory
-          cp -r ai-post-scheduler /tmp/wordpress/wp-content/plugins/
+          cp -r ai-post-scheduler /tmp/wordpress-tests-lib/src/wp-content/plugins/
           
           # Verify plugin installation
-          ls -la /tmp/wordpress/wp-content/plugins/ai-post-scheduler/ai-post-scheduler.php
+          ls -la /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler/ai-post-scheduler.php
 
       # Run Composer
       - name: Install Composer dependencies
-        run: cd /tmp/wordpress/wp-content/plugins/ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress
+        run: cd /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress
 
       # Run PHPUnit tests
       - name: Run PHPUnit tests
-        run: cd /tmp/wordpress/wp-content/plugins/ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress composer test -- --testdox
+        run: cd /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress-tests-lib/src composer test -- --testdox
 
       # Code Coverage: Generate & Upload
       - name: Generate code coverage report (PHP 8.2 only)
         if: matrix.php == '8.2'
-        run: cd /tmp/wordpress/wp-content/plugins/ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress composer test:coverage
+        run: cd /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress-tests-lib/src composer test:coverage
 
       - name: Upload coverage report
         if: matrix.php == '8.2'
