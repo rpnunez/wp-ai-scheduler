@@ -92,6 +92,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dashboard.php';
 
         // Seeder Feature
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-seeder-service.php';
