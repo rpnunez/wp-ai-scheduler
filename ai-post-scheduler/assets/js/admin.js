@@ -9,6 +9,26 @@
             this.bindEvents();
         },
 
+        softConfirm: function($btn) {
+            if ($btn.data('is-confirming')) {
+                return true;
+            }
+
+            $btn.data('original-text', $btn.text());
+            $btn.text(aipsAdminL10n.clickToConfirm || 'Click again to confirm');
+            $btn.addClass('aips-confirm-delete');
+            $btn.data('is-confirming', true);
+
+            // Reset after 3 seconds
+            setTimeout(function() {
+                $btn.text($btn.data('original-text'));
+                $btn.removeClass('aips-confirm-delete');
+                $btn.data('is-confirming', false);
+            }, 3000);
+
+            return false;
+        },
+
         bindEvents: function() {
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
@@ -407,19 +427,7 @@
             var id = $btn.data('id');
             var $row = $btn.closest('tr');
 
-            // Soft Confirm Pattern
-            if (!$btn.data('is-confirming')) {
-                $btn.data('original-text', $btn.text());
-                $btn.text('Click again to confirm');
-                $btn.addClass('aips-confirm-delete');
-                $btn.data('is-confirming', true);
-
-                // Reset after 3 seconds
-                setTimeout(function() {
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                }, 3000);
+            if (!AIPS.softConfirm($btn)) {
                 return;
             }
 
@@ -643,11 +651,12 @@
 
         deleteVoice: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this voice?')) {
+            var $btn = $(this);
+            if (!AIPS.softConfirm($btn)) {
                 return;
             }
-            var id = $(this).data('id');
-            var $row = $(this).closest('tr');
+            var id = $btn.data('id');
+            var $row = $btn.closest('tr');
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
@@ -784,12 +793,14 @@
 
         deleteSchedule: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this schedule?')) {
+            var $btn = $(this);
+
+            if (!AIPS.softConfirm($btn)) {
                 return;
             }
 
-            var id = $(this).data('id');
-            var $row = $(this).closest('tr');
+            var id = $btn.data('id');
+            var $row = $btn.closest('tr');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
