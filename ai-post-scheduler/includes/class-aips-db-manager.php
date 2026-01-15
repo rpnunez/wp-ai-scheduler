@@ -92,7 +92,8 @@ class AIPS_DB_Manager {
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id)
+            PRIMARY KEY  (id),
+            KEY is_active (is_active)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_schedule (
@@ -109,7 +110,8 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY template_id (template_id),
             KEY article_structure_id (article_structure_id),
-            KEY next_run (next_run)
+            KEY next_run (next_run),
+            KEY polling_idx (is_active, next_run)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_voices (

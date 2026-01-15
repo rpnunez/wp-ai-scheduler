@@ -10,6 +10,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 - 2024-05-27: Added bulk deletion functionality to the Generation History page (Select All/Individual checkboxes, Delete Selected button).
 - 2026-01-06: Added configurable featured image sources (AI prompt, Unsplash keywords, or Media Library selection) for templates.
+- 2026-01-16: Added "Run Now" button to the Schedules list to trigger immediate execution of a specific schedule.
+
+### Performance
+- 2026-01-16: Added composite index `(is_active, next_run)` to `aips_schedule` and index `(is_active)` to `aips_templates` to optimize scheduler polling queries.
+
+### UX
+- 2026-01-16: Improved copy button feedback in Admin UI to preserve icons on standard buttons and show a checkmark on small icon-only buttons.
 
 ### Fixed
 - 2024-05-24: Fixed PHPUnit test compatibility issues by adding `: void` return type to `setUp()` and `tearDown()` methods in test classes, ensuring tests run correctly in limited mode without the WordPress test library.

@@ -105,7 +105,22 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+        $schedule = null;
+
+        if ($schedule_id) {
+            $schedule = $this->scheduler->get_schedule($schedule_id);
+            if (!$schedule) {
+                wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
+            }
+            $template_id = $schedule->template_id;
+
+            if (!empty($schedule->topic)) {
+                $topic = $schedule->topic;
+            }
+        }
 
         if (!$template_id) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
@@ -118,6 +133,12 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
         }
 
+        // If running from schedule, inject article structure
+        if ($schedule) {
+            $selector = new AIPS_Template_Type_Selector();
+            $template->article_structure_id = $selector->select_structure($schedule);
+        }
+
         $voice = null;
         if (!empty($template->voice_id)) {
             $voices = new AIPS_Voices();
@@ -125,6 +146,11 @@ class AIPS_Schedule_Controller {
         }
 
         $quantity = $template->post_quantity ?: 1;
+
+        // Force quantity to 1 if running a schedule
+        if ($schedule_id) {
+            $quantity = 1;
+        }
 
         // SECURITY: Enforce a hard limit for immediate execution to prevent PHP timeouts
         // and potential API rate limiting issues.
@@ -139,7 +165,6 @@ class AIPS_Schedule_Controller {
         $errors = array();
 
         $generator = new AIPS_Generator();
-        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
         // Enforce hard limit of 5 to prevent timeouts (Bolt)
         if ($quantity > 5) {

@@ -260,10 +260,37 @@
             e.preventDefault();
             var $btn = $(this);
             var text = $btn.data('clipboard-text');
-            var originalIcon = $btn.data('original-icon') || 'dashicons-admin-page';
-            var originalText = $btn.text();
+            var isSmall = $btn.hasClass('aips-copy-btn-small');
 
             if (!text) return;
+
+            var showSuccess = function() {
+                if (isSmall) {
+                    var $icon = $btn.find('.dashicons');
+                    if ($icon.length) {
+                        var originalClass = $icon.attr('class');
+                        $icon.removeClass().addClass('dashicons dashicons-yes');
+                        setTimeout(function() {
+                            $icon.attr('class', originalClass);
+                        }, 2000);
+                    } else {
+                        var originalHtml = $btn.html();
+                        $btn.html('<span class="dashicons dashicons-yes"></span>');
+                        setTimeout(function() {
+                            $btn.html(originalHtml);
+                        }, 2000);
+                    }
+                } else {
+                    var originalHtml = $btn.html();
+                    var originalWidth = $btn.outerWidth();
+                    $btn.css('width', originalWidth);
+                    $btn.text('Copied!');
+                    setTimeout(function() {
+                        $btn.html(originalHtml);
+                        $btn.css('width', '');
+                    }, 2000);
+                }
+            };
 
             // Fallback for older browsers
             if (!navigator.clipboard) {
@@ -273,10 +300,7 @@
                 textArea.select();
                 try {
                     document.execCommand('copy');
-                    $btn.text('Copied!');
-                    setTimeout(function() {
-                        $btn.text(originalText);
-                    }, 2000);
+                    showSuccess();
                 } catch (err) {
                     console.error('Fallback: Oops, unable to copy', err);
                 }
@@ -285,10 +309,7 @@
             }
 
             navigator.clipboard.writeText(text).then(function() {
-                $btn.text('Copied!');
-                setTimeout(function() {
-                    $btn.text(originalText);
-                }, 2000);
+                showSuccess();
             }, function(err) {
                 console.error('Async: Could not copy text: ', err);
             });
@@ -549,19 +570,28 @@
 
         runNow: function(e) {
             e.preventDefault();
-            var id = $(this).data('id');
             var $btn = $(this);
+            var id = $btn.data('id');
+            var type = $btn.data('type');
+            var originalHtml = $btn.html();
 
             $btn.prop('disabled', true).text('Generating...');
+
+            var data = {
+                action: 'aips_run_now',
+                nonce: aipsAjax.nonce
+            };
+
+            if (type === 'schedule') {
+                data.schedule_id = id;
+            } else {
+                data.template_id = id;
+            }
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
-                data: {
-                    action: 'aips_run_now',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
+                data: data,
                 success: function(response) {
                     if (response.success) {
                         alert(response.data.message);
@@ -577,7 +607,7 @@
                     alert('An error occurred. Please try again.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Run Now');
+                    $btn.prop('disabled', false).html(originalHtml);
                 }
             });
         },
