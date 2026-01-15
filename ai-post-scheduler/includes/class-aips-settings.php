@@ -271,6 +271,10 @@ class AIPS_Settings {
             'deleteSectionFailed' => __('Failed to delete prompt section.', 'ai-post-scheduler'),
             'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
             'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+            'generating' => __('Generating...', 'ai-post-scheduler'),
+            'saving' => __('Saving...', 'ai-post-scheduler'),
+            'deleting' => __('Deleting...', 'ai-post-scheduler'),
+            'running' => __('Running...', 'ai-post-scheduler'),
         ));
 
         wp_enqueue_script(
