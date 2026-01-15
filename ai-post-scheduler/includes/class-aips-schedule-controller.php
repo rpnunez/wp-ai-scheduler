@@ -109,7 +109,7 @@ class AIPS_Schedule_Controller {
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
-        $templates = new AIPS_Templates();
+        $templates_service = new AIPS_Template_Service();
         $template = null;
 
         // If schedule_id is provided, load from schedule (Wizard: Run Schedule Now)
@@ -122,7 +122,7 @@ class AIPS_Schedule_Controller {
             }
 
             $template_id = $schedule->template_id;
-            $template = $templates->get($template_id);
+            $template = $templates_service->get($template_id);
 
             if ($template) {
                 // Apply schedule overrides
@@ -137,7 +137,7 @@ class AIPS_Schedule_Controller {
             }
         } elseif ($template_id) {
             // Legacy/Direct Template Run
-            $template = $templates->get($template_id);
+            $template = $templates_service->get($template_id);
         } else {
             wp_send_json_error(array('message' => __('Invalid request. Template ID or Schedule ID required.', 'ai-post-scheduler')));
         }

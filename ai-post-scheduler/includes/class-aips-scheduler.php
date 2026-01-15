@@ -13,7 +13,7 @@ class AIPS_Scheduler {
     /**
      * @var AIPS_Schedule_Repository Repository for database operations
      */
-    private $repository;
+    private $schedule_repository;
     
     /**
      * @var AIPS_Activity_Repository Repository for activity logging
@@ -25,7 +25,7 @@ class AIPS_Scheduler {
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
-        $this->repository = new AIPS_Schedule_Repository();
+        $this->schedule_repository = new AIPS_Schedule_Repository();
         $this->activity_repository = new AIPS_Activity_Repository();
         $this->template_type_selector = new AIPS_Template_Type_Selector();
         
@@ -53,11 +53,11 @@ class AIPS_Scheduler {
     }
     
     public function get_all_schedules() {
-        return $this->repository->get_all();
+        return $this->schedule_repository->get_all();
     }
     
     public function get_schedule($id) {
-        return $this->repository->get_by_id($id);
+        return $this->schedule_repository->get_by_id($id);
     }
     
     public function save_schedule($data) {
@@ -87,23 +87,23 @@ class AIPS_Scheduler {
         );
 
         if (!empty($data['id'])) {
-            $this->repository->update(absint($data['id']), $schedule_data);
+            $this->schedule_repository->update(absint($data['id']), $schedule_data);
             return absint($data['id']);
         } else {
-            return $this->repository->create($schedule_data);
+            return $this->schedule_repository->create($schedule_data);
         }
     }
 
     public function save_schedule_bulk($schedules) {
-        return $this->repository->create_bulk($schedules);
+        return $this->schedule_repository->create_bulk($schedules);
     }
     
     public function delete_schedule($id) {
-        return $this->repository->delete($id);
+        return $this->schedule_repository->delete($id);
     }
 
     public function toggle_active($id, $is_active) {
-        return $this->repository->set_active($id, $is_active);
+        return $this->schedule_repository->set_active($id, $is_active);
     }
     
     /**
@@ -123,17 +123,9 @@ class AIPS_Scheduler {
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
-        $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT t.*, s.*, s.id AS schedule_id
-            FROM {$this->schedule_table} s 
-            INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            AND s.next_run <= %s 
-            AND t.is_active = 1
-            ORDER BY s.next_run ASC
-            LIMIT 5
-        ", current_time('mysql')));
-        
+        // Fetch due schedules (joined with active templates) via repository
+        $due_schedules = $this->schedule_repository->get_due_schedules_with_active_templates(current_time('mysql'), 5);
+
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
             return;
@@ -159,7 +151,7 @@ class AIPS_Scheduler {
             }
 
             // Update next_run immediately to lock this schedule from concurrent runs
-            $lock_result = $this->repository->update($schedule->schedule_id, array(
+            $lock_result = $this->schedule_repository->update($schedule->schedule_id, array(
                 'next_run' => $new_next_run
             ));
 
@@ -201,15 +193,17 @@ class AIPS_Scheduler {
             if ($schedule->frequency === 'once') {
                 if (!is_wp_error($result)) {
                     // If it's a one-time schedule and successful, delete it
-                    $this->repository->delete($schedule->schedule_id);
+                    $this->schedule_repository->delete($schedule->schedule_id);
+
                     $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
                 } else {
                     // If failed, deactivate it and set status to 'failed' to prevent infinite daily retries
-                    $this->repository->update($schedule->schedule_id, array(
+                    $this->schedule_repository->update($schedule->schedule_id, array(
                         'is_active' => 0,
                         'status' => 'failed',
                         'last_run' => current_time('mysql')
                     ));
+
                     $logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
                     
                     // Log to activity feed
@@ -231,7 +225,7 @@ class AIPS_Scheduler {
             } else {
                 // For recurring schedules, we ONLY update last_run here.
                 // next_run was already updated at the start (Claim-First).
-                $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
+                $this->schedule_repository->update_last_run($schedule->schedule_id, current_time('mysql'));
             }
             
             if (is_wp_error($result)) {
@@ -267,6 +261,7 @@ class AIPS_Scheduler {
                 
                 // Get the post to check its status
                 $post = get_post($result);
+
                 if ($post) {
                     $event_status = ($post->post_status === 'draft') ? 'draft' : 'success';
                     $event_type = ($post->post_status === 'draft') ? 'post_draft' : 'post_published';
@@ -297,8 +292,8 @@ class AIPS_Scheduler {
                 // Invalidate the schedule execution count cache (Bolt)
                 // This ensures rotation logic uses fresh counts on next run,
                 // and only after a successful post generation.
-                $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
-            }
-        }
-    }
-}
+                $this->schedule_repository->invalidate_count_cache($schedule->schedule_id);
+             }
+         }
+     }
+ }

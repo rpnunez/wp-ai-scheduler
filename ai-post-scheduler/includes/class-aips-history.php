@@ -98,16 +98,16 @@ class AIPS_History {
             wp_send_json_error(array('message' => __('History item not found or no template associated.', 'ai-post-scheduler')));
         }
         
-        $templates = new AIPS_Templates();
-        $template = $templates->get($history_item->template_id);
-        
+        $templates_service = new AIPS_Template_Service();
+        $template = $templates_service->get($history_item->template_id);
+
         if (!$template) {
             wp_send_json_error(array('message' => __('Template no longer exists.', 'ai-post-scheduler')));
         }
-        
+
         $generator = new AIPS_Generator();
         $result = $generator->generate_post($template);
-        
+
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));
         }

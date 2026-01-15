@@ -234,16 +234,27 @@ class AIPS_Prompt_Section_Repository {
 	 */
 	public function key_exists($section_key, $exclude_id = 0) {
 		if ($exclude_id > 0) {
-			$result = $this->wpdb->get_var($this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table_name} WHERE section_key = %s AND id != %d",
-				$section_key,
-				$exclude_id
-			));
+			$result = $this->wpdb->get_var(
+                $this->wpdb->prepare("
+                    SELECT COUNT(*) 
+                    FROM {$this->table_name}
+                    WHERE section_key = %s
+                    AND id != %d
+                    ",
+                    $section_key,
+                    $exclude_id
+			    )
+            );
 		} else {
-			$result = $this->wpdb->get_var($this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$this->table_name} WHERE section_key = %s",
-				$section_key
-			));
+			$result = $this->wpdb->get_var(
+                $this->wpdb->prepare("
+                    SELECT COUNT(*)
+                    FROM {$this->table_name}
+                    WHERE section_key = %s
+                    ",
+				    $section_key
+			    )
+            );
 		}
 		
 		return $result > 0;

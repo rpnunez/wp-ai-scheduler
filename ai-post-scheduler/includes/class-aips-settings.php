@@ -511,8 +511,12 @@ class AIPS_Settings {
      * @return void
      */
     public function render_templates_page() {
-        $templates_handler = new AIPS_Templates();
-        $templates_handler->render_page();
+        $template_service = new AIPS_Template_Service();
+        $templates = $template_service->get_all();
+        $categories = get_categories(array('hide_empty' => false));
+        $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));
+
+        include AIPS_PLUGIN_DIR . 'templates/admin/main.php';
     }
     
     /**

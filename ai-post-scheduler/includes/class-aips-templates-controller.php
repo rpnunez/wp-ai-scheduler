@@ -8,13 +8,21 @@ class AIPS_Templates_Controller {
     private $templates;
 
     public function __construct($templates = null) {
-        $this->templates = $templates ?: new AIPS_Templates();
+        $this->templates = $templates ?: new AIPS_Template_Service();
 
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
         add_action('wp_ajax_aips_get_template', array($this, 'ajax_get_template'));
         add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
         add_action('wp_ajax_aips_get_template_posts', array($this, 'ajax_get_template_posts'));
+    }
+
+    public function render_page() {
+        $templates = $this->templates->get_all();
+        $categories = get_categories(array('hide_empty' => false));
+        $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));
+
+        include AIPS_PLUGIN_DIR . 'templates/admin/main.php';
     }
 
     public function ajax_save_template() {

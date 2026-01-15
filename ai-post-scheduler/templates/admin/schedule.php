@@ -7,8 +7,8 @@ global $wpdb;
 $scheduler = new AIPS_Scheduler();
 $schedules = $scheduler->get_all_schedules();
 
-$templates_handler = new AIPS_Templates();
-$templates = $templates_handler->get_all(true);
+$templates_service = new AIPS_Template_Service();
+$templates = $templates_service->get_all(true);
 
 // Get article structures and rotation patterns
 $structure_manager = new AIPS_Article_Structure_Manager();

@@ -99,6 +99,31 @@ class AIPS_Schedule_Repository {
     }
 
     /**
+     * Get due schedules joined with active templates (used by scheduler process).
+     *
+     * @param string|null $current_time Current time in MySQL format. Defaults to now.
+     * @param int $limit Maximum number of schedules to return. Default 5.
+     * @return array Array of schedule objects joined with template fields.
+     */
+    public function get_due_schedules_with_active_templates($current_time = null, $limit = 5) {
+        if ($current_time === null) {
+            $current_time = current_time('mysql');
+        }
+
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT t.*, s.*, s.id AS schedule_id
+            FROM {$this->schedule_table} s
+            INNER JOIN {$this->templates_table} t ON s.template_id = t.id
+            WHERE s.is_active = 1
+            AND s.next_run <= %s
+            AND t.is_active = 1
+            ORDER BY s.next_run ASC
+            LIMIT %d
+        ", $current_time, $limit));
+    }
+
+
+    /**
      * Get upcoming active schedules.
      *
      * @param int $limit Number of schedules to retrieve. Default 5.
@@ -377,5 +402,60 @@ class AIPS_Schedule_Repository {
             'total' => (int) $results->total,
             'active' => (int) $results->active,
         );
+    }
+
+    /**
+     * Get the number of completed executions for a schedule (based on template and schedule start time).
+     *
+     * Uses transient caching to avoid N+1 queries during batch runs.
+     *
+     * @param int|object $schedule Schedule ID or object.
+     * @return int Execution count.
+     */
+    public function get_schedule_execution_count($schedule) {
+        // Resolve schedule object if ID provided
+        if (is_numeric($schedule)) {
+            $schedule_id = (int) $schedule;
+            $schedule = $this->get_by_id($schedule_id);
+        } else {
+            $schedule_id = isset($schedule->id) ? (int) $schedule->id : 0;
+        }
+
+        if (!$schedule || empty($schedule_id)) {
+            return 0;
+        }
+
+        $history_table = $this->wpdb->prefix . 'aips_history';
+
+        // Transient cache key
+        $cache_key = 'aips_sched_cnt_' . $schedule_id;
+        $cached_count = get_transient($cache_key);
+        if ($cached_count !== false) {
+            return (int) $cached_count;
+        }
+
+        // Count completed generations for this template since the schedule was created
+        $count = $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*) FROM {$history_table} WHERE template_id = %d AND status = 'completed' AND created_at >= (SELECT created_at FROM {$this->schedule_table} WHERE id = %d)",
+            $schedule->template_id,
+            $schedule_id
+        ));
+
+        $count = (int) $count;
+
+        // Cache for 24 hours
+        set_transient($cache_key, $count, DAY_IN_SECONDS);
+
+        return $count;
+    }
+
+    /**
+     * Invalidate the execution count cache for a schedule.
+     *
+     * @param int $schedule_id Schedule ID.
+     * @return void
+     */
+    public function invalidate_count_cache($schedule_id) {
+        delete_transient('aips_sched_cnt_' . absint($schedule_id));
     }
 }

@@ -32,11 +32,11 @@ if (!defined('ABSPATH')) {
                 <tbody>
                     <?php
                     $history = new AIPS_History();
-                    $templates_class = new AIPS_Templates();
+                    $templates_service = new AIPS_Template_Service();
 
                     // Pre-fetch stats to avoid N+1 queries
                     $all_generated_counts = $history->get_all_template_stats();
-                    $all_pending_stats = $templates_class->get_all_pending_stats();
+                    $all_pending_stats = $templates_service->get_all_pending_stats();
 
                     foreach ($templates as $template):
                         $generated_count = isset($all_generated_counts[$template->id]) ? $all_generated_counts[$template->id] : 0;

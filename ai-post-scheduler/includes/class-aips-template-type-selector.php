@@ -115,8 +115,8 @@ class AIPS_Template_Type_Selector {
 	 */
 	private function select_sequential($schedule, $active_structures) {
 		// Get count of posts generated for this schedule
-		$count = $this->get_schedule_execution_count($schedule);
-		
+		$count = $this->schedule_repository->get_schedule_execution_count($schedule);
+
 		// Select structure based on count
 		$index = $count % count($active_structures);
 		
@@ -177,77 +177,12 @@ class AIPS_Template_Type_Selector {
 		}
 		
 		// Get count of posts generated for this schedule
-		$count = $this->get_schedule_execution_count($schedule);
-		
+		$count = $this->schedule_repository->get_schedule_execution_count($schedule);
+
 		// Alternate between first and second
 		$index = $count % 2;
 		
 		return $structures[$index]->id;
-	}
-	
-	/**
-	 * Get execution count for a schedule.
-	 *
-	 * Uses the history table to count successful generations.
-	 *
-	 * @param int|object $schedule Schedule ID or object.
-	 * @return int Execution count.
-	 */
-	private function get_schedule_execution_count($schedule) {
-		global $wpdb;
-		$table_history = $wpdb->prefix . 'aips_history';
-		$table_schedule = $wpdb->prefix . 'aips_schedule';
-		
-		// Handle ID or Object input to allow avoiding N+1 queries
-		if (is_numeric($schedule)) {
-			$schedule_id = (int) $schedule;
-			$schedule = $this->schedule_repository->get_by_id($schedule_id);
-		} else {
-			$schedule_id = $schedule->id;
-		}
-		
-		if (!$schedule) {
-			return 0;
-		}
-		
-		// Check transient cache to prevent N+1 queries during batch processing
-		// Bolt Optimization (Cache for 24 hours, invalidated on run)
-		$cache_key = 'aips_sched_cnt_' . $schedule_id;
-		$cached_count = get_transient($cache_key);
-
-		if ($cached_count !== false) {
-			return (int) $cached_count;
-		}
-
-		// Count completed generations for this template
-		// Note: We use template_id since history doesn't directly link to schedule
-		$count = $wpdb->get_var($wpdb->prepare(
-			"SELECT COUNT(*) FROM $table_history 
-			WHERE template_id = %d 
-			AND status = 'completed' 
-			AND created_at >= (SELECT created_at FROM $table_schedule WHERE id = %d)",
-			$schedule->template_id,
-			$schedule_id
-		));
-		
-		$count = (int) $count;
-
-		// Cache the result
-		set_transient($cache_key, $count, DAY_IN_SECONDS);
-
-		return $count;
-	}
-
-	/**
-	 * Invalidate the execution count cache for a schedule.
-	 *
-	 * Should be called after a new post is generated.
-	 *
-	 * @param int $schedule_id Schedule ID.
-	 * @return void
-	 */
-	public function invalidate_count_cache($schedule_id) {
-		delete_transient('aips_sched_cnt_' . $schedule_id);
 	}
 	
 	/**
