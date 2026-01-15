@@ -48,7 +48,8 @@ class AIPS_Post_Creator {
         }
 
         $post_data = array(
-            'post_title' => $title,
+            // SECURITY: Sanitize title to prevent Stored XSS from AI output (defense-in-depth).
+            'post_title' => sanitize_text_field($title),
             // SECURITY: Sanitize content to prevent Stored XSS from AI output (e.g. malicious scripts).
             'post_content' => wp_kses_post($content),
             'post_excerpt' => wp_kses_post($excerpt),
