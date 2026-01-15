@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock WP Admin</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .dashicons { display: inline-block; width: 20px; height: 20px; background: gray; }
+        .dashicons-yes { background: green; }
+        .dashicons-warning { background: orange; }
+        .dashicons-admin-page { background: blue; }
+        .aips-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .aips-modal-content { background: white; padding: 20px; margin: 50px auto; width: 500px; }
+        .aips-copy-btn { margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <div id="aips-details-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content">
+            <div id="aips-details-summary"></div>
+            <div id="aips-details-template"></div>
+            <div id="aips-details-voice"></div>
+            <div id="aips-details-ai-calls"></div>
+        </div>
+    </div>
+
+    <div id="connection-test-area">
+        <button id="aips-test-connection">Test Connection</button>
+        <span class="spinner"></span>
+        <div id="aips-connection-result"></div>
+    </div>
+
+    <script>
+        // Mock WordPress and AIPS environment
+        window.aipsAjax = {
+            ajaxUrl: '/mock-ajax',
+            nonce: 'mock-nonce'
+        };
+
+        window.aipsAdminL10n = {
+            errorOccurred: 'Error occurred'
+        };
+
+        // Mock AIPS object structure before admin.js loads
+        window.AIPS = {};
+    </script>
+</body>
+</html>
