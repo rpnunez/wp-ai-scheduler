@@ -159,7 +159,7 @@ class AIPS_Post_Creator {
         $yoast_active = $this->is_yoast_active();
         $rank_math_active = $this->is_rank_math_active();
 
-        if (!$yoast_active && !$rank_math_active) {
+        if (!$yoast_active || !$rank_math_active) {
             return;
         }
 
