@@ -11,3 +11,7 @@
 ## 2024-05-27 - History Bulk Actions
 **Learning:** The history table lacked bulk deletion capabilities, forcing users to delete failed/unwanted entries one by one or clear the entire history.
 **Action:** Implemented "Select All" / Individual checkboxes and a "Delete Selected" button in `history.php`, backed by a new `delete_bulk` repository method and AJAX handler.
+
+## 2024-05-29 - Clone Voice Functionality
+**Learning:** Users likely need variations of similar voices (e.g., "Professional" vs "Professional - Strict"). Recreating them from scratch is tedious.
+**Action:** Implemented "Clone Voice" button in `voices.php` and corresponding JS logic, reusing the existing modal with "(Copy)" suffix and cleared ID.
