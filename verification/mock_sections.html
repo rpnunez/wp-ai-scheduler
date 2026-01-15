@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Sections</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/1.0.0/css/dashicons.min.css">
+    <style>
+        /* Minimal WP Admin Styles */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f1f1f1; padding: 20px; }
+        .wrap { max-width: 1200px; margin: 0 auto; background: #fff; padding: 20px; box-shadow: 0 1px 1px rgba(0,0,0,0.04); }
+        .wp-list-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .wp-list-table th, .wp-list-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #c3c4c7; }
+        .wp-list-table th { font-weight: 400; color: #1d2327; border-bottom: 1px solid #c3c4c7; vertical-align: bottom; }
+        .wp-list-table tr:nth-child(odd) { background-color: #f6f7f7; }
+        .button { display: inline-block; text-decoration: none; font-size: 13px; line-height: 2.15384615; min-height: 30px; margin: 0; padding: 0 10px; cursor: pointer; border-width: 1px; border-style: solid; -webkit-appearance: none; border-radius: 3px; white-space: nowrap; box-sizing: border-box; }
+        .button-primary { background: #2271b1; border-color: #2271b1; color: #fff; text-decoration: none; text-shadow: none; }
+        .screen-reader-text { border: 0; clip: rect(1px, 1px, 1px, 1px); -webkit-clip-path: inset(50%); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; word-wrap: normal !important; }
+        .regular-text { width: 25em; }
+        /* AIPS Styles */
+        .aips-search-box { margin-bottom: 10px; text-align: right; }
+        .aips-empty-state { text-align: center; padding: 40px; }
+    </style>
+</head>
+<body>
+
+<div class="wrap aips-wrap">
+	<h1>
+		Prompt Sections
+		<button class="page-title-action aips-add-section-btn button">Add New</button>
+	</h1>
+
+	<div class="aips-structures-container">
+		<div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+			<label class="screen-reader-text" for="aips-section-search">Search Sections:</label>
+			<input type="search" id="aips-section-search" class="regular-text" placeholder="Search sections...">
+			<button type="button" id="aips-section-search-clear" class="button" style="display: none;">Clear</button>
+		</div>
+
+		<table class="wp-list-table widefat fixed striped aips-sections-list">
+			<thead>
+				<tr>
+					<th class="column-name">Name</th>
+					<th class="column-key">Key</th>
+					<th class="column-description">Description</th>
+					<th class="column-active">Active</th>
+					<th class="column-actions">Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr data-section-id="1">
+					<td class="column-name"><strong>Introduction</strong></td>
+					<td class="column-key">
+						<code>introduction</code>
+					</td>
+					<td class="column-description">Standard blog post introduction</td>
+					<td class="column-active">Yes</td>
+					<td class="column-actions">
+						<button class="button aips-edit-section" data-id="1">Edit</button>
+						<button class="button button-link-delete aips-delete-section" data-id="1">Delete</button>
+					</td>
+				</tr>
+				<tr data-section-id="2">
+					<td class="column-name"><strong>Conclusion</strong></td>
+					<td class="column-key">
+						<code>conclusion</code>
+					</td>
+					<td class="column-description">Wrap up with a call to action</td>
+					<td class="column-active">Yes</td>
+					<td class="column-actions">
+						<button class="button aips-edit-section" data-id="2">Edit</button>
+						<button class="button button-link-delete aips-delete-section" data-id="2">Delete</button>
+					</td>
+				</tr>
+                <tr data-section-id="3">
+					<td class="column-name"><strong>FAQ</strong></td>
+					<td class="column-key">
+						<code>faq_section</code>
+					</td>
+					<td class="column-description">Frequently Asked Questions</td>
+					<td class="column-active">No</td>
+					<td class="column-actions">
+						<button class="button aips-edit-section" data-id="3">Edit</button>
+						<button class="button button-link-delete aips-delete-section" data-id="3">Delete</button>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<div id="aips-section-search-no-results" class="aips-empty-state" style="display: none;">
+			<span class="dashicons dashicons-search" aria-hidden="true"></span>
+			<h3>No Sections Found</h3>
+			<p>No prompt sections match your search criteria.</p>
+			<button type="button" class="button button-primary aips-clear-section-search-btn">
+				Clear Search
+			</button>
+		</div>
+	</div>
+</div>
+
+<script>
+    // Mock global objects
+    window.aipsAjax = {
+        ajaxUrl: '/wp-admin/admin-ajax.php',
+        nonce: 'mock_nonce'
+    };
+    window.aipsAdminL10n = {
+        deleteSectionConfirm: 'Are you sure?',
+        saveSectionFailed: 'Save failed',
+        errorTryAgain: 'Try again'
+    };
+</script>
+<script src="../ai-post-scheduler/assets/js/admin.js"></script>
+
+</body>
+</html>
