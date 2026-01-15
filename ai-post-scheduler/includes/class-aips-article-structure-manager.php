@@ -124,9 +124,17 @@ class AIPS_Article_Structure_Manager {
 		// Start with the structure's prompt template
 		$prompt = $structure['prompt_template'];
 		
-		// Replace section placeholders with actual content
+		// Replace section placeholders with actual content using array-based str_replace for performance
+		$search = array();
+		$replace = array();
+
 		foreach ($section_contents as $section_key => $content) {
-			$prompt = str_replace("{{section:$section_key}}", $content, $prompt);
+			$search[] = "{{section:$section_key}}";
+			$replace[] = $content;
+		}
+
+		if (!empty($search)) {
+			$prompt = str_replace($search, $replace, $prompt);
 		}
 		
 		// Process remaining template variables (date, topic, site_name, etc.)
