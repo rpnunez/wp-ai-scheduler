@@ -156,24 +156,51 @@ class AIPS_Generator {
     }
     
     /**
-     * Generate a title from a prompt. Optionally accept voice-specific title prompt
-     * which will be prepended to the prompt that becomes the input to the AI.
+     * Generate a post title based on the generated content, template, and optional voice/topic.
      *
-     * @param string      $prompt The prompt or context for title generation.
-     * @param string|null $voice_title_prompt Optional voice-specific title instructions.
-     * @param array       $options AI options (e.g., model, max_tokens override).
-     * @return string|WP_Error Generated title string or WP_Error on failure.
+     * This method encapsulates all title prompt construction. It uses the
+     * generated article content as the primary context, and then applies the
+     * following precedence for title instructions:
+     *   1. Voice title prompt (if provided)
+     *   2. Template title prompt (if provided)
+     *
+     * The final prompt structure sent to the AI is:
+     *
+     *   "Generate a title for a blog post, based off of the content below. Here are your instructions:\n\n"
+     *   (Voice Title Prompt OR Template Title Prompt)
+     *   "\n\nHere is the content:\n\n"
+     *   (Generated Post Content)
+     *
+     * @param object      $template Template object containing prompts and settings.
+     * @param object|null $voice    Optional voice object with overrides.
+     * @param string|null $topic    Optional topic to be injected into prompts.
+     * @param string      $content  Generated article content.
+     * @param array       $options  AI options (e.g., model, max_tokens override).
+     * @return string|WP_Error      Generated title string or WP_Error on failure.
      */
-    public function generate_title($prompt, $voice_title_prompt = null, $options = array()) {
-        if ($voice_title_prompt) {
-            $title_prompt = $voice_title_prompt . "\n\n" . $prompt;
-        } else {
-            $title_prompt = "Generate a compelling blog post title for the following topic. Return only the title, nothing else:\n\n" . $prompt;
+    public function generate_title($template, $voice = null, $topic = null, $content = '', $options = array()) {
+        // Build title instructions based on voice or template configuration.
+        // Voice title prompt takes precedence over template title prompt.
+        $title_instructions = '';
+
+        if ($voice && !empty($voice->title_prompt)) {
+            $title_instructions = $this->template_processor->process($voice->title_prompt, $topic);
+        } elseif (!empty($template->title_prompt)) {
+            $title_instructions = $this->template_processor->process($template->title_prompt, $topic);
         }
-        
+
+        // Build the title generation prompt using the generated content as context.
+        $prompt = "Generate a title for a blog post, based off of the content below. Here are your instructions:\n\n";
+
+        if (!empty($title_instructions)) {
+            $prompt .= $title_instructions . "\n\n";
+        }
+
+        $prompt .= "Here is the content:\n\n" . $content;
+
         $options['max_tokens'] = 100;
-        
-        $result = $this->generate_content($title_prompt, $options, 'title');
+
+        $result = $this->generate_content($prompt, $options, 'title');
         
         if (is_wp_error($result)) {
             return $result;
@@ -257,7 +284,6 @@ class AIPS_Generator {
         if (!$history_id) {
             // Fallback if repository fails (though unlikely)
             $this->logger->log('Failed to create history record', 'error');
-            // Proceeding without history updates but generation may continue.
         }
         
         // Build the full content prompt (template + topic + voice if provided)
@@ -287,30 +313,9 @@ class AIPS_Generator {
             
             return $content;
         }
-        
-        $voice_title_prompt = null;
 
-        if ($voice) {
-            // Voice may provide a custom title prompt; process template variables
-            $voice_title_prompt = $this->template_processor->process($voice->title_prompt, $topic);
-        }
-        
-        // We still need the base processed prompt for title generation if no specific title prompt exists
-        $base_processed_prompt = $this->prompt_builder->build_base_content_prompt($template, $topic);
-
-        if ($voice) {
-             // Re-append voice instruction to base prompt for context if needed
-             $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
-             $base_processed_prompt = $voice_instructions . "\n\n" . $base_processed_prompt;
-        }
-
-        // Determine title source: template-specific title prompt or generated from content/context
-        if (!empty($template->title_prompt)) {
-            $title_prompt = $this->template_processor->process($template->title_prompt, $topic);
-            $title = $this->generate_title($title_prompt, $voice_title_prompt);
-        } else {
-            $title = $this->generate_title($base_processed_prompt, $voice_title_prompt);
-        }
+        // Generate the title using the template, voice, topic, and content.
+        $title = $this->generate_title($template, $voice, $topic, $content);
         
         if (is_wp_error($title)) {
             // Fall back to a safe default title when AI fails
@@ -370,49 +375,8 @@ class AIPS_Generator {
             return $post_id;
         }
         
-        $featured_image_id = null;
-
-        if ($template->generate_featured_image) {
-            $featured_image_source = isset($template->featured_image_source) ? $template->featured_image_source : 'ai_prompt';
-            $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
-
-            if (!in_array($featured_image_source, $allowed_sources, true)) {
-                $featured_image_source = 'ai_prompt';
-            }
-            $featured_image_result = null;
-
-            if ($featured_image_source === 'unsplash') {
-                $keywords = isset($template->featured_image_unsplash_keywords) ? $template->featured_image_unsplash_keywords : '';
-                $processed_keywords = $this->template_processor->process($keywords, $topic);
-                $featured_image_result = $this->image_service->fetch_and_upload_unsplash_image($processed_keywords, $title);
-                if (!is_wp_error($featured_image_result)) {
-                    $featured_image_id = $featured_image_result;
-                    $this->post_creator->set_featured_image($post_id, $featured_image_id);
-                }
-            } elseif ($featured_image_source === 'media_library') {
-                $featured_image_result = $this->image_service->select_media_library_image(isset($template->featured_image_media_ids) ? $template->featured_image_media_ids : '');
-                if (!is_wp_error($featured_image_result)) {
-                    $this->post_creator->set_featured_image($post_id, $featured_image_result);
-                    $featured_image_id = $featured_image_result;
-                }
-            } elseif (!empty($template->image_prompt)) {
-                $image_prompt = $this->template_processor->process($template->image_prompt, $topic);
-                $featured_image_result = $this->image_service->generate_and_upload_featured_image($image_prompt, $title);
-                
-                if (!is_wp_error($featured_image_result)) {
-                    $featured_image_id = $featured_image_result;
-                    $this->post_creator->set_featured_image($post_id, $featured_image_id);
-                    $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
-                }
-            } else {
-                $featured_image_result = new WP_Error('missing_image_prompt', __('Image prompt is required to generate a featured image.', 'ai-post-scheduler'));
-            }
-
-            if (is_wp_error($featured_image_result)) {
-                $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
-                $this->current_session->add_error('featured_image', $featured_image_result->get_error_message());
-            }
-        }
+        // Handle featured image generation/selection.
+        $featured_image_id = $this->set_featured_image($template, $post_id, $title, $topic);
         
         // Complete session with success result and update history
         $this->current_session->complete(array(
@@ -445,5 +409,77 @@ class AIPS_Generator {
         do_action('aips_post_generated', $post_id, $template, $history_id);
         
         return $post_id;
+    }
+
+    /**
+     * Generate or select and set the featured image for a post.
+     *
+     * Uses the template configuration to decide the source (AI prompt,
+     * Unsplash, or media library). Logs any errors into the current
+     * generation session.
+     *
+     * @param object $template Template object containing image settings.
+     * @param int    $post_id  ID of the post to attach the image to.
+     * @param string $title    Title of the generated post, used as image alt text/context.
+     * @param string|null $topic Optional topic used when processing prompts.
+     * @return int|null ID of the featured image attachment or null on failure/disabled.
+     */
+    private function set_featured_image($template, $post_id, $title, $topic = null) {
+        $featured_image_id = null;
+
+        if (empty($template->generate_featured_image)) {
+            return null;
+        }
+
+        $featured_image_source = isset($template->featured_image_source) ? $template->featured_image_source : 'ai_prompt';
+        $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
+
+        if (!in_array($featured_image_source, $allowed_sources, true)) {
+            $featured_image_source = 'ai_prompt';
+        }
+
+        $featured_image_result = null;
+
+        if ($featured_image_source === 'unsplash') {
+            $keywords = isset($template->featured_image_unsplash_keywords) ? $template->featured_image_unsplash_keywords : '';
+            
+            $processed_keywords = $this->template_processor->process($keywords, $topic);
+            $featured_image_result = $this->image_service->fetch_and_upload_unsplash_image($processed_keywords, $title);
+
+            if (!is_wp_error($featured_image_result)) {
+                $featured_image_id = $featured_image_result;
+
+                $this->post_creator->set_featured_image($post_id, $featured_image_id);
+            }
+        } elseif ($featured_image_source === 'media_library') {
+            $featured_image_result = $this->image_service->select_media_library_image(isset($template->featured_image_media_ids) ? $template->featured_image_media_ids : '');
+
+            if (!is_wp_error($featured_image_result)) {
+                $this->post_creator->set_featured_image($post_id, $featured_image_result);
+
+                $featured_image_id = $featured_image_result;
+            }
+        } elseif (!empty($template->image_prompt)) {
+            $image_prompt = $this->template_processor->process($template->image_prompt, $topic);
+            $featured_image_result = $this->image_service->generate_and_upload_featured_image($image_prompt, $title);
+
+            if (!is_wp_error($featured_image_result)) {
+                $featured_image_id = $featured_image_result;
+
+                $this->post_creator->set_featured_image($post_id, $featured_image_id);
+
+                $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
+            }
+        } else {
+            $featured_image_result = new WP_Error('missing_image_prompt', __('Image prompt is required to generate a featured image.', 'ai-post-scheduler'));
+        }
+
+        if (is_wp_error($featured_image_result)) {
+            $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
+
+            $this->current_session->add_error('featured_image', $featured_image_result->get_error_message());
+        }
+
+        return $featured_image_id;
     }
 }
