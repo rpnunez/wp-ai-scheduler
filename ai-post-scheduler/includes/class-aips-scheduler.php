@@ -120,19 +120,15 @@ class AIPS_Scheduler {
     public function process_scheduled_posts() {
         global $wpdb;
         
+        // Time budget to prevent PHP timeouts (20 seconds)
+        $start_time = microtime(true);
+        $time_limit = 20;
+
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
-        $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT t.*, s.*, s.id AS schedule_id
-            FROM {$this->schedule_table} s 
-            INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            AND s.next_run <= %s 
-            AND t.is_active = 1
-            ORDER BY s.next_run ASC
-            LIMIT 5
-        ", current_time('mysql')));
+        $batch_size = apply_filters('aips_schedule_batch_size', 5);
+        $due_schedules = $this->repository->get_due_schedules(current_time('mysql'), $batch_size);
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
@@ -142,6 +138,12 @@ class AIPS_Scheduler {
         $generator = new AIPS_Generator();
         
         foreach ($due_schedules as $schedule) {
+            // Check time budget
+            if ((microtime(true) - $start_time) > $time_limit) {
+                $logger->log('Time budget exceeded, stopping batch processing', 'warning');
+                break;
+            }
+
             // Claim-First Locking Strategy (Hunter)
             // Immediately calculate and update next_run to lock this schedule from concurrent processes.
 
