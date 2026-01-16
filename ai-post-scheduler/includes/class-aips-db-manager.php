@@ -176,6 +176,9 @@ class AIPS_DB_Manager {
         foreach ($schema as $sql) {
             dbDelta($sql);
         }
+        
+        // Seed default data for new installations or upgrades
+        self::seed_default_data();
     }
 
     public function drop_tables() {
@@ -271,5 +274,204 @@ class AIPS_DB_Manager {
 
         $this->truncate_tables();
         wp_send_json_success(array('message' => 'Plugin data wiped successfully.'));
+    }
+
+    /**
+     * Parse column names from CREATE TABLE SQL statement
+     * 
+     * @param string $sql CREATE TABLE SQL statement
+     * @return array Column names
+     */
+    public static function parse_columns_from_sql($sql) {
+        $columns = array();
+        
+        // Extract content between CREATE TABLE ... ( and the closing )
+        if (preg_match('/CREATE TABLE[^(]+\((.+)\)/s', $sql, $matches)) {
+            $table_def = $matches[1];
+            
+            // Split by lines and process each
+            $lines = explode("\n", $table_def);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                
+                // Skip empty lines, PRIMARY KEY, KEY, UNIQUE KEY lines
+                if (empty($line) || 
+                    stripos($line, 'PRIMARY KEY') !== false || 
+                    stripos($line, 'KEY ') === 0 ||
+                    stripos($line, 'UNIQUE KEY') !== false) {
+                    continue;
+                }
+                
+                // Extract column name (first word after trimming)
+                if (preg_match('/^`?(\w+)`?\s+/', $line, $col_matches)) {
+                    $columns[] = $col_matches[1];
+                }
+            }
+        }
+        
+        return $columns;
+    }
+
+    /**
+     * Get expected columns for each table by parsing the schema
+     * 
+     * @return array Associative array of table_name => array of column names
+     */
+    public static function get_expected_columns() {
+        $instance = new self();
+        $schema = $instance->get_schema();
+        $expected = array();
+        
+        foreach ($schema as $sql) {
+            // Extract table name
+            if (preg_match('/CREATE TABLE\s+(\S+)\s*\(/i', $sql, $matches)) {
+                $full_table_name = $matches[1];
+                // Remove $wpdb->prefix to get just the table name
+                global $wpdb;
+                $table_name = str_replace($wpdb->prefix, '', $full_table_name);
+                
+                $expected[$table_name] = self::parse_columns_from_sql($sql);
+            }
+        }
+        
+        return $expected;
+    }
+
+    /**
+     * Seed default data for prompt sections and article structures
+     * Only inserts if data doesn't already exist (idempotent)
+     */
+    private static function seed_default_data() {
+        global $wpdb;
+        $tables = self::get_full_table_names();
+        $table_sections = $tables['aips_prompt_sections'];
+        $table_structures = $tables['aips_article_structures'];
+        
+        // Seed default prompt sections
+        $default_sections = array(
+            array(
+                'name' => 'Introduction',
+                'section_key' => 'introduction',
+                'description' => 'Opening paragraph that hooks the reader',
+                'content' => 'Write an engaging introduction that captures attention and clearly states what the article will cover.',
+            ),
+            array(
+                'name' => 'Prerequisites',
+                'section_key' => 'prerequisites',
+                'description' => 'Required knowledge or tools',
+                'content' => 'List any prerequisites, required tools, or background knowledge needed.',
+            ),
+            array(
+                'name' => 'Step-by-Step Instructions',
+                'section_key' => 'steps',
+                'description' => 'Detailed procedural steps',
+                'content' => 'Provide clear, numbered step-by-step instructions with explanations.',
+            ),
+            array(
+                'name' => 'Code Examples',
+                'section_key' => 'examples',
+                'description' => 'Practical code samples',
+                'content' => 'Include relevant code examples with explanations of how they work.',
+            ),
+            array(
+                'name' => 'Tips and Best Practices',
+                'section_key' => 'tips',
+                'description' => 'Expert advice and recommendations',
+                'content' => 'Share helpful tips, best practices, and common pitfalls to avoid.',
+            ),
+            array(
+                'name' => 'Troubleshooting',
+                'section_key' => 'troubleshooting',
+                'description' => 'Common issues and solutions',
+                'content' => 'Address common problems readers might encounter and provide solutions.',
+            ),
+            array(
+                'name' => 'Conclusion',
+                'section_key' => 'conclusion',
+                'description' => 'Wrap-up and next steps',
+                'content' => 'Summarize key points and suggest next steps or related topics.',
+            ),
+            array(
+                'name' => 'Resources',
+                'section_key' => 'resources',
+                'description' => 'Additional learning materials',
+                'content' => 'Provide links to documentation, further reading, or related resources.',
+            ),
+        );
+        
+        foreach ($default_sections as $section) {
+            $exists = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM $table_sections WHERE section_key = %s",
+                $section['section_key']
+            ));
+            
+            if (!$exists) {
+                $wpdb->insert($table_sections, $section);
+            }
+        }
+        
+        // Seed default article structures
+        $default_structures = array(
+            array(
+                'name' => 'How-To Guide',
+                'description' => 'Step-by-step guide for accomplishing a specific task',
+                'structure_data' => wp_json_encode(array(
+                    'sections' => array('introduction', 'prerequisites', 'steps', 'tips', 'troubleshooting', 'conclusion'),
+                    'prompt_template' => "Write a comprehensive how-to guide about {{topic}}.\n\n{{section:introduction}}\n\n{{section:prerequisites}}\n\n{{section:steps}}\n\n{{section:tips}}\n\n{{section:troubleshooting}}\n\n{{section:conclusion}}",
+                )),
+                'is_default' => 1,
+            ),
+            array(
+                'name' => 'Tutorial',
+                'description' => 'In-depth educational content with practical examples',
+                'structure_data' => wp_json_encode(array(
+                    'sections' => array('introduction', 'prerequisites', 'examples', 'steps', 'tips', 'resources', 'conclusion'),
+                    'prompt_template' => "Create a detailed tutorial on {{topic}}.\n\n{{section:introduction}}\n\n{{section:prerequisites}}\n\n{{section:examples}}\n\n{{section:steps}}\n\n{{section:tips}}\n\n{{section:resources}}\n\n{{section:conclusion}}",
+                )),
+            ),
+            array(
+                'name' => 'Library Reference',
+                'description' => 'Technical documentation for a library or API',
+                'structure_data' => wp_json_encode(array(
+                    'sections' => array('introduction', 'prerequisites', 'examples', 'resources'),
+                    'prompt_template' => "Write technical reference documentation for {{topic}}.\n\n{{section:introduction}}\n\n{{section:prerequisites}}\n\n{{section:examples}}\n\nInclude comprehensive API documentation with parameter descriptions, return values, and usage examples.\n\n{{section:resources}}",
+                )),
+            ),
+            array(
+                'name' => 'Listicle',
+                'description' => 'List-based article with multiple items or tips',
+                'structure_data' => wp_json_encode(array(
+                    'sections' => array('introduction', 'conclusion'),
+                    'prompt_template' => "Write a comprehensive listicle about {{topic}}.\n\n{{section:introduction}}\n\nPresent the main content as a numbered or bulleted list with detailed explanations for each item.\n\n{{section:conclusion}}",
+                )),
+            ),
+            array(
+                'name' => 'Case Study',
+                'description' => 'Real-world example with analysis and insights',
+                'structure_data' => wp_json_encode(array(
+                    'sections' => array('introduction', 'examples', 'conclusion'),
+                    'prompt_template' => "Write a detailed case study about {{topic}}.\n\n{{section:introduction}}\n\nProvide background context and the problem/challenge being addressed.\n\n{{section:examples}}\n\nAnalyze the results, lessons learned, and key takeaways.\n\n{{section:conclusion}}",
+                )),
+            ),
+            array(
+                'name' => 'Opinion/Editorial',
+                'description' => 'Thought leadership or opinion piece',
+                'structure_data' => wp_json_encode(array(
+                    'sections' => array('introduction', 'tips', 'conclusion'),
+                    'prompt_template' => "Write an opinion piece or editorial about {{topic}}.\n\n{{section:introduction}}\n\nPresent your main arguments with supporting evidence and examples.\n\n{{section:tips}}\n\nAddress counterarguments or alternative perspectives.\n\n{{section:conclusion}}",
+                )),
+            ),
+        );
+        
+        foreach ($default_structures as $structure) {
+            $exists = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM $table_structures WHERE name = %s",
+                $structure['name']
+            ));
+            
+            if (!$exists) {
+                $wpdb->insert($table_structures, $structure);
+            }
+        }
     }
 }

@@ -1,71 +1,89 @@
-# AI Post Scheduler - Database Migrations
+# AI Post Scheduler - Database Schema Updates
 
-## Version 1.0 → 1.1
+## How Database Schema Updates Work
 
-### Overview
-This migration adds the **Voices feature** and **batch post generation support** to the AI Post Scheduler plugin.
+The AI Post Scheduler uses WordPress's built-in `dbDelta()` function to manage database schema updates. This is the standard WordPress approach for database migrations.
 
-### Changes
+### Key Points
 
-#### New Table: `aips_voices`
-- **name** (varchar 255): Voice name
-- **title_prompt** (text): Instructions for generating post titles
-- **content_instructions** (text): Pre-prompt instructions for content generation
-- **excerpt_instructions** (text): Optional instructions for excerpt generation
-- **is_active** (tinyint): Active/inactive status
-- **created_at** (datetime): Timestamp
+- **Single Source of Truth**: All database schema is defined in `AIPS_DB_Manager::get_schema()`
+- **Automatic Updates**: When the plugin is updated, `dbDelta()` automatically:
+  - Creates missing tables
+  - Adds missing columns
+  - Updates column types where needed
+- **Idempotent**: Safe to run multiple times - won't duplicate or break existing data
+- **Version Tracking**: Plugin tracks DB version in `aips_db_version` option
 
-#### Modified Table: `aips_templates`
-- **voice_id** (bigint): Reference to selected voice (nullable)
-- **post_quantity** (int): Number of posts to generate (1-20, default 1)
+## How Updates Are Applied
 
-### How to Apply the Migration
+### On Plugin Activation or Update
 
-#### Option 1: Via WordPress Admin (Recommended for non-technical users)
+1. Plugin detects version change by comparing `aips_db_version` with `AIPS_VERSION`
+2. If update needed, calls `AIPS_Upgrades::check_and_run()`
+3. This calls `AIPS_DB_Manager::install_tables()` which:
+   - Runs `dbDelta()` with current schema definition
+   - Seeds default data (prompt sections and article structures)
+4. Updates `aips_db_version` to current plugin version
 
-1. Simply **activate the updated plugin** in WordPress Admin
-2. The plugin automatically creates the new tables and columns on activation
-3. No manual SQL needed!
+### For Developers
 
-#### Option 2: Manual SQL (Advanced users)
+If you need to modify the database schema:
 
-1. Open your database client (phpMyAdmin, MySQL Workbench, etc.)
-2. Open the migration file: `ai-post-scheduler/migrations/001-add-voices-feature.sql`
-3. **Replace `{wp_prefix}` with your actual WordPress table prefix** (usually `wp_`)
-   - Find your prefix in `wp-config.php`: `$table_prefix = 'wp_';`
-4. Execute the SQL queries
+1. **Update the schema** in `AIPS_DB_Manager::get_schema()`
+2. **Increment the plugin version** in `ai-post-scheduler.php`
+3. **Test the upgrade** by:
+   - Installing the old version
+   - Upgrading to your new version
+   - Verifying tables/columns are updated correctly
 
-**Example for default WordPress prefix:**
-```sql
-CREATE TABLE IF NOT EXISTS `wp_aips_voices` (
+### Example: Adding a New Column
+
+```php
+// In AIPS_DB_Manager::get_schema()
+$sql[] = "CREATE TABLE $table_name (
     id bigint(20) NOT NULL AUTO_INCREMENT,
-    name varchar(255) NOT NULL,
-    title_prompt text NOT NULL,
-    content_instructions text NOT NULL,
-    is_active tinyint(1) DEFAULT 1,
-    created_at datetime DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-ALTER TABLE `wp_aips_templates` ADD COLUMN `voice_id` bigint(20) DEFAULT NULL AFTER `title_prompt`;
-ALTER TABLE `wp_aips_templates` ADD COLUMN `post_quantity` int DEFAULT 1 AFTER `voice_id`;
+    existing_column varchar(255),
+    new_column text DEFAULT NULL,  // Add your new column here
+    PRIMARY KEY  (id)
+) $charset_collate;";
 ```
 
-### Rollback
+When users upgrade, `dbDelta()` will automatically add the `new_column` to existing tables.
 
-If you need to revert to version 1.0, run:
+## System Status Page
 
-```sql
-ALTER TABLE `{wp_prefix}aips_templates` DROP COLUMN `post_quantity`;
-ALTER TABLE `{wp_prefix}aips_templates` DROP COLUMN `voice_id`;
-DROP TABLE `{wp_prefix}aips_voices`;
-```
+The System Status page (`Settings > System Status`) shows database health:
+- All tables exist
+- All expected columns are present
+- Uses `AIPS_DB_Manager` as source of truth for expected schema
 
-Then deactivate and delete the updated plugin.
+## Database Tables
 
-### Notes
+Current tables managed by the plugin:
+- `aips_history` - Generation history
+- `aips_templates` - Post templates
+- `aips_schedule` - Scheduling configuration
+- `aips_voices` - Writing voices/styles
+- `aips_article_structures` - Article structure definitions
+- `aips_prompt_sections` - Reusable prompt sections
+- `aips_trending_topics` - Trending topic research
 
-- ✅ The migration is **safe** - it checks if columns exist before adding them
-- ✅ **No data loss** - existing templates remain unchanged
-- ✅ All new columns have **sensible defaults**
-- ✅ Existing templates will work with **no Voice selected** by default
+## Troubleshooting
+
+### Tables or Columns Missing
+
+Go to Settings > System Status and click "Repair Database" to re-run schema creation.
+
+### Fresh Installation
+
+To completely reinstall the database:
+1. Go to Settings > System Status
+2. Click "Reinstall Database" (backs up data by default)
+3. Or use "Wipe Data" to remove all plugin data
+
+## Notes
+
+- ✅ **No data loss** - `dbDelta()` only adds/modifies, never removes
+- ✅ **Safe to re-run** - Schema creation is idempotent
+- ✅ **WordPress standard** - Uses native WordPress database functions
+- ✅ **Default data** - Automatically seeds prompt sections and article structures
