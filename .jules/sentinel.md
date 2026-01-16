@@ -12,3 +12,8 @@
 **Vulnerability:** Unescaped concatenation of AI service response into a JSON success message which was rendered via `.html()` in JavaScript.
 **Learning:** AI text generation outputs must be treated as untrusted user input. If a model is manipulated or hallucinating, it can return malicious HTML/JS.
 **Prevention:** Always escape text content from external services using `esc_html()` before sending it to the client, especially if the client renders it as HTML.
+
+## 2024-05-24 - [Directory Listing Prevention]
+**Vulnerability:** Missing `index.php` or `index.html` files in plugin subdirectories (`includes`, `assets`, etc.).
+**Learning:** Without these silent index files, misconfigured web servers may allow users to browse the plugin's file structure (Directory Listing), potentially revealing sensitive information, backups, or the internal architecture.
+**Prevention:** Always include an empty `index.php` with `<?php // Silence is golden.` in every directory of the plugin.
