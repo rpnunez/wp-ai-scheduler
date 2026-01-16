@@ -319,7 +319,7 @@ class AIPS_DB_Manager {
                 // Skip empty lines, PRIMARY KEY, KEY, UNIQUE KEY lines
                 if (empty($line) || 
                     stripos($line, 'PRIMARY KEY') !== false || 
-                    preg_match('/^\s*KEY\s+/i', $line) ||
+                    preg_match('/^KEY\s+/i', $line) ||
                     stripos($line, 'UNIQUE KEY') !== false) {
                     continue;
                 }
