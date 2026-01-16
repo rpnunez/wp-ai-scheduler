@@ -12,7 +12,8 @@ class AIPS_DB_Manager {
         'aips_voices',
         'aips_article_structures',
         'aips_prompt_sections',
-        'aips_trending_topics'
+        'aips_trending_topics',
+        'aips_activity'
     );
 
     public function __construct() {
@@ -52,6 +53,7 @@ class AIPS_DB_Manager {
         $table_structures = $tables['aips_article_structures'];
         $table_sections = $tables['aips_prompt_sections'];
         $table_trending_topics = $tables['aips_trending_topics'];
+        $table_activity = $tables['aips_activity'];
 
         $sql = array();
 
@@ -105,12 +107,14 @@ class AIPS_DB_Manager {
             next_run datetime NOT NULL,
             last_run datetime DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
+            status varchar(20) DEFAULT 'active',
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY template_id (template_id),
             KEY article_structure_id (article_structure_id),
             KEY next_run (next_run),
-            KEY is_active_next_run (is_active, next_run)
+            KEY is_active_next_run (is_active, next_run),
+            KEY status (status)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_voices (
@@ -164,6 +168,24 @@ class AIPS_DB_Manager {
             KEY niche_idx (niche),
             KEY score_idx (score),
             KEY researched_at_idx (researched_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_activity (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            event_type varchar(50) NOT NULL,
+            event_status varchar(20) NOT NULL,
+            schedule_id bigint(20) DEFAULT NULL,
+            post_id bigint(20) DEFAULT NULL,
+            template_id bigint(20) DEFAULT NULL,
+            message text,
+            metadata longtext,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY event_type (event_type),
+            KEY event_status (event_status),
+            KEY schedule_id (schedule_id),
+            KEY post_id (post_id),
+            KEY created_at (created_at)
         ) $charset_collate;";
 
         return $sql;
@@ -297,7 +319,7 @@ class AIPS_DB_Manager {
                 // Skip empty lines, PRIMARY KEY, KEY, UNIQUE KEY lines
                 if (empty($line) || 
                     stripos($line, 'PRIMARY KEY') !== false || 
-                    stripos($line, 'KEY ') === 0 ||
+                    preg_match('/^\s*KEY\s+/i', $line) ||
                     stripos($line, 'UNIQUE KEY') !== false) {
                     continue;
                 }
