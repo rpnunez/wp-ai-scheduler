@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Post Schedules</title>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Post Schedules</h1>
+        <div class="aips-schedules-container">
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th class="column-template">Template</th>
+                        <th class="column-structure">Article Structure</th>
+                        <th class="column-frequency">Frequency</th>
+                        <th class="column-next-run">Next Run</th>
+                        <th class="column-last-run">Last Run</th>
+                        <th class="column-status">Status</th>
+                        <th class="column-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-schedule-id="123" data-template-id="1">
+                        <td class="column-template">My Template</td>
+                        <td class="column-structure">Default</td>
+                        <td class="column-frequency">Daily</td>
+                        <td class="column-next-run">Tomorrow 10:00 AM</td>
+                        <td class="column-last-run">Yesterday 10:00 AM</td>
+                        <td class="column-status">Active</td>
+                        <td class="column-actions">
+                            <button class="button aips-clone-schedule">Clone</button>
+                            <button class="button aips-run-now" data-id="123" data-type="schedule">Run Now</button>
+                            <button class="button button-link-delete aips-delete-schedule" data-id="123">Delete</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
