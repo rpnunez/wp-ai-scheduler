@@ -114,7 +114,7 @@ class AIPS_Schedule_Repository {
             LIMIT %d
         ", $limit));
     }
-    
+
     /**
      * Get schedules by template ID.
      *
