@@ -394,7 +394,8 @@ class AIPS_Settings {
     public function unsplash_access_key_field_callback() {
         $value = get_option('aips_unsplash_access_key', '');
         ?>
-        <input type="text" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
+        <!-- SECURITY: Use password type to prevent plain-text exposure of the API key in the admin UI -->
+        <input type="password" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
         <p class="description"><?php esc_html_e('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'); ?></p>
         <?php
     }
