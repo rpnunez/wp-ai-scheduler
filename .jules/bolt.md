@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-26 - [History Count Optimization]
+**Learning:** The History page was running `SELECT COUNT(*)` on every load to support pagination, even though a cached statistics object (containing the total count) was already available.
+**Action:** Always check if a cached summary exists before running expensive COUNT queries, especially for "All" or "Unfiltered" views. Explicitly handle cache misses or empty states with defensive coding (`is_array`, `isset`).
