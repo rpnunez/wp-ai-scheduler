@@ -51,9 +51,9 @@ Automated CI workflow that:
 - Displays all indexes on the table
 
 **Triggers:**
-- Push to `copilot/test-composite-index-aips-schedule` branch
-- Pull requests to `main` or `develop`
-- Manual dispatch (workflow_dispatch)
+- Pushes to `main` and `develop` branches (aligned with the main PHPUnit workflow)
+- Pull requests targeting `main` or `develop`
+- Manual dispatch (`workflow_dispatch`) when ad-hoc verification is needed
 
 **View results:**
 Go to Actions tab → Test Composite Index workflow
