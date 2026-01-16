@@ -131,8 +131,8 @@ if (!defined('ABSPATH')) {
                     
                     <div class="aips-form-row">
                         <label for="prompt_template"><?php esc_html_e('Content Prompt', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
-                        <textarea id="prompt_template" name="prompt_template" rows="6" required class="large-text" placeholder="<?php esc_attr_e('Write a detailed blog post about...', 'ai-post-scheduler'); ?>"></textarea>
-                        <p class="description">
+                        <textarea id="prompt_template" name="prompt_template" rows="6" required class="large-text" placeholder="<?php esc_attr_e('Write a detailed blog post about...', 'ai-post-scheduler'); ?>" aria-describedby="prompt_template_desc"></textarea>
+                        <p class="description" id="prompt_template_desc">
                             <?php esc_html_e('Available variables: {{date}}, {{year}}, {{month}}, {{day}}, {{time}}, {{site_name}}, {{site_description}}, {{random_number}}', 'ai-post-scheduler'); ?>
                         </p>
                     </div>
@@ -146,48 +146,48 @@ if (!defined('ABSPATH')) {
                         <label for="voice_id"><?php esc_html_e('Voice', 'ai-post-scheduler'); ?></label>
                         <div class="aips-voice-selector">
                             <input type="text" id="voice_search" class="regular-text" placeholder="<?php esc_attr_e('Search voices...', 'ai-post-scheduler'); ?>" style="margin-bottom: 8px;">
-                            <select id="voice_id" name="voice_id" class="regular-text">
+                            <select id="voice_id" name="voice_id" class="regular-text" aria-describedby="voice_id_desc">
                                 <option value="0"><?php esc_html_e('No Voice (Use Default)', 'ai-post-scheduler'); ?></option>
                             </select>
-                            <p class="description"><?php esc_html_e('Optional. A voice provides pre-configured title and content instructions.', 'ai-post-scheduler'); ?></p>
+                            <p class="description" id="voice_id_desc"><?php esc_html_e('Optional. A voice provides pre-configured title and content instructions.', 'ai-post-scheduler'); ?></p>
                         </div>
                     </div>
                     
                     <div class="aips-form-row">
                         <label for="post_quantity"><?php esc_html_e('Number of Posts to Generate', 'ai-post-scheduler'); ?></label>
-                        <input type="number" id="post_quantity" name="post_quantity" min="1" max="20" value="1" class="small-text">
-                        <p class="description"><?php esc_html_e('Generate 1-20 posts when running this template. Useful for batch generation.', 'ai-post-scheduler'); ?></p>
+                        <input type="number" id="post_quantity" name="post_quantity" min="1" max="20" value="1" class="small-text" aria-describedby="post_quantity_desc">
+                        <p class="description" id="post_quantity_desc"><?php esc_html_e('Generate 1-20 posts when running this template. Useful for batch generation.', 'ai-post-scheduler'); ?></p>
                     </div>
                     
                     <div class="aips-form-row">
                         <label class="aips-checkbox-label">
-                            <input type="checkbox" id="generate_featured_image" name="generate_featured_image" value="1">
+                            <input type="checkbox" id="generate_featured_image" name="generate_featured_image" value="1" aria-describedby="generate_featured_image_desc">
                             <?php esc_html_e('Generate Featured Image?', 'ai-post-scheduler'); ?>
                         </label>
-                        <p class="description"><?php esc_html_e('If checked, a featured image will be attached to the generated post.', 'ai-post-scheduler'); ?></p>
+                        <p class="description" id="generate_featured_image_desc"><?php esc_html_e('If checked, a featured image will be attached to the generated post.', 'ai-post-scheduler'); ?></p>
                     </div>
 
                     <div class="aips-featured-image-settings" style="display: none;">
                         <div class="aips-form-row">
                             <label for="featured_image_source"><?php esc_html_e('Featured Image Source', 'ai-post-scheduler'); ?></label>
-                            <select id="featured_image_source" name="featured_image_source">
+                            <select id="featured_image_source" name="featured_image_source" aria-describedby="featured_image_source_desc">
                                 <option value="ai_prompt"><?php esc_html_e('Generate with AI Prompt', 'ai-post-scheduler'); ?></option>
                                 <option value="unsplash"><?php esc_html_e('Unsplash (keywords)', 'ai-post-scheduler'); ?></option>
                                 <option value="media_library"><?php esc_html_e('Media Library (select images)', 'ai-post-scheduler'); ?></option>
                             </select>
-                            <p class="description"><?php esc_html_e('Choose how the featured image should be sourced for this template.', 'ai-post-scheduler'); ?></p>
+                            <p class="description" id="featured_image_source_desc"><?php esc_html_e('Choose how the featured image should be sourced for this template.', 'ai-post-scheduler'); ?></p>
                         </div>
 
                         <div class="aips-form-row aips-image-source aips-image-source-ai">
                             <label for="image_prompt"><?php esc_html_e('Image Prompt', 'ai-post-scheduler'); ?></label>
-                            <textarea id="image_prompt" name="image_prompt" rows="3" class="large-text" placeholder="<?php esc_attr_e('Describe the image you want generated...', 'ai-post-scheduler'); ?>"></textarea>
-                            <p class="description"><?php esc_html_e('Used when generating the image with AI.', 'ai-post-scheduler'); ?></p>
+                            <textarea id="image_prompt" name="image_prompt" rows="3" class="large-text" placeholder="<?php esc_attr_e('Describe the image you want generated...', 'ai-post-scheduler'); ?>" aria-describedby="image_prompt_desc"></textarea>
+                            <p class="description" id="image_prompt_desc"><?php esc_html_e('Used when generating the image with AI.', 'ai-post-scheduler'); ?></p>
                         </div>
 
                         <div class="aips-form-row aips-image-source aips-image-source-unsplash" style="display: none;">
                             <label for="featured_image_unsplash_keywords"><?php esc_html_e('Unsplash Keywords', 'ai-post-scheduler'); ?></label>
-                            <input type="text" id="featured_image_unsplash_keywords" name="featured_image_unsplash_keywords" class="regular-text" placeholder="<?php esc_attr_e('e.g. sunrise, mountains, drone view', 'ai-post-scheduler'); ?>">
-                            <p class="description"><?php esc_html_e('Unsplash will return a random image that matches these keywords.', 'ai-post-scheduler'); ?></p>
+                            <input type="text" id="featured_image_unsplash_keywords" name="featured_image_unsplash_keywords" class="regular-text" placeholder="<?php esc_attr_e('e.g. sunrise, mountains, drone view', 'ai-post-scheduler'); ?>" aria-describedby="featured_image_unsplash_keywords_desc">
+                            <p class="description" id="featured_image_unsplash_keywords_desc"><?php esc_html_e('Unsplash will return a random image that matches these keywords.', 'ai-post-scheduler'); ?></p>
                         </div>
 
                         <div class="aips-form-row aips-image-source aips-image-source-media" style="display: none;">
@@ -225,8 +225,8 @@ if (!defined('ABSPATH')) {
                     
                     <div class="aips-form-row">
                         <label for="post_tags"><?php esc_html_e('Tags', 'ai-post-scheduler'); ?></label>
-                        <input type="text" id="post_tags" name="post_tags" class="regular-text" placeholder="<?php esc_attr_e('tag1, tag2, tag3', 'ai-post-scheduler'); ?>">
-                        <p class="description"><?php esc_html_e('Comma-separated list of tags', 'ai-post-scheduler'); ?></p>
+                        <input type="text" id="post_tags" name="post_tags" class="regular-text" placeholder="<?php esc_attr_e('tag1, tag2, tag3', 'ai-post-scheduler'); ?>" aria-describedby="post_tags_desc">
+                        <p class="description" id="post_tags_desc"><?php esc_html_e('Comma-separated list of tags', 'ai-post-scheduler'); ?></p>
                     </div>
                     
                     <div class="aips-form-row">
