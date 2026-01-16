@@ -831,3 +831,37 @@
     background-color: #2271b1;
     color: #fff;
 }
+
+/* Variable Code Cell & Copy Button */
+.aips-variable-code-cell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.aips-copy-btn {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 5px;
+    margin-left: 10px;
+    color: #555;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    transition: all 0.2s;
+}
+
+.aips-copy-btn:hover {
+    border-color: #2271b1;
+    color: #2271b1;
+    background: #f0f6fc;
+}
+
+.aips-copy-btn:focus {
+    box-shadow: 0 0 0 1px #fff, 0 0 0 3px #2271b1;
+    outline: 2px solid transparent;
+}

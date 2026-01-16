@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Settings Page Verification</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/3.2.0/css/dashicons.min.css">
+    <style>
+        /* Mock CSS from assets/css/admin.css */
+        .aips-variable-code-cell {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .aips-copy-btn {
+            background: none;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 5px;
+            margin-left: 10px;
+            color: #555;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+        }
+        .aips-copy-btn:hover {
+            border-color: #2271b1;
+            color: #2271b1;
+            background: #f0f6fc;
+        }
+        .aips-copy-btn:focus {
+            box-shadow: 0 0 0 1px #fff, 0 0 0 3px #2271b1;
+            outline: 2px solid transparent;
+        }
+        .widefat {
+            width: 100%;
+            border-spacing: 0;
+            border: 1px solid #c3c4c7;
+        }
+        .widefat td, .widefat th {
+            padding: 8px 10px;
+            border-bottom: 1px solid #c3c4c7;
+        }
+        .dashicons {
+            font-family: 'dashicons';
+            display: inline-block;
+            line-height: 1;
+            font-weight: 400;
+            font-style: normal;
+            speak: never;
+            text-decoration: inherit;
+            text-transform: none;
+            text-rendering: auto;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            width: 20px;
+            height: 20px;
+            font-size: 20px;
+            vertical-align: top;
+        }
+        .dashicons-admin-page:before {
+            content: "\f105";
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>AI Post Scheduler Settings</h1>
+
+        <div class="aips-card">
+            <h2>Template Variables</h2>
+            <p>You can use these variables in your prompt templates:</p>
+            <table class="widefat striped">
+                <thead>
+                    <tr>
+                        <th>Variable</th>
+                        <th>Description</th>
+                        <th>Example</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="aips-variable-code-cell">
+                                <code>{{date}}</code>
+                                <button type="button" class="aips-copy-btn" data-clipboard-text="{{date}}" aria-label="Copy variable">
+                                    <span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+                                </button>
+                            </div>
+                        </td>
+                        <td>Current date</td>
+                        <td>May 28, 2024</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="aips-variable-code-cell">
+                                <code>{{topic}}</code>
+                                <button type="button" class="aips-copy-btn" data-clipboard-text="{{topic}}" aria-label="Copy variable">
+                                    <span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+                                </button>
+                            </div>
+                        </td>
+                        <td>Topic (from Scheduler/Planner)</td>
+                        <td>Your Topic</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Mock jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Mock admin.js (simplified) -->
+    <script>
+        (function($) {
+            window.AIPS = window.AIPS || {};
+
+            // Mock copyToClipboard handler
+            $(document).on('click', '.aips-copy-btn', function(e) {
+                e.preventDefault();
+                var $btn = $(this);
+                var originalHtml = $btn.html();
+                var text = $btn.data('clipboard-text');
+
+                // Write to clipboard
+                navigator.clipboard.writeText(text).then(function() {
+                    $btn.html('Copied!');
+                    $btn.data('is-copying', true);
+
+                    setTimeout(function() {
+                        $btn.html(originalHtml);
+                        $btn.removeData('is-copying');
+                    }, 2000);
+                }).catch(function() {
+                    alert('Failed to copy: ' + text);
+                });
+            });
+        })(jQuery);
+    </script>
+</body>
+</html>
