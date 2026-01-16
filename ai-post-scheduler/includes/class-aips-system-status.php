@@ -70,24 +70,9 @@ class AIPS_System_Status {
 
     private function check_database() {
         global $wpdb;
-        $tables = array(
-            'aips_history' => array(
-                'id', 'post_id', 'template_id', 'status', 'prompt', 'generated_title',
-                'generated_content', 'generation_log', 'error_message', 'created_at', 'completed_at'
-            ),
-            'aips_templates' => array(
-                'id', 'name', 'prompt_template', 'title_prompt', 'voice_id', 'post_quantity',
-                'image_prompt', 'generate_featured_image', 'post_status', 'post_category',
-                'post_tags', 'post_author', 'is_active', 'created_at', 'updated_at'
-            ),
-            'aips_schedule' => array(
-                'id', 'template_id', 'frequency', 'topic', 'next_run', 'last_run', 'is_active', 'created_at'
-            ),
-            'aips_voices' => array(
-                'id', 'name', 'title_prompt', 'content_instructions', 'excerpt_instructions',
-                'is_active', 'created_at'
-            ),
-        );
+        
+        // Get expected columns from AIPS_DB_Manager (single source of truth)
+        $tables = AIPS_DB_Manager::get_expected_columns();
 
         $results = array();
 
