@@ -211,4 +211,13 @@ class AIPS_Activity_Repository {
 			$date
 		));
 	}
+
+    /**
+     * Delete all activity records.
+     *
+     * @return int|false Number of rows deleted, or false on error.
+     */
+    public function delete_all() {
+        return $this->wpdb->query("TRUNCATE TABLE {$this->table_name}");
+    }
 }

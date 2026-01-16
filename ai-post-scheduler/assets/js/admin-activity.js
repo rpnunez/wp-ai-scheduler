@@ -358,6 +358,39 @@
 			if ($(e.target).hasClass('aips-modal')) {
 				window.AIPS.closeActivityModal();
 			}
+		},
+
+		/**
+		 * Handle clear activity button click.
+		 */
+		handleClearActivity: function() {
+			if (!confirm('Are you sure you want to clear the entire activity log? This cannot be undone.')) {
+				return;
+			}
+
+			const $btn = $(this);
+			$btn.prop('disabled', true).text('Clearing...');
+
+			$.ajax({
+				url: aipsActivityL10n.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'aips_clear_activity',
+					nonce: aipsActivityL10n.nonce
+				},
+				success: function(response) {
+					if (response.success) {
+						window.AIPS.loadActivity();
+					} else {
+						alert(response.data.message || 'Failed to clear activity');
+					}
+					$btn.prop('disabled', false).text('Clear Activity Log');
+				},
+				error: function() {
+					alert('Failed to clear activity');
+					$btn.prop('disabled', false).text('Clear Activity Log');
+				}
+			});
 		}
 	});
 	
@@ -383,6 +416,9 @@
 		
 		// Quick publish from feed
 		$(document).on('click', '.aips-quick-publish', window.AIPS.publishPostQuick);
+
+		// Clear activity button
+		$(document).on('click', '.aips-clear-activity-btn', window.AIPS.handleClearActivity);
 	});
 	
 })(jQuery);

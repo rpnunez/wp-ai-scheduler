@@ -20,6 +20,9 @@ if (!defined('ABSPATH')) {
 			<button class="button aips-filter-btn" data-filter="failed">
 				<?php esc_html_e('Failed', 'ai-post-scheduler'); ?>
 			</button>
+			<button class="button aips-clear-activity-btn" style="margin-left: auto; color: #b32d2e; border-color: #b32d2e;">
+				<?php esc_html_e('Clear Activity Log', 'ai-post-scheduler'); ?>
+			</button>
 		</div>
 		
 		<div class="aips-activity-feed">

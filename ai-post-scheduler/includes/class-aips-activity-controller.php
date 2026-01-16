@@ -41,6 +41,7 @@ class AIPS_Activity_Controller {
 		add_action('wp_ajax_aips_get_activity', array($this, 'ajax_get_activity'));
 		add_action('wp_ajax_aips_get_activity_detail', array($this, 'ajax_get_activity_detail'));
 		add_action('wp_ajax_aips_publish_draft', array($this, 'ajax_publish_draft'));
+		add_action('wp_ajax_aips_clear_activity', array($this, 'ajax_clear_activity'));
 	}
 	
 	/**
@@ -176,6 +177,25 @@ class AIPS_Activity_Controller {
 			'message' => __('Post published successfully', 'ai-post-scheduler'),
 			'view_url' => get_permalink($post_id),
 		));
+	}
+
+	/**
+	 * AJAX handler to clear all activity.
+	 */
+	public function ajax_clear_activity() {
+		check_ajax_referer('aips_activity_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied', 'ai-post-scheduler')));
+		}
+
+		$result = $this->activity_repository->delete_all();
+
+		if ($result === false) {
+			wp_send_json_error(array('message' => __('Failed to clear activity log', 'ai-post-scheduler')));
+		}
+
+		wp_send_json_success(array('message' => __('Activity log cleared successfully', 'ai-post-scheduler')));
 	}
 	
 	/**
