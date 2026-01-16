@@ -1,3 +1,6 @@
+<?php
+$default_planner_frequency = 'daily';
+?>
 <div class="aips-planner-container">
     <div class="aips-card">
         <h3><?php echo esc_html__('Topic Brainstorming', 'ai-post-scheduler'); ?></h3>
@@ -71,12 +74,7 @@
 
                 <div class="aips-col">
                     <label for="bulk-frequency"><?php echo esc_html__('Frequency', 'ai-post-scheduler'); ?></label>
-                    <select id="bulk-frequency">
-                        <option value="hourly"><?php echo esc_html__('Every Hour', 'ai-post-scheduler'); ?></option>
-                        <option value="every_4_hours"><?php echo esc_html__('Every 4 Hours', 'ai-post-scheduler'); ?></option>
-                        <option value="daily" selected><?php echo esc_html__('Daily', 'ai-post-scheduler'); ?></option>
-                        <option value="weekly"><?php echo esc_html__('Weekly', 'ai-post-scheduler'); ?></option>
-                    </select>
+                    <?php AIPS_Template_Helper::render_frequency_dropdown( 'bulk-frequency', 'bulk-frequency', $default_planner_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
                 </div>
             </div>
 

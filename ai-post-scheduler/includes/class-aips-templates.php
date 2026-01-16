@@ -217,6 +217,31 @@ class AIPS_Templates {
         $templates = $this->get_all();
         $categories = get_categories(array('hide_empty' => false));
         $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));
+
+        // Determine active tab to avoid unnecessary history queries on non-history tabs.
+        $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'templates';
+
+        // Provide safe defaults so the template can rely on these variables.
+        $history_handler = null;
+        $history = array();
+        $stats = array();
+
+        if ($active_tab === 'history') {
+            $history_handler = new AIPS_History();
+            $history_current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+            $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+            $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+
+            $history = $history_handler->get_history(array(
+                'page'   => $history_current_page,
+                'status' => $status_filter,
+                'search' => $search_query,
+            ));
+
+            $stats = $history_handler->get_stats();
+        }
+        $history_base_page = 'aips-templates';
+        $history_base_args = array('tab' => 'history');
         
         include AIPS_PLUGIN_DIR . 'templates/admin/main.php';
     }
