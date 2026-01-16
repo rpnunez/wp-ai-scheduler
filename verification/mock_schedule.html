@@ -1,0 +1,73 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Mock Schedule Page</title>
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <script>
+                // Mock aipsAjax
+                window.aipsAjax = {
+                    ajaxUrl: '/wp-admin/admin-ajax.php',
+                    nonce: 'mock_nonce'
+                };
+            </script>
+        </head>
+        <body>
+            <div class="wrap aips-wrap">
+                <h1>Post Schedules</h1>
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th class="column-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="column-actions">
+                                <!-- The button we added -->
+                                <button class="button aips-run-now" data-id="123" data-context="schedule" aria-label="Run schedule now">
+                                    Run Now
+                                </button>
+                                <button class="button aips-clone-schedule">Clone</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="log"></div>
+
+            <script>
+                // Mock AIPS object and admin.js logic (simplified)
+                window.AIPS = window.AIPS || {};
+
+                (function($) {
+                    window.AIPS.runNow = function(e) {
+                        e.preventDefault();
+                        var id = $(this).data('id');
+                        var context = $(this).data('context') || 'template';
+                        var $btn = $(this);
+
+                        $btn.text('Generating...'); // Simulate UI change
+
+                        var data = {
+                            action: 'aips_run_now',
+                            nonce: aipsAjax.nonce
+                        };
+
+                        if (context === 'schedule') {
+                            data.schedule_id = id;
+                        } else {
+                            data.template_id = id;
+                        }
+
+                        // Log the data for verification
+                        $('#log').text('Sending AJAX: ' + JSON.stringify(data));
+                        console.log('AJAX Data:', data);
+                    };
+
+                    $(document).on('click', '.aips-run-now', window.AIPS.runNow);
+                })(jQuery);
+            </script>
+        </body>
+        </html>
