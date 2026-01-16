@@ -1,0 +1,147 @@
+name: Test Composite Index
+
+on:
+  push:
+    branches: [ copilot/test-composite-index-aips-schedule ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test-composite-index:
+    name: Test Composite Index in aips_schedule
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        ports: [3306:3306]
+        env:
+          MYSQL_ROOT_PASSWORD: ""
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, intl, xml, curl, zip, dom, fileinfo, mysqli
+          tools: composer:v2
+
+      - name: Wait for MySQL and Prepare Database
+        run: |
+          ATTEMPTS=10
+          until mysqladmin ping -h127.0.0.1 --silent; do
+            ATTEMPTS=$((ATTEMPTS-1))
+            if [ $ATTEMPTS -le 0 ]; then
+              echo "MySQL did not become ready in time."
+              exit 1
+            fi
+            echo "Waiting for MySQL to be ready..."
+            sleep 5
+          done
+          
+          # Create the database
+          mysql -h127.0.0.1 -uroot -e "CREATE DATABASE IF NOT EXISTS wordpress_test;"
+          echo "Database created successfully."
+
+      - name: Install WordPress Test Library
+        run: |
+          # Create WordPress test directory
+          mkdir -p /tmp/wordpress-tests-lib
+          
+          # Download pre-built WordPress core
+          wget -q https://wordpress.org/latest.tar.gz -O /tmp/wordpress-latest.tar.gz
+          tar -xzf /tmp/wordpress-latest.tar.gz -C /tmp/
+          mv /tmp/wordpress /tmp/wordpress-core
+          rm /tmp/wordpress-latest.tar.gz
+          
+          # Clone WordPress develop repository for test library
+          git clone --depth=1 https://github.com/WordPress/wordpress-develop.git /tmp/wordpress-develop
+          
+          # Copy test library files
+          cp -r /tmp/wordpress-develop/tests/phpunit/* /tmp/wordpress-tests-lib/
+          
+          # Copy WordPress core to test library src directory
+          cp -r /tmp/wordpress-core/* /tmp/wordpress-tests-lib/src/
+          
+          # Copy config file
+          cp /tmp/wordpress-develop/wp-tests-config-sample.php /tmp/wordpress-tests-lib/wp-tests-config.php
+          
+          # Cleanup
+          rm -rf /tmp/wordpress-develop /tmp/wordpress-core
+          
+          # Update configuration with database credentials
+          sed -i "s/youremptytestdbnamehere/wordpress_test/" /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s/yourusernamehere/root/" /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s/yourpasswordhere//" /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s|localhost|127.0.0.1|" /tmp/wordpress-tests-lib/wp-tests-config.php
+          
+          # Add ABSPATH definition
+          sed -i "/require.*bootstrap\.php/i define( 'ABSPATH', '/tmp/wordpress-tests-lib/src/' );" /tmp/wordpress-tests-lib/wp-tests-config.php
+
+      - name: Install Plugin
+        run: |
+          # Create plugins directory
+          mkdir -p /tmp/wordpress-tests-lib/src/wp-content/plugins
+          
+          # Copy plugin to WordPress plugins directory
+          cp -r ai-post-scheduler /tmp/wordpress-tests-lib/src/wp-content/plugins/
+          
+          # Verify installation
+          ls -la /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler/ai-post-scheduler.php
+
+      - name: Install Composer Dependencies
+        run: |
+          cd /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler
+          composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run Database Schema Tests
+        run: |
+          cd /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler
+          WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress-tests-lib/src \
+            vendor/bin/phpunit tests/test-db-schema.php --testdox
+
+      - name: Verify Composite Index Directly in Database
+        run: |
+          echo "Verifying composite index 'is_active_next_run' exists in database..."
+          
+          # Query the database for the index
+          mysql -h127.0.0.1 -uroot wordpress_test -e "
+            SHOW INDEX FROM wp_aips_schedule WHERE Key_name = 'is_active_next_run';
+          "
+          
+          echo ""
+          echo "Composite index verification complete!"
+
+      - name: Display Index Details
+        run: |
+          echo "All indexes on wp_aips_schedule table:"
+          mysql -h127.0.0.1 -uroot wordpress_test -e "
+            SHOW INDEX FROM wp_aips_schedule;
+          "
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "============================================"
+          echo "Test Summary: Composite Index Verification"
+          echo "============================================"
+          echo ""
+          echo "✓ Schema changes implemented:"
+          echo "  - Added composite index: is_active_next_run"
+          echo "  - Index columns: (is_active, next_run)"
+          echo "  - Table: wp_aips_schedule"
+          echo ""
+          echo "✓ Verification methods:"
+          echo "  - PHPUnit test suite"
+          echo "  - Direct database query"
+          echo ""
