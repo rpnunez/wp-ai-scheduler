@@ -100,42 +100,10 @@ class AIPS_Templates {
         $month_end = strtotime('+30 days', $now);
 
         foreach ($schedules as $schedule) {
-            $cursor = strtotime($schedule->next_run);
-            $frequency = $schedule->frequency;
-
-            // Limit iterations to prevent infinite loops or excessive processing
-            $max_iterations = 100;
-            $i = 0;
-
-            while ($cursor <= $month_end && $i < $max_iterations) {
-                if ($cursor < $now) {
-                    // Skip past events that haven't run yet but update cursor?
-                    // Actually if next_run is in past, it will run next cron.
-                    // So count it as imminent.
-                }
-
-                if ($cursor <= $today_end) {
-                    $stats['today']++;
-                }
-
-                if ($cursor <= $week_end) {
-                    $stats['week']++;
-                }
-
-                if ($cursor <= $month_end) {
-                    $stats['month']++;
-                } else {
-                    break;
-                }
-
-                if ($frequency === 'once') {
-                    break;
-                }
-
-                // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
-                $i++;
-            }
+            $schedule_stats = $this->calculate_stats_for_schedule($schedule, $today_end, $week_end, $month_end);
+            $stats['today'] += $schedule_stats['today'];
+            $stats['week'] += $schedule_stats['week'];
+            $stats['month'] += $schedule_stats['month'];
         }
 
         return $stats;
@@ -171,40 +139,51 @@ class AIPS_Templates {
                 $stats[$tid] = array('today' => 0, 'week' => 0, 'month' => 0);
             }
 
-            $cursor = strtotime($schedule->next_run);
-            $frequency = $schedule->frequency;
-
-            // Limit iterations to prevent infinite loops or excessive processing
-            $max_iterations = 100;
-            $i = 0;
-
-            while ($cursor <= $month_end && $i < $max_iterations) {
-                // If cursor is in the past, it's considered imminent (Today)
-                if ($cursor <= $today_end) {
-                    $stats[$tid]['today']++;
-                }
-
-                if ($cursor <= $week_end) {
-                    $stats[$tid]['week']++;
-                }
-
-                if ($cursor <= $month_end) {
-                    $stats[$tid]['month']++;
-                } else {
-                    break;
-                }
-
-                if ($frequency === 'once') {
-                    break;
-                }
-
-                // Calculate next run
-                $cursor = $this->calculate_next_run($frequency, $cursor);
-                $i++;
-            }
+            $schedule_stats = $this->calculate_stats_for_schedule($schedule, $today_end, $week_end, $month_end);
+            $stats[$tid]['today'] += $schedule_stats['today'];
+            $stats[$tid]['week'] += $schedule_stats['week'];
+            $stats[$tid]['month'] += $schedule_stats['month'];
         }
 
         set_transient('aips_pending_schedule_stats', $stats, HOUR_IN_SECONDS);
+        return $stats;
+    }
+
+    private function calculate_stats_for_schedule($schedule, $today_end, $week_end, $month_end) {
+        $stats = array('today' => 0, 'week' => 0, 'month' => 0);
+
+        $cursor = strtotime($schedule->next_run);
+        $frequency = $schedule->frequency;
+
+        // Limit iterations to prevent infinite loops or excessive processing
+        $max_iterations = 100;
+        $i = 0;
+
+        while ($cursor <= $month_end && $i < $max_iterations) {
+            // If cursor is in the past, it's considered imminent (Today)
+            if ($cursor <= $today_end) {
+                $stats['today']++;
+            }
+
+            if ($cursor <= $week_end) {
+                $stats['week']++;
+            }
+
+            if ($cursor <= $month_end) {
+                $stats['month']++;
+            } else {
+                break;
+            }
+
+            if ($frequency === 'once') {
+                break;
+            }
+
+            // Calculate next run
+            $cursor = $this->calculate_next_run($frequency, $cursor);
+            $i++;
+        }
+
         return $stats;
     }
 

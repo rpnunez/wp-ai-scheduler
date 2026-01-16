@@ -14,11 +14,47 @@ class AIPS_System_Status {
         return array(
             'environment' => $this->check_environment(),
             'plugin' => $this->check_plugin(),
+            'activity' => $this->check_activity(),
             'database' => $this->check_database(),
             'filesystem' => $this->check_filesystem(),
             'cron' => $this->check_cron(),
             'logs' => $this->check_logs(),
         );
+    }
+
+    private function check_activity() {
+        $activity_repo = new AIPS_Activity_Repository();
+        $activities = $activity_repo->get_recent(array('limit' => 5));
+
+        $results = array();
+
+        if (empty($activities)) {
+            $results['no_activity'] = array(
+                'label' => 'Recent Activity',
+                'value' => 'No recent activity recorded',
+                'status' => 'info',
+            );
+            return $results;
+        }
+
+        foreach ($activities as $activity) {
+            $status = 'info';
+            if ($activity->event_status === 'failed') {
+                $status = 'error';
+            } elseif ($activity->event_status === 'success' || $activity->event_status === 'draft') {
+                $status = 'ok';
+            }
+
+            $label = ucfirst(str_replace('_', ' ', $activity->event_type)) . ' (' . $activity->created_at . ')';
+
+            $results['activity_' . $activity->id] = array(
+                'label' => $label,
+                'value' => $activity->message,
+                'status' => $status,
+            );
+        }
+
+        return $results;
     }
 
     private function check_environment() {

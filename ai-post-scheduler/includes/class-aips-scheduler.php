@@ -142,162 +142,184 @@ class AIPS_Scheduler {
         $generator = new AIPS_Generator();
         
         foreach ($due_schedules as $schedule) {
-            // Claim-First Locking Strategy (Hunter)
-            // Immediately calculate and update next_run to lock this schedule from concurrent processes.
+            try {
+                // Claim-First Locking Strategy (Hunter)
+                // Immediately calculate and update next_run to lock this schedule from concurrent processes.
 
-            $original_next_run = $schedule->next_run;
-            $new_next_run = null;
+                $original_next_run = $schedule->next_run;
+                $new_next_run = null;
 
-            if ($schedule->frequency === 'once') {
-                // For one-time schedules, "claim" it by pushing next_run forward (e.g., 1 hour)
-                // If the process crashes, it will be retried in 1 hour.
-                // If it succeeds, it will be deleted.
-                $new_next_run = date('Y-m-d H:i:s', current_time('timestamp') + HOUR_IN_SECONDS);
-            } else {
-                 // Calculate next run using original next_run to preserve phase
-                 $new_next_run = $this->calculate_next_run($schedule->frequency, $original_next_run);
-            }
-
-            // Update next_run immediately to lock this schedule from concurrent runs
-            $lock_result = $this->repository->update($schedule->schedule_id, array(
-                'next_run' => $new_next_run
-            ));
-
-            if ($lock_result === false) {
-                $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
-                continue; // Skip generation if we couldn't lock
-            }
-
-            // Dispatch schedule execution started event
-            do_action('aips_schedule_execution_started', $schedule->schedule_id);
-            
-            $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
-                'template_id' => $schedule->template_id,
-                'template_name' => $schedule->name,
-                'topic' => isset($schedule->topic) ? $schedule->topic : ''
-            ));
-            
-            // NEW: Select article structure for this execution
-            $article_structure_id = $this->template_type_selector->select_structure($schedule);
-            
-            $template = (object) array(
-                'id' => $schedule->template_id,
-                'name' => $schedule->name,
-                'prompt_template' => $schedule->prompt_template,
-                'title_prompt' => $schedule->title_prompt,
-                'post_status' => $schedule->post_status,
-                'post_category' => $schedule->post_category,
-                'post_tags' => $schedule->post_tags,
-                'post_author' => $schedule->post_author,
-                'post_quantity' => 1, // Schedules always run one at a time per interval
-                'generate_featured_image' => isset($schedule->generate_featured_image) ? $schedule->generate_featured_image : 0,
-                'image_prompt' => isset($schedule->image_prompt) ? $schedule->image_prompt : '',
-                'article_structure_id' => $article_structure_id, // NEW: Pass selected structure
-            );
-            
-            $topic = isset($schedule->topic) ? $schedule->topic : null;
-            $result = $generator->generate_post($template, null, $topic);
-            
-            if ($schedule->frequency === 'once') {
-                if (!is_wp_error($result)) {
-                    // If it's a one-time schedule and successful, delete it
-                    $this->repository->delete($schedule->schedule_id);
-                    $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
+                if ($schedule->frequency === 'once') {
+                    // For one-time schedules, "claim" it by pushing next_run forward (e.g., 1 hour)
+                    // If the process crashes, it will be retried in 1 hour.
+                    // If it succeeds, it will be deleted.
+                    $new_next_run = date('Y-m-d H:i:s', current_time('timestamp') + HOUR_IN_SECONDS);
                 } else {
-                    // If failed, deactivate it and set status to 'failed' to prevent infinite daily retries
-                    $this->repository->update($schedule->schedule_id, array(
-                        'is_active' => 0,
-                        'status' => 'failed',
-                        'last_run' => current_time('mysql')
-                    ));
-                    $logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
-                    
-                    // Log to activity feed
-                    $this->activity_repository->create(array(
-                        'event_type' => 'schedule_failed',
-                        'event_status' => 'failed',
-                        'schedule_id' => $schedule->schedule_id,
-                        'template_id' => $schedule->template_id,
-                        'message' => sprintf(
-                            __('One-time schedule "%s" failed and was deactivated', 'ai-post-scheduler'),
-                            $schedule->template_name
-                        ),
-                        'metadata' => array(
-                            'error' => $result->get_error_message(),
-                            'frequency' => $schedule->frequency,
-                        ),
-                    ));
+                     // Calculate next run using original next_run to preserve phase
+                     $new_next_run = $this->calculate_next_run($schedule->frequency, $original_next_run);
                 }
-            } else {
-                // For recurring schedules, we ONLY update last_run here.
-                // next_run was already updated at the start (Claim-First).
-                $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
-            }
-            
-            if (is_wp_error($result)) {
-                $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
-                    'schedule_id' => $schedule->schedule_id
-                ));
-                
-                // Log recurring schedule failures to activity feed
-                if ($schedule->frequency !== 'once') {
-                    $this->activity_repository->create(array(
-                        'event_type' => 'schedule_failed',
-                        'event_status' => 'failed',
-                        'schedule_id' => $schedule->schedule_id,
-                        'template_id' => $schedule->template_id,
-                        'message' => sprintf(
-                            __('Schedule "%s" failed to generate post', 'ai-post-scheduler'),
-                            $schedule->template_name
-                        ),
-                        'metadata' => array(
-                            'error' => $result->get_error_message(),
-                            'frequency' => $schedule->frequency,
-                        ),
-                    ));
-                }
-                
-                // Dispatch schedule execution failed event
-                do_action('aips_schedule_execution_failed', $schedule->schedule_id, $result->get_error_message());
-            } else {
-                $logger->log('Schedule completed successfully', 'info', array(
-                    'schedule_id' => $schedule->schedule_id,
-                    'post_id' => $result
-                ));
-                
-                // Get the post to check its status
-                $post = get_post($result);
-                if ($post) {
-                    $event_status = ($post->post_status === 'draft') ? 'draft' : 'success';
-                    $event_type = ($post->post_status === 'draft') ? 'post_draft' : 'post_published';
-                    
-                    // Log to activity feed
-                    $this->activity_repository->create(array(
-                        'event_type' => $event_type,
-                        'event_status' => $event_status,
-                        'schedule_id' => $schedule->schedule_id,
-                        'post_id' => $result,
-                        'template_id' => $schedule->template_id,
-                        'message' => sprintf(
-                            __('%s created by schedule "%s": %s', 'ai-post-scheduler'),
-                            ($post->post_status === 'draft') ? __('Draft', 'ai-post-scheduler') : __('Post', 'ai-post-scheduler'),
-                            $schedule->template_name,
-                            $post->post_title
-                        ),
-                        'metadata' => array(
-                            'post_status' => $post->post_status,
-                            'frequency' => $schedule->frequency,
-                        ),
-                    ));
-                }
-                
-                // Dispatch schedule execution completed event
-                do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
 
-                // Invalidate the schedule execution count cache (Bolt)
-                // This ensures rotation logic uses fresh counts on next run,
-                // and only after a successful post generation.
-                $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+                // Update next_run immediately to lock this schedule from concurrent runs
+                $lock_result = $this->repository->update($schedule->schedule_id, array(
+                    'next_run' => $new_next_run
+                ));
+
+                if ($lock_result === false) {
+                    $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
+                    continue; // Skip generation if we couldn't lock
+                }
+
+                // Dispatch schedule execution started event
+                do_action('aips_schedule_execution_started', $schedule->schedule_id);
+                
+                $logger->log('Processing schedule: ' . $schedule->schedule_id, 'info', array(
+                    'template_id' => $schedule->template_id,
+                    'template_name' => $schedule->name,
+                    'topic' => isset($schedule->topic) ? $schedule->topic : ''
+                ));
+                
+                // NEW: Select article structure for this execution
+                $article_structure_id = $this->template_type_selector->select_structure($schedule);
+
+                $template = (object) array(
+                    'id' => $schedule->template_id,
+                    'name' => $schedule->name,
+                    'prompt_template' => $schedule->prompt_template,
+                    'title_prompt' => $schedule->title_prompt,
+                    'post_status' => $schedule->post_status,
+                    'post_category' => $schedule->post_category,
+                    'post_tags' => $schedule->post_tags,
+                    'post_author' => $schedule->post_author,
+                    'post_quantity' => 1, // Schedules always run one at a time per interval
+                    'generate_featured_image' => isset($schedule->generate_featured_image) ? $schedule->generate_featured_image : 0,
+                    'image_prompt' => isset($schedule->image_prompt) ? $schedule->image_prompt : '',
+                    'article_structure_id' => $article_structure_id, // NEW: Pass selected structure
+                );
+
+                $topic = isset($schedule->topic) ? $schedule->topic : null;
+                $result = $generator->generate_post($template, null, $topic);
+
+                if ($schedule->frequency === 'once') {
+                    if (!is_wp_error($result)) {
+                        // If it's a one-time schedule and successful, delete it
+                        $this->repository->delete($schedule->schedule_id);
+                        $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
+                    } else {
+                        // If failed, deactivate it and set status to 'failed' to prevent infinite daily retries
+                        $this->repository->update($schedule->schedule_id, array(
+                            'is_active' => 0,
+                            'status' => 'failed',
+                            'last_run' => current_time('mysql')
+                        ));
+                        $logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
+
+                        // Log to activity feed
+                        $this->activity_repository->create(array(
+                            'event_type' => 'schedule_failed',
+                            'event_status' => 'failed',
+                            'schedule_id' => $schedule->schedule_id,
+                            'template_id' => $schedule->template_id,
+                            'message' => sprintf(
+                                __('One-time schedule "%s" failed and was deactivated', 'ai-post-scheduler'),
+                                $schedule->template_name
+                            ),
+                            'metadata' => array(
+                                'error' => $result->get_error_message(),
+                                'frequency' => $schedule->frequency,
+                            ),
+                        ));
+                    }
+                } else {
+                    // For recurring schedules, we ONLY update last_run here.
+                    // next_run was already updated at the start (Claim-First).
+                    $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
+                }
+
+                if (is_wp_error($result)) {
+                    $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
+                        'schedule_id' => $schedule->schedule_id
+                    ));
+                    
+                    // Log recurring schedule failures to activity feed
+                    if ($schedule->frequency !== 'once') {
+                        $this->activity_repository->create(array(
+                            'event_type' => 'schedule_failed',
+                            'event_status' => 'failed',
+                            'schedule_id' => $schedule->schedule_id,
+                            'template_id' => $schedule->template_id,
+                            'message' => sprintf(
+                                __('Schedule "%s" failed to generate post', 'ai-post-scheduler'),
+                                $schedule->template_name
+                            ),
+                            'metadata' => array(
+                                'error' => $result->get_error_message(),
+                                'frequency' => $schedule->frequency,
+                            ),
+                        ));
+                    }
+
+                    // Dispatch schedule execution failed event
+                    do_action('aips_schedule_execution_failed', $schedule->schedule_id, $result->get_error_message());
+                } else {
+                    $logger->log('Schedule completed successfully', 'info', array(
+                        'schedule_id' => $schedule->schedule_id,
+                        'post_id' => $result
+                    ));
+
+                    // Get the post to check its status
+                    $post = get_post($result);
+                    if ($post) {
+                        $event_status = ($post->post_status === 'draft') ? 'draft' : 'success';
+                        $event_type = ($post->post_status === 'draft') ? 'post_draft' : 'post_published';
+
+                        // Log to activity feed
+                        $this->activity_repository->create(array(
+                            'event_type' => $event_type,
+                            'event_status' => $event_status,
+                            'schedule_id' => $schedule->schedule_id,
+                            'post_id' => $result,
+                            'template_id' => $schedule->template_id,
+                            'message' => sprintf(
+                                __('%s created by schedule "%s": %s', 'ai-post-scheduler'),
+                                ($post->post_status === 'draft') ? __('Draft', 'ai-post-scheduler') : __('Post', 'ai-post-scheduler'),
+                                $schedule->template_name,
+                                $post->post_title
+                            ),
+                            'metadata' => array(
+                                'post_status' => $post->post_status,
+                                'frequency' => $schedule->frequency,
+                            ),
+                        ));
+                    }
+
+                    // Dispatch schedule execution completed event
+                    do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
+
+                    // Invalidate the schedule execution count cache (Bolt)
+                    // This ensures rotation logic uses fresh counts on next run,
+                    // and only after a successful post generation.
+                    $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+                }
+            } catch (\Throwable $e) {
+                $logger->log('Critical error processing schedule ' . $schedule->schedule_id . ': ' . $e->getMessage(), 'error');
+                
+                // Log critical failure to activity feed
+                $this->activity_repository->create(array(
+                    'event_type' => 'schedule_failed',
+                    'event_status' => 'failed',
+                    'schedule_id' => $schedule->schedule_id,
+                    'template_id' => $schedule->template_id,
+                    'message' => sprintf(
+                        __('Schedule "%s" encountered a critical error', 'ai-post-scheduler'),
+                        $schedule->name
+                    ),
+                    'metadata' => array(
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ),
+                ));
+
+                do_action('aips_schedule_execution_failed', $schedule->schedule_id, $e->getMessage());
             }
         }
     }

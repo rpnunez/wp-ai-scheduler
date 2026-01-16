@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2025-10-27
+### Fixed
+- Wrapped individual schedule processing in a `try-catch` block to prevent a single failing schedule from blocking the entire batch execution.
+### Added
+- Added "Recent Activity" section to the System Status page, displaying the last 5 operational events for easier debugging.
+- Added database index on `created_at` column in `aips_history` table to improve performance of history queries.
+### Improved
+- Refactored `AIPS_Templates` to centralize schedule projection logic, removing code duplication and improving maintainability.
+
 ## [1.6.0] - 2025-12-24
 ### Added - Trending Topics Research Feature
 - **NEW FEATURE:** AI-powered Trending Topics Research system
