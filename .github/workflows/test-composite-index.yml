@@ -2,7 +2,7 @@ name: Test Composite Index
 
 on:
   push:
-    branches: [ copilot/test-composite-index-aips-schedule ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
   workflow_dispatch:
