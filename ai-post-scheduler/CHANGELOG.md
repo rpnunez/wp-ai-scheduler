@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [wizard-sections-search] - 2024-05-28
+### Added
+- [2024-05-28] Added client-side search and filtering functionality to the Prompt Sections admin page.
+
 ## [1.6.0] - 2025-12-24
 ### Added - Trending Topics Research Feature
 - **NEW FEATURE:** AI-powered Trending Topics Research system

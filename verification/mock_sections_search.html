@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock Sections Search</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Minimal WP Admin Styles */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f1f1f1; padding: 20px; }
+        .wrap { background: #fff; padding: 20px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+        .wp-list-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .wp-list-table th, .wp-list-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #c3c4c7; }
+        .wp-list-table th { font-weight: 400; border-bottom: 1px solid #c3c4c7; vertical-align: bottom; }
+        .widefat { border: 1px solid #c3c4c7; box-shadow: 0 1px 1px rgba(0,0,0,.04); background: #fff; }
+        .striped > tbody > :nth-child(odd) { background-color: #f6f7f7; }
+        .button { display: inline-block; text-decoration: none; font-size: 13px; line-height: 2.15384615; min-height: 30px; margin: 0; padding: 0 10px; cursor: pointer; border-width: 1px; border-style: solid; -webkit-appearance: none; border-radius: 3px; white-space: nowrap; box-sizing: border-box; color: #2271b1; border-color: #2271b1; background: #f6f7f7; }
+        .button-primary { background: #2271b1; border-color: #2271b1; color: #fff; }
+        .aips-search-box { margin-bottom: 10px; text-align: right; }
+        .screen-reader-text { clip: rect(1px, 1px, 1px, 1px); height: 1px; overflow: hidden; position: absolute !important; width: 1px; word-wrap: normal !important; }
+        .aips-empty-state { text-align: center; padding: 40px 0; display: none; }
+        .dashicons { font-family: dashicons; }
+    </style>
+    <script>
+        var aipsAjax = {
+            ajaxUrl: '/wp-admin/admin-ajax.php',
+            nonce: 'mock_nonce'
+        };
+        var aipsAdminL10n = {
+            saveSectionFailed: 'Failed',
+            errorTryAgain: 'Error',
+            loadSectionFailed: 'Failed',
+            deleteSectionConfirm: 'Confirm delete?',
+            deleteSectionFailed: 'Failed',
+            errorOccurred: 'Error'
+        };
+    </script>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Prompt Sections</h1>
+
+        <div class="aips-structures-container">
+            <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+                <label class="screen-reader-text" for="aips-section-search">Search Sections:</label>
+                <input type="search" id="aips-section-search" class="regular-text" placeholder="Search sections...">
+                <button type="button" id="aips-section-search-clear" class="button" style="display: none;">Clear</button>
+            </div>
+
+            <table class="wp-list-table widefat fixed striped aips-sections-list">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Key</th>
+                        <th>Description</th>
+                        <th>Active</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-section-id="1">
+                        <td class="column-name">Introduction</td>
+                        <td class="column-key"><code>introduction</code></td>
+                        <td class="column-description">General intro for blog posts</td>
+                        <td>Yes</td>
+                        <td><button class="button aips-edit-section">Edit</button></td>
+                    </tr>
+                    <tr data-section-id="2">
+                        <td class="column-name">Conclusion</td>
+                        <td class="column-key"><code>conclusion</code></td>
+                        <td class="column-description">Wrap up and CTA</td>
+                        <td>Yes</td>
+                        <td><button class="button aips-edit-section">Edit</button></td>
+                    </tr>
+                    <tr data-section-id="3">
+                        <td class="column-name">Step by Step</td>
+                        <td class="column-key"><code>steps</code></td>
+                        <td class="column-description">Detailed instructions list</td>
+                        <td>Yes</td>
+                        <td><button class="button aips-edit-section">Edit</button></td>
+                    </tr>
+                    <tr data-section-id="4">
+                        <td class="column-name">FAQ</td>
+                        <td class="column-key"><code>faq</code></td>
+                        <td class="column-description">Frequently asked questions section</td>
+                        <td>No</td>
+                        <td><button class="button aips-edit-section">Edit</button></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div id="aips-section-search-no-results" class="aips-empty-state" style="display: none;">
+                <span class="dashicons dashicons-search" aria-hidden="true"></span>
+                <h3>No Sections Found</h3>
+                <p>No sections match your search criteria.</p>
+                <button type="button" class="button button-primary aips-clear-section-search-btn">
+                    Clear Search
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the actual admin.js -->
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+</body>
+</html>
