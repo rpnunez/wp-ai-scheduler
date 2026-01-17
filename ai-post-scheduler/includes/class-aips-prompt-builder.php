@@ -87,7 +87,7 @@ class AIPS_Prompt_Builder {
         $context_parts = array_filter(
             array_map('trim', $context_parts),
             function($part) {
-                return $part !== '' && $part !== null;
+                return !empty($part);
             }
         );
 
