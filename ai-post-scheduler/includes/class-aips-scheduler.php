@@ -123,6 +123,8 @@ class AIPS_Scheduler {
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
+        $limit = absint(apply_filters('aips_schedule_batch_size', 5));
+
         $due_schedules = $wpdb->get_results($wpdb->prepare("
             SELECT t.*, s.*, s.id AS schedule_id
             FROM {$this->schedule_table} s 
@@ -131,8 +133,8 @@ class AIPS_Scheduler {
             AND s.next_run <= %s 
             AND t.is_active = 1
             ORDER BY s.next_run ASC
-            LIMIT 5
-        ", current_time('mysql')));
+            LIMIT %d
+        ", current_time('mysql'), $limit));
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
@@ -142,10 +144,11 @@ class AIPS_Scheduler {
         $generator = new AIPS_Generator();
         
         foreach ($due_schedules as $schedule) {
-            // Claim-First Locking Strategy (Hunter)
-            // Immediately calculate and update next_run to lock this schedule from concurrent processes.
+            try {
+                // Claim-First Locking Strategy (Hunter)
+                // Immediately calculate and update next_run to lock this schedule from concurrent processes.
 
-            $original_next_run = $schedule->next_run;
+                $original_next_run = $schedule->next_run;
             $new_next_run = null;
 
             if ($schedule->frequency === 'once') {
@@ -298,6 +301,41 @@ class AIPS_Scheduler {
                 // This ensures rotation logic uses fresh counts on next run,
                 // and only after a successful post generation.
                 $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+            }
+            } catch (\Throwable $e) {
+                $logger->log('Critical error processing schedule ' . $schedule->schedule_id . ': ' . $e->getMessage(), 'error', array(
+                    'trace' => $e->getTraceAsString()
+                ));
+
+                // Ensure we mark it as failed so it doesn't get stuck in a loop if it was a claim-first lock issue?
+                // Actually, if it failed AFTER claim-first, next_run is already pushed forward (for recurring)
+                // or pushed to +1 hour (for one-time).
+                // So it won't be picked up immediately again, which is good.
+
+                try {
+                    $this->activity_repository->create(array(
+                        'event_type' => 'schedule_failed',
+                        'event_status' => 'failed',
+                        'schedule_id' => $schedule->schedule_id,
+                        'template_id' => $schedule->template_id,
+                        'message' => sprintf(
+                            __('Critical error processing schedule "%s": %s', 'ai-post-scheduler'),
+                            $schedule->name,
+                            $e->getMessage()
+                        ),
+                        'metadata' => array(
+                            'error' => $e->getMessage(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ),
+                    ));
+
+                    do_action('aips_schedule_execution_failed', $schedule->schedule_id, $e->getMessage());
+
+                } catch (\Throwable $logging_error) {
+                     // If logging fails, just continue
+                     $logger->log('Failed to log activity for critical error: ' . $logging_error->getMessage(), 'error');
+                }
             }
         }
     }
