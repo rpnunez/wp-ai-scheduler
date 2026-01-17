@@ -6,6 +6,7 @@ if (!defined('ABSPATH')) {
 class AIPS_Seeder_Admin {
 
     private $service;
+    private $hook_suffix;
 
     public function __construct() {
         add_action('admin_menu', array($this, 'add_menu_page'));
@@ -16,7 +17,7 @@ class AIPS_Seeder_Admin {
     }
 
     public function add_menu_page() {
-        add_submenu_page(
+        $this->hook_suffix = add_submenu_page(
             'ai-post-scheduler',
             __('Seeder', 'ai-post-scheduler'),
             __('Seeder', 'ai-post-scheduler'),
@@ -27,7 +28,7 @@ class AIPS_Seeder_Admin {
     }
 
     public function enqueue_assets($hook) {
-        if (strpos($hook, 'aips-seeder') === false) {
+        if ($hook !== $this->hook_suffix) {
             return;
         }
 
