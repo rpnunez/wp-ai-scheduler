@@ -250,7 +250,14 @@ class AIPS_Settings {
      * @return void
      */
     public function enqueue_admin_assets($hook) {
-        if (strpos($hook, 'ai-post-scheduler') === false && strpos($hook, 'aips-') === false) {
+        // Check for both hyphen and underscore versions of the plugin slug,
+        // as WordPress may convert hyphens to underscores in hook names
+        $is_plugin_page = strpos($hook, 'ai-post-scheduler') !== false
+            || strpos($hook, 'ai_post_scheduler') !== false
+            || strpos($hook, 'aips-') !== false
+            || strpos($hook, 'aips_') !== false;
+        
+        if (!$is_plugin_page) {
             return;
         }
 
