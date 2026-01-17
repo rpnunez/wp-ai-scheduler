@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Structures Sections Tab</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/1.0.0/css/dashicons.min.css">
+    <style>
+        /* Minimal styles to make it functional and match admin.css roughly */
+        .aips-search-box { margin-bottom: 10px; text-align: right; }
+        .button { cursor: pointer; padding: 5px 10px; }
+        .wp-list-table { width: 100%; border-collapse: collapse; }
+        .wp-list-table th, .wp-list-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+
+        .aips-variable-code-cell {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .aips-copy-btn {
+            background: none;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 5px;
+            margin-left: 10px;
+            color: #555;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            transition: all 0.2s;
+        }
+        .aips-copy-btn:hover {
+            border-color: #2271b1;
+            color: #2271b1;
+            background: #f0f6fc;
+        }
+
+        .aips-empty-state { text-align: center; padding: 20px; border: 1px dashed #ccc; }
+        .screen-reader-text { display: none; }
+
+        /* Dashicons */
+        .dashicons-yes:before {
+            content: "\f147";
+        }
+        .dashicons-admin-page:before {
+            content: "\f105";
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Article Structures</h1>
+
+        <!-- Simulate the tab structure -->
+        <div id="aips-structure-sections-tab" class="aips-tab-content">
+            <h2>Structure Sections</h2>
+
+            <div class="aips-structures-container">
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th class="column-key">Key</th>
+                            <th>Description</th>
+                            <th>Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Sample Row 1 -->
+                        <tr data-section-id="1">
+                            <td>Intro</td>
+                            <td class="column-key">
+                                <div class="aips-variable-code-cell">
+                                    <code>intro</code>
+                                    <button type="button" class="aips-copy-btn" data-clipboard-text="{{section:intro}}" aria-label="Copy placeholder" title="Copy placeholder">
+                                        <span class="dashicons dashicons-admin-page"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>Introduction section</td>
+                            <td>Yes</td>
+                            <td><button>Edit</button></td>
+                        </tr>
+
+                        <!-- Sample Row 2 -->
+                        <tr data-section-id="2">
+                            <td>Body</td>
+                            <td class="column-key">
+                                <div class="aips-variable-code-cell">
+                                    <code>body_main</code>
+                                    <button type="button" class="aips-copy-btn" data-clipboard-text="{{section:body_main}}" aria-label="Copy placeholder" title="Copy placeholder">
+                                        <span class="dashicons dashicons-admin-page"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>Main body content</td>
+                            <td>Yes</td>
+                            <td><button>Edit</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock aipsAjax
+        var aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: '123' };
+        var aipsAdminL10n = {};
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+</body>
+</html>

@@ -77,7 +77,7 @@ if (!isset($sections) || !is_array($sections)) {
 				<thead>
 					<tr>
 						<th><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
-						<th><?php esc_html_e('Key', 'ai-post-scheduler'); ?></th>
+						<th class="column-key"><?php esc_html_e('Key', 'ai-post-scheduler'); ?></th>
 						<th><?php esc_html_e('Description', 'ai-post-scheduler'); ?></th>
 						<th><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
 						<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
@@ -87,7 +87,14 @@ if (!isset($sections) || !is_array($sections)) {
 					<?php foreach ($sections as $section) : ?>
 					<tr data-section-id="<?php echo esc_attr($section->id); ?>">
 						<td><?php echo esc_html($section->name); ?></td>
-						<td><code><?php echo esc_html($section->section_key); ?></code></td>
+						<td class="column-key">
+							<div class="aips-variable-code-cell">
+								<code><?php echo esc_html($section->section_key); ?></code>
+								<button type="button" class="aips-copy-btn" data-clipboard-text="{{section:<?php echo esc_attr($section->section_key); ?>}}" aria-label="<?php esc_attr_e('Copy placeholder', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Copy placeholder', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-admin-page"></span>
+								</button>
+							</div>
+						</td>
 						<td><?php echo esc_html($section->description); ?></td>
 						<td><?php echo $section->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
 						<td>

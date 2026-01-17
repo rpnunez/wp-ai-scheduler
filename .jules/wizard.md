@@ -15,3 +15,7 @@
 ## 2025-12-25 - Icon Button Feedback
 **Learning:** The journal described a specific visual feedback pattern for small buttons (swapping icon to checkmark), but the implementation in `admin.js` was missing/broken for icon-only buttons, causing the icon to disappear.
 **Action:** Implemented the icon-swap logic in `copyToClipboard` handler in `admin.js` to correctly support icon-only buttons like those in the Prompt Sections table.
+
+## 2026-01-17 - Structure Sections Copy Button
+**Learning:** The "Structure Sections" tab in `structures.php` was missing the "Copy to Clipboard" button for section keys, which existed in `sections.php`, causing inconsistency and friction when needing to copy keys for prompts.
+**Action:** Added the copy button to the "Structure Sections" table in `structures.php`, ensuring consistency with the "Prompt Sections" page.
