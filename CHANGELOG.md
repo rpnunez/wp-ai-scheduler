@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
 - [2026-01-17 08:24:50] Added Developer Mode and Dev Tools page for generating template scaffolds (Voices, Structures, Templates) using AI.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.
 
+### Improved
+- [2026-02-18 10:00:00] Replaced native confirmation dialogs with a non-blocking "Soft Confirm" UX pattern (double-click to confirm) for deleting Schedules and Voices, and improved accessibility with ARIA labels.
+
 ### Fixed
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
 
