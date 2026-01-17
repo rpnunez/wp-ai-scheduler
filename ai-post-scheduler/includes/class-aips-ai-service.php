@@ -45,6 +45,19 @@ class AIPS_AI_Service {
      * @var AIPS_Resilience_Service Resilience service
      */
     private $resilience_service;
+
+    /**
+     * Optional query option keys supported by AI Engine.
+     */
+    private const OPTIONAL_QUERY_OPTION_KEYS = array(
+        'context',
+        'instructions',
+        'messages',
+        'env_id',
+        'embeddings_env_id',
+        'max_results',
+        'api_key',
+    );
     
     /**
      * Initialize the AI Service.
@@ -263,17 +276,7 @@ class AIPS_AI_Service {
      * @return void
      */
     private function apply_optional_query_settings($query, $options) {
-        $option_keys = array(
-            'context',
-            'instructions',
-            'messages',
-            'env_id',
-            'embeddings_env_id',
-            'max_results',
-            'api_key',
-        );
-
-        foreach ($option_keys as $key) {
+        foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
             if (!isset($options[$key])) {
                 continue;
             }
