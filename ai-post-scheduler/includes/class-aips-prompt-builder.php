@@ -84,7 +84,7 @@ class AIPS_Prompt_Builder {
          */
         $context_parts = apply_filters('aips_content_context_parts', $context_parts, $template, $topic, $voice);
 
-        $context_parts = array_filter(array_map('trim', $context_parts));
+        $context_parts = array_filter(array_map('trim', $context_parts), 'strlen');
 
         return implode("\n\n", $context_parts);
     }
