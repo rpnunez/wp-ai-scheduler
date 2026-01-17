@@ -65,6 +65,11 @@
             $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
             $(document).on('click', '.aips-clear-voice-search-btn', this.clearVoiceSearch);
 
+            // Section Search
+            $(document).on('keyup search', '#aips-section-search', this.filterSections);
+            $(document).on('click', '#aips-section-search-clear', this.clearSectionSearch);
+            $(document).on('click', '.aips-clear-section-search-btn', this.clearSectionSearch);
+
             $(document).on('click', '.aips-view-template-posts', this.openTemplatePostsModal);
             $(document).on('click', '.aips-modal-page', this.paginateTemplatePosts);
 
@@ -261,10 +266,34 @@
             e.preventDefault();
             var $btn = $(this);
             var text = $btn.data('clipboard-text');
-            var originalIcon = $btn.data('original-icon') || 'dashicons-admin-page';
-            var originalText = $btn.text();
 
             if (!text) return;
+
+            var showSuccess = function() {
+                // If button has specific small/icon class or no text content, swap icon
+                if ($btn.hasClass('aips-copy-btn-small') || $btn.text().trim().length === 0) {
+                    var $icon = $btn.find('.dashicons');
+                    if ($icon.length) {
+                        var originalClass = $icon.attr('class');
+                        $icon.removeClass().addClass('dashicons dashicons-yes');
+                        setTimeout(function() {
+                            $icon.attr('class', originalClass);
+                        }, 2000);
+                        return;
+                    }
+                }
+
+                // Standard text swap
+                var originalText = $btn.text();
+                // Store original HTML if needed, but text() is usually enough for text buttons
+                // For safety, let's use html() to be robust
+                var originalHtml = $btn.html();
+
+                $btn.text('Copied!');
+                setTimeout(function() {
+                    $btn.html(originalHtml);
+                }, 2000);
+            };
 
             // Fallback for older browsers
             if (!navigator.clipboard) {
@@ -274,10 +303,7 @@
                 textArea.select();
                 try {
                     document.execCommand('copy');
-                    $btn.text('Copied!');
-                    setTimeout(function() {
-                        $btn.text(originalText);
-                    }, 2000);
+                    showSuccess();
                 } catch (err) {
                     console.error('Fallback: Oops, unable to copy', err);
                 }
@@ -286,10 +312,7 @@
             }
 
             navigator.clipboard.writeText(text).then(function() {
-                $btn.text('Copied!');
-                setTimeout(function() {
-                    $btn.text(originalText);
-                }, 2000);
+                showSuccess();
             }, function(err) {
                 console.error('Async: Could not copy text: ', err);
             });
@@ -1173,6 +1196,48 @@
         clearVoiceSearch: function(e) {
             e.preventDefault();
             $('#aips-voice-search').val('').trigger('keyup');
+        },
+
+        filterSections: function() {
+            var term = $('#aips-section-search').val().toLowerCase().trim();
+            var $rows = $('.aips-sections-list tbody tr');
+            var $noResults = $('#aips-section-search-no-results');
+            var $table = $('.aips-sections-list');
+            var $clearBtn = $('#aips-section-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                var name = $row.find('.column-name').text().toLowerCase();
+                var key = $row.find('.column-key code').text().toLowerCase();
+                var description = $row.find('.column-description').text().toLowerCase();
+
+                if (name.indexOf(term) > -1 || key.indexOf(term) > -1 || description.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearSectionSearch: function(e) {
+            e.preventDefault();
+            $('#aips-section-search').val('').trigger('keyup');
         },
 
         openTemplatePostsModal: function(e) {

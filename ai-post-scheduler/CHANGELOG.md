@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [wizard-sections-search-copy] - 2025-12-25
+### Added
+- Added client-side search functionality to the Prompt Sections admin page.
+- Added "Copy to Clipboard" button for Prompt Section keys with visual feedback.
+
 ## [1.6.0] - 2025-12-24
 ### Added - Trending Topics Research Feature
 - **NEW FEATURE:** AI-powered Trending Topics Research system
