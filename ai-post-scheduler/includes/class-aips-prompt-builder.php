@@ -68,8 +68,8 @@ class AIPS_Prompt_Builder {
      *   (Generated Post Content)
      *
      * @param object      $template Template object containing prompts and settings.
-     * @param object|null $voice    Optional voice object with overrides.
      * @param string|null $topic    Optional topic to be injected into prompts.
+     * @param object|null $voice    Optional voice object with overrides.
      * @param string      $content  Generated article content used as context.
      * @return string The complete title generation prompt.
      */
