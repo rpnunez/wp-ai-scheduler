@@ -180,7 +180,19 @@ class AIPS_Article_Structure_Manager {
 	 * @param bool   $is_active       Set structure as active.
 	 * @return int|WP_Error Structure ID on success or error.
 	 */
-	public function create_structure($name, $sections, $prompt_template, $description = '', $is_default = false, $is_active = true) {
+	/**
+	 * Create a new article structure.
+	 *
+	 * @param string $name            Structure name.
+	 * @param array  $sections        Array of section keys.
+	 * @param string $prompt_template Prompt template with section placeholders.
+	 * @param string $description     Structure description.
+	 * @param bool   $is_default      Set as default structure.
+	 * @param bool   $is_active       Set structure as active.
+	 * @param int    $category_id     Category term ID (optional).
+	 * @return int|WP_Error Structure ID on success or error.
+	 */
+	public function create_structure($name, $sections, $prompt_template, $description = '', $is_default = false, $is_active = true, $category_id = 0) {
 		// Validate sections exist
 		$available_sections = $this->section_repository->get_by_keys($sections);
 		$missing_sections = array_diff($sections, array_keys($available_sections));
@@ -204,6 +216,7 @@ class AIPS_Article_Structure_Manager {
 			'name' => $name,
 			'description' => $description,
 			'structure_data' => wp_json_encode($structure_data),
+			'category_id' => $category_id ? $category_id : null,
 			'is_active' => $is_active ? 1 : 0,
 			'is_default' => $is_default ? 1 : 0,
 		);
@@ -229,9 +242,10 @@ class AIPS_Article_Structure_Manager {
 	 * @param string $description     Structure description.
 	 * @param bool   $is_default      Set as default structure.
 	 * @param bool   $is_active       Set structure as active.
+	 * @param int    $category_id     Category term ID (optional).
 	 * @return bool|WP_Error True on success or error.
 	 */
-	public function update_structure($structure_id, $name, $sections, $prompt_template, $description = '', $is_default = null, $is_active = null) {
+	public function update_structure($structure_id, $name, $sections, $prompt_template, $description = '', $is_default = null, $is_active = null, $category_id = 0) {
 		$structure = $this->structure_repository->get_by_id($structure_id);
 		
 		if (!$structure) {
@@ -261,6 +275,7 @@ class AIPS_Article_Structure_Manager {
 			'name' => $name,
 			'description' => $description,
 			'structure_data' => wp_json_encode($structure_data),
+			'category_id' => $category_id ? $category_id : null,
 		);
 		
 		// Add is_default if provided
