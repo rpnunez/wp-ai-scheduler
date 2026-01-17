@@ -192,6 +192,44 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         $GLOBALS['aips_test_options'] = array();
     }
 
+    if (!isset($GLOBALS['aips_test_transients'])) {
+        $GLOBALS['aips_test_transients'] = array();
+    }
+
+    if (!function_exists('get_transient')) {
+        function get_transient($transient) {
+            if (isset($GLOBALS['aips_test_transients'][$transient])) {
+                $data = $GLOBALS['aips_test_transients'][$transient];
+                // Check expiration
+                if ($data['expiration'] === 0 || $data['expiration'] > time()) {
+                    return $data['value'];
+                }
+                // Expired
+                unset($GLOBALS['aips_test_transients'][$transient]);
+            }
+            return false;
+        }
+    }
+
+    if (!function_exists('set_transient')) {
+        function set_transient($transient, $value, $expiration = 0) {
+            $GLOBALS['aips_test_transients'][$transient] = array(
+                'value' => $value,
+                'expiration' => $expiration > 0 ? time() + $expiration : 0,
+            );
+            return true;
+        }
+    }
+
+    if (!function_exists('delete_transient')) {
+        function delete_transient($transient) {
+            if (isset($GLOBALS['aips_test_transients'][$transient])) {
+                unset($GLOBALS['aips_test_transients'][$transient]);
+            }
+            return true;
+        }
+    }
+
     if (!function_exists('get_option')) {
         function get_option($option, $default = false) {
             return isset($GLOBALS['aips_test_options'][$option]) ? $GLOBALS['aips_test_options'][$option] : $default;
@@ -243,6 +281,15 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('wp_json_encode')) {
         function wp_json_encode($data, $options = 0, $depth = 512) {
             return json_encode($data, $options, $depth);
+        }
+    }
+    
+    if (!function_exists('wp_mkdir_p')) {
+        function wp_mkdir_p($target) {
+            if (is_dir($target)) {
+                return true;
+            }
+            return @mkdir($target, 0755, true);
         }
     }
     
@@ -511,6 +558,22 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('__')) {
         function __($text, $domain = 'default') {
             return $text;
+        }
+    }
+    
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = array()) {
+            if (is_object($args)) {
+                $args = get_object_vars($args);
+            } elseif (is_string($args)) {
+                parse_str($args, $args);
+            }
+            
+            if (!is_array($args)) {
+                $args = array();
+            }
+            
+            return array_merge($defaults, $args);
         }
     }
     

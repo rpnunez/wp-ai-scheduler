@@ -34,6 +34,11 @@ class AIPS_Generator {
     private $prompt_builder;
     
     /**
+     * @var AIPS_Config Configuration manager instance.
+     */
+    private $config;
+    
+    /**
      * Constructor.
      *
      * Accepts dependencies for easier testing; falls back to concrete
@@ -47,6 +52,7 @@ class AIPS_Generator {
      * @param object|null $post_creator
      * @param object|null $history_repository
      * @param object|null $prompt_builder
+     * @param object|null $config
      */
     public function __construct(
         $logger = null,
@@ -56,7 +62,8 @@ class AIPS_Generator {
         $structure_manager = null,
         $post_creator = null,
         $history_repository = null,
-        $prompt_builder = null
+        $prompt_builder = null,
+        $config = null
     ) {
         $this->logger = $logger ?: new AIPS_Logger();
         $this->ai_service = $ai_service ?: new AIPS_AI_Service();
@@ -66,6 +73,7 @@ class AIPS_Generator {
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
         $this->history_repository = $history_repository ?: new AIPS_History_Repository();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
+        $this->config = $config ?: AIPS_Config::get_instance();
 
         // Initialize session tracker
         $this->current_session = new AIPS_Generation_Session();
@@ -164,43 +172,51 @@ class AIPS_Generator {
      *   1. Voice title prompt (if provided)
      *   2. Template title prompt (if provided)
      *
-     * The final prompt structure sent to the AI is:
+     * When using enhanced API mode, the title prompt is separated into:
+     *   - instructions: Voice-specific title guidance
+     *   - context: The generated article content
+     *   - prompt: The task of generating a title
      *
-     *   "Generate a title for a blog post, based off of the content below. Here are your instructions:\n\n"
-     *   (Voice Title Prompt OR Template Title Prompt)
-     *   "\n\nHere is the content:\n\n"
-     *   (Generated Post Content)
-     *
-     * @param object      $template Template object containing prompts and settings.
-     * @param object|null $voice    Optional voice object with overrides.
-     * @param string|null $topic    Optional topic to be injected into prompts.
-     * @param string      $content  Generated article content.
-     * @param array       $options  AI options (e.g., model, max_tokens override).
-     * @return string|WP_Error      Generated title string or WP_Error on failure.
+     * @param object      $template         Template object containing prompts and settings.
+     * @param object|null $voice            Optional voice object with overrides.
+     * @param string|null $topic            Optional topic to be injected into prompts.
+     * @param string      $content          Generated article content.
+     * @param bool        $use_enhanced_api Whether to use enhanced API with separated instructions/context.
+     * @param array       $options          AI options (e.g., model, max_tokens override).
+     * @return string|WP_Error              Generated title string or WP_Error on failure.
      */
-    public function generate_title($template, $voice = null, $topic = null, $content = '', $options = array()) {
-        // Build title instructions based on voice or template configuration.
-        // Voice title prompt takes precedence over template title prompt.
-        $title_instructions = '';
-
-        if ($voice && !empty($voice->title_prompt)) {
-            $title_instructions = $this->template_processor->process($voice->title_prompt, $topic);
-        } elseif (!empty($template->title_prompt)) {
-            $title_instructions = $this->template_processor->process($template->title_prompt, $topic);
-        }
-
-        // Build the title generation prompt using the generated content as context.
-        $prompt = "Generate a title for a blog post, based off of the content below. Here are your instructions:\n\n";
-
-        if (!empty($title_instructions)) {
-            $prompt .= $title_instructions . "\n\n";
-        }
-
-        $prompt .= "Here is the content:\n\n" . $content;
-
+    public function generate_title($template, $voice = null, $topic = null, $content = '', $use_enhanced_api = false, $options = array()) {
         $options['max_tokens'] = 100;
+        
+        if ($use_enhanced_api) {
+            // Use enhanced API: separate instructions, context, and prompt
+            $title_options = $this->prompt_builder->build_title_options($template, $topic, $voice, $content);
+            $options['instructions'] = $title_options['instructions'];
+            $options['context'] = $title_options['context'];
+            $result = $this->generate_content($title_options['prompt'], $options, 'title');
+        } else {
+            // Use legacy approach: everything concatenated in prompt
+            // Build title instructions based on voice or template configuration.
+            // Voice title prompt takes precedence over template title prompt.
+            $title_instructions = '';
 
-        $result = $this->generate_content($prompt, $options, 'title');
+            if ($voice && !empty($voice->title_prompt)) {
+                $title_instructions = $this->template_processor->process($voice->title_prompt, $topic);
+            } elseif (!empty($template->title_prompt)) {
+                $title_instructions = $this->template_processor->process($template->title_prompt, $topic);
+            }
+
+            // Build the title generation prompt using the generated content as context.
+            $prompt = "Generate a title for a blog post, based off of the content below. Here are your instructions:\n\n";
+
+            if (!empty($title_instructions)) {
+                $prompt .= $title_instructions . "\n\n";
+            }
+
+            $prompt .= "Here is the content:\n\n" . $content;
+
+            $result = $this->generate_content($prompt, $options, 'title');
+        }
         
         if (is_wp_error($result)) {
             return $result;
@@ -220,26 +236,43 @@ class AIPS_Generator {
      * Ensures the excerpt length is within a reasonable limit and removes
      * surrounding quotes from the AI output.
      *
-     * @param string $title Title of the generated article.
-     * @param string $content The article content to summarize.
-     * @param string|null $voice_excerpt_instructions Voice-specific instructions for excerpt.
-     * @param array $options AI options.
+     * When using enhanced API mode, the excerpt prompt is separated into:
+     *   - instructions: Voice-specific excerpt guidance
+     *   - context: The article title and content
+     *   - prompt: The task of writing an excerpt
+     *
+     * @param string      $title                      Title of the generated article.
+     * @param string      $content                    The article content to summarize.
+     * @param string|null $voice_excerpt_instructions Voice-specific instructions for excerpt (legacy mode only).
+     * @param array       $options                    AI options.
+     * @param object|null $voice                      Voice object (for enhanced API mode).
+     * @param string|null $topic                      Topic for variable replacement (for enhanced API mode).
+     * @param bool        $use_enhanced_api           Whether to use enhanced API with separated instructions/context.
      * @return string Short excerpt string (max 160 chars). Empty string on failure.
      */
-    public function generate_excerpt($title, $content, $voice_excerpt_instructions = null, $options = array()) {
-        $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 characters. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
-        
-        if ($voice_excerpt_instructions) {
-            $excerpt_prompt .= $voice_excerpt_instructions . "\n\n";
-        }
-        
-        $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
-        $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
-        $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
-        
+    public function generate_excerpt($title, $content, $voice_excerpt_instructions = null, $options = array(), $voice = null, $topic = null, $use_enhanced_api = false) {
         $options['max_tokens'] = 150;
         
-        $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
+        if ($use_enhanced_api && $voice !== null) {
+            // Use enhanced API: separate instructions, context, and prompt
+            $excerpt_options = $this->prompt_builder->build_excerpt_options($voice, $topic, $title, $content);
+            $options['instructions'] = $excerpt_options['instructions'];
+            $options['context'] = $excerpt_options['context'];
+            $result = $this->generate_content($excerpt_options['prompt'], $options, 'excerpt');
+        } else {
+            // Use legacy approach: everything concatenated in prompt
+            $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 characters. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
+            
+            if ($voice_excerpt_instructions) {
+                $excerpt_prompt .= $voice_excerpt_instructions . "\n\n";
+            }
+            
+            $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
+            $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
+            $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
+            
+            $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
+        }
         
         if (is_wp_error($result)) {
             // Return a safe empty excerpt when excerpt generation fails
@@ -286,11 +319,23 @@ class AIPS_Generator {
             $this->logger->log('Failed to create history record', 'error');
         }
         
-        // Build the full content prompt (template + topic + voice if provided)
-        $content_prompt = $this->prompt_builder->build_content_prompt($template, $topic, $voice);
+        // Check if enhanced AI API is enabled (separates instructions/context from prompt)
+        $ai_config = $this->config->get_ai_config();
+        $use_enhanced_api = !empty($ai_config['use_enhanced_api']);
         
-        // Ask AI to generate the article body
-        $content = $this->generate_content($content_prompt, array(), 'content');
+        if ($use_enhanced_api) {
+            // Use enhanced API: separate instructions, context, and prompt
+            $content_options = $this->prompt_builder->build_content_options($template, $topic, $voice);
+            $options = array(
+                'instructions' => $content_options['instructions'],
+                'context' => $content_options['context'],
+            );
+            $content = $this->generate_content($content_options['prompt'], $options, 'content');
+        } else {
+            // Use legacy approach: everything concatenated in prompt
+            $content_prompt = $this->prompt_builder->build_content_prompt($template, $topic, $voice);
+            $content = $this->generate_content($content_prompt, array(), 'content');
+        }
         
         if (is_wp_error($content)) {
             // Complete session with failure result and update history
@@ -315,7 +360,7 @@ class AIPS_Generator {
         }
 
         // Generate the title using the template, voice, topic, and content.
-        $title = $this->generate_title($template, $voice, $topic, $content);
+        $title = $this->generate_title($template, $voice, $topic, $content, $use_enhanced_api);
         
         if (is_wp_error($title)) {
             // Fall back to a safe default title when AI fails
@@ -332,7 +377,7 @@ class AIPS_Generator {
         
         // Use actual generated content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
-        $excerpt = $this->generate_excerpt($title, $excerpt_content, $voice_excerpt_instructions);
+        $excerpt = $this->generate_excerpt($title, $excerpt_content, $voice_excerpt_instructions, array(), $voice, $topic, $use_enhanced_api);
         
         // Use Post Creator Service to save the generated post in WP
         $post_creation_data = array(

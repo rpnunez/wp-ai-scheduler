@@ -90,10 +90,19 @@ class AIPS_AI_Service {
      * Includes retry logic, circuit breaker, and rate limiting.
      *
      * @param string $prompt  The prompt to send to the AI.
-     * @param array  $options Optional. AI generation options (model, max_tokens, temperature).
+     * @param array  $options Optional. AI generation options:
+     *                        - model: AI model to use.
+     *                        - max_tokens: Maximum tokens for response.
+     *                        - temperature: Creativity level (0.0-1.0).
+     *                        - instructions: System-level instructions for AI behavior (e.g., voice/style guidelines).
+     *                        - context: Additional context/background information for the AI.
+     *                        - env_id: AI Engine environment ID to use.
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_text($prompt, $options = array()) {
+        // Prepare options early so logging always has normalized options
+        $options = $this->prepare_options($options);
+        
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
@@ -116,8 +125,6 @@ class AIPS_AI_Service {
             return $error;
         }
         
-        $options = $this->prepare_options($options);
-        
         // Try with retry logic
         return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
             try {
@@ -136,6 +143,22 @@ class AIPS_AI_Service {
                 // Set temperature
                 if (isset($options['temperature'])) {
                     $query->set_temperature($options['temperature']);
+                }
+                
+                // Set system-level instructions (e.g., voice/style guidelines)
+                // This is separate from the prompt and guides AI behavior
+                if (!empty($options['instructions'])) {
+                    $query->set_instructions($options['instructions']);
+                }
+                
+                // Set additional context (background information for AI reference)
+                if (!empty($options['context'])) {
+                    $query->set_context($options['context']);
+                }
+                
+                // Set AI Engine environment ID if specified
+                if (!empty($options['env_id'])) {
+                    $query->set_env_id($options['env_id']);
                 }
                 
                 $response = $ai->run_query($query);
@@ -242,11 +265,15 @@ class AIPS_AI_Service {
      */
     private function prepare_options($options) {
         $model = get_option('aips_ai_model', '');
+        $env_id = get_option('aips_ai_env_id', '');
         
         $default_options = array(
             'model' => $model,
             'max_tokens' => 2000,
             'temperature' => 0.7,
+            'instructions' => '',
+            'context' => '',
+            'env_id' => $env_id,
         );
         
         return wp_parse_args($options, $default_options);

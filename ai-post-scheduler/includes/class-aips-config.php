@@ -159,6 +159,8 @@ class AIPS_Config {
             'model' => $this->get_option('aips_ai_model', ''),
             'max_tokens' => (int) $this->get_option('aips_max_tokens', 2000),
             'temperature' => (float) $this->get_option('aips_temperature', 0.7),
+            'env_id' => $this->get_option('aips_ai_env_id', ''),
+            'use_enhanced_api' => $this->is_feature_enabled('enhanced_ai_api', true),
         );
     }
     

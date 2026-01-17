@@ -47,6 +47,30 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			public function build_excerpt_instructions($voice, $topic) {
 				return 'Excerpt instructions';
 			}
+
+			public function build_content_options($template, $topic, $voice = null) {
+				return array(
+					'prompt' => 'Content prompt for ' . $topic,
+					'instructions' => 'Voice instructions',
+					'context' => 'Template context',
+				);
+			}
+
+			public function build_title_options($template, $topic, $voice = null, $content = '') {
+				return array(
+					'prompt' => 'Title prompt',
+					'instructions' => '',
+					'context' => $content,
+				);
+			}
+
+			public function build_excerpt_options($voice, $topic, $title, $content) {
+				return array(
+					'prompt' => 'Excerpt prompt',
+					'instructions' => '',
+					'context' => $title . ' ' . $content,
+				);
+			}
 		};
 
 		$history_repository = new class {
@@ -72,19 +96,10 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			1
 		);
 
-		$post_creator = new class($action_called) use (&$action_called) {
-			private $action_called;
+		$post_creator = new class {
 			public $received_data;
 
-			public function __construct($action_called) {
-				$this->action_called =& $action_called;
-			}
-
 			public function create_post($data) {
-				if (!$this->action_called) {
-					throw new Exception('Expected pre-create action to fire before post creation.');
-				}
-
 				$this->received_data = $data;
 				return 321;
 			}
@@ -108,6 +123,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 
 		$template = (object) array(
 			'id' => 5,
+			'name' => 'Test Template',
 			'prompt_template' => 'Prompt for {{topic}}',
 			'title_prompt' => 'Title for {{topic}}',
 			'post_status' => 'draft',

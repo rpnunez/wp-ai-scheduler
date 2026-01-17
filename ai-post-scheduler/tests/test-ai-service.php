@@ -236,7 +236,12 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->assertInstanceOf('WP_Error', $result);
             
             $log = $this->service->get_call_log();
-            $this->assertEquals($options, $log[0]['request']['options']);
+            $logged_options = $log[0]['request']['options'];
+            
+            // Verify the passed options are preserved
+            $this->assertEquals('gpt-4', $logged_options['model']);
+            $this->assertEquals(500, $logged_options['max_tokens']);
+            $this->assertEquals(0.8, $logged_options['temperature']);
         } else {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }
