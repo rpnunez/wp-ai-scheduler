@@ -270,6 +270,38 @@
             });
         },
 
+        softConfirm: function($btn, callback) {
+            if (!$btn.data('is-confirming')) {
+                // Store original HTML/Text
+                $btn.data('original-html', $btn.html());
+
+                var confirmText = (typeof aipsAdminL10n !== 'undefined' && aipsAdminL10n.clickToConfirm)
+                    ? aipsAdminL10n.clickToConfirm
+                    : 'Click again to confirm';
+
+                $btn.text(confirmText);
+                $btn.addClass('aips-confirm-delete');
+                $btn.data('is-confirming', true);
+
+                // Reset after 3 seconds
+                setTimeout(function() {
+                    if ($btn.data('is-confirming')) {
+                        AIPS.resetSoftConfirm($btn);
+                    }
+                }, 3000);
+                return;
+            }
+
+            callback();
+        },
+
+        resetSoftConfirm: function($btn) {
+            $btn.html($btn.data('original-html'));
+            $btn.removeClass('aips-confirm-delete');
+            $btn.data('is-confirming', false);
+            $btn.prop('disabled', false);
+        },
+
         copyToClipboard: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -444,58 +476,35 @@
         deleteTemplate: function(e) {
             e.preventDefault();
             var $btn = $(this);
-            var id = $btn.data('id');
-            var $row = $btn.closest('tr');
 
-            // Soft Confirm Pattern
-            if (!$btn.data('is-confirming')) {
-                $btn.data('original-text', $btn.text());
-                $btn.text('Click again to confirm');
-                $btn.addClass('aips-confirm-delete');
-                $btn.data('is-confirming', true);
+            AIPS.softConfirm($btn, function() {
+                var id = $btn.data('id');
+                var $row = $btn.closest('tr');
+                $btn.prop('disabled', true).text('Deleting...');
 
-                // Reset after 3 seconds
-                setTimeout(function() {
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                }, 3000);
-                return;
-            }
-
-            // Confirmed, proceed with deletion
-            $btn.prop('disabled', true).text('Deleting...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_template',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() {
-                            $(this).remove();
-                        });
-                    } else {
-                        alert(response.data.message);
-                        // Reset button state on error
-                        $btn.text($btn.data('original-text'));
-                        $btn.removeClass('aips-confirm-delete');
-                        $btn.data('is-confirming', false);
-                        $btn.prop('disabled', false);
+                $.ajax({
+                    url: aipsAjax.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'aips_delete_template',
+                        nonce: aipsAjax.nonce,
+                        template_id: id
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $row.fadeOut(function() {
+                                $(this).remove();
+                            });
+                        } else {
+                            alert(response.data.message);
+                            AIPS.resetSoftConfirm($btn);
+                        }
+                    },
+                    error: function() {
+                        alert('An error occurred. Please try again.');
+                        AIPS.resetSoftConfirm($btn);
                     }
-                },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                    // Reset button state on error
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                    $btn.prop('disabled', false);
-                }
+                });
             });
         },
 
@@ -683,26 +692,34 @@
 
         deleteVoice: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this voice?')) {
-                return;
-            }
-            var id = $(this).data('id');
-            var $row = $(this).closest('tr');
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_voice',
-                    nonce: aipsAjax.nonce,
-                    voice_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() { $(this).remove(); });
-                    } else {
-                        alert(response.data.message);
+            var $btn = $(this);
+
+            AIPS.softConfirm($btn, function() {
+                var id = $btn.data('id');
+                var $row = $btn.closest('tr');
+                $btn.prop('disabled', true).text('Deleting...');
+
+                $.ajax({
+                    url: aipsAjax.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'aips_delete_voice',
+                        nonce: aipsAjax.nonce,
+                        voice_id: id
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $row.fadeOut(function() { $(this).remove(); });
+                        } else {
+                            alert(response.data.message);
+                            AIPS.resetSoftConfirm($btn);
+                        }
+                    },
+                    error: function() {
+                        alert('An error occurred. Please try again.');
+                        AIPS.resetSoftConfirm($btn);
                     }
-                }
+                });
             });
         },
 
@@ -824,33 +841,36 @@
 
         deleteSchedule: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this schedule?')) {
-                return;
-            }
+            var $btn = $(this);
 
-            var id = $(this).data('id');
-            var $row = $(this).closest('tr');
+            AIPS.softConfirm($btn, function() {
+                var id = $btn.data('id');
+                var $row = $btn.closest('tr');
+                $btn.prop('disabled', true).text('Deleting...');
 
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_schedule',
-                    nonce: aipsAjax.nonce,
-                    schedule_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() {
-                            $(this).remove();
-                        });
-                    } else {
-                        alert(response.data.message);
+                $.ajax({
+                    url: aipsAjax.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'aips_delete_schedule',
+                        nonce: aipsAjax.nonce,
+                        schedule_id: id
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $row.fadeOut(function() {
+                                $(this).remove();
+                            });
+                        } else {
+                            alert(response.data.message);
+                            AIPS.resetSoftConfirm($btn);
+                        }
+                    },
+                    error: function() {
+                        alert('An error occurred. Please try again.');
+                        AIPS.resetSoftConfirm($btn);
                     }
-                },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                }
+                });
             });
         },
 
