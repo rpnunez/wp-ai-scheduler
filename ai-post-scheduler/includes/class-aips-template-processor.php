@@ -126,7 +126,7 @@ class AIPS_Template_Processor {
         $prompt = "Based on the following content context, provide creative and appropriate values for these variables: {$variables_list}\n\n";
         $prompt .= "Content Context:\n{$context}\n\n";
         $prompt .= "IMPORTANT: Respond ONLY with a JSON object containing the variable names as keys and their values. ";
-        $prompt .= "Do not include any explanation, markdown formatting, or code blocks. ";
+        $prompt .= "Do not include any explanation or extra text. ";
         $prompt .= "Example format: {\"VariableName1\": \"Value1\", \"VariableName2\": \"Value2\"}\n\n";
         $prompt .= "Provide values that are specific, relevant, and would make sense in the context of the content. ";
         $prompt .= "For comparison articles, ensure the values are distinct from each other.";
@@ -138,6 +138,7 @@ class AIPS_Template_Processor {
      * Parse AI response for variable values.
      *
      * Extracts variable values from the AI's JSON response.
+     * Handles common AI response formats including raw JSON and markdown-wrapped code blocks.
      *
      * @param string $response      The AI response containing variable values.
      * @param array  $ai_variables  The expected AI variable names.

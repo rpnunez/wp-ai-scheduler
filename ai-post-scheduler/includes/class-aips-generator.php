@@ -182,14 +182,16 @@ class AIPS_Generator {
             return array();
         }
         
-        // Build context from content prompt and generated content
+        // Build context from content prompt and generated content.
+        // Limit content to 2000 chars to stay within token limits while providing enough context.
         $context = "Content Prompt: " . $template->prompt_template . "\n\n";
         $context .= "Generated Article Content:\n" . mb_substr($content, 0, 2000);
         
         // Build the prompt to resolve AI variables
         $resolve_prompt = $this->template_processor->build_ai_variables_prompt($ai_variables, $context);
         
-        // Call AI to resolve the variables
+        // Call AI to resolve the variables.
+        // Max tokens of 200 is sufficient for JSON responses with typical variable values.
         $options = array('max_tokens' => 200);
         $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
         
