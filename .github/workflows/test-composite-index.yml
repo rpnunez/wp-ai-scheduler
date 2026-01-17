@@ -70,6 +70,9 @@ jobs:
           # Copy test library files
           cp -r /tmp/wordpress-develop/tests/phpunit/* /tmp/wordpress-tests-lib/
           
+          # Create src directory for WordPress core
+          mkdir -p /tmp/wordpress-tests-lib/src
+          
           # Copy WordPress core to test library src directory
           cp -r /tmp/wordpress-core/* /tmp/wordpress-tests-lib/src/
           
