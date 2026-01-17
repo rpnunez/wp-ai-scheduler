@@ -34,7 +34,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     <!-- History Tab -->
     <div id="history-tab" class="aips-tab-content<?php echo $active_tab === 'history' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'history' ? '' : 'display:none;'; ?>">
         <?php
-        if ( $active_tab === 'history' ) {
+        //if ( $active_tab === 'history' ) {
             $is_history_tab = true;
             if ( ! isset( $history_base_page ) ) {
                 $history_base_page = 'aips-templates';
@@ -43,7 +43,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 $history_base_args = array( 'tab' => 'history' );
             }
             include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
-        }
+        //}
         ?>
     </div>
 </div>
