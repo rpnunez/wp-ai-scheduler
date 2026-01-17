@@ -62,7 +62,7 @@ class AIPS_Prompt_Builder {
      *   2. Template title prompt (if provided)
      *
      * The final prompt structure sent to AI:
-     *   "Generate a title for a blog post, based off of the content below. Here are your instructions:\n\n"
+     *   "Generate a title for a blog post, based on the content below. Here are your instructions:\n\n"
      *   (Voice Title Prompt OR Template Title Prompt)
      *   "\n\nHere is the content:\n\n"
      *   (Generated Post Content)
