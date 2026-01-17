@@ -3,34 +3,29 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$is_history_tab = isset($is_history_tab) && $is_history_tab;
 $history_base_page = isset($history_base_page) ? $history_base_page : 'aips-history';
 $history_base_args = isset($history_base_args) && is_array($history_base_args) ? $history_base_args : array();
 $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=' . $history_base_page));
 ?>
-<div class="<?php echo esc_attr($is_history_tab ? 'aips-history-tab' : 'wrap aips-wrap'); ?>">
-    <?php if ($is_history_tab): ?>
-        <h2><?php esc_html_e('Generation History', 'ai-post-scheduler'); ?></h2>
-    <?php else: ?>
-        <h1><?php esc_html_e('Generation History', 'ai-post-scheduler'); ?></h1>
-    <?php endif; ?>
+<div class="aips-history-tab">
+    <h2><?php esc_html_e('Generation History', 'ai-post-scheduler'); ?></h2>
     
     <div class="aips-history-stats">
         <div class="aips-stat-inline">
             <span class="aips-stat-label"><?php esc_html_e('Total:', 'ai-post-scheduler'); ?></span>
-            <span class="aips-stat-value"><?php echo esc_html($stats['total']); ?></span>
+            <span class="aips-stat-value" id="aips-stat-total"><?php echo esc_html($stats['total']); ?></span>
         </div>
         <div class="aips-stat-inline aips-stat-success">
             <span class="aips-stat-label"><?php esc_html_e('Completed:', 'ai-post-scheduler'); ?></span>
-            <span class="aips-stat-value"><?php echo esc_html($stats['completed']); ?></span>
+            <span class="aips-stat-value" id="aips-stat-completed"><?php echo esc_html($stats['completed']); ?></span>
         </div>
         <div class="aips-stat-inline aips-stat-error">
             <span class="aips-stat-label"><?php esc_html_e('Failed:', 'ai-post-scheduler'); ?></span>
-            <span class="aips-stat-value"><?php echo esc_html($stats['failed']); ?></span>
+            <span class="aips-stat-value" id="aips-stat-failed"><?php echo esc_html($stats['failed']); ?></span>
         </div>
         <div class="aips-stat-inline">
             <span class="aips-stat-label"><?php esc_html_e('Success Rate:', 'ai-post-scheduler'); ?></span>
-            <span class="aips-stat-value"><?php echo esc_html($stats['success_rate']); ?>%</span>
+            <span class="aips-stat-value" id="aips-stat-success-rate"><?php echo esc_html($stats['success_rate']); ?>%</span>
         </div>
     </div>
     
@@ -52,6 +47,7 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
             <button class="button" id="aips-delete-selected-btn" disabled><?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?></button>
         </div>
         <div class="alignright">
+            <button class="button" id="aips-reload-history-btn"><?php esc_html_e('Reload', 'ai-post-scheduler'); ?></button>
             <button class="button aips-clear-history" data-status=""><?php esc_html_e('Clear All History', 'ai-post-scheduler'); ?></button>
             <button class="button aips-clear-history" data-status="failed"><?php esc_html_e('Clear Failed Only', 'ai-post-scheduler'); ?></button>
         </div>

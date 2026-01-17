@@ -21,6 +21,7 @@ class AIPS_History {
         add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
         add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
         add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
+        add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
     }
     
     public function get_history($args = array()) {
@@ -154,6 +155,96 @@ class AIPS_History {
         );
         
         wp_send_json_success($response);
+    }
+
+    /**
+     * AJAX handler to reload the history table and updated stats.
+     *
+     * Returns the latest items HTML (table body only) and stats so the
+     * client can refresh the view without a full page reload.
+     */
+    public function ajax_reload_history() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+        $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+
+        $history = $this->get_history(array(
+            'page' => 1,
+            'status' => $status_filter,
+            'search' => $search_query,
+        ));
+
+        $stats = $this->get_stats();
+
+        ob_start();
+
+        if (!empty($history['items'])) {
+            foreach ($history['items'] as $item) {
+                ?>
+                <tr>
+                    <th scope="row" class="check-column">
+                        <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>"><?php esc_html_e('Select Item', 'ai-post-scheduler'); ?></label>
+                        <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" name="history[]" value="<?php echo esc_attr($item->id); ?>">
+                    </th>
+                    <td class="column-title">
+                        <?php if ($item->post_id): ?>
+                        <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
+                            <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
+                        </a>
+                        <?php else: ?>
+                        <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
+                        <?php endif; ?>
+                        <?php if ($item->status === 'failed' && $item->error_message): ?>
+                        <div class="aips-error-message"><?php echo esc_html($item->error_message); ?></div>
+                        <?php endif; ?>
+                    </td>
+                    <td class="column-template">
+                        <?php echo esc_html($item->template_name ?: '-'); ?>
+                    </td>
+                    <td class="column-status">
+                        <span class="aips-status aips-status-<?php echo esc_attr($item->status); ?>">
+                            <?php echo esc_html(ucfirst($item->status)); ?>
+                        </span>
+                    </td>
+                    <td class="column-date">
+                        <?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->created_at))); ?>
+                    </td>
+                    <td class="column-actions">
+                        <?php if ($item->post_id): ?>
+                        <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="button button-small" target="_blank">
+                            <?php esc_html_e('View', 'ai-post-scheduler'); ?>
+                        </a>
+                        <?php endif; ?>
+                        <button class="button button-small aips-view-details" data-id="<?php echo esc_attr($item->id); ?>">
+                            <?php esc_html_e('Details', 'ai-post-scheduler'); ?>
+                        </button>
+                        <?php if ($item->status === 'failed' && $item->template_id): ?>
+                        <button class="button button-small aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>">
+                            <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
+                        </button>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php
+            }
+        }
+
+        $items_html = ob_get_clean();
+
+        wp_send_json_success(array(
+            'items_html' => $items_html,
+            'stats' => array(
+                'total' => (int) $stats['total'],
+                'completed' => (int) $stats['completed'],
+                'failed' => (int) $stats['failed'],
+                'success_rate' => (float) $stats['success_rate'],
+            ),
+        ));
     }
     
     public function render_page() {
