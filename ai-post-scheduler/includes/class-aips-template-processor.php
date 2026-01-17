@@ -39,7 +39,22 @@ class AIPS_Template_Processor {
      */
     public function process($template, $topic = null) {
         $variables = $this->get_variables($topic);
-        return str_replace(array_keys($variables), array_values($variables), $template);
+
+        // Create a map of trimmed keys -> values
+        $var_map = array();
+        foreach ($variables as $key => $value) {
+            $inner = str_replace(array('{{', '}}'), '', $key);
+            $var_map[trim($inner)] = $value;
+        }
+
+        // Use regex to handle optional whitespace inside braces
+        return preg_replace_callback('/\{\{\s*([^}]+?)\s*\}\}/', function($matches) use ($var_map) {
+            $key = trim($matches[1]);
+            if (isset($var_map[$key])) {
+                return $var_map[$key];
+            }
+            return $matches[0]; // Return original if not found
+        }, $template);
     }
     
     /**
@@ -56,16 +71,18 @@ class AIPS_Template_Processor {
     public function process_with_ai_variables($template, $topic = null, $ai_values = array()) {
         // First replace AI variables with their resolved values
         if (!empty($ai_values)) {
-            foreach ($ai_values as $var_name => $value) {
-                // Sanitize AI-provided values before inserting into the template
-                if (is_string($value)) {
-                    $safe_value = sanitize_textarea_field($value);
-                } else {
-                    $safe_value = sanitize_textarea_field((string) $value);
+            $template = preg_replace_callback('/\{\{\s*([^}]+?)\s*\}\}/', function($matches) use ($ai_values) {
+                $key = trim($matches[1]);
+                if (isset($ai_values[$key])) {
+                    $value = $ai_values[$key];
+                    if (is_string($value)) {
+                        return sanitize_textarea_field($value);
+                    } else {
+                        return sanitize_textarea_field((string) $value);
+                    }
                 }
-                
-                $template = str_replace('{{' . $var_name . '}}', $safe_value, $template);
-            }
+                return $matches[0];
+            }, $template);
         }
         
         // Then process standard template variables
