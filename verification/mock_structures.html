@@ -1,0 +1,122 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Article Structures Mock</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/3.2.0/css/dashicons.min.css">
+        <style>
+            body { font-family: sans-serif; background: #f1f1f1; padding: 20px; }
+            .wrap { background: #fff; padding: 20px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+            .wp-list-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .wp-list-table th, .wp-list-table td { text-align: left; padding: 8px; border-bottom: 1px solid #c3c4c7; }
+            .button { display: inline-block; text-decoration: none; font-size: 13px; line-height: 2.15384615; min-height: 30px; margin: 0; padding: 0 10px; cursor: pointer; border-width: 1px; border-style: solid; -webkit-appearance: none; border-radius: 3px; white-space: nowrap; box-sizing: border-box; color: #2271b1; border-color: #2271b1; background: #f6f7f7; vertical-align: top; }
+            .button-primary { background: #2271b1; border-color: #2271b1; color: #fff; }
+            .aips-search-box { margin-bottom: 10px; text-align: right; }
+            .regular-text { width: 25em; }
+            .screen-reader-text { clip: rect(1px, 1px, 1px, 1px); position: absolute !important; height: 1px; width: 1px; overflow: hidden; }
+            .nav-tab-wrapper { border-bottom: 1px solid #c3c4c7; padding-bottom: 0; }
+            .nav-tab { border: 1px solid #c3c4c7; border-bottom: none; background: #e5e5e5; color: #50575e; padding: 6px 10px; text-decoration: none; margin-left: .5em; }
+            .nav-tab-active { background: #f0f0f1; border-bottom: 1px solid #f0f0f1; }
+        </style>
+    </head>
+    <body>
+        <div class="wrap aips-wrap">
+            <h1>Article Structures</h1>
+
+            <div class="nav-tab-wrapper">
+                <a href="#" class="nav-tab nav-tab-active">Article Structures</a>
+                <a href="#" class="nav-tab">Structure Sections</a>
+            </div>
+
+            <!-- MOCK: Structure Tab Content -->
+            <div id="aips-structures-tab" class="aips-tab-content active">
+                <h2>Article Structures <button class="button">Add New</button></h2>
+
+                <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+                    <label class="screen-reader-text" for="aips-structure-search">Search Structures:</label>
+                    <input type="search" id="aips-structure-search" class="regular-text" placeholder="Search structures...">
+                    <button type="button" id="aips-structure-search-clear" class="button" style="display: none;">Clear</button>
+                </div>
+
+                <table class="wp-list-table widefat fixed striped aips-structures-list">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Active</th>
+                            <th>Default</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+    <tr data-structure-id="1">
+        <td class="column-name">SEO Blog Post</td>
+        <td class="column-description">Standard blog post with SEO optimization</td>
+        <td>Yes</td>
+        <td>Yes</td>
+        <td>
+            <button class="button aips-clone-structure" data-id="1" aria-label="Clone structure">Clone</button>
+            <button class="button aips-edit-structure" data-id="1">Edit</button>
+            <button class="button button-link-delete aips-delete-structure" data-id="1">Delete</button>
+        </td>
+    </tr>
+    <tr data-structure-id="2">
+        <td class="column-name">News Article</td>
+        <td class="column-description">Timely news piece</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>
+            <button class="button aips-clone-structure" data-id="2" aria-label="Clone structure">Clone</button>
+            <button class="button aips-edit-structure" data-id="2">Edit</button>
+            <button class="button button-link-delete aips-delete-structure" data-id="2">Delete</button>
+        </td>
+    </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+             <!-- MOCK: Sections Tab Content (Visualizing the search box only) -->
+            <div id="aips-structure-sections-tab" class="aips-tab-content" style="margin-top: 50px;">
+                <h2>Structure Sections <button class="button">Add New</button></h2>
+
+                <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+                    <label class="screen-reader-text" for="aips-section-search">Search Sections:</label>
+                    <input type="search" id="aips-section-search" class="regular-text" placeholder="Search sections...">
+                    <button type="button" id="aips-section-search-clear" class="button" style="display: none;">Clear</button>
+                </div>
+
+                <table class="wp-list-table widefat fixed striped aips-sections-list">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Key</th>
+                            <th>Description</th>
+                            <th>Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+    <tr data-section-id="1">
+        <td class="column-name">Introduction</td>
+        <td class="column-key"><code>intro</code></td>
+        <td class="column-description">Engaging intro hook</td>
+        <td>Yes</td>
+        <td>
+            <button class="button aips-clone-section" data-id="1" aria-label="Clone section">Clone</button>
+            <button class="button aips-edit-section" data-id="1">Edit</button>
+            <button class="button button-link-delete aips-delete-section" data-id="1">Delete</button>
+        </td>
+    </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </body>
+    </html>

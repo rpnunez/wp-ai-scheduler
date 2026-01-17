@@ -11,3 +11,7 @@
 ## 2024-05-27 - History Bulk Actions
 **Learning:** The history table lacked bulk deletion capabilities, forcing users to delete failed/unwanted entries one by one or clear the entire history.
 **Action:** Implemented "Select All" / Individual checkboxes and a "Delete Selected" button in `history.php`, backed by a new `delete_bulk` repository method and AJAX handler.
+
+## 2024-05-28 - Structure Management Enhancements
+**Learning:** Users struggled to find specific structures/sections in growing lists and had to recreate complex structures from scratch.
+**Action:** Implemented client-side search with empty states and "Clone" functionality for both Article Structures and Prompt Sections to improve discoverability and workflow efficiency.
