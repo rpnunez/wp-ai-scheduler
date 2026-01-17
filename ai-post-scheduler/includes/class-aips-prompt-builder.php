@@ -15,6 +15,8 @@ class AIPS_Prompt_Builder {
 
     /**
      * Builds the complete content prompt based on template, topic, and voice.
+     * Automatically falls back to the default article structure when none is provided
+     * so prompt sections are always injected into the generation prompt.
      *
      * @param object $template The template object.
      * @param string $topic    The topic for the post.
@@ -24,8 +26,16 @@ class AIPS_Prompt_Builder {
     public function build_content_prompt($template, $topic, $voice = null) {
         do_action('aips_before_build_content_prompt', $template, $topic);
 
-        // Check if article_structure_id is provided, build prompt with structure
+        // Check if article_structure_id is provided, otherwise fall back to the default structure
         $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
+
+        if (!$article_structure_id) {
+            $default_structure = $this->structure_manager->get_default_structure();
+
+            if (!is_wp_error($default_structure) && !empty($default_structure['id'])) {
+                $article_structure_id = $default_structure['id'];
+            }
+        }
 
         if ($article_structure_id) {
             // Use article structure to build prompt

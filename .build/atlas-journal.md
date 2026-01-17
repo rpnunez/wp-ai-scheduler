@@ -1323,3 +1323,9 @@ The situation resulted in "unexpected title prompts" as reported, with duplicate
 This refactoring resolves the "unexpected title prompts" issue by eliminating duplicate implementations and establishing a clear, single source of truth for prompt building. The Prompt Builder now owns all prompt construction logic (title, excerpt, content), while the Generator focuses on orchestrating the AI generation workflow. The change follows SOLID principles, improves testability and maintainability, and maintains 100% backward compatibility with no breaking changes to public APIs or generated content.
 
 ---
+
+## 2026-01-17 - Default Article Structure Fallback in Prompt Builder
+**Context:** Content prompt construction only applied article structures when a template explicitly provided an `article_structure_id`. Planner/manual flows and any templates without that property skipped structures entirely, leaving prompt sections unused despite the documented default-structure fallback.
+**Decision:** Updated `AIPS_Prompt_Builder::build_content_prompt()` to automatically load and apply the default article structure when none is provided, ensuring section prompts are injected before template processing while still falling back to legacy template prompts if no structures exist or a build error occurs. Added a focused unit test to cover the default-structure path and preserve existing behavior when a default is unavailable.
+**Consequence:** Prompt sections now participate in content generation across all flows without requiring explicit structure selection, with a minimal additional lookup for the default structure. Legacy templates remain compatible because errors or missing defaults revert to the original prompt processing path.
+**Tests:** Added `test_build_content_prompt_uses_default_structure` in `tests/test-prompt-builder.php` to validate default structure application and section injection. (Test execution was not possible in this environment.)

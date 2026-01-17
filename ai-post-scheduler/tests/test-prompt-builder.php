@@ -51,6 +51,62 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test build_content_prompt falls back to the default structure when none is provided.
+	 */
+	public function test_build_content_prompt_uses_default_structure() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager = new AIPS_Article_Structure_Manager();
+		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+
+		$section_repo = new AIPS_Prompt_Section_Repository();
+		$structure_repo = new AIPS_Article_Structure_Repository();
+
+		$previous_default = $structure_repo->get_default();
+
+		$section_key = 'section_' . uniqid();
+		$section_id = $section_repo->create(array(
+			'name' => 'Default Intro Section',
+			'description' => 'Intro for default fallback',
+			'section_key' => $section_key,
+			'content' => 'Intro content about {{topic}}',
+			'is_active' => 1,
+		));
+
+		$structure_id = $structure_repo->create(array(
+			'name' => 'Default Structure Prompt Test',
+			'description' => 'Ensures default structures are applied',
+			'structure_data' => wp_json_encode(array(
+				'sections' => array($section_key),
+				'prompt_template' => 'Structure prompt: {{section:' . $section_key . '}}',
+			)),
+			'is_active' => 1,
+			'is_default' => 1,
+		));
+
+		$template = (object) array(
+			'prompt_template' => 'Legacy prompt {{topic}}',
+			'article_structure_id' => null,
+		);
+
+		$result = $builder->build_content_prompt($template, 'Space Exploration', null);
+
+		$this->assertStringContainsString('Intro content about Space Exploration', $result);
+		$this->assertStringContainsString('Structure prompt', $result);
+
+		if ($structure_id) {
+			$structure_repo->delete($structure_id);
+		}
+
+		if ($previous_default && isset($previous_default->id)) {
+			$structure_repo->set_default($previous_default->id);
+		}
+
+		if ($section_id) {
+			$section_repo->delete($section_id);
+		}
+	}
+
+	/**
 	 * Test build_title_prompt with template only.
 	 */
 	public function test_build_title_prompt_template_only() {
