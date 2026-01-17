@@ -45,7 +45,7 @@ class AIPS_Prompt_Builder {
             $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
         }
 
-        $content_prompt = $processed_prompt . "\n\nOutput the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.";
+        $content_prompt = $processed_prompt . "\n\n" . $this->get_output_instructions();
 
         $content_prompt = apply_filters('aips_content_prompt', $content_prompt, $template, $topic);
 
@@ -70,7 +70,7 @@ class AIPS_Prompt_Builder {
             $context_parts[] = $this->template_processor->process($voice->content_instructions, $topic);
         }
 
-        $context_parts[] = 'Output the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.';
+        $context_parts[] = $this->get_output_instructions();
 
         /**
          * Filter the context sent to AI Engine for content generation.
@@ -183,5 +183,14 @@ class AIPS_Prompt_Builder {
             return $this->template_processor->process($voice->excerpt_instructions, $topic);
         }
         return null;
+    }
+
+    /**
+     * Standard output instructions for article formatting.
+     *
+     * @return string
+     */
+    private function get_output_instructions() {
+        return 'Output the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.';
     }
 }

@@ -139,33 +139,7 @@ class AIPS_AI_Service {
                 }
 
                 // Optional advanced parameters supported by AI Engine.
-                if (!empty($options['context']) && method_exists($query, 'set_context')) {
-                    $query->set_context($options['context']);
-                }
-
-                if (!empty($options['instructions']) && method_exists($query, 'set_instructions')) {
-                    $query->set_instructions($options['instructions']);
-                }
-
-                if (!empty($options['messages']) && method_exists($query, 'set_messages')) {
-                    $query->set_messages($options['messages']);
-                }
-
-                if (!empty($options['env_id']) && method_exists($query, 'set_env_id')) {
-                    $query->set_env_id($options['env_id']);
-                }
-
-                if (!empty($options['embeddings_env_id']) && method_exists($query, 'set_embeddings_env_id')) {
-                    $query->set_embeddings_env_id($options['embeddings_env_id']);
-                }
-
-                if (!empty($options['max_results']) && method_exists($query, 'set_max_results')) {
-                    $query->set_max_results($options['max_results']);
-                }
-
-                if (!empty($options['api_key']) && method_exists($query, 'set_api_key')) {
-                    $query->set_api_key($options['api_key']);
-                }
+                $this->apply_optional_query_settings($query, $options);
                 
                 $response = $ai->run_query($query);
                 
@@ -279,6 +253,31 @@ class AIPS_AI_Service {
         );
         
         return wp_parse_args($options, $default_options);
+    }
+
+    /**
+     * Apply optional AI Engine query settings when available.
+     *
+     * @param object $query   The AI Engine query object.
+     * @param array  $options Options passed to the AI request.
+     * @return void
+     */
+    private function apply_optional_query_settings($query, $options) {
+        $mappings = array(
+            'context' => 'set_context',
+            'instructions' => 'set_instructions',
+            'messages' => 'set_messages',
+            'env_id' => 'set_env_id',
+            'embeddings_env_id' => 'set_embeddings_env_id',
+            'max_results' => 'set_max_results',
+            'api_key' => 'set_api_key',
+        );
+
+        foreach ($mappings as $option_key => $method) {
+            if (!empty($options[$option_key]) && method_exists($query, $method)) {
+                $query->$method($options[$option_key]);
+            }
+        }
     }
     
     /**
