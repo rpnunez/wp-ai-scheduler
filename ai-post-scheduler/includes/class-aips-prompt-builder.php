@@ -53,45 +53,92 @@ class AIPS_Prompt_Builder {
     }
 
     /**
-     * Builds the prompt for title generation.
+     * Builds the complete prompt for title generation.
      *
-     * @param object $template
-     * @param string $topic
-     * @param object $voice
-     * @param string $base_prompt The base content prompt (processed).
-     * @return string The title prompt.
+     * This method encapsulates all title prompt construction logic. It uses the
+     * generated article content as primary context, and applies the following
+     * precedence for title instructions:
+     *   1. Voice title prompt (if provided)
+     *   2. Template title prompt (if provided)
+     *
+     * The final prompt structure sent to AI:
+     *   "Generate a title for a blog post, based off of the content below. Here are your instructions:\n\n"
+     *   (Voice Title Prompt OR Template Title Prompt)
+     *   "\n\nHere is the content:\n\n"
+     *   (Generated Post Content)
+     *
+     * @param object      $template Template object containing prompts and settings.
+     * @param object|null $voice    Optional voice object with overrides.
+     * @param string|null $topic    Optional topic to be injected into prompts.
+     * @param string      $content  Generated article content used as context.
+     * @return string The complete title generation prompt.
      */
-    public function build_title_prompt($template, $topic, $voice = null, $base_prompt = '') {
-        $voice_title_prompt = null;
-        if ($voice) {
-            $voice_title_prompt = $this->template_processor->process($voice->title_prompt, $topic);
+    public function build_title_prompt($template, $topic, $voice = null, $content = '') {
+        // Build title instructions based on voice or template configuration.
+        // Voice title prompt takes precedence over template title prompt.
+        $title_instructions = '';
+
+        if ($voice && !empty($voice->title_prompt)) {
+            $title_instructions = $this->template_processor->process($voice->title_prompt, $topic);
+        } elseif (!empty($template->title_prompt)) {
+            $title_instructions = $this->template_processor->process($template->title_prompt, $topic);
         }
 
-        if (!empty($template->title_prompt)) {
-            $title_prompt = $this->template_processor->process($template->title_prompt, $topic);
+        // Build the title generation prompt using the generated content as context.
+        $prompt = "Generate a title for a blog post, based off of the content below. Here are your instructions:\n\n";
 
-            if ($voice_title_prompt) {
-                return $voice_title_prompt . "\n\n" . $title_prompt;
-            }
-            return $title_prompt; // AIPS_Generator::generate_title handles the "Generate a compelling..." wrapper if strict arg is not passed, but let's check.
-            // Actually, AIPS_Generator::generate_title logic is:
-            // if ($voice_title_prompt) $title_prompt = $voice_title_prompt . "\n\n" . $prompt;
-            // else $title_prompt = "Generate a compelling... " . $prompt;
-
-            // So this method should just return the "prompt" part, and AIPS_Generator handles the wrapper?
-            // Or should we move that logic here?
-            // Let's keep it simple: return the specific instruction part.
+        if (!empty($title_instructions)) {
+            $prompt .= $title_instructions . "\n\n";
         }
 
-        // If no template title prompt, we use the base prompt.
-        return $base_prompt;
+        $prompt .= "Here is the content:\n\n" . $content;
+
+        // Allow filtering of title prompt
+        $prompt = apply_filters('aips_title_prompt', $prompt, $template, $topic, $voice, $content);
+
+        return $prompt;
     }
 
     /**
-     * Builds the prompt for excerpt generation.
+     * Builds the complete prompt for excerpt generation.
      *
-     * @param object $voice
-     * @param string $topic
+     * Constructs a prompt that instructs the AI to create a short, compelling
+     * excerpt for the article. Includes voice-specific instructions if provided.
+     *
+     * @param string      $title   Title of the generated article.
+     * @param string      $content The article content to summarize.
+     * @param object|null $voice   Optional voice object with excerpt instructions.
+     * @param string|null $topic   Optional topic to be injected into prompts.
+     * @return string The complete excerpt generation prompt.
+     */
+    public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
+        $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 characters. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
+        
+        // Add voice-specific excerpt instructions if provided
+        if ($voice && !empty($voice->excerpt_instructions)) {
+            $voice_instructions = $this->template_processor->process($voice->excerpt_instructions, $topic);
+            $excerpt_prompt .= $voice_instructions . "\n\n";
+        }
+        
+        $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
+        $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
+        $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
+        
+        // Allow filtering of excerpt prompt
+        $excerpt_prompt = apply_filters('aips_excerpt_prompt', $excerpt_prompt, $title, $content, $voice, $topic);
+        
+        return $excerpt_prompt;
+    }
+
+    /**
+     * Builds voice-specific excerpt instructions (legacy method for backward compatibility).
+     *
+     * This method is maintained for backward compatibility but the new
+     * build_excerpt_prompt() should be preferred for full excerpt generation.
+     *
+     * @deprecated Use build_excerpt_prompt() instead
+     * @param object|null $voice
+     * @param string|null $topic
      * @return string|null
      */
     public function build_excerpt_instructions($voice, $topic) {
@@ -99,22 +146,5 @@ class AIPS_Prompt_Builder {
             return $this->template_processor->process($voice->excerpt_instructions, $topic);
         }
         return null;
-    }
-
-    /**
-     * Helper to get the base processed prompt without the "Output response..." suffix.
-     * Useful for title generation context.
-     */
-    public function build_base_content_prompt($template, $topic) {
-        $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
-
-        if ($article_structure_id) {
-            $processed_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic);
-            if (!is_wp_error($processed_prompt)) {
-                return $processed_prompt;
-            }
-        }
-
-        return $this->template_processor->process($template->prompt_template, $topic);
     }
 }
