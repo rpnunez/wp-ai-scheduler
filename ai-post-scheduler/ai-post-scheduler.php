@@ -93,6 +93,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dev-tools.php';
 
         // Seeder Feature
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-seeder-service.php';
@@ -174,6 +175,11 @@ final class AI_Post_Scheduler {
             new AIPS_Structures_Controller();
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
             new AIPS_Prompt_Sections_Controller();
+
+            // Dev Tools
+            if (get_option('aips_developer_mode')) {
+                new AIPS_Dev_Tools();
+            }
         }
         
         new AIPS_Scheduler();

@@ -133,6 +133,17 @@ class AIPS_Settings {
             'aips-status',
             array($this, 'render_status_page')
         );
+
+        if (get_option('aips_developer_mode')) {
+            add_submenu_page(
+                'ai-post-scheduler',
+                __('Dev Tools', 'ai-post-scheduler'),
+                __('Dev Tools', 'ai-post-scheduler'),
+                'manage_options',
+                'aips-dev-tools',
+                array($this, 'render_dev_tools_page')
+            );
+        }
     }
     
     /**
@@ -151,6 +162,9 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint'
         ));
         register_setting('aips_settings', 'aips_enable_logging', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_developer_mode', array(
             'sanitize_callback' => 'absint'
         ));
         register_setting('aips_settings', 'aips_retry_max_attempts', array(
@@ -214,6 +228,14 @@ class AIPS_Settings {
             'aips_enable_logging',
             __('Enable Logging', 'ai-post-scheduler'),
             array($this, 'logging_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_developer_mode',
+            __('Developer Mode', 'ai-post-scheduler'),
+            array($this, 'developer_mode_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -320,6 +342,16 @@ class AIPS_Settings {
             'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
             'loadingError' => __('Failed to load activity data.', 'ai-post-scheduler'),
         ));
+
+        if (strpos($hook, 'aips-dev-tools') !== false) {
+            wp_enqueue_script(
+                'aips-admin-dev-tools',
+                AIPS_PLUGIN_URL . 'assets/js/admin-dev-tools.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
     }
     
     /**
@@ -385,6 +417,21 @@ class AIPS_Settings {
     }
 
     /**
+     * Render the Dev Tools page.
+     *
+     * Delegates rendering to the AIPS_Dev_Tools class.
+     *
+     * @return void
+     */
+    public function render_dev_tools_page() {
+        // AIPS_Dev_Tools is instantiated in init if admin, but we need to call render_page on an instance.
+        // Since we don't have a global instance registry accessible easily here, we'll instantiate it on demand.
+        // It's a lightweight class, mostly for AJAX and rendering.
+        $dev_tools = new AIPS_Dev_Tools();
+        $dev_tools->render_page();
+    }
+
+    /**
      * Render Unsplash access key field.
      *
      * Provides a place to store the Unsplash API key required for image searches.
@@ -427,6 +474,23 @@ class AIPS_Settings {
         <label>
             <input type="checkbox" name="aips_enable_logging" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Enable detailed logging for debugging', 'ai-post-scheduler'); ?>
+        </label>
+        <?php
+    }
+
+    /**
+     * Render the developer mode setting field.
+     *
+     * Displays a checkbox to enable or disable developer mode.
+     *
+     * @return void
+     */
+    public function developer_mode_field_callback() {
+        $value = get_option('aips_developer_mode', 0);
+        ?>
+        <label>
+            <input type="checkbox" name="aips_developer_mode" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Enable developer tools and features', 'ai-post-scheduler'); ?>
         </label>
         <?php
     }
