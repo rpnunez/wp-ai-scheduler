@@ -37,6 +37,7 @@
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
+            $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
             $(document).on('keypress', '#aips-history-search-input', function(e) {
                 if(e.which == 13) {
                     AIPS.filterHistory(e);
@@ -921,6 +922,58 @@
             url.searchParams.set('tab', 'history');
             
             window.location.href = url.toString();
+        },
+
+        reloadHistory: function(e) {
+            e.preventDefault();
+
+            var status = $('#aips-filter-status').val();
+            var search = $('#aips-history-search-input').val();
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Reloading...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'aips_reload_history',
+                    nonce: aipsAjax.nonce,
+                    status: status,
+                    search: search
+                },
+                success: function(response) {
+                    if (!response.success) {
+                        alert(response.data && response.data.message ? response.data.message : 'Failed to reload history.');
+                        return;
+                    }
+
+                    // Update table body
+                    var $tbody = $('.aips-history-table tbody');
+                    if ($tbody.length) {
+                        $tbody.html(response.data.items_html || '');
+                    }
+
+                    // Update stats
+                    if (response.data.stats) {
+                        $('#aips-stat-total').text(response.data.stats.total);
+                        $('#aips-stat-completed').text(response.data.stats.completed);
+                        $('#aips-stat-failed').text(response.data.stats.failed);
+                        $('#aips-stat-success-rate').text(response.data.stats.success_rate + '%');
+                    }
+
+                    // Reset bulk selection state
+                    $('#cb-select-all-1').prop('checked', false);
+                    AIPS.updateDeleteButton();
+                },
+                error: function() {
+                    alert('An error occurred while reloading history.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Reload');
+                }
+            });
         },
 
         toggleImagePrompt: function(e) {
