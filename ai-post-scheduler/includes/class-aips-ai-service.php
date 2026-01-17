@@ -274,7 +274,7 @@ class AIPS_AI_Service {
         );
 
         foreach ($mappings as $option_key => $method) {
-            if (!empty($options[$option_key]) && method_exists($query, $method)) {
+            if (array_key_exists($option_key, $options) && method_exists($query, $method)) {
                 $query->$method($options[$option_key]);
             }
         }
