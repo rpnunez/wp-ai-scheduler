@@ -203,10 +203,19 @@ class AIPS_Generator {
         // Parse the AI response to extract variable values
         $resolved_values = $this->template_processor->parse_ai_variables_response($result, $ai_variables);
         
-        $this->logger->log('Resolved AI variables', 'info', array(
-            'variables' => $ai_variables,
-            'resolved' => $resolved_values
-        ));
+        if (empty($resolved_values)) {
+            // AI call succeeded but we could not extract any variable values.
+            // This usually indicates invalid JSON or an unexpected response format.
+            $this->logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
+                'variables' => $ai_variables,
+                'raw_response' => $result,
+            ));
+        } else {
+            $this->logger->log('Resolved AI variables', 'info', array(
+                'variables' => $ai_variables,
+                'resolved'   => $resolved_values,
+            ));
+        }
         
         return $resolved_values;
     }
