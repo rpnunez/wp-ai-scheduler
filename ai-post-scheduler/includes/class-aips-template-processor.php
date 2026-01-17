@@ -166,7 +166,15 @@ class AIPS_Template_Processor {
         if (is_array($decoded)) {
             foreach ($ai_variables as $var_name) {
                 if (isset($decoded[$var_name])) {
-                    $values[$var_name] = $decoded[$var_name];
+                    $raw_value = $decoded[$var_name];
+
+                    // Normalize non-scalar values to a string representation
+                    if (is_array($raw_value) || is_object($raw_value)) {
+                        $raw_value = wp_json_encode($raw_value);
+                    }
+
+                    // Sanitize the value before returning it for use in titles/prompts
+                    $values[$var_name] = sanitize_text_field($raw_value);
                 }
             }
         }
