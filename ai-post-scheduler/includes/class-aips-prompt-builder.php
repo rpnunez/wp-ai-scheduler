@@ -85,7 +85,7 @@ class AIPS_Prompt_Builder {
         }
 
         // Build the title generation prompt using the generated content as context.
-        $prompt = "Generate a title for a blog post, based off of the content below. Here are your instructions:\n\n";
+        $prompt = "Generate a title for a blog post, based on the content below. Here are your instructions:\n\n";
 
         if (!empty($title_instructions)) {
             $prompt .= $title_instructions . "\n\n";
