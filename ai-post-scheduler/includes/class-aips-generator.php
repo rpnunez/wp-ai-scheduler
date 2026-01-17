@@ -369,9 +369,16 @@ class AIPS_Generator {
         
         // Build the full content prompt (template + topic + voice if provided)
         $content_prompt = $this->prompt_builder->build_content_prompt($template, $topic, $voice);
-        
+
+        // Build contextual instructions to pass through AI Engine context channel.
+        $content_context = $this->prompt_builder->build_content_context($template, $topic, $voice);
+        $content_options = array();
+        if (!empty($content_context)) {
+            $content_options['context'] = $content_context;
+        }
+
         // Ask AI to generate the article body
-        $content = $this->generate_content($content_prompt, array(), 'content');
+        $content = $this->generate_content($content_prompt, $content_options, 'content');
         
         if (is_wp_error($content)) {
             // Complete session with failure result and update history
