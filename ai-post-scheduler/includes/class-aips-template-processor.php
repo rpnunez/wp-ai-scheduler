@@ -78,11 +78,17 @@ class AIPS_Template_Processor {
      * AI Variables are any {{VariableName}} that is NOT in the predefined list
      * of system variables. These are intended to be resolved dynamically by AI.
      *
+     * Note: Variables added via the 'aips_template_variables' filter are treated
+     * as system variables and will not be extracted as AI variables. This ensures
+     * that developer-defined variables are processed normally rather than sent to AI.
+     *
      * @param string $template The template string to extract AI variables from.
      * @return array Array of AI variable names (without braces).
      */
     public function extract_ai_variables($template) {
         $ai_variables = array();
+        // Get system variables including any added via filter.
+        // Variables added via filter will be treated as system variables, not AI variables.
         $system_variables = $this->get_variable_names();
         
         // Extract all variables from the template

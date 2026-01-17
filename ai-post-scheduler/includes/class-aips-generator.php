@@ -183,9 +183,9 @@ class AIPS_Generator {
         }
         
         // Build context from content prompt and generated content.
-        // Limit content to 2000 chars to stay within token limits while providing enough context.
+        // Use smart truncation to preserve context from both beginning and end of content.
         $context = "Content Prompt: " . $template->prompt_template . "\n\n";
-        $context .= "Generated Article Content:\n" . mb_substr($content, 0, 2000);
+        $context .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
         
         // Build the prompt to resolve AI variables
         $resolve_prompt = $this->template_processor->build_ai_variables_prompt($ai_variables, $context);
@@ -218,6 +218,37 @@ class AIPS_Generator {
         }
         
         return $resolved_values;
+    }
+    
+    /**
+     * Smart truncate content to preserve key information from both beginning and end.
+     *
+     * Instead of simply truncating from the beginning, this method takes content
+     * from both the start and end of the text to provide better context for AI
+     * variable resolution. Articles often have introductions at the start and
+     * conclusions/summaries at the end, both of which are valuable for context.
+     *
+     * @param string $content    The content to truncate.
+     * @param int    $max_length Maximum total length of the result.
+     * @return string Truncated content with beginning and end preserved.
+     */
+    private function smart_truncate_content($content, $max_length = 2000) {
+        $content_length = mb_strlen($content);
+        
+        // If content fits within limit, return as-is
+        if ($content_length <= $max_length) {
+            return $content;
+        }
+        
+        // Calculate how much to take from each end
+        // Take 60% from the beginning (introductions, key points) and 40% from the end (conclusions)
+        $start_length = (int) ($max_length * 0.6);
+        $end_length = $max_length - $start_length - 20; // Reserve 20 chars for separator
+        
+        $start_content = mb_substr($content, 0, $start_length);
+        $end_content = mb_substr($content, -$end_length);
+        
+        return $start_content . "\n\n[...]\n\n" . $end_content;
     }
     
     /**

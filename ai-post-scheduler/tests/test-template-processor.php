@@ -249,6 +249,28 @@ class Test_AIPS_Template_Processor extends WP_UnitTestCase {
     }
 
     /**
+     * Test extract_ai_variables excludes filter-added variables (treats them as system vars)
+     */
+    public function test_extract_ai_variables_excludes_filter_added_vars() {
+        // Add a custom variable via the filter
+        add_filter('aips_template_variables', function($variables) {
+            $variables['{{custom_filtered}}'] = 'Filtered Value';
+            return $variables;
+        });
+        
+        $template = "{{custom_filtered}} vs {{AIVariable}}";
+        $ai_vars = $this->processor->extract_ai_variables($template);
+        
+        // Only AIVariable should be extracted; custom_filtered is a system variable via filter
+        $this->assertCount(1, $ai_vars);
+        $this->assertContains('AIVariable', $ai_vars);
+        $this->assertNotContains('custom_filtered', $ai_vars);
+        
+        // Clean up filter
+        remove_all_filters('aips_template_variables');
+    }
+
+    /**
      * Test extract_ai_variables removes duplicates
      */
     public function test_extract_ai_variables_removes_duplicates() {
@@ -398,5 +420,35 @@ class Test_AIPS_Template_Processor extends WP_UnitTestCase {
         
         $this->assertCount(2, $values);
         $this->assertArrayNotHasKey('ExtraVar', $values);
+    }
+
+    /**
+     * Test parse_ai_variables_response handles partial responses (missing some variables)
+     */
+    public function test_parse_ai_variables_response_handles_partial_response() {
+        // AI only provided one of the two requested variables
+        $response = '{"Framework1": "Laravel"}';
+        $ai_variables = array('Framework1', 'Framework2');
+        
+        $values = $this->processor->parse_ai_variables_response($response, $ai_variables);
+        
+        // Should only contain the variable that was provided
+        $this->assertCount(1, $values);
+        $this->assertArrayHasKey('Framework1', $values);
+        $this->assertEquals('Laravel', $values['Framework1']);
+        $this->assertArrayNotHasKey('Framework2', $values);
+    }
+
+    /**
+     * Test parse_ai_variables_response handles empty JSON object
+     */
+    public function test_parse_ai_variables_response_handles_empty_json() {
+        $response = '{}';
+        $ai_variables = array('Framework1', 'Framework2');
+        
+        $values = $this->processor->parse_ai_variables_response($response, $ai_variables);
+        
+        $this->assertIsArray($values);
+        $this->assertEmpty($values);
     }
 }
