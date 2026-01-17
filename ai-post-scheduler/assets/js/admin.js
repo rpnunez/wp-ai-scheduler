@@ -59,6 +59,16 @@
             $(document).on('click', '#aips-schedule-search-clear', this.clearScheduleSearch);
             $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
 
+            // Article Structure Search
+            $(document).on('keyup search', '#aips-structure-search', this.filterStructures);
+            $(document).on('click', '#aips-structure-search-clear', this.clearStructureSearch);
+            $(document).on('click', '.aips-clear-structure-search-btn', this.clearStructureSearch);
+
+            // Structure Section Search
+            $(document).on('keyup search', '#aips-section-search', this.filterSections);
+            $(document).on('click', '#aips-section-search-clear', this.clearSectionSearch);
+            $(document).on('click', '.aips-clear-section-search-btn', this.clearSectionSearch);
+
             // Voice Search
             $(document).on('keyup search', '#aips-voice-search', this.filterVoices);
             $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
@@ -103,6 +113,42 @@
             // @TODO: Refactor to AIPS.closeModal -- or use existing function
             $(document).on('click', '.aips-modal-close', function(){
                 $(this).closest('.aips-modal').hide();
+            });
+
+            $(document).on('click', '.aips-clone-structure', function(e) {
+                e.preventDefault();
+                var id = $(this).data('id');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                    if (response.success) {
+                        var s = response.data.structure;
+                        var structureData = {};
+
+                        if (s.structure_data) {
+                            try {
+                                structureData = JSON.parse(s.structure_data) || {};
+                            } catch (e) {
+                                console.error('Invalid structure_data JSON for structure ID ' + s.id, e);
+                                structureData = {};
+                            }
+                        }
+
+                        // Clear ID to create new
+                        $('#structure_id').val('');
+                        $('#structure_name').val(s.name + ' (Copy)');
+                        $('#structure_description').val(s.description);
+                        $('#prompt_template').val(structureData.prompt_template || '');
+                        var sections = structureData.sections || [];
+                        $('#structure_sections').val(sections);
+                        $('#structure_is_active').prop('checked', s.is_active == 1);
+                        $('#structure_is_default').prop('checked', false); // Do not clone default status
+                        $('#aips-structure-modal-title').text('Clone Article Structure');
+                        $('#aips-structure-modal').show();
+                    } else {
+                        alert(response.data.message || aipsAdminL10n.loadStructureFailed);
+                    }
+                }).fail(function(){
+                    alert(aipsAdminL10n.errorOccurred);
+                });
             });
 
             // @TODO: Refactor to AIPS.saveStructure
@@ -191,6 +237,28 @@
                 $('#section_id').val('');
                 $('#aips-section-modal-title').text('Add New Prompt Section');
                 $('#aips-section-modal').show();
+            });
+
+            $(document).on('click', '.aips-clone-section', function(e) {
+                e.preventDefault();
+                var id = $(this).data('id');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                    if (response.success) {
+                        var s = response.data.section;
+                        $('#section_id').val(''); // New ID
+                        $('#section_name').val(s.name + ' (Copy)');
+                        $('#section_key').val(s.section_key + '_copy');
+                        $('#section_description').val(s.description);
+                        $('#section_content').val(s.content);
+                        $('#section_is_active').prop('checked', s.is_active == 1);
+                        $('#aips-section-modal-title').text('Clone Prompt Section');
+                        $('#aips-section-modal').show();
+                    } else {
+                        alert(response.data.message || aipsAdminL10n.loadSectionFailed);
+                    }
+                }).fail(function(){
+                    alert(aipsAdminL10n.errorOccurred);
+                });
             });
 
             $(document).on('click', '.aips-save-section', function(){
@@ -1120,6 +1188,89 @@
         clearVoiceSearch: function(e) {
             e.preventDefault();
             $('#aips-voice-search').val('').trigger('keyup');
+        },
+
+        filterStructures: function() {
+            var term = $('#aips-structure-search').val().toLowerCase().trim();
+            var $rows = $('.aips-structures-list tbody tr');
+            var $noResults = $('#aips-structure-search-no-results');
+            var $table = $('.aips-structures-list');
+            var $clearBtn = $('#aips-structure-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                var name = $row.find('.column-name').text().toLowerCase();
+                var desc = $row.find('.column-description').text().toLowerCase();
+
+                if (name.indexOf(term) > -1 || desc.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearStructureSearch: function(e) {
+            e.preventDefault();
+            $('#aips-structure-search').val('').trigger('keyup');
+        },
+
+        filterSections: function() {
+            var term = $('#aips-section-search').val().toLowerCase().trim();
+            var $rows = $('.aips-sections-list tbody tr');
+            var $noResults = $('#aips-section-search-no-results');
+            var $table = $('.aips-sections-list');
+            var $clearBtn = $('#aips-section-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                var name = $row.find('.column-name').text().toLowerCase();
+                var key = $row.find('.column-key').text().toLowerCase();
+                var desc = $row.find('.column-description').text().toLowerCase();
+
+                if (name.indexOf(term) > -1 || key.indexOf(term) > -1 || desc.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearSectionSearch: function(e) {
+            e.preventDefault();
+            $('#aips-section-search').val('').trigger('keyup');
         },
 
         openTemplatePostsModal: function(e) {
