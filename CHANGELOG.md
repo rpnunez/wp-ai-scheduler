@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- [2025-05-30] Added support for "AI Variables" (e.g., `{#FrameworkName#}`) in templates. These variables are auto-defined by AI during generation and applied consistently across Title, Content, and Image prompts.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.
 
 ### Fixed

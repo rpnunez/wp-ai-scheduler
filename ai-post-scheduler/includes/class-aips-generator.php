@@ -289,6 +289,52 @@ class AIPS_Generator {
         // Build the full content prompt (template + topic + voice if provided)
         $content_prompt = $this->prompt_builder->build_content_prompt($template, $topic, $voice);
         
+        // Resolve AI Variables ({#...#}) across all fields
+        $prompts_to_scan = array(
+            $content_prompt,
+            !empty($template->title_prompt) ? $template->title_prompt : '',
+            !empty($template->image_prompt) ? $template->image_prompt : '',
+            ($voice && !empty($voice->title_prompt)) ? $voice->title_prompt : '',
+            ($voice && !empty($voice->excerpt_instructions)) ? $voice->excerpt_instructions : ''
+        );
+
+        $resolved_variables = $this->resolve_ai_variables($prompts_to_scan, $topic);
+
+        // Clone template and voice to avoid mutating the original objects for subsequent batch iterations
+        $template_context = clone $template;
+        $voice_context = $voice ? clone $voice : null;
+
+        if (!empty($resolved_variables)) {
+            // Log resolution for debugging
+            $this->log('Resolved AI Variables', 'info', array('variables' => $resolved_variables));
+
+            // Apply substitutions
+            foreach ($resolved_variables as $var => $val) {
+                // Sanitize val to be string
+                if (is_array($val)) $val = implode(', ', $val);
+                $val = (string)$val;
+
+                $content_prompt = str_replace($var, $val, $content_prompt);
+
+                if (!empty($template_context->title_prompt)) {
+                    $template_context->title_prompt = str_replace($var, $val, $template_context->title_prompt);
+                }
+
+                if (!empty($template_context->image_prompt)) {
+                    $template_context->image_prompt = str_replace($var, $val, $template_context->image_prompt);
+                }
+
+                if ($voice_context) {
+                    if (!empty($voice_context->title_prompt)) {
+                        $voice_context->title_prompt = str_replace($var, $val, $voice_context->title_prompt);
+                    }
+                    if (!empty($voice_context->excerpt_instructions)) {
+                        $voice_context->excerpt_instructions = str_replace($var, $val, $voice_context->excerpt_instructions);
+                    }
+                }
+            }
+        }
+
         // Ask AI to generate the article body
         $content = $this->generate_content($content_prompt, array(), 'content');
         
@@ -315,7 +361,7 @@ class AIPS_Generator {
         }
 
         // Generate the title using the template, voice, topic, and content.
-        $title = $this->generate_title($template, $voice, $topic, $content);
+        $title = $this->generate_title($template_context, $voice_context, $topic, $content);
         
         if (is_wp_error($title)) {
             // Fall back to a safe default title when AI fails
@@ -328,7 +374,7 @@ class AIPS_Generator {
         }
         
         // Build voice-aware excerpt instructions and request an excerpt
-        $voice_excerpt_instructions = $this->prompt_builder->build_excerpt_instructions($voice, $topic);
+        $voice_excerpt_instructions = $this->prompt_builder->build_excerpt_instructions($voice_context, $topic);
         
         // Use actual generated content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
@@ -339,7 +385,7 @@ class AIPS_Generator {
             'title' => $title,
             'content' => $content,
             'excerpt' => $excerpt,
-            'template' => $template,
+            'template' => $template_context,
             // Provide SEO context for downstream plugins.
             'focus_keyword' => $topic ? $topic : $title,
             'meta_description' => $excerpt,
@@ -376,7 +422,7 @@ class AIPS_Generator {
         }
         
         // Handle featured image generation/selection.
-        $featured_image_id = $this->set_featured_image($template, $post_id, $title, $topic);
+        $featured_image_id = $this->set_featured_image($template_context, $post_id, $title, $topic);
         
         // Complete session with success result and update history
         $this->current_session->complete(array(
@@ -481,5 +527,83 @@ class AIPS_Generator {
         }
 
         return $featured_image_id;
+    }
+
+    /**
+     * Resolve custom AI variables like {#VarName#} by asking AI to define them.
+     *
+     * @param array  $prompts Array of prompt strings to scan.
+     * @param string $topic   The topic for context.
+     * @return array Associative array of resolved variables and their values.
+     */
+    private function resolve_ai_variables($prompts, $topic) {
+        $all_text = implode("\n", $prompts);
+
+        // Find all variables matching {#...#}
+        if (!preg_match_all('/{#\s*([\w\s-]+)\s*#}/', $all_text, $matches)) {
+            return array();
+        }
+
+        // Map original strings to normalized names (e.g., "{# A #}" -> "{#A#}")
+        // matches[0] = full strings
+        // matches[1] = inner content
+        $vars_map = array();
+        $unique_normalized_keys = array();
+
+        foreach ($matches[0] as $index => $full_match) {
+            $inner = trim($matches[1][$index]);
+            $normalized_key = '{#' . $inner . '#}';
+            $vars_map[$full_match] = $normalized_key;
+            $unique_normalized_keys[] = $normalized_key;
+        }
+
+        $unique_normalized_keys = array_unique($unique_normalized_keys);
+
+        if (empty($unique_normalized_keys)) {
+            return array();
+        }
+
+        // Build prompt for resolution
+        $resolution_prompt = "You are a creative assistant. I am writing a blog post" . ($topic ? " about '$topic'" : "") . ".\n\n";
+        $resolution_prompt .= "Please generate specific, creative values for the following variables to ensure consistency across the post:\n";
+
+        foreach ($unique_normalized_keys as $var) {
+            $resolution_prompt .= "- $var\n";
+        }
+
+        $resolution_prompt .= "\nContext from the template:\n" . substr($all_text, 0, 2000) . "...\n\n";
+        $resolution_prompt .= "Return ONLY a valid JSON object where keys are the exact variable names (including braces) and values are your generated choices. Do not wrap the JSON in code blocks.";
+
+        $result = $this->generate_content($resolution_prompt, array('temperature' => 0.7), 'variable_resolution');
+
+        if (is_wp_error($result)) {
+            return array();
+        }
+
+        $json_str = trim($result);
+
+        // Extract JSON if wrapped in markdown
+        if (preg_match('/```(?:json)?\s*(\{.*?\})\s*```/s', $json_str, $matches)) {
+            $json_str = $matches[1];
+        }
+
+        $resolved = json_decode($json_str, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            // Try cleaning up common JSON issues (e.g. trailing commas, missing quotes)
+            // But for now, just log and fail gracefully
+            $this->log('Failed to parse AI variable JSON: ' . json_last_error_msg(), 'warning', array('response' => $result));
+            return array();
+        }
+
+        // Map normalized values back to original strings
+        $final_replacements = array();
+        foreach ($vars_map as $original => $normalized) {
+            if (isset($resolved[$normalized])) {
+                $final_replacements[$original] = $resolved[$normalized];
+            }
+        }
+
+        return $final_replacements;
     }
 }
