@@ -57,7 +57,14 @@ class AIPS_Template_Processor {
         // First replace AI variables with their resolved values
         if (!empty($ai_values)) {
             foreach ($ai_values as $var_name => $value) {
-                $template = str_replace('{{' . $var_name . '}}', $value, $template);
+                // Sanitize AI-provided values before inserting into the template
+                if (is_string($value)) {
+                    $safe_value = sanitize_textarea_field($value);
+                } else {
+                    $safe_value = sanitize_textarea_field((string) $value);
+                }
+                
+                $template = str_replace('{{' . $var_name . '}}', $safe_value, $template);
             }
         }
         
