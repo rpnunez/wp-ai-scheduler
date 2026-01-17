@@ -243,6 +243,36 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     }
 
     /**
+     * Test generate_text accepts context and advanced options
+     */
+    public function test_generate_text_accepts_context() {
+        if (!$this->service->is_available()) {
+            $options = array(
+                'model' => 'gpt-4',
+                'max_tokens' => 500,
+                'temperature' => 0.6,
+                'context' => 'These are supplemental instructions.',
+                'instructions' => 'Always stay concise.',
+                'env_id' => 'env-123',
+                'max_results' => 1,
+            );
+
+            $result = $this->service->generate_text('Test with context', $options);
+
+            // Should still fail but the options should be captured
+            $this->assertInstanceOf('WP_Error', $result);
+
+            $log = $this->service->get_call_log();
+            $this->assertArrayHasKey('context', $log[0]['request']['options']);
+            $this->assertEquals('These are supplemental instructions.', $log[0]['request']['options']['context']);
+            $this->assertArrayHasKey('instructions', $log[0]['request']['options']);
+            $this->assertEquals('Always stay concise.', $log[0]['request']['options']['instructions']);
+        } else {
+            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+        }
+    }
+
+    /**
      * Test multiple calls accumulate in log
      */
     public function test_multiple_calls_accumulate() {

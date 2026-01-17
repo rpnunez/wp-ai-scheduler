@@ -45,6 +45,19 @@ class AIPS_AI_Service {
      * @var AIPS_Resilience_Service Resilience service
      */
     private $resilience_service;
+
+    /**
+     * Optional query option keys supported by AI Engine.
+     */
+    private const OPTIONAL_QUERY_OPTION_KEYS = array(
+        'context',
+        'instructions',
+        'messages',
+        'env_id',
+        'embeddings_env_id',
+        'max_results',
+        'api_key',
+    );
     
     /**
      * Initialize the AI Service.
@@ -137,6 +150,9 @@ class AIPS_AI_Service {
                 if (isset($options['temperature'])) {
                     $query->set_temperature($options['temperature']);
                 }
+
+                // Optional advanced parameters supported by AI Engine.
+                $this->apply_optional_query_settings($query, $options);
                 
                 $response = $ai->run_query($query);
                 
@@ -250,6 +266,59 @@ class AIPS_AI_Service {
         );
         
         return wp_parse_args($options, $default_options);
+    }
+
+    /**
+     * Apply optional AI Engine query settings when available.
+     *
+     * @param object $query   The AI Engine query object.
+     * @param array  $options Options passed to the AI request.
+     * @return void
+     */
+    private function apply_optional_query_settings($query, $options) {
+        foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
+            if (!isset($options[$key])) {
+                continue;
+            }
+
+            switch ($key) {
+                case 'context':
+                    if (method_exists($query, 'set_context')) {
+                        $query->set_context($options[$key]);
+                    }
+                    break;
+                case 'instructions':
+                    if (method_exists($query, 'set_instructions')) {
+                        $query->set_instructions($options[$key]);
+                    }
+                    break;
+                case 'messages':
+                    if (method_exists($query, 'set_messages')) {
+                        $query->set_messages($options[$key]);
+                    }
+                    break;
+                case 'env_id':
+                    if (method_exists($query, 'set_env_id')) {
+                        $query->set_env_id($options[$key]);
+                    }
+                    break;
+                case 'embeddings_env_id':
+                    if (method_exists($query, 'set_embeddings_env_id')) {
+                        $query->set_embeddings_env_id($options[$key]);
+                    }
+                    break;
+                case 'max_results':
+                    if (method_exists($query, 'set_max_results')) {
+                        $query->set_max_results($options[$key]);
+                    }
+                    break;
+                case 'api_key':
+                    if (method_exists($query, 'set_api_key')) {
+                        $query->set_api_key($options[$key]);
+                    }
+                    break;
+            }
+        }
     }
     
     /**
