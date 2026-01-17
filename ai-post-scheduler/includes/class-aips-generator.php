@@ -398,9 +398,28 @@ class AIPS_Generator {
 
         // Generate the title using the template, voice, topic, content, and resolved AI variables.
         $title = $this->generate_title($template, $voice, $topic, $content, array(), $ai_variables);
+
+        // Detect unresolved template placeholders in the generated title.
+        $has_unresolved_placeholders = false;
+        if (!is_wp_error($title) && is_string($title)) {
+            if (strpos($title, '{{') !== false && strpos($title, '}}') !== false) {
+                $has_unresolved_placeholders = true;
+
+                // Log a warning for observability when AI variables were not resolved correctly.
+                if (!empty($this->logger)) {
+                    $this->logger->warning(
+                        'Generated title contains unresolved AI variables; falling back to safe default title.',
+                        array(
+                            'template_id' => isset($template->id) ? $template->id : null,
+                            'topic'       => $topic,
+                        )
+                    );
+                }
+            }
+        }
         
-        if (is_wp_error($title)) {
-            // Fall back to a safe default title when AI fails
+        if (is_wp_error($title) || $has_unresolved_placeholders) {
+            // Fall back to a safe default title when AI fails or leaves unresolved variables.
             $base_title = __('AI Generated Post', 'ai-post-scheduler');
             if (!empty($topic)) {
                 // Include topic in fallback title for context, truncated for safety
