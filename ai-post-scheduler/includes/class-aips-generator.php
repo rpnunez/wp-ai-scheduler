@@ -229,7 +229,7 @@ class AIPS_Generator {
      * conclusions/summaries at the end, both of which are valuable for context.
      *
      * @param string $content    The content to truncate.
-     * @param int    $max_length Maximum total length of the result.
+     * @param int    $max_length Maximum total length of the result. Minimum of 100 chars.
      * @return string Truncated content with beginning and end preserved.
      */
     private function smart_truncate_content($content, $max_length = 2000) {
@@ -240,15 +240,26 @@ class AIPS_Generator {
             return $content;
         }
         
+        // Define separator and calculate its length
+        $separator = "\n\n[...]\n\n";
+        $separator_length = mb_strlen($separator);
+        
+        // Ensure minimum length to avoid negative values
+        $min_length = $separator_length + 40; // At least 20 chars on each end
+        if ($max_length < $min_length) {
+            $max_length = $min_length;
+        }
+        
         // Calculate how much to take from each end
         // Take 60% from the beginning (introductions, key points) and 40% from the end (conclusions)
-        $start_length = (int) ($max_length * 0.6);
-        $end_length = $max_length - $start_length - 20; // Reserve 20 chars for separator
+        $available_length = $max_length - $separator_length;
+        $start_length = (int) ($available_length * 0.6);
+        $end_length = $available_length - $start_length;
         
         $start_content = mb_substr($content, 0, $start_length);
         $end_content = mb_substr($content, -$end_length);
         
-        return $start_content . "\n\n[...]\n\n" . $end_content;
+        return $start_content . $separator . $end_content;
     }
     
     /**

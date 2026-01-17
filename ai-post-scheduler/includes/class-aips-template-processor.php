@@ -82,6 +82,12 @@ class AIPS_Template_Processor {
      * as system variables and will not be extracted as AI variables. This ensures
      * that developer-defined variables are processed normally rather than sent to AI.
      *
+     * Example:
+     * - System variables: {{date}}, {{topic}}, {{site_name}}, etc.
+     * - AI variables: {{PHPFramework1}}, {{ProductCategory}}, etc.
+     * - Filter-added variables (via 'aips_template_variables'): treated as system vars
+     *
+     * @since 1.6.0
      * @param string $template The template string to extract AI variables from.
      * @return array Array of AI variable names (without braces).
      */
