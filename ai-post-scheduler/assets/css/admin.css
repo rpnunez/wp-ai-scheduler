@@ -1037,3 +1037,27 @@
     color: #00a32a;
     font-style: normal;
 }
+
+/* Category headings for grouped structures and sections */
+.aips-category-heading {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    padding: 10px 15px;
+    background: #f0f0f1;
+    border-left: 4px solid #2271b1;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.aips-category-heading:first-child {
+    margin-top: 0;
+}
+
+.aips-category-table {
+    margin-bottom: 20px;
+}
+
+.aips-category-table tbody tr:last-child td {
+    border-bottom: 1px solid #c3c4c7;
+}

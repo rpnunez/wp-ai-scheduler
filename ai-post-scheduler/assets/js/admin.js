@@ -130,6 +130,7 @@
                     structure_id: $('#structure_id').val(),
                     name: $('#structure_name').val(),
                     description: $('#structure_description').val(),
+                    category_id: $('#structure_category_id').val(),
                     prompt_template: $('#prompt_template').val(),
                     sections: $('#structure_sections').val() || [],
                     is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
@@ -169,6 +170,7 @@
                         $('#structure_id').val(s.id);
                         $('#structure_name').val(s.name);
                         $('#structure_description').val(s.description);
+                        $('#structure_category_id').val(s.category_id || '0');
                         $('#prompt_template').val(structureData.prompt_template || '');
                         var sections = structureData.sections || [];
                         $('#structure_sections').val(sections);
@@ -218,6 +220,7 @@
                     name: $('#section_name').val(),
                     section_key: $('#section_key').val(),
                     description: $('#section_description').val(),
+                    category_id: $('#section_category_id').val(),
                     content: $('#section_content').val(),
                     is_active: $('#section_is_active').is(':checked') ? 1 : 0
                 };
@@ -244,6 +247,7 @@
                         $('#section_name').val(s.name);
                         $('#section_key').val(s.section_key);
                         $('#section_description').val(s.description);
+                        $('#section_category_id').val(s.category_id || '0');
                         $('#section_content').val(s.content);
                         $('#section_is_active').prop('checked', s.is_active == 1);
                         $('#aips-section-modal-title').text('Edit Prompt Section');
@@ -265,6 +269,71 @@
                         $row.fadeOut(function(){ $(this).remove(); });
                     } else {
                         alert(response.data.message || aipsAdminL10n.deleteSectionFailed);
+                    }
+                }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
+            });
+
+            // Category UI handlers
+            $(document).on('click', '.aips-add-category-btn', function(e){
+                e.preventDefault();
+                $('#aips-category-form')[0].reset();
+                $('#category_term_id').val('');
+                $('#aips-category-modal-title').text('Add New Category');
+                $('#aips-category-modal').show();
+            });
+
+            $(document).on('click', '.aips-save-category', function(){
+                var $btn = $(this);
+                $btn.prop('disabled', true).text('Saving...');
+
+                var data = {
+                    action: 'aips_save_category',
+                    nonce: aipsAjax.nonce,
+                    term_id: $('#category_term_id').val(),
+                    name: $('#category_name').val(),
+                    description: $('#category_description').val()
+                };
+
+                $.post(aipsAjax.ajaxUrl, data, function(response){
+                    $btn.prop('disabled', false).text('Save Category');
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message || 'Failed to save category');
+                    }
+                }).fail(function(){
+                    $btn.prop('disabled', false).text('Save Category');
+                    alert(aipsAdminL10n.errorTryAgain);
+                });
+            });
+
+            $(document).on('click', '.aips-edit-category', function(){
+                var id = $(this).data('id');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_category', nonce: aipsAjax.nonce, term_id: id}, function(response){
+                    if (response.success) {
+                        var c = response.data.category;
+                        $('#category_term_id').val(c.term_id);
+                        $('#category_name').val(c.name);
+                        $('#category_description').val(c.description);
+                        $('#aips-category-modal-title').text('Edit Category');
+                        $('#aips-category-modal').show();
+                    } else {
+                        alert(response.data.message || 'Failed to load category');
+                    }
+                }).fail(function(){
+                    alert(aipsAdminL10n.errorOccurred);
+                });
+            });
+
+            $(document).on('click', '.aips-delete-category', function(){
+                if (!confirm('Are you sure you want to delete this category? Structures and sections will not be deleted but will become uncategorized.')) return;
+                var id = $(this).data('id');
+                var $row = $(this).closest('tr');
+                $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_category', nonce: aipsAjax.nonce, term_id: id}, function(response){
+                    if (response.success) {
+                        $row.fadeOut(function(){ $(this).remove(); });
+                    } else {
+                        alert(response.data.message || 'Failed to delete category');
                     }
                 }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
             });
