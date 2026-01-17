@@ -112,7 +112,7 @@ class AIPS_Prompt_Builder {
      * @return string The complete excerpt generation prompt.
      */
     public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
-        $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 characters. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
+        $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
         
         // Add voice-specific excerpt instructions if provided
         if ($voice && !empty($voice->excerpt_instructions)) {
