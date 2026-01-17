@@ -128,6 +128,13 @@ class AIPS_Schedule_Repository {
     }
     
     /**
+     * Invalidate the pending schedule stats cache.
+     */
+    public function invalidate_stats_cache() {
+        delete_transient('aips_pending_schedule_stats');
+    }
+
+    /**
      * Create a new schedule.
      *
      * @param array $data {
@@ -141,9 +148,10 @@ class AIPS_Schedule_Repository {
      *     @type int    $is_active             Active status (1 or 0).
      *     @type string $topic                 Optional topic for generation.
      * }
+     * @param bool $invalidate_cache Optional. Whether to invalidate the stats cache. Default true.
      * @return int|false The inserted ID on success, false on failure.
      */
-    public function create($data) {
+    public function create($data, $invalidate_cache = true) {
         $insert_data = array(
             'template_id' => absint($data['template_id']),
             'frequency' => sanitize_text_field($data['frequency']),
@@ -167,8 +175,8 @@ class AIPS_Schedule_Repository {
         
         $result = $this->wpdb->insert($this->schedule_table, $insert_data, $format);
         
-        if ($result) {
-            delete_transient('aips_pending_schedule_stats');
+        if ($result && $invalidate_cache) {
+            $this->invalidate_stats_cache();
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -179,9 +187,10 @@ class AIPS_Schedule_Repository {
      *
      * @param int   $id   Schedule ID.
      * @param array $data Data to update (same structure as create).
+     * @param bool  $invalidate_cache Optional. Whether to invalidate the stats cache. Default true.
      * @return bool True on success, false on failure.
      */
-    public function update($id, $data) {
+    public function update($id, $data, $invalidate_cache = true) {
         $update_data = array();
         $format = array();
         
@@ -242,8 +251,8 @@ class AIPS_Schedule_Repository {
             array('%d')
         );
 
-        if ($result !== false) {
-            delete_transient('aips_pending_schedule_stats');
+        if ($result !== false && $invalidate_cache) {
+            $this->invalidate_stats_cache();
         }
 
         return $result !== false;
@@ -252,14 +261,15 @@ class AIPS_Schedule_Repository {
     /**
      * Delete a schedule by ID.
      *
-     * @param int $id Schedule ID.
+     * @param int  $id               Schedule ID.
+     * @param bool $invalidate_cache Optional. Whether to invalidate the stats cache. Default true.
      * @return bool True on success, false on failure.
      */
-    public function delete($id) {
+    public function delete($id, $invalidate_cache = true) {
         $result = $this->wpdb->delete($this->schedule_table, array('id' => $id), array('%d'));
 
-        if ($result !== false) {
-            delete_transient('aips_pending_schedule_stats');
+        if ($result !== false && $invalidate_cache) {
+            $this->invalidate_stats_cache();
         }
 
         return $result !== false;
@@ -268,14 +278,15 @@ class AIPS_Schedule_Repository {
     /**
      * Delete all schedules for a template.
      *
-     * @param int $template_id Template ID.
+     * @param int  $template_id      Template ID.
+     * @param bool $invalidate_cache Optional. Whether to invalidate the stats cache. Default true.
      * @return int|false Number of rows affected or false on failure.
      */
-    public function delete_by_template($template_id) {
+    public function delete_by_template($template_id, $invalidate_cache = true) {
         $result = $this->wpdb->delete($this->schedule_table, array('template_id' => $template_id), array('%d'));
 
-        if ($result !== false) {
-            delete_transient('aips_pending_schedule_stats');
+        if ($result !== false && $invalidate_cache) {
+            $this->invalidate_stats_cache();
         }
 
         return $result;
@@ -284,47 +295,51 @@ class AIPS_Schedule_Repository {
     /**
      * Update the last_run timestamp for a schedule.
      *
-     * @param int    $id        Schedule ID.
-     * @param string $timestamp Optional. Timestamp in MySQL format. Default current time.
+     * @param int    $id               Schedule ID.
+     * @param string $timestamp        Optional. Timestamp in MySQL format. Default current time.
+     * @param bool   $invalidate_cache Optional. Whether to invalidate the stats cache. Default true.
      * @return bool True on success, false on failure.
      */
-    public function update_last_run($id, $timestamp = null) {
+    public function update_last_run($id, $timestamp = null, $invalidate_cache = true) {
         if ($timestamp === null) {
             $timestamp = current_time('mysql');
         }
         
-        return $this->update($id, array('last_run' => $timestamp));
+        return $this->update($id, array('last_run' => $timestamp), $invalidate_cache);
     }
     
     /**
      * Update the next_run timestamp for a schedule.
      *
-     * @param int    $id        Schedule ID.
-     * @param string $timestamp Timestamp in MySQL format.
+     * @param int    $id               Schedule ID.
+     * @param string $timestamp        Timestamp in MySQL format.
+     * @param bool   $invalidate_cache Optional. Whether to invalidate the stats cache. Default true.
      * @return bool True on success, false on failure.
      */
-    public function update_next_run($id, $timestamp) {
-        return $this->update($id, array('next_run' => $timestamp));
+    public function update_next_run($id, $timestamp, $invalidate_cache = true) {
+        return $this->update($id, array('next_run' => $timestamp), $invalidate_cache);
     }
     
     /**
      * Toggle schedule active status.
      *
-     * @param int  $id        Schedule ID.
-     * @param bool $is_active Active status.
+     * @param int  $id               Schedule ID.
+     * @param bool $is_active        Active status.
+     * @param bool $invalidate_cache Optional. Whether to invalidate the stats cache. Default true.
      * @return bool True on success, false on failure.
      */
-    public function set_active($id, $is_active) {
-        return $this->update($id, array('is_active' => $is_active));
+    public function set_active($id, $is_active, $invalidate_cache = true) {
+        return $this->update($id, array('is_active' => $is_active), $invalidate_cache);
     }
 
     /**
      * Create multiple schedules in a single query.
      *
-     * @param array $schedules Array of schedule data arrays.
+     * @param array $schedules       Array of schedule data arrays.
+     * @param bool  $invalidate_cache Optional. Whether to invalidate the stats cache. Default true.
      * @return int Number of rows inserted.
      */
-    public function create_bulk($schedules) {
+    public function create_bulk($schedules, $invalidate_cache = true) {
         if (empty($schedules)) {
             return 0;
         }
@@ -350,8 +365,8 @@ class AIPS_Schedule_Repository {
 
         $result = $this->wpdb->query($this->wpdb->prepare($query, $values));
 
-        if ($result) {
-            delete_transient('aips_pending_schedule_stats');
+        if ($result && $invalidate_cache) {
+            $this->invalidate_stats_cache();
         }
 
         return $result;
