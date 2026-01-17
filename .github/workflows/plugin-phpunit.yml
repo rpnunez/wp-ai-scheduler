@@ -1,0 +1,153 @@
+name: Plugin PHPUnit
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: plugin-phpunit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plugin-phpunit:
+    name: Plugin PHPUnit Tests (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php: ['8.2']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        ports: [3306:3306]
+        env:
+          MYSQL_ROOT_PASSWORD: ""
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, intl, xml, curl, zip, dom, fileinfo
+          coverage: xdebug
+          tools: composer:v2
+
+      # MySQL: Wait for MySQL to start and create the test database
+      - name: Wait for MySQL and Prepare Database
+        run: |
+          ATTEMPTS=10
+          until mysqladmin ping -h127.0.0.1 --silent; do
+            ATTEMPTS=$((ATTEMPTS-1))
+            if [ $ATTEMPTS -le 0 ]; then
+              echo "MySQL did not become ready in time."
+              exit 1
+            fi
+            echo "Waiting for MySQL to be ready..."
+            sleep 5
+          done
+
+          # Create the database
+          mysql -h127.0.0.1 -uroot -e "CREATE DATABASE IF NOT EXISTS wordpress_test;"
+
+      # WordPress: Set up WordPress test library
+      - name: Install WordPress Test Library
+        run: |
+          # Create WordPress test directory
+          mkdir -p /tmp/wordpress-tests-lib
+
+          # Download pre-built WordPress core from wordpress.org (includes build artifacts)
+          wget -q https://wordpress.org/latest.tar.gz -O /tmp/wordpress-latest.tar.gz
+          tar -xzf /tmp/wordpress-latest.tar.gz -C /tmp/
+          mv /tmp/wordpress /tmp/wordpress-core
+          rm /tmp/wordpress-latest.tar.gz
+
+          # Clone WordPress develop repository for test library only
+          git clone --depth=1 https://github.com/WordPress/wordpress-develop.git /tmp/wordpress-develop
+          
+          # Copy test library files
+          cp -r /tmp/wordpress-develop/tests/phpunit/* /tmp/wordpress-tests-lib/
+          
+          # Copy the pre-built WordPress core to the test library src directory
+          cp -r /tmp/wordpress-core/* /tmp/wordpress-tests-lib/src/
+          
+          # Copy config file
+          cp /tmp/wordpress-develop/wp-tests-config-sample.php /tmp/wordpress-tests-lib/wp-tests-config.php
+
+          # Cleanup
+          rm -rf /tmp/wordpress-develop /tmp/wordpress-core
+          
+          # Update the configuration file with database credentials
+          sed -i "s/youremptytestdbnamehere/wordpress_test/" /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s/yourusernamehere/root/" /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s/yourpasswordhere//" /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s|localhost|127.0.0.1|" /tmp/wordpress-tests-lib/wp-tests-config.php
+          
+          # Add explicit ABSPATH definition before the bootstrap include line
+          sed -i "/require.*bootstrap\.php/i define( 'ABSPATH', '/tmp/wordpress-tests-lib/src/' );" /tmp/wordpress-tests-lib/wp-tests-config.php
+
+      # NunezScheduler: Install the plugin in WordPress
+      - name: Install and Activate Plugin
+        run: |
+          # Create plugins directory in test WordPress
+          mkdir -p /tmp/wordpress-tests-lib/src/wp-content/plugins
+          
+          # Copy the plugin to WordPress plugins directory
+          cp -r ai-post-scheduler /tmp/wordpress-tests-lib/src/wp-content/plugins/
+          
+          # Verify plugin installation
+          ls -la /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler/ai-post-scheduler.php
+
+      # Run Composer
+      - name: Install Composer dependencies
+        run: cd /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress
+
+      # Run PHPUnit tests
+      - name: Run PHPUnit tests
+        run: cd /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress-tests-lib/src composer test -- --testdox
+
+      # Code Coverage: Generate & Upload
+      - name: Generate code coverage report (PHP 8.2 only)
+        if: matrix.php == '8.2'
+        run: cd /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler && WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress-tests-lib/src composer test:coverage
+
+      - name: Upload coverage report
+        if: matrix.php == '8.2'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-php${{ matrix.php }}
+          path: ai-post-scheduler/coverage/
+          retention-days: 7
+
+      # Test Results: Upload
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-php${{ matrix.php }}
+          path: |
+            ai-post-scheduler/.phpunit.result.cache
+          retention-days: 7
+          if-no-files-found: ignore
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: plugin-phpunit
+    if: always()
+    
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.plugin-phpunit.result }}" != "success" ]; then
+            echo "::error::Plugin PHPUnit tests failed"
+            exit 1
+          fi
+          echo "::notice::All Plugin PHPUnit tests passed successfully!"
