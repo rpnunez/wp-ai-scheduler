@@ -139,10 +139,52 @@ if (!defined('ABSPATH')) {
                     
                     <div class="aips-form-row">
                         <label for="title_prompt"><?php esc_html_e('Title Prompt (Optional)', 'ai-post-scheduler'); ?></label>
-                        <input type="text" id="title_prompt" name="title_prompt" class="regular-text" placeholder="<?php esc_attr_e('Leave empty to auto-generate from content prompt', 'ai-post-scheduler'); ?>">
+                        <input type="text" id="title_prompt" name="title_prompt" class="regular-text aips-ai-var-input" placeholder="<?php esc_attr_e('Leave empty to auto-generate from content prompt', 'ai-post-scheduler'); ?>">
                         <p class="description">
                             <?php esc_html_e('Supports AI Variables: Use custom variables like {{PHPFramework1Name}} that AI will dynamically resolve based on your content. Example: "PHP Framework Comparison: {{Framework1}} vs. {{Framework2}}"', 'ai-post-scheduler'); ?>
                         </p>
+                    </div>
+
+                    <!-- AI Variables Panel -->
+                    <div class="aips-form-row aips-ai-variables-panel" style="display: none;">
+                        <div class="aips-ai-variables-header">
+                            <span class="dashicons dashicons-admin-generic"></span>
+                            <strong><?php esc_html_e('AI Variables Detected', 'ai-post-scheduler'); ?></strong>
+                            <span class="aips-ai-variables-hint"><?php esc_html_e('(Click to copy)', 'ai-post-scheduler'); ?></span>
+                        </div>
+                        <div class="aips-ai-variables-list" id="aips-ai-variables-list">
+                            <!-- AI Variables will be rendered here by JavaScript -->
+                        </div>
+                        <div class="aips-ai-variables-info">
+                            <p class="description">
+                                <span class="dashicons dashicons-info"></span>
+                                <?php esc_html_e('These variables will be dynamically resolved by AI based on your generated content. Each post generation may produce different values.', 'ai-post-scheduler'); ?>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="aips-form-row aips-ai-variables-instructions">
+                        <details class="aips-collapsible">
+                            <summary>
+                                <span class="dashicons dashicons-editor-help"></span>
+                                <?php esc_html_e('How to use AI Variables', 'ai-post-scheduler'); ?>
+                            </summary>
+                            <div class="aips-collapsible-content">
+                                <p><?php esc_html_e('AI Variables allow you to create dynamic, context-aware titles. The AI will automatically fill in values based on the content it generates.', 'ai-post-scheduler'); ?></p>
+                                <h4><?php esc_html_e('Examples:', 'ai-post-scheduler'); ?></h4>
+                                <ul>
+                                    <li><code>{{Framework1}} vs {{Framework2}}</code> → <em>"Laravel vs Symfony"</em></li>
+                                    <li><code>Top {{Number}} {{Topic}} Tips</code> → <em>"Top 10 SEO Tips"</em></li>
+                                    <li><code>{{ProductName}} Review: Is it worth it?</code> → <em>"iPhone 15 Pro Review: Is it worth it?"</em></li>
+                                </ul>
+                                <h4><?php esc_html_e('Tips:', 'ai-post-scheduler'); ?></h4>
+                                <ul>
+                                    <li><?php esc_html_e('Use descriptive variable names (e.g., {{PHPFramework}} instead of {{X}})', 'ai-post-scheduler'); ?></li>
+                                    <li><?php esc_html_e('AI Variables work best with comparison or list-based content prompts', 'ai-post-scheduler'); ?></li>
+                                    <li><?php esc_html_e('System variables like {{date}}, {{site_name}} are NOT AI Variables', 'ai-post-scheduler'); ?></li>
+                                </ul>
+                            </div>
+                        </details>
                     </div>
                     
                     <div class="aips-form-row">

@@ -4,9 +4,13 @@
     window.AIPS = window.AIPS || {};
     var AIPS = window.AIPS;
 
+    // System variables that should not be treated as AI Variables
+    var SYSTEM_VARIABLES = ['date', 'year', 'month', 'day', 'time', 'site_name', 'site_description', 'random_number', 'topic', 'title'];
+
     Object.assign(AIPS, {
         init: function() {
             this.bindEvents();
+            this.initAIVariablesScanner();
         },
 
         bindEvents: function() {
@@ -21,6 +25,10 @@
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
             $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
             $(document).on('keyup', '#voice_search', this.searchVoices);
+
+            // AI Variables scanning
+            $(document).on('input', '.aips-ai-var-input', this.scanForAIVariables);
+            $(document).on('click', '.aips-ai-var-tag', this.copyAIVariable);
 
             $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
             $(document).on('click', '.aips-edit-voice', this.editVoice);
@@ -376,6 +384,8 @@
             $('#featured_image_unsplash_keywords').val('');
             AIPS.setMediaSelection([]);
             AIPS.toggleImagePrompt();
+            // Reset AI Variables panel
+            AIPS.updateAIVariablesPanel([]);
             $('#aips-template-modal').show();
         },
 
@@ -414,6 +424,8 @@
                         $('#is_active').prop('checked', t.is_active == 1);
                         AIPS.toggleImagePrompt();
                         AIPS.toggleFeaturedImageSourceFields();
+                        // Scan for AI Variables after loading template data
+                        AIPS.initAIVariablesScanner();
                         $('#aips-modal-title').text('Edit Template');
                         $('#aips-template-modal').show();
                     } else {
@@ -1507,6 +1519,96 @@
                     alert('An error occurred. Please try again.');
                     $btn.prop('disabled', false).text('Delete Selected');
                 }
+            });
+        },
+
+        // AI Variables feature methods
+        initAIVariablesScanner: function() {
+            // Initial scan when modal opens or form loads
+            $('.aips-ai-var-input').each(function() {
+                AIPS.scanForAIVariables.call(this);
+            });
+        },
+
+        scanForAIVariables: function() {
+            var text = $(this).val() || '';
+            var aiVariables = AIPS.extractAIVariables(text);
+            AIPS.updateAIVariablesPanel(aiVariables);
+        },
+
+        extractAIVariables: function(text) {
+            var variables = [];
+            var regex = /\{\{([^}]+)\}\}/g;
+            var match;
+
+            while ((match = regex.exec(text)) !== null) {
+                var varName = match[1].trim();
+                // Exclude system variables
+                if (SYSTEM_VARIABLES.indexOf(varName) === -1 && variables.indexOf(varName) === -1) {
+                    variables.push(varName);
+                }
+            }
+
+            return variables;
+        },
+
+        updateAIVariablesPanel: function(variables) {
+            var $panel = $('.aips-ai-variables-panel');
+            var $list = $('#aips-ai-variables-list');
+
+            if (variables.length === 0) {
+                $panel.hide();
+                return;
+            }
+
+            // Build the variable tags
+            var html = '';
+            variables.forEach(function(varName) {
+                html += '<span class="aips-ai-var-tag" data-variable="{{' + AIPS.escapeHtml(varName) + '}}" title="Click to copy">';
+                html += '<span class="dashicons dashicons-tag"></span>';
+                html += '{{' + AIPS.escapeHtml(varName) + '}}';
+                html += '</span>';
+            });
+
+            $list.html(html);
+            $panel.show();
+        },
+
+        copyAIVariable: function(e) {
+            e.preventDefault();
+            var $tag = $(this);
+            var variable = $tag.data('variable');
+
+            if (!variable) return;
+
+            // Use the existing copy functionality
+            var showSuccess = function() {
+                $tag.addClass('aips-ai-var-copied');
+                setTimeout(function() {
+                    $tag.removeClass('aips-ai-var-copied');
+                }, 1500);
+            };
+
+            // Fallback for older browsers
+            if (!navigator.clipboard) {
+                var textArea = document.createElement('textarea');
+                textArea.value = variable;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showSuccess();
+                } catch (err) {
+                    console.error('Fallback: Unable to copy', err);
+                }
+                document.body.removeChild(textArea);
+                return;
+            }
+
+            navigator.clipboard.writeText(variable).then(function() {
+                showSuccess();
+            }, function(err) {
+                console.error('Could not copy text: ', err);
             });
         }
     });
