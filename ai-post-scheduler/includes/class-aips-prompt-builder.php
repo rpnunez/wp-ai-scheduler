@@ -53,6 +53,43 @@ class AIPS_Prompt_Builder {
     }
 
     /**
+     * Builds an auxiliary context string for AI Engine queries.
+     *
+     * This keeps instructions (voice, formatting, safety) out of the main message
+     * while still providing them through the AI Engine's context channel.
+     *
+     * @param object $template The template object.
+     * @param string $topic    The topic for the post.
+     * @param object $voice    Optional. The voice object.
+     * @return string Context string (may be empty).
+     */
+    public function build_content_context($template, $topic, $voice = null) {
+        $context_parts = array();
+
+        if ($voice && !empty($voice->content_instructions)) {
+            $context_parts[] = $this->template_processor->process($voice->content_instructions, $topic);
+        }
+
+        $context_parts[] = 'Output the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.';
+
+        /**
+         * Filter the context sent to AI Engine for content generation.
+         *
+         * @since 1.6.0
+         *
+         * @param array  $context_parts Array of context fragments.
+         * @param object $template      Template object.
+         * @param string $topic         Topic string.
+         * @param object $voice         Optional voice object.
+         */
+        $context_parts = apply_filters('aips_content_context_parts', $context_parts, $template, $topic, $voice);
+
+        $context_parts = array_filter(array_map('trim', $context_parts));
+
+        return implode("\n\n", $context_parts);
+    }
+
+    /**
      * Builds the complete prompt for title generation.
      *
      * This method encapsulates all title prompt construction logic. It uses the

@@ -137,6 +137,35 @@ class AIPS_AI_Service {
                 if (isset($options['temperature'])) {
                     $query->set_temperature($options['temperature']);
                 }
+
+                // Optional advanced parameters supported by AI Engine.
+                if (!empty($options['context']) && method_exists($query, 'set_context')) {
+                    $query->set_context($options['context']);
+                }
+
+                if (!empty($options['instructions']) && method_exists($query, 'set_instructions')) {
+                    $query->set_instructions($options['instructions']);
+                }
+
+                if (!empty($options['messages']) && method_exists($query, 'set_messages')) {
+                    $query->set_messages($options['messages']);
+                }
+
+                if (!empty($options['env_id']) && method_exists($query, 'set_env_id')) {
+                    $query->set_env_id($options['env_id']);
+                }
+
+                if (!empty($options['embeddings_env_id']) && method_exists($query, 'set_embeddings_env_id')) {
+                    $query->set_embeddings_env_id($options['embeddings_env_id']);
+                }
+
+                if (!empty($options['max_results']) && method_exists($query, 'set_max_results')) {
+                    $query->set_max_results($options['max_results']);
+                }
+
+                if (!empty($options['api_key']) && method_exists($query, 'set_api_key')) {
+                    $query->set_api_key($options['api_key']);
+                }
                 
                 $response = $ai->run_query($query);
                 
