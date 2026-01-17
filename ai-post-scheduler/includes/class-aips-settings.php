@@ -14,6 +14,11 @@ if (!defined('ABSPATH')) {
 class AIPS_Settings {
     
     /**
+     * @var array List of registered admin page hooks.
+     */
+    private $hook_suffixes = array();
+
+    /**
      * Initialize the settings class.
      *
      * Hooks into admin_menu, admin_init, and admin_enqueue_scripts.
@@ -34,7 +39,7 @@ class AIPS_Settings {
      * @return void
      */
     public function add_menu_pages() {
-        add_menu_page(
+        $this->hook_suffixes[] = add_menu_page(
             __('AI Post Scheduler', 'ai-post-scheduler'),
             __('AI Post Scheduler', 'ai-post-scheduler'),
             'manage_options',
@@ -44,7 +49,7 @@ class AIPS_Settings {
             30
         );
         
-        add_submenu_page(
+        $this->hook_suffixes[] = add_submenu_page(
             'ai-post-scheduler',
             __('Dashboard', 'ai-post-scheduler'),
             __('Dashboard', 'ai-post-scheduler'),
@@ -53,7 +58,7 @@ class AIPS_Settings {
             array($this, 'render_dashboard_page')
         );
         
-        add_submenu_page(
+        $this->hook_suffixes[] = add_submenu_page(
             'ai-post-scheduler',
             __('Voices', 'ai-post-scheduler'),
             __('Voices', 'ai-post-scheduler'),
@@ -62,7 +67,7 @@ class AIPS_Settings {
             array($this, 'render_voices_page')
         );
         
-        add_submenu_page(
+        $this->hook_suffixes[] = add_submenu_page(
             'ai-post-scheduler',
             __('Templates', 'ai-post-scheduler'),
             __('Templates', 'ai-post-scheduler'),
@@ -71,7 +76,7 @@ class AIPS_Settings {
             array($this, 'render_templates_page')
         );
         
-        add_submenu_page(
+        $this->hook_suffixes[] = add_submenu_page(
             'ai-post-scheduler',
             __('Schedule', 'ai-post-scheduler'),
             __('Schedule', 'ai-post-scheduler'),
@@ -80,7 +85,7 @@ class AIPS_Settings {
             array($this, 'render_schedule_page')
         );
         
-         add_submenu_page(
+         $this->hook_suffixes[] = add_submenu_page(
              'ai-post-scheduler',
              __('Research', 'ai-post-scheduler'),
              __('Research', 'ai-post-scheduler'),
@@ -89,7 +94,7 @@ class AIPS_Settings {
              array($this, 'render_research_page')
          );
         
-        add_submenu_page(
+        $this->hook_suffixes[] = add_submenu_page(
             'ai-post-scheduler',
             __('Activity', 'ai-post-scheduler'),
             __('Activity', 'ai-post-scheduler'),
@@ -98,7 +103,7 @@ class AIPS_Settings {
             array($this, 'render_activity_page')
         );
       
-        add_submenu_page(
+        $this->hook_suffixes[] = add_submenu_page(
             'ai-post-scheduler',
             __('Article Structures', 'ai-post-scheduler'),
             __('Article Structures', 'ai-post-scheduler'),
@@ -107,7 +112,7 @@ class AIPS_Settings {
             array($this, 'render_structures_page')
         );
         
-        add_submenu_page(
+        $this->hook_suffixes[] = add_submenu_page(
             'ai-post-scheduler',
             __('Article Structure Sections', 'ai-post-scheduler'),
             __('Article Structure Sections', 'ai-post-scheduler'),
@@ -116,7 +121,7 @@ class AIPS_Settings {
             array($this, 'render_prompt_sections_page')
         );
         
-        add_submenu_page(
+        $this->hook_suffixes[] = add_submenu_page(
             'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
             __('Settings', 'ai-post-scheduler'),
@@ -125,7 +130,7 @@ class AIPS_Settings {
             array($this, 'render_settings_page')
         );
 
-        add_submenu_page(
+        $this->hook_suffixes[] = add_submenu_page(
             'ai-post-scheduler',
             __('System Status', 'ai-post-scheduler'),
             __('System Status', 'ai-post-scheduler'),
@@ -135,7 +140,7 @@ class AIPS_Settings {
         );
 
         if (get_option('aips_developer_mode')) {
-            add_submenu_page(
+            $this->hook_suffixes[] = add_submenu_page(
                 'ai-post-scheduler',
                 __('Dev Tools', 'ai-post-scheduler'),
                 __('Dev Tools', 'ai-post-scheduler'),
@@ -250,7 +255,7 @@ class AIPS_Settings {
      * @return void
      */
     public function enqueue_admin_assets($hook) {
-        if (strpos($hook, 'ai-post-scheduler') === false && strpos($hook, 'aips-') === false) {
+        if (!in_array($hook, $this->hook_suffixes)) {
             return;
         }
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [fix-admin-assets-enqueue] - 2025-12-25
+### Fixed
+- Fixed an issue where Admin JS files were not being properly enqueued on some environments or when plugin directory was renamed, by implementing a robust hook verification system using `add_menu_page` return values.
+
 ## [wizard-sections-search-copy] - 2025-12-25
 ### Added
 - Added client-side search functionality to the Prompt Sections admin page.
