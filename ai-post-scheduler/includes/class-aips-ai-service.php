@@ -263,31 +263,31 @@ class AIPS_AI_Service {
      * @return void
      */
     private function apply_optional_query_settings($query, $options) {
-        if (array_key_exists('context', $options) && method_exists($query, 'set_context')) {
+        if (isset($options['context']) && method_exists($query, 'set_context')) {
             $query->set_context($options['context']);
         }
 
-        if (array_key_exists('instructions', $options) && method_exists($query, 'set_instructions')) {
+        if (isset($options['instructions']) && method_exists($query, 'set_instructions')) {
             $query->set_instructions($options['instructions']);
         }
 
-        if (array_key_exists('messages', $options) && method_exists($query, 'set_messages')) {
+        if (isset($options['messages']) && method_exists($query, 'set_messages')) {
             $query->set_messages($options['messages']);
         }
 
-        if (array_key_exists('env_id', $options) && method_exists($query, 'set_env_id')) {
+        if (isset($options['env_id']) && method_exists($query, 'set_env_id')) {
             $query->set_env_id($options['env_id']);
         }
 
-        if (array_key_exists('embeddings_env_id', $options) && method_exists($query, 'set_embeddings_env_id')) {
+        if (isset($options['embeddings_env_id']) && method_exists($query, 'set_embeddings_env_id')) {
             $query->set_embeddings_env_id($options['embeddings_env_id']);
         }
 
-        if (array_key_exists('max_results', $options) && method_exists($query, 'set_max_results')) {
+        if (isset($options['max_results']) && method_exists($query, 'set_max_results')) {
             $query->set_max_results($options['max_results']);
         }
 
-        if (array_key_exists('api_key', $options) && method_exists($query, 'set_api_key')) {
+        if (isset($options['api_key']) && method_exists($query, 'set_api_key')) {
             $query->set_api_key($options['api_key']);
         }
     }
