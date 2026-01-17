@@ -156,6 +156,60 @@ class AIPS_Generator {
     }
     
     /**
+     * Resolve AI Variables for a template.
+     *
+     * Extracts AI Variables from the title prompt and uses AI to generate
+     * appropriate values based on the content context.
+     *
+     * @param object      $template Template object containing prompts.
+     * @param string      $content  Generated article content for context.
+     * @param object|null $voice    Optional voice object with title prompt.
+     * @return array Associative array of resolved AI variable values.
+     */
+    public function resolve_ai_variables($template, $content, $voice = null) {
+        // Determine which title prompt to use (voice takes precedence)
+        $title_prompt = '';
+        if ($voice && !empty($voice->title_prompt)) {
+            $title_prompt = $voice->title_prompt;
+        } elseif (!empty($template->title_prompt)) {
+            $title_prompt = $template->title_prompt;
+        }
+        
+        // Extract AI variables from the title prompt
+        $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
+        
+        if (empty($ai_variables)) {
+            return array();
+        }
+        
+        // Build context from content prompt and generated content
+        $context = "Content Prompt: " . $template->prompt_template . "\n\n";
+        $context .= "Generated Article Content:\n" . mb_substr($content, 0, 2000);
+        
+        // Build the prompt to resolve AI variables
+        $resolve_prompt = $this->template_processor->build_ai_variables_prompt($ai_variables, $context);
+        
+        // Call AI to resolve the variables
+        $options = array('max_tokens' => 200);
+        $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
+        
+        if (is_wp_error($result)) {
+            $this->logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
+            return array();
+        }
+        
+        // Parse the AI response to extract variable values
+        $resolved_values = $this->template_processor->parse_ai_variables_response($result, $ai_variables);
+        
+        $this->logger->log('Resolved AI variables', 'info', array(
+            'variables' => $ai_variables,
+            'resolved' => $resolved_values
+        ));
+        
+        return $resolved_values;
+    }
+    
+    /**
      * Generate a post title based on the generated content, template, and optional voice/topic.
      *
      * This method encapsulates all title prompt construction. It uses the
@@ -171,22 +225,36 @@ class AIPS_Generator {
      *   "\n\nHere is the content:\n\n"
      *   (Generated Post Content)
      *
-     * @param object      $template Template object containing prompts and settings.
-     * @param object|null $voice    Optional voice object with overrides.
-     * @param string|null $topic    Optional topic to be injected into prompts.
-     * @param string      $content  Generated article content.
-     * @param array       $options  AI options (e.g., model, max_tokens override).
-     * @return string|WP_Error      Generated title string or WP_Error on failure.
+     * If the title prompt contains AI Variables (custom variables like {{PHPFramework1Name}}),
+     * they will be resolved using the provided $ai_variables array.
+     *
+     * @param object      $template     Template object containing prompts and settings.
+     * @param object|null $voice        Optional voice object with overrides.
+     * @param string|null $topic        Optional topic to be injected into prompts.
+     * @param string      $content      Generated article content.
+     * @param array       $options      AI options (e.g., model, max_tokens override).
+     * @param array       $ai_variables Resolved AI variable values (key => value).
+     * @return string|WP_Error          Generated title string or WP_Error on failure.
      */
-    public function generate_title($template, $voice = null, $topic = null, $content = '', $options = array()) {
+    public function generate_title($template, $voice = null, $topic = null, $content = '', $options = array(), $ai_variables = array()) {
         // Build title instructions based on voice or template configuration.
         // Voice title prompt takes precedence over template title prompt.
         $title_instructions = '';
+        $raw_title_prompt = '';
 
         if ($voice && !empty($voice->title_prompt)) {
-            $title_instructions = $this->template_processor->process($voice->title_prompt, $topic);
+            $raw_title_prompt = $voice->title_prompt;
         } elseif (!empty($template->title_prompt)) {
-            $title_instructions = $this->template_processor->process($template->title_prompt, $topic);
+            $raw_title_prompt = $template->title_prompt;
+        }
+
+        if (!empty($raw_title_prompt)) {
+            // Process with AI variables first, then standard template variables
+            $title_instructions = $this->template_processor->process_with_ai_variables(
+                $raw_title_prompt,
+                $topic,
+                $ai_variables
+            );
         }
 
         // Build the title generation prompt using the generated content as context.
@@ -314,8 +382,11 @@ class AIPS_Generator {
             return $content;
         }
 
-        // Generate the title using the template, voice, topic, and content.
-        $title = $this->generate_title($template, $voice, $topic, $content);
+        // Resolve AI variables from the title prompt using the generated content
+        $ai_variables = $this->resolve_ai_variables($template, $content, $voice);
+
+        // Generate the title using the template, voice, topic, content, and resolved AI variables.
+        $title = $this->generate_title($template, $voice, $topic, $content, array(), $ai_variables);
         
         if (is_wp_error($title)) {
             // Fall back to a safe default title when AI fails

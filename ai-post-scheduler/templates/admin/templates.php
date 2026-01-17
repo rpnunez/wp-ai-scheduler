@@ -140,6 +140,9 @@ if (!defined('ABSPATH')) {
                     <div class="aips-form-row">
                         <label for="title_prompt"><?php esc_html_e('Title Prompt (Optional)', 'ai-post-scheduler'); ?></label>
                         <input type="text" id="title_prompt" name="title_prompt" class="regular-text" placeholder="<?php esc_attr_e('Leave empty to auto-generate from content prompt', 'ai-post-scheduler'); ?>">
+                        <p class="description">
+                            <?php esc_html_e('Supports AI Variables: Use custom variables like {{PHPFramework1Name}} that AI will dynamically resolve based on your content. Example: "PHP Framework Comparison: {{Framework1}} vs. {{Framework2}}"', 'ai-post-scheduler'); ?>
+                        </p>
                     </div>
                     
                     <div class="aips-form-row">

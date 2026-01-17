@@ -158,11 +158,22 @@ class Test_AIPS_Template_Processor extends WP_UnitTestCase {
     }
 
     /**
-     * Test validate_template with invalid variable
+     * Test validate_template allows AI variables by default
      */
-    public function test_validate_template_invalid_variable() {
-        $template = "Write about {{invalid_var}} on {{date}}";
+    public function test_validate_template_allows_ai_variables_by_default() {
+        $template = "Write about {{CustomVariable}} on {{date}}";
         $result = $this->processor->validate_template($template);
+        
+        // AI variables are allowed by default
+        $this->assertTrue($result);
+    }
+
+    /**
+     * Test validate_template with invalid variable when AI variables disabled
+     */
+    public function test_validate_template_invalid_variable_strict_mode() {
+        $template = "Write about {{invalid_var}} on {{date}}";
+        $result = $this->processor->validate_template($template, false);
         
         $this->assertInstanceOf('WP_Error', $result);
         $this->assertEquals('invalid_variable', $result->get_error_code());
@@ -205,5 +216,187 @@ class Test_AIPS_Template_Processor extends WP_UnitTestCase {
         $result = $this->processor->process($template);
         
         $this->assertEquals($template, $result);
+    }
+
+    // ============================================
+    // AI Variables Tests
+    // ============================================
+
+    /**
+     * Test extract_ai_variables extracts custom variables
+     */
+    public function test_extract_ai_variables() {
+        $template = "PHP Framework: {{PHPFramework1Name}} vs. {{PHPFramework2Name}}";
+        $ai_vars = $this->processor->extract_ai_variables($template);
+        
+        $this->assertIsArray($ai_vars);
+        $this->assertCount(2, $ai_vars);
+        $this->assertContains('PHPFramework1Name', $ai_vars);
+        $this->assertContains('PHPFramework2Name', $ai_vars);
+    }
+
+    /**
+     * Test extract_ai_variables excludes system variables
+     */
+    public function test_extract_ai_variables_excludes_system_vars() {
+        $template = "On {{date}}: {{CustomVar}} vs. {{topic}}";
+        $ai_vars = $this->processor->extract_ai_variables($template);
+        
+        $this->assertCount(1, $ai_vars);
+        $this->assertContains('CustomVar', $ai_vars);
+        $this->assertNotContains('date', $ai_vars);
+        $this->assertNotContains('topic', $ai_vars);
+    }
+
+    /**
+     * Test extract_ai_variables removes duplicates
+     */
+    public function test_extract_ai_variables_removes_duplicates() {
+        $template = "{{Framework}} is better than {{Framework}} sometimes";
+        $ai_vars = $this->processor->extract_ai_variables($template);
+        
+        $this->assertCount(1, $ai_vars);
+        $this->assertContains('Framework', $ai_vars);
+    }
+
+    /**
+     * Test extract_ai_variables returns empty for template with only system vars
+     */
+    public function test_extract_ai_variables_empty_for_system_only() {
+        $template = "Written on {{date}} by {{site_name}}";
+        $ai_vars = $this->processor->extract_ai_variables($template);
+        
+        $this->assertIsArray($ai_vars);
+        $this->assertEmpty($ai_vars);
+    }
+
+    /**
+     * Test has_ai_variables returns true when AI variables present
+     */
+    public function test_has_ai_variables_true() {
+        $template = "Comparing {{Language1}} with {{Language2}}";
+        $result = $this->processor->has_ai_variables($template);
+        
+        $this->assertTrue($result);
+    }
+
+    /**
+     * Test has_ai_variables returns false when no AI variables
+     */
+    public function test_has_ai_variables_false() {
+        $template = "Written on {{date}} about {{topic}}";
+        $result = $this->processor->has_ai_variables($template);
+        
+        $this->assertFalse($result);
+    }
+
+    /**
+     * Test process_with_ai_variables replaces AI variables first
+     */
+    public function test_process_with_ai_variables() {
+        $template = "{{Framework1}} vs {{Framework2}} - written on {{date}}";
+        $ai_values = array(
+            'Framework1' => 'Laravel',
+            'Framework2' => 'Symfony'
+        );
+        
+        $result = $this->processor->process_with_ai_variables($template, null, $ai_values);
+        
+        $this->assertStringContainsString('Laravel', $result);
+        $this->assertStringContainsString('Symfony', $result);
+        $this->assertStringContainsString(date('F j, Y'), $result);
+        $this->assertStringNotContainsString('{{Framework1}}', $result);
+        $this->assertStringNotContainsString('{{Framework2}}', $result);
+        $this->assertStringNotContainsString('{{date}}', $result);
+    }
+
+    /**
+     * Test process_with_ai_variables works with topic
+     */
+    public function test_process_with_ai_variables_with_topic() {
+        $template = "{{CustomVar}} about {{topic}}";
+        $ai_values = array('CustomVar' => 'Article');
+        
+        $result = $this->processor->process_with_ai_variables($template, 'Security', $ai_values);
+        
+        $this->assertEquals('Article about Security', $result);
+    }
+
+    /**
+     * Test build_ai_variables_prompt creates proper prompt
+     */
+    public function test_build_ai_variables_prompt() {
+        $ai_variables = array('Framework1', 'Framework2');
+        $context = "Write an article comparing PHP frameworks.";
+        
+        $prompt = $this->processor->build_ai_variables_prompt($ai_variables, $context);
+        
+        $this->assertStringContainsString('Framework1', $prompt);
+        $this->assertStringContainsString('Framework2', $prompt);
+        $this->assertStringContainsString($context, $prompt);
+        $this->assertStringContainsString('JSON', $prompt);
+    }
+
+    /**
+     * Test build_ai_variables_prompt returns empty for no variables
+     */
+    public function test_build_ai_variables_prompt_empty() {
+        $prompt = $this->processor->build_ai_variables_prompt(array(), "Some context");
+        
+        $this->assertEquals('', $prompt);
+    }
+
+    /**
+     * Test parse_ai_variables_response parses valid JSON
+     */
+    public function test_parse_ai_variables_response_valid_json() {
+        $response = '{"Framework1": "Laravel", "Framework2": "Symfony"}';
+        $ai_variables = array('Framework1', 'Framework2');
+        
+        $values = $this->processor->parse_ai_variables_response($response, $ai_variables);
+        
+        $this->assertArrayHasKey('Framework1', $values);
+        $this->assertArrayHasKey('Framework2', $values);
+        $this->assertEquals('Laravel', $values['Framework1']);
+        $this->assertEquals('Symfony', $values['Framework2']);
+    }
+
+    /**
+     * Test parse_ai_variables_response handles markdown code blocks
+     */
+    public function test_parse_ai_variables_response_handles_markdown() {
+        $response = "```json\n{\"Framework1\": \"CakePHP\", \"Framework2\": \"CodeIgniter\"}\n```";
+        $ai_variables = array('Framework1', 'Framework2');
+        
+        $values = $this->processor->parse_ai_variables_response($response, $ai_variables);
+        
+        $this->assertEquals('CakePHP', $values['Framework1']);
+        $this->assertEquals('CodeIgniter', $values['Framework2']);
+    }
+
+    /**
+     * Test parse_ai_variables_response handles invalid JSON gracefully
+     */
+    public function test_parse_ai_variables_response_invalid_json() {
+        $response = "This is not valid JSON";
+        $ai_variables = array('Framework1', 'Framework2');
+        
+        $values = $this->processor->parse_ai_variables_response($response, $ai_variables);
+        
+        $this->assertIsArray($values);
+        $this->assertEmpty($values);
+    }
+
+    /**
+     * Test parse_ai_variables_response filters to expected variables only
+     */
+    public function test_parse_ai_variables_response_filters_variables() {
+        $response = '{"Framework1": "Laravel", "Framework2": "Symfony", "ExtraVar": "Ignored"}';
+        $ai_variables = array('Framework1', 'Framework2');
+        
+        $values = $this->processor->parse_ai_variables_response($response, $ai_variables);
+        
+        $this->assertCount(2, $values);
+        $this->assertArrayNotHasKey('ExtraVar', $values);
     }
 }

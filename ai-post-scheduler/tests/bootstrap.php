@@ -188,6 +188,19 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('remove_all_filters')) {
+        function remove_all_filters($hook_name, $priority = false) {
+            if (isset($GLOBALS['aips_test_hooks']['filters'][$hook_name])) {
+                if ($priority === false) {
+                    unset($GLOBALS['aips_test_hooks']['filters'][$hook_name]);
+                } elseif (isset($GLOBALS['aips_test_hooks']['filters'][$hook_name][$priority])) {
+                    unset($GLOBALS['aips_test_hooks']['filters'][$hook_name][$priority]);
+                }
+            }
+            return true;
+        }
+    }
+
     if (!isset($GLOBALS['aips_test_options'])) {
         $GLOBALS['aips_test_options'] = array();
     }
@@ -325,6 +338,23 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('absint')) {
         function absint($maybeint) {
             return abs(intval($maybeint));
+        }
+    }
+
+    if (!function_exists('get_bloginfo')) {
+        function get_bloginfo($show = '', $filter = 'raw') {
+            switch ($show) {
+                case 'name':
+                    return 'Test Site';
+                case 'description':
+                    return 'A test site for unit testing';
+                case 'url':
+                case 'wpurl':
+                case 'home':
+                    return 'http://example.com';
+                default:
+                    return '';
+            }
         }
     }
 
