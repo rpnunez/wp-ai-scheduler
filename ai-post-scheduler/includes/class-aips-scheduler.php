@@ -46,6 +46,15 @@ class AIPS_Scheduler {
     public function set_generator($generator) {
         $this->generator = $generator;
     }
+
+    /**
+     * Set a custom repository instance (dependency injection).
+     *
+     * @param AIPS_Schedule_Repository $repository
+     */
+    public function set_repository($repository) {
+        $this->repository = $repository;
+    }
     
     /**
      * Get all available scheduling intervals.
@@ -132,21 +141,10 @@ class AIPS_Scheduler {
     }
     
     public function process_scheduled_posts() {
-        global $wpdb;
-        
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
-        $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT t.*, s.*, s.id AS schedule_id
-            FROM {$this->schedule_table} s 
-            INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            AND s.next_run <= %s 
-            AND t.is_active = 1
-            ORDER BY s.next_run ASC
-            LIMIT 5
-        ", current_time('mysql')));
+        $due_schedules = $this->repository->get_due_schedules_with_templates(current_time('mysql'), 5);
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
@@ -211,7 +209,10 @@ class AIPS_Scheduler {
                 );
 
                 $topic = isset($schedule->topic) ? $schedule->topic : null;
+
+                $start_time = microtime(true);
                 $result = $generator->generate_post($template, null, $topic);
+                $duration = microtime(true) - $start_time;
 
                 if ($schedule->frequency === 'once') {
                     if (!is_wp_error($result)) {
@@ -251,7 +252,8 @@ class AIPS_Scheduler {
 
                 if (is_wp_error($result)) {
                     $logger->log('Schedule failed: ' . $result->get_error_message(), 'error', array(
-                        'schedule_id' => $schedule->schedule_id
+                        'schedule_id' => $schedule->schedule_id,
+                        'duration' => round($duration, 2) . 's'
                     ));
 
                     // Log recurring schedule failures to activity feed
@@ -277,7 +279,8 @@ class AIPS_Scheduler {
                 } else {
                     $logger->log('Schedule completed successfully', 'info', array(
                         'schedule_id' => $schedule->schedule_id,
-                        'post_id' => $result
+                        'post_id' => $result,
+                        'duration' => round($duration, 2) . 's'
                     ));
 
                     // Get the post to check its status
