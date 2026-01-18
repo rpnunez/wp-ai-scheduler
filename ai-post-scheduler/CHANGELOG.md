@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [sentinel-mask-api-key] - 2025-12-25
+### Security
+- [2025-12-25] Changed `aips_unsplash_access_key` input type to `password` in settings to prevent plain-text exposure of the API key in the admin dashboard.
+
 ## [wizard-sections-search-copy] - 2025-12-25
 ### Added
 - Added client-side search functionality to the Prompt Sections admin page.
