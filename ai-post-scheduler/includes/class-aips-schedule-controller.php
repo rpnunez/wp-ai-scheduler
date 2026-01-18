@@ -106,6 +106,24 @@ class AIPS_Schedule_Controller {
         }
 
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
+        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+        $article_structure_id = null;
+
+        if ($schedule_id) {
+            $schedule = $this->scheduler->get_schedule($schedule_id);
+            if ($schedule) {
+                $template_id = $schedule->template_id;
+                if (empty($topic) && !empty($schedule->topic)) {
+                    $topic = $schedule->topic;
+                }
+
+                $template_type_selector = new AIPS_Template_Type_Selector();
+                $article_structure_id = $template_type_selector->select_structure($schedule);
+            } else {
+                wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
+            }
+        }
 
         if (!$template_id) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
@@ -116,6 +134,10 @@ class AIPS_Schedule_Controller {
 
         if (!$template) {
             wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+        }
+
+        if ($article_structure_id) {
+            $template->article_structure_id = $article_structure_id;
         }
 
         $voice = null;
@@ -139,7 +161,6 @@ class AIPS_Schedule_Controller {
         $errors = array();
 
         $generator = new AIPS_Generator();
-        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
         // Enforce hard limit of 5 to prevent timeouts (Bolt)
         if ($quantity > 5) {
@@ -181,6 +202,10 @@ class AIPS_Schedule_Controller {
                 __('(%d failed attempts)', 'ai-post-scheduler'),
                 count($errors)
             );
+        }
+
+        if ($schedule_id && !empty($post_ids) && isset($template_type_selector)) {
+            $template_type_selector->invalidate_count_cache($schedule_id);
         }
 
         wp_send_json_success(array(
