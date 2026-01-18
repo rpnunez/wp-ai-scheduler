@@ -174,9 +174,10 @@ class AIPS_Scheduler {
                 }
 
                 // Update next_run immediately to lock this schedule from concurrent runs
+                // OPTIMIZATION: Suppress stats cache invalidation during batch processing (Bolt)
                 $lock_result = $this->repository->update($schedule->schedule_id, array(
                     'next_run' => $new_next_run
-                ));
+                ), false);
 
                 if ($lock_result === false) {
                     $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
@@ -216,7 +217,7 @@ class AIPS_Scheduler {
                 if ($schedule->frequency === 'once') {
                     if (!is_wp_error($result)) {
                         // If it's a one-time schedule and successful, delete it
-                        $this->repository->delete($schedule->schedule_id);
+                        $this->repository->delete($schedule->schedule_id, false);
                         $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
                     } else {
                         // If failed, deactivate it and set status to 'failed' to prevent infinite daily retries
@@ -224,7 +225,7 @@ class AIPS_Scheduler {
                             'is_active' => 0,
                             'status' => 'failed',
                             'last_run' => current_time('mysql')
-                        ));
+                        ), false);
                         $logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
 
                         // Log to activity feed
@@ -246,7 +247,7 @@ class AIPS_Scheduler {
                 } else {
                     // For recurring schedules, we ONLY update last_run here.
                     // next_run was already updated at the start (Claim-First).
-                    $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
+                    $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'), false);
                 }
 
                 if (is_wp_error($result)) {
@@ -322,5 +323,8 @@ class AIPS_Scheduler {
                 ));
             }
         }
+
+        // OPTIMIZATION: Invalidate stats cache once at the end of batch processing (Bolt)
+        $this->repository->invalidate_stats_cache();
     }
 }
