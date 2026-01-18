@@ -78,6 +78,11 @@
             $(document).on('click', '#aips-section-search-clear', this.clearSectionSearch);
             $(document).on('click', '.aips-clear-section-search-btn', this.clearSectionSearch);
 
+            // Structure Search
+            $(document).on('keyup search', '#aips-structure-search', this.filterStructures);
+            $(document).on('click', '#aips-structure-search-clear', this.clearStructureSearch);
+            $(document).on('click', '.aips-clear-structure-search-btn', this.clearStructureSearch);
+
             $(document).on('click', '.aips-view-template-posts', this.openTemplatePostsModal);
             $(document).on('click', '.aips-modal-page', this.paginateTemplatePosts);
 
@@ -1250,6 +1255,48 @@
         clearSectionSearch: function(e) {
             e.preventDefault();
             $('#aips-section-search').val('').trigger('keyup');
+        },
+
+        filterStructures: function() {
+            var term = $('#aips-structure-search').val().toLowerCase().trim();
+            var $rows = $('.aips-structures-list tbody tr');
+            var $noResults = $('#aips-structure-search-no-results');
+            var $table = $('.aips-structures-list');
+            var $clearBtn = $('#aips-structure-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                // Filter by Name (1st column) and Description (2nd column)
+                var name = $row.find('td:eq(0)').text().toLowerCase();
+                var description = $row.find('td:eq(1)').text().toLowerCase();
+
+                if (name.indexOf(term) > -1 || description.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearStructureSearch: function(e) {
+            e.preventDefault();
+            $('#aips-structure-search').val('').trigger('keyup');
         },
 
         openTemplatePostsModal: function(e) {
