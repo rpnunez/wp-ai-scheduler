@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Structures Search</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/1.0.0/css/dashicons.min.css">
+    <style>
+        /* Minimal styles */
+        .aips-search-box { margin-bottom: 10px; text-align: right; }
+        .button { cursor: pointer; padding: 5px 10px; }
+        .wp-list-table { width: 100%; border-collapse: collapse; }
+        .wp-list-table th, .wp-list-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        .aips-empty-state { text-align: center; padding: 20px; border: 1px dashed #ccc; }
+        .screen-reader-text { display: none; }
+        .nav-tab-wrapper { margin-bottom: 15px; border-bottom: 1px solid #ccc; }
+        .nav-tab { padding: 10px; text-decoration: none; border: 1px solid transparent; }
+        .nav-tab-active { border: 1px solid #ccc; border-bottom: 1px solid white; background: white; margin-bottom: -1px; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Article Structures</h1>
+
+        <div class="nav-tab-wrapper">
+            <a href="#aips-structures" class="nav-tab nav-tab-active" data-tab="aips-structures">Article Structures</a>
+            <a href="#aips-structure-sections" class="nav-tab" data-tab="aips-structure-sections">Structure Sections</a>
+        </div>
+
+        <!-- Structures Tab -->
+        <div id="aips-structures-tab" class="aips-tab-content active">
+            <div class="aips-structures-container">
+                <div class="aips-search-box">
+                    <label for="aips-structure-search">Search Structures:</label>
+                    <input type="search" id="aips-structure-search" class="regular-text" placeholder="Search structures...">
+                    <button type="button" id="aips-structure-search-clear" class="button" style="display: none;">Clear</button>
+                </div>
+
+                <table class="wp-list-table widefat fixed striped aips-structures-list">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Active</th>
+                            <th>Default</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-structure-id="1">
+                            <td>How-To Guide</td>
+                            <td>Step-by-step instructions</td>
+                            <td>Yes</td>
+                            <td>Yes</td>
+                            <td><button>Edit</button></td>
+                        </tr>
+                        <tr data-structure-id="2">
+                            <td>Listicle</td>
+                            <td>Top X items list</td>
+                            <td>Yes</td>
+                            <td>No</td>
+                            <td><button>Edit</button></td>
+                        </tr>
+                        <tr data-structure-id="3">
+                            <td>Product Review</td>
+                            <td>In-depth analysis</td>
+                            <td>No</td>
+                            <td>No</td>
+                            <td><button>Edit</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div id="aips-structure-search-no-results" class="aips-empty-state" style="display: none;">
+                    <h3>No Structures Found</h3>
+                    <p>No article structures match your search criteria.</p>
+                    <button type="button" class="button button-primary aips-clear-structure-search-btn">Clear Search</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sections Tab -->
+        <div id="aips-structure-sections-tab" class="aips-tab-content" style="display:none;">
+            <div class="aips-structures-container">
+                <div class="aips-search-box">
+                    <label for="aips-section-search">Search Sections:</label>
+                    <input type="search" id="aips-section-search" class="regular-text" placeholder="Search sections...">
+                    <button type="button" id="aips-section-search-clear" class="button" style="display: none;">Clear</button>
+                </div>
+
+                <table class="wp-list-table widefat fixed striped aips-sections-list">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Key</th>
+                            <th>Description</th>
+                            <th>Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-section-id="1">
+                            <td class="column-name">Intro</td>
+                            <td class="column-key"><code>intro</code></td>
+                            <td class="column-description">Introduction text</td>
+                            <td>Yes</td>
+                            <td><button>Edit</button></td>
+                        </tr>
+                        <tr data-section-id="2">
+                            <td class="column-name">Outro</td>
+                            <td class="column-key"><code>outro</code></td>
+                            <td class="column-description">Conclusion text</td>
+                            <td>Yes</td>
+                            <td><button>Edit</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div id="aips-section-search-no-results" class="aips-empty-state" style="display: none;">
+                    <h3>No Sections Found</h3>
+                    <p>No prompt sections match your search criteria.</p>
+                    <button type="button" class="button button-primary aips-clear-section-search-btn">Clear Search</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        var aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: '123' };
+        var aipsAdminL10n = {};
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+</body>
+</html>

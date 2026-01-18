@@ -15,3 +15,7 @@
 ## 2025-12-25 - Icon Button Feedback
 **Learning:** The journal described a specific visual feedback pattern for small buttons (swapping icon to checkmark), but the implementation in `admin.js` was missing/broken for icon-only buttons, causing the icon to disappear.
 **Action:** Implemented the icon-swap logic in `copyToClipboard` handler in `admin.js` to correctly support icon-only buttons like those in the Prompt Sections table.
+
+## 2025-05-24 - Structures Table CSS Classes
+**Learning:** The "Sections" table in `structures.php` (tabbed view) lacked the `.column-*` CSS classes present in the standalone `sections.php`, causing the shared `filterSections` logic in `admin.js` to fail silently.
+**Action:** Added `.column-name`, `.column-key`, and `.column-description` classes to `structures.php` tables to ensure shared JS filters work consistently across views.
