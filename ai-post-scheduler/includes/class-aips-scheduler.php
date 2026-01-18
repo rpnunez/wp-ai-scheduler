@@ -138,7 +138,27 @@ class AIPS_Scheduler {
         $logger->log('Starting scheduled post generation', 'info');
         
         $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT t.*, s.*, s.id AS schedule_id
+            SELECT
+                t.name,
+                t.name AS template_name,
+                t.prompt_template,
+                t.title_prompt,
+                t.post_status,
+                t.post_category,
+                t.post_tags,
+                t.post_author,
+                t.generate_featured_image,
+                t.image_prompt,
+                t.featured_image_source,
+                t.featured_image_unsplash_keywords,
+                t.featured_image_media_ids,
+                s.id AS schedule_id,
+                s.template_id,
+                s.next_run,
+                s.frequency,
+                s.topic,
+                s.article_structure_id,
+                s.rotation_pattern
             FROM {$this->schedule_table} s 
             INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
             WHERE s.is_active = 1 
@@ -207,6 +227,9 @@ class AIPS_Scheduler {
                     'post_quantity' => 1, // Schedules always run one at a time per interval
                     'generate_featured_image' => isset($schedule->generate_featured_image) ? $schedule->generate_featured_image : 0,
                     'image_prompt' => isset($schedule->image_prompt) ? $schedule->image_prompt : '',
+                    'featured_image_source' => isset($schedule->featured_image_source) ? $schedule->featured_image_source : 'ai_prompt',
+                    'featured_image_unsplash_keywords' => isset($schedule->featured_image_unsplash_keywords) ? $schedule->featured_image_unsplash_keywords : '',
+                    'featured_image_media_ids' => isset($schedule->featured_image_media_ids) ? $schedule->featured_image_media_ids : '',
                     'article_structure_id' => $article_structure_id, // NEW: Pass selected structure
                 );
 

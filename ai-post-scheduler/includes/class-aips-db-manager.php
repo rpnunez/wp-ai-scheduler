@@ -94,7 +94,8 @@ class AIPS_DB_Manager {
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id)
+            PRIMARY KEY  (id),
+            KEY is_active (is_active)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_schedule (
