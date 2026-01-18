@@ -15,3 +15,7 @@
 ## 2025-12-25 - Icon Button Feedback
 **Learning:** The journal described a specific visual feedback pattern for small buttons (swapping icon to checkmark), but the implementation in `admin.js` was missing/broken for icon-only buttons, causing the icon to disappear.
 **Action:** Implemented the icon-swap logic in `copyToClipboard` handler in `admin.js` to correctly support icon-only buttons like those in the Prompt Sections table.
+
+## 2025-05-28 - Search on Tabbed Tables
+**Learning:** Users struggled to find specific Structures or Sections in the tabbed interface of `structures.php`, which lacked the search functionality present in dedicated views like `sections.php`.
+**Action:** Implemented per-tab search inputs in `structures.php`, reusing existing JS filter logic where possible (for sections) and adding new logic for structures, ensuring consistent behavior across the admin.
