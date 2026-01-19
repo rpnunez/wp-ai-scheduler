@@ -209,8 +209,8 @@ class AIPS_Templates {
     }
 
     private function calculate_next_run($frequency, $base_time) {
-        $next_run = $this->interval_calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $base_time));
-        return strtotime($next_run);
+        // OPTIMIZATION: Use direct timestamp calculation to avoid 4x date conversion overhead per iteration
+        return $this->interval_calculator->calculate_next_timestamp($frequency, $base_time);
     }
     
     public function render_page() {
