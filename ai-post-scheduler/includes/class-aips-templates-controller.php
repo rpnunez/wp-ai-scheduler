@@ -12,6 +12,7 @@ class AIPS_Templates_Controller {
 
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
+        add_action('wp_ajax_aips_clone_template', array($this, 'ajax_clone_template'));
         add_action('wp_ajax_aips_get_template', array($this, 'ajax_get_template'));
         add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
         add_action('wp_ajax_aips_get_template_posts', array($this, 'ajax_get_template_posts'));
@@ -36,7 +37,7 @@ class AIPS_Templates_Controller {
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field($_POST['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field($_POST['featured_image_media_ids']) : '',
-            'post_status' => isset($_POST['post_status']) ? sanitize_text_field($_POST['post_status']) : 'draft',
+            'post_status' => isset($_POST['post_status']) && in_array($_POST['post_status'], array_keys(get_post_stati())) ? sanitize_text_field($_POST['post_status']) : 'draft',
             'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
@@ -80,6 +81,41 @@ class AIPS_Templates_Controller {
             wp_send_json_success(array('message' => __('Template deleted successfully.', 'ai-post-scheduler')));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete template.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_clone_template() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
+        }
+
+        $template = $this->templates->get($id);
+        if (!$template) {
+            wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+        }
+
+        $data = (array) $template;
+        unset($data['id']); // Remove ID to create new
+        $data['name'] .= ' ' . __('(Copy)', 'ai-post-scheduler');
+        $data['is_active'] = 1; // Default to active on clone
+
+        $new_id = $this->templates->save($data);
+
+        if ($new_id) {
+            wp_send_json_success(array(
+                'message' => __('Template cloned successfully.', 'ai-post-scheduler'),
+                'template_id' => $new_id
+            ));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to clone template.', 'ai-post-scheduler')));
         }
     }
 
