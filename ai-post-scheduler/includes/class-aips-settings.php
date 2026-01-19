@@ -441,7 +441,15 @@ class AIPS_Settings {
     public function unsplash_access_key_field_callback() {
         $value = get_option('aips_unsplash_access_key', '');
         ?>
-        <input type="text" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
+        <div class="aips-input-group">
+            <input type="password" name="aips_unsplash_access_key" id="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
+            <button type="button" class="button aips-toggle-password" data-target="#aips_unsplash_access_key" aria-label="<?php esc_attr_e('Show/Hide API Key', 'ai-post-scheduler'); ?>">
+                <span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="button aips-copy-input-btn" data-target="#aips_unsplash_access_key" aria-label="<?php esc_attr_e('Copy API Key', 'ai-post-scheduler'); ?>">
+                <span class="dashicons dashicons-admin-page" aria-hidden="true"></span>
+            </button>
+        </div>
         <p class="description"><?php esc_html_e('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'); ?></p>
         <?php
     }

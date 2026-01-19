@@ -96,6 +96,8 @@
 
             // Settings
             $(document).on('click', '#aips-test-connection', this.testConnection);
+            $(document).on('click', '.aips-toggle-password', this.togglePasswordVisibility);
+            $(document).on('click', '.aips-copy-input-btn', this.copyInputToClipboard);
 
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
@@ -274,12 +276,26 @@
             e.preventDefault();
             var $btn = $(this);
             var text = $btn.data('clipboard-text');
+            AIPS.performCopy($btn, text);
+        },
 
+        copyInputToClipboard: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var target = $btn.data('target');
+            var $input = $(target);
+
+            if ($input.length) {
+                AIPS.performCopy($btn, $input.val());
+            }
+        },
+
+        performCopy: function($btn, text) {
             if (!text) return;
 
             var showSuccess = function() {
                 // If button has specific small/icon class or no text content, swap icon
-                if ($btn.hasClass('aips-copy-btn-small') || $btn.text().trim().length === 0) {
+                if ($btn.hasClass('aips-copy-btn-small') || $btn.text().trim().length === 0 || $btn.hasClass('aips-copy-input-btn')) {
                     var $icon = $btn.find('.dashicons');
                     if ($icon.length) {
                         var originalClass = $icon.attr('class');
@@ -292,7 +308,6 @@
                 }
 
                 // Standard text swap
-                var originalText = $btn.text();
                 // Store original HTML if needed, but text() is usually enough for text buttons
                 // For safety, let's use html() to be robust
                 var originalHtml = $btn.html();
@@ -324,6 +339,22 @@
             }, function(err) {
                 console.error('Async: Could not copy text: ', err);
             });
+        },
+
+        togglePasswordVisibility: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var target = $btn.data('target');
+            var $input = $(target);
+            var $icon = $btn.find('.dashicons');
+
+            if ($input.attr('type') === 'password') {
+                $input.attr('type', 'text');
+                $icon.removeClass('dashicons-visibility').addClass('dashicons-hidden');
+            } else {
+                $input.attr('type', 'password');
+                $icon.removeClass('dashicons-hidden').addClass('dashicons-visibility');
+            }
         },
 
         testConnection: function(e) {

@@ -832,6 +832,34 @@
     color: #fff;
 }
 
+/* Input Group (Settings) */
+.aips-input-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.aips-input-group input.regular-text {
+    width: auto;
+    flex-grow: 1;
+    max-width: 25em;
+}
+
+.aips-input-group .button {
+    padding: 0 10px;
+    height: 30px;
+    line-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.aips-input-group .button .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
 /* Variable Code Cell & Copy Button */
 .aips-variable-code-cell {
     display: flex;
