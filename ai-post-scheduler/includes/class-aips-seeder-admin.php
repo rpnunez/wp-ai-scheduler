@@ -8,22 +8,10 @@ class AIPS_Seeder_Admin {
     private $service;
 
     public function __construct() {
-        add_action('admin_menu', array($this, 'add_menu_page'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
         add_action('wp_ajax_aips_process_seeder', array($this, 'ajax_process_seeder'));
 
         $this->service = new AIPS_Seeder_Service();
-    }
-
-    public function add_menu_page() {
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Seeder', 'ai-post-scheduler'),
-            __('Seeder', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-seeder',
-            array($this, 'render_page')
-        );
     }
 
     public function enqueue_assets($hook) {
@@ -38,10 +26,6 @@ class AIPS_Seeder_Admin {
             AIPS_VERSION,
             true
         );
-    }
-
-    public function render_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/seeder.php';
     }
 
     public function ajax_process_seeder() {

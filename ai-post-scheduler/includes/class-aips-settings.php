@@ -52,16 +52,25 @@ class AIPS_Settings {
             'ai-post-scheduler',
             array($this, 'render_dashboard_page')
         );
-        
+
         add_submenu_page(
             'ai-post-scheduler',
-            __('Voices', 'ai-post-scheduler'),
-            __('Voices', 'ai-post-scheduler'),
+            __('Activity', 'ai-post-scheduler'),
+            __('Activity', 'ai-post-scheduler'),
             'manage_options',
-            'aips-voices',
-            array($this, 'render_voices_page')
+            'aips-activity',
+            array($this, 'render_activity_page')
         );
-        
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Schedule', 'ai-post-scheduler'),
+            __('Schedule', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-schedule',
+            array($this, 'render_schedule_page')
+        );
+
         add_submenu_page(
             'ai-post-scheduler',
             __('Templates', 'ai-post-scheduler'),
@@ -73,11 +82,11 @@ class AIPS_Settings {
         
         add_submenu_page(
             'ai-post-scheduler',
-            __('Schedule', 'ai-post-scheduler'),
-            __('Schedule', 'ai-post-scheduler'),
+            __('Voices', 'ai-post-scheduler'),
+            __('Voices', 'ai-post-scheduler'),
             'manage_options',
-            'aips-schedule',
-            array($this, 'render_schedule_page')
+            'aips-voices',
+            array($this, 'render_voices_page')
         );
         
          add_submenu_page(
@@ -89,14 +98,7 @@ class AIPS_Settings {
              array($this, 'render_research_page')
          );
         
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Activity', 'ai-post-scheduler'),
-            __('Activity', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-activity',
-            array($this, 'render_activity_page')
-        );
+        
       
         add_submenu_page(
             'ai-post-scheduler',
@@ -106,23 +108,14 @@ class AIPS_Settings {
             'aips-structures',
             array($this, 'render_structures_page')
         );
-        
+
         add_submenu_page(
             'ai-post-scheduler',
-            __('Article Structure Sections', 'ai-post-scheduler'),
-            __('Article Structure Sections', 'ai-post-scheduler'),
+            __('Seeder', 'ai-post-scheduler'),
+            __('Seeder', 'ai-post-scheduler'),
             'manage_options',
-            'aips-prompt-sections',
-            array($this, 'render_prompt_sections_page')
-        );
-        
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Settings', 'ai-post-scheduler'),
-            __('Settings', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-settings',
-            array($this, 'render_settings_page')
+            'aips-seeder',
+            array($this, 'render_seeder_page')
         );
 
         add_submenu_page(
@@ -132,6 +125,15 @@ class AIPS_Settings {
             'manage_options',
             'aips-status',
             array($this, 'render_status_page')
+        );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Settings', 'ai-post-scheduler'),
+            __('Settings', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-settings',
+            array($this, 'render_settings_page')
         );
 
         if (get_option('aips_developer_mode')) {
@@ -254,9 +256,9 @@ class AIPS_Settings {
             return;
         }
 
-        if (function_exists('wp_enqueue_media')) {
-            wp_enqueue_media();
-        }
+        wp_enqueue_media();
+
+        // Global Admin Styles and Scripts
         
         wp_enqueue_style(
             'aips-admin-style',
@@ -273,6 +275,11 @@ class AIPS_Settings {
             true
         );
 
+        wp_localize_script('aips-admin-script', 'aipsAjax', array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('aips_ajax_nonce'),
+        ));
+
         wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
             'deleteStructureConfirm' => __('Are you sure you want to delete this structure?', 'ai-post-scheduler'),
             'saveStructureFailed' => __('Failed to save structure.', 'ai-post-scheduler'),
@@ -285,6 +292,8 @@ class AIPS_Settings {
             'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
             'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
         ));
+        
+        // Research Page Scripts
 
         wp_enqueue_script(
             'aips-admin-research',
@@ -305,6 +314,8 @@ class AIPS_Settings {
             'delete' => __('Delete', 'ai-post-scheduler'),
         ));
 
+        // Planner Page Scripts
+
         wp_enqueue_script(
             'aips-admin-planner',
             AIPS_PLUGIN_URL . 'assets/js/admin-planner.js',
@@ -313,6 +324,8 @@ class AIPS_Settings {
             true
         );
 
+        // Database Page Scripts
+
         wp_enqueue_script(
             'aips-admin-db',
             AIPS_PLUGIN_URL . 'assets/js/admin-db.js',
@@ -320,7 +333,9 @@ class AIPS_Settings {
             AIPS_VERSION,
             true
         );
-        
+
+        // Activity Page Scripts
+
         wp_enqueue_script(
             'aips-admin-activity',
             AIPS_PLUGIN_URL . 'assets/js/admin-activity.js',
@@ -328,11 +343,6 @@ class AIPS_Settings {
             AIPS_VERSION,
             true
         );
-        
-        wp_localize_script('aips-admin-script', 'aipsAjax', array(
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('aips_ajax_nonce'),
-        ));
         
         wp_localize_script('aips-admin-activity', 'aipsActivityL10n', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -654,6 +664,17 @@ class AIPS_Settings {
      */
     public function render_settings_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/settings.php';
+    }
+
+    /**
+     * Render the Seeder page.
+     *
+     * Includes the seeder template file.
+     *
+     * @return void
+     */
+    public function render_seeder_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/seeder.php';
     }
 
     /**

@@ -3,6 +3,32 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Allow this template to be included either via AIPS_History::render_page()
+// (where $history is already an array) or directly with an AIPS_History
+// instance (e.g. $history or $History).
+if (isset($history) && $history instanceof AIPS_History) {
+    $history_handler = $history;
+} elseif (isset($History) && $History instanceof AIPS_History) {
+    $history_handler = $History;
+}
+
+if (isset($history_handler)) {
+    // Derive filters similarly to AIPS_History::render_page().
+    $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
+    $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
+    $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '');
+
+    $history = $history_handler->get_history(array(
+        'page'   => $current_page,
+        'status' => $status_filter,
+        'search' => $search_query,
+    ));
+
+    if (!isset($stats)) {
+        $stats = $history_handler->get_stats();
+    }
+}
+
 $history_base_page = isset($history_base_page) ? $history_base_page : 'aips-history';
 $history_base_args = isset($history_base_args) && is_array($history_base_args) ? $history_base_args : array();
 $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=' . $history_base_page));
