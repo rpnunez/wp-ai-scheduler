@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- [2025-05-22 15:30:00] Added "Run Now" capability for schedules in the admin interface to manually trigger post generation.
+- [2025-05-22 15:30:00] Implemented atomic locking strategy for schedule processing using `update_atomic` to prevent race conditions during concurrent executions.
+- [2025-05-22 15:30:00] Added database index on `created_at` column in `aips_history` table for improved query performance.
 - [2026-01-17 08:24:50] Added Developer Mode and Dev Tools page for generating template scaffolds (Voices, Structures, Templates) using AI.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.
 
