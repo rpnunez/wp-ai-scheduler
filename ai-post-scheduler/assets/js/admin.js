@@ -102,6 +102,7 @@
 
             // Copy to Clipboard
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+            $(document).on('click', '.aips-toggle-password', this.togglePasswordVisibility);
 
             // Article Structures UI handlers
 
@@ -324,6 +325,22 @@
             }, function(err) {
                 console.error('Async: Could not copy text: ', err);
             });
+        },
+
+        togglePasswordVisibility: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var targetSelector = $btn.data('target');
+            var $input = $(targetSelector);
+            var $icon = $btn.find('.dashicons');
+
+            if ($input.attr('type') === 'password') {
+                $input.attr('type', 'text');
+                $icon.removeClass('dashicons-visibility').addClass('dashicons-hidden');
+            } else {
+                $input.attr('type', 'password');
+                $icon.removeClass('dashicons-hidden').addClass('dashicons-visibility');
+            }
         },
 
         testConnection: function(e) {
