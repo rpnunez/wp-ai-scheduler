@@ -73,6 +73,11 @@
             $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
             $(document).on('click', '.aips-clear-voice-search-btn', this.clearVoiceSearch);
 
+            // Structure Search
+            $(document).on('keyup search', '#aips-structure-search', this.filterStructures);
+            $(document).on('click', '#aips-structure-search-clear', this.clearStructureSearch);
+            $(document).on('click', '.aips-clear-structure-search-btn', this.clearStructureSearch);
+
             // Section Search
             $(document).on('keyup search', '#aips-section-search', this.filterSections);
             $(document).on('click', '#aips-section-search-clear', this.clearSectionSearch);
@@ -1208,6 +1213,47 @@
         clearVoiceSearch: function(e) {
             e.preventDefault();
             $('#aips-voice-search').val('').trigger('keyup');
+        },
+
+        filterStructures: function() {
+            var term = $('#aips-structure-search').val().toLowerCase().trim();
+            var $rows = $('.aips-structures-list tbody tr');
+            var $noResults = $('#aips-structure-search-no-results');
+            var $table = $('.aips-structures-list');
+            var $clearBtn = $('#aips-structure-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                var name = $row.find('.column-name').text().toLowerCase();
+                var description = $row.find('.column-description').text().toLowerCase();
+
+                if (name.indexOf(term) > -1 || description.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearStructureSearch: function(e) {
+            e.preventDefault();
+            $('#aips-structure-search').val('').trigger('keyup');
         },
 
         filterSections: function() {
