@@ -274,6 +274,7 @@ class AIPS_Settings {
         );
 
         wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
+            'clickToConfirm' => __('Click again to confirm', 'ai-post-scheduler'),
             'deleteStructureConfirm' => __('Are you sure you want to delete this structure?', 'ai-post-scheduler'),
             'saveStructureFailed' => __('Failed to save structure.', 'ai-post-scheduler'),
             'loadStructureFailed' => __('Failed to load structure.', 'ai-post-scheduler'),

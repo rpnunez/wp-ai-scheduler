@@ -1037,3 +1037,17 @@
     color: #00a32a;
     font-style: normal;
 }
+
+/* Soft Confirm Delete Style */
+.aips-confirm-delete {
+    background-color: #d63638 !important;
+    color: #fff !important;
+    border-color: #d63638 !important;
+    transition: all 0.2s ease;
+}
+
+.aips-confirm-delete:hover {
+    background-color: #b32d2e !important;
+    border-color: #b32d2e !important;
+    color: #fff !important;
+}

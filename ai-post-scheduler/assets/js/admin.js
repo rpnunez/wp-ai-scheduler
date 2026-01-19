@@ -185,8 +185,8 @@
             });
 
             // @TODO: Refactor to AIPS.deleteStructure
-            $(document).on('click', '.aips-delete-structure', function(){
-                if (!confirm(aipsAdminL10n.deleteStructureConfirm)) return;
+            $(document).on('click', '.aips-delete-structure', function(e){
+                if (!AIPS.softConfirm(e)) return;
                 var id = $(this).data('id');
                 var $row = $(this).closest('tr');
                 $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
@@ -256,8 +256,8 @@
                 });
             });
 
-            $(document).on('click', '.aips-delete-section', function(){
-                if (!confirm(aipsAdminL10n.deleteSectionConfirm)) return;
+            $(document).on('click', '.aips-delete-section', function(e){
+                if (!AIPS.softConfirm(e)) return;
                 var id = $(this).data('id');
                 var $row = $(this).closest('tr');
                 $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
@@ -268,6 +268,27 @@
                     }
                 }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
             });
+        },
+
+        softConfirm: function(e) {
+            var $btn = $(e.currentTarget);
+
+            if (!$btn.data('is-confirming')) {
+                $btn.data('original-text', $btn.html()); // Use html to preserve icons
+                $btn.text(aipsAdminL10n.clickToConfirm || 'Click again to confirm');
+                $btn.addClass('aips-confirm-delete');
+                $btn.data('is-confirming', true);
+
+                // Reset after 3 seconds
+                setTimeout(function() {
+                    $btn.html($btn.data('original-text'));
+                    $btn.removeClass('aips-confirm-delete');
+                    $btn.data('is-confirming', false);
+                }, 3000);
+                return false;
+            }
+
+            return true;
         },
 
         copyToClipboard: function(e) {
@@ -443,25 +464,11 @@
 
         deleteTemplate: function(e) {
             e.preventDefault();
+            if (!AIPS.softConfirm(e)) return;
+
             var $btn = $(this);
             var id = $btn.data('id');
             var $row = $btn.closest('tr');
-
-            // Soft Confirm Pattern
-            if (!$btn.data('is-confirming')) {
-                $btn.data('original-text', $btn.text());
-                $btn.text('Click again to confirm');
-                $btn.addClass('aips-confirm-delete');
-                $btn.data('is-confirming', true);
-
-                // Reset after 3 seconds
-                setTimeout(function() {
-                    $btn.text($btn.data('original-text'));
-                    $btn.removeClass('aips-confirm-delete');
-                    $btn.data('is-confirming', false);
-                }, 3000);
-                return;
-            }
 
             // Confirmed, proceed with deletion
             $btn.prop('disabled', true).text('Deleting...');
@@ -683,9 +690,8 @@
 
         deleteVoice: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this voice?')) {
-                return;
-            }
+            if (!AIPS.softConfirm(e)) return;
+
             var id = $(this).data('id');
             var $row = $(this).closest('tr');
             $.ajax({
@@ -824,9 +830,7 @@
 
         deleteSchedule: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this schedule?')) {
-                return;
-            }
+            if (!AIPS.softConfirm(e)) return;
 
             var id = $(this).data('id');
             var $row = $(this).closest('tr');
