@@ -20,3 +20,8 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-26 - Extract Admin Assets & Menu
+**Context:** The `AIPS_Settings` class was becoming a 'God Class' (600+ lines), violating SRP by handling settings registration, menu creation, asset management, and page rendering.
+**Decision:** Extracted asset management into `AIPS_Admin_Assets` and menu registration into `AIPS_Admin_Menu`.
+**Consequence:** `AIPS_Settings` is now cleaner and focused on settings logic. Admin menu registration is decoupled from settings logic, though page rendering methods currently remain in `AIPS_Settings` for backward compatibility.
