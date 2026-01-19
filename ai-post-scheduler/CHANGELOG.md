@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [palette-unified-soft-confirm] - 2024-05-24
+### Improved
+- Unified the "Soft Confirm" UX pattern (changing button text to "Click again to confirm" with red styling) across all delete actions (Templates, Schedules, Voices, Structures, Sections) for a smoother and less intrusive experience than native browser alerts.
+- Added localized string `clickToConfirm` to `aipsAdminL10n` for internationalization support.
+- Added `.aips-confirm-delete` CSS class to visually indicate destructive actions during confirmation state.
+
 ## [wizard-sections-search-copy] - 2025-12-25
 ### Added
 - Added client-side search functionality to the Prompt Sections admin page.
