@@ -40,6 +40,7 @@
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
+            $(document).on('click', '.aips-run-schedule-now', this.runScheduleNow);
 
             $(document).on('click', '.aips-clear-history', this.clearHistory);
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
@@ -356,6 +357,41 @@
                 complete: function() {
                     $btn.prop('disabled', false);
                     $spinner.removeClass('is-active');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+
+            $btn.prop('disabled', true).text('Generating...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_schedule_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
                 }
             });
         },

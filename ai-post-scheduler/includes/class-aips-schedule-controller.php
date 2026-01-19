@@ -14,6 +14,7 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
         add_action('wp_ajax_aips_toggle_schedule', array($this, 'ajax_toggle_schedule'));
         add_action('wp_ajax_aips_run_now', array($this, 'ajax_run_now'));
+        add_action('wp_ajax_aips_run_schedule_now', array($this, 'ajax_run_schedule_now'));
     }
 
     public function ajax_save_schedule() {
@@ -188,6 +189,52 @@ class AIPS_Schedule_Controller {
             'post_ids' => $post_ids,
             'errors' => $errors,
             'edit_url' => !empty($post_ids) ? get_edit_post_link($post_ids[0], 'raw') : ''
+        ));
+    }
+
+    public function ajax_run_schedule_now() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
+
+        if (!$schedule_id) {
+            wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
+        }
+
+        // Get schedule with template data
+        $schedule = $this->scheduler->get_schedule_with_template($schedule_id);
+
+        if (!$schedule) {
+            wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
+        }
+
+        // Execute schedule
+        $result = $this->scheduler->execute_schedule($schedule);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error(array('message' => $result->get_error_message()));
+        }
+
+        // If the schedule was due (or past due), advance the next_run date
+        // to prevent the automatic cron from running it again immediately.
+        if ($schedule->frequency !== 'once') {
+            $next_run_timestamp = strtotime($schedule->next_run);
+            $current_timestamp = current_time('timestamp');
+
+            if ($next_run_timestamp <= $current_timestamp) {
+                $new_next_run = $this->scheduler->calculate_next_run($schedule->frequency, $schedule->next_run);
+                $this->scheduler->update_next_run($schedule->schedule_id, $new_next_run);
+            }
+        }
+
+        wp_send_json_success(array(
+            'message' => __('Schedule ran successfully!', 'ai-post-scheduler'),
+            'post_id' => $result,
+            'edit_url' => get_edit_post_link($result, 'raw')
         ));
     }
 }

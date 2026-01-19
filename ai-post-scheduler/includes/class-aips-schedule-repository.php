@@ -76,6 +76,21 @@ class AIPS_Schedule_Repository {
             $id
         ));
     }
+
+    /**
+     * Get a single schedule by ID with template details.
+     *
+     * @param int $id Schedule ID.
+     * @return object|null Schedule object with template columns or null if not found.
+     */
+    public function get_with_template($id) {
+        return $this->wpdb->get_row($this->wpdb->prepare("
+            SELECT t.*, s.*, s.id AS schedule_id
+            FROM {$this->schedule_table} s
+            INNER JOIN {$this->templates_table} t ON s.template_id = t.id
+            WHERE s.id = %d
+        ", $id));
+    }
     
     /**
      * Get schedules that are due to run.
@@ -174,6 +189,94 @@ class AIPS_Schedule_Repository {
         return $result ? $this->wpdb->insert_id : false;
     }
     
+    /**
+     * Update a schedule atomically with conditions.
+     *
+     * @param int   $id         Schedule ID.
+     * @param array $data       Data to update.
+     * @param array $conditions Conditions that must be met (e.g., array('next_run' => '...')).
+     * @return bool True if updated (rows affected > 0), false otherwise.
+     */
+    public function update_atomic($id, $data, $conditions) {
+        // Prepare update data using the same logic as standard update
+        $update_data = array();
+        $format = array();
+
+        if (isset($data['template_id'])) {
+            $update_data['template_id'] = absint($data['template_id']);
+            $format[] = '%d';
+        }
+
+        if (isset($data['frequency'])) {
+            $update_data['frequency'] = sanitize_text_field($data['frequency']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['next_run'])) {
+            $update_data['next_run'] = sanitize_text_field($data['next_run']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['last_run'])) {
+            $update_data['last_run'] = sanitize_text_field($data['last_run']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['is_active'])) {
+            $update_data['is_active'] = $data['is_active'] ? 1 : 0;
+            $format[] = '%d';
+        }
+
+        if (isset($data['topic'])) {
+            $update_data['topic'] = sanitize_text_field($data['topic']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['article_structure_id'])) {
+            $update_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
+            $format[] = '%d';
+        }
+
+        if (isset($data['rotation_pattern'])) {
+            $update_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
+            $format[] = '%s';
+        }
+
+        if (isset($data['status'])) {
+            $update_data['status'] = sanitize_text_field($data['status']);
+            $format[] = '%s';
+        }
+
+        if (empty($update_data)) {
+            return false;
+        }
+
+        // Build WHERE clause with conditions
+        $where = array('id' => $id);
+        $where_format = array('%d');
+
+        foreach ($conditions as $field => $value) {
+            $where[$field] = $value;
+            // Guess format for condition
+            $where_format[] = is_int($value) ? '%d' : '%s';
+        }
+
+        $result = $this->wpdb->update(
+            $this->schedule_table,
+            $update_data,
+            $where,
+            $format,
+            $where_format
+        );
+
+        if ($result > 0) {
+            delete_transient('aips_pending_schedule_stats');
+            return true;
+        }
+
+        return false;
+    }
+
     /**
      * Update an existing schedule.
      *
