@@ -226,7 +226,7 @@ class AIPS_Templates {
         $history = array();
         $stats = array();
 
-        if ($active_tab === 'history') {
+        //if ($active_tab === 'history') {
             $history_handler = new AIPS_History();
             $history_current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
             $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
@@ -239,7 +239,7 @@ class AIPS_Templates {
             ));
 
             $stats = $history_handler->get_stats();
-        }
+        //}
         $history_base_page = 'aips-templates';
         $history_base_args = array('tab' => 'history');
         
