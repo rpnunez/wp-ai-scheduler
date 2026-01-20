@@ -81,13 +81,30 @@ class AIPS_Scheduler {
             $next_run = sanitize_text_field($data['next_run']);
         } else {
             // Use start_time as the initial run time if provided, otherwise start now.
-            // Using calculate_next_run here would skip the first interval (e.g., scheduling for "Tomorrow" if "Start Time" is "Now").
             $start_time = isset($data['start_time']) && !empty($data['start_time'])
                 ? $data['start_time']
                 : current_time('mysql');
 
-            // Ensure proper MySQL format (handling 'T' from datetime-local inputs)
+            // Default behavior: reset next_run to start_time
             $next_run = date('Y-m-d H:i:s', strtotime($start_time));
+
+            // Hunter: Fix for schedule reset bug.
+            // When updating a schedule, if the proposed start_time is in the past (likely the original start date populated in the form)
+            // and the schedule is already running in the future, we should NOT reset the timeline to the past.
+            if (!empty($data['id'])) {
+                $existing_schedule = $this->repository->get_by_id(absint($data['id']));
+                if ($existing_schedule) {
+                    $start_timestamp = strtotime($start_time);
+                    $existing_next_run_timestamp = strtotime($existing_schedule->next_run);
+                    $now_timestamp = current_time('timestamp');
+
+                    // Heuristic: If start_time is significantly in the past (older than 1 min ago to allow for 'now')
+                    // and the existing schedule is healthy (next_run is in the future), preserve the existing schedule.
+                    if ($start_timestamp < ($now_timestamp - 60) && $existing_next_run_timestamp > $now_timestamp) {
+                        $next_run = $existing_schedule->next_run;
+                    }
+                }
+            }
         }
         
         $schedule_data = array(
