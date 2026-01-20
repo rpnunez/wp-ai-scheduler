@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - 2024-05-24: Fixed PHPUnit test compatibility issues by adding `: void` return type to `setUp()` and `tearDown()` methods in test classes, ensuring tests run correctly in limited mode without the WordPress test library.
 
 ### Performance
+- [2026-01-20 14:34:39] Added database indexes to `aips_history` (`created_at` and composite `template_id, status, created_at`) and `aips_templates` (`is_active`) to optimize schedule processing and history queries.
 - 2024-05-24: Implemented transient caching for History statistics (`AIPS_History_Repository::get_stats`) to reduce database load on dashboard and history pages.
 
 ### Fixed

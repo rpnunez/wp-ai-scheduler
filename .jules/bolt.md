@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2026-01-20 - [History Table Indexing]
+**Learning:** The schedule rotation logic (`get_schedule_execution_count`) and history filtering were performing inefficient scans on the `aips_history` table due to missing composite indexes on `template_id`, `status`, and `created_at`.
+**Action:** Always verify that frequently used WHERE clauses in core loops are covered by appropriate composite database indexes.

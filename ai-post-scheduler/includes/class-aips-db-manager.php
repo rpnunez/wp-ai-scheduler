@@ -72,7 +72,9 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY post_id (post_id),
             KEY template_id (template_id),
-            KEY status (status)
+            KEY status (status),
+            KEY created_at (created_at),
+            KEY template_status_created (template_id, status, created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_templates (
@@ -94,7 +96,8 @@ class AIPS_DB_Manager {
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id)
+            PRIMARY KEY  (id),
+            KEY is_active (is_active)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_schedule (
