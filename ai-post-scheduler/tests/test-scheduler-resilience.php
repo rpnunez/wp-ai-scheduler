@@ -75,4 +75,43 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
         // 5. Run the scheduler
         $this->scheduler->process_scheduled_posts();
     }
+
+    /**
+     * Test Optimistic Locking (Hunter/Bolt)
+     */
+    public function test_optimistic_locking() {
+        // 1. Create template and schedule
+        $template_id = $this->template_repo->create(array(
+            'name' => 'Locking Test Template',
+            'prompt_template' => 'Write',
+            'is_active' => 1
+        ));
+
+        $schedule_id = $this->schedule_repo->create(array(
+            'template_id' => $template_id,
+            'frequency' => 'daily',
+            'next_run' => date('Y-m-d H:i:s', strtotime('-1 hour')),
+            'is_active' => 1
+        ));
+
+        // 2. Simulate concurrent modification
+        // Get the schedule to get current 'next_run' (simulating what process_scheduled_posts does)
+        $schedule = $this->schedule_repo->get_by_id($schedule_id);
+        $original_next_run = $schedule->next_run;
+
+        // Simulate another process updating it FIRST
+        $other_process_new_time = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        $this->schedule_repo->update_next_run($schedule_id, $other_process_new_time);
+
+        // 3. Try to update using optimistic locking with OLD timestamp
+        $my_new_time = date('Y-m-d H:i:s', strtotime('+2 hours'));
+        $success = $this->schedule_repo->update_next_run_conditional($schedule_id, $my_new_time, $original_next_run);
+
+        // 4. Assert failure
+        $this->assertFalse($success, 'Optimistic locking should fail if next_run changed');
+
+        // 5. Verify value wasn't changed by us
+        $fresh_schedule = $this->schedule_repo->get_by_id($schedule_id);
+        $this->assertEquals($other_process_new_time, $fresh_schedule->next_run);
+    }
 }

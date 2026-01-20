@@ -132,21 +132,13 @@ class AIPS_Scheduler {
     }
     
     public function process_scheduled_posts() {
-        global $wpdb;
+        global $wpdb; // Removed direct usage, but kept for global if needed elsewhere (not used here anymore)
         
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
-        $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT t.*, s.*, s.id AS schedule_id
-            FROM {$this->schedule_table} s 
-            INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            AND s.next_run <= %s 
-            AND t.is_active = 1
-            ORDER BY s.next_run ASC
-            LIMIT 5
-        ", current_time('mysql')));
+        // Atlas: Use repository method instead of direct SQL
+        $due_schedules = $this->repository->get_due_schedules_with_templates(5);
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
@@ -154,6 +146,7 @@ class AIPS_Scheduler {
         }
         
         $generator = $this->generator ?: new AIPS_Generator();
+        $updates_made = false;
         
         foreach ($due_schedules as $schedule) {
             try {
@@ -174,14 +167,21 @@ class AIPS_Scheduler {
                 }
 
                 // Update next_run immediately to lock this schedule from concurrent runs
-                $lock_result = $this->repository->update($schedule->schedule_id, array(
-                    'next_run' => $new_next_run
-                ));
+                // Hunter: Use optimistic locking via update_next_run_conditional
+                // Bolt: Suppress cache invalidation inside the loop
+                $lock_result = $this->repository->update_next_run_conditional(
+                    $schedule->schedule_id,
+                    $new_next_run,
+                    $original_next_run,
+                    false // $invalidate_cache = false
+                );
 
                 if ($lock_result === false) {
-                    $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
-                    continue; // Skip generation if we couldn't lock
+                    $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id . ' (Race Condition)', 'warning');
+                    continue; // Skip generation if we couldn't lock (someone else took it)
                 }
+
+                $updates_made = true;
 
                 // Dispatch schedule execution started event
                 do_action('aips_schedule_execution_started', $schedule->schedule_id);
@@ -216,7 +216,7 @@ class AIPS_Scheduler {
                 if ($schedule->frequency === 'once') {
                     if (!is_wp_error($result)) {
                         // If it's a one-time schedule and successful, delete it
-                        $this->repository->delete($schedule->schedule_id);
+                        $this->repository->delete($schedule->schedule_id, false); // Bolt: No cache invalidation yet
                         $logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
                     } else {
                         // If failed, deactivate it and set status to 'failed' to prevent infinite daily retries
@@ -224,7 +224,8 @@ class AIPS_Scheduler {
                             'is_active' => 0,
                             'status' => 'failed',
                             'last_run' => current_time('mysql')
-                        ));
+                        ), false); // Bolt: No cache invalidation yet
+
                         $logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
 
                         // Log to activity feed
@@ -246,7 +247,7 @@ class AIPS_Scheduler {
                 } else {
                     // For recurring schedules, we ONLY update last_run here.
                     // next_run was already updated at the start (Claim-First).
-                    $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
+                    $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'), false); // Bolt: No cache invalidation yet
                 }
 
                 if (is_wp_error($result)) {
@@ -321,6 +322,11 @@ class AIPS_Scheduler {
                     'trace' => $e->getTraceAsString()
                 ));
             }
+        }
+
+        // Bolt: Invalidate cache once at the end if any updates occurred
+        if ($updates_made) {
+            delete_transient('aips_pending_schedule_stats');
         }
     }
 }
