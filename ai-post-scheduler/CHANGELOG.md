@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [wizard-structures-search] - 2025-12-25
+### Added
+- Added client-side search functionality to the Article Structures admin page to filter structures by name and description.
+
 ## [wizard-sections-search-copy] - 2025-12-25
 ### Added
 - Added client-side search functionality to the Prompt Sections admin page.

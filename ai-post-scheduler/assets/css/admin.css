@@ -2,6 +2,11 @@
     max-width: 1200px;
 }
 
+.aips-search-box {
+    margin-bottom: 10px;
+    text-align: right;
+}
+
 .aips-dashboard {
     margin-top: 20px;
 }
