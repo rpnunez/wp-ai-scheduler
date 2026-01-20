@@ -1,0 +1,161 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Dashboard Mock</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/4.6.3/css/dashicons.min.css">
+        <style>
+            .aips-stats-grid { display: flex; gap: 20px; }
+            .aips-stat-card { border: 1px solid #ccc; padding: 20px; display: flex; align_items: center; }
+            .aips-stat-icon { font-size: 32px; margin-right: 10px; }
+            .widefat { width: 100%; border-collapse: collapse; }
+            .widefat td, .widefat th { border: 1px solid #ddd; padding: 8px; }
+        </style>
+    </head>
+    <body>
+
+<div class="wrap aips-wrap">
+    <h1>AI Post Scheduler</h1>
+
+
+    <div class="notice notice-error">
+        <p>AI Engine plugin is not installed or activated. This plugin requires Meow Apps AI Engine to function.</p>
+    </div>
+
+
+    <div class="aips-dashboard">
+        <div class="aips-stats-grid">
+            <div class="aips-stat-card">
+                <div class="aips-stat-icon dashicons dashicons-edit" aria-hidden="true"></div>
+                <div class="aips-stat-content">
+                    <span class="aips-stat-number">123</span>
+                    <span class="aips-stat-label">Posts Generated</span>
+                </div>
+            </div>
+
+            <div class="aips-stat-card">
+                <div class="aips-stat-icon dashicons dashicons-clock" aria-hidden="true"></div>
+                <div class="aips-stat-content">
+                    <span class="aips-stat-number">5</span>
+                    <span class="aips-stat-label">Active Schedules</span>
+                </div>
+            </div>
+
+            <div class="aips-stat-card">
+                <div class="aips-stat-icon dashicons dashicons-media-document" aria-hidden="true"></div>
+                <div class="aips-stat-content">
+                    <span class="aips-stat-number">10</span>
+                    <span class="aips-stat-label">Active Templates</span>
+                </div>
+            </div>
+
+            <div class="aips-stat-card aips-stat-warning">
+                <div class="aips-stat-icon dashicons dashicons-warning" aria-hidden="true"></div>
+                <div class="aips-stat-content">
+                    <span class="aips-stat-number">2</span>
+                    <span class="aips-stat-label">Failed Generations</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="aips-dashboard-columns">
+            <div class="aips-dashboard-column">
+                <div class="aips-card">
+                    <h2 id="aips-upcoming-posts-heading">Upcoming Scheduled Posts</h2>
+
+                    <table class="widefat striped" aria-labelledby="aips-upcoming-posts-heading">
+                        <thead>
+                            <tr>
+                                <th>Template</th>
+                                <th>Next Run</th>
+                                <th>Frequency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+
+                    <p class="aips-no-data">No scheduled posts yet.</p>
+                    <a href="" class="button button-primary">
+                        Create Schedule
+                    </a>
+
+                </div>
+            </div>
+
+            <div class="aips-dashboard-column">
+                <div class="aips-card">
+                    <h2 id="aips-recent-activity-heading">Recent Activity</h2>
+
+                    <table class="widefat striped" aria-labelledby="aips-recent-activity-heading">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            <tr>
+                                <td>
+
+                                    <a href="">
+
+                                    </a>
+
+
+
+                                </td>
+                                <td>
+                                    <span class="aips-status aips-status-">
+
+                                    </span>
+                                </td>
+                                <td></td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                    <p>
+                        <a href="">
+                            View All History &rarr;
+                        </a>
+                    </p>
+
+                    <p class="aips-no-data">No posts generated yet.</p>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="aips-card aips-quick-actions">
+            <h2>Quick Actions</h2>
+            <div class="aips-button-group">
+                <a href="" class="button button-primary button-large">
+                    <span class="dashicons dashicons-plus-alt" aria-hidden="true"></span>
+                    Create Template
+                </a>
+                <a href="" class="button button-secondary button-large">
+                    <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
+                    Add Schedule
+                </a>
+                <a href="" class="button button-secondary button-large">
+                    <span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>
+                    Settings
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+    </html>
