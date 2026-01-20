@@ -17,3 +17,8 @@
 **Vulnerability:** Missing `index.php` or `index.html` files in plugin subdirectories (`includes`, `assets`, etc.).
 **Learning:** Without these silent index files, misconfigured web servers may allow users to browse the plugin's file structure (Directory Listing), potentially revealing sensitive information, backups, or the internal architecture.
 **Prevention:** Always include an empty `index.php` with `<?php // Silence is golden.` in every directory of the plugin.
+
+## 2024-05-25 - [Sensitive Data Exposure in Logs]
+**Vulnerability:** Logging of unredacted API keys and secrets in both file logs and database session history.
+**Learning:** Generic logging of "context" or "options" arrays often inadvertently captures sensitive credentials passed to services. Even if logs are protected by obscure filenames, they are still plaintext files on disk.
+**Prevention:** Implement a centralized `redact_context` method that recursively scrubs keys like `api_key`, `access_token`, and `client_secret` from any data structure before it is logged to files or the database.

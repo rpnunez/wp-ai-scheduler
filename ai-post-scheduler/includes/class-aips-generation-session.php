@@ -145,6 +145,11 @@ class AIPS_Generation_Session {
 	 * @return void
 	 */
 	public function log_ai_call($type, $prompt, $response = null, $options = array(), $error = null) {
+		// SECURITY: Redact sensitive options before storing in history
+		if (class_exists('AIPS_Logger')) {
+			$options = AIPS_Logger::redact_context($options);
+		}
+
 		$call_log = array(
 			'type' => $type,
 			'timestamp' => current_time('mysql'),

@@ -58,6 +58,53 @@ class AIPS_Logger {
         $this->dir_checked = true;
     }
     
+    /**
+     * Redact sensitive information from context data.
+     *
+     * @param array $context The context array to scrub.
+     * @return array Scrubbed context.
+     */
+    public static function redact_context($context) {
+        if (!is_array($context)) {
+            return $context;
+        }
+
+        // Keys that must match exactly
+        $exact_matches = array(
+            'password', 'secret', 'auth', 'authorization', 'token', 'key', 'apikey'
+        );
+
+        // Keys that are sensitive if they appear as substrings
+        $partial_matches = array(
+            'api_key', 'access_key', 'access_token', 'refresh_token',
+            'client_secret', 'app_secret', 'auth_token', 'bearer_token'
+        );
+
+        foreach ($context as $key => $value) {
+            $lower_key = strtolower($key);
+            $is_sensitive = false;
+
+            if (in_array($lower_key, $exact_matches)) {
+                $is_sensitive = true;
+            } else {
+                foreach ($partial_matches as $partial) {
+                    if (strpos($lower_key, $partial) !== false) {
+                        $is_sensitive = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($is_sensitive) {
+                $context[$key] = '***REDACTED***';
+            } elseif (is_array($value)) {
+                $context[$key] = self::redact_context($value);
+            }
+        }
+
+        return $context;
+    }
+
     public function log($message, $level = 'info', $context = array()) {
         if (!$this->enabled) {
             return;
@@ -76,7 +123,9 @@ class AIPS_Logger {
         );
         
         if (!empty($context)) {
-            $log_entry .= ' | Context: ' . json_encode($context);
+            // SECURITY: Redact sensitive data before logging
+            $scrubbed_context = self::redact_context($context);
+            $log_entry .= ' | Context: ' . json_encode($scrubbed_context);
         }
         
         $log_entry .= PHP_EOL;
