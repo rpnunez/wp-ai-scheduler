@@ -70,6 +70,11 @@ if (!defined('ABSPATH')) {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <p style="margin-top: 15px;">
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule')); ?>" class="button">
+                            <?php esc_html_e('View All Schedules', 'ai-post-scheduler'); ?> &rarr;
+                        </a>
+                    </p>
                     <?php else: ?>
                     <p class="aips-no-data"><?php esc_html_e('No scheduled posts yet.', 'ai-post-scheduler'); ?></p>
                     <a href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule')); ?>" class="button button-primary">

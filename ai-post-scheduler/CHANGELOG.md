@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [scheduler-refactor-and-locking] - 2025-12-25
+### Improved
+- **Stability:** Implemented optimistic locking (Compare-and-Swap) in `AIPS_Scheduler` to prevent race conditions during schedule execution.
+- **Architecture:** Refactored `AIPS_Scheduler` to use `AIPS_Schedule_Repository::get_due_schedules_with_templates`, decoupling business logic from raw SQL.
+- **Performance:** Added `KEY is_active (is_active)` to `aips_templates` table to optimize schedule polling queries.
+- **UX:** Added a "View All Schedules" link to the Dashboard "Upcoming Schedules" widget.
+### Fixed
+- Fixed potential column collision issues in scheduler queries by selecting specific columns instead of using `SELECT *` with joins.
+
 ## [wizard-sections-search-copy] - 2025-12-25
 ### Added
 - Added client-side search functionality to the Prompt Sections admin page.

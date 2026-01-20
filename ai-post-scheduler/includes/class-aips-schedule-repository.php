@@ -99,6 +99,43 @@ class AIPS_Schedule_Repository {
     }
 
     /**
+     * Get due schedules with full template details for processing.
+     * Use INNER JOIN to ensure template exists and is active.
+     *
+     * @param int $limit Max schedules to retrieve. Default 5.
+     * @return array Array of schedule objects joined with template data.
+     */
+    public function get_due_schedules_with_templates($limit = 5) {
+        return $this->wpdb->get_results($this->wpdb->prepare("
+            SELECT
+                s.id,
+                s.id AS schedule_id,
+                s.template_id,
+                s.frequency,
+                s.next_run,
+                s.topic,
+                s.article_structure_id,
+                s.rotation_pattern,
+                t.name,
+                t.prompt_template,
+                t.title_prompt,
+                t.post_status,
+                t.post_category,
+                t.post_tags,
+                t.post_author,
+                t.generate_featured_image,
+                t.image_prompt
+            FROM {$this->schedule_table} s
+            INNER JOIN {$this->templates_table} t ON s.template_id = t.id
+            WHERE s.is_active = 1
+            AND s.next_run <= %s
+            AND t.is_active = 1
+            ORDER BY s.next_run ASC
+            LIMIT %d
+        ", current_time('mysql'), $limit));
+    }
+
+    /**
      * Get upcoming active schedules.
      *
      * @param int $limit Number of schedules to retrieve. Default 5.
@@ -305,6 +342,32 @@ class AIPS_Schedule_Repository {
      */
     public function update_next_run($id, $timestamp) {
         return $this->update($id, array('next_run' => $timestamp));
+    }
+
+    /**
+     * Update next_run conditionally to prevent race conditions (Compare-and-Swap).
+     *
+     * @param int    $id           Schedule ID.
+     * @param string $new_next_run New next_run timestamp.
+     * @param string $old_next_run Old next_run timestamp to match against.
+     * @return bool True if updated, False if condition failed or error.
+     */
+    public function update_next_run_conditional($id, $new_next_run, $old_next_run) {
+        $result = $this->wpdb->query($this->wpdb->prepare(
+            "UPDATE {$this->schedule_table}
+             SET next_run = %s
+             WHERE id = %d AND next_run = %s",
+            $new_next_run,
+            $id,
+            $old_next_run
+        ));
+
+        if ($result) {
+            delete_transient('aips_pending_schedule_stats');
+            return true;
+        }
+
+        return false;
     }
     
     /**

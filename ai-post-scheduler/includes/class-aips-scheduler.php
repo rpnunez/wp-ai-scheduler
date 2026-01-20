@@ -137,16 +137,7 @@ class AIPS_Scheduler {
         $logger = new AIPS_Logger();
         $logger->log('Starting scheduled post generation', 'info');
         
-        $due_schedules = $wpdb->get_results($wpdb->prepare("
-            SELECT t.*, s.*, s.id AS schedule_id
-            FROM {$this->schedule_table} s 
-            INNER JOIN {$this->templates_table} t ON s.template_id = t.id 
-            WHERE s.is_active = 1 
-            AND s.next_run <= %s 
-            AND t.is_active = 1
-            ORDER BY s.next_run ASC
-            LIMIT 5
-        ", current_time('mysql')));
+        $due_schedules = $this->repository->get_due_schedules_with_templates(5);
         
         if (empty($due_schedules)) {
             $logger->log('No scheduled posts due', 'info');
@@ -173,14 +164,16 @@ class AIPS_Scheduler {
                      $new_next_run = $this->calculate_next_run($schedule->frequency, $original_next_run);
                 }
 
-                // Update next_run immediately to lock this schedule from concurrent runs
-                $lock_result = $this->repository->update($schedule->schedule_id, array(
-                    'next_run' => $new_next_run
-                ));
+                // Update next_run immediately to lock this schedule from concurrent runs using Compare-and-Swap
+                $lock_result = $this->repository->update_next_run_conditional(
+                    $schedule->schedule_id,
+                    $new_next_run,
+                    $original_next_run
+                );
 
                 if ($lock_result === false) {
-                    $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
-                    continue; // Skip generation if we couldn't lock
+                    $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id . ' (Race Condition Avoided)', 'warning');
+                    continue; // Skip generation if we couldn't lock (likely another process took it)
                 }
 
                 // Dispatch schedule execution started event
