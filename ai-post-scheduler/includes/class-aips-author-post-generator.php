@@ -144,8 +144,15 @@ class AIPS_Author_Post_Generator {
 	public function generate_post_from_topic($topic, $author) {
 		$this->logger->log("Generating post from topic: {$topic->topic_title} (ID: {$topic->id})", 'info');
 		
-		// Build a pseudo-template object for the generator
-		$template = $this->build_template_from_author($author, $topic);
+		// Get expanded context from similar approved topics
+		$expanded_context = $this->expansion_service->get_expanded_context($author->id, $topic->id, 5);
+		
+		if (!empty($expanded_context)) {
+			$this->logger->log("Added expanded context to prompt for topic {$topic->id}", 'debug');
+		}
+		
+		// Build a context object for the generator (no more template mocking!)
+		$context = new AIPS_Topic_Context($author, $topic, $expanded_context);
 		
 		// Create a history entry
 		$history_id = $this->history_repository->create(array(
@@ -156,11 +163,9 @@ class AIPS_Author_Post_Generator {
 			'generated_content' => null
 		));
 		
-		// Generate the post
+		// Generate the post using the context
 		try {
-			$post_id = $this->generator->generate_post($template, $history_id, array(
-				'topic' => $topic->topic_title
-			));
+			$post_id = $this->generator->generate_post($context);
 			
 			if (is_wp_error($post_id)) {
 				$this->logger->log("Failed to generate post for topic {$topic->id}: " . $post_id->get_error_message(), 'error');
@@ -187,46 +192,6 @@ class AIPS_Author_Post_Generator {
 		}
 	}
 	
-	/**
-	 * Build a template-like object from an author for the generator.
-	 *
-	 * @param object $author Author object.
-	 * @param object $topic Topic object.
-	 * @return object Template-like object.
-	 */
-	private function build_template_from_author($author, $topic) {
-		// Build base prompt
-		$base_prompt = "Write a comprehensive blog post about: {$topic->topic_title}\n\nField/Niche: {$author->field_niche}";
-		
-		// Get expanded context from similar approved topics
-		$expanded_context = $this->expansion_service->get_expanded_context($author->id, $topic->id, 5);
-		
-		// Append expanded context if available
-		if (!empty($expanded_context)) {
-			$base_prompt .= "\n\n" . $expanded_context;
-			$this->logger->log("Added expanded context to prompt for topic {$topic->id}", 'debug');
-		}
-		
-		return (object) array(
-			'id' => null,
-			'name' => "Author: {$author->name}",
-			'prompt_template' => $base_prompt,
-			'title_prompt' => $topic->topic_title,
-			'voice_id' => null,
-			'post_quantity' => 1,
-			'image_prompt' => $topic->topic_title,
-			'generate_featured_image' => $author->generate_featured_image,
-			'featured_image_source' => $author->featured_image_source ?: 'ai_prompt',
-			'featured_image_unsplash_keywords' => '',
-			'featured_image_media_ids' => '',
-			'post_status' => $author->post_status ?: 'draft',
-			'post_category' => $author->post_category,
-			'post_tags' => $author->post_tags ?: '',
-			'post_author' => $author->post_author ?: get_current_user_id(),
-			'article_structure_id' => $author->article_structure_id,
-			'is_active' => $author->is_active
-		);
-	}
 	
 	/**
 	 * Update the author's post generation schedule.

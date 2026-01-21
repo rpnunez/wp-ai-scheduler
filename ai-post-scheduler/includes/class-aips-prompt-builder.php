@@ -14,14 +14,61 @@ class AIPS_Prompt_Builder {
     }
 
     /**
-     * Builds the complete content prompt based on template, topic, and voice.
+     * Builds the complete content prompt based on context.
      *
-     * @param object $template The template object.
-     * @param string $topic    The topic for the post.
-     * @param object $voice    Optional. The voice object.
+     * Supports both legacy template-based approach and new context-based approach.
+     *
+     * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+     * @param string|null $topic    The topic for the post (legacy, may be null if using context).
+     * @param object|null $voice    Optional voice object (legacy, may be null if using context).
      * @return string The constructed prompt.
      */
-    public function build_content_prompt($template, $topic, $voice = null) {
+    public function build_content_prompt($template_or_context, $topic = null, $voice = null) {
+        // Check if we're using the new context-based approach
+        if ($template_or_context instanceof AIPS_Generation_Context) {
+            $context = $template_or_context;
+            
+            do_action('aips_before_build_content_prompt', $context, null);
+            
+            // Get the base content prompt from context
+            $processed_prompt = $context->get_content_prompt();
+            
+            // Check if article_structure_id is provided
+            $article_structure_id = $context->get_article_structure_id();
+            $topic_str = $context->get_topic();
+            
+            if ($article_structure_id && $topic_str) {
+                // Use article structure to build prompt
+                $structured_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic_str);
+                
+                if (!is_wp_error($structured_prompt)) {
+                    $processed_prompt = $structured_prompt;
+                } else {
+                    // Fall back to processing the base prompt with topic
+                    $processed_prompt = $this->template_processor->process($processed_prompt, $topic_str);
+                }
+            } elseif ($topic_str) {
+                // Process template variables in the prompt
+                $processed_prompt = $this->template_processor->process($processed_prompt, $topic_str);
+            }
+            
+            // For template contexts with voice, add voice instructions
+            if ($context->get_type() === 'template' && $context->get_voice_id()) {
+                $voice_obj = $context->get_voice();
+                if ($voice_obj && !empty($voice_obj->content_instructions)) {
+                    $voice_instructions = $this->template_processor->process($voice_obj->content_instructions, $topic_str);
+                    $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
+                }
+            }
+            
+            $content_prompt = apply_filters('aips_content_prompt', $processed_prompt, $context, $topic_str);
+            
+            return $content_prompt;
+        }
+        
+        // Legacy template-based approach
+        $template = $template_or_context;
+        
         do_action('aips_before_build_content_prompt', $template, $topic);
 
         // Check if article_structure_id is provided, build prompt with structure
@@ -58,31 +105,64 @@ class AIPS_Prompt_Builder {
      * This keeps instructions (voice, formatting, safety) out of the main message
      * while still providing them through the AI Engine's context channel.
      *
-     * @param object $template The template object.
-     * @param string $topic    The topic for the post.
-     * @param object $voice    Optional. The voice object.
+     * Supports both legacy template-based approach and new context-based approach.
+     *
+     * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+     * @param string|null $topic    The topic for the post (legacy).
+     * @param object|null $voice    Optional voice object (legacy).
      * @return string Context string (may be empty).
      */
-    public function build_content_context($template, $topic, $voice = null) {
+    public function build_content_context($template_or_context, $topic = null, $voice = null) {
         $context_parts = array();
+        
+        // Check if we're using the new context-based approach
+        if ($template_or_context instanceof AIPS_Generation_Context) {
+            $context = $template_or_context;
+            $topic_str = $context->get_topic();
+            
+            // For template contexts with voice, add voice content instructions
+            if ($context->get_type() === 'template' && $context->get_voice_id()) {
+                $voice_obj = $context->get_voice();
+                if ($voice_obj && !empty($voice_obj->content_instructions)) {
+                    $context_parts[] = $this->template_processor->process($voice_obj->content_instructions, $topic_str);
+                }
+            }
+            
+            $context_parts[] = $this->get_output_instructions();
+            
+            /**
+             * Filter the context sent to AI Engine for content generation.
+             *
+             * @since 1.6.0
+             *
+             * @param array  $context_parts Array of context fragments.
+             * @param AIPS_Generation_Context $context Generation context object.
+             * @param string $topic_str     Topic string.
+             * @param object|null $voice_obj Optional voice object.
+             */
+            $context_parts = apply_filters('aips_content_context_parts', $context_parts, $context, $topic_str, null);
+        } else {
+            // Legacy template-based approach
+            $template = $template_or_context;
+            
+            if ($voice && !empty($voice->content_instructions)) {
+                $context_parts[] = $this->template_processor->process($voice->content_instructions, $topic);
+            }
 
-        if ($voice && !empty($voice->content_instructions)) {
-            $context_parts[] = $this->template_processor->process($voice->content_instructions, $topic);
+            $context_parts[] = $this->get_output_instructions();
+
+            /**
+             * Filter the context sent to AI Engine for content generation.
+             *
+             * @since 1.6.0
+             *
+             * @param array  $context_parts Array of context fragments.
+             * @param object $template      Template object.
+             * @param string $topic         Topic string.
+             * @param object $voice         Optional voice object.
+             */
+            $context_parts = apply_filters('aips_content_context_parts', $context_parts, $template, $topic, $voice);
         }
-
-        $context_parts[] = $this->get_output_instructions();
-
-        /**
-         * Filter the context sent to AI Engine for content generation.
-         *
-         * @since 1.6.0
-         *
-         * @param array  $context_parts Array of context fragments.
-         * @param object $template      Template object.
-         * @param string $topic         Topic string.
-         * @param object $voice         Optional voice object.
-         */
-        $context_parts = apply_filters('aips_content_context_parts', $context_parts, $template, $topic, $voice);
 
         $context_parts = array_filter(
             array_map('trim', $context_parts),
@@ -101,7 +181,7 @@ class AIPS_Prompt_Builder {
      * generated article content as primary context, and applies the following
      * precedence for title instructions:
      *   1. Voice title prompt (if provided)
-     *   2. Template title prompt (if provided)
+     *   2. Template/Context title prompt (if provided)
      *
      * The final prompt structure sent to AI:
      *   "Generate a title for a blog post, based on the content below. Here are your instructions:\n\n"
@@ -109,16 +189,57 @@ class AIPS_Prompt_Builder {
      *   "\n\nHere is the content:\n\n"
      *   (Generated Post Content)
      *
-     * @param object      $template Template object containing prompts and settings.
-     * @param string|null $topic    Optional topic to be injected into prompts.
-     * @param object|null $voice    Optional voice object with overrides.
+     * Supports both legacy template-based approach and new context-based approach.
+     *
+     * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+     * @param string|null $topic    Optional topic to be injected into prompts (legacy).
+     * @param object|null $voice    Optional voice object with overrides (legacy).
      * @param string      $content  Generated article content used as context.
      * @return string The complete title generation prompt.
      */
-    public function build_title_prompt($template, $topic, $voice = null, $content = '') {
+    public function build_title_prompt($template_or_context, $topic = null, $voice = null, $content = '') {
         // Build title instructions based on voice or template configuration.
         // Voice title prompt takes precedence over template title prompt.
         $title_instructions = '';
+        
+        // Check if we're using the new context-based approach
+        if ($template_or_context instanceof AIPS_Generation_Context) {
+            $context = $template_or_context;
+            $topic_str = $context->get_topic();
+            
+            // For template contexts with voice, check voice title prompt first
+            if ($context->get_type() === 'template' && $context->get_voice_id()) {
+                $voice_obj = $context->get_voice();
+                if ($voice_obj && !empty($voice_obj->title_prompt)) {
+                    $title_instructions = $this->template_processor->process($voice_obj->title_prompt, $topic_str);
+                }
+            }
+            
+            // If no voice title prompt, use context title prompt
+            if (empty($title_instructions)) {
+                $title_prompt = $context->get_title_prompt();
+                if (!empty($title_prompt)) {
+                    $title_instructions = $this->template_processor->process($title_prompt, $topic_str);
+                }
+            }
+            
+            // Build the title generation prompt using the generated content as context.
+            $prompt = "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else. Here are your instructions:\n\n";
+
+            if (!empty($title_instructions)) {
+                $prompt .= $title_instructions . "\n\n";
+            }
+
+            $prompt .= "Here is the content:\n\n" . $content;
+
+            // Allow filtering of title prompt
+            $prompt = apply_filters('aips_title_prompt', $prompt, $context, $topic_str, null, $content);
+
+            return $prompt;
+        }
+        
+        // Legacy template-based approach
+        $template = $template_or_context;
 
         if ($voice && !empty($voice->title_prompt)) {
             $title_instructions = $this->template_processor->process($voice->title_prompt, $topic);
@@ -147,10 +268,12 @@ class AIPS_Prompt_Builder {
      * Constructs a prompt that instructs the AI to create a short, compelling
      * excerpt for the article. Includes voice-specific instructions if provided.
      *
+     * Supports both legacy template-based approach and new context-based approach.
+     *
      * @param string      $title   Title of the generated article.
      * @param string      $content The article content to summarize.
-     * @param object|null $voice   Optional voice object with excerpt instructions.
-     * @param string|null $topic   Optional topic to be injected into prompts.
+     * @param object|null $voice   Optional voice object with excerpt instructions (legacy).
+     * @param string|null $topic   Optional topic to be injected into prompts (legacy).
      * @return string The complete excerpt generation prompt.
      */
     public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
