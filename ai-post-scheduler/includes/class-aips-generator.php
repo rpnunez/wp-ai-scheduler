@@ -32,6 +32,7 @@ class AIPS_Generator {
     private $post_creator;
     private $history_repository;
     private $prompt_builder;
+    private $history_id;
     
     /**
      * Constructor.
@@ -72,7 +73,7 @@ class AIPS_Generator {
     }
     
     /**
-     * Log an AI call to the current generation session.
+     * Log an AI call to the current generation session and history log.
      *
      * @param string      $type     Type of AI call (e.g., 'title', 'content', 'excerpt', 'featured_image').
      * @param string      $prompt   The prompt sent to AI.
@@ -82,7 +83,20 @@ class AIPS_Generator {
      * @return void
      */
     private function log_ai_call($type, $prompt, $response, $options = array(), $error = null) {
-        $this->current_session->log_ai_call($type, $prompt, $response, $options, $error);
+        $this->current_session->log_ai_call();
+        if ($error) {
+            $this->current_session->add_error();
+        }
+
+        if ($this->history_id) {
+            $details = array(
+                'prompt' => $prompt,
+                'options' => $options,
+                'response' => base64_encode($response),
+                'error' => $error,
+            );
+            $this->history_repository->add_log_entry($this->history_id, $type, $details);
+        }
     }
 
     /**
@@ -356,13 +370,13 @@ class AIPS_Generator {
         $this->current_session->start($template, $voice);
         
         // Create initial history record using Repository
-        $history_id = $this->history_repository->create(array(
+        $this->history_id = $this->history_repository->create(array(
             'template_id' => $template->id,
             'status' => 'processing',
             'prompt' => $template->prompt_template,
         ));
         
-        if (!$history_id) {
+        if (!$this->history_id) {
             // Fallback if repository fails (though unlikely)
             $this->logger->log('Failed to create history record', 'error');
         }
@@ -387,11 +401,10 @@ class AIPS_Generator {
                 'error' => $content->get_error_message(),
             ));
             
-            if ($history_id) {
-                $this->history_repository->update($history_id, array(
+            if ($this->history_id) {
+                $this->history_repository->update($this->history_id, array(
                     'status' => 'failed',
                     'error_message' => $content->get_error_message(),
-                    'generation_log' => $this->current_session->to_json(),
                     'completed_at' => current_time('mysql'),
                 ));
             }
@@ -468,13 +481,12 @@ class AIPS_Generator {
                 'generated_excerpt' => $excerpt,
             ));
             
-            if ($history_id) {
-                $this->history_repository->update($history_id, array(
+            if ($this->history_id) {
+                $this->history_repository->update($this->history_id, array(
                     'status' => 'failed',
                     'error_message' => $post_id->get_error_message(),
                     'generated_title' => $title,
                     'generated_content' => $content,
-                    'generation_log' => $this->current_session->to_json(),
                     'completed_at' => current_time('mysql'),
                 ));
             }
@@ -495,13 +507,12 @@ class AIPS_Generator {
             'featured_image_id' => $featured_image_id,
         ));
         
-        if ($history_id) {
-            $this->history_repository->update($history_id, array(
+        if ($this->history_id) {
+            $this->history_repository->update($this->history_id, array(
                 'post_id' => $post_id,
                 'status' => 'completed',
                 'generated_title' => $title,
                 'generated_content' => $content,
-                'generation_log' => $this->current_session->to_json(),
                 'completed_at' => current_time('mysql'),
             ));
         }
@@ -513,8 +524,9 @@ class AIPS_Generator {
         ));
         
         // Trigger hook for other systems to respond to the new post
-        do_action('aips_post_generated', $post_id, $template, $history_id);
+        do_action('aips_post_generated', $post_id, $template, $this->history_id);
         
+        $this->history_id = null;
         return $post_id;
     }
 
@@ -575,7 +587,7 @@ class AIPS_Generator {
 
                 $this->post_creator->set_featured_image($post_id, $featured_image_id);
 
-                $this->log_ai_call('featured_image', $image_prompt, $featured_image_id, array());
+                $this->log_ai_call('featured_image', $image_prompt, null, array('featured_image_id' => $featured_image_id));
             }
         } else {
             $featured_image_result = new WP_Error('missing_image_prompt', __('Image prompt is required to generate a featured image.', 'ai-post-scheduler'));
@@ -584,9 +596,27 @@ class AIPS_Generator {
         if (is_wp_error($featured_image_result)) {
             $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
 
-            $this->current_session->add_error('featured_image', $featured_image_result->get_error_message());
+            $this->log_error('featured_image', $featured_image_result->get_error_message());
         }
 
         return $featured_image_id;
+    }
+
+    /**
+     * Log an error to the current generation session and history log.
+     *
+     * @param string $type    The type of error.
+     * @param string $message The error message.
+     * @return void
+     */
+    private function log_error($type, $message) {
+        $this->current_session->add_error();
+
+        if ($this->history_id) {
+            $details = array(
+                'message' => $message,
+            );
+            $this->history_repository->add_log_entry($this->history_id, $type . '_error', $details);
+        }
     }
 }

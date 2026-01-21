@@ -7,13 +7,18 @@ class AIPS_DB_Manager {
 
     private static $tables = array(
         'aips_history',
+        'aips_history_log',
         'aips_templates',
         'aips_schedule',
         'aips_voices',
         'aips_article_structures',
         'aips_prompt_sections',
         'aips_trending_topics',
-        'aips_activity'
+        'aips_activity',
+        'aips_authors',
+        'aips_author_topics',
+        'aips_author_topic_logs',
+        'aips_topic_feedback'
     );
 
     public function __construct() {
@@ -47,6 +52,7 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
 
         $table_history = $tables['aips_history'];
+        $table_history_log = $tables['aips_history_log'];
         $table_templates = $tables['aips_templates'];
         $table_schedule = $tables['aips_schedule'];
         $table_voices = $tables['aips_voices'];
@@ -54,6 +60,10 @@ class AIPS_DB_Manager {
         $table_sections = $tables['aips_prompt_sections'];
         $table_trending_topics = $tables['aips_trending_topics'];
         $table_activity = $tables['aips_activity'];
+        $table_authors = $tables['aips_authors'];
+        $table_author_topics = $tables['aips_author_topics'];
+        $table_author_topic_logs = $tables['aips_author_topic_logs'];
+        $table_topic_feedback = $tables['aips_topic_feedback'];
 
         $sql = array();
 
@@ -73,6 +83,16 @@ class AIPS_DB_Manager {
             KEY post_id (post_id),
             KEY template_id (template_id),
             KEY status (status)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_history_log (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            history_id bigint(20) NOT NULL,
+            log_type varchar(50) NOT NULL,
+            timestamp datetime DEFAULT CURRENT_TIMESTAMP,
+            details longtext,
+            PRIMARY KEY  (id),
+            KEY history_id (history_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_templates (
@@ -185,6 +205,87 @@ class AIPS_DB_Manager {
             KEY event_status (event_status),
             KEY schedule_id (schedule_id),
             KEY post_id (post_id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_authors (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            field_niche varchar(500) NOT NULL,
+            description text,
+            keywords text,
+            details text,
+            article_structure_id bigint(20) DEFAULT NULL,
+            topic_generation_prompt text,
+            topic_generation_frequency varchar(50) DEFAULT 'weekly',
+            topic_generation_quantity int DEFAULT 5,
+            topic_generation_next_run datetime DEFAULT NULL,
+            topic_generation_last_run datetime DEFAULT NULL,
+            post_generation_frequency varchar(50) DEFAULT 'daily',
+            post_generation_next_run datetime DEFAULT NULL,
+            post_generation_last_run datetime DEFAULT NULL,
+            post_status varchar(50) DEFAULT 'draft',
+            post_category bigint(20) DEFAULT NULL,
+            post_tags text,
+            post_author bigint(20) DEFAULT NULL,
+            generate_featured_image tinyint(1) DEFAULT 0,
+            featured_image_source varchar(50) DEFAULT 'ai_prompt',
+            is_active tinyint(1) DEFAULT 1,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY article_structure_id (article_structure_id),
+            KEY is_active (is_active),
+            KEY topic_generation_next_run (topic_generation_next_run),
+            KEY post_generation_next_run (post_generation_next_run)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_author_topics (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            author_id bigint(20) NOT NULL,
+            topic_title varchar(500) NOT NULL,
+            topic_prompt text,
+            status varchar(20) DEFAULT 'pending',
+            score int DEFAULT 50,
+            metadata longtext,
+            generated_at datetime DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at datetime DEFAULT NULL,
+            reviewed_by bigint(20) DEFAULT NULL,
+            PRIMARY KEY  (id),
+            KEY author_id (author_id),
+            KEY status (status),
+            KEY generated_at (generated_at),
+            KEY author_id_status (author_id, status)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_author_topic_logs (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            author_topic_id bigint(20) NOT NULL,
+            post_id bigint(20) DEFAULT NULL,
+            action varchar(50) NOT NULL,
+            user_id bigint(20) DEFAULT NULL,
+            notes text,
+            metadata longtext,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY author_topic_id (author_topic_id),
+            KEY post_id (post_id),
+            KEY action (action),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_topic_feedback (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            author_topic_id bigint(20) NOT NULL,
+            action varchar(20) NOT NULL,
+            user_id bigint(20) DEFAULT NULL,
+            reason text,
+            notes text,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY author_topic_id (author_topic_id),
+            KEY action (action),
+            KEY user_id (user_id),
             KEY created_at (created_at)
         ) $charset_collate;";
 

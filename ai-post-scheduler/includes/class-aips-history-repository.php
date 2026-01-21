@@ -25,6 +25,7 @@ class AIPS_History_Repository {
      * @var string The history table name (with prefix)
      */
     private $table_name;
+    private $table_name_log;
     
     /**
      * @var wpdb WordPress database abstraction object
@@ -38,6 +39,7 @@ class AIPS_History_Repository {
         global $wpdb;
         $this->wpdb = $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_history';
+        $this->table_name_log = $wpdb->prefix . 'aips_history_log';
     }
     
     /**
@@ -142,10 +144,41 @@ class AIPS_History_Repository {
      * @return object|null History item or null if not found.
      */
     public function get_by_id($id) {
-        return $this->wpdb->get_row($this->wpdb->prepare(
+        $history = $this->wpdb->get_row($this->wpdb->prepare(
             "SELECT * FROM {$this->table_name} WHERE id = %d",
             $id
         ));
+
+        if ($history) {
+            $history->log = $this->wpdb->get_results($this->wpdb->prepare(
+                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC",
+                $id
+            ));
+        }
+
+        return $history;
+    }
+    
+    /**
+     * Add a log entry to a history item.
+     *
+     * @param int    $history_id The ID of the history item.
+     * @param string $log_type   The type of log entry (e.g., 'ai_call', 'error').
+     * @param array  $details    The details of the log entry.
+     * @return int|false The inserted ID on success, false on failure.
+     */
+    public function add_log_entry($history_id, $log_type, $details) {
+        $insert_data = array(
+            'history_id' => $history_id,
+            'log_type' => $log_type,
+            'details' => wp_json_encode($details),
+        );
+        
+        $format = array('%d', '%s', '%s');
+        
+        $result = $this->wpdb->insert($this->table_name_log, $insert_data, $format);
+        
+        return $result ? $this->wpdb->insert_id : false;
     }
     
     /**
@@ -249,12 +282,11 @@ class AIPS_History_Repository {
             'prompt' => isset($data['prompt']) ? wp_kses_post($data['prompt']) : '',
             'generated_title' => isset($data['generated_title']) ? sanitize_text_field($data['generated_title']) : '',
             'generated_content' => isset($data['generated_content']) ? wp_kses_post($data['generated_content']) : '',
-            'generation_log' => isset($data['generation_log']) ? wp_kses_post($data['generation_log']) : '',
             'error_message' => isset($data['error_message']) ? sanitize_text_field($data['error_message']) : '',
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
         );
         
-        $format = array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
+        $format = array('%d', '%s', '%s', '%s', '%s', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -293,11 +325,6 @@ class AIPS_History_Repository {
         
         if (isset($data['generated_content'])) {
             $update_data['generated_content'] = wp_kses_post($data['generated_content']);
-            $format[] = '%s';
-        }
-        
-        if (isset($data['generation_log'])) {
-            $update_data['generation_log'] = wp_kses_post($data['generation_log']);
             $format[] = '%s';
         }
         
