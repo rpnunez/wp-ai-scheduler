@@ -119,7 +119,8 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			'image_prompt' => '',
 		);
 
-		$result = $generator->generate_post($template, null, 'Testing');
+		$context = new AIPS_Template_Context($template, null, 'Testing');
+		$result = $generator->generate_post($context);
 
 		$this->assertEquals(321, $result);
 		$this->assertTrue($action_called);

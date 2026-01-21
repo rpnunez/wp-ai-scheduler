@@ -106,8 +106,9 @@ class AIPS_History {
             wp_send_json_error(array('message' => __('Template no longer exists.', 'ai-post-scheduler')));
         }
         
+        $context = new AIPS_Template_Context($template);
         $generator = new AIPS_Generator();
-        $result = $generator->generate_post($template);
+        $result = $generator->generate_post($context);
         
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));

@@ -211,7 +211,8 @@ class AIPS_Scheduler {
                 );
 
                 $topic = isset($schedule->topic) ? $schedule->topic : null;
-                $result = $generator->generate_post($template, null, $topic);
+                $context = new AIPS_Template_Context($template, null, $topic);
+                $result = $generator->generate_post($context);
 
                 if ($schedule->frequency === 'once') {
                     if (!is_wp_error($result)) {

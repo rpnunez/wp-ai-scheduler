@@ -147,7 +147,8 @@ class AIPS_Schedule_Controller {
         }
 
         for ($i = 0; $i < $quantity; $i++) {
-            $result = $generator->generate_post($template, $voice, $topic);
+            $context = new AIPS_Template_Context($template, $voice, $topic);
+            $result = $generator->generate_post($context);
 
             if (is_wp_error($result)) {
                 $errors[] = $result->get_error_message();
