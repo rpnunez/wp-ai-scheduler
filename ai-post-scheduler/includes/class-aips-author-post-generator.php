@@ -56,6 +56,11 @@ class AIPS_Author_Post_Generator {
 	private $history_repository;
 	
 	/**
+	 * @var AIPS_Topic_Expansion_Service Service for topic expansion
+	 */
+	private $expansion_service;
+	
+	/**
 	 * Initialize the generator.
 	 */
 	public function __construct() {
@@ -66,6 +71,7 @@ class AIPS_Author_Post_Generator {
 		$this->logger = new AIPS_Logger();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_repository = new AIPS_History_Repository();
+		$this->expansion_service = new AIPS_Topic_Expansion_Service();
 		
 		// Hook into WordPress cron
 		add_action('aips_generate_author_posts', array($this, 'process_post_generation'));
@@ -252,10 +258,22 @@ class AIPS_Author_Post_Generator {
 	 * @return object Template-like object.
 	 */
 	private function build_template_from_author($author, $topic) {
+		// Build base prompt
+		$base_prompt = "Write a comprehensive blog post about: {$topic->topic_title}\n\nField/Niche: {$author->field_niche}";
+		
+		// Get expanded context from similar approved topics
+		$expanded_context = $this->expansion_service->get_expanded_context($author->id, $topic->id, 5);
+		
+		// Append expanded context if available
+		if (!empty($expanded_context)) {
+			$base_prompt .= "\n\n" . $expanded_context;
+			$this->logger->log("Added expanded context to prompt for topic {$topic->id}", 'debug');
+		}
+		
 		return (object) array(
 			'id' => null,
 			'name' => "Author: {$author->name}",
-			'prompt_template' => "Write a comprehensive blog post about: {$topic->topic_title}\n\nField/Niche: {$author->field_niche}",
+			'prompt_template' => $base_prompt,
 			'title_prompt' => $topic->topic_title,
 			'voice_id' => null,
 			'post_quantity' => 1,
