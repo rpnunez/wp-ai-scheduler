@@ -309,21 +309,30 @@ class AIPS_Author_Topics_Repository {
 		
 		// Weighted random sampling
 		$selected = array();
-		for ($i = 0; $i < $limit && count($topics) > 0; $i++) {
-			$rand = mt_rand() / mt_getrandmax() * $total_score;
+		$available_topics = $topics; // Work with a copy to avoid modifying original
+		
+		for ($i = 0; $i < $limit && count($available_topics) > 0; $i++) {
+			// Generate random value using integer math for better performance
+			$rand = (mt_rand(0, mt_getrandmax()) / mt_getrandmax()) * $total_score;
 			$cumulative = 0;
+			$selected_index = null;
 			
-			foreach ($topics as $index => $topic) {
+			// Find the selected topic
+			foreach ($available_topics as $index => $topic) {
 				$cumulative += $topic->computed_score;
 				if ($rand <= $cumulative) {
-					$selected[] = $topic;
-					
-					// Remove selected topic from pool
-					$total_score -= $topic->computed_score;
-					unset($topics[$index]);
-					$topics = array_values($topics); // Re-index array
+					$selected_index = $index;
 					break;
 				}
+			}
+			
+			// Add selected topic to results
+			if ($selected_index !== null) {
+				$selected[] = $available_topics[$selected_index];
+				
+				// Remove selected topic from pool for next iteration
+				$total_score -= $available_topics[$selected_index]->computed_score;
+				unset($available_topics[$selected_index]);
 			}
 		}
 		

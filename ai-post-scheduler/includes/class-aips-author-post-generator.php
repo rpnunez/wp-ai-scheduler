@@ -106,7 +106,7 @@ class AIPS_Author_Post_Generator {
 	public function generate_post_for_author($author) {
 		$this->logger->log("Generating post for author: {$author->name} (ID: {$author->id})", 'info');
 		
-		// Get the next approved topic for this author using weighted sampling
+		// Get an approved topic using weighted probabilistic sampling
 		$topics = $this->topics_repository->get_approved_for_generation_weighted($author->id, 1);
 		
 		if (empty($topics)) {
