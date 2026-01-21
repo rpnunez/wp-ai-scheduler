@@ -263,6 +263,7 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Array of approved topic objects.
 	 */
 	public function get_approved_for_generation_weighted($author_id, $limit = 1, $config = array()) {
+		$limit = max(1, (int) $limit);
 		// Get default config if not provided
 		if (empty($config)) {
 			$aips_config = AIPS_Config::get_instance();
@@ -307,12 +308,24 @@ class AIPS_Author_Topics_Repository {
 			$total_score += $topic->computed_score;
 		}
 		
+		// Normalize and validate limit
+		$limit = (int) $limit;
+		if ($limit <= 0) {
+			$limit = 1;
+		}
+		
+		// Guard against extremely small total scores to avoid floating-point precision issues
+		if ($total_score < 0.0001) {
+			// Fallback: return topics in their current (ordered) form, limited by $limit
+			return array_slice($topics, 0, $limit);
+		}
+		
 		// Weighted random sampling
 		$selected = array();
 		$available_topics = $topics; // Work with a copy to avoid modifying original
 		
 		for ($i = 0; $i < $limit && count($available_topics) > 0; $i++) {
-			// Generate random value using integer math for better performance
+			// Generate random value for weighted selection using normalized floating-point random
 			$rand = (mt_rand(0, mt_getrandmax()) / mt_getrandmax()) * $total_score;
 			$cumulative = 0;
 			$selected_index = null;
@@ -320,7 +333,7 @@ class AIPS_Author_Topics_Repository {
 			// Find the selected topic
 			foreach ($available_topics as $index => $topic) {
 				$cumulative += $topic->computed_score;
-				if ($rand <= $cumulative) {
+				if ($rand < $cumulative) {
 					$selected_index = $index;
 					break;
 				}
@@ -333,6 +346,7 @@ class AIPS_Author_Topics_Repository {
 				// Remove selected topic from pool for next iteration
 				$total_score -= $available_topics[$selected_index]->computed_score;
 				unset($available_topics[$selected_index]);
+				$available_topics = array_values($available_topics);
 			}
 		}
 		

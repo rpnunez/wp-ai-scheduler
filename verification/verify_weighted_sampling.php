@@ -136,7 +136,7 @@ foreach ($test_topics as $topic) {
 }
 
 for ($i = 0; $i < 1000; $i++) {
-    $rand = mt_rand() / mt_getrandmax() * $total_score;
+    $rand = ( mt_rand( 0, mt_getrandmax() ) / mt_getrandmax() ) * $total_score;
     $cumulative = 0;
     
     foreach ($test_topics as $topic) {

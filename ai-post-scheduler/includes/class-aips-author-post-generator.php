@@ -214,6 +214,11 @@ class AIPS_Author_Post_Generator {
 		// Calculate bump based on score (higher score = earlier scheduling)
 		// Score above base gets a bump, below base gets delayed
 		$base_score = isset($scoring_config['base']) ? (float) $scoring_config['base'] : 50;
+
+		// Avoid division by zero if base score is misconfigured as 0.
+		if (0.0 === $base_score) {
+			return;
+		}
 		$score_diff = $topic->computed_score - $base_score;
 		$bump_multiplier = $score_diff / $base_score; // Normalize to percentage
 		$bump_seconds = (int) ($priority_bump_seconds * $bump_multiplier);
@@ -222,8 +227,8 @@ class AIPS_Author_Post_Generator {
 		$current_date = strtotime($post->post_date);
 		$new_date = $current_date - $bump_seconds;
 		
-		// Don't schedule in the past
-		$new_date = max($new_date, time() + 60); // At least 1 minute in the future
+		// Don't schedule in the past; ensure a safe buffer into the future
+		$new_date = max($new_date, time() + 300); // At least 5 minutes in the future
 		
 		$new_date_string = date('Y-m-d H:i:s', $new_date);
 		
