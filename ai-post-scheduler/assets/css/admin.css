@@ -167,6 +167,8 @@
     color: #646970;
     padding: 0;
     line-height: 1;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .aips-modal-close:hover {

@@ -109,7 +109,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
 <!-- Author Edit/Create Modal -->
 <div id="aips-author-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content">
-        <span class="aips-modal-close">&times;</span>
+        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <h2 id="aips-author-modal-title"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></h2>
         <form id="aips-author-form">
             <input type="hidden" id="author_id" name="author_id" value="">
@@ -197,7 +197,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
 <!-- Topics View Modal -->
 <div id="aips-topics-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">
-        <span class="aips-modal-close">&times;</span>
+        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <h2 id="aips-topics-modal-title"><?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?></h2>
 
         		<div class="aips-topics-tabs">
@@ -237,7 +237,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
 <!-- Feedback Modal -->
 <div id="aips-feedback-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content">
-        <span class="aips-modal-close">&times;</span>
+        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <h2 id="aips-feedback-modal-title"><?php esc_html_e('Provide Feedback', 'ai-post-scheduler'); ?></h2>
         <form id="aips-feedback-form">
             <input type="hidden" id="feedback_topic_id" name="topic_id" value="">
@@ -260,7 +260,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
 <!-- Topic Posts Modal -->
 <div id="aips-topic-posts-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">
-        <span class="aips-modal-close">&times;</span>
+        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <h2 id="aips-topic-posts-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
         <div id="aips-topic-posts-content">
             <p><?php esc_html_e('Loading posts...', 'ai-post-scheduler'); ?></p>
