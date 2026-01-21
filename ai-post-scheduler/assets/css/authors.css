@@ -1,0 +1,238 @@
+/**
+ * Authors Management Styles
+ *
+ * @package AI_Post_Scheduler
+ * @since 1.8.0
+ */
+
+/* Modal Styles */
+.aips-modal {
+	position: fixed;
+	z-index: 9999;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0,0,0,0.5);
+	display: none;
+}
+
+.aips-modal-content {
+	background-color: #fff;
+	margin: 5% auto;
+	padding: 20px;
+	border: 1px solid #888;
+	width: 80%;
+	max-width: 600px;
+	border-radius: 4px;
+	position: relative;
+	max-height: 80vh;
+	overflow-y: auto;
+}
+
+.aips-modal-content.aips-modal-large {
+	max-width: 900px;
+}
+
+.aips-modal-close {
+	color: #aaa;
+	float: right;
+	font-size: 28px;
+	font-weight: bold;
+	cursor: pointer;
+	line-height: 20px;
+}
+
+.aips-modal-close:hover,
+.aips-modal-close:focus {
+	color: #000;
+}
+
+/* Form Styles */
+.form-group {
+	margin-bottom: 20px;
+}
+
+.form-group label {
+	display: block;
+	margin-bottom: 5px;
+	font-weight: 600;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+	width: 100%;
+	padding: 8px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.form-group .description {
+	margin-top: 5px;
+	font-size: 12px;
+	color: #666;
+	font-style: italic;
+}
+
+.form-actions {
+	margin-top: 20px;
+	text-align: right;
+	border-top: 1px solid #ddd;
+	padding-top: 15px;
+}
+
+/* Topics Tabs */
+.aips-topics-tabs {
+	margin-bottom: 20px;
+	border-bottom: 1px solid #ddd;
+}
+
+.aips-tab-link {
+	background: none;
+	border: none;
+	padding: 10px 20px;
+	cursor: pointer;
+	border-bottom: 2px solid transparent;
+	margin-right: 5px;
+	font-size: 14px;
+}
+
+.aips-tab-link.active {
+	border-bottom-color: #2271b1;
+	font-weight: 600;
+	color: #2271b1;
+}
+
+.aips-tab-link:hover {
+	color: #2271b1;
+}
+
+/* Topics Content */
+#aips-topics-content {
+	min-height: 200px;
+}
+
+#aips-topics-content table {
+	margin-top: 0;
+}
+
+.topic-title-cell {
+	position: relative;
+}
+
+.topic-title-edit {
+	width: 100%;
+	padding: 6px;
+	font-size: 13px;
+}
+
+.topic-actions button {
+	margin-right: 5px;
+	margin-bottom: 5px;
+}
+
+/* Empty State */
+.aips-empty-state {
+	text-align: center;
+	padding: 60px 20px;
+	color: #666;
+}
+
+.aips-empty-state .dashicons {
+	font-size: 80px;
+	width: 80px;
+	height: 80px;
+	color: #ccc;
+}
+
+.aips-empty-state h3 {
+	margin-top: 20px;
+	font-size: 18px;
+	color: #333;
+}
+
+.aips-empty-state p {
+	font-size: 14px;
+	margin-top: 10px;
+}
+
+/* Status Badges */
+.aips-status {
+	display: inline-block;
+	padding: 3px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.aips-status-active {
+	background-color: #d7ffd9;
+	color: #00a32a;
+}
+
+.aips-status-inactive {
+	background-color: #f0f0f1;
+	color: #666;
+}
+
+/* Author Actions */
+.aips-authors-list .column-actions button {
+	margin-right: 5px;
+	margin-bottom: 5px;
+}
+
+/* Topic Statistics */
+.column-topics div {
+	font-size: 0.9em;
+}
+
+.column-topics span {
+	display: inline-block;
+	margin: 2px 0;
+}
+
+/* Loading State */
+.aips-loading {
+	text-align: center;
+	padding: 20px;
+	color: #666;
+}
+
+.aips-loading:before {
+	content: "";
+	display: inline-block;
+	width: 20px;
+	height: 20px;
+	border: 2px solid #f3f3f3;
+	border-top: 2px solid #2271b1;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	margin-right: 10px;
+	vertical-align: middle;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+	.aips-modal-content {
+		width: 95%;
+		margin: 10px auto;
+	}
+	
+	.aips-tab-link {
+		padding: 8px 12px;
+		font-size: 12px;
+	}
+	
+	.column-actions button {
+		display: block;
+		width: 100%;
+		margin-bottom: 5px;
+	}
+}

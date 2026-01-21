@@ -60,14 +60,14 @@ class AIPS_Generation_Session {
 	private $voice;
 
 	/**
-	 * @var array Collection of all AI calls made during generation
+	 * @var int Counter for AI calls made during generation
 	 */
-	private $ai_calls;
+	private $ai_call_count;
 
 	/**
-	 * @var array Collection of all errors encountered during generation
+	 * @var int Counter for errors encountered during generation
 	 */
-	private $errors;
+	private $error_count;
 
 	/**
 	 * @var array|null Final result of the generation (success/failure + data)
@@ -91,8 +91,8 @@ class AIPS_Generation_Session {
 		$this->completed_at = null;
 		$this->template = null;
 		$this->voice = null;
-		$this->ai_calls = array();
-		$this->errors = array();
+		$this->ai_call_count = 0;
+		$this->error_count = 0;
 		$this->result = null;
 	}
 
@@ -137,49 +137,19 @@ class AIPS_Generation_Session {
 	/**
 	 * Log an AI call made during generation.
 	 *
-	 * @param string      $type     Type of AI call (e.g., 'title', 'content', 'excerpt', 'featured_image').
-	 * @param string      $prompt   The prompt sent to AI.
-	 * @param string|null $response The AI response, if successful.
-	 * @param array       $options  Options used for the call.
-	 * @param string|null $error    Error message, if call failed.
 	 * @return void
 	 */
-	public function log_ai_call($type, $prompt, $response = null, $options = array(), $error = null) {
-		$call_log = array(
-			'type' => $type,
-			'timestamp' => current_time('mysql'),
-			'request' => array(
-				'prompt' => $prompt,
-				'options' => $options,
-			),
-			'response' => array(
-				'success' => $error === null,
-				'content' => $response,
-				'error' => $error,
-			),
-		);
-
-		$this->ai_calls[] = $call_log;
-
-		// If there's an error, also add to errors collection
-		if ($error) {
-			$this->add_error($type, $error);
-		}
+	public function log_ai_call() {
+		$this->ai_call_count++;
 	}
 
 	/**
 	 * Add an error to the session.
 	 *
-	 * @param string $type    Type of error (e.g., 'content', 'featured_image').
-	 * @param string $message Error message.
 	 * @return void
 	 */
-	public function add_error($type, $message) {
-		$this->errors[] = array(
-			'type' => $type,
-			'timestamp' => current_time('mysql'),
-			'message' => $message,
-		);
+	public function add_error() {
+		$this->error_count++;
 	}
 
 	/**
@@ -198,32 +168,6 @@ class AIPS_Generation_Session {
 	 *
 	 * @return array Session data structure.
 	 */
-	public function to_array() {
-		return array(
-			'started_at' => $this->started_at,
-			'completed_at' => $this->completed_at,
-			'template' => $this->template,
-			'voice' => $this->voice,
-			'ai_calls' => $this->ai_calls,
-			'errors' => $this->errors,
-			'result' => $this->result,
-		);
-	}
-
-	/**
-	 * Serialize the session to JSON for storage.
-	 *
-	 * @return string JSON-encoded session data.
-	 */
-	public function to_json() {
-		return wp_json_encode($this->to_array());
-	}
-
-	/**
-	 * Get the duration of the generation session in seconds.
-	 *
-	 * @return float|null Duration in seconds, or null if not completed.
-	 */
 	public function get_duration() {
 		if (!$this->started_at || !$this->completed_at) {
 			return null;
@@ -241,7 +185,7 @@ class AIPS_Generation_Session {
 	 * @return int Number of AI calls.
 	 */
 	public function get_ai_call_count() {
-		return count($this->ai_calls);
+		return $this->ai_call_count;
 	}
 
 	/**
@@ -250,38 +194,7 @@ class AIPS_Generation_Session {
 	 * @return int Number of errors.
 	 */
 	public function get_error_count() {
-		return count($this->errors);
-	}
-
-	/**
-	 * Check if the generation was successful.
-	 *
-	 * @return bool True if successful, false if failed or not completed.
-	 */
-	public function was_successful() {
-		if (!$this->result) {
-			return false;
-		}
-
-		return isset($this->result['success']) && $this->result['success'] === true;
-	}
-
-	/**
-	 * Get all AI calls made during the session.
-	 *
-	 * @return array Array of AI call logs.
-	 */
-	public function get_ai_calls() {
-		return $this->ai_calls;
-	}
-
-	/**
-	 * Get all errors encountered during the session.
-	 *
-	 * @return array Array of error logs.
-	 */
-	public function get_errors() {
-		return $this->errors;
+		return $this->error_count;
 	}
 
 	/**
