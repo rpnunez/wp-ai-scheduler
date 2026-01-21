@@ -380,7 +380,24 @@ class AIPS_Settings {
 				'approveTopicTitle' => __('Approve Topic', 'ai-post-scheduler'),
 				'rejectTopicTitle' => __('Reject Topic', 'ai-post-scheduler'),
 				'approveReasonPlaceholder' => __('Why are you approving this topic? (optional)', 'ai-post-scheduler'),
-				'rejectReasonPlaceholder' => __('Why are you rejecting this topic? (optional)', 'ai-post-scheduler')
+				'rejectReasonPlaceholder' => __('Why are you rejecting this topic? (optional)', 'ai-post-scheduler'),
+				'reassign' => __('Reassign', 'ai-post-scheduler'),
+				'reassignTopic' => __('Reassign Topic', 'ai-post-scheduler'),
+				'selectAuthor' => __('Please select an author.', 'ai-post-scheduler'),
+				'errorReassigning' => __('Error reassigning topic.', 'ai-post-scheduler'),
+				'processing' => __('Processing...', 'ai-post-scheduler'),
+				'regenerate' => __('Regenerate', 'ai-post-scheduler'),
+				'regenerating' => __('Regenerating...', 'ai-post-scheduler'),
+				'confirmRegeneratePost' => __('Are you sure you want to regenerate this post? The existing post will be set to draft and a new post will be created.', 'ai-post-scheduler'),
+				'postRegenerated' => __('Post regenerated successfully.', 'ai-post-scheduler'),
+				'errorRegeneratingPost' => __('Error regenerating post.', 'ai-post-scheduler'),
+				'selectBulkAction' => __('Please select a bulk action.', 'ai-post-scheduler'),
+				'noTopicsSelected' => __('Please select at least one topic.', 'ai-post-scheduler'),
+				'execute' => __('Execute', 'ai-post-scheduler'),
+				'errorBulkAction' => __('Error executing bulk action.', 'ai-post-scheduler'),
+				'confirmBulkApprove' => __('Are you sure you want to approve %d topics?', 'ai-post-scheduler'),
+				'confirmBulkReject' => __('Are you sure you want to reject %d topics?', 'ai-post-scheduler'),
+				'confirmBulkDelete' => __('Are you sure you want to delete %d topics? This action cannot be undone.', 'ai-post-scheduler')
 			));
 		}
         

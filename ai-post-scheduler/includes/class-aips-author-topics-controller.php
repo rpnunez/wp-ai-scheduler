@@ -61,6 +61,7 @@ class AIPS_Author_Topics_Controller {
 		add_action('wp_ajax_aips_bulk_delete_topics', array($this, 'ajax_bulk_delete_topics'));
 		add_action('wp_ajax_aips_regenerate_post', array($this, 'ajax_regenerate_post'));
 		add_action('wp_ajax_aips_delete_generated_post', array($this, 'ajax_delete_generated_post'));
+		add_action('wp_ajax_aips_reassign_topic', array($this, 'ajax_reassign_topic'));
 	}
 	
 	/**
@@ -424,5 +425,67 @@ class AIPS_Author_Topics_Controller {
 		}
 		
 		wp_send_json_success(array('feedback' => $feedback));
+	}
+	
+	/**
+	 * AJAX handler for reassigning a topic to a different author.
+	 */
+	public function ajax_reassign_topic() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
+		$new_author_id = isset($_POST['new_author_id']) ? absint($_POST['new_author_id']) : 0;
+		$reason = isset($_POST['reason']) ? sanitize_textarea_field($_POST['reason']) : '';
+		
+		if (!$topic_id || !$new_author_id) {
+			wp_send_json_error(array('message' => __('Invalid topic or author ID.', 'ai-post-scheduler')));
+		}
+		
+		// Get the topic to retrieve current author
+		$topic = $this->repository->get_by_id($topic_id);
+		if (!$topic) {
+			wp_send_json_error(array('message' => __('Topic not found.', 'ai-post-scheduler')));
+		}
+		
+		// Verify new author exists
+		$authors_repository = new AIPS_Authors_Repository();
+		$new_author = $authors_repository->get_by_id($new_author_id);
+		if (!$new_author) {
+			wp_send_json_error(array('message' => __('Target author not found.', 'ai-post-scheduler')));
+		}
+		
+		// Update the topic's author_id
+		$result = $this->repository->update($topic_id, array('author_id' => $new_author_id));
+		
+		if ($result !== false) {
+			// Log the reassignment
+			$notes = sprintf(
+				'Reassigned from author ID %d to author ID %d (%s). Reason: %s',
+				$topic->author_id,
+				$new_author_id,
+				$new_author->name,
+				$reason ?: 'None provided'
+			);
+			
+			$this->logs_repository->create(array(
+				'author_topic_id' => $topic_id,
+				'action' => 'reassigned',
+				'user_id' => get_current_user_id(),
+				'notes' => $notes
+			));
+			
+			wp_send_json_success(array(
+				'message' => sprintf(
+					__('Topic successfully reassigned to %s.', 'ai-post-scheduler'),
+					$new_author->name
+				)
+			));
+		} else {
+			wp_send_json_error(array('message' => __('Failed to reassign topic.', 'ai-post-scheduler')));
+		}
 	}
 }

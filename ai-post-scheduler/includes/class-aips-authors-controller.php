@@ -375,6 +375,7 @@ class AIPS_Authors_Controller {
 				if ($wp_post) {
 					$posts[] = array(
 						'post_id' => $log->post_id,
+						'topic_id' => $topic_id,
 						'post_title' => $wp_post->post_title,
 						'post_status' => $wp_post->post_status,
 						'date_generated' => $log->created_at,
