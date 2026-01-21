@@ -45,6 +45,11 @@ class AIPS_Author_Topics_Controller {
 	private $penalty_service;
 	
 	/**
+	 * @var AIPS_Activity_Repository Repository for activity logging
+	 */
+	private $activity_repository;
+	
+	/**
 	 * Initialize the controller.
 	 */
 	public function __construct() {
@@ -53,6 +58,7 @@ class AIPS_Author_Topics_Controller {
 		$this->feedback_repository = new AIPS_Feedback_Repository();
 		$this->post_generator = new AIPS_Author_Post_Generator();
 		$this->penalty_service = new AIPS_Topic_Penalty_Service();
+		$this->activity_repository = new AIPS_Activity_Repository();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -94,6 +100,9 @@ class AIPS_Author_Topics_Controller {
 		$result = $this->repository->update_status($topic_id, 'approved', get_current_user_id());
 		
 		if ($result) {
+			// Get topic details for logging
+			$topic = $this->repository->get_by_id($topic_id);
+			
 			// Log the approval
 			$this->logs_repository->log_approval($topic_id, get_current_user_id());
 			
@@ -102,6 +111,27 @@ class AIPS_Author_Topics_Controller {
 			
 			// Apply reward for approval
 			$this->penalty_service->apply_reward($topic_id, $reason_category);
+			
+			// Log to activity feed
+			if ($topic) {
+				$this->activity_repository->create(array(
+					'event_type' => 'topic_approved',
+					'event_status' => 'success',
+					'message' => sprintf(
+						__('Topic approved: "%s"', 'ai-post-scheduler'),
+						$topic->topic_title
+					),
+					'metadata' => array(
+						'topic_id' => $topic_id,
+						'topic_title' => $topic->topic_title,
+						'author_id' => $topic->author_id,
+						'reason' => $reason,
+						'reason_category' => $reason_category,
+						'source' => $source,
+						'approved_by' => get_current_user_id(),
+					),
+				));
+			}
 			
 			wp_send_json_success(array('message' => __('Topic approved successfully.', 'ai-post-scheduler')));
 		} else {
@@ -131,6 +161,9 @@ class AIPS_Author_Topics_Controller {
 		$result = $this->repository->update_status($topic_id, 'rejected', get_current_user_id());
 		
 		if ($result) {
+			// Get topic details for logging
+			$topic = $this->repository->get_by_id($topic_id);
+			
 			// Log the rejection
 			$this->logs_repository->log_rejection($topic_id, get_current_user_id());
 			
@@ -139,6 +172,27 @@ class AIPS_Author_Topics_Controller {
 			
 			// Apply penalty based on reason category
 			$this->penalty_service->apply_penalty($topic_id, $reason_category);
+			
+			// Log to activity feed
+			if ($topic) {
+				$this->activity_repository->create(array(
+					'event_type' => 'topic_rejected',
+					'event_status' => 'failed',
+					'message' => sprintf(
+						__('Topic rejected: "%s"', 'ai-post-scheduler'),
+						$topic->topic_title
+					),
+					'metadata' => array(
+						'topic_id' => $topic_id,
+						'topic_title' => $topic->topic_title,
+						'author_id' => $topic->author_id,
+						'reason' => $reason,
+						'reason_category' => $reason_category,
+						'source' => $source,
+						'rejected_by' => get_current_user_id(),
+					),
+				));
+			}
 			
 			wp_send_json_success(array('message' => __('Topic rejected successfully.', 'ai-post-scheduler')));
 		} else {
