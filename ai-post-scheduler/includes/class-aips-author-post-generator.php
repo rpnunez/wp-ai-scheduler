@@ -200,7 +200,9 @@ class AIPS_Author_Post_Generator {
 	 */
 	private function update_author_schedule($author) {
 		// Calculate next run time based on frequency
-		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency);
+		// Use existing next_run as base to preserve schedule phase (avoid drift)
+		$base_time = !empty($author->post_generation_next_run) ? $author->post_generation_next_run : null;
+		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency, $base_time);
 		
 		$this->authors_repository->update_post_generation_schedule($author->id, $next_run);
 		
