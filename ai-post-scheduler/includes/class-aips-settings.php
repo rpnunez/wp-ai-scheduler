@@ -380,7 +380,22 @@ class AIPS_Settings {
 				'approveTopicTitle' => __('Approve Topic', 'ai-post-scheduler'),
 				'rejectTopicTitle' => __('Reject Topic', 'ai-post-scheduler'),
 				'approveReasonPlaceholder' => __('Why are you approving this topic? (optional)', 'ai-post-scheduler'),
-				'rejectReasonPlaceholder' => __('Why are you rejecting this topic? (optional)', 'ai-post-scheduler')
+				'rejectReasonPlaceholder' => __('Why are you rejecting this topic? (optional)', 'ai-post-scheduler'),
+				// Generation Queue strings
+				'loadingQueue' => __('Loading queue...', 'ai-post-scheduler'),
+				'errorLoadingQueue' => __('Error loading queue.', 'ai-post-scheduler'),
+				'noQueueTopics' => __('No approved topics in the queue yet.', 'ai-post-scheduler'),
+				'author' => __('Author', 'ai-post-scheduler'),
+				'fieldNiche' => __('Field/Niche', 'ai-post-scheduler'),
+				'approvedDate' => __('Approved Date', 'ai-post-scheduler'),
+				'notAvailable' => __('N/A', 'ai-post-scheduler'),
+				'selectBulkAction' => __('Please select a bulk action.', 'ai-post-scheduler'),
+				'noTopicsSelected' => __('Please select at least one topic.', 'ai-post-scheduler'),
+				'comingSoon' => __('This feature is coming soon.', 'ai-post-scheduler'),
+				'invalidAction' => __('Invalid action.', 'ai-post-scheduler'),
+				'confirmGenerateFromQueue' => __('Generate posts now for %d selected topic(s)?', 'ai-post-scheduler'),
+				'postsGenerated' => __('Posts generated successfully.', 'ai-post-scheduler'),
+				'execute' => __('Execute', 'ai-post-scheduler'),
 			));
 		}
         

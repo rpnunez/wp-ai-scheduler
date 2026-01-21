@@ -789,6 +789,12 @@
 			const $tab = $(e.currentTarget);
 			const tabId = $tab.data('tab');
 
+			// Validate tabId to prevent XSS
+			const allowedTabs = ['authors-list', 'generation-queue'];
+			if (!allowedTabs.includes(tabId)) {
+				return;
+			}
+
 			// Update active tab button
 			$('.aips-authors-tab-link').removeClass('active');
 			$tab.addClass('active');
