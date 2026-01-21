@@ -96,7 +96,7 @@ class AIPS_Authors_Controller {
 			'description' => isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '',
 			'keywords' => isset($_POST['keywords']) ? sanitize_text_field($_POST['keywords']) : '',
 			'details' => isset($_POST['details']) ? sanitize_textarea_field($_POST['details']) : '',
-			'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : null,
+			'article_structure_id' => !empty($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : null,
 			'topic_generation_prompt' => isset($_POST['topic_generation_prompt']) ? sanitize_textarea_field($_POST['topic_generation_prompt']) : '',
 			'topic_generation_frequency' => isset($_POST['topic_generation_frequency']) ? sanitize_text_field($_POST['topic_generation_frequency']) : 'weekly',
 			'topic_generation_quantity' => isset($_POST['topic_generation_quantity']) ? absint($_POST['topic_generation_quantity']) : 5,
