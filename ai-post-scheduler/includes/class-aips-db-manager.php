@@ -280,12 +280,16 @@ class AIPS_DB_Manager {
             action varchar(20) NOT NULL,
             user_id bigint(20) DEFAULT NULL,
             reason text,
+            reason_category varchar(50) DEFAULT 'other',
+            source varchar(50) DEFAULT 'UI',
             notes text,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY author_topic_id (author_topic_id),
             KEY action (action),
             KEY user_id (user_id),
+            KEY reason_category (reason_category),
+            KEY source (source),
             KEY created_at (created_at)
         ) $charset_collate;";
 
