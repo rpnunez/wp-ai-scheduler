@@ -339,6 +339,12 @@ class AIPS_Author_Topics_Repository {
 				}
 			}
 			
+			// Fallback: if no match found due to floating-point precision, select last topic
+			if ($selected_index === null && count($available_topics) > 0) {
+				$keys = array_keys($available_topics);
+				$selected_index = end($keys);
+			}
+			
 			// Add selected topic to results
 			if ($selected_index !== null) {
 				$selected[] = $available_topics[$selected_index];

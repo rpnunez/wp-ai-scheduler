@@ -101,7 +101,8 @@ class AIPS_Weighted_Topic_Sampling_Test extends WP_UnitTestCase {
 		
 		$this->assertCount(1, $topics);
 		// Score should be: base + (alpha * 2 approvals) = 50 + 20 = 70
-		$this->assertGreaterThanOrEqual(70, $topics[0]->computed_score);
+		// (no recency penalty since reviewed_at is current time)
+		$this->assertEquals(70, $topics[0]->computed_score, '', 0.01);
 	}
 	
 	public function test_score_calculation_with_rejections() {
@@ -127,7 +128,8 @@ class AIPS_Weighted_Topic_Sampling_Test extends WP_UnitTestCase {
 		
 		$this->assertCount(1, $topics);
 		// Score should be: base - (beta * 1 rejection) = 50 - 15 = 35
-		$this->assertLessThanOrEqual(35, $topics[0]->computed_score);
+		// (no recency penalty since reviewed_at is current time)
+		$this->assertEquals(35, $topics[0]->computed_score, '', 0.01);
 	}
 	
 	public function test_score_calculation_with_mixed_feedback() {
@@ -155,7 +157,8 @@ class AIPS_Weighted_Topic_Sampling_Test extends WP_UnitTestCase {
 		
 		$this->assertCount(1, $topics);
 		// Score should be: base + (alpha * 2) - (beta * 1) = 50 + 20 - 15 = 55
-		$this->assertGreaterThanOrEqual(50, $topics[0]->computed_score);
+		// (no recency penalty since reviewed_at is current time)
+		$this->assertEquals(55, $topics[0]->computed_score);
 	}
 	
 	public function test_weighted_sampling_multiple_topics() {
@@ -298,5 +301,36 @@ class AIPS_Weighted_Topic_Sampling_Test extends WP_UnitTestCase {
 		
 		$this->assertCount(1, $topics);
 		$this->assertEquals('Approved Topic', $topics[0]->topic_title);
+	}
+	
+	public function test_limit_exceeds_available_topics() {
+		// Create only 3 approved topics
+		for ($i = 1; $i <= 3; $i++) {
+			$this->topics_repository->create(array(
+				'author_id' => $this->test_author_id,
+				'topic_title' => "Topic {$i}",
+				'status' => 'approved',
+				'reviewed_at' => current_time('mysql')
+			));
+		}
+		
+		$config = array(
+			'base' => 50,
+			'alpha' => 10,
+			'beta' => 15,
+			'gamma' => 5
+		);
+		
+		// Request 10 topics but only 3 exist
+		$topics = $this->topics_repository->get_approved_for_generation_weighted($this->test_author_id, 10, $config);
+		
+		// Should return only the 3 available topics
+		$this->assertCount(3, $topics);
+		
+		// Each topic should have a computed score
+		foreach ($topics as $topic) {
+			$this->assertObjectHasProperty('computed_score', $topic);
+			$this->assertGreaterThan(0, $topic->computed_score);
+		}
 	}
 }

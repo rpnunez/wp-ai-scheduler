@@ -188,6 +188,28 @@ class AIPS_Settings {
             'sanitize_callback' => 'sanitize_text_field'
         ));
         
+        // Register topic scoring settings
+        register_setting('aips_settings', 'aips_topic_scoring_base', array(
+            'sanitize_callback' => 'floatval',
+            'default' => 50
+        ));
+        register_setting('aips_settings', 'aips_topic_scoring_alpha', array(
+            'sanitize_callback' => 'floatval',
+            'default' => 10
+        ));
+        register_setting('aips_settings', 'aips_topic_scoring_beta', array(
+            'sanitize_callback' => 'floatval',
+            'default' => 15
+        ));
+        register_setting('aips_settings', 'aips_topic_scoring_gamma', array(
+            'sanitize_callback' => 'floatval',
+            'default' => 5
+        ));
+        register_setting('aips_settings', 'aips_topic_scheduling_priority_bump', array(
+            'sanitize_callback' => 'absint',
+            'default' => 3600
+        ));
+        
         add_settings_section(
             'aips_general_section',
             __('General Settings', 'ai-post-scheduler'),
@@ -249,6 +271,54 @@ class AIPS_Settings {
             array($this, 'developer_mode_field_callback'),
             'aips-settings',
             'aips_general_section'
+        );
+        
+        // Add Authors section for weighted topic sampling settings
+        add_settings_section(
+            'aips_authors_section',
+            __('Authors - Topic Scoring', 'ai-post-scheduler'),
+            array($this, 'authors_section_callback'),
+            'aips-settings'
+        );
+        
+        add_settings_field(
+            'aips_topic_scoring_base',
+            __('Base Score', 'ai-post-scheduler'),
+            array($this, 'topic_scoring_base_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+        
+        add_settings_field(
+            'aips_topic_scoring_alpha',
+            __('Approval Weight (α)', 'ai-post-scheduler'),
+            array($this, 'topic_scoring_alpha_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+        
+        add_settings_field(
+            'aips_topic_scoring_beta',
+            __('Rejection Weight (β)', 'ai-post-scheduler'),
+            array($this, 'topic_scoring_beta_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+        
+        add_settings_field(
+            'aips_topic_scoring_gamma',
+            __('Recency Penalty (γ)', 'ai-post-scheduler'),
+            array($this, 'topic_scoring_gamma_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
+        );
+        
+        add_settings_field(
+            'aips_topic_scheduling_priority_bump',
+            __('Scheduling Priority Bump', 'ai-post-scheduler'),
+            array($this, 'topic_scheduling_priority_bump_field_callback'),
+            'aips-settings',
+            'aips_authors_section'
         );
     }
     
@@ -593,6 +663,82 @@ class AIPS_Settings {
             <input type="checkbox" name="aips_developer_mode" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Enable developer tools and features', 'ai-post-scheduler'); ?>
         </label>
+        <?php
+    }
+    
+    /**
+     * Section callback for Authors settings.
+     *
+     * @return void
+     */
+    public function authors_section_callback() {
+        ?>
+        <p><?php esc_html_e('Configure weighted topic sampling for the Authors feature. Topics are scored using: base + (α × approvals) - (β × rejections) - (γ × recency_penalty). Higher-scored topics have a greater probability of selection.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Callback for topic scoring base field.
+     *
+     * @return void
+     */
+    public function topic_scoring_base_field_callback() {
+        $value = get_option('aips_topic_scoring_base', 50);
+        ?>
+        <input type="number" step="0.1" name="aips_topic_scoring_base" value="<?php echo esc_attr($value); ?>" class="regular-text">
+        <p class="description"><?php esc_html_e('Base score for all topics (default: 50)', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Callback for topic scoring alpha field.
+     *
+     * @return void
+     */
+    public function topic_scoring_alpha_field_callback() {
+        $value = get_option('aips_topic_scoring_alpha', 10);
+        ?>
+        <input type="number" step="0.1" name="aips_topic_scoring_alpha" value="<?php echo esc_attr($value); ?>" class="regular-text">
+        <p class="description"><?php esc_html_e('Weight multiplier for approved feedback (default: 10)', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Callback for topic scoring beta field.
+     *
+     * @return void
+     */
+    public function topic_scoring_beta_field_callback() {
+        $value = get_option('aips_topic_scoring_beta', 15);
+        ?>
+        <input type="number" step="0.1" name="aips_topic_scoring_beta" value="<?php echo esc_attr($value); ?>" class="regular-text">
+        <p class="description"><?php esc_html_e('Weight multiplier for rejected feedback (default: 15)', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Callback for topic scoring gamma field.
+     *
+     * @return void
+     */
+    public function topic_scoring_gamma_field_callback() {
+        $value = get_option('aips_topic_scoring_gamma', 5);
+        ?>
+        <input type="number" step="0.1" name="aips_topic_scoring_gamma" value="<?php echo esc_attr($value); ?>" class="regular-text">
+        <p class="description"><?php esc_html_e('Weight multiplier for recency penalty (default: 5)', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Callback for topic scheduling priority bump field.
+     *
+     * @return void
+     */
+    public function topic_scheduling_priority_bump_field_callback() {
+        $value = get_option('aips_topic_scheduling_priority_bump', 3600);
+        ?>
+        <input type="number" step="1" name="aips_topic_scheduling_priority_bump" value="<?php echo esc_attr($value); ?>" class="regular-text">
+        <p class="description"><?php esc_html_e('Maximum seconds to adjust post scheduling based on topic score (default: 3600 = 1 hour)', 'ai-post-scheduler'); ?></p>
         <?php
     }
     

@@ -189,6 +189,9 @@ class AIPS_Author_Post_Generator {
 	 * Apply scheduling priority bump to a post from an approved topic.
 	 *
 	 * Adjusts the post date to schedule it earlier based on topic score.
+	 * Only affects posts with 'future' status (scheduled posts). Posts with
+	 * 'publish' or 'draft' status are not affected as they either publish 
+	 * immediately or don't have a specific publish date.
 	 *
 	 * @param int    $post_id Post ID.
 	 * @param object $topic   Topic object.
