@@ -225,7 +225,8 @@
 	cursor: pointer;
 	transition: all 0.15s ease;
 	position: relative;
-	max-width: 300px;
+	max-width: 100%;
+	gap: 8px;
 }
 
 .aips-topic-chip:hover {
@@ -254,6 +255,7 @@
 .aips-topic-chip-checkbox {
 	margin-right: 8px;
 	cursor: pointer;
+	flex-shrink: 0;
 }
 
 .aips-topic-chip-title {
@@ -262,6 +264,7 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	font-weight: 500;
+	min-width: 0;
 }
 
 .aips-topic-chip-count {
@@ -271,6 +274,21 @@
 	border-radius: 9999px;
 	font-size: 12px;
 	font-weight: 600;
+	flex-shrink: 0;
+}
+
+.aips-topic-chip-actions {
+	margin-left: auto;
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+.aips-topic-chip-actions .aips-btn {
+	padding: 2px 6px;
+	font-size: 11px;
+	min-height: 20px;
+	line-height: 1;
 }
 
 /* Slide-over Panel */

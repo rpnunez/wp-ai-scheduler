@@ -330,7 +330,33 @@ class AIPS_Settings {
 				AIPS_VERSION
 			);
 			
-			// Enqueue modern UI script
+			// Enqueue Alpine.js from CDN (v3.x)
+			wp_enqueue_script(
+				'alpinejs',
+				'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',
+				array(),
+				'3.x.x',
+				true
+			);
+			
+			// Add defer attribute to Alpine.js
+			add_filter('script_loader_tag', function($tag, $handle) {
+				if ('alpinejs' === $handle) {
+					return str_replace(' src', ' defer src', $tag);
+				}
+				return $tag;
+			}, 10, 2);
+			
+			// Enqueue Alpine.js-based modern UI script
+			wp_enqueue_script(
+				'aips-authors-alpine-script',
+				AIPS_PLUGIN_URL . 'assets/js/authors-alpine.js',
+				array('alpinejs'),
+				AIPS_VERSION,
+				true
+			);
+			
+			// Keep old jQuery-based script for backwards compatibility
 			wp_enqueue_script(
 				'aips-authors-modern-script',
 				AIPS_PLUGIN_URL . 'assets/js/authors-modern.js',
@@ -729,7 +755,7 @@ class AIPS_Settings {
      * @return void
      */
     public function render_authors_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/authors-modern.php';
+        include AIPS_PLUGIN_DIR . 'templates/admin/authors-alpine.php';
     }
     
     /**
