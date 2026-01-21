@@ -183,6 +183,14 @@
 	margin-bottom: 5px;
 }
 
+.aips-authors-list .column-name {
+	width: 20%;
+}
+
+.aips-authors-list .column-active {
+	width: 10%;
+}
+
 /* Topic Statistics */
 .column-topics div {
 	font-size: 0.9em;
