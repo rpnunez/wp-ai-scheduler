@@ -12,6 +12,14 @@ if (isset($history) && $history instanceof AIPS_History) {
     $history_handler = $History;
 }
 
+// Also handle the case where $stats might be an AIPS_History object
+if (isset($stats) && $stats instanceof AIPS_History) {
+    if (!isset($history_handler)) {
+        $history_handler = $stats;
+    }
+    $stats = null; // Will be set below
+}
+
 if (isset($history_handler)) {
     // Derive filters similarly to AIPS_History::render_page().
     $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
