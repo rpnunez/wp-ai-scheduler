@@ -768,10 +768,179 @@
 			return text.replace(/[&<>"']/g, m => map[m]);
 		}
 	};
+	
+	// Generation Queue Module
+	const GenerationQueueModule = {
+		init: function () {
+			this.bindEvents();
+		},
+
+		bindEvents: function () {
+			// Main page tab switching
+			$(document).on('click', '.aips-authors-tab-link', this.switchMainTab.bind(this));
+			
+			// Queue-specific actions
+			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
+			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
+		},
+
+		switchMainTab: function (e) {
+			e.preventDefault();
+			const $tab = $(e.currentTarget);
+			const tabId = $tab.data('tab');
+
+			// Update active tab button
+			$('.aips-authors-tab-link').removeClass('active');
+			$tab.addClass('active');
+
+			// Show/hide tab content
+			$('.aips-authors-tab-content').hide();
+			$('#' + tabId + '-tab').show();
+
+			// Load queue data if switching to generation queue
+			if (tabId === 'generation-queue') {
+				this.loadQueueTopics();
+			}
+		},
+
+		loadQueueTopics: function () {
+			$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.loadingQueue || 'Loading queue...') + '</p>');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_generation_queue',
+					nonce: aipsAuthorsL10n.nonce
+				},
+				success: (response) => {
+					if (response.success && response.data.topics) {
+						this.renderQueueTopics(response.data.topics);
+					} else {
+						$('#aips-queue-topics-list').html(
+							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p>'
+						);
+					}
+				},
+				error: () => {
+					$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p>');
+				}
+			});
+		},
+
+		renderQueueTopics: function (topics) {
+			if (!topics || topics.length === 0) {
+				$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.noQueueTopics || 'No approved topics in the queue yet.') + '</p>');
+				return;
+			}
+
+			let html = '<table class="wp-list-table widefat fixed striped">';
+			html += '<thead><tr>';
+			html += '<th class="check-column"><input type="checkbox" class="aips-queue-select-all"></th>';
+			html += '<th>' + (aipsAuthorsL10n.topicTitle || 'Topic Title') + '</th>';
+			html += '<th>' + (aipsAuthorsL10n.author || 'Author') + '</th>';
+			html += '<th>' + (aipsAuthorsL10n.fieldNiche || 'Field/Niche') + '</th>';
+			html += '<th>' + (aipsAuthorsL10n.approvedDate || 'Approved Date') + '</th>';
+			html += '</tr></thead><tbody>';
+
+			topics.forEach(topic => {
+				html += '<tr>';
+				html += '<th class="check-column"><input type="checkbox" class="aips-queue-topic-checkbox" value="' + topic.id + '"></th>';
+				html += '<td>' + AuthorsModule.escapeHtml(topic.topic_title) + '</td>';
+				html += '<td>' + AuthorsModule.escapeHtml(topic.author_name) + '</td>';
+				html += '<td>' + AuthorsModule.escapeHtml(topic.field_niche) + '</td>';
+				html += '<td>' + (topic.reviewed_at || aipsAuthorsL10n.notAvailable || 'N/A') + '</td>';
+				html += '</tr>';
+			});
+
+			html += '</tbody></table>';
+			$('#aips-queue-topics-list').html(html);
+		},
+
+		toggleQueueSelectAll: function (e) {
+			const isChecked = $(e.currentTarget).prop('checked');
+			$('.aips-queue-topic-checkbox').prop('checked', isChecked);
+		},
+
+		executeQueueBulkAction: function (e) {
+			e.preventDefault();
+
+			const action = $('#aips-queue-bulk-action-select').val();
+
+			if (!action) {
+				alert(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.');
+				return;
+			}
+
+			// Get all checked topic IDs
+			const topicIds = [];
+			$('.aips-queue-topic-checkbox:checked').each(function () {
+				topicIds.push($(this).val());
+			});
+
+			if (topicIds.length === 0) {
+				alert(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
+				return;
+			}
+
+			// Handle different actions
+			switch (action) {
+				case 'generate_now':
+					this.generateNowFromQueue(topicIds);
+					break;
+				case 'schedule':
+					alert(aipsAuthorsL10n.comingSoon || 'This feature is coming soon.');
+					break;
+				case 'unapprove':
+					alert(aipsAuthorsL10n.comingSoon || 'This feature is coming soon.');
+					break;
+				default:
+					alert(aipsAuthorsL10n.invalidAction || 'Invalid action.');
+			}
+		},
+
+		generateNowFromQueue: function (topicIds) {
+			const confirmMessage = (aipsAuthorsL10n.confirmGenerateFromQueue || 'Generate posts now for %d selected topic(s)?').replace('%d', topicIds.length);
+			
+			if (!confirm(confirmMessage)) {
+				return;
+			}
+
+			const $button = $('.aips-queue-bulk-action-execute');
+			$button.prop('disabled', true).text(aipsAuthorsL10n.generating || 'Generating...');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_bulk_generate_from_queue',
+					nonce: aipsAuthorsL10n.nonce,
+					topic_ids: topicIds
+				},
+				success: (response) => {
+					if (response.success) {
+						alert(response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.');
+						
+						// Reload the queue
+						this.loadQueueTopics();
+					} else {
+						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating || 'Error generating posts.');
+					}
+				},
+				error: () => {
+					alert(aipsAuthorsL10n.errorGenerating || 'Error generating posts.');
+				},
+				complete: () => {
+					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+				}
+			});
+		}
+	};
 
 	// Initialize when document is ready
 	$(document).ready(function () {
 		AuthorsModule.init();
+		GenerationQueueModule.init();
 	});
 
 })(jQuery);

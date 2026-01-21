@@ -76,6 +76,8 @@ class AIPS_Author_Topics_Controller {
 		add_action('wp_ajax_aips_get_similar_topics', array($this, 'ajax_get_similar_topics'));
 		add_action('wp_ajax_aips_suggest_related_topics', array($this, 'ajax_suggest_related_topics'));
 		add_action('wp_ajax_aips_compute_topic_embeddings', array($this, 'ajax_compute_topic_embeddings'));
+		add_action('wp_ajax_aips_get_generation_queue', array($this, 'ajax_get_generation_queue'));
+		add_action('wp_ajax_aips_bulk_generate_from_queue', array($this, 'ajax_bulk_generate_from_queue'));
 	}
 	
 	/**
@@ -584,6 +586,65 @@ class AIPS_Author_Topics_Controller {
 				$stats['skipped']
 			),
 			'stats' => $stats
+		));
+	}
+	
+	/**
+	 * AJAX handler for getting all approved topics for the generation queue.
+	 */
+	public function ajax_get_generation_queue() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$topics = $this->repository->get_all_approved_for_queue();
+		
+		wp_send_json_success(array('topics' => $topics));
+	}
+	
+	/**
+	 * AJAX handler for bulk generating posts from queue topics.
+	 */
+	public function ajax_bulk_generate_from_queue() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$topic_ids = isset($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		
+		if (empty($topic_ids)) {
+			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+		}
+		
+		$success_count = 0;
+		$failed_count = 0;
+		$errors = array();
+		
+		foreach ($topic_ids as $topic_id) {
+			$result = $this->post_generator->generate_now($topic_id);
+			
+			if (is_wp_error($result)) {
+				$failed_count++;
+				$errors[] = sprintf(__('Topic ID %d: %s', 'ai-post-scheduler'), $topic_id, $result->get_error_message());
+			} else {
+				$success_count++;
+			}
+		}
+		
+		$message = sprintf(__('%d post(s) generated successfully.', 'ai-post-scheduler'), $success_count);
+		if ($failed_count > 0) {
+			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
+		}
+		
+		wp_send_json_success(array(
+			'message' => $message,
+			'success_count' => $success_count,
+			'failed_count' => $failed_count,
+			'errors' => $errors
 		));
 	}
 }
