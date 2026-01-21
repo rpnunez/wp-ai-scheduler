@@ -7,6 +7,12 @@ if (!defined('ABSPATH')) {
     <h1 class="wp-heading-inline"><?php esc_html_e('System Status', 'ai-post-scheduler'); ?></h1>
     <hr class="wp-header-end">
 
+    <?php if (isset($_GET['message']) && $_GET['message'] === 'import_success') : ?>
+        <div class="notice notice-success is-dismissible">
+            <p><?php esc_html_e('Data imported successfully.', 'ai-post-scheduler'); ?></p>
+        </div>
+    <?php endif; ?>
+
     <div class="aips-status-page">
         <?php foreach ($system_info as $section => $checks) : ?>
             <?php if (empty($checks)) continue; ?>
@@ -84,6 +90,48 @@ if (!defined('ABSPATH')) {
                 <button type="button" class="button button-link-delete aips-wipe-db"><?php esc_html_e('Wipe Plugin Data', 'ai-post-scheduler'); ?></button>
                 <span class="description"><?php esc_html_e('Permanently deletes all data from the plugin tables.', 'ai-post-scheduler'); ?></span>
             </p>
+        </div>
+
+        <div class="card">
+            <h3><?php esc_html_e('Data Management', 'ai-post-scheduler'); ?></h3>
+            <p><?php esc_html_e('Export and Import plugin data.', 'ai-post-scheduler'); ?></p>
+
+            <hr>
+
+            <h4><?php esc_html_e('Export Data', 'ai-post-scheduler'); ?></h4>
+            <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
+                <input type="hidden" name="action" value="aips_export_data">
+                <?php wp_nonce_field('aips_export_data_nonce', 'nonce'); ?>
+                <p>
+                    <select name="format">
+                        <option value="mysql"><?php esc_html_e('MySQL Dump (.sql)', 'ai-post-scheduler'); ?></option>
+                        <option value="json"><?php esc_html_e('JSON', 'ai-post-scheduler'); ?></option>
+                    </select>
+                </p>
+                <p>
+                    <button type="submit" class="button button-secondary"><?php esc_html_e('Export Data', 'ai-post-scheduler'); ?></button>
+                </p>
+            </form>
+
+            <hr>
+
+            <h4><?php esc_html_e('Import Data', 'ai-post-scheduler'); ?></h4>
+            <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" enctype="multipart/form-data" class="aips-import-form">
+                <input type="hidden" name="action" value="aips_import_data">
+                <?php wp_nonce_field('aips_import_data_nonce', 'nonce'); ?>
+                <p>
+                    <input type="file" name="import_file" accept=".sql,.json">
+                </p>
+                <p>
+                    <select name="format">
+                        <option value="mysql"><?php esc_html_e('MySQL Dump (.sql)', 'ai-post-scheduler'); ?></option>
+                        <option value="json"><?php esc_html_e('JSON', 'ai-post-scheduler'); ?></option>
+                    </select>
+                </p>
+                <p>
+                    <button type="submit" class="button button-primary aips-import-data-btn"><?php esc_html_e('Import Data', 'ai-post-scheduler'); ?></button>
+                </p>
+            </form>
         </div>
     </div>
 </div>

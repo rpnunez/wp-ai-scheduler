@@ -94,6 +94,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dev-tools.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management.php';
 
         // Seeder Feature
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-seeder-service.php';
@@ -180,6 +181,8 @@ final class AI_Post_Scheduler {
             if (get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();
             }
+
+            new AIPS_Data_Management();
         }
         
         new AIPS_Scheduler();
