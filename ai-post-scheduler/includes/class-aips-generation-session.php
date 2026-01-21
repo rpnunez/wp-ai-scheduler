@@ -50,14 +50,19 @@ class AIPS_Generation_Session {
 	private $completed_at;
 
 	/**
-	 * @var array|null Template configuration used for generation
+	 * @var array|null Template configuration used for generation (deprecated)
 	 */
 	private $template;
 
 	/**
-	 * @var array|null Voice configuration used for generation (optional)
+	 * @var array|null Voice configuration used for generation (deprecated)
 	 */
 	private $voice;
+
+	/**
+	 * @var array|null Generation context data (type, id, name, etc.)
+	 */
+	private $context;
 
 	/**
 	 * @var int Counter for AI calls made during generation
@@ -91,6 +96,7 @@ class AIPS_Generation_Session {
 		$this->completed_at = null;
 		$this->template = null;
 		$this->voice = null;
+		$this->context = null;
 		$this->ai_call_count = 0;
 		$this->error_count = 0;
 		$this->result = null;
@@ -99,38 +105,90 @@ class AIPS_Generation_Session {
 	/**
 	 * Start a new generation session.
 	 *
-	 * @param object      $template Template object used for generation.
-	 * @param object|null $voice    Optional voice object used for generation.
+	 * Supports both legacy template-based calls and new context-based calls.
+	 *
+	 * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+	 * @param object|null $voice    Optional voice object (legacy, ignored if context is provided).
 	 * @return void
 	 */
-	public function start($template, $voice = null) {
+	public function start($template_or_context, $voice = null) {
 		$this->reset();
 		$this->started_at = current_time('mysql');
 
-		// Store template configuration
-		$this->template = array(
-			'id' => $template->id,
-			'name' => $template->name,
-			'prompt_template' => $template->prompt_template,
-			'title_prompt' => $template->title_prompt,
-			'post_status' => $template->post_status,
-			'post_category' => $template->post_category,
-			'post_tags' => $template->post_tags,
-			'post_author' => $template->post_author,
-			'post_quantity' => $template->post_quantity,
-			'generate_featured_image' => $template->generate_featured_image,
-			'image_prompt' => $template->image_prompt,
-		);
-
-		// Store voice configuration if provided
-		if ($voice) {
-			$this->voice = array(
-				'id' => $voice->id,
-				'name' => $voice->name,
-				'title_prompt' => $voice->title_prompt,
-				'content_instructions' => $voice->content_instructions,
-				'excerpt_instructions' => $voice->excerpt_instructions,
+		// Check if we're using the new context-based approach
+		if ($template_or_context instanceof AIPS_Generation_Context) {
+			// New context-based approach
+			$this->context = $template_or_context->to_array();
+			
+			// For backward compatibility, still populate template/voice if it's a template context
+			if ($template_or_context->get_type() === 'template') {
+				$template = $template_or_context->get_template();
+				$voice_obj = $template_or_context->get_voice();
+				
+				$this->template = array(
+					'id' => $template->id,
+					'name' => $template->name,
+					'prompt_template' => $template->prompt_template,
+					'title_prompt' => isset($template->title_prompt) ? $template->title_prompt : '',
+					'post_status' => $template->post_status,
+					'post_category' => $template->post_category,
+					'post_tags' => isset($template->post_tags) ? $template->post_tags : '',
+					'post_author' => isset($template->post_author) ? $template->post_author : '',
+					'post_quantity' => isset($template->post_quantity) ? $template->post_quantity : 1,
+					'generate_featured_image' => isset($template->generate_featured_image) ? $template->generate_featured_image : 0,
+					'image_prompt' => isset($template->image_prompt) ? $template->image_prompt : '',
+				);
+				
+				if ($voice_obj) {
+					$this->voice = array(
+						'id' => $voice_obj->id,
+						'name' => $voice_obj->name,
+						'title_prompt' => isset($voice_obj->title_prompt) ? $voice_obj->title_prompt : '',
+						'content_instructions' => isset($voice_obj->content_instructions) ? $voice_obj->content_instructions : '',
+						'excerpt_instructions' => isset($voice_obj->excerpt_instructions) ? $voice_obj->excerpt_instructions : '',
+					);
+				}
+			}
+		} else {
+			// Legacy template-based approach (for backward compatibility)
+			$template = $template_or_context;
+			
+			// Store template configuration
+			$this->template = array(
+				'id' => $template->id,
+				'name' => $template->name,
+				'prompt_template' => $template->prompt_template,
+				'title_prompt' => isset($template->title_prompt) ? $template->title_prompt : '',
+				'post_status' => $template->post_status,
+				'post_category' => $template->post_category,
+				'post_tags' => isset($template->post_tags) ? $template->post_tags : '',
+				'post_author' => isset($template->post_author) ? $template->post_author : '',
+				'post_quantity' => isset($template->post_quantity) ? $template->post_quantity : 1,
+				'generate_featured_image' => isset($template->generate_featured_image) ? $template->generate_featured_image : 0,
+				'image_prompt' => isset($template->image_prompt) ? $template->image_prompt : '',
 			);
+
+			// Store voice configuration if provided
+			if ($voice) {
+				$this->voice = array(
+					'id' => $voice->id,
+					'name' => $voice->name,
+					'title_prompt' => isset($voice->title_prompt) ? $voice->title_prompt : '',
+					'content_instructions' => isset($voice->content_instructions) ? $voice->content_instructions : '',
+					'excerpt_instructions' => isset($voice->excerpt_instructions) ? $voice->excerpt_instructions : '',
+				);
+			}
+			
+			// Build context from template for consistency
+			$this->context = array(
+				'type' => 'template',
+				'id' => $template->id,
+				'name' => $template->name,
+			);
+			
+			if ($voice) {
+				$this->context['voice_id'] = $voice->id;
+			}
 		}
 	}
 
@@ -240,5 +298,14 @@ class AIPS_Generation_Session {
 	 */
 	public function get_completed_at() {
 		return $this->completed_at;
+	}
+
+	/**
+	 * Get the generation context data.
+	 *
+	 * @return array|null Context data or null if not started.
+	 */
+	public function get_context() {
+		return $this->context;
 	}
 }

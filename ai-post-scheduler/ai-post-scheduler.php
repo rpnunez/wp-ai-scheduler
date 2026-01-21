@@ -91,6 +91,12 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-resilience-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-ai-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-image-service.php';
+        
+        // Generation Context architecture
+        require_once AIPS_PLUGIN_DIR . 'includes/interface-aips-generation-context.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-context.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-topic-context.php';
+        
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generation-session.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-creator.php';
