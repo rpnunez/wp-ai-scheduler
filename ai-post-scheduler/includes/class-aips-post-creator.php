@@ -33,7 +33,8 @@ class AIPS_Post_Creator {
      *     @type string $meta_description Optional. SEO meta description content.
      *     @type string $seo_title Optional. SEO title override for plugins.
      *     @type string $topic Optional. Topic used to infer focus keyword when none provided.
-     *     @type object $template Template object containing settings.
+     *     @type object $template Optional. Template object containing settings (legacy).
+     *     @type AIPS_Generation_Context $context Optional. Generation context (preferred).
      * }
      * @return int|WP_Error Post ID on success, WP_Error on failure.
      */
@@ -41,23 +42,37 @@ class AIPS_Post_Creator {
         $title = isset($data['title']) ? $data['title'] : '';
         $content = isset($data['content']) ? $data['content'] : '';
         $excerpt = isset($data['excerpt']) ? $data['excerpt'] : '';
+        
+        // Support both legacy template and new context approaches
+        $context = isset($data['context']) ? $data['context'] : null;
         $template = isset($data['template']) ? $data['template'] : null;
 
-        if (!$template) {
-            return new WP_Error('missing_template', 'Template data is required for post creation.');
+        // If we have a context, use it; otherwise fall back to template
+        if ($context instanceof AIPS_Generation_Context) {
+            $post_status = $context->get_post_status();
+            $post_author = $context->get_post_author();
+            $post_category = $context->get_post_category();
+            $post_tags = $context->get_post_tags();
+        } elseif ($template) {
+            $post_status = !empty($template->post_status) ? $template->post_status : get_option('aips_default_post_status', 'draft');
+            $post_author = !empty($template->post_author) ? $template->post_author : get_current_user_id();
+            $post_category = !empty($template->post_category) ? $template->post_category : null;
+            $post_tags = !empty($template->post_tags) ? $template->post_tags : '';
+        } else {
+            return new WP_Error('missing_context', 'Either a template object or generation context is required for post creation.');
         }
 
         $post_data = array(
             'post_title' => $title,
             'post_content' => $content,
             'post_excerpt' => $excerpt,
-            'post_status' => !empty($template->post_status) ? $template->post_status : get_option('aips_default_post_status', 'draft'),
-            'post_author' => !empty($template->post_author) ? $template->post_author : get_current_user_id(),
+            'post_status' => $post_status,
+            'post_author' => $post_author,
             'post_type' => 'post',
         );
 
-        if (!empty($template->post_category)) {
-            $post_data['post_category'] = array($template->post_category);
+        if (!empty($post_category)) {
+            $post_data['post_category'] = array($post_category);
         } elseif ($default_cat = get_option('aips_default_category')) {
             $post_data['post_category'] = array($default_cat);
         }
@@ -69,8 +84,8 @@ class AIPS_Post_Creator {
         }
 
         // Handle Tags
-        if (!empty($template->post_tags)) {
-            $tags = array_map('trim', explode(',', $template->post_tags));
+        if (!empty($post_tags)) {
+            $tags = array_map('trim', explode(',', $post_tags));
             wp_set_post_tags($post_id, $tags);
         }
 
