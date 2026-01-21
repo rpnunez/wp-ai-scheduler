@@ -7,6 +7,7 @@ class AIPS_DB_Manager {
 
     private static $tables = array(
         'aips_history',
+        'aips_history_log',
         'aips_templates',
         'aips_schedule',
         'aips_voices',
@@ -50,6 +51,7 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
 
         $table_history = $tables['aips_history'];
+        $table_history_log = $tables['aips_history_log'];
         $table_templates = $tables['aips_templates'];
         $table_schedule = $tables['aips_schedule'];
         $table_voices = $tables['aips_voices'];
@@ -79,6 +81,16 @@ class AIPS_DB_Manager {
             KEY post_id (post_id),
             KEY template_id (template_id),
             KEY status (status)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_history_log (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            history_id bigint(20) NOT NULL,
+            log_type varchar(50) NOT NULL,
+            timestamp datetime DEFAULT CURRENT_TIMESTAMP,
+            details longtext,
+            PRIMARY KEY  (id),
+            KEY history_id (history_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_templates (
