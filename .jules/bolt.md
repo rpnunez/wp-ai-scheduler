@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2026-01-21 - [Remove N+1 Subquery in Schedule Execution Count]
+**Learning:** `get_schedule_execution_count` was executing a subquery to fetch `created_at` for every schedule iteration, even when the `created_at` data was already available in the schedule object passed to the method.
+**Action:** Always check if the required data is already present in the object before querying the database again. Avoid subqueries in loops when possible by passing necessary context.
