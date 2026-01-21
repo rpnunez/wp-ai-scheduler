@@ -359,7 +359,28 @@ class AIPS_Settings {
 				'delete' => __('Delete', 'ai-post-scheduler'),
 				'save' => __('Save', 'ai-post-scheduler'),
 				'cancel' => __('Cancel', 'ai-post-scheduler'),
-				'topicTitleRequired' => __('Topic title is required.', 'ai-post-scheduler')
+				'topicTitleRequired' => __('Topic title is required.', 'ai-post-scheduler'),
+				'viewPosts' => __('Click to view posts generated from this topic', 'ai-post-scheduler'),
+				'loadingPosts' => __('Loading posts...', 'ai-post-scheduler'),
+				'errorLoadingPosts' => __('Error loading posts.', 'ai-post-scheduler'),
+				'noPostsFound' => __('No posts have been generated from this topic yet.', 'ai-post-scheduler'),
+				'postsGeneratedFrom' => __('Posts Generated from Topic', 'ai-post-scheduler'),
+				'postId' => __('Post ID', 'ai-post-scheduler'),
+				'postTitle' => __('Post Title', 'ai-post-scheduler'),
+				'dateGenerated' => __('Date Generated', 'ai-post-scheduler'),
+				'datePublished' => __('Date Published', 'ai-post-scheduler'),
+				'notPublished' => __('Not published', 'ai-post-scheduler'),
+				'editPost' => __('Edit', 'ai-post-scheduler'),
+				'viewPost' => __('View', 'ai-post-scheduler'),
+				'topic' => __('Topic', 'ai-post-scheduler'),
+				'action' => __('Action', 'ai-post-scheduler'),
+				'reason' => __('Reason', 'ai-post-scheduler'),
+				'user' => __('User', 'ai-post-scheduler'),
+				'date' => __('Date', 'ai-post-scheduler'),
+				'approveTopicTitle' => __('Approve Topic', 'ai-post-scheduler'),
+				'rejectTopicTitle' => __('Reject Topic', 'ai-post-scheduler'),
+				'approveReasonPlaceholder' => __('Why are you approving this topic? (optional)', 'ai-post-scheduler'),
+				'rejectReasonPlaceholder' => __('Why are you rejecting this topic? (optional)', 'ai-post-scheduler')
 			));
 		}
         
