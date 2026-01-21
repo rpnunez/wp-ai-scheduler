@@ -244,3 +244,47 @@
 		margin-bottom: 5px;
 	}
 }
+
+/* Bulk Actions Styles */
+.aips-bulk-actions {
+	margin: 15px 0;
+	padding: 10px;
+	background: #f9f9f9;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.aips-bulk-action-select {
+	min-width: 150px;
+	padding: 6px 10px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.aips-bulk-action-execute {
+	padding: 6px 15px !important;
+}
+
+/* Topics Table Checkboxes */
+.aips-topics-table .check-column {
+	width: 2.2em;
+	padding: 8px 0;
+	vertical-align: middle;
+	text-align: center;
+}
+
+.aips-topics-table .check-column input[type="checkbox"] {
+	margin: 0;
+	cursor: pointer;
+}
+
+.aips-select-all-topics {
+	cursor: pointer;
+}
+
+.aips-topic-checkbox {
+	cursor: pointer;
+}
