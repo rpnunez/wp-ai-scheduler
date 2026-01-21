@@ -53,6 +53,10 @@
 			$(document).on('click', '.aips-cancel-edit-topic', this.cancelEditTopic.bind(this));
 			$(document).on('click', '.aips-generate-post-now', this.generatePostNow.bind(this));
 			$(document).on('click', '.aips-view-topic-log', this.viewTopicLog.bind(this));
+
+			// Bulk actions
+			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
+			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
 			
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
@@ -258,7 +262,8 @@
 				return;
 			}
 
-			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
+			let html = '<table class="wp-list-table widefat fixed striped aips-topics-table"><thead><tr>';
+			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>';
 			html += '<th>' + aipsAuthorsL10n.topicTitle + '</th>';
 			html += '<th>' + aipsAuthorsL10n.generatedAt + '</th>';
 			html += '<th>' + aipsAuthorsL10n.actions + '</th>';
@@ -266,6 +271,7 @@
 
 			topics.forEach(topic => {
 				html += '<tr data-topic-id="' + topic.id + '">';
+				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
 				html += '<td class="topic-title-cell"><span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
 				
 				// Add post count badge if there are any posts
@@ -645,6 +651,105 @@
 			
 			html += '</tbody></table>';
 			$('#aips-topic-posts-content').html(html);
+		},
+
+		toggleSelectAll: function (e) {
+			const isChecked = $(e.currentTarget).prop('checked');
+			$('.aips-topic-checkbox').prop('checked', isChecked);
+		},
+
+		executeBulkAction: function (e) {
+			e.preventDefault();
+
+			// Get the dropdown closest to the clicked button
+			const $button = $(e.currentTarget);
+			const $dropdown = $button.siblings('.aips-bulk-action-select');
+			const action = $dropdown.val();
+
+			if (!action) {
+				alert(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.');
+				return;
+			}
+
+			// Get all checked topic IDs
+			const topicIds = [];
+			$('.aips-topic-checkbox:checked').each(function () {
+				topicIds.push($(this).val());
+			});
+
+			if (topicIds.length === 0) {
+				alert(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
+				return;
+			}
+
+			// Confirm action
+			const confirmMessage = this.getBulkConfirmMessage(action, topicIds.length);
+			if (!confirm(confirmMessage)) {
+				return;
+			}
+
+			// Disable button while processing
+			$button.prop('disabled', true).text(aipsAuthorsL10n.processing || 'Processing...');
+
+			// Determine the AJAX action
+			let ajaxAction;
+			switch (action) {
+				case 'approve':
+					ajaxAction = 'aips_bulk_approve_topics';
+					break;
+				case 'reject':
+					ajaxAction = 'aips_bulk_reject_topics';
+					break;
+				case 'delete':
+					ajaxAction = 'aips_bulk_delete_topics';
+					break;
+				default:
+					alert('Invalid bulk action.');
+					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+					return;
+			}
+
+			// Execute bulk action
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: ajaxAction,
+					nonce: aipsAuthorsL10n.nonce,
+					topic_ids: topicIds
+				},
+				success: (response) => {
+					if (response.success) {
+						alert(response.data.message);
+						// Reload topics for current tab
+						const activeTab = $('.aips-tab-link.active').data('tab');
+						this.loadTopics(activeTab);
+					} else {
+						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.');
+					}
+				},
+				error: () => {
+					alert(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.');
+				},
+				complete: () => {
+					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+					// Reset dropdowns
+					$('.aips-bulk-action-select').val('');
+					// Uncheck all checkboxes
+					$('.aips-select-all-topics').prop('checked', false);
+					$('.aips-topic-checkbox').prop('checked', false);
+				}
+			});
+		},
+
+		getBulkConfirmMessage: function (action, count) {
+			const messages = {
+				approve: aipsAuthorsL10n.confirmBulkApprove || 'Are you sure you want to approve %d topics?',
+				reject: aipsAuthorsL10n.confirmBulkReject || 'Are you sure you want to reject %d topics?',
+				delete: aipsAuthorsL10n.confirmBulkDelete || 'Are you sure you want to delete %d topics? This action cannot be undone.'
+			};
+			const template = messages[action] || 'Are you sure you want to %s %d topics?';
+			return template.replace('%d', count).replace('%s', action);
 		},
 
 		closeModals: function (e) {
