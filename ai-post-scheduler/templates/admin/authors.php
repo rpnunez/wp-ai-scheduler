@@ -211,3 +211,26 @@ $posts_count = count($posts);
 </div>
 </div>
 </div>
+
+<!-- Feedback Modal -->
+<div id="aips-feedback-modal" class="aips-modal" style="display: none;">
+<div class="aips-modal-content">
+<span class="aips-modal-close">&times;</span>
+<h2 id="aips-feedback-modal-title"><?php esc_html_e('Provide Feedback', 'ai-post-scheduler'); ?></h2>
+<form id="aips-feedback-form">
+<input type="hidden" id="feedback_topic_id" name="topic_id" value="">
+<input type="hidden" id="feedback_action" name="action_type" value="">
+
+<div class="form-group">
+<label for="feedback_reason"><?php esc_html_e('Reason (optional)', 'ai-post-scheduler'); ?></label>
+<textarea id="feedback_reason" name="reason" rows="4" placeholder="<?php esc_attr_e('Why are you approving/rejecting this topic?', 'ai-post-scheduler'); ?>"></textarea>
+<p class="description"><?php esc_html_e('Your feedback helps improve future topic generation', 'ai-post-scheduler'); ?></p>
+</div>
+
+<div class="form-actions">
+<button type="submit" class="button button-primary" id="feedback-submit-btn"><?php esc_html_e('Submit', 'ai-post-scheduler'); ?></button>
+<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+</div>
+</form>
+</div>
+</div>

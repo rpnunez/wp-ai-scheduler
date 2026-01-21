@@ -38,6 +38,9 @@
 			// Submit Author Form
 			$('#aips-author-form').on('submit', this.saveAuthor.bind(this));
 			
+			// Submit Feedback Form
+			$('#aips-feedback-form').on('submit', this.submitFeedback.bind(this));
+			
 			// Tab switching in topics modal
 			$(document).on('click', '.aips-tab-link', this.switchTab.bind(this));
 			
@@ -294,48 +297,56 @@
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('id');
 			
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_approve_topic',
-					nonce: aipsAuthorsL10n.nonce,
-					topic_id: topicId
-				},
-				success: (response) => {
-					if (response.success) {
-						this.loadTopics('pending');
-					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorApproving);
-					}
-				},
-				error: () => {
-					alert(aipsAuthorsL10n.errorApproving);
-				}
-			});
+			// Open feedback modal
+			$('#feedback_topic_id').val(topicId);
+			$('#feedback_action').val('approve');
+			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.approveTopicTitle || 'Approve Topic');
+			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.approveReasonPlaceholder || 'Why are you approving this topic?');
+			$('#feedback-submit-btn').text(aipsAuthorsL10n.approve);
+			$('#aips-feedback-modal').fadeIn();
 		},
 		
 		rejectTopic: function(e) {
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('id');
 			
+			// Open feedback modal
+			$('#feedback_topic_id').val(topicId);
+			$('#feedback_action').val('reject');
+			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic');
+			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
+			$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
+			$('#aips-feedback-modal').fadeIn();
+		},
+		
+		submitFeedback: function(e) {
+			e.preventDefault();
+			const topicId = $('#feedback_topic_id').val();
+			const action = $('#feedback_action').val();
+			const reason = $('#feedback_reason').val();
+			
+			const ajaxAction = action === 'approve' ? 'aips_approve_topic' : 'aips_reject_topic';
+			
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
 				data: {
-					action: 'aips_reject_topic',
+					action: ajaxAction,
 					nonce: aipsAuthorsL10n.nonce,
-					topic_id: topicId
+					topic_id: topicId,
+					reason: reason
 				},
 				success: (response) => {
 					if (response.success) {
+						$('#aips-feedback-modal').fadeOut();
+						$('#aips-feedback-form')[0].reset();
 						this.loadTopics('pending');
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRejecting);
+						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving);
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorRejecting);
+					alert(action === 'approve' ? aipsAuthorsL10n.errorApproving : aipsAuthorsL10n.errorRejecting);
 				}
 			});
 		},
