@@ -58,6 +58,7 @@ class AIPS_Author_Topics_Controller {
 		add_action('wp_ajax_aips_get_topic_feedback', array($this, 'ajax_get_topic_feedback'));
 		add_action('wp_ajax_aips_bulk_approve_topics', array($this, 'ajax_bulk_approve_topics'));
 		add_action('wp_ajax_aips_bulk_reject_topics', array($this, 'ajax_bulk_reject_topics'));
+		add_action('wp_ajax_aips_bulk_delete_topics', array($this, 'ajax_bulk_delete_topics'));
 		add_action('wp_ajax_aips_regenerate_post', array($this, 'ajax_regenerate_post'));
 		add_action('wp_ajax_aips_delete_generated_post', array($this, 'ajax_delete_generated_post'));
 	}
@@ -308,6 +309,35 @@ class AIPS_Author_Topics_Controller {
 		
 		wp_send_json_success(array(
 			'message' => sprintf(__('%d topics rejected successfully.', 'ai-post-scheduler'), $success_count)
+		));
+	}
+	
+	/**
+	 * AJAX handler for bulk deleting topics.
+	 */
+	public function ajax_bulk_delete_topics() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$topic_ids = isset($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		
+		if (empty($topic_ids)) {
+			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+		}
+		
+		$success_count = 0;
+		foreach ($topic_ids as $topic_id) {
+			$result = $this->repository->delete($topic_id);
+			if ($result) {
+				$success_count++;
+			}
+		}
+		
+		wp_send_json_success(array(
+			'message' => sprintf(__('%d topics deleted successfully.', 'ai-post-scheduler'), $success_count)
 		));
 	}
 	

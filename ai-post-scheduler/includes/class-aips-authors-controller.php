@@ -68,6 +68,7 @@ class AIPS_Authors_Controller {
 		add_action('wp_ajax_aips_get_author_posts', array($this, 'ajax_get_author_posts'));
 		add_action('wp_ajax_aips_get_author_feedback', array($this, 'ajax_get_author_feedback'));
 		add_action('wp_ajax_aips_generate_topics_now', array($this, 'ajax_generate_topics_now'));
+		add_action('wp_ajax_aips_get_topic_posts', array($this, 'ajax_get_topic_posts'));
 	}
 	
 	/**
@@ -229,6 +230,18 @@ class AIPS_Authors_Controller {
 		$topics = $this->topics_repository->get_by_author($author_id, $status);
 		$status_counts = $this->topics_repository->get_status_counts($author_id);
 		
+		// Add post count to each topic
+		foreach ($topics as &$topic) {
+			$logs = $this->logs_repository->get_by_topic($topic->id);
+			$post_count = 0;
+			foreach ($logs as $log) {
+				if ($log->action === 'post_generated' && $log->post_id) {
+					$post_count++;
+				}
+			}
+			$topic->post_count = $post_count;
+		}
+		
 		wp_send_json_success(array(
 			'topics' => $topics,
 			'status_counts' => $status_counts
@@ -326,5 +339,56 @@ class AIPS_Authors_Controller {
 		}
 		
 		wp_send_json_success(array('feedback' => $feedback));
+	}
+	
+	/**
+	 * AJAX handler for getting posts associated with a specific topic.
+	 */
+	public function ajax_get_topic_posts() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
+		
+		if (!$topic_id) {
+			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
+		}
+		
+		// Get the topic details
+		$topic = $this->topics_repository->get_by_id($topic_id);
+		
+		if (!$topic) {
+			wp_send_json_error(array('message' => __('Topic not found.', 'ai-post-scheduler')));
+		}
+		
+		// Get all logs for this topic
+		$logs = $this->logs_repository->get_by_topic($topic_id);
+		
+		$posts = array();
+		foreach ($logs as $log) {
+			// Only include post_generated logs with valid post IDs
+			if ($log->action === 'post_generated' && $log->post_id) {
+				$wp_post = get_post($log->post_id);
+				if ($wp_post) {
+					$posts[] = array(
+						'post_id' => $log->post_id,
+						'post_title' => $wp_post->post_title,
+						'post_status' => $wp_post->post_status,
+						'date_generated' => $log->created_at,
+						'date_published' => $wp_post->post_status === 'publish' ? $wp_post->post_date : null,
+						'post_url' => get_permalink($wp_post->ID),
+						'edit_url' => get_edit_post_link($wp_post->ID, 'raw')
+					);
+				}
+			}
+		}
+		
+		wp_send_json_success(array(
+			'topic' => $topic,
+			'posts' => $posts
+		));
 	}
 }
