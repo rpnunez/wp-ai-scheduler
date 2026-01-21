@@ -99,6 +99,14 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dev-tools.php';
 
+        // Data Management Feature
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-export.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-import.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-export-mysql.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-import-mysql.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-export-json.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-import-json.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management.php';
         // Authors Feature
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-scheduler.php';
@@ -194,6 +202,7 @@ final class AI_Post_Scheduler {
             new AIPS_Activity_Controller();
             new AIPS_Research_Controller();
             new AIPS_Seeder_Admin();
+            new AIPS_Data_Management();
             // Structures admin controller (CRUD endpoints for Article Structures UI)
             new AIPS_Structures_Controller();
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
