@@ -56,13 +56,20 @@ class AIPS_Feedback_Repository_Test extends WP_UnitTestCase {
 			'action' => 'approved',
 			'user_id' => 1,
 			'reason' => 'Great topic!',
-			'notes' => 'Looking forward to this post'
+			'notes' => 'Looking forward to this post',
+			'reason_category' => 'other',
+			'source' => 'UI'
 		);
 		
 		$id = $this->repository->create($data);
 		
 		$this->assertIsInt($id);
 		$this->assertGreaterThan(0, $id);
+		
+		// Verify the data was stored correctly
+		$feedback = $this->repository->get_by_id($id);
+		$this->assertEquals('other', $feedback->reason_category);
+		$this->assertEquals('UI', $feedback->source);
 	}
 	
 	public function test_get_by_id() {
@@ -189,5 +196,74 @@ class AIPS_Feedback_Repository_Test extends WP_UnitTestCase {
 		
 		$this->assertIsInt($id);
 		$this->assertEquals('', $feedback->reason);
+	}
+	
+	public function test_record_approval_with_category() {
+		$id = $this->repository->record_approval(
+			$this->test_topic_id, 
+			1, 
+			'Excellent content', 
+			'Notes here',
+			'other',
+			'UI'
+		);
+		
+		$feedback = $this->repository->get_by_id($id);
+		
+		$this->assertIsInt($id);
+		$this->assertEquals('approved', $feedback->action);
+		$this->assertEquals('other', $feedback->reason_category);
+		$this->assertEquals('UI', $feedback->source);
+	}
+	
+	public function test_record_rejection_with_category() {
+		$id = $this->repository->record_rejection(
+			$this->test_topic_id, 
+			1, 
+			'Policy violation', 
+			'',
+			'policy',
+			'automation'
+		);
+		
+		$feedback = $this->repository->get_by_id($id);
+		
+		$this->assertIsInt($id);
+		$this->assertEquals('rejected', $feedback->action);
+		$this->assertEquals('policy', $feedback->reason_category);
+		$this->assertEquals('automation', $feedback->source);
+	}
+	
+	public function test_get_by_reason_category() {
+		// Create multiple feedback entries with different categories
+		$this->repository->record_rejection($this->test_topic_id, 1, 'Duplicate', '', 'duplicate', 'UI');
+		$this->repository->record_rejection($this->test_topic_id, 1, 'Policy issue', '', 'policy', 'UI');
+		$this->repository->record_approval($this->test_topic_id, 1, 'Good', '', 'other', 'UI');
+		
+		$duplicate_feedback = $this->repository->get_by_reason_category('duplicate');
+		$policy_feedback = $this->repository->get_by_reason_category('policy');
+		
+		$this->assertGreaterThanOrEqual(1, count($duplicate_feedback));
+		$this->assertGreaterThanOrEqual(1, count($policy_feedback));
+		$this->assertEquals('duplicate', $duplicate_feedback[0]->reason_category);
+		$this->assertEquals('policy', $policy_feedback[0]->reason_category);
+	}
+	
+	public function test_get_reason_category_statistics() {
+		// Create feedback with different categories
+		$this->repository->record_approval($this->test_topic_id, 1, '', '', 'other', 'UI');
+		$this->repository->record_approval($this->test_topic_id, 1, '', '', 'other', 'UI');
+		$this->repository->record_rejection($this->test_topic_id, 1, '', '', 'duplicate', 'UI');
+		$this->repository->record_rejection($this->test_topic_id, 1, '', '', 'policy', 'UI');
+		
+		$stats = $this->repository->get_reason_category_statistics($this->test_author_id);
+		
+		$this->assertIsArray($stats);
+		$this->assertArrayHasKey('other', $stats);
+		$this->assertArrayHasKey('duplicate', $stats);
+		$this->assertArrayHasKey('policy', $stats);
+		$this->assertEquals(2, $stats['other']['approved']);
+		$this->assertEquals(1, $stats['duplicate']['rejected']);
+		$this->assertEquals(1, $stats['policy']['rejected']);
 	}
 }
