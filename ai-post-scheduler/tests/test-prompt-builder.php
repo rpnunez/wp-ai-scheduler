@@ -21,7 +21,8 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 			'article_structure_id' => null,
 		);
 
-		$result = $builder->build_content_prompt($template, 'AI Technology', null);
+		$context = new AIPS_Template_Context($template, null, 'AI Technology');
+		$result = $builder->build_content_prompt($context);
 
 		$this->assertStringContainsString('Write about AI Technology', $result);
 		$this->assertStringContainsString('Output the response for use as a WordPress post', $result);
@@ -41,10 +42,12 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		);
 
 		$voice = (object) array(
+			'id' => 1,
 			'content_instructions' => 'Use a professional tone when discussing {{topic}}',
 		);
 
-		$result = $builder->build_content_prompt($template, 'Machine Learning', $voice);
+		$context = new AIPS_Template_Context($template, $voice, 'Machine Learning');
+		$result = $builder->build_content_prompt($context);
 
 		$this->assertStringContainsString('Use a professional tone when discussing Machine Learning', $result);
 		$this->assertStringContainsString('Write about Machine Learning', $result);
@@ -270,7 +273,8 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 			'article_structure_id' => null,
 		);
 
-		$result = $builder->build_content_prompt($template, 'Testing', null);
+		$context = new AIPS_Template_Context($template, null, 'Testing');
+		$result = $builder->build_content_prompt($context);
 
 		$this->assertStringContainsString('FILTERED CONTENT', $result);
 

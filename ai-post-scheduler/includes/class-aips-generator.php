@@ -296,28 +296,11 @@ class AIPS_Generator {
     }
     
     /**
-     * Generate a post title based on the generated content, template, and optional voice/topic.
+     * Generate a post title from a generation context.
      *
      * Delegates title prompt construction to AIPS_Prompt_Builder for consistency
      * and to follow the Single Responsibility Principle. The Prompt Builder handles
      * all the logic for building prompts (title, excerpt, content).
-     *
-     * @param object      $template Template object containing prompts and settings.
-     * @param object|null $voice    Optional voice object with overrides.
-     * @param string|null $topic    Optional topic to be injected into prompts.
-     * @param string      $content  Generated article content used as context.
-     * @param array       $options  AI options (e.g., model, max_tokens override).
-     * @param array       $ai_variables Optional resolved AI variables.
-     * @return string|WP_Error      Generated title string or WP_Error on failure.
-     */
-    public function generate_title($template, $voice = null, $topic = null, $content = '', $options = array(), $ai_variables = array()) {
-        // For backward compatibility, convert to context and delegate
-        $context = new AIPS_Template_Context($template, $voice, $topic);
-        return $this->generate_title_from_context($context, $content, $ai_variables, $options);
-    }
-    
-    /**
-     * Generate a post title from a generation context.
      *
      * @param AIPS_Generation_Context $context      Generation context.
      * @param string                  $content      Generated article content used as context.
@@ -325,7 +308,7 @@ class AIPS_Generator {
      * @param array                   $options      AI options (e.g., model, max_tokens override).
      * @return string|WP_Error Generated title string or WP_Error on failure.
      */
-    private function generate_title_from_context($context, $content = '', $ai_variables = array(), $options = array()) {
+    private function generate_title($context, $content = '', $ai_variables = array(), $options = array()) {
         // Delegate prompt building to Prompt Builder
         $prompt = $this->prompt_builder->build_title_prompt($context, null, null, $content);
 
@@ -423,8 +406,6 @@ class AIPS_Generator {
     /**
      * Main entry point to generate a post from a context (template, topic, etc.).
      *
-     * Supports both legacy template-based calls and new context-based calls.
-     *
      * Steps performed:
      * 1. Start a generation session and create a history record
      * 2. Build content prompt and request body content from AI
@@ -432,32 +413,10 @@ class AIPS_Generator {
      * 4. Create the WordPress post and optionally the featured image
      * 5. Complete session, update history, and dispatch hooks
      *
-     * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
-     * @param object|null $voice Optional voice object with overrides (legacy).
-     * @param string|null $topic Optional topic to be injected into prompts (legacy).
-     * @return int|WP_Error ID of created post or WP_Error on failure.
-     */
-    public function generate_post($template_or_context, $voice = null, $topic = null) {
-        // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
-            return $this->generate_post_from_context($template_or_context);
-        }
-        
-        // Legacy template-based approach - convert to context and delegate
-        $template = $template_or_context;
-        $context = new AIPS_Template_Context($template, $voice, $topic);
-        return $this->generate_post_from_context($context);
-    }
-    
-    /**
-     * Generate a post from a Generation Context.
-     *
-     * This is the core implementation that works with any context type.
-     *
      * @param AIPS_Generation_Context $context Generation context.
      * @return int|WP_Error ID of created post or WP_Error on failure.
      */
-    private function generate_post_from_context($context) {
+    public function generate_post($context) {
         // Dispatch post generation started event
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
         
@@ -514,7 +473,7 @@ class AIPS_Generator {
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
 
         // Generate the title using the context and content.
-        $title = $this->generate_title_from_context($context, $content, $ai_variables);
+        $title = $this->generate_title($context, $content, $ai_variables);
 
         // Detect unresolved template placeholders in the generated title.
         $has_unresolved_placeholders = false;
