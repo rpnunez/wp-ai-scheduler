@@ -249,4 +249,84 @@ class AIPS_Author_Topics_Repository {
 		
 		return $counts;
 	}
+	
+	/**
+	 * Get approved topics with weighted sampling for generation.
+	 *
+	 * Computes scores based on:
+	 * - topic_score = base + alpha * approved_count - beta * rejected_count - gamma * recency_penalty
+	 * Uses normalized scores as sampling probabilities.
+	 *
+	 * @param int   $author_id Author ID.
+	 * @param int   $limit     Optional. Maximum number of topics to return. Default 1.
+	 * @param array $config    Optional. Scoring configuration (base, alpha, beta, gamma).
+	 * @return array Array of approved topic objects.
+	 */
+	public function get_approved_for_generation_weighted($author_id, $limit = 1, $config = array()) {
+		// Get default config if not provided
+		if (empty($config)) {
+			$aips_config = AIPS_Config::get_instance();
+			$config = $aips_config->get_topic_scoring_config();
+		}
+		
+		$base = isset($config['base']) ? (float) $config['base'] : 50;
+		$alpha = isset($config['alpha']) ? (float) $config['alpha'] : 10;
+		$beta = isset($config['beta']) ? (float) $config['beta'] : 15;
+		$gamma = isset($config['gamma']) ? (float) $config['gamma'] : 5;
+		
+		$feedback_table = $this->wpdb->prefix . 'aips_topic_feedback';
+		
+		// Get all approved topics with their feedback counts and recency
+		$topics = $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT 
+				t.*,
+				COALESCE(SUM(CASE WHEN f.action = 'approved' THEN 1 ELSE 0 END), 0) as approved_count,
+				COALESCE(SUM(CASE WHEN f.action = 'rejected' THEN 1 ELSE 0 END), 0) as rejected_count,
+				TIMESTAMPDIFF(DAY, t.reviewed_at, NOW()) as days_since_reviewed
+			FROM {$this->table_name} t
+			LEFT JOIN {$feedback_table} f ON t.id = f.author_topic_id
+			WHERE t.author_id = %d 
+			AND t.status = 'approved'
+			GROUP BY t.id
+			ORDER BY t.reviewed_at ASC",
+			$author_id
+		));
+		
+		if (empty($topics)) {
+			return array();
+		}
+		
+		// Calculate scores and normalize
+		$total_score = 0;
+		foreach ($topics as $topic) {
+			$recency_penalty = ((int) $topic->days_since_reviewed) / 30.0; // Normalize to months
+			$topic->computed_score = $base + ($alpha * (int) $topic->approved_count) - ($beta * (int) $topic->rejected_count) - ($gamma * $recency_penalty);
+			
+			// Ensure minimum score of 1 to give all topics a chance
+			$topic->computed_score = max(1, $topic->computed_score);
+			$total_score += $topic->computed_score;
+		}
+		
+		// Weighted random sampling
+		$selected = array();
+		for ($i = 0; $i < $limit && count($topics) > 0; $i++) {
+			$rand = mt_rand() / mt_getrandmax() * $total_score;
+			$cumulative = 0;
+			
+			foreach ($topics as $index => $topic) {
+				$cumulative += $topic->computed_score;
+				if ($rand <= $cumulative) {
+					$selected[] = $topic;
+					
+					// Remove selected topic from pool
+					$total_score -= $topic->computed_score;
+					unset($topics[$index]);
+					$topics = array_values($topics); // Re-index array
+					break;
+				}
+			}
+		}
+		
+		return $selected;
+	}
 }

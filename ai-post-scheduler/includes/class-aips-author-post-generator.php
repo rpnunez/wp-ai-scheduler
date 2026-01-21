@@ -106,8 +106,8 @@ class AIPS_Author_Post_Generator {
 	public function generate_post_for_author($author) {
 		$this->logger->log("Generating post for author: {$author->name} (ID: {$author->id})", 'info');
 		
-		// Get the next approved topic for this author
-		$topics = $this->topics_repository->get_approved_for_generation($author->id, 1);
+		// Get the next approved topic for this author using weighted sampling
+		$topics = $this->topics_repository->get_approved_for_generation_weighted($author->id, 1);
 		
 		if (empty($topics)) {
 			$this->logger->log("No approved topics available for author {$author->id}", 'warning');
@@ -161,13 +161,17 @@ class AIPS_Author_Post_Generator {
 				return $post_id;
 			}
 			
+			// Apply scheduling priority bump for approved topics
+			$this->apply_scheduling_priority_bump($post_id, $topic);
+			
 			// Log the post generation
 			$this->logs_repository->log_post_generation(
 				$topic->id,
 				$post_id,
 				wp_json_encode(array(
 					'history_id' => $history_id,
-					'author_id' => $author->id
+					'author_id' => $author->id,
+					'topic_score' => isset($topic->computed_score) ? $topic->computed_score : null
 				))
 			);
 			
@@ -179,6 +183,57 @@ class AIPS_Author_Post_Generator {
 			$this->logger->log("Exception generating post for topic {$topic->id}: " . $e->getMessage(), 'error');
 			return new WP_Error('generation_failed', $e->getMessage());
 		}
+	}
+	
+	/**
+	 * Apply scheduling priority bump to a post from an approved topic.
+	 *
+	 * Adjusts the post date to schedule it earlier based on topic score.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param object $topic   Topic object.
+	 */
+	private function apply_scheduling_priority_bump($post_id, $topic) {
+		// Only apply bump if topic has a computed score (from weighted sampling)
+		if (!isset($topic->computed_score)) {
+			return;
+		}
+		
+		// Get the scheduling priority bump configuration
+		$config = AIPS_Config::get_instance();
+		$scoring_config = $config->get_topic_scoring_config();
+		$priority_bump_seconds = isset($scoring_config['scheduling_priority_bump']) ? (int) $scoring_config['scheduling_priority_bump'] : 3600;
+		
+		// Get current post
+		$post = get_post($post_id);
+		if (!$post || $post->post_status !== 'future') {
+			// Only apply to scheduled posts
+			return;
+		}
+		
+		// Calculate bump based on score (higher score = earlier scheduling)
+		// Score above base gets a bump, below base gets delayed
+		$base_score = isset($scoring_config['base']) ? (float) $scoring_config['base'] : 50;
+		$score_diff = $topic->computed_score - $base_score;
+		$bump_multiplier = $score_diff / $base_score; // Normalize to percentage
+		$bump_seconds = (int) ($priority_bump_seconds * $bump_multiplier);
+		
+		// Apply the bump to post date
+		$current_date = strtotime($post->post_date);
+		$new_date = $current_date - $bump_seconds;
+		
+		// Don't schedule in the past
+		$new_date = max($new_date, time() + 60); // At least 1 minute in the future
+		
+		$new_date_string = date('Y-m-d H:i:s', $new_date);
+		
+		wp_update_post(array(
+			'ID' => $post_id,
+			'post_date' => $new_date_string,
+			'post_date_gmt' => get_gmt_from_date($new_date_string)
+		));
+		
+		$this->logger->log("Applied scheduling priority bump to post {$post_id}: {$bump_seconds} seconds (score: {$topic->computed_score})", 'info');
 	}
 	
 	/**

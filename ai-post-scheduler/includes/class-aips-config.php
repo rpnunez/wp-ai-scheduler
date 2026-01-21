@@ -77,6 +77,11 @@ class AIPS_Config {
             'aips_enable_circuit_breaker' => false,
             'aips_circuit_breaker_threshold' => 5,
             'aips_circuit_breaker_timeout' => 300,
+            'aips_topic_scoring_base' => 50,
+            'aips_topic_scoring_alpha' => 10,
+            'aips_topic_scoring_beta' => 15,
+            'aips_topic_scoring_gamma' => 5,
+            'aips_topic_scheduling_priority_bump' => 3600,
         );
     }
     
@@ -213,6 +218,21 @@ class AIPS_Config {
             'enabled' => (bool) $this->get_option('aips_enable_logging', true),
             'retention_days' => (int) $this->get_option('aips_log_retention_days', 30),
             'level' => $this->is_debug_mode() ? 'debug' : 'info',
+        );
+    }
+    
+    /**
+     * Get topic scoring configuration.
+     *
+     * @return array Topic scoring configuration.
+     */
+    public function get_topic_scoring_config() {
+        return array(
+            'base' => (float) $this->get_option('aips_topic_scoring_base', 50),
+            'alpha' => (float) $this->get_option('aips_topic_scoring_alpha', 10),
+            'beta' => (float) $this->get_option('aips_topic_scoring_beta', 15),
+            'gamma' => (float) $this->get_option('aips_topic_scoring_gamma', 5),
+            'scheduling_priority_bump' => (int) $this->get_option('aips_topic_scheduling_priority_bump', 3600),
         );
     }
     
