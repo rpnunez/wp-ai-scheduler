@@ -7,7 +7,9 @@ exit;
 $authors_repository = null;
 $topics_repository = null;
 $logs_repository = null;
+$structures_repository = null;
 $authors = array();
+$article_structures = array();
 
 if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
 $authors_repository = new AIPS_Authors_Repository();
@@ -17,6 +19,10 @@ if (!empty($authors)) {
 $topics_repository = new AIPS_Author_Topics_Repository();
 $logs_repository = new AIPS_Author_Topic_Logs_Repository();
 }
+
+// Load article structures for the dropdown
+$structures_repository = new AIPS_Article_Structure_Repository();
+$article_structures = $structures_repository->get_all(true); // Get active structures only
 }
 ?>
 <div class="wrap aips-wrap">
@@ -134,6 +140,19 @@ $posts_count = count($posts);
 <div class="form-group">
 <label for="author_description"><?php esc_html_e('Description', 'ai-post-scheduler'); ?></label>
 <textarea id="author_description" name="description" rows="3"></textarea>
+</div>
+
+<div class="form-group">
+<label for="article_structure_id"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></label>
+<select id="article_structure_id" name="article_structure_id">
+<option value=""><?php esc_html_e('None (use default)', 'ai-post-scheduler'); ?></option>
+<?php foreach ($article_structures as $structure): ?>
+<option value="<?php echo esc_attr($structure->id); ?>">
+<?php echo esc_html($structure->name); ?>
+</option>
+<?php endforeach; ?>
+</select>
+<p class="description"><?php esc_html_e('Optional: Select a specific article structure for posts generated from this author', 'ai-post-scheduler'); ?></p>
 </div>
 
 <div class="form-group">

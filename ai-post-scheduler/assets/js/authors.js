@@ -88,6 +88,7 @@
 						$('#author_description').val(author.description);
 						$('#author_keywords').val(author.keywords || '');
 						$('#author_details').val(author.details || '');
+						$('#article_structure_id').val(author.article_structure_id || '');
 						$('#topic_generation_quantity').val(author.topic_generation_quantity);
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
