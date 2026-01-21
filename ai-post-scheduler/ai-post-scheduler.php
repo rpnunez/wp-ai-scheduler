@@ -120,40 +120,56 @@ final class AI_Post_Scheduler {
     }
     
     private function init_hooks() {
-        register_activation_hook(__FILE__, array($this, 'activate'));
-        register_deactivation_hook(__FILE__, array($this, 'deactivate'));
-        
         add_action('plugins_loaded', array($this, 'check_upgrades'));
         add_action('plugins_loaded', array($this, 'init'));
     }
     
     public function activate() {
+        // Ensure logger is available
+        if (!class_exists('AIPS_Logger')) {
+            require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
+        }
+
+        $logger = new AIPS_Logger();
+
+        $logger->log('Running plugin activation.');
+
         $this->set_default_options();
         $this->check_upgrades();
 
         // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
         AIPS_DB_Manager::install_tables();
         
-        if (!wp_next_scheduled('aips_generate_scheduled_posts')) {
-            wp_schedule_event(time(), 'hourly', 'aips_generate_scheduled_posts');
-        }
-        
-        // Schedule author topic generation
-        if (!wp_next_scheduled('aips_generate_author_topics')) {
-            wp_schedule_event(time(), 'hourly', 'aips_generate_author_topics');
-        }
-        
-        // Schedule author post generation
-        if (!wp_next_scheduled('aips_generate_author_posts')) {
-            wp_schedule_event(time(), 'hourly', 'aips_generate_author_posts');
-        }
-        
-        // Schedule automated research (daily by default)
-        if (!wp_next_scheduled('aips_scheduled_research')) {
-            wp_schedule_event(time(), 'daily', 'aips_scheduled_research');
+        $crons = array(
+            'aips_generate_scheduled_posts' => 'hourly',
+            'aips_generate_author_topics' => 'hourly',
+            'aips_generate_author_posts' => 'hourly',
+            'aips_scheduled_research' => 'daily'
+        );
+
+        foreach ($crons as $hook => $schedule) {
+            $logger->log("Checking cron: $hook");
+
+            if (!wp_next_scheduled($hook)) {
+                $logger->log("Cron '$hook' not scheduled. Scheduling now with schedule: '$schedule'.");
+
+                wp_schedule_event(time(), $schedule, $hook);
+                
+                $next_run = wp_next_scheduled($hook);
+
+                if ($next_run) {
+                    $logger->log("Successfully scheduled '$hook'. Next run: " . date('Y-m-d H:i:s', $next_run));
+                } else {
+                    $logger->log("Failed to schedule '$hook'. wp_next_scheduled returned false.", 'error');
+                }
+            } else {
+                $logger->log("Cron '$hook' is already scheduled.");
+            }
         }
         
         flush_rewrite_rules();
+
+        $logger->log('Plugin activation finished.');
     }
     
     public function check_upgrades() {
@@ -230,3 +246,15 @@ function aips_init() {
 }
 
 add_action('plugins_loaded', 'aips_init', 5);
+
+function aips_activate_callback() {
+    AI_Post_Scheduler::get_instance()->activate();
+}
+
+register_activation_hook(__FILE__, 'aips_activate_callback');
+
+function aips_deactivate_callback() {
+    AI_Post_Scheduler::get_instance()->deactivate();
+}
+
+register_deactivation_hook(__FILE__, 'aips_deactivate_callback');

@@ -134,15 +134,25 @@ class AIPS_System_Status {
     }
 
     private function check_cron() {
-        $next_run = wp_next_scheduled('aips_generate_scheduled_posts');
+        $cron_events = array(
+            'aips_generate_scheduled_posts' => 'Post Generation',
+            'aips_generate_author_topics' => 'Author Topic Generation',
+            'aips_generate_author_posts' => 'Author Post Generation',
+            'aips_scheduled_research' => 'Automated Research'
+        );
 
-        return array(
-            'schedule_event' => array(
-                'label' => 'Cron Event',
+        $status = array();
+
+        foreach ($cron_events as $event_hook => $event_label) {
+            $next_run = wp_next_scheduled($event_hook);
+            $status[$event_hook] = array(
+                'label' => $event_label,
                 'value' => $next_run ? date('Y-m-d H:i:s', $next_run) : 'Not Scheduled',
                 'status' => $next_run ? 'ok' : 'error',
-            ),
-        );
+            );
+        }
+
+        return $status;
     }
 
     private function check_logs() {
