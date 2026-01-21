@@ -231,7 +231,164 @@ Two cron hooks handle automation:
 - **Week 2**: System generates 10 NEW topics, using approved/rejected history to avoid duplicates
 - **Result**: Diverse content covering different aspects of PHP
 
-## Testing the Feature
+## Feature: Reassigning Topics to Different Authors
+
+### Overview
+
+The **Topic Reassignment** feature allows administrators to move topics from one author to another. This is useful when:
+- A topic is better suited for a different content vertical
+- An author's niche has changed
+- You want to reorganize topics across authors
+
+### How to Use
+
+1. Navigate to **AI Post Scheduler → Authors**
+2. Click **View Topics** on an author
+3. In any tab (Pending, Approved, or Rejected), find the topic you want to reassign
+4. Click the **Reassign** button next to the topic
+5. In the modal:
+   - Select the new author from the dropdown
+   - Optionally provide a reason for the reassignment
+6. Click **Reassign Topic**
+
+### What Happens
+
+- The topic's `author_id` is updated to the new author
+- A log entry is created with action type `reassigned`
+- The log includes:
+  - Old and new author IDs
+  - New author's name
+  - Reason (if provided)
+  - User who performed the action
+- The topic maintains its current status (pending/approved/rejected)
+
+### Database Changes
+
+- **Table**: `wp_aips_author_topics`
+- **Column**: `author_id` - Updated to new author's ID
+- **Table**: `wp_aips_author_topic_logs`
+- **New entry**: Action = `reassigned`, includes full context
+
+### Use Cases
+
+**Example 1: Better Fit**
+- Topic: "Understanding JavaScript Closures" 
+- Originally assigned to: PHP Expert
+- Reassigned to: JavaScript Guru
+- Reason: "Topic is about JavaScript, not PHP"
+
+**Example 2: Niche Expansion**
+- Topic: "Building REST APIs"
+- Originally assigned to: Frontend Developer
+- Reassigned to: Backend Developer
+- Reason: "Better aligned with backend content strategy"
+
+---
+
+## Feature: One-Click Post Regeneration
+
+### Overview
+
+The **Post Regeneration** feature allows administrators to regenerate a post from the same approved topic with a single click. This is useful when:
+- The generated content quality is poor
+- You want a different take on the same topic
+- The AI produced off-topic content
+
+### How to Use
+
+1. Navigate to **AI Post Scheduler → Authors**
+2. Click **View Topics** on an author
+3. Go to the **Approved** tab
+4. Click the post count badge on any topic (shows number like "📄 3")
+5. In the **Posts Generated from Topic** modal, you'll see all posts
+6. Click the **Regenerate** button next to any post
+7. Confirm the action in the dialog
+
+### What Happens
+
+- The existing post is set to `draft` status (preserving original publish status)
+- The AI generates a completely new post from the same topic
+- Both posts remain in the system:
+  - Old post: Draft (can be manually published if preferred)
+  - New post: Created with author's default post status
+- A new log entry is created for the regeneration
+
+### Important Notes
+
+- **Old post is preserved**: The original post is NOT deleted, only changed to draft
+- **Topic remains approved**: The topic stays in approved status for future use
+- **New content**: The AI generates completely fresh content, not a revision
+- **Same topic**: Uses the exact same topic title and prompt
+
+### Database Changes
+
+- **WordPress**: Old post's `post_status` changed to `draft`
+- **Meta**: Old post status stored in post meta `_aips_original_post_status`
+- **Table**: `wp_aips_author_topic_logs`
+- **New entry**: Action = `post_generated` for the new post
+
+### Use Cases
+
+**Example 1: Quality Issues**
+```
+Topic: "Best PHP Frameworks in 2024"
+Issue: First generation focused only on Laravel
+Action: Regenerate to get broader framework coverage
+Result: New post covers Laravel, Symfony, Slim, etc.
+```
+
+**Example 2: Outdated Content**
+```
+Topic: "PHP 8.3 New Features"
+Issue: Generated before official release, missing details
+Action: Regenerate after release
+Result: Complete, accurate coverage of final feature set
+```
+
+**Example 3: Wrong Tone**
+```
+Topic: "Understanding Database Indexes"
+Issue: Too technical for target audience
+Action: Regenerate
+Result: More beginner-friendly explanation
+```
+
+---
+
+## Approval Queue Enhancements
+
+The approval queue system has been enhanced with these new features integrated seamlessly:
+
+### Workflow
+
+1. **Topic Generation** → Topics created with `status = 'pending'`
+2. **Review** → Admin approves/rejects/reassigns topics
+3. **Post Generation** → System creates posts from approved topics
+4. **Quality Control** → Admin can regenerate if needed
+5. **Reassignment** → Topics can be moved to different authors at any stage
+
+### Admin Interface
+
+**Topics Modal Tabs:**
+- **Pending Review**: Approve, Reject, Edit, Reassign, Delete
+- **Approved**: Generate Post Now, Edit, Reassign, Delete, View Posts
+- **Rejected**: Edit, Reassign, Delete
+- **Feedback History**: View all approval/rejection decisions
+
+**Actions Available:**
+- Individual actions: Approve, Reject, Edit title, Reassign, Delete
+- Bulk actions: Approve multiple, Reject multiple, Delete multiple
+- Post management: Generate, Regenerate, View, Edit
+
+### Best Practices
+
+1. **Review Regularly**: Check pending topics weekly to maintain content flow
+2. **Use Reassignment**: Move misaligned topics instead of rejecting them
+3. **Regenerate Wisely**: Use for quality issues, not minor tweaks (edit post instead)
+4. **Provide Reasons**: When approving/rejecting/reassigning, add context for future reference
+5. **Monitor Posts**: Check generated posts before regenerating - editing may be faster
+
+---
 
 ### Manual Test Plan
 

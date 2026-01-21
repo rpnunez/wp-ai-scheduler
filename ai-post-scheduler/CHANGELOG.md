@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Topic Reassignment Feature**: Ability to reassign topics from one author to another
+  - New AJAX endpoint `aips_reassign_topic` for moving topics between authors
+  - Reassignment modal in Authors UI with author selection dropdown
+  - Reassignment reason tracking in logs
+  - Audit trail with `reassigned` action type in `wp_aips_author_topic_logs`
+- **One-Click Post Regeneration**: Regenerate posts from approved topics with single click
+  - Regenerate button in Topic Posts modal
+  - Old post preserved as draft, new post generated fresh
+  - Original post status saved in post meta
+  - Improved UI with confirmation dialog
+- **Enhanced Localization**: Added 14 new translated strings for reassignment and regeneration features
+- **Comprehensive Tests**: New test suite for reassignment and regeneration functionality
+  - Permission validation tests
+  - Invalid ID handling tests  
+  - Success case verification
+- **Documentation**: Updated AUTHORS_FEATURE_GUIDE.md with detailed usage instructions for new features
+
+### Changed
+- Enhanced `ajax_get_topic_posts` to include `topic_id` in post data for regeneration
+- Updated Authors UI template with reassignment modal
+- Improved JavaScript event handlers for new actions
+
 ## [wizard-sections-search-copy] - 2025-12-25
 ### Added
 - Added client-side search functionality to the Prompt Sections admin page.
