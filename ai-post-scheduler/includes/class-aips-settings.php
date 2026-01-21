@@ -79,6 +79,15 @@ class AIPS_Settings {
             'aips-templates',
             array($this, 'render_templates_page')
         );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Authors', 'ai-post-scheduler'),
+            __('Authors', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-authors',
+            array($this, 'render_authors_page')
+        );
         
         add_submenu_page(
             'ai-post-scheduler',
@@ -599,6 +608,17 @@ class AIPS_Settings {
      */
     public function render_research_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
+    }
+    
+    /**
+     * Render the Authors management page.
+     *
+     * Includes the authors template file.
+     *
+     * @return void
+     */
+    public function render_authors_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
     }
     
     /**
