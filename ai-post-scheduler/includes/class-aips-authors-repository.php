@@ -47,8 +47,16 @@ class AIPS_Authors_Repository {
 	 * @return array Array of author objects.
 	 */
 	public function get_all($active_only = false) {
-		$where = $active_only ? "WHERE is_active = 1" : "";
-		return $this->wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
+		if ( $active_only ) {
+			$sql = $this->wpdb->prepare(
+				"SELECT * FROM {$this->table_name} WHERE is_active = %d ORDER BY name ASC",
+				1
+			);
+		} else {
+			$sql = "SELECT * FROM {$this->table_name} ORDER BY name ASC";
+		}
+
+		return $this->wpdb->get_results( $sql );
 	}
 	
 	/**

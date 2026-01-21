@@ -256,10 +256,16 @@ class AIPS_Author_Post_Generator {
 	 * @return int|WP_Error New post ID on success, WP_Error on failure.
 	 */
 	public function regenerate_post($post_id, $topic_id) {
+		// Preserve the original post status before setting it to draft
+		$original_post = get_post($post_id);
+		if ($original_post && isset($original_post->post_status)) {
+			update_post_meta($post_id, '_aips_original_post_status', $original_post->post_status);
+		}
+
 		// Set the old post to draft
 		wp_update_post(array(
 			'ID' => $post_id,
-			'post_status' => 'draft'
+			'post_status' => 'draft',
 		));
 		
 		// Generate a new post

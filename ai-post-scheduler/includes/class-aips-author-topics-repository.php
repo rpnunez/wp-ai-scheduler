@@ -95,13 +95,19 @@ class AIPS_Author_Topics_Repository {
 		if (empty($topics)) {
 			return false;
 		}
-		
+
+		// Ensure all inserts either succeed or fail together.
+		$this->wpdb->query('START TRANSACTION');
+
 		foreach ($topics as $topic) {
 			$result = $this->create($topic);
 			if (!$result) {
+				$this->wpdb->query('ROLLBACK');
 				return false;
 			}
 		}
+
+		$this->wpdb->query('COMMIT');
 		return true;
 	}
 	

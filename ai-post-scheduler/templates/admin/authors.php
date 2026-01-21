@@ -57,7 +57,8 @@ $authors = $authors_repository->get_all();
 							<strong><?php echo esc_html($posts_count); ?></strong>
 						</td>
 						<td class="column-active">
-							<span class="aips-status aips-status-<?php echo $author->is_active ? 'active' : 'inactive'; ?>">
+							<?php $active_status_class = $author->is_active ? 'active' : 'inactive'; ?>
+							<span class="aips-status aips-status-<?php echo esc_attr( $active_status_class ); ?>">
 								<?php echo $author->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?>
 							</span>
 						</td>

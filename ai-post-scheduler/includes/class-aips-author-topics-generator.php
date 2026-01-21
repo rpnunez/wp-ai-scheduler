@@ -106,9 +106,10 @@ class AIPS_Author_Topics_Generator {
 			}
 		}
 		
+		$count = count($saved_topics);
 		$this->logger->log("Successfully generated {$count} topics for author {$author->id}", 'info', array(
 			'author_id' => $author->id,
-			'topic_count' => count($saved_topics)
+			'topic_count' => $count
 		));
 		
 		return $saved_topics;
@@ -134,20 +135,20 @@ class AIPS_Author_Topics_Generator {
 		}
 		
 		// Add feedback loop context from approved topics
-		$approved_topics = $this->topics_repository->get_approved_summary($author->id, 20);
+		$approved_topics = $this->topics_repository->get_approved_summary($author->id, 10);
 		if (!empty($approved_topics)) {
 			$prompt .= "Previously approved topics (for diversity - avoid duplicating these concepts):\n";
-			foreach (array_slice($approved_topics, 0, 10) as $topic) {
+			foreach ($approved_topics as $topic) {
 				$prompt .= "- {$topic}\n";
 			}
 			$prompt .= "\n";
 		}
 		
 		// Add feedback loop context from rejected topics
-		$rejected_topics = $this->topics_repository->get_rejected_summary($author->id, 20);
+		$rejected_topics = $this->topics_repository->get_rejected_summary($author->id, 10);
 		if (!empty($rejected_topics)) {
 			$prompt .= "Previously rejected topics (avoid similar ideas):\n";
-			foreach (array_slice($rejected_topics, 0, 10) as $topic) {
+			foreach ($rejected_topics as $topic) {
 				$prompt .= "- {$topic}\n";
 			}
 			$prompt .= "\n";
