@@ -5,6 +5,16 @@ if (!defined('ABSPATH')) {
 
 /**
  * Class AIPS_Settings
+// Enqueue modern UI script
+wp_enqueue_script(
+'aips-authors-modern-script',
+AIPS_PLUGIN_URL . 'assets/js/authors-modern.js',
+array('jquery'),
+AIPS_VERSION,
+true
+);
+
+// Keep old script for backwards compatibility
  *
  * Handles the registration of admin menu pages, settings, and rendering of admin interfaces
  * for the AI Post Scheduler plugin.
@@ -304,6 +314,15 @@ class AIPS_Settings {
 		
 		// Enqueue Authors-specific assets
 		if (strpos($hook, 'aips-authors') !== false) {
+			// Enqueue modern UI styles
+			wp_enqueue_style(
+				'aips-authors-modern-style',
+				AIPS_PLUGIN_URL . 'assets/css/authors-modern.css',
+				array(),
+				AIPS_VERSION
+			);
+			
+			// Keep old styles for backwards compatibility
 			wp_enqueue_style(
 				'aips-authors-style',
 				AIPS_PLUGIN_URL . 'assets/css/authors.css',
@@ -311,6 +330,16 @@ class AIPS_Settings {
 				AIPS_VERSION
 			);
 			
+			// Enqueue modern UI script
+			wp_enqueue_script(
+				'aips-authors-modern-script',
+				AIPS_PLUGIN_URL . 'assets/js/authors-modern.js',
+				array('jquery'),
+				AIPS_VERSION,
+				true
+			);
+			
+			// Keep old script for backwards compatibility
 			wp_enqueue_script(
 				'aips-authors-script',
 				AIPS_PLUGIN_URL . 'assets/js/authors.js',
@@ -814,4 +843,13 @@ class AIPS_Settings {
             wp_send_json_success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . esc_html($result)));
         }
     }
+// Enqueue modern UI styles
+wp_enqueue_style(
+'aips-authors-modern-style',
+AIPS_PLUGIN_URL . 'assets/css/authors-modern.css',
+array(),
+AIPS_VERSION
+);
+
+// Keep old styles for backwards compatibility
 }
