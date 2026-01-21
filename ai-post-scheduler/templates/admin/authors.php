@@ -7,7 +7,9 @@ exit;
 $authors_repository = null;
 $topics_repository = null;
 $logs_repository = null;
+$structures_repository = null;
 $authors = array();
+$article_structures = array();
 
 if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
 $authors_repository = new AIPS_Authors_Repository();
@@ -17,6 +19,10 @@ if (!empty($authors)) {
 $topics_repository = new AIPS_Author_Topics_Repository();
 $logs_repository = new AIPS_Author_Topic_Logs_Repository();
 }
+
+// Load article structures for the dropdown
+$structures_repository = new AIPS_Article_Structure_Repository();
+$article_structures = $structures_repository->get_all(true); // Get active structures only
 }
 ?>
 <div class="wrap aips-wrap">
@@ -137,6 +143,19 @@ $posts_count = count($posts);
 </div>
 
 <div class="form-group">
+<label for="article_structure_id"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></label>
+<select id="article_structure_id" name="article_structure_id">
+<option value=""><?php esc_html_e('None (use default)', 'ai-post-scheduler'); ?></option>
+<?php foreach ($article_structures as $structure): ?>
+<option value="<?php echo esc_attr($structure->id); ?>">
+<?php echo esc_html($structure->name); ?>
+</option>
+<?php endforeach; ?>
+</select>
+<p class="description"><?php esc_html_e('Optional: Select a specific article structure for posts generated from this author', 'ai-post-scheduler'); ?></p>
+</div>
+
+<div class="form-group">
 <label for="topic_generation_quantity"><?php esc_html_e('Number of Topics to Generate', 'ai-post-scheduler'); ?></label>
 <input type="number" id="topic_generation_quantity" name="topic_generation_quantity" value="5" min="1" max="20">
 </div>
@@ -185,10 +204,34 @@ $posts_count = count($posts);
 <button class="aips-tab-link active" data-tab="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?> (<span id="pending-count">0</span>)</button>
 <button class="aips-tab-link" data-tab="approved"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?> (<span id="approved-count">0</span>)</button>
 <button class="aips-tab-link" data-tab="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?> (<span id="rejected-count">0</span>)</button>
+<button class="aips-tab-link" data-tab="feedback"><?php esc_html_e('Feedback History', 'ai-post-scheduler'); ?></button>
 </div>
 
 <div id="aips-topics-content">
 <p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
 </div>
+</div>
+</div>
+
+<!-- Feedback Modal -->
+<div id="aips-feedback-modal" class="aips-modal" style="display: none;">
+<div class="aips-modal-content">
+<span class="aips-modal-close">&times;</span>
+<h2 id="aips-feedback-modal-title"><?php esc_html_e('Provide Feedback', 'ai-post-scheduler'); ?></h2>
+<form id="aips-feedback-form">
+<input type="hidden" id="feedback_topic_id" name="topic_id" value="">
+<input type="hidden" id="feedback_action" name="action_type" value="">
+
+<div class="form-group">
+<label for="feedback_reason"><?php esc_html_e('Reason (optional)', 'ai-post-scheduler'); ?></label>
+<textarea id="feedback_reason" name="reason" rows="4" placeholder="<?php esc_attr_e('Why are you approving/rejecting this topic?', 'ai-post-scheduler'); ?>"></textarea>
+<p class="description"><?php esc_html_e('Your feedback helps improve future topic generation', 'ai-post-scheduler'); ?></p>
+</div>
+
+<div class="form-actions">
+<button type="submit" class="button button-primary" id="feedback-submit-btn"><?php esc_html_e('Submit', 'ai-post-scheduler'); ?></button>
+<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+</div>
+</form>
 </div>
 </div>

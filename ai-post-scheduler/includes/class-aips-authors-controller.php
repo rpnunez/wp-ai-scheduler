@@ -35,6 +35,11 @@ class AIPS_Authors_Controller {
 	private $logs_repository;
 	
 	/**
+	 * @var AIPS_Feedback_Repository Repository for feedback
+	 */
+	private $feedback_repository;
+	
+	/**
 	 * @var AIPS_Author_Topics_Scheduler Topics scheduler
 	 */
 	private $topics_scheduler;
@@ -51,6 +56,7 @@ class AIPS_Authors_Controller {
 		$this->repository = new AIPS_Authors_Repository();
 		$this->topics_repository = new AIPS_Author_Topics_Repository();
 		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
+		$this->feedback_repository = new AIPS_Feedback_Repository();
 		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		
@@ -60,6 +66,7 @@ class AIPS_Authors_Controller {
 		add_action('wp_ajax_aips_get_author', array($this, 'ajax_get_author'));
 		add_action('wp_ajax_aips_get_author_topics', array($this, 'ajax_get_author_topics'));
 		add_action('wp_ajax_aips_get_author_posts', array($this, 'ajax_get_author_posts'));
+		add_action('wp_ajax_aips_get_author_feedback', array($this, 'ajax_get_author_feedback'));
 		add_action('wp_ajax_aips_generate_topics_now', array($this, 'ajax_generate_topics_now'));
 	}
 	
@@ -89,7 +96,7 @@ class AIPS_Authors_Controller {
 			'description' => isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '',
 			'keywords' => isset($_POST['keywords']) ? sanitize_text_field($_POST['keywords']) : '',
 			'details' => isset($_POST['details']) ? sanitize_textarea_field($_POST['details']) : '',
-			'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : null,
+			'article_structure_id' => !empty($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : null,
 			'topic_generation_prompt' => isset($_POST['topic_generation_prompt']) ? sanitize_textarea_field($_POST['topic_generation_prompt']) : '',
 			'topic_generation_frequency' => isset($_POST['topic_generation_frequency']) ? sanitize_text_field($_POST['topic_generation_frequency']) : 'weekly',
 			'topic_generation_quantity' => isset($_POST['topic_generation_quantity']) ? absint($_POST['topic_generation_quantity']) : 5,
@@ -288,5 +295,36 @@ class AIPS_Authors_Controller {
 			'message' => __('Topics generated successfully.', 'ai-post-scheduler'),
 			'topics' => $result
 		));
+	}
+	
+	/**
+	 * AJAX handler for getting author feedback.
+	 */
+	public function ajax_get_author_feedback() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		
+		if (!$author_id) {
+			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+		}
+		
+		$feedback = $this->feedback_repository->get_by_author($author_id);
+		
+		// Get user display names
+		foreach ($feedback as $item) {
+			if ($item->user_id) {
+				$user = get_userdata($item->user_id);
+				$item->user_name = $user ? $user->display_name : __('Unknown', 'ai-post-scheduler');
+			} else {
+				$item->user_name = __('System', 'ai-post-scheduler');
+			}
+		}
+		
+		wp_send_json_success(array('feedback' => $feedback));
 	}
 }
