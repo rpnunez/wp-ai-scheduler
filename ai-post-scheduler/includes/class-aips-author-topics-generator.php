@@ -129,6 +129,16 @@ class AIPS_Author_Topics_Generator {
 		
 		$prompt = "Generate {$quantity} unique and engaging blog post topic ideas about: {$author->field_niche}\n\n";
 		
+		// Add keywords if provided
+		if (!empty($author->keywords)) {
+			$prompt .= "Keywords/Focus Areas: {$author->keywords}\n\n";
+		}
+		
+		// Add details/context if provided
+		if (!empty($author->details)) {
+			$prompt .= "Additional Context:\n{$author->details}\n\n";
+		}
+		
 		// Add custom prompt if provided
 		if (!empty($author->topic_generation_prompt)) {
 			$prompt .= "{$author->topic_generation_prompt}\n\n";

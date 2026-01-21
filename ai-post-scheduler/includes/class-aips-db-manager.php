@@ -199,6 +199,8 @@ class AIPS_DB_Manager {
             name varchar(255) NOT NULL,
             field_niche varchar(500) NOT NULL,
             description text,
+            keywords text,
+            details text,
             article_structure_id bigint(20) DEFAULT NULL,
             topic_generation_prompt text,
             topic_generation_frequency varchar(50) DEFAULT 'weekly',

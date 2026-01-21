@@ -301,6 +301,67 @@ class AIPS_Settings {
             'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
             'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
         ));
+		
+		// Enqueue Authors-specific assets
+		if (strpos($hook, 'aips-authors') !== false) {
+			wp_enqueue_style(
+				'aips-authors-style',
+				AIPS_PLUGIN_URL . 'assets/css/authors.css',
+				array(),
+				AIPS_VERSION
+			);
+			
+			wp_enqueue_script(
+				'aips-authors-script',
+				AIPS_PLUGIN_URL . 'assets/js/authors.js',
+				array('jquery'),
+				AIPS_VERSION,
+				true
+			);
+			
+			// Localize script with translations and nonce
+			wp_localize_script('aips-authors-script', 'aipsAuthorsL10n', array(
+				'nonce' => wp_create_nonce('aips_ajax_nonce'),
+				'addNewAuthor' => __('Add New Author', 'ai-post-scheduler'),
+				'editAuthor' => __('Edit Author', 'ai-post-scheduler'),
+				'saveAuthor' => __('Save Author', 'ai-post-scheduler'),
+				'loading' => __('Loading...', 'ai-post-scheduler'),
+				'saving' => __('Saving...', 'ai-post-scheduler'),
+				'generating' => __('Generating...', 'ai-post-scheduler'),
+				'confirmDelete' => __('Are you sure you want to delete this author? This will also delete all associated topics and logs.', 'ai-post-scheduler'),
+				'confirmDeleteTopic' => __('Are you sure you want to delete this topic?', 'ai-post-scheduler'),
+				'confirmGenerateTopics' => __('Generate topics for this author now?', 'ai-post-scheduler'),
+				'confirmGeneratePost' => __('Generate a post from this topic now?', 'ai-post-scheduler'),
+				'authorSaved' => __('Author saved successfully.', 'ai-post-scheduler'),
+				'authorDeleted' => __('Author deleted successfully.', 'ai-post-scheduler'),
+				'topicsGenerated' => __('Topics generated successfully.', 'ai-post-scheduler'),
+				'postGenerated' => __('Post generated successfully.', 'ai-post-scheduler'),
+				'generateTopicsNow' => __('Generate Topics Now', 'ai-post-scheduler'),
+				'generatePostNow' => __('Generate Post Now', 'ai-post-scheduler'),
+				'errorLoading' => __('Error loading author data.', 'ai-post-scheduler'),
+				'errorSaving' => __('Error saving author.', 'ai-post-scheduler'),
+				'errorDeleting' => __('Error deleting author.', 'ai-post-scheduler'),
+				'errorGenerating' => __('Error generating topics.', 'ai-post-scheduler'),
+				'errorLoadingTopics' => __('Error loading topics.', 'ai-post-scheduler'),
+				'errorApproving' => __('Error approving topic.', 'ai-post-scheduler'),
+				'errorRejecting' => __('Error rejecting topic.', 'ai-post-scheduler'),
+				'errorDeletingTopic' => __('Error deleting topic.', 'ai-post-scheduler'),
+				'errorSavingTopic' => __('Error saving topic.', 'ai-post-scheduler'),
+				'errorGeneratingPost' => __('Error generating post.', 'ai-post-scheduler'),
+				'loadingTopics' => __('Loading topics...', 'ai-post-scheduler'),
+				'noTopicsFound' => __('No topics found.', 'ai-post-scheduler'),
+				'topicTitle' => __('Topic Title', 'ai-post-scheduler'),
+				'generatedAt' => __('Generated', 'ai-post-scheduler'),
+				'actions' => __('Actions', 'ai-post-scheduler'),
+				'approve' => __('Approve', 'ai-post-scheduler'),
+				'reject' => __('Reject', 'ai-post-scheduler'),
+				'edit' => __('Edit', 'ai-post-scheduler'),
+				'delete' => __('Delete', 'ai-post-scheduler'),
+				'save' => __('Save', 'ai-post-scheduler'),
+				'cancel' => __('Cancel', 'ai-post-scheduler'),
+				'topicTitleRequired' => __('Topic title is required.', 'ai-post-scheduler')
+			));
+		}
         
         // Research Page Scripts
 

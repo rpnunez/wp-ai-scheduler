@@ -87,6 +87,8 @@ class AIPS_Authors_Controller {
 			'name' => $name,
 			'field_niche' => $field_niche,
 			'description' => isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '',
+			'keywords' => isset($_POST['keywords']) ? sanitize_text_field($_POST['keywords']) : '',
+			'details' => isset($_POST['details']) ? sanitize_textarea_field($_POST['details']) : '',
 			'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : null,
 			'topic_generation_prompt' => isset($_POST['topic_generation_prompt']) ? sanitize_textarea_field($_POST['topic_generation_prompt']) : '',
 			'topic_generation_frequency' => isset($_POST['topic_generation_frequency']) ? sanitize_text_field($_POST['topic_generation_frequency']) : 'weekly',
@@ -142,6 +144,30 @@ class AIPS_Authors_Controller {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 		
+		// Delete child records first to avoid orphaned records
+		global $wpdb;
+		$topics_table = $wpdb->prefix . 'aips_author_topics';
+		$logs_table = $wpdb->prefix . 'aips_author_topic_logs';
+		
+		// Get all topic IDs for this author
+		$topic_ids = $wpdb->get_col($wpdb->prepare(
+			"SELECT id FROM {$topics_table} WHERE author_id = %d",
+			$author_id
+		));
+		
+		// Delete logs for these topics
+		if (!empty($topic_ids)) {
+			$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
+			$wpdb->query($wpdb->prepare(
+				"DELETE FROM {$logs_table} WHERE author_topic_id IN ({$placeholders})",
+				...$topic_ids
+			));
+		}
+		
+		// Delete topics
+		$wpdb->delete($topics_table, array('author_id' => $author_id), array('%d'));
+		
+		// Delete author
 		$result = $this->repository->delete($author_id);
 		
 		if ($result) {
