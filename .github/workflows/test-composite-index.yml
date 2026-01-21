@@ -36,6 +36,11 @@ jobs:
           extensions: mbstring, intl, xml, curl, zip, dom, fileinfo, mysqli
           tools: composer:v2
 
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion mysql-client
+
       - name: Wait for MySQL and Prepare Database
         run: |
           ATTEMPTS=10
@@ -53,65 +58,22 @@ jobs:
           mysql -h127.0.0.1 -uroot -e "CREATE DATABASE IF NOT EXISTS wordpress_test;"
           echo "Database created successfully."
 
+      - name: Install Composer Dependencies
+        run: cd ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress
+
       - name: Install WordPress Test Library
         run: |
-          # Create WordPress test directory
-          mkdir -p /tmp/wordpress-tests-lib
-          
-          # Download pre-built WordPress core
-          wget -q https://wordpress.org/latest.tar.gz -O /tmp/wordpress-latest.tar.gz
-          tar -xzf /tmp/wordpress-latest.tar.gz -C /tmp/
-          mv /tmp/wordpress /tmp/wordpress-core
-          rm /tmp/wordpress-latest.tar.gz
-          
-          # Clone WordPress develop repository for test library
-          git clone --depth=1 https://github.com/WordPress/wordpress-develop.git /tmp/wordpress-develop
-          
-          # Copy test library files
-          cp -r /tmp/wordpress-develop/tests/phpunit/* /tmp/wordpress-tests-lib/
-          
-          # Create src directory for WordPress core
-          mkdir -p /tmp/wordpress-tests-lib/src
-          
-          # Copy WordPress core to test library src directory
-          cp -r /tmp/wordpress-core/* /tmp/wordpress-tests-lib/src/
-          
-          # Copy config file
-          cp /tmp/wordpress-develop/wp-tests-config-sample.php /tmp/wordpress-tests-lib/wp-tests-config.php
-          
-          # Cleanup
-          rm -rf /tmp/wordpress-develop /tmp/wordpress-core
-          
-          # Update configuration with database credentials
-          sed -i "s/youremptytestdbnamehere/wordpress_test/" /tmp/wordpress-tests-lib/wp-tests-config.php
-          sed -i "s/yourusernamehere/root/" /tmp/wordpress-tests-lib/wp-tests-config.php
-          sed -i "s/yourpasswordhere//" /tmp/wordpress-tests-lib/wp-tests-config.php
-          sed -i "s|localhost|127.0.0.1|" /tmp/wordpress-tests-lib/wp-tests-config.php
-          
-          # Add ABSPATH definition
-          sed -i "/require.*bootstrap\.php/i define( 'ABSPATH', '/tmp/wordpress-tests-lib/src/' );" /tmp/wordpress-tests-lib/wp-tests-config.php
-
-      - name: Install Plugin
-        run: |
-          # Create plugins directory
-          mkdir -p /tmp/wordpress-tests-lib/src/wp-content/plugins
-          
-          # Copy plugin to WordPress plugins directory
-          cp -r ai-post-scheduler /tmp/wordpress-tests-lib/src/wp-content/plugins/
-          
-          # Verify installation
-          ls -la /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler/ai-post-scheduler.php
-
-      - name: Install Composer Dependencies
-        run: |
-          cd /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler
-          composer install --no-interaction --prefer-dist --no-progress
+          cd ai-post-scheduler
+          bash bin/install-wp-tests.sh wordpress_test root '' 127.0.0.1 latest true
+        env:
+          WP_TESTS_DIR: /tmp/wordpress-tests-lib
+          WP_CORE_DIR: /tmp/wordpress
 
       - name: Run Database Schema Tests
-        run: |
-          cd /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler
-          WP_TESTS_DIR=/tmp/wordpress-tests-lib WP_CORE_DIR=/tmp/wordpress-tests-lib/src \
-            vendor/bin/phpunit tests/test-db-schema.php --testdox
+        run: cd ai-post-scheduler && vendor/bin/phpunit tests/test-db-schema.php --testdox
+        env:
+          WP_TESTS_DIR: /tmp/wordpress-tests-lib
+          WP_CORE_DIR: /tmp/wordpress
 
       - name: Verify Composite Index Directly in Database
         run: |
