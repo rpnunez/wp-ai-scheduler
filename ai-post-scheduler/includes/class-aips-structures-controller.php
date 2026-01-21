@@ -61,6 +61,7 @@ class AIPS_Structures_Controller {
         $description = isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '';
         $sections = isset($_POST['sections']) && is_array($_POST['sections']) ? array_map('sanitize_text_field', $_POST['sections']) : array();
         $prompt_template = isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '';
+        $category_id = isset($_POST['category_id']) ? absint($_POST['category_id']) : 0;
         $is_active = isset($_POST['is_active']) ? 1 : 0;
         $is_default = isset($_POST['is_default']) ? 1 : 0;
 
@@ -71,13 +72,13 @@ class AIPS_Structures_Controller {
         $manager = new AIPS_Article_Structure_Manager();
 
         if ($id) {
-            $result = $manager->update_structure($id, $name, $sections, $prompt_template, $description, $is_default == 1, $is_active == 1);
+            $result = $manager->update_structure($id, $name, $sections, $prompt_template, $description, $is_default == 1, $is_active == 1, $category_id);
             if (is_wp_error($result)) {
                 wp_send_json_error(array('message' => $result->get_error_message()));
             }
             wp_send_json_success(array('message' => __('Structure updated.', 'ai-post-scheduler'), 'structure_id' => $id));
         } else {
-            $new_id = $manager->create_structure($name, $sections, $prompt_template, $description, $is_default == 1, $is_active == 1);
+            $new_id = $manager->create_structure($name, $sections, $prompt_template, $description, $is_default == 1, $is_active == 1, $category_id);
             if (is_wp_error($new_id)) {
                 wp_send_json_error(array('message' => $new_id->get_error_message()));
             }

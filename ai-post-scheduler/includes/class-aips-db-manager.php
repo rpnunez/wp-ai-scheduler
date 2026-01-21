@@ -133,13 +133,15 @@ class AIPS_DB_Manager {
             name varchar(255) NOT NULL,
             description text,
             structure_data longtext NOT NULL,
+            category_id bigint(20) DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             is_default tinyint(1) DEFAULT 0,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY is_active (is_active),
-            KEY is_default (is_default)
+            KEY is_default (is_default),
+            KEY category_id (category_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_sections (
@@ -148,12 +150,14 @@ class AIPS_DB_Manager {
             description text,
             section_key varchar(100) NOT NULL,
             content text NOT NULL,
+            category_id bigint(20) DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             UNIQUE KEY section_key (section_key),
-            KEY is_active (is_active)
+            KEY is_active (is_active),
+            KEY category_id (category_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_trending_topics (

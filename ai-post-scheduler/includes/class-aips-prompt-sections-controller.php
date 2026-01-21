@@ -82,6 +82,7 @@ class AIPS_Prompt_Sections_Controller {
 		$description = isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '';
 		$section_key = isset($_POST['section_key']) ? sanitize_key($_POST['section_key']) : '';
 		$content = isset($_POST['content']) ? wp_kses_post($_POST['content']) : '';
+		$category_id = isset($_POST['category_id']) ? absint($_POST['category_id']) : 0;
 		$is_active = isset($_POST['is_active']) ? 1 : 0;
 
 		if (empty($name) || empty($section_key) || empty($content)) {
@@ -97,6 +98,7 @@ class AIPS_Prompt_Sections_Controller {
 			'description' => $description,
 			'section_key' => $section_key,
 			'content' => $content,
+			'category_id' => $category_id ? $category_id : null,
 			'is_active' => $is_active,
 		);
 

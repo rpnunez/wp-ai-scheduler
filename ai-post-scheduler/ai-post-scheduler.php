@@ -69,6 +69,10 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-trending-topics-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-repository.php';
         
+        // Category taxonomy
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-structure-category-taxonomy.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-structure-category-controller.php';
+        
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-processor.php';
@@ -159,6 +163,9 @@ final class AI_Post_Scheduler {
     public function init() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
         
+        // Initialize taxonomy
+        new AIPS_Structure_Category_Taxonomy();
+        
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Settings();
@@ -175,6 +182,8 @@ final class AI_Post_Scheduler {
             new AIPS_Structures_Controller();
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
             new AIPS_Prompt_Sections_Controller();
+            // Category controller (CRUD endpoints for Categories)
+            new AIPS_Structure_Category_Controller();
 
             // Dev Tools
             if (get_option('aips_developer_mode')) {

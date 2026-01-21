@@ -625,6 +625,7 @@ class AIPS_Settings {
         
         $structures = $structure_repo->get_all(false);
         $sections = $section_repo->get_all(false);
+        $categories = AIPS_Structure_Category_Taxonomy::get_all_categories();
         
         include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
     }
@@ -639,6 +640,7 @@ class AIPS_Settings {
     public function render_prompt_sections_page() {
         $section_repo = new AIPS_Prompt_Section_Repository();
         $sections = $section_repo->get_all(false);
+        $categories = AIPS_Structure_Category_Taxonomy::get_all_categories();
         
         include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
     }

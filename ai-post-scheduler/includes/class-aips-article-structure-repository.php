@@ -97,6 +97,7 @@ class AIPS_Article_Structure_Repository {
 	 *     @type string $name            Structure name.
 	 *     @type string $description     Structure description.
 	 *     @type string $structure_data  JSON-encoded structure configuration.
+	 *     @type int    $category_id     Category term ID (optional).
 	 *     @type int    $is_active       Active status flag.
 	 *     @type int    $is_default      Default structure flag.
 	 * }
@@ -107,6 +108,7 @@ class AIPS_Article_Structure_Repository {
 			'name' => sanitize_text_field($data['name']),
 			'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
 			'structure_data' => $data['structure_data'],
+			'category_id' => isset($data['category_id']) ? absint($data['category_id']) : null,
 			'is_active' => !empty($data['is_active']) ? 1 : 0,
 			'is_default' => !empty($data['is_default']) ? 1 : 0,
 		);
@@ -116,7 +118,7 @@ class AIPS_Article_Structure_Repository {
 			$this->wpdb->update($this->table_name, array('is_default' => 0), array('is_default' => 1));
 		}
 		
-		$format = array('%s', '%s', '%s', '%d', '%d');
+		$format = array('%s', '%s', '%s', '%d', '%d', '%d');
 		
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 		
@@ -147,6 +149,11 @@ class AIPS_Article_Structure_Repository {
 		if (isset($data['structure_data'])) {
 			$update_data['structure_data'] = $data['structure_data'];
 			$format[] = '%s';
+		}
+		
+		if (isset($data['category_id'])) {
+			$update_data['category_id'] = $data['category_id'] ? absint($data['category_id']) : null;
+			$format[] = '%d';
 		}
 		
 		if (isset($data['is_active'])) {

@@ -113,6 +113,7 @@ class AIPS_Prompt_Section_Repository {
 	 *     @type string $description Section description.
 	 *     @type string $section_key Unique section key.
 	 *     @type string $content     Section prompt content.
+	 *     @type int    $category_id Category term ID (optional).
 	 *     @type int    $is_active   Active status flag.
 	 * }
 	 * @return int|false The inserted ID on success, false on failure.
@@ -123,10 +124,11 @@ class AIPS_Prompt_Section_Repository {
 			'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
 			'section_key' => sanitize_key($data['section_key']),
 			'content' => wp_kses_post($data['content']),
+			'category_id' => isset($data['category_id']) ? absint($data['category_id']) : null,
 			'is_active' => !empty($data['is_active']) ? 1 : 0,
 		);
 		
-		$format = array('%s', '%s', '%s', '%s', '%d');
+		$format = array('%s', '%s', '%s', '%s', '%d', '%d');
 		
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
 		
@@ -162,6 +164,11 @@ class AIPS_Prompt_Section_Repository {
 		if (isset($data['content'])) {
 			$update_data['content'] = wp_kses_post($data['content']);
 			$format[] = '%s';
+		}
+		
+		if (isset($data['category_id'])) {
+			$update_data['category_id'] = $data['category_id'] ? absint($data['category_id']) : null;
+			$format[] = '%d';
 		}
 		
 		if (isset($data['is_active'])) {
