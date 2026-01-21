@@ -1,0 +1,194 @@
+<?php
+if (!defined('ABSPATH')) {
+exit;
+}
+
+// Get authors - only instantiate repository when needed
+$authors_repository = null;
+$topics_repository = null;
+$logs_repository = null;
+$authors = array();
+
+if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
+$authors_repository = new AIPS_Authors_Repository();
+$authors = $authors_repository->get_all();
+
+if (!empty($authors)) {
+$topics_repository = new AIPS_Author_Topics_Repository();
+$logs_repository = new AIPS_Author_Topic_Logs_Repository();
+}
+}
+?>
+<div class="wrap aips-wrap">
+<h1>
+<?php esc_html_e('Authors', 'ai-post-scheduler'); ?>
+<button class="page-title-action aips-add-author-btn"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></button>
+</h1>
+
+<div class="aips-authors-container">
+<div class="aips-authors-list">
+<?php if (!empty($authors)): ?>
+<table class="wp-list-table widefat fixed striped">
+<thead>
+<tr>
+<th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
+<th class="column-field"><?php esc_html_e('Field/Niche', 'ai-post-scheduler'); ?></th>
+<th class="column-topics"><?php esc_html_e('Topics', 'ai-post-scheduler'); ?></th>
+<th class="column-posts"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></th>
+<th class="column-active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
+<th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+</tr>
+</thead>
+<tbody>
+<?php foreach ($authors as $author):
+$status_counts = $topics_repository->get_status_counts($author->id);
+$total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
+$posts = $logs_repository->get_generated_posts_by_author($author->id);
+$posts_count = count($posts);
+?>
+<tr data-author-id="<?php echo esc_attr($author->id); ?>">
+<td class="column-name">
+<strong><?php echo esc_html($author->name); ?></strong>
+</td>
+<td class="column-field">
+<?php echo esc_html($author->field_niche); ?>
+</td>
+<td class="column-topics">
+<div style="font-size: 0.9em;">
+<strong><?php echo esc_html($total_topics); ?></strong> total<br>
+<span style="color: #d63638;"><?php echo esc_html($status_counts['pending']); ?> pending</span> | 
+<span style="color: #00a32a;"><?php echo esc_html($status_counts['approved']); ?> approved</span> | 
+<span style="color: #999;"><?php echo esc_html($status_counts['rejected']); ?> rejected</span>
+</div>
+</td>
+<td class="column-posts">
+<strong><?php echo esc_html($posts_count); ?></strong>
+</td>
+<td class="column-active">
+<?php $active_status_class = $author->is_active ? 'active' : 'inactive'; ?>
+<span class="aips-status aips-status-<?php echo esc_attr($active_status_class); ?>">
+<?php echo $author->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?>
+</span>
+</td>
+<td class="column-actions">
+<button class="button aips-view-author" data-id="<?php echo esc_attr($author->id); ?>">
+<?php esc_html_e('View Topics', 'ai-post-scheduler'); ?>
+</button>
+<button class="button aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>">
+<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+</button>
+<button class="button aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
+<?php esc_html_e('Generate Topics Now', 'ai-post-scheduler'); ?>
+</button>
+<button class="button button-link-delete aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>">
+<?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
+</button>
+</td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+<?php else: ?>
+<div class="aips-empty-state">
+<span class="dashicons dashicons-admin-users" aria-hidden="true"></span>
+<h3><?php esc_html_e('No Authors Yet', 'ai-post-scheduler'); ?></h3>
+<p><?php esc_html_e('Create your first author to start generating topically diverse blog posts.', 'ai-post-scheduler'); ?></p>
+<button class="button button-primary aips-add-author-btn"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></button>
+</div>
+<?php endif; ?>
+</div>
+</div>
+</div>
+
+<!-- Author Edit/Create Modal -->
+<div id="aips-author-modal" class="aips-modal" style="display: none;">
+<div class="aips-modal-content">
+<span class="aips-modal-close">&times;</span>
+<h2 id="aips-author-modal-title"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></h2>
+<form id="aips-author-form">
+<input type="hidden" id="author_id" name="author_id" value="">
+
+<div class="form-group">
+<label for="author_name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?> *</label>
+<input type="text" id="author_name" name="name" required>
+</div>
+
+<div class="form-group">
+<label for="author_field_niche"><?php esc_html_e('Field/Niche', 'ai-post-scheduler'); ?> *</label>
+<input type="text" id="author_field_niche" name="field_niche" placeholder="<?php esc_attr_e('e.g., PHP Programming', 'ai-post-scheduler'); ?>" required>
+<p class="description"><?php esc_html_e('The main topic or field this author covers', 'ai-post-scheduler'); ?></p>
+</div>
+
+<div class="form-group">
+<label for="author_keywords"><?php esc_html_e('Keywords', 'ai-post-scheduler'); ?></label>
+<input type="text" id="author_keywords" name="keywords" placeholder="<?php esc_attr_e('e.g., Laravel, Symfony, Composer, PSR', 'ai-post-scheduler'); ?>">
+<p class="description"><?php esc_html_e('Comma-separated keywords to focus on when generating topics', 'ai-post-scheduler'); ?></p>
+</div>
+
+<div class="form-group">
+<label for="author_details"><?php esc_html_e('Details', 'ai-post-scheduler'); ?></label>
+<textarea id="author_details" name="details" rows="4" placeholder="<?php esc_attr_e('Additional context or instructions for topic generation...', 'ai-post-scheduler'); ?>"></textarea>
+<p class="description"><?php esc_html_e('Additional context that will be included when generating topics', 'ai-post-scheduler'); ?></p>
+</div>
+
+<div class="form-group">
+<label for="author_description"><?php esc_html_e('Description', 'ai-post-scheduler'); ?></label>
+<textarea id="author_description" name="description" rows="3"></textarea>
+</div>
+
+<div class="form-group">
+<label for="topic_generation_quantity"><?php esc_html_e('Number of Topics to Generate', 'ai-post-scheduler'); ?></label>
+<input type="number" id="topic_generation_quantity" name="topic_generation_quantity" value="5" min="1" max="20">
+</div>
+
+<div class="form-group">
+<label for="topic_generation_frequency"><?php esc_html_e('Topic Generation Frequency', 'ai-post-scheduler'); ?></label>
+<select id="topic_generation_frequency" name="topic_generation_frequency">
+<option value="daily"><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
+<option value="weekly" selected><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
+<option value="biweekly"><?php esc_html_e('Bi-weekly', 'ai-post-scheduler'); ?></option>
+<option value="monthly"><?php esc_html_e('Monthly', 'ai-post-scheduler'); ?></option>
+</select>
+</div>
+
+<div class="form-group">
+<label for="post_generation_frequency"><?php esc_html_e('Post Generation Frequency', 'ai-post-scheduler'); ?></label>
+<select id="post_generation_frequency" name="post_generation_frequency">
+<option value="hourly"><?php esc_html_e('Hourly', 'ai-post-scheduler'); ?></option>
+<option value="daily" selected><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
+<option value="weekly"><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
+</select>
+</div>
+
+<div class="form-group">
+<label>
+<input type="checkbox" id="is_active" name="is_active" checked>
+<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
+</label>
+</div>
+
+<div class="form-actions">
+<button type="submit" class="button button-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>
+<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+</div>
+</form>
+</div>
+</div>
+
+<!-- Topics View Modal -->
+<div id="aips-topics-modal" class="aips-modal" style="display: none;">
+<div class="aips-modal-content aips-modal-large">
+<span class="aips-modal-close">&times;</span>
+<h2 id="aips-topics-modal-title"><?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?></h2>
+
+<div class="aips-topics-tabs">
+<button class="aips-tab-link active" data-tab="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?> (<span id="pending-count">0</span>)</button>
+<button class="aips-tab-link" data-tab="approved"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?> (<span id="approved-count">0</span>)</button>
+<button class="aips-tab-link" data-tab="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?> (<span id="rejected-count">0</span>)</button>
+</div>
+
+<div id="aips-topics-content">
+<p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
+</div>
+</div>
+</div>
