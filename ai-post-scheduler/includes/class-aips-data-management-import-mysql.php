@@ -60,6 +60,13 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 	/**
 	 * Import the data from SQL file
 	 * 
+	 * SECURITY NOTE: This method executes raw SQL from uploaded files. This is intended
+	 * for restoring backups and is only available to users with 'manage_options' capability.
+	 * The risk is acceptable given:
+	 * 1. Only administrators can access this
+	 * 2. User is warned about irreversibility
+	 * 3. This is a standard backup/restore operation
+	 * 
 	 * @param string $file_path Path to the uploaded file
 	 * @return bool|WP_Error True on success, WP_Error on failure
 	 */
@@ -73,11 +80,51 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 			return new WP_Error('read_error', __('Could not read the SQL file.', 'ai-post-scheduler'));
 		}
 		
+		// Validate that the SQL file appears to be from this plugin
+		if (strpos($sql_content, 'AI Post Scheduler Data Export') === false) {
+			return new WP_Error(
+				'invalid_file',
+				__('This does not appear to be a valid AI Post Scheduler export file.', 'ai-post-scheduler')
+			);
+		}
+		
 		// Split the SQL file into individual queries
 		$queries = $this->split_sql_file($sql_content);
 		
 		if (empty($queries)) {
 			return new WP_Error('no_queries', __('No valid SQL queries found in file.', 'ai-post-scheduler'));
+		}
+		
+		// Validate queries only affect plugin tables
+		$plugin_tables = AIPS_DB_Manager::get_full_table_names();
+		$plugin_table_names = array_values($plugin_tables);
+		
+		foreach ($queries as $query) {
+			$query_upper = strtoupper(trim($query));
+			
+			// Skip if query is empty
+			if (empty($query_upper)) {
+				continue;
+			}
+			
+			// Extract table name from query
+			$has_valid_table = false;
+			foreach ($plugin_table_names as $table_name) {
+				if (stripos($query, $table_name) !== false) {
+					$has_valid_table = true;
+					break;
+				}
+			}
+			
+			// If query references a table, ensure it's one of ours
+			if (!$has_valid_table && 
+				(strpos($query_upper, 'TABLE') !== false || 
+				 strpos($query_upper, 'INSERT') !== false)) {
+				return new WP_Error(
+					'invalid_table',
+					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
+				);
+			}
 		}
 		
 		// Execute each query

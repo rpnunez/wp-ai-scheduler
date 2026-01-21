@@ -69,17 +69,17 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 			$sql_dump .= "-- Table structure for table `$full_table_name`\n";
 			$sql_dump .= "-- --------------------------------------------------------\n\n";
 			
-			// Get CREATE TABLE statement
-			$create_table = $wpdb->get_row("SHOW CREATE TABLE `$full_table_name`", ARRAY_N);
+			// Get CREATE TABLE statement - table name is already validated from get_full_table_names()
+			$create_table = $wpdb->get_row("SHOW CREATE TABLE `" . esc_sql($full_table_name) . "`", ARRAY_N);
 			if ($create_table) {
-				$sql_dump .= "DROP TABLE IF EXISTS `$full_table_name`;\n";
+				$sql_dump .= "DROP TABLE IF EXISTS `" . esc_sql($full_table_name) . "`;\n";
 				$sql_dump .= $create_table[1] . ";\n\n";
 			}
 			
 			// Get table data
 			$sql_dump .= "-- Dumping data for table `$full_table_name`\n\n";
 			
-			$rows = $wpdb->get_results("SELECT * FROM `$full_table_name`", ARRAY_A);
+			$rows = $wpdb->get_results("SELECT * FROM `" . esc_sql($full_table_name) . "`", ARRAY_A);
 			
 			if (!empty($rows)) {
 				foreach ($rows as $row) {
@@ -111,12 +111,12 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 			if ($value === null) {
 				$values[] = 'NULL';
 			} else {
-				// Escape the value properly
-				$values[] = "'" . $wpdb->_real_escape($value) . "'";
+				// Escape the value properly using esc_sql
+				$values[] = "'" . esc_sql($value) . "'";
 			}
 		}
 		
-		$columns_str = '`' . implode('`, `', $columns) . '`';
+		$columns_str = '`' . implode('`, `', array_map('esc_sql', $columns)) . '`';
 		$values_str = implode(', ', $values);
 		
 		return "INSERT INTO `$table_name` ($columns_str) VALUES ($values_str);\n";

@@ -99,8 +99,8 @@ class AIPS_Data_Management_Import_JSON extends AIPS_Data_Management_Import {
 			
 			$full_table_name = $tables[$table_name];
 			
-			// Truncate table first
-			$wpdb->query("TRUNCATE TABLE `$full_table_name`");
+			// Truncate table first - table name is already validated from get_full_table_names()
+			$wpdb->query("TRUNCATE TABLE `" . esc_sql($full_table_name) . "`");
 			
 			// Insert rows
 			foreach ($rows as $row) {

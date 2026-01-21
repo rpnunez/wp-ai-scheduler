@@ -59,8 +59,8 @@ class AIPS_Data_Management_Export_JSON extends AIPS_Data_Management_Export {
 				continue;
 			}
 			
-			// Get table data
-			$rows = $wpdb->get_results("SELECT * FROM `$full_table_name`", ARRAY_A);
+			// Get table data - table name is already validated from get_full_table_names()
+			$rows = $wpdb->get_results("SELECT * FROM `" . esc_sql($full_table_name) . "`", ARRAY_A);
 			$data['tables'][$table_name] = $rows;
 		}
 		
