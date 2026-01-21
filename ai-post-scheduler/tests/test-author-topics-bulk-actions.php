@@ -50,8 +50,18 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 		$topics_table = $wpdb->prefix . 'aips_author_topics';
 		$authors_table = $wpdb->prefix . 'aips_authors';
 		
-		$wpdb->query("DELETE FROM $topics_table WHERE author_id = {$this->author_id}");
-		$wpdb->query("DELETE FROM $authors_table WHERE id = {$this->author_id}");
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM $topics_table WHERE author_id = %d",
+				$this->author_id
+			)
+		);
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM $authors_table WHERE id = %d",
+				$this->author_id
+			)
+		);
 		
 		// Clean up $_POST and $_REQUEST
 		$_POST = array();
