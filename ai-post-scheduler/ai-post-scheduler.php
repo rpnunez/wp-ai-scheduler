@@ -71,6 +71,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-authors-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topic-logs-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-feedback-repository.php';
         
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates-controller.php';
