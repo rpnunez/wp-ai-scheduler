@@ -68,6 +68,9 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-section-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-trending-topics-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-authors-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topic-logs-repository.php';
         
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates-controller.php';
@@ -95,6 +98,13 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dev-tools.php';
 
+        // Authors Feature
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-generator.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-scheduler.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-post-generator.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-authors-controller.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-controller.php';
+
         // Seeder Feature
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-seeder-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-seeder-admin.php';
@@ -119,6 +129,16 @@ final class AI_Post_Scheduler {
             wp_schedule_event(time(), 'hourly', 'aips_generate_scheduled_posts');
         }
         
+        // Schedule author topic generation
+        if (!wp_next_scheduled('aips_generate_author_topics')) {
+            wp_schedule_event(time(), 'hourly', 'aips_generate_author_topics');
+        }
+        
+        // Schedule author post generation
+        if (!wp_next_scheduled('aips_generate_author_posts')) {
+            wp_schedule_event(time(), 'hourly', 'aips_generate_author_posts');
+        }
+        
         // Schedule automated research (daily by default)
         if (!wp_next_scheduled('aips_scheduled_research')) {
             wp_schedule_event(time(), 'daily', 'aips_scheduled_research');
@@ -133,6 +153,8 @@ final class AI_Post_Scheduler {
     
     public function deactivate() {
         wp_clear_scheduled_hook('aips_generate_scheduled_posts');
+        wp_clear_scheduled_hook('aips_generate_author_topics');
+        wp_clear_scheduled_hook('aips_generate_author_posts');
         wp_clear_scheduled_hook('aips_scheduled_research');
         flush_rewrite_rules();
     }
@@ -175,6 +197,10 @@ final class AI_Post_Scheduler {
             new AIPS_Structures_Controller();
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
             new AIPS_Prompt_Sections_Controller();
+            
+            // Authors feature controllers
+            new AIPS_Authors_Controller();
+            new AIPS_Author_Topics_Controller();
 
             // Dev Tools
             if (get_option('aips_developer_mode')) {
@@ -182,7 +208,10 @@ final class AI_Post_Scheduler {
             }
         }
         
+        // Initialize schedulers (both admin and frontend)
         new AIPS_Scheduler();
+        new AIPS_Author_Topics_Scheduler();
+        new AIPS_Author_Post_Generator();
     }
 }
 
