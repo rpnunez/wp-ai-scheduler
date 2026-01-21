@@ -17,3 +17,8 @@
 **Vulnerability:** Missing `index.php` or `index.html` files in plugin subdirectories (`includes`, `assets`, etc.).
 **Learning:** Without these silent index files, misconfigured web servers may allow users to browse the plugin's file structure (Directory Listing), potentially revealing sensitive information, backups, or the internal architecture.
 **Prevention:** Always include an empty `index.php` with `<?php // Silence is golden.` in every directory of the plugin.
+
+## 2025-05-01 - [Stored XSS via AI/Database Reflection]
+**Vulnerability:** Unescaped insertion of database content (`generated_title`, `error_message`, `template.name`) into the DOM via string concatenation in `admin.js`.
+**Learning:** Admin interfaces are often treated as "trusted zones," but data originating from complex flows (like AI generation or indirect inputs) can be compromised (e.g., via Prompt Injection or Stored XSS). Concatenating HTML strings in JS without explicit escaping is a persistent vulnerability pattern.
+**Prevention:** Use a dedicated escaping utility (like `AIPS.escapeHtml()`) for ALL dynamic data inserted into the DOM, regardless of its source (database, API, or user input).

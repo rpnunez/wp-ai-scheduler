@@ -1333,21 +1333,21 @@
             
             var summaryHtml = '<table class="aips-details-table">';
             summaryHtml += '<tr><th>Status:</th><td><span class="aips-status aips-status-' + data.status + '">' + data.status.charAt(0).toUpperCase() + data.status.slice(1) + '</span></td></tr>';
-            summaryHtml += '<tr><th>Title:</th><td>' + (data.generated_title || '-') + '</td></tr>';
+            summaryHtml += '<tr><th>Title:</th><td>' + AIPS.escapeHtml(data.generated_title || '-') + '</td></tr>';
             if (data.post_id) {
                 summaryHtml += '<tr><th>Post ID:</th><td>' + data.post_id + '</td></tr>';
             }
             summaryHtml += '<tr><th>Started:</th><td>' + (log.started_at || data.created_at) + '</td></tr>';
             summaryHtml += '<tr><th>Completed:</th><td>' + (log.completed_at || data.completed_at || '-') + '</td></tr>';
             if (data.error_message) {
-                summaryHtml += '<tr><th>Error:</th><td class="aips-error-text">' + data.error_message + '</td></tr>';
+                summaryHtml += '<tr><th>Error:</th><td class="aips-error-text">' + AIPS.escapeHtml(data.error_message) + '</td></tr>';
             }
             summaryHtml += '</table>';
             $('#aips-details-summary').html(summaryHtml);
             
             if (log.template) {
                 var templateHtml = '<table class="aips-details-table">';
-                templateHtml += '<tr><th>Name:</th><td>' + (log.template.name || '-') + '</td></tr>';
+                templateHtml += '<tr><th>Name:</th><td>' + AIPS.escapeHtml(log.template.name || '-') + '</td></tr>';
                 templateHtml += '<tr><th>Prompt Template:</th><td>';
                 templateHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.template.prompt_template || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
                 templateHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.prompt_template || '') + '</pre></td></tr>';
@@ -1369,7 +1369,7 @@
             
             if (log.voice) {
                 var voiceHtml = '<table class="aips-details-table">';
-                voiceHtml += '<tr><th>Name:</th><td>' + (log.voice.name || '-') + '</td></tr>';
+                voiceHtml += '<tr><th>Name:</th><td>' + AIPS.escapeHtml(log.voice.name || '-') + '</td></tr>';
                 voiceHtml += '<tr><th>Title Prompt:</th><td>';
                 voiceHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.voice.title_prompt || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
                 voiceHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.title_prompt || '') + '</pre></td></tr>';
