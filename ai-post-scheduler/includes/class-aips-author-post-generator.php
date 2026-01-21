@@ -61,6 +61,11 @@ class AIPS_Author_Post_Generator {
 	private $expansion_service;
 	
 	/**
+	 * @var AIPS_Activity_Repository Repository for activity logging
+	 */
+	private $activity_repository;
+	
+	/**
 	 * Initialize the generator.
 	 */
 	public function __construct() {
@@ -72,6 +77,7 @@ class AIPS_Author_Post_Generator {
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_repository = new AIPS_History_Repository();
 		$this->expansion_service = new AIPS_Topic_Expansion_Service();
+		$this->activity_repository = new AIPS_Activity_Repository();
 		
 		// Hook into WordPress cron
 		add_action('aips_generate_author_posts', array($this, 'process_post_generation'));
@@ -169,6 +175,26 @@ class AIPS_Author_Post_Generator {
 			
 			if (is_wp_error($post_id)) {
 				$this->logger->log("Failed to generate post for topic {$topic->id}: " . $post_id->get_error_message(), 'error');
+				
+				// Log failure to activity feed
+				$this->activity_repository->create(array(
+					'event_type' => 'topic_post_generation',
+					'event_status' => 'failed',
+					'post_id' => null,
+					'message' => sprintf(
+						__('Failed to generate post from topic "%s": %s', 'ai-post-scheduler'),
+						$topic->topic_title,
+						$post_id->get_error_message()
+					),
+					'metadata' => array(
+						'topic_id' => $topic->id,
+						'topic_title' => $topic->topic_title,
+						'author_id' => $author->id,
+						'author_name' => $author->name,
+						'error' => $post_id->get_error_message(),
+					),
+				));
+				
 				return $post_id;
 			}
 			
@@ -182,12 +208,59 @@ class AIPS_Author_Post_Generator {
 				))
 			);
 			
+			// Get post status for activity log
+			$post = get_post($post_id);
+			$post_status = $post ? $post->post_status : 'unknown';
+			$post_title = $post ? $post->post_title : $topic->topic_title;
+			
+			// Log successful post generation to activity feed
+			$this->activity_repository->create(array(
+				'event_type' => 'topic_post_generation',
+				'event_status' => $post_status === 'publish' ? 'success' : 'draft',
+				'post_id' => $post_id,
+				'message' => sprintf(
+					__('Generated %s from topic "%s" for author "%s"', 'ai-post-scheduler'),
+					$post_status === 'publish' ? __('post', 'ai-post-scheduler') : __('draft', 'ai-post-scheduler'),
+					$topic->topic_title,
+					$author->name
+				),
+				'metadata' => array(
+					'topic_id' => $topic->id,
+					'topic_title' => $topic->topic_title,
+					'author_id' => $author->id,
+					'author_name' => $author->name,
+					'post_title' => $post_title,
+					'post_status' => $post_status,
+					'history_id' => $history_id,
+				),
+			));
+			
 			$this->logger->log("Successfully generated post {$post_id} from topic {$topic->id}", 'info');
 			
 			return $post_id;
 			
 		} catch (Exception $e) {
 			$this->logger->log("Exception generating post for topic {$topic->id}: " . $e->getMessage(), 'error');
+			
+			// Log exception to activity feed
+			$this->activity_repository->create(array(
+				'event_type' => 'topic_post_generation',
+				'event_status' => 'failed',
+				'post_id' => null,
+				'message' => sprintf(
+					__('Exception while generating post from topic "%s": %s', 'ai-post-scheduler'),
+					$topic->topic_title,
+					$e->getMessage()
+				),
+				'metadata' => array(
+					'topic_id' => $topic->id,
+					'topic_title' => $topic->topic_title,
+					'author_id' => $author->id,
+					'author_name' => $author->name,
+					'error' => $e->getMessage(),
+				),
+			));
+			
 			return new WP_Error('generation_failed', $e->getMessage());
 		}
 	}

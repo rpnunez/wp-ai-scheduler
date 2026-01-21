@@ -194,6 +194,23 @@ class AIPS_Scheduler {
                 
                 // NEW: Select article structure for this execution
                 $article_structure_id = $this->template_type_selector->select_structure($schedule);
+                
+                // Log schedule execution to activity feed
+                $this->activity_repository->create(array(
+                    'event_type' => 'schedule_executed',
+                    'event_status' => 'success',
+                    'schedule_id' => $schedule->schedule_id,
+                    'template_id' => $schedule->template_id,
+                    'message' => sprintf(
+                        __('Schedule "%s" started execution', 'ai-post-scheduler'),
+                        $schedule->template_name
+                    ),
+                    'metadata' => array(
+                        'frequency' => $schedule->frequency,
+                        'topic' => isset($schedule->topic) ? $schedule->topic : '',
+                        'article_structure_id' => $article_structure_id,
+                    ),
+                ));
 
                 $template = (object) array(
                     'id' => $schedule->template_id,
