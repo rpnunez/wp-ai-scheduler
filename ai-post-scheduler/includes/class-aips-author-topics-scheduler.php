@@ -127,6 +127,7 @@ class AIPS_Author_Topics_Scheduler {
 		$this->update_author_schedule($author);
 		
 		// Log successful topic generation to activity feed
+		// $result is an array of topic data on success
 		$topic_count = is_array($result) ? count($result) : 0;
 		$this->activity_repository->create(array(
 			'event_type' => 'author_topic_generation',
