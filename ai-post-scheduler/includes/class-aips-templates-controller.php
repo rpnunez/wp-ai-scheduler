@@ -15,6 +15,7 @@ class AIPS_Templates_Controller {
         add_action('wp_ajax_aips_get_template', array($this, 'ajax_get_template'));
         add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
         add_action('wp_ajax_aips_get_template_posts', array($this, 'ajax_get_template_posts'));
+        add_action('wp_ajax_aips_clone_template', array($this, 'ajax_clone_template'));
     }
 
     public function ajax_save_template() {
@@ -102,6 +103,55 @@ class AIPS_Templates_Controller {
             wp_send_json_success(array('template' => $template));
         } else {
             wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_clone_template() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
+        }
+
+        $template = $this->templates->get($id);
+
+        if (!$template) {
+            wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+        }
+
+        $new_data = array(
+            'name' => $template->name . ' ' . __('(Copy)', 'ai-post-scheduler'),
+            'prompt_template' => $template->prompt_template,
+            'title_prompt' => $template->title_prompt,
+            'voice_id' => $template->voice_id,
+            'post_quantity' => $template->post_quantity,
+            'image_prompt' => $template->image_prompt,
+            'generate_featured_image' => $template->generate_featured_image,
+            'featured_image_source' => $template->featured_image_source,
+            'featured_image_unsplash_keywords' => $template->featured_image_unsplash_keywords,
+            'featured_image_media_ids' => $template->featured_image_media_ids,
+            'post_status' => $template->post_status,
+            'post_category' => $template->post_category,
+            'post_tags' => $template->post_tags,
+            'post_author' => $template->post_author,
+            'is_active' => $template->is_active,
+        );
+
+        $new_id = $this->templates->save($new_data);
+
+        if ($new_id) {
+            wp_send_json_success(array(
+                'message' => __('Template cloned successfully.', 'ai-post-scheduler'),
+                'template_id' => $new_id
+            ));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to clone template.', 'ai-post-scheduler')));
         }
     }
 
