@@ -40,6 +40,11 @@ class AIPS_Author_Topics_Controller {
 	private $post_generator;
 	
 	/**
+	 * @var AIPS_Topic_Penalty_Service Penalty service
+	 */
+	private $penalty_service;
+	
+	/**
 	 * Initialize the controller.
 	 */
 	public function __construct() {
@@ -47,6 +52,7 @@ class AIPS_Author_Topics_Controller {
 		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository = new AIPS_Feedback_Repository();
 		$this->post_generator = new AIPS_Author_Post_Generator();
+		$this->penalty_service = new AIPS_Topic_Penalty_Service();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -61,6 +67,9 @@ class AIPS_Author_Topics_Controller {
 		add_action('wp_ajax_aips_bulk_delete_topics', array($this, 'ajax_bulk_delete_topics'));
 		add_action('wp_ajax_aips_regenerate_post', array($this, 'ajax_regenerate_post'));
 		add_action('wp_ajax_aips_delete_generated_post', array($this, 'ajax_delete_generated_post'));
+		add_action('wp_ajax_aips_get_similar_topics', array($this, 'ajax_get_similar_topics'));
+		add_action('wp_ajax_aips_suggest_related_topics', array($this, 'ajax_suggest_related_topics'));
+		add_action('wp_ajax_aips_compute_topic_embeddings', array($this, 'ajax_compute_topic_embeddings'));
 	}
 	
 	/**
@@ -75,6 +84,8 @@ class AIPS_Author_Topics_Controller {
 		
 		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
 		$reason = isset($_POST['reason']) ? sanitize_textarea_field($_POST['reason']) : '';
+		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field($_POST['reason_category']) : 'other';
+		$source = isset($_POST['source']) ? sanitize_text_field($_POST['source']) : 'UI';
 		
 		if (!$topic_id) {
 			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
@@ -87,7 +98,10 @@ class AIPS_Author_Topics_Controller {
 			$this->logs_repository->log_approval($topic_id, get_current_user_id());
 			
 			// Record feedback with reason
-			$this->feedback_repository->record_approval($topic_id, get_current_user_id(), $reason);
+			$this->feedback_repository->record_approval($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
+			
+			// Apply reward for approval
+			$this->penalty_service->apply_reward($topic_id, $reason_category);
 			
 			wp_send_json_success(array('message' => __('Topic approved successfully.', 'ai-post-scheduler')));
 		} else {
@@ -107,6 +121,8 @@ class AIPS_Author_Topics_Controller {
 		
 		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
 		$reason = isset($_POST['reason']) ? sanitize_textarea_field($_POST['reason']) : '';
+		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field($_POST['reason_category']) : 'other';
+		$source = isset($_POST['source']) ? sanitize_text_field($_POST['source']) : 'UI';
 		
 		if (!$topic_id) {
 			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
@@ -119,7 +135,10 @@ class AIPS_Author_Topics_Controller {
 			$this->logs_repository->log_rejection($topic_id, get_current_user_id());
 			
 			// Record feedback with reason
-			$this->feedback_repository->record_rejection($topic_id, get_current_user_id(), $reason);
+			$this->feedback_repository->record_rejection($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
+			
+			// Apply penalty based on reason category
+			$this->penalty_service->apply_penalty($topic_id, $reason_category);
 			
 			wp_send_json_success(array('message' => __('Topic rejected successfully.', 'ai-post-scheduler')));
 		} else {
@@ -424,5 +443,93 @@ class AIPS_Author_Topics_Controller {
 		}
 		
 		wp_send_json_success(array('feedback' => $feedback));
+	}
+	
+	/**
+	 * AJAX handler for getting similar topics.
+	 */
+	public function ajax_get_similar_topics() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
+		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		$limit = isset($_POST['limit']) ? absint($_POST['limit']) : 5;
+		
+		if (!$topic_id || !$author_id) {
+			wp_send_json_error(array('message' => __('Invalid topic or author ID.', 'ai-post-scheduler')));
+		}
+		
+		$expansion_service = new AIPS_Topic_Expansion_Service();
+		$similar_topics = $expansion_service->find_similar_topics($topic_id, $author_id, $limit);
+		
+		// Enrich with topic details
+		foreach ($similar_topics as &$item) {
+			if (isset($item['id'])) {
+				$topic = $this->repository->get_by_id($item['id']);
+				if ($topic) {
+					$item['topic_title'] = $topic->topic_title;
+					$item['status'] = $topic->status;
+				}
+			}
+		}
+		
+		wp_send_json_success(array('similar_topics' => $similar_topics));
+	}
+	
+	/**
+	 * AJAX handler for suggesting related topics.
+	 */
+	public function ajax_suggest_related_topics() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		$limit = isset($_POST['limit']) ? absint($_POST['limit']) : 10;
+		
+		if (!$author_id) {
+			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+		}
+		
+		$expansion_service = new AIPS_Topic_Expansion_Service();
+		$suggestions = $expansion_service->suggest_related_topics($author_id, $limit);
+		
+		wp_send_json_success(array('suggestions' => $suggestions));
+	}
+	
+	/**
+	 * AJAX handler for computing topic embeddings.
+	 */
+	public function ajax_compute_topic_embeddings() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		
+		if (!$author_id) {
+			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+		}
+		
+		$expansion_service = new AIPS_Topic_Expansion_Service();
+		$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
+		
+		wp_send_json_success(array(
+			'message' => sprintf(
+				__('Computed embeddings: %d successful, %d failed, %d skipped (already existed).', 'ai-post-scheduler'),
+				$stats['success'],
+				$stats['failed'],
+				$stats['skipped']
+			),
+			'stats' => $stats
+		));
 	}
 }
