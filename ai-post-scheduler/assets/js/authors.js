@@ -290,7 +290,11 @@
 			$('.aips-tab-link').removeClass('active');
 			$tab.addClass('active');
 			
-			this.loadTopics(status);
+			if (status === 'feedback') {
+				this.loadFeedback();
+			} else {
+				this.loadTopics(status);
+			}
 		},
 		
 		approveTopic: function(e) {
@@ -349,6 +353,63 @@
 					alert(action === 'approve' ? aipsAuthorsL10n.errorApproving : aipsAuthorsL10n.errorRejecting);
 				}
 			});
+		},
+		
+		loadFeedback: function() {
+			if (!this.currentAuthorId) {
+				$('#aips-topics-content').html('<p>No author selected.</p>');
+				return;
+			}
+			
+			$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.loading + '</p>');
+			
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_author_feedback',
+					nonce: aipsAuthorsL10n.nonce,
+					author_id: this.currentAuthorId
+				},
+				success: (response) => {
+					if (response.success && response.data.feedback) {
+						this.renderFeedback(response.data.feedback);
+					} else {
+						$('#aips-topics-content').html('<p>No feedback found.</p>');
+					}
+				},
+				error: () => {
+					$('#aips-topics-content').html('<p>Error loading feedback.</p>');
+				}
+			});
+		},
+		
+		renderFeedback: function(feedback) {
+			if (feedback.length === 0) {
+				$('#aips-topics-content').html('<p>No feedback yet.</p>');
+				return;
+			}
+			
+			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
+			html += '<th>' + aipsAuthorsL10n.topic + '</th>';
+			html += '<th>' + aipsAuthorsL10n.action + '</th>';
+			html += '<th>' + aipsAuthorsL10n.reason + '</th>';
+			html += '<th>' + aipsAuthorsL10n.user + '</th>';
+			html += '<th>' + aipsAuthorsL10n.date + '</th>';
+			html += '</tr></thead><tbody>';
+			
+			feedback.forEach(item => {
+				html += '<tr>';
+				html += '<td>' + this.escapeHtml(item.topic_title || 'N/A') + '</td>';
+				html += '<td><span class="aips-status aips-status-' + item.action + '">' + item.action + '</span></td>';
+				html += '<td>' + this.escapeHtml(item.reason || '-') + '</td>';
+				html += '<td>' + this.escapeHtml(item.user_name || 'Unknown') + '</td>';
+				html += '<td>' + item.created_at + '</td>';
+				html += '</tr>';
+			});
+			
+			html += '</tbody></table>';
+			$('#aips-topics-content').html(html);
 		},
 		
 		deleteTopic: function(e) {
