@@ -461,31 +461,31 @@ class AIPS_Author_Topics_Controller {
 		// Update the topic's author_id
 		$result = $this->repository->update($topic_id, array('author_id' => $new_author_id));
 		
-		if ($result !== false) {
-			// Log the reassignment
-			$notes = sprintf(
-				'Reassigned from author ID %d to author ID %d (%s). Reason: %s',
-				$topic->author_id,
-				$new_author_id,
-				$new_author->name,
-				$reason ?: 'None provided'
-			);
-			
-			$this->logs_repository->create(array(
-				'author_topic_id' => $topic_id,
-				'action' => 'reassigned',
-				'user_id' => get_current_user_id(),
-				'notes' => $notes
-			));
-			
-			wp_send_json_success(array(
-				'message' => sprintf(
-					__('Topic successfully reassigned to %s.', 'ai-post-scheduler'),
-					$new_author->name
-				)
-			));
-		} else {
+		if ($result === false) {
 			wp_send_json_error(array('message' => __('Failed to reassign topic.', 'ai-post-scheduler')));
 		}
+		
+		// Log the reassignment
+		$notes = sprintf(
+			'Reassigned from author ID %d to author ID %d (%s). Reason: %s',
+			$topic->author_id,
+			$new_author_id,
+			$new_author->name,
+			$reason ?: 'None provided'
+		);
+		
+		$this->logs_repository->create(array(
+			'author_topic_id' => $topic_id,
+			'action' => 'reassigned',
+			'user_id' => get_current_user_id(),
+			'notes' => $notes
+		));
+		
+		wp_send_json_success(array(
+			'message' => sprintf(
+				__('Topic successfully reassigned to %s.', 'ai-post-scheduler'),
+				$new_author->name
+			)
+		));
 	}
 }
