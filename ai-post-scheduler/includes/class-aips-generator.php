@@ -310,7 +310,7 @@ class AIPS_Generator {
      */
     private function generate_title($context, $content = '', $ai_variables = array(), $options = array()) {
         // Delegate prompt building to Prompt Builder
-        $prompt = $this->prompt_builder->build_title_prompt($context, null, null, $content);
+        $prompt = $this->prompt_builder->build_title_prompt($context, $content);
 
         // Set token limit for title generation
         $options['max_tokens'] = 100;

@@ -66,7 +66,8 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		);
 
 		$content = 'This is the article content about AI technology...';
-		$result = $builder->build_title_prompt($template, 'AI', null, $content);
+		$context = new AIPS_Template_Context($template, null, 'AI');
+		$result = $builder->build_title_prompt($context, $content);
 
 		$this->assertStringContainsString('Generate a title for a blog post', $result);
 		$this->assertStringContainsString('Create an engaging title about AI', $result);
@@ -86,11 +87,13 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		);
 
 		$voice = (object) array(
+			'id' => 1,
 			'title_prompt' => 'Create a voice-specific title for {{topic}}',
 		);
 
 		$content = 'Article content here...';
-		$result = $builder->build_title_prompt($template, 'Testing', $voice, $content);
+		$context = new AIPS_Template_Context($template, $voice, 'Testing');
+		$result = $builder->build_title_prompt($context, $content);
 
 		// Voice title prompt should take precedence
 		$this->assertStringContainsString('Create a voice-specific title for Testing', $result);
@@ -110,7 +113,8 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		);
 
 		$content = 'Article content without specific title instructions...';
-		$result = $builder->build_title_prompt($template, 'Topic', null, $content);
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+		$result = $builder->build_title_prompt($context, $content);
 
 		$this->assertStringContainsString('Generate a title for a blog post', $result);
 		$this->assertStringContainsString('Article content without specific title instructions', $result);
@@ -223,7 +227,8 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		);
 
 		$content = 'Content';
-		$result = $builder->build_title_prompt($template, 'Topic', null, $content);
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+		$result = $builder->build_title_prompt($context, $content);
 
 		$this->assertStringContainsString('ADDITIONAL INSTRUCTION', $result);
 
@@ -294,7 +299,8 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 			'title_prompt' => 'Create title',
 		);
 
-		$result = $builder->build_title_prompt($template, 'Topic', null, '');
+		$context = new AIPS_Template_Context($template, null, 'Topic');
+		$result = $builder->build_title_prompt($context, '');
 
 		$this->assertStringContainsString('Generate a title for a blog post', $result);
 		$this->assertStringContainsString('Here is the content:', $result);
