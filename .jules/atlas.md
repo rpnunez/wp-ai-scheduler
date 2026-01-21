@@ -20,3 +20,8 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-26 - [Extract Admin Controller]
+**Context:** `AIPS_Settings` was a 'God Class' handling menu registration, asset enqueueing for all admin pages, and generic page rendering, in addition to actual settings management.
+**Decision:** Extracted `AIPS_Admin` to handle admin menu routing, asset management, and top-level page rendering. `AIPS_Settings` now focuses solely on the Settings page logic.
+**Consequence:** Improved separation of concerns. `AIPS_Admin` acts as the central router for the admin area. Reduced `AIPS_Settings` size by ~65%. Increased file count by 1.
