@@ -16,6 +16,7 @@
         bindEvents: function() {
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
+            $(document).on('click', '.aips-clone-template', this.cloneTemplate);
             $(document).on('click', '.aips-delete-template', this.deleteTemplate);
             $(document).on('click', '.aips-save-template', this.saveTemplate);
             $(document).on('click', '.aips-test-template', this.testTemplate);
@@ -437,6 +438,40 @@
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
+                }
+            });
+        },
+
+        cloneTemplate: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+
+            if (!confirm('Are you sure you want to clone this template?')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).text('Cloning...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_clone_template',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                        $btn.prop('disabled', false).text('Clone');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    $btn.prop('disabled', false).text('Clone');
                 }
             });
         },
