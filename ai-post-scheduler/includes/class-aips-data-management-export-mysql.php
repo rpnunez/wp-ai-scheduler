@@ -111,11 +111,15 @@ class AIPS_Data_Management_Export_MySQL extends AIPS_Data_Management_Export {
 			if ($value === null) {
 				$values[] = 'NULL';
 			} else {
-				// Escape the value properly using esc_sql
-				$values[] = "'" . esc_sql($value) . "'";
+				// Use addslashes for basic escaping (WordPress standard for INSERT values)
+				$escaped = str_replace(array('\\', "\0", "\n", "\r", "'", '"', "\x1a"), 
+									   array('\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'), 
+									   $value);
+				$values[] = "'" . $escaped . "'";
 			}
 		}
 		
+		// Escape column names
 		$columns_str = '`' . implode('`, `', array_map('esc_sql', $columns)) . '`';
 		$values_str = implode(', ', $values);
 		

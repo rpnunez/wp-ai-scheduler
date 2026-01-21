@@ -5,6 +5,26 @@ if (!defined('ABSPATH')) {
 
 /**
  * MySQL dump import implementation
+ * 
+ * SECURITY CONSIDERATIONS:
+ * This class executes raw SQL from uploaded files, which inherently carries security risks.
+ * The design accepts these risks for the following reasons:
+ * 
+ * 1. RESTRICTED ACCESS: Only users with 'manage_options' capability (typically administrators) can access this
+ * 2. INTENDED USE: This is specifically for restoring plugin backups, similar to phpMyAdmin or other DB tools
+ * 3. VALIDATION LAYERS:
+ *    - File extension validation (.sql only)
+ *    - File size limit (50MB max)
+ *    - Export header validation (must be AI Post Scheduler export)
+ *    - Table name validation (must reference plugin tables)
+ *    - User confirmation dialog with warnings
+ * 4. ACCEPTABLE TRADE-OFF: The convenience of backup/restore for administrators outweighs the risk
+ *    given the access restrictions
+ * 
+ * For higher security environments, consider:
+ * - Using JSON import/export instead (uses parameterized queries)
+ * - Implementing a custom SQL parser for stricter validation
+ * - Creating database backups through hosting control panel instead
  */
 class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 	
