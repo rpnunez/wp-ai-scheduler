@@ -7,6 +7,7 @@ class AIPS_DB_Manager {
 
     private static $tables = array(
         'aips_history',
+        'aips_history_log',
         'aips_templates',
         'aips_schedule',
         'aips_voices',
@@ -46,36 +47,87 @@ class AIPS_DB_Manager {
         $charset_collate = $wpdb->get_charset_collate();
         $tables = self::get_full_table_names();
 
-        $table_history = $tables['aips_history'];
-        $table_templates = $tables['aips_templates'];
-        $table_schedule = $tables['aips_schedule'];
-        $table_voices = $tables['aips_voices'];
-        $table_structures = $tables['aips_article_structures'];
-        $table_sections = $tables['aips_prompt_sections'];
-        $table_trending_topics = $tables['aips_trending_topics'];
-        $table_activity = $tables['aips_activity'];
+                $table_history = $tables['aips_history'];
 
-        $sql = array();
+                $table_history_log = $tables['aips_history_log'];
 
-        $sql[] = "CREATE TABLE $table_history (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            post_id bigint(20) DEFAULT NULL,
-            template_id bigint(20) DEFAULT NULL,
-            status varchar(50) NOT NULL DEFAULT 'pending',
-            prompt text,
-            generated_title varchar(500),
-            generated_content longtext,
-            generation_log longtext,
-            error_message text,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            completed_at datetime DEFAULT NULL,
-            PRIMARY KEY  (id),
-            KEY post_id (post_id),
-            KEY template_id (template_id),
-            KEY status (status)
-        ) $charset_collate;";
+                $table_templates = $tables['aips_templates'];
 
-        $sql[] = "CREATE TABLE $table_templates (
+                $table_schedule = $tables['aips_schedule'];
+
+                $table_voices = $tables['aips_voices'];
+
+                $table_structures = $tables['aips_article_structures'];
+
+                $table_sections = $tables['aips_prompt_sections'];
+
+                $table_trending_topics = $tables['aips_trending_topics'];
+
+                $table_activity = $tables['aips_activity'];
+
+        
+
+                $sql = array();
+
+        
+
+                $sql[] = "CREATE TABLE $table_history (
+
+                    id bigint(20) NOT NULL AUTO_INCREMENT,
+
+                    post_id bigint(20) DEFAULT NULL,
+
+                    template_id bigint(20) DEFAULT NULL,
+
+                    status varchar(50) NOT NULL DEFAULT 'pending',
+
+                    prompt text,
+
+                    generated_title varchar(500),
+
+                    generated_content longtext,
+
+                    generation_log longtext,
+
+                    error_message text,
+
+                    created_at datetime DEFAULT CURRENT_TIMESTAMP,
+
+                    completed_at datetime DEFAULT NULL,
+
+                    PRIMARY KEY  (id),
+
+                    KEY post_id (post_id),
+
+                    KEY template_id (template_id),
+
+                    KEY status (status)
+
+                ) $charset_collate;";
+
+        
+
+                $sql[] = "CREATE TABLE $table_history_log (
+
+                    id bigint(20) NOT NULL AUTO_INCREMENT,
+
+                    history_id bigint(20) NOT NULL,
+
+                    log_type varchar(50) NOT NULL,
+
+                    timestamp datetime DEFAULT CURRENT_TIMESTAMP,
+
+                    details longtext,
+
+                    PRIMARY KEY  (id),
+
+                    KEY history_id (history_id)
+
+                ) $charset_collate;";
+
+        
+
+                $sql[] = "CREATE TABLE $table_templates (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
             prompt_template text NOT NULL,
