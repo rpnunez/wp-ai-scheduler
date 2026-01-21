@@ -56,34 +56,71 @@ if (!defined('ABSPATH')) {
         <?php endforeach; ?>
 
         <h2 class="title"><?php esc_html_e('Database Actions', 'ai-post-scheduler'); ?></h2>
-        <div class="card">
-            <h3><?php esc_html_e('Repair & Maintenance', 'ai-post-scheduler'); ?></h3>
-            <p><?php esc_html_e('Use these tools to fix database issues or reset the plugin.', 'ai-post-scheduler'); ?></p>
+        
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div class="card" style="flex: 1; min-width: 300px;">
+                <h3><?php esc_html_e('Repair & Maintenance', 'ai-post-scheduler'); ?></h3>
+                <p><?php esc_html_e('Use these tools to fix database issues or reset the plugin.', 'ai-post-scheduler'); ?></p>
 
-            <p>
-                <button type="button" class="button button-primary aips-repair-db"><?php esc_html_e('Repair DB Tables', 'ai-post-scheduler'); ?></button>
-                <span class="description"><?php esc_html_e('Runs the database migration script to fix missing tables or columns.', 'ai-post-scheduler'); ?></span>
-            </p>
+                <p>
+                    <button type="button" class="button button-primary aips-repair-db"><?php esc_html_e('Repair DB Tables', 'ai-post-scheduler'); ?></button>
+                    <span class="description"><?php esc_html_e('Runs the database migration script to fix missing tables or columns.', 'ai-post-scheduler'); ?></span>
+                </p>
 
-            <hr>
+                <hr>
 
-            <p>
-                <label>
-                    <input type="checkbox" id="aips-backup-db">
-                    <?php esc_html_e('Backup and Restore Data (Experimental)', 'ai-post-scheduler'); ?>
-                </label>
-            </p>
-            <p>
-                <button type="button" class="button button-secondary aips-reinstall-db"><?php esc_html_e('Reinstall DB Tables', 'ai-post-scheduler'); ?></button>
-                <span class="description"><?php esc_html_e('Drops and recreates all plugin tables. Use with caution.', 'ai-post-scheduler'); ?></span>
-            </p>
+                <p>
+                    <label>
+                        <input type="checkbox" id="aips-backup-db">
+                        <?php esc_html_e('Backup and Restore Data (Experimental)', 'ai-post-scheduler'); ?>
+                    </label>
+                </p>
+                <p>
+                    <button type="button" class="button button-secondary aips-reinstall-db"><?php esc_html_e('Reinstall DB Tables', 'ai-post-scheduler'); ?></button>
+                    <span class="description"><?php esc_html_e('Drops and recreates all plugin tables. Use with caution.', 'ai-post-scheduler'); ?></span>
+                </p>
 
-            <hr>
+                <hr>
 
-            <p>
-                <button type="button" class="button button-link-delete aips-wipe-db"><?php esc_html_e('Wipe Plugin Data', 'ai-post-scheduler'); ?></button>
-                <span class="description"><?php esc_html_e('Permanently deletes all data from the plugin tables.', 'ai-post-scheduler'); ?></span>
-            </p>
+                <p>
+                    <button type="button" class="button button-link-delete aips-wipe-db"><?php esc_html_e('Wipe Plugin Data', 'ai-post-scheduler'); ?></button>
+                    <span class="description"><?php esc_html_e('Permanently deletes all data from the plugin tables.', 'ai-post-scheduler'); ?></span>
+                </p>
+            </div>
+
+            <div class="card" style="flex: 1; min-width: 300px;">
+                <h3><?php esc_html_e('Data Management', 'ai-post-scheduler'); ?></h3>
+                <p><?php esc_html_e('Export or import all plugin data for backup or migration purposes.', 'ai-post-scheduler'); ?></p>
+
+                <h4><?php esc_html_e('Export Data', 'ai-post-scheduler'); ?></h4>
+                <p>
+                    <select id="aips-export-format" class="regular-text">
+                        <option value="mysql"><?php esc_html_e('MySQL Dump (.sql)', 'ai-post-scheduler'); ?></option>
+                        <option value="json"><?php esc_html_e('JSON (.json)', 'ai-post-scheduler'); ?></option>
+                    </select>
+                </p>
+                <p>
+                    <button type="button" class="button button-primary aips-export-data"><?php esc_html_e('Export Data', 'ai-post-scheduler'); ?></button>
+                    <span class="description"><?php esc_html_e('Download all plugin data in the selected format.', 'ai-post-scheduler'); ?></span>
+                </p>
+
+                <hr>
+
+                <h4><?php esc_html_e('Import Data', 'ai-post-scheduler'); ?></h4>
+                <p>
+                    <select id="aips-import-format" class="regular-text">
+                        <option value="mysql"><?php esc_html_e('MySQL Dump (.sql)', 'ai-post-scheduler'); ?></option>
+                        <option value="json"><?php esc_html_e('JSON (.json)', 'ai-post-scheduler'); ?></option>
+                    </select>
+                </p>
+                <p>
+                    <input type="file" id="aips-import-file" accept=".sql,.json">
+                </p>
+                <p>
+                    <button type="button" class="button button-secondary aips-import-data"><?php esc_html_e('Import Data', 'ai-post-scheduler'); ?></button>
+                    <span class="description"><?php esc_html_e('Import data from a previously exported file. This will overwrite existing data!', 'ai-post-scheduler'); ?></span>
+                </p>
+            </div>
         </div>
     </div>
 </div>
