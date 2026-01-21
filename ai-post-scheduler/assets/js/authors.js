@@ -40,6 +40,9 @@
 
 			// Submit Feedback Form
 			$('#aips-feedback-form').on('submit', this.submitFeedback.bind(this));
+			
+			// Submit Reassign Form
+			$('#aips-reassign-form').on('submit', this.submitReassign.bind(this));
 
 			// Tab switching in topics modal
 			$(document).on('click', '.aips-tab-link', this.switchTab.bind(this));
@@ -53,6 +56,7 @@
 			$(document).on('click', '.aips-cancel-edit-topic', this.cancelEditTopic.bind(this));
 			$(document).on('click', '.aips-generate-post-now', this.generatePostNow.bind(this));
 			$(document).on('click', '.aips-view-topic-log', this.viewTopicLog.bind(this));
+			$(document).on('click', '.aips-reassign-topic', this.reassignTopic.bind(this));
 
 			// Bulk actions
 			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
@@ -60,6 +64,9 @@
 			
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
+			
+			// Regenerate post
+			$(document).on('click', '.aips-regenerate-post', this.regeneratePost.bind(this));
 		},
 
 		openAddModal: function (e) {
@@ -294,6 +301,7 @@
 				}
 
 				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.edit + '</button> ';
+				html += '<button class="button aips-reassign-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.reassign + '</button> ';
 				html += '<button class="button aips-delete-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.delete + '</button>';
 				html += '</td></tr>';
 			});
@@ -575,6 +583,64 @@
 			alert('View log feature coming soon');
 		},
 		
+		reassignTopic: function (e) {
+			e.preventDefault();
+			const topicId = $(e.currentTarget).data('id');
+			
+			// Open reassign modal
+			$('#reassign_topic_id').val(topicId);
+			$('#reassign_author_id').val('');
+			$('#reassign_reason').val('');
+			$('#aips-reassign-modal').fadeIn();
+		},
+		
+		submitReassign: function (e) {
+			e.preventDefault();
+			
+			const topicId = $('#reassign_topic_id').val();
+			const newAuthorId = $('#reassign_author_id').val();
+			const reason = $('#reassign_reason').val();
+			
+			if (!newAuthorId) {
+				alert(aipsAuthorsL10n.selectAuthor || 'Please select an author.');
+				return;
+			}
+			
+			const $submitBtn = $('#aips-reassign-form').find('[type="submit"]');
+			$submitBtn.prop('disabled', true).text(aipsAuthorsL10n.processing || 'Processing...');
+			
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_reassign_topic',
+					nonce: aipsAuthorsL10n.nonce,
+					topic_id: topicId,
+					new_author_id: newAuthorId,
+					reason: reason
+				},
+				success: (response) => {
+					if (response.success) {
+						alert(response.data.message);
+						$('#aips-reassign-modal').fadeOut();
+						$('#aips-reassign-form')[0].reset();
+						
+						// Reload topics for current tab
+						const activeTab = $('.aips-tab-link.active').data('tab');
+						this.loadTopics(activeTab);
+					} else {
+						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorReassigning || 'Error reassigning topic.');
+					}
+				},
+				error: () => {
+					alert(aipsAuthorsL10n.errorReassigning || 'Error reassigning topic.');
+				},
+				complete: () => {
+					$submitBtn.prop('disabled', false).text(aipsAuthorsL10n.reassignTopic || 'Reassign Topic');
+				}
+			});
+		},
+		
 		viewTopicPosts: function (e) {
 			e.preventDefault();
 			e.stopPropagation();
@@ -643,14 +709,56 @@
 					html += '<a href="' + post.edit_url + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
 				}
 				if (post.post_url && post.post_status === 'publish') {
-					html += '<a href="' + post.post_url + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
+					html += '<a href="' + post.post_url + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a> ';
 				}
+				// Add regenerate button
+				html += '<button class="button aips-regenerate-post" data-post-id="' + post.post_id + '" data-topic-id="' + post.topic_id + '">' + aipsAuthorsL10n.regenerate + '</button>';
 				html += '</td>';
 				html += '</tr>';
 			});
 			
 			html += '</tbody></table>';
 			$('#aips-topic-posts-content').html(html);
+		},
+
+		
+		regeneratePost: function (e) {
+			e.preventDefault();
+			
+			const postId = $(e.currentTarget).data('post-id');
+			const topicId = $(e.currentTarget).data('topic-id');
+			
+			if (!confirm(aipsAuthorsL10n.confirmRegeneratePost || 'Are you sure you want to regenerate this post? The existing post will be set to draft and a new post will be created.')) {
+				return;
+			}
+			
+			const $btn = $(e.currentTarget);
+			$btn.prop('disabled', true).text(aipsAuthorsL10n.regenerating || 'Regenerating...');
+			
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_regenerate_post',
+					nonce: aipsAuthorsL10n.nonce,
+					post_id: postId,
+					topic_id: topicId
+				},
+				success: (response) => {
+					if (response.success) {
+						alert(response.data.message || aipsAuthorsL10n.postRegenerated || 'Post regenerated successfully.');
+						// Reload topic posts
+						this.loadTopicPosts(topicId);
+					} else {
+						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRegeneratingPost || 'Error regenerating post.');
+						$btn.prop('disabled', false).text(aipsAuthorsL10n.regenerate || 'Regenerate');
+					}
+				},
+				error: () => {
+					alert(aipsAuthorsL10n.errorRegeneratingPost || 'Error regenerating post.');
+					$btn.prop('disabled', false).text(aipsAuthorsL10n.regenerate || 'Regenerate');
+				}
+			});
 		},
 
 		toggleSelectAll: function (e) {

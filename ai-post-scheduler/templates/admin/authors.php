@@ -267,3 +267,38 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         </div>
     </div>
 </div>
+
+<!-- Reassign Topic Modal -->
+<div id="aips-reassign-modal" class="aips-modal" style="display: none;">
+    <div class="aips-modal-content">
+        <span class="aips-modal-close">&times;</span>
+        <h2><?php esc_html_e('Reassign Topic to Different Author', 'ai-post-scheduler'); ?></h2>
+        <form id="aips-reassign-form">
+            <input type="hidden" id="reassign_topic_id" name="topic_id" value="">
+            
+            <div class="form-group">
+                <label for="reassign_author_id"><?php esc_html_e('Select New Author', 'ai-post-scheduler'); ?> *</label>
+                <select id="reassign_author_id" name="new_author_id" required>
+                    <option value=""><?php esc_html_e('-- Select Author --', 'ai-post-scheduler'); ?></option>
+                    <?php foreach ($authors as $author): ?>
+                        <option value="<?php echo esc_attr($author->id); ?>">
+                            <?php echo esc_html($author->name); ?> (<?php echo esc_html($author->field_niche); ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description"><?php esc_html_e('Select the author to reassign this topic to', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label for="reassign_reason"><?php esc_html_e('Reason (optional)', 'ai-post-scheduler'); ?></label>
+                <textarea id="reassign_reason" name="reason" rows="4" placeholder="<?php esc_attr_e('Why are you reassigning this topic?', 'ai-post-scheduler'); ?>"></textarea>
+                <p class="description"><?php esc_html_e('Provide context for this reassignment', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="button button-primary"><?php esc_html_e('Reassign Topic', 'ai-post-scheduler'); ?></button>
+                <button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+            </div>
+        </form>
+    </div>
+</div>
