@@ -256,3 +256,14 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         </form>
     </div>
 </div>
+
+<!-- Topic Posts Modal -->
+<div id="aips-topic-posts-modal" class="aips-modal" style="display: none;">
+    <div class="aips-modal-content aips-modal-large">
+        <span class="aips-modal-close">&times;</span>
+        <h2 id="aips-topic-posts-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
+        <div id="aips-topic-posts-content">
+            <p><?php esc_html_e('Loading posts...', 'ai-post-scheduler'); ?></p>
+        </div>
+    </div>
+</div>

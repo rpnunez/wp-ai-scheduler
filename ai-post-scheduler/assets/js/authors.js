@@ -57,6 +57,9 @@
 			// Bulk actions
 			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
+			
+			// View topic posts
+			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
 		},
 
 		openAddModal: function (e) {
@@ -270,6 +273,14 @@
 				html += '<tr data-topic-id="' + topic.id + '">';
 				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
 				html += '<td class="topic-title-cell"><span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
+				
+				// Add post count badge if there are any posts
+				if (topic.post_count && topic.post_count > 0) {
+					html += ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + aipsAuthorsL10n.viewPosts + '">';
+					html += '<span class="dashicons dashicons-admin-post"></span> ' + topic.post_count;
+					html += '</span>';
+				}
+				
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '"></td>';
 				html += '<td>' + topic.generated_at + '</td>';
 				html += '<td class="topic-actions">';
@@ -562,6 +573,84 @@
 			e.preventDefault();
 			// TODO: Implement log viewing modal
 			alert('View log feature coming soon');
+		},
+		
+		viewTopicPosts: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			
+			const topicId = $(e.currentTarget).data('topic-id');
+			
+			$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
+			$('#aips-topic-posts-modal').fadeIn();
+			
+			this.loadTopicPosts(topicId);
+		},
+		
+		loadTopicPosts: function (topicId) {
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_topic_posts',
+					nonce: aipsAuthorsL10n.nonce,
+					topic_id: topicId
+				},
+				success: (response) => {
+					if (response.success) {
+						const topic = response.data.topic;
+						const posts = response.data.posts;
+						
+						$('#aips-topic-posts-modal-title').text(
+							aipsAuthorsL10n.postsGeneratedFrom + ': ' + this.escapeHtml(topic.topic_title)
+						);
+						
+						this.renderTopicPosts(posts);
+					} else {
+						$('#aips-topic-posts-content').html(
+							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingPosts) + '</p>'
+						);
+					}
+				},
+				error: () => {
+					$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.errorLoadingPosts + '</p>');
+				}
+			});
+		},
+		
+		renderTopicPosts: function (posts) {
+			if (!posts || posts.length === 0) {
+				$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
+				return;
+			}
+			
+			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
+			html += '<th>' + aipsAuthorsL10n.postId + '</th>';
+			html += '<th>' + aipsAuthorsL10n.postTitle + '</th>';
+			html += '<th>' + aipsAuthorsL10n.dateGenerated + '</th>';
+			html += '<th>' + aipsAuthorsL10n.datePublished + '</th>';
+			html += '<th>' + aipsAuthorsL10n.actions + '</th>';
+			html += '</tr></thead><tbody>';
+			
+			posts.forEach(post => {
+				html += '<tr>';
+				html += '<td>' + post.post_id + '</td>';
+				html += '<td>' + this.escapeHtml(post.post_title) + '</td>';
+				html += '<td>' + post.date_generated + '</td>';
+				html += '<td>' + (post.date_published || aipsAuthorsL10n.notPublished) + '</td>';
+				html += '<td>';
+				if (post.edit_url) {
+					html += '<a href="' + post.edit_url + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
+				}
+				if (post.post_url && post.post_status === 'publish') {
+					html += '<a href="' + post.post_url + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
+				}
+				html += '</td>';
+				html += '</tr>';
+			});
+			
+			html += '</tbody></table>';
+			$('#aips-topic-posts-content').html(html);
 		},
 
 		toggleSelectAll: function (e) {
