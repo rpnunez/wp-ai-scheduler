@@ -80,7 +80,7 @@ class AIPS_Dev_Tools {
         $prompt .= "\nReturn ONLY the raw JSON object. No markdown formatting or explanation.";
 
         // Call AI Service
-        $ai_service = new AIPS_AI_Service();
+        $ai_service = new \AIPS\Service\AI();
         $response = $ai_service->generate_text($prompt, array('max_tokens' => 2500, 'temperature' => 0.7));
 
         if (is_wp_error($response)) {
@@ -123,8 +123,8 @@ class AIPS_Dev_Tools {
 
         // 2. Create Structure
         if ($include_structure && isset($data['article_structure'])) {
-            $structure_repo = new AIPS_Article_Structure_Repository();
-            $section_repo = new AIPS_Prompt_Section_Repository();
+            $structure_repo = new \AIPS\Repository\ArticleStructure();
+            $section_repo = new \AIPS\Repository\PromptSection();
 
             // Handle sections
             $sections_list = array();
@@ -171,7 +171,7 @@ class AIPS_Dev_Tools {
 
         // 3. Create Template
         if (isset($data['template'])) {
-            $template_repo = new AIPS_Template_Repository();
+            $template_repo = new \AIPS\Repository\Template();
 
             $template_data = array(
                 'name' => sanitize_text_field($data['template']['name']),

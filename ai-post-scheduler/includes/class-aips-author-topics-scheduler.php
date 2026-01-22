@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 class AIPS_Author_Topics_Scheduler {
 	
 	/**
-	 * @var AIPS_Authors_Repository Repository for authors
+	 * @var \AIPS\Repository\Authors Repository for authors
 	 */
 	private $authors_repository;
 	
@@ -41,7 +41,7 @@ class AIPS_Author_Topics_Scheduler {
 	private $interval_calculator;
 	
 	/**
-	 * @var AIPS_Activity_Repository Repository for activity logging
+	 * @var \AIPS\Repository\Activity Repository for activity logging
 	 */
 	private $activity_repository;
 	
@@ -49,11 +49,11 @@ class AIPS_Author_Topics_Scheduler {
 	 * Initialize the scheduler.
 	 */
 	public function __construct() {
-		$this->authors_repository = new AIPS_Authors_Repository();
+		$this->authors_repository = new \AIPS\Repository\Authors();
 		$this->topics_generator = new AIPS_Author_Topics_Generator();
 		$this->logger = new AIPS_Logger();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->activity_repository = new AIPS_Activity_Repository();
+		$this->activity_repository = new \AIPS\Repository\Activity();
 		
 		// Hook into WordPress cron
 		add_action('aips_generate_author_topics', array($this, 'process_topic_generation'));

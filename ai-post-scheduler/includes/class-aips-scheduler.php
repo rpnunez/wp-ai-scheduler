@@ -16,12 +16,12 @@ class AIPS_Scheduler {
     private $generator;
 
     /**
-     * @var AIPS_Schedule_Repository Repository for database operations
+     * @var \AIPS\Repository\Schedule Repository for database operations
      */
     private $repository;
     
     /**
-     * @var AIPS_Activity_Repository Repository for activity logging
+     * @var \AIPS\Repository\Activity Repository for activity logging
      */
     private $activity_repository;
     
@@ -30,8 +30,8 @@ class AIPS_Scheduler {
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
-        $this->repository = new AIPS_Schedule_Repository();
-        $this->activity_repository = new AIPS_Activity_Repository();
+        $this->repository = new \AIPS\Repository\Schedule();
+        $this->activity_repository = new \AIPS\Repository\Activity();
         $this->template_type_selector = new AIPS_Template_Type_Selector();
         
         add_action('aips_generate_scheduled_posts', array($this, 'process_scheduled_posts'));

@@ -8,7 +8,7 @@ class AIPS_Templates {
     private $table_name;
     
     /**
-     * @var AIPS_Template_Repository Repository for database operations
+     * @var \AIPS\Repository\Template Repository for database operations
      */
     private $repository;
     
@@ -20,7 +20,7 @@ class AIPS_Templates {
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_templates';
-        $this->repository = new AIPS_Template_Repository();
+        $this->repository = new \AIPS\Repository\Template();
         $this->interval_calculator = new AIPS_Interval_Calculator();
     }
     

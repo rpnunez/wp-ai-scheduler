@@ -8,14 +8,14 @@ class AIPS_History {
     private $table_name;
     
     /**
-     * @var AIPS_History_Repository Repository for database operations
+     * @var \AIPS\Repository\History Repository for database operations
      */
     private $repository;
     
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_history';
-        $this->repository = new AIPS_History_Repository();
+        $this->repository = new \AIPS\Repository\History();
         
         add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
         add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));

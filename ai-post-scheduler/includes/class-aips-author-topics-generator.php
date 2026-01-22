@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 class AIPS_Author_Topics_Generator {
 	
 	/**
-	 * @var AIPS_AI_Service AI service for making API calls
+	 * @var \AIPS\Service\AI AI service for making API calls
 	 */
 	private $ai_service;
 	
@@ -31,12 +31,12 @@ class AIPS_Author_Topics_Generator {
 	private $logger;
 	
 	/**
-	 * @var AIPS_Author_Topics_Repository Repository for topics
+	 * @var \AIPS\Repository\AuthorTopics Repository for topics
 	 */
 	private $topics_repository;
 	
 	/**
-	 * @var AIPS_Author_Topic_Logs_Repository Repository for logs
+	 * @var \AIPS\Repository\AuthorTopicLogs Repository for logs
 	 */
 	private $logs_repository;
 	
@@ -49,10 +49,10 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $logs_repository Logs repository (optional for testing).
 	 */
 	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null) {
-		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
+		$this->ai_service = $ai_service ?: new \AIPS\Service\AI();
 		$this->logger = $logger ?: new AIPS_Logger();
-		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
+		$this->topics_repository = $topics_repository ?: new \AIPS\Repository\AuthorTopics();
+		$this->logs_repository = $logs_repository ?: new \AIPS\Repository\AuthorTopicLogs();
 	}
 	
 	/**

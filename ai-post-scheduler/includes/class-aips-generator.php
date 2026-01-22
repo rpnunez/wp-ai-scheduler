@@ -60,12 +60,12 @@ class AIPS_Generator {
         $prompt_builder = null
     ) {
         $this->logger = $logger ?: new AIPS_Logger();
-        $this->ai_service = $ai_service ?: new AIPS_AI_Service();
+        $this->ai_service = $ai_service ?: new \AIPS\Service\AI();
         $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-        $this->image_service = $image_service ?: new AIPS_Image_Service($this->ai_service);
+        $this->image_service = $image_service ?: new \AIPS\Service\Image($this->ai_service);
         $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
-        $this->history_repository = $history_repository ?: new AIPS_History_Repository();
+        $this->history_repository = $history_repository ?: new \AIPS\Repository\History();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 
         // Initialize session tracker

@@ -606,9 +606,9 @@ class AIPS_Settings {
      */
     public function render_dashboard_page() {
         // Use repositories instead of direct SQL
-        $history_repo = new AIPS_History_Repository();
-        $schedule_repo = new AIPS_Schedule_Repository();
-        $template_repo = new AIPS_Template_Repository();
+        $history_repo = new \AIPS\Repository\History();
+        $schedule_repo = new \AIPS\Repository\Schedule();
+        $template_repo = new \AIPS\Repository\Template();
         
         // Get stats
         $history_stats = $history_repo->get_stats();
@@ -625,7 +625,7 @@ class AIPS_Settings {
         $recent_posts = $recent_posts_data['items'];
         
         // Get upcoming schedules
-        // Note: AIPS_Schedule_Repository doesn't have a direct "get upcoming limit 5" method that returns joined data like the original query exactly,
+        // Note: \AIPS\Repository\Schedule doesn't have a direct "get upcoming limit 5" method that returns joined data like the original query exactly,
         // but get_due_schedules returns based on current time.
         // We need a method to get upcoming active schedules.
         // Let's check if get_due_schedules works or if we need to add a method.
@@ -634,10 +634,10 @@ class AIPS_Settings {
         // Let's use get_all and array_slice for now, or add a method to repo.
         // Given I cannot modify repo in this step easily without another tool call, I will use a direct query via wpdb if strictly necessary,
         // BUT the goal is to refactor.
-        // A better approach: The memory mentions AIPS_Schedule_Repository::get_upcoming($limit). Let's verify if it exists.
+        // A better approach: The memory mentions \AIPS\Repository\Schedule::get_upcoming($limit). Let's verify if it exists.
         // Reading the file I just read: It does NOT have get_upcoming.
         // So I will stick to what I have or modify the repo. I'll modify the repo first in a separate step or just do it here if I can't.
-        // Actually, I should probably add `get_upcoming` to `AIPS_Schedule_Repository` as part of this refactor.
+        // Actually, I should probably add `get_upcoming` to `\AIPS\Repository\Schedule` as part of this refactor.
         // But for now, I will use `get_all(true)` and slice it. It might be less performant if there are thousands of schedules,
         // but typically schedules are limited.
 
@@ -722,8 +722,8 @@ class AIPS_Settings {
      * @return void
      */
     public function render_structures_page() {
-        $structure_repo = new AIPS_Article_Structure_Repository();
-        $section_repo = new AIPS_Prompt_Section_Repository();
+        $structure_repo = new \AIPS\Repository\ArticleStructure();
+        $section_repo = new \AIPS\Repository\PromptSection();
         
         $structures = $structure_repo->get_all(false);
         $sections = $section_repo->get_all(false);
@@ -739,7 +739,7 @@ class AIPS_Settings {
      * @return void
      */
     public function render_prompt_sections_page() {
-        $section_repo = new AIPS_Prompt_Section_Repository();
+        $section_repo = new \AIPS\Repository\PromptSection();
         $sections = $section_repo->get_all(false);
         
         include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
@@ -803,7 +803,7 @@ class AIPS_Settings {
             wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
         }
 
-        $ai_service = new AIPS_AI_Service();
+        $ai_service = new \AIPS\Service\AI();
         $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('max_tokens' => 10));
 
         if (is_wp_error($result)) {
