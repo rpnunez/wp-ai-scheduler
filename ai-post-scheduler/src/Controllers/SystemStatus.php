@@ -73,7 +73,7 @@ class SystemStatus {
 	private function check_database() {
 		global $wpdb;
 
-		$tables = \AIPS_DB_Manager::get_expected_columns();
+		$tables = \AIPS\Helpers\DBHelper::get_expected_columns();
 
 		$results = array();
 

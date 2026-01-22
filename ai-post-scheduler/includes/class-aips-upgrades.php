@@ -23,7 +23,7 @@ class AIPS_Upgrades {
     private function run_upgrade($from_version) {
         // Use dbDelta to update schema - it handles adding new tables and columns automatically
         // This is the WordPress standard approach for database schema updates
-        AIPS_DB_Manager::install_tables();
+        \AIPS\Helpers\DBHelper::install_tables();
 
         update_option('aips_db_version', AIPS_VERSION);
         $this->logger->log('Database upgraded from version ' . $from_version . ' to ' . AIPS_VERSION, 'info');

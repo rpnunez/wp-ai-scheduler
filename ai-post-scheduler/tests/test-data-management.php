@@ -14,11 +14,11 @@ class Test_AIPS_Data_Management extends WP_UnitTestCase {
 		parent::setUp();
 		
 		// Create instances
-		$this->export_mysql = new AIPS_Data_Management_Export_MySQL();
-		$this->import_mysql = new AIPS_Data_Management_Import_MySQL();
-		$this->export_json = new AIPS_Data_Management_Export_JSON();
-		$this->import_json = new AIPS_Data_Management_Import_JSON();
-		$this->data_management = new AIPS_Data_Management();
+		$this->export_mysql = new \AIPS\Tools\DataManagementExportMySQL();
+		$this->import_mysql = new \AIPS\Tools\DataManagementImportMySQL();
+		$this->export_json = new \AIPS\Tools\DataManagementExportJSON();
+		$this->import_json = new \AIPS\Tools\DataManagementImportJSON();
+		$this->data_management = new \AIPS\Tools\DataManagement();
 	}
 
 	public function test_export_mysql_format_name() {
@@ -83,7 +83,7 @@ class Test_AIPS_Data_Management extends WP_UnitTestCase {
 
 	public function test_export_mysql_generates_sql() {
 		// Ensure tables exist
-		AIPS_DB_Manager::install_tables();
+		\AIPS\Helpers\DBHelper::install_tables();
 		
 		// Export the data
 		$sql = $this->export_mysql->export();
@@ -94,7 +94,7 @@ class Test_AIPS_Data_Management extends WP_UnitTestCase {
 		$this->assertStringContainsString('SET SQL_MODE', $sql);
 		
 		// Check for plugin tables
-		$tables = AIPS_DB_Manager::get_table_names();
+		$tables = \AIPS\Helpers\DBHelper::get_table_names();
 		foreach ($tables as $table) {
 			$this->assertStringContainsString($table, $sql);
 		}
@@ -102,7 +102,7 @@ class Test_AIPS_Data_Management extends WP_UnitTestCase {
 
 	public function test_export_json_generates_json() {
 		// Ensure tables exist
-		AIPS_DB_Manager::install_tables();
+		\AIPS\Helpers\DBHelper::install_tables();
 		
 		// Export the data
 		$json = $this->export_json->export();

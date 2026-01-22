@@ -11,7 +11,7 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		parent::setUp();
 		
 		// Install tables to ensure they exist
-		AIPS_DB_Manager::install_tables();
+		\AIPS\Helpers\DBHelper::install_tables();
 	}
 	
 	/**
@@ -168,7 +168,7 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$table_name = $wpdb->prefix . 'aips_schedule';
 		
 		// Re-run install_tables (this uses dbDelta)
-		AIPS_DB_Manager::install_tables();
+		\AIPS\Helpers\DBHelper::install_tables();
 		
 		// Verify the composite index still exists after dbDelta
 		$indexes = $wpdb->get_results("SHOW INDEX FROM {$table_name} WHERE Key_name = 'is_active_next_run'");

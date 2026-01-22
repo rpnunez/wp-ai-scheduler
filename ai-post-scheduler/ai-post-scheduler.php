@@ -60,7 +60,6 @@ final class AI_Post_Scheduler {
 
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-config.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
 
@@ -73,14 +72,6 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dev-tools.php';
 
-        // Data Management Feature
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-export.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-import.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-export-mysql.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-import-mysql.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-export-json.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management-import-json.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-data-management.php';
         // Authors Feature
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-scheduler.php';
@@ -109,7 +100,7 @@ final class AI_Post_Scheduler {
         $this->check_upgrades();
 
         // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
-        AIPS_DB_Manager::install_tables();
+        \AIPS\Helpers\DBHelper::install_tables();
         
         $crons = array(
             'aips_generate_scheduled_posts' => 'hourly',
@@ -178,7 +169,6 @@ final class AI_Post_Scheduler {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
         
         if (is_admin()) {
-            new AIPS_DB_Manager();
             new AIPS_Settings();
             new \AIPS\Controllers\Voices();
             new \AIPS\Controllers\Templates();
@@ -189,7 +179,7 @@ final class AI_Post_Scheduler {
             new \AIPS\Controllers\Activity();
             new \AIPS\Controllers\Research();
             new AIPS_Seeder_Admin();
-            new AIPS_Data_Management();
+            new \AIPS\Tools\DataManagement();
             // Structures admin controller (CRUD endpoints for Article Structures UI)
             new \AIPS\Controllers\Structures();
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
