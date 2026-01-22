@@ -45,12 +45,14 @@ class Research {
 	/**
 	 * Initialize the controller.
 	 */
-	public function __construct() {
+	public function __construct($register_hooks = true) {
 		$this->research_service = new ResearchService();
 		$this->repository = new TrendingTopicsRepository();
 		$this->logger = new AIPS_Logger();
 
-		$this->init_hooks();
+		if ($register_hooks) {
+			$this->init_hooks();
+		}
 	}
 
 	/**
@@ -346,5 +348,9 @@ class Research {
 		}
 
 		return $topics;
+	}
+
+	public function render_page() {
+		include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
 	}
 }

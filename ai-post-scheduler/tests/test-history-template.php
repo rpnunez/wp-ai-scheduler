@@ -3,7 +3,7 @@
  * Test case for History Template Variable Handling
  *
  * Tests that the history.php template correctly handles
- * AIPS_History objects passed as variables.
+ * \AIPS\Controllers\History objects passed as variables.
  */
 
 class Test_History_Template extends WP_UnitTestCase {
@@ -12,20 +12,20 @@ class Test_History_Template extends WP_UnitTestCase {
 
     public function setUp(): void {
         parent::setUp();
-        $this->history_instance = new AIPS_History();
+        $this->history_instance = new \AIPS\Controllers\History();
     }
 
     /**
-     * Test that the template can handle $stats as an AIPS_History object
+     * Test that the template can handle $stats as a \AIPS\Controllers\History object
      */
     public function test_history_template_handles_stats_as_object() {
-        // Setup: Pass $stats as an AIPS_History object (simulating the bug condition)
+        // Setup: Pass $stats as a \AIPS\Controllers\History object (simulating the bug condition)
         $stats = $this->history_instance;
         
         // Capture output
         ob_start();
         
-        // Include the template with $stats as an AIPS_History object
+        // Include the template with $stats as a \AIPS\Controllers\History object
         // This should NOT throw a fatal error after the fix
         try {
             include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
@@ -39,7 +39,7 @@ class Test_History_Template extends WP_UnitTestCase {
             
         } catch (Throwable $e) {
             ob_end_clean();
-            $this->fail('Template threw an error when $stats is an AIPS_History object: ' . $e->getMessage());
+            $this->fail('Template threw an error when $stats is a \AIPS\Controllers\History object: ' . $e->getMessage());
         }
     }
 
@@ -79,10 +79,10 @@ class Test_History_Template extends WP_UnitTestCase {
     }
 
     /**
-     * Test that the template can handle $history as an AIPS_History object
+     * Test that the template can handle $history as a \AIPS\Controllers\History object
      */
     public function test_history_template_handles_history_as_object() {
-        // Setup: Pass $history as an AIPS_History object
+        // Setup: Pass $history as a \AIPS\Controllers\History object
         $history = $this->history_instance;
         
         // Capture output
@@ -98,15 +98,15 @@ class Test_History_Template extends WP_UnitTestCase {
             
         } catch (Throwable $e) {
             ob_end_clean();
-            $this->fail('Template threw an error when $history is an AIPS_History object: ' . $e->getMessage());
+            $this->fail('Template threw an error when $history is a \AIPS\Controllers\History object: ' . $e->getMessage());
         }
     }
 
     /**
-     * Test that the template can handle both $history and $stats as AIPS_History objects
+     * Test that the template can handle both $history and $stats as \AIPS\Controllers\History objects
      */
     public function test_history_template_handles_both_as_objects() {
-        // Setup: Pass both as AIPS_History objects
+        // Setup: Pass both as \AIPS\Controllers\History objects
         $history = $this->history_instance;
         $stats = $this->history_instance;
         
@@ -123,7 +123,7 @@ class Test_History_Template extends WP_UnitTestCase {
             
         } catch (Throwable $e) {
             ob_end_clean();
-            $this->fail('Template threw an error when both variables are AIPS_History objects: ' . $e->getMessage());
+            $this->fail('Template threw an error when both variables are \AIPS\Controllers\History objects: ' . $e->getMessage());
         }
     }
 }

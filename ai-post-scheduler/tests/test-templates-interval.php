@@ -8,7 +8,7 @@
 class Test_AIPS_Templates_Interval extends WP_UnitTestCase {
 
 	public function test_calculate_next_run_matches_interval_calculator() {
-		$templates = new AIPS_Templates();
+		$templates = new \AIPS\Controllers\Templates();
 		$calculator = new AIPS_Interval_Calculator();
 
 		$base_time   = current_time('timestamp');

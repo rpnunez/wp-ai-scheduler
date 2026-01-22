@@ -107,7 +107,7 @@ class AIPS_Dev_Tools {
 
         // 1. Create Voice
         if ($include_voice && isset($data['voice'])) {
-            $voices_handler = new AIPS_Voices();
+            $voices_handler = new \AIPS\Controllers\Voices();
             $voice_data = array(
                 'name' => sanitize_text_field($data['voice']['name']),
                 'title_prompt' => wp_kses_post($data['voice']['title_prompt']),

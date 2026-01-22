@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIPS_VERSION', '1.7.0');
+define('AIPS_VERSION', '2.0.0');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -63,9 +63,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
-        
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
+
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-processor.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-builder.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-manager.php';
@@ -83,8 +81,6 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dev-tools.php';
 
         // Data Management Feature
@@ -194,10 +190,10 @@ final class AI_Post_Scheduler {
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Settings();
-            new AIPS_Voices();
-            new AIPS_Templates();
+            new \AIPS\Controllers\Voices();
             new \AIPS\Controllers\Templates();
-            new AIPS_History();
+            new \AIPS\Controllers\TemplatesAjax();
+            new \AIPS\Controllers\History();
             new AIPS_Planner();
             new \AIPS\Controllers\Schedule();
             new \AIPS\Controllers\Activity();

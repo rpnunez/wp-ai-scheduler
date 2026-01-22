@@ -1,26 +1,28 @@
 <?php
-if (!defined('ABSPATH')) {
-	exit;
-}
-
 namespace AIPS\Controllers;
 
 use AIPS\Repository\ArticleStructure as ArticleStructureRepository;
 use AIPS_Article_Structure_Manager;
 
+if (!defined('ABSPATH')) {
+	exit;
+}
+
 class Structures {
 
 	private $repo;
 
-	public function __construct($repo = null) {
+	public function __construct($repo = null, $register_hooks = true) {
 		$this->repo = $repo ?: new ArticleStructureRepository();
 
-		add_action('wp_ajax_aips_get_structures', array($this, 'ajax_get_structures'));
-		add_action('wp_ajax_aips_get_structure', array($this, 'ajax_get_structure'));
-		add_action('wp_ajax_aips_save_structure', array($this, 'ajax_save_structure'));
-		add_action('wp_ajax_aips_delete_structure', array($this, 'ajax_delete_structure'));
-		add_action('wp_ajax_aips_set_structure_default', array($this, 'ajax_set_structure_default'));
-		add_action('wp_ajax_aips_toggle_structure_active', array($this, 'ajax_toggle_structure_active'));
+		if ($register_hooks) {
+			add_action('wp_ajax_aips_get_structures', array($this, 'ajax_get_structures'));
+			add_action('wp_ajax_aips_get_structure', array($this, 'ajax_get_structure'));
+			add_action('wp_ajax_aips_save_structure', array($this, 'ajax_save_structure'));
+			add_action('wp_ajax_aips_delete_structure', array($this, 'ajax_delete_structure'));
+			add_action('wp_ajax_aips_set_structure_default', array($this, 'ajax_set_structure_default'));
+			add_action('wp_ajax_aips_toggle_structure_active', array($this, 'ajax_toggle_structure_active'));
+		}
 	}
 
 	public function ajax_get_structures() {
@@ -151,5 +153,15 @@ class Structures {
 		}
 
 		wp_send_json_success(array('message' => __('Structure status updated.', 'ai-post-scheduler')));
+	}
+
+	public function render_page() {
+		$structure_repo = new \AIPS\Repository\ArticleStructure();
+		$section_repo = new \AIPS\Repository\PromptSection();
+
+		$structures = $structure_repo->get_all(false);
+		$sections = $section_repo->get_all(false);
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
 	}
 }

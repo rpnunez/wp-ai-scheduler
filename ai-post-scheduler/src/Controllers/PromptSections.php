@@ -1,11 +1,11 @@
 <?php
-if (!defined('ABSPATH')) {
-	exit;
-}
-
 namespace AIPS\Controllers;
 
 use AIPS\Repository\PromptSection as PromptSectionRepository;
+
+if (!defined('ABSPATH')) {
+	exit;
+}
 
 /**
  * Controller for managing prompt sections via AJAX in the WordPress admin.
@@ -33,14 +33,16 @@ class PromptSections {
 	 *
 	 * @return void
 	 */
-	public function __construct($repo = null) {
+	public function __construct($repo = null, $register_hooks = true) {
 		$this->repo = $repo ?: new PromptSectionRepository();
 
-		add_action('wp_ajax_aips_get_prompt_sections', array($this, 'ajax_get_sections'));
-		add_action('wp_ajax_aips_get_prompt_section', array($this, 'ajax_get_section'));
-		add_action('wp_ajax_aips_save_prompt_section', array($this, 'ajax_save_section'));
-		add_action('wp_ajax_aips_delete_prompt_section', array($this, 'ajax_delete_section'));
-		add_action('wp_ajax_aips_toggle_prompt_section_active', array($this, 'ajax_toggle_section_active'));
+		if ($register_hooks) {
+			add_action('wp_ajax_aips_get_prompt_sections', array($this, 'ajax_get_sections'));
+			add_action('wp_ajax_aips_get_prompt_section', array($this, 'ajax_get_section'));
+			add_action('wp_ajax_aips_save_prompt_section', array($this, 'ajax_save_section'));
+			add_action('wp_ajax_aips_delete_prompt_section', array($this, 'ajax_delete_section'));
+			add_action('wp_ajax_aips_toggle_prompt_section_active', array($this, 'ajax_toggle_section_active'));
+		}
 	}
 
 	public function ajax_get_sections() {
@@ -161,5 +163,12 @@ class PromptSections {
 		}
 
 		wp_send_json_success(array('message' => __('Section status updated.', 'ai-post-scheduler')));
+	}
+
+	public function render_page() {
+		$section_repo = new \AIPS\Repository\PromptSection();
+		$sections = $section_repo->get_all(false);
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
 	}
 }

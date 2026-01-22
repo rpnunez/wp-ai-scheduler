@@ -1,27 +1,27 @@
 <?php
-if (!defined('ABSPATH')) {
-	exit;
-}
-
 namespace AIPS\Controllers;
 
 use AIPS_Generator;
 use AIPS_Interval_Calculator;
 use AIPS_Scheduler;
-use AIPS_Templates;
-use AIPS_Voices;
+
+if (!defined('ABSPATH')) {
+	exit;
+}
 
 class Schedule {
 
 	private $scheduler;
 
-	public function __construct($scheduler = null) {
+	public function __construct($scheduler = null, $register_hooks = true) {
 		$this->scheduler = $scheduler ?: new AIPS_Scheduler();
 
-		add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
-		add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
-		add_action('wp_ajax_aips_toggle_schedule', array($this, 'ajax_toggle_schedule'));
-		add_action('wp_ajax_aips_run_now', array($this, 'ajax_run_now'));
+		if ($register_hooks) {
+			add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
+			add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
+			add_action('wp_ajax_aips_toggle_schedule', array($this, 'ajax_toggle_schedule'));
+			add_action('wp_ajax_aips_run_now', array($this, 'ajax_run_now'));
+		}
 	}
 
 	public function ajax_save_schedule() {
@@ -119,7 +119,7 @@ class Schedule {
 			wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
 		}
 
-		$templates = new AIPS_Templates();
+		$templates = new Templates();
 		$template = $templates->get($template_id);
 
 		if (!$template) {
@@ -128,7 +128,7 @@ class Schedule {
 
 		$voice = null;
 		if (!empty($template->voice_id)) {
-			$voices = new AIPS_Voices();
+			$voices = new Voices();
 			$voice = $voices->get($template->voice_id);
 		}
 
@@ -197,5 +197,9 @@ class Schedule {
 			'errors' => $errors,
 			'edit_url' => !empty($post_ids) ? get_edit_post_link($post_ids[0], 'raw') : ''
 		));
+	}
+
+	public function render_page() {
+		include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
 	}
 }

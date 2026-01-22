@@ -111,6 +111,10 @@ Yes! After researching topics, you can select multiple topics from your library 
 
 == Changelog ==
 
+= 1.7.1 =
+* Refactor: moved admin page rendering into namespaced controllers with PSR-4 autoloading.
+* Refactor: introduced an AdminRouter to delegate admin menu page rendering.
+
 = 1.6.0 =
 * NEW: Trending Topics Research feature - AI-powered trend discovery
 * NEW: Automated topic research with scheduled cron jobs

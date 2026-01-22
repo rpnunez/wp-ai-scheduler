@@ -35,7 +35,7 @@ class Test_N_Plus_One extends WP_UnitTestCase {
             'is_active' => 1
         ));
 
-        $templates = new AIPS_Templates();
+        $templates = new \AIPS\Controllers\Templates();
         $stats = $templates->get_all_pending_stats();
 
         $this->assertArrayHasKey($t1, $stats);

@@ -35,14 +35,15 @@ class Activity {
 	/**
 	 * Initialize the controller.
 	 */
-	public function __construct() {
+	public function __construct($register_hooks = true) {
 		$this->activity_repository = new ActivityRepository();
 		$this->schedule_repository = new ScheduleRepository();
 
-		// Register AJAX handlers
-		add_action('wp_ajax_aips_get_activity', array($this, 'ajax_get_activity'));
-		add_action('wp_ajax_aips_get_activity_detail', array($this, 'ajax_get_activity_detail'));
-		add_action('wp_ajax_aips_publish_draft', array($this, 'ajax_publish_draft'));
+		if ($register_hooks) {
+			add_action('wp_ajax_aips_get_activity', array($this, 'ajax_get_activity'));
+			add_action('wp_ajax_aips_get_activity_detail', array($this, 'ajax_get_activity_detail'));
+			add_action('wp_ajax_aips_publish_draft', array($this, 'ajax_publish_draft'));
+		}
 	}
 
 	/**
@@ -232,5 +233,9 @@ class Activity {
 		}
 
 		return $formatted;
+	}
+
+	public function render_page() {
+		include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
 	}
 }

@@ -7,8 +7,8 @@ namespace AIPS\Service;
 
 use AIPS_Generator;
 use AIPS_Scheduler;
-use AIPS_Templates;
-use AIPS_Voices;
+use AIPS\Controllers\Templates;
+use AIPS\Controllers\Voices;
 
 class Seeder {
 
@@ -19,8 +19,8 @@ class Seeder {
 
 	public function __construct() {
 		$this->generator = new AIPS_Generator();
-		$this->voices = new AIPS_Voices();
-		$this->templates = new AIPS_Templates();
+		$this->voices = new Voices();
+		$this->templates = new Templates();
 		$this->scheduler = new AIPS_Scheduler();
 	}
 

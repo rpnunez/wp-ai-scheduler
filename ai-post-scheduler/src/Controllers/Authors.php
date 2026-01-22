@@ -59,7 +59,7 @@ class Authors {
 	/**
 	 * Initialize the controller.
 	 */
-	public function __construct() {
+	public function __construct($register_hooks = true) {
 		$this->repository = new AuthorsRepository();
 		$this->topics_repository = new AuthorTopicsRepository();
 		$this->logs_repository = new AuthorTopicLogsRepository();
@@ -67,15 +67,16 @@ class Authors {
 		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 
-		// Register AJAX endpoints
-		add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));
-		add_action('wp_ajax_aips_delete_author', array($this, 'ajax_delete_author'));
-		add_action('wp_ajax_aips_get_author', array($this, 'ajax_get_author'));
-		add_action('wp_ajax_aips_get_author_topics', array($this, 'ajax_get_author_topics'));
-		add_action('wp_ajax_aips_get_author_posts', array($this, 'ajax_get_author_posts'));
-		add_action('wp_ajax_aips_get_author_feedback', array($this, 'ajax_get_author_feedback'));
-		add_action('wp_ajax_aips_generate_topics_now', array($this, 'ajax_generate_topics_now'));
-		add_action('wp_ajax_aips_get_topic_posts', array($this, 'ajax_get_topic_posts'));
+		if ($register_hooks) {
+			add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));
+			add_action('wp_ajax_aips_delete_author', array($this, 'ajax_delete_author'));
+			add_action('wp_ajax_aips_get_author', array($this, 'ajax_get_author'));
+			add_action('wp_ajax_aips_get_author_topics', array($this, 'ajax_get_author_topics'));
+			add_action('wp_ajax_aips_get_author_posts', array($this, 'ajax_get_author_posts'));
+			add_action('wp_ajax_aips_get_author_feedback', array($this, 'ajax_get_author_feedback'));
+			add_action('wp_ajax_aips_generate_topics_now', array($this, 'ajax_generate_topics_now'));
+			add_action('wp_ajax_aips_get_topic_posts', array($this, 'ajax_get_topic_posts'));
+		}
 	}
 
 	/**
@@ -397,5 +398,9 @@ class Authors {
 			'topic' => $topic,
 			'posts' => $posts
 		));
+	}
+
+	public function render_page() {
+		include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
 	}
 }
