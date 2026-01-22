@@ -120,26 +120,74 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		$plugin_table_names = array_values($plugin_tables);
 		
 		foreach ($queries as $query) {
-			$query_upper = strtoupper(trim($query));
+			$query = trim($query);
 			
-			// Skip if query is empty
-			if (empty($query_upper)) {
+			// Skip if query is empty or comment-only (should be handled by split_sql_file but good to be safe)
+			if (empty($query)) {
 				continue;
+			}
+
+			$query_upper = strtoupper($query);
+
+			// SECURITY: Allow configuration commands commonly found in dumps
+			// We strictly whitelist these to avoid bypassing security with SET commands
+			if (strpos($query_upper, 'SET ') === 0) {
+				// Allow standard configuration sets
+				$allowed_sets = array(
+					'SET SQL_MODE', 'SET TIME_ZONE', 'SET NAMES', 'SET CHARACTER_SET',
+					'SET FOREIGN_KEY_CHECKS', 'SET UNIQUE_CHECKS', 'SET AUTOCOMMIT'
+				);
+
+				$is_allowed_set = false;
+				foreach ($allowed_sets as $set_cmd) {
+					if (strpos($query_upper, $set_cmd) === 0) {
+						$is_allowed_set = true;
+						break;
+					}
+				}
+
+				if ($is_allowed_set) {
+					continue;
+				}
+				// Fall through to default deny if it's a weird SET command
+			}
+
+			// SECURITY: Enforce strict whitelist of allowed SQL commands
+			// Only allow INSERT, CREATE, DROP, LOCK, UNLOCK
+			$allowed_commands = array('INSERT', 'CREATE', 'DROP', 'LOCK', 'UNLOCK');
+			$is_allowed_command = false;
+			foreach ($allowed_commands as $cmd) {
+				if (strpos($query_upper, $cmd) === 0) {
+					$is_allowed_command = true;
+					break;
+				}
+			}
+
+			if (!$is_allowed_command) {
+				// We don't want to leak full query content in error messages
+				$preview = substr(strip_tags($query), 0, 50);
+				return new WP_Error(
+					'invalid_command',
+					sprintf(__('SQL command not allowed: %s. Only INSERT, CREATE, DROP, LOCK, UNLOCK, and standard SET commands are allowed.', 'ai-post-scheduler'), $preview . '...')
+				);
 			}
 			
 			// Extract table name from query
+			// We use regex to ensure the table name is a distinct word token, preventing "wp_users -- wp_aips_templates" bypasses
 			$has_valid_table = false;
 			foreach ($plugin_table_names as $table_name) {
-				if (stripos($query, $table_name) !== false) {
+				// Escape for regex and allow it to be wrapped in backticks or whitespace boundaries
+				// Pattern matches: `table_name` OR whitespace table_name whitespace/end
+				$escaped_name = preg_quote($table_name, '/');
+				if (preg_match('/`' . $escaped_name . '`|\b' . $escaped_name . '\b/i', $query)) {
 					$has_valid_table = true;
 					break;
 				}
 			}
 			
 			// If query references a table, ensure it's one of ours
-			if (!$has_valid_table && 
-				(strpos($query_upper, 'TABLE') !== false || 
-				 strpos($query_upper, 'INSERT') !== false)) {
+			// If it's a valid command but doesn't contain a valid table name, REJECT IT.
+			if (!$has_valid_table) {
 				return new WP_Error(
 					'invalid_table',
 					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')

@@ -22,3 +22,11 @@
 **Vulnerability:** Unescaped insertion of database content (`generated_title`, `error_message`, `template.name`) into the DOM via string concatenation in `admin.js`.
 **Learning:** Admin interfaces are often treated as "trusted zones," but data originating from complex flows (like AI generation or indirect inputs) can be compromised (e.g., via Prompt Injection or Stored XSS). Concatenating HTML strings in JS without explicit escaping is a persistent vulnerability pattern.
 **Prevention:** Use a dedicated escaping utility (like `AIPS.escapeHtml()`) for ALL dynamic data inserted into the DOM, regardless of its source (database, API, or user input).
+
+## 2024-05-22 - [SQL Injection in Import Tool]
+**Vulnerability:** The MySQL import tool (`AIPS_Data_Management_Import_MySQL`) attempted to restrict imports to plugin-specific tables by scanning for plugin table names. However, the logic allowed any query that *didn't* contain a plugin table name as long as it also didn't contain "TABLE" or "INSERT". This meant `DELETE FROM wp_users` or `UPDATE wp_options` were allowed.
+**Learning:** Blacklisting (checking what shouldn't be there) is rarely sufficient for security. The logic `if (!has_valid_table && (has_TABLE || has_INSERT))` essentially whitelisted everything else.
+**Prevention:** Always use whitelisting.
+1. Validate that the command is one of a strict allowed set (`INSERT`, `CREATE`, `DROP`).
+2. Validate that the target is *explicitly* in the allowed list of tables.
+3. Reject everything else by default (Deny Default).
