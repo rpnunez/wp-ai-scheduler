@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [wizard-clone-template] - 2025-01-01
+### Added
+- Added "Clone Template" functionality to allow users to easily duplicate templates with a single click.
+- Added `ajax_clone_template` to `AIPS_Templates_Controller` to handle secure duplication.
+
 ## [wizard-sections-search-copy] - 2025-12-25
 ### Added
 - Added client-side search functionality to the Prompt Sections admin page.
