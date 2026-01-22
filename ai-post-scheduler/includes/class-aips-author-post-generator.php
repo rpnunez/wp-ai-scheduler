@@ -3,7 +3,7 @@
  * Author Post Generator
  *
  * Generates blog posts from approved author topics.
- * Integrates with the existing AIPS_Generator for content generation.
+ * Integrates with the existing Generator for content generation.
  *
  * @package AI_Post_Scheduler
  * @since 1.8.0
@@ -36,7 +36,7 @@ class AIPS_Author_Post_Generator {
 	private $logs_repository;
 	
 	/**
-	 * @var AIPS_Generator Generator for posts
+	 * @var \AIPS\Generation\Generator Generator for posts
 	 */
 	private $generator;
 	
@@ -72,7 +72,7 @@ class AIPS_Author_Post_Generator {
 		$this->authors_repository = new \AIPS\Repository\Authors();
 		$this->topics_repository = new \AIPS\Repository\AuthorTopics();
 		$this->logs_repository = new \AIPS\Repository\AuthorTopicLogs();
-		$this->generator = new AIPS_Generator();
+		$this->generator = new \AIPS\Generation\Generator();
 		$this->logger = new AIPS_Logger();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_repository = new \AIPS\Repository\History();
@@ -158,7 +158,7 @@ class AIPS_Author_Post_Generator {
 		}
 		
 		// Build a context object for the generator (no more template mocking!)
-		$context = new AIPS_Topic_Context($author, $topic, $expanded_context);
+		$context = new \AIPS\Generation\Context\TopicContext($author, $topic, $expanded_context);
 		
 		// Create a history entry
 		$history_id = $this->history_repository->create(array(

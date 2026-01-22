@@ -34,7 +34,7 @@ class AIPS_Post_Creator {
      *     @type string $seo_title Optional. SEO title override for plugins.
      *     @type string $topic Optional. Topic used to infer focus keyword when none provided.
      *     @type object $template Optional. Template object containing settings (legacy).
-     *     @type AIPS_Generation_Context $context Optional. Generation context (preferred).
+     *     @type \AIPS\Generation\Context\GenerationContext $context Optional. Generation context (preferred).
      * }
      * @return int|WP_Error Post ID on success, WP_Error on failure.
      */
@@ -48,7 +48,7 @@ class AIPS_Post_Creator {
         $template = isset($data['template']) ? $data['template'] : null;
 
         // If we have a context, use it; otherwise fall back to template
-        if ($context instanceof AIPS_Generation_Context) {
+        if ($context instanceof \AIPS\Generation\Context\GenerationContext) {
             $post_status = $context->get_post_status();
             $post_author = $context->get_post_author();
             $post_category = $context->get_post_category();

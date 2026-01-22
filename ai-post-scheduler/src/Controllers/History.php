@@ -110,7 +110,7 @@ class History {
 			wp_send_json_error(array('message' => __('Template no longer exists.', 'ai-post-scheduler')));
 		}
 
-		$generator = new \AIPS_Generator();
+		$generator = new \AIPS\Generation\Generator();
 		$result = $generator->generate_post($template);
 
 		if (is_wp_error($result)) {

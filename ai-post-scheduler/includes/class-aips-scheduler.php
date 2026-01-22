@@ -11,7 +11,7 @@ class AIPS_Scheduler {
     private $template_type_selector;
     
     /**
-     * @var AIPS_Generator|null Generator instance (for dependency injection)
+     * @var \AIPS\Generation\Generator|null Generator instance (for dependency injection)
      */
     private $generator;
 
@@ -41,7 +41,7 @@ class AIPS_Scheduler {
     /**
      * Set a custom generator instance (dependency injection).
      *
-     * @param AIPS_Generator $generator
+     * @param \AIPS\Generation\Generator $generator
      */
     public function set_generator($generator) {
         $this->generator = $generator;
@@ -153,7 +153,7 @@ class AIPS_Scheduler {
             return;
         }
         
-        $generator = $this->generator ?: new AIPS_Generator();
+        $generator = $this->generator ?: new \AIPS\Generation\Generator();
         
         foreach ($due_schedules as $schedule) {
             try {

@@ -28,7 +28,7 @@ class AIPS_Planner {
             $count = 10;
         }
 
-        $generator = new AIPS_Generator();
+        $generator = new \AIPS\Generation\Generator();
         if (!$generator->is_available()) {
             wp_send_json_error(array('message' => __('AI Engine is not available.', 'ai-post-scheduler')));
         }

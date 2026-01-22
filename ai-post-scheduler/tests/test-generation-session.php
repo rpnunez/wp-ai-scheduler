@@ -1,6 +1,6 @@
 <?php
 /**
- * Test AIPS_Generation_Session
+ * Test Generation Session
  *
  * Tests for the generation session tracker class.
  *
@@ -14,7 +14,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test session initialization.
 	 */
 	public function test_session_initialization() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$this->assertNull($session->get_started_at());
 		$this->assertNull($session->get_completed_at());
@@ -32,7 +32,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test session start with template only.
 	 */
 	public function test_session_start_with_template_only() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$template = (object) array(
 			'id' => 1,
@@ -63,7 +63,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test session start with template and voice.
 	 */
 	public function test_session_start_with_voice() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$template = (object) array(
 			'id' => 1,
@@ -103,7 +103,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * and only stores the defined template fields.
 	 */
 	public function test_template_property_filtering() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		// Create template with extra unexpected properties
 		$template = (object) array(
@@ -154,7 +154,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test logging AI calls.
 	 */
 	public function test_log_ai_call_success() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$session->log_ai_call(
 			'content',
@@ -182,7 +182,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test logging AI call with error.
 	 */
 	public function test_log_ai_call_with_error() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$session->log_ai_call(
 			'title',
@@ -210,7 +210,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test adding errors directly.
 	 */
 	public function test_add_error() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$session->add_error('featured_image', 'Image generation failed');
 
@@ -226,7 +226,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test multiple AI calls.
 	 */
 	public function test_multiple_ai_calls() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$session->log_ai_call('title', 'Gen title', 'Great Title', array(), null);
 		$session->log_ai_call('content', 'Gen content', 'Great Content', array(), null);
@@ -246,7 +246,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test completing session with success.
 	 */
 	public function test_complete_with_success() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$result = array(
 			'success' => true,
@@ -265,7 +265,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test completing session with failure.
 	 */
 	public function test_complete_with_failure() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$result = array(
 			'success' => false,
@@ -282,7 +282,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test to_array conversion.
 	 */
 	public function test_to_array() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$template = (object) array(
 			'id' => 1,
@@ -322,7 +322,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test to_json conversion.
 	 */
 	public function test_to_json() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$template = (object) array(
 			'id' => 1,
@@ -354,7 +354,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test get_duration before completion.
 	 */
 	public function test_get_duration_before_completion() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$template = (object) array(
 			'id' => 1,
@@ -379,7 +379,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test get_duration after completion.
 	 */
 	public function test_get_duration_after_completion() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		$template = (object) array(
 			'id' => 1,
@@ -407,7 +407,7 @@ class Test_AIPS_Generation_Session extends WP_UnitTestCase {
 	 * Test full generation lifecycle.
 	 */
 	public function test_full_generation_lifecycle() {
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 
 		// Start session
 		$template = (object) array(

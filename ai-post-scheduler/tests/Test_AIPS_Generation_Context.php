@@ -31,7 +31,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'article_structure_id' => null,
 		);
 		
-		$context = new AIPS_Template_Context($template, null, 'Test Topic');
+		$context = new \AIPS\Generation\Context\TemplateContext($template, null, 'Test Topic');
 		
 		$this->assertEquals('template', $context->get_type());
 		$this->assertEquals(123, $context->get_id());
@@ -76,7 +76,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		
 		$expanded_context = 'Related topics: SOLID principles, Code review';
 		
-		$context = new AIPS_Topic_Context($author, $topic, $expanded_context);
+		$context = new \AIPS\Generation\Context\TopicContext($author, $topic, $expanded_context);
 		
 		$this->assertEquals('topic', $context->get_type());
 		$this->assertEquals(789, $context->get_id());
@@ -117,8 +117,8 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'image_prompt' => '',
 		);
 		
-		$context = new AIPS_Template_Context($template, null, 'Test Topic');
-		$session = new AIPS_Generation_Session();
+		$context = new \AIPS\Generation\Context\TemplateContext($template, null, 'Test Topic');
+		$session = new \AIPS\Generation\Session();
 		
 		$session->start($context);
 		
@@ -149,7 +149,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'image_prompt' => '',
 		);
 		
-		$session = new AIPS_Generation_Session();
+		$session = new \AIPS\Generation\Session();
 		
 		// Old way of calling start with template object
 		$session->start($template, null);
@@ -185,7 +185,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'article_structure_id' => 5,
 		);
 		
-		$context = new AIPS_Template_Context($template, null, 'Test Topic');
+		$context = new \AIPS\Generation\Context\TemplateContext($template, null, 'Test Topic');
 		$array = $context->to_array();
 		
 		$this->assertIsArray($array);
@@ -222,7 +222,7 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 			'excerpt_instructions' => 'Voice excerpt',
 		);
 		
-		$context = new AIPS_Template_Context($template, $voice, 'Test Topic');
+		$context = new \AIPS\Generation\Context\TemplateContext($template, $voice, 'Test Topic');
 		
 		// Voice title prompt should take precedence
 		$this->assertEquals('Voice title prompt', $context->get_title_prompt());

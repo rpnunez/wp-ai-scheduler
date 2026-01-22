@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 
 namespace AIPS\Service;
 
-use AIPS_Generator;
+use AIPS\Generation\Generator;
 use AIPS_Scheduler;
 use AIPS\Controllers\Templates;
 use AIPS\Controllers\Voices;
@@ -18,7 +18,7 @@ class Seeder {
 	private $scheduler;
 
 	public function __construct() {
-		$this->generator = new AIPS_Generator();
+		$this->generator = new Generator();
 		$this->voices = new Voices();
 		$this->templates = new Templates();
 		$this->scheduler = new AIPS_Scheduler();

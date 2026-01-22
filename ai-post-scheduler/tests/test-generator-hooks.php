@@ -94,7 +94,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			}
 		};
 
-		$generator = new AIPS_Generator(
+		$generator = new \AIPS\Generation\Generator(
 			$logger,
 			$ai_service,
 			$template_processor,

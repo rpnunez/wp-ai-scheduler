@@ -1,7 +1,7 @@
 <?php
 namespace AIPS\Controllers;
 
-use AIPS_Generator;
+use AIPS\Generation\Generator;
 use AIPS_Interval_Calculator;
 use AIPS_Scheduler;
 
@@ -146,7 +146,7 @@ class Schedule {
 		$post_ids = array();
 		$errors = array();
 
-		$generator = new AIPS_Generator();
+		$generator = new Generator();
 		$topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
 		// Enforce hard limit of 5 to prevent timeouts (Bolt)

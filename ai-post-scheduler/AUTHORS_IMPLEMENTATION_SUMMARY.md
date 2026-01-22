@@ -105,7 +105,7 @@ Generates blog posts from approved topics.
 1. WordPress cron calls `aips_generate_author_posts` hourly
 2. Finds authors with `post_generation_next_run` in the past
 3. Gets one approved topic per author
-4. Generates a full blog post using the existing `AIPS_Generator`
+4. Generates a full blog post using the existing `\AIPS\Generation\Generator`
 5. Links the post to the topic in the logs
 6. Updates the author's next post generation time
 

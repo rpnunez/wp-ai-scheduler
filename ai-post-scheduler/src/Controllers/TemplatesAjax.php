@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-use AIPS_Generator;
+use AIPS\Generation\Generator;
 
 class TemplatesAjax {
 
@@ -122,7 +122,7 @@ class TemplatesAjax {
 			wp_send_json_error(array('message' => __('Prompt template is required.', 'ai-post-scheduler')));
 		}
 
-		$generator = new AIPS_Generator();
+		$generator = new Generator();
 		$result = $generator->generate_content($prompt);
 
 		if (is_wp_error($result)) {

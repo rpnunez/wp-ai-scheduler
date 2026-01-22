@@ -18,14 +18,14 @@ class AIPS_Prompt_Builder {
      *
      * Supports both legacy template-based approach and new context-based approach.
      *
-     * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+     * @param object|\AIPS\Generation\Context\GenerationContext $template_or_context Template object (legacy) or Generation Context.
      * @param string|null $topic    The topic for the post (legacy, may be null if using context).
      * @param object|null $voice    Optional voice object (legacy, may be null if using context).
      * @return string The constructed prompt.
      */
     public function build_content_prompt($template_or_context, $topic = null, $voice = null) {
         // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
+        if ($template_or_context instanceof \AIPS\Generation\Context\GenerationContext) {
             $context = $template_or_context;
             
             do_action('aips_before_build_content_prompt', $context, null);
@@ -54,7 +54,7 @@ class AIPS_Prompt_Builder {
             
             // For template contexts with voice, add voice instructions
             if ($context->get_type() === 'template' && $context->get_voice_id()) {
-                $voice_obj = $context->get_voice();
+                $voice_obj = method_exists($context, 'get_voice') ? $context->get_voice() : null;
                 if ($voice_obj && !empty($voice_obj->content_instructions)) {
                     $voice_instructions = $this->template_processor->process($voice_obj->content_instructions, $topic_str);
                     $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
@@ -107,7 +107,7 @@ class AIPS_Prompt_Builder {
      *
      * Supports both legacy template-based approach and new context-based approach.
      *
-     * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+     * @param object|\AIPS\Generation\Context\GenerationContext $template_or_context Template object (legacy) or Generation Context.
      * @param string|null $topic    The topic for the post (legacy).
      * @param object|null $voice    Optional voice object (legacy).
      * @return string Context string (may be empty).
@@ -116,13 +116,13 @@ class AIPS_Prompt_Builder {
         $context_parts = array();
         
         // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
+        if ($template_or_context instanceof \AIPS\Generation\Context\GenerationContext) {
             $context = $template_or_context;
             $topic_str = $context->get_topic();
             
             // For template contexts with voice, add voice content instructions
             if ($context->get_type() === 'template' && $context->get_voice_id()) {
-                $voice_obj = $context->get_voice();
+                $voice_obj = method_exists($context, 'get_voice') ? $context->get_voice() : null;
                 if ($voice_obj && !empty($voice_obj->content_instructions)) {
                     $context_parts[] = $this->template_processor->process($voice_obj->content_instructions, $topic_str);
                 }
@@ -136,7 +136,7 @@ class AIPS_Prompt_Builder {
              * @since 1.6.0
              *
              * @param array  $context_parts Array of context fragments.
-             * @param AIPS_Generation_Context $context Generation context object.
+             * @param \AIPS\Generation\Context\GenerationContext $context Generation context object.
              * @param string $topic_str     Topic string.
              * @param object|null $voice_obj Optional voice object.
              */
@@ -191,7 +191,7 @@ class AIPS_Prompt_Builder {
      *
      * Supports both legacy template-based approach and new context-based approach.
      *
-     * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+     * @param object|\AIPS\Generation\Context\GenerationContext $template_or_context Template object (legacy) or Generation Context.
      * @param string|null $topic    Optional topic to be injected into prompts (legacy).
      * @param object|null $voice    Optional voice object with overrides (legacy).
      * @param string      $content  Generated article content used as context.
@@ -203,13 +203,13 @@ class AIPS_Prompt_Builder {
         $title_instructions = '';
         
         // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
+        if ($template_or_context instanceof \AIPS\Generation\Context\GenerationContext) {
             $context = $template_or_context;
             $topic_str = $context->get_topic();
             
             // For template contexts with voice, check voice title prompt first
             if ($context->get_type() === 'template' && $context->get_voice_id()) {
-                $voice_obj = $context->get_voice();
+                $voice_obj = method_exists($context, 'get_voice') ? $context->get_voice() : null;
                 if ($voice_obj && !empty($voice_obj->title_prompt)) {
                     $title_instructions = $this->template_processor->process($voice_obj->title_prompt, $topic_str);
                 }

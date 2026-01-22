@@ -49,7 +49,7 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
         ));
 
         // 3. Mock the Generator
-        $mock_generator = $this->getMockBuilder('AIPS_Generator')
+        $mock_generator = $this->getMockBuilder(\AIPS\Generation\Generator::class)
             ->disableOriginalConstructor()
             ->onlyMethods(array('generate_post'))
             ->getMock();
