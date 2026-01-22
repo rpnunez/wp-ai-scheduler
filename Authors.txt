@@ -1,0 +1,43 @@
+What kind of UI/interface would best allow an Admin to schedule a Template to generate Blog Posts all related to the same "field", such as the programming language PHP, so the Posts should be about:
+
+- the most popular PHP libraries/frameworks/tools
+- best practices
+- news & updates
+- popular tools
+- etc.
+
+However, the current issue is that, unless the user specifically includes language in the Template Content Prompt to "write a post about a popular PHP framework", it's possible the AI will respond with the same "PHP framework" (such as Laravel, since it's the most popular) and ultimately generate, for example, 10 different Blog Posts, each one about Laravel. Each one will have a different title, a different content/body, but that's a problem.
+
+I want to keep the current "Templates", flow, which let's face it, is a more "fine-tuned"/advanced form of Generating posts.
+
+But, I need to add a new page that makes it simple to add a new, let's say, "Author". The idea is coming to me, but I need your help visualizing it. Basically, each "Author" will have a Title, can follow a Article Structure, can be Scheduled ("Post Generation Schedule"), but before generating Posts, it generates "Post Topics". These Post Topics will be generated on another schedule ("Topic Generation Schedule"), and will be saved into the DB (associated to the Author), and can be viewed from a "Generated Titles" section while viewing an Author. 
+
+Each "Post Topic" initially is added with the "state" of "Pending Review". Each "Post Topic" will have a checkbox so an Admin can select one or more. There will be a dropdown with these options:
+
+*   **Approve**: Changes the state to "Approved".
+*   **Reject**: Changes the state to "Rejected".
+*   **Generate Post Now**: This button will only be available if the "Post Topic" is in the "Approved" state. This will trigger the generation of a post based on the topic.
+*   **Edit**: Allows the user to modify the "Post Topic" title.
+*   **Delete**: Removes the "Post Topic" from the list.
+*   **View Post**: If a post has been generated for this topic, this button will link to the generated post.
+*   **View Log**: Shows a log of actions performed on this "Post Topic" (e.g., "Approved by Admin X on Y date", "Post generated on Z date", "AI call for Title, AI Response for Title, AI call for Content, etc).
+
+When hovering over a "Post Topic" section, the same options mentioned should become visible as buttons (being hidden by default).
+
+When a user clicks "Generate Post Now", the Post should be Generated, using that "Topic".
+
+When a user clicks "Approve", the Post Topic should be moved to the "Approved" state, and scheduled as per the "Post Generation Schedule". This "Approved" Post then will have further logic. The assumption is since the Admin approved this Topic, it was a "favorable Post Topic". When generating "Post Topics" for this Author, the list of "Approved" posts should be  "summarized" and used as "context" for the next "Topic Generation", allowing a feedback-loop to further enhance the accuracy or Generated Post Topics. It's important that the list gets summarized, or some other "shortening", since we don't want to be sending extremely large requests to any AI API. 
+
+When a user clicks "Reject", the Post Topic should be moved to the "Rejected" state. Similar to the "Approved" favorable post topic logic above, maybe we should also do the same for "Rejected" Post Topics, and include a summarized list of "unfavorable" Post Topics when generating new Post Topics.
+
+When a user clicks "Edit", the Post Topic title should become editable, and a "Save" button should appear. When a user clicks "Save", the edited Post Topic title should be saved to the DB, using AJAX.
+
+When a user clicks "Delete", the Post Topic should be removed from the list/deleted from the DB.
+
+As Posts get Generated, there will be another section when viewing an Author called "Generated Posts". Here will be a list of Generated Posts, each with a button for:
+*   **View Post**: Links to the generated post on the website.
+*   **View Log**: Shows a log of actions, AI calls, etc performed on this "Generated Post". Should be identical to the "Details" button in a Post row when viewing the History page.
+*   **Delete**: Removes the "Generated Post" from the list and also deletes the post from WordPress.
+*   **Regenerate Post**: This will set the current post as a Draft, and generate a new one using the same "Post Topic".
+*   **Edit Post**: This will open the generated post in the WordPress editor.
+*   **View Post Topic**: This will link to the "Post Topic" that generated this post.

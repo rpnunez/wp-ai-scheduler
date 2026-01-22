@@ -21,12 +21,12 @@ if (!defined('ABSPATH')) {
 class AIPS_Article_Structure_Manager {
 	
 	/**
-	 * @var AIPS_Article_Structure_Repository
+	 * @var \AIPS\Repository\ArticleStructure
 	 */
 	private $structure_repository;
 	
 	/**
-	 * @var AIPS_Prompt_Section_Repository
+	 * @var \AIPS\Repository\PromptSection
 	 */
 	private $section_repository;
 	
@@ -39,8 +39,8 @@ class AIPS_Article_Structure_Manager {
 	 * Initialize the manager.
 	 */
 	public function __construct() {
-		$this->structure_repository = new AIPS_Article_Structure_Repository();
-		$this->section_repository = new AIPS_Prompt_Section_Repository();
+		$this->structure_repository = new \AIPS\Repository\ArticleStructure();
+		$this->section_repository = new \AIPS\Repository\PromptSection();
 		$this->template_processor = new AIPS_Template_Processor();
 	}
 	

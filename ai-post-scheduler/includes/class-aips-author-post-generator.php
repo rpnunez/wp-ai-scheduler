@@ -21,17 +21,17 @@ if (!defined('ABSPATH')) {
 class AIPS_Author_Post_Generator {
 	
 	/**
-	 * @var AIPS_Authors_Repository Repository for authors
+	 * @var \AIPS\Repository\Authors Repository for authors
 	 */
 	private $authors_repository;
 	
 	/**
-	 * @var AIPS_Author_Topics_Repository Repository for topics
+	 * @var \AIPS\Repository\AuthorTopics Repository for topics
 	 */
 	private $topics_repository;
 	
 	/**
-	 * @var AIPS_Author_Topic_Logs_Repository Repository for logs
+	 * @var \AIPS\Repository\AuthorTopicLogs Repository for logs
 	 */
 	private $logs_repository;
 	
@@ -51,17 +51,17 @@ class AIPS_Author_Post_Generator {
 	private $interval_calculator;
 	
 	/**
-	 * @var AIPS_History_Repository Repository for history
+	 * @var \AIPS\Repository\History Repository for history
 	 */
 	private $history_repository;
 	
 	/**
-	 * @var AIPS_Topic_Expansion_Service Service for topic expansion
+	 * @var \AIPS\Service\TopicExpansion Service for topic expansion
 	 */
 	private $expansion_service;
 	
 	/**
-	 * @var AIPS_Activity_Repository Repository for activity logging
+	 * @var \AIPS\Repository\Activity Repository for activity logging
 	 */
 	private $activity_repository;
 	
@@ -69,15 +69,15 @@ class AIPS_Author_Post_Generator {
 	 * Initialize the generator.
 	 */
 	public function __construct() {
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->topics_repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
+		$this->authors_repository = new \AIPS\Repository\Authors();
+		$this->topics_repository = new \AIPS\Repository\AuthorTopics();
+		$this->logs_repository = new \AIPS\Repository\AuthorTopicLogs();
 		$this->generator = new AIPS_Generator();
 		$this->logger = new AIPS_Logger();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->history_repository = new AIPS_History_Repository();
-		$this->expansion_service = new AIPS_Topic_Expansion_Service();
-		$this->activity_repository = new AIPS_Activity_Repository();
+		$this->history_repository = new \AIPS\Repository\History();
+		$this->expansion_service = new \AIPS\Service\TopicExpansion();
+		$this->activity_repository = new \AIPS\Repository\Activity();
 		
 		// Hook into WordPress cron
 		add_action('aips_generate_author_posts', array($this, 'process_post_generation'));

@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIPS_VERSION', '1.7.0');
+define('AIPS_VERSION', '2.0.0');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -53,44 +53,23 @@ final class AI_Post_Scheduler {
     }
     
     private function includes() {
+        $autoload_path = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        if (file_exists($autoload_path)) {
+            require_once $autoload_path;
+        }
+
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-config.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
-        
-        // Repository layer
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-section-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-trending-topics-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-authors-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topic-logs-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-feedback-repository.php';
-        
-        // Services
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-embeddings-service.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-topic-expansion-service.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-topic-penalty-service.php';
-        
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates-controller.php';
+
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-processor.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-builder.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-type-selector.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-structures-controller.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-sections-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-interval-calculator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-helper.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-resilience-service.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-ai-service.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-image-service.php';
         
         // Generation Context architecture
         require_once AIPS_PLUGIN_DIR . 'includes/interface-aips-generation-context.php';
@@ -98,16 +77,10 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-topic-context.php';
         
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generation-session.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-creator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-controller.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-controller.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dev-tools.php';
 
         // Data Management Feature
@@ -122,11 +95,8 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-scheduler.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-post-generator.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-authors-controller.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-controller.php';
 
         // Seeder Feature
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-seeder-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-seeder-admin.php';
     }
     
@@ -220,24 +190,24 @@ final class AI_Post_Scheduler {
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Settings();
-            new AIPS_Voices();
-            new AIPS_Templates();
-            new AIPS_Templates_Controller();
-            new AIPS_History();
+            new \AIPS\Controllers\Voices();
+            new \AIPS\Controllers\Templates();
+            new \AIPS\Controllers\TemplatesAjax();
+            new \AIPS\Controllers\History();
             new AIPS_Planner();
-            new AIPS_Schedule_Controller();
-            new AIPS_Activity_Controller();
-            new AIPS_Research_Controller();
+            new \AIPS\Controllers\Schedule();
+            new \AIPS\Controllers\Activity();
+            new \AIPS\Controllers\Research();
             new AIPS_Seeder_Admin();
             new AIPS_Data_Management();
             // Structures admin controller (CRUD endpoints for Article Structures UI)
-            new AIPS_Structures_Controller();
+            new \AIPS\Controllers\Structures();
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
-            new AIPS_Prompt_Sections_Controller();
+            new \AIPS\Controllers\PromptSections();
             
             // Authors feature controllers
-            new AIPS_Authors_Controller();
-            new AIPS_Author_Topics_Controller();
+            new \AIPS\Controllers\Authors();
+            new \AIPS\Controllers\AuthorTopics();
 
             // Dev Tools
             if (get_option('aips_developer_mode')) {

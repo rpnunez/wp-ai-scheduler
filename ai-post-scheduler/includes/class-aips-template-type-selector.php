@@ -21,12 +21,12 @@ if (!defined('ABSPATH')) {
 class AIPS_Template_Type_Selector {
 	
 	/**
-	 * @var AIPS_Article_Structure_Repository
+	 * @var \AIPS\Repository\ArticleStructure
 	 */
 	private $structure_repository;
 	
 	/**
-	 * @var AIPS_Schedule_Repository
+	 * @var \AIPS\Repository\Schedule
 	 */
 	private $schedule_repository;
 
@@ -41,8 +41,8 @@ class AIPS_Template_Type_Selector {
 	 * Initialize the selector.
 	 */
 	public function __construct() {
-		$this->structure_repository = new AIPS_Article_Structure_Repository();
-		$this->schedule_repository = new AIPS_Schedule_Repository();
+		$this->structure_repository = new \AIPS\Repository\ArticleStructure();
+		$this->schedule_repository = new \AIPS\Repository\Schedule();
 	}
 	
 	/**

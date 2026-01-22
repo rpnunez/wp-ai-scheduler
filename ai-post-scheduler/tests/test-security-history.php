@@ -1,6 +1,6 @@
 <?php
 /**
- * Test case for Security Fix: Double Prepare in AIPS_History::get_history
+ * Test case for Security Fix: Double Prepare in \AIPS\Controllers\History::get_history
  *
  * To run this test, you would need a WordPress environment with PHPUnit.
  * This file serves as documentation of the test case.
@@ -18,7 +18,7 @@ class Test_AIPS_History_Security extends WP_UnitTestCase {
      * This verifies the fix for the double prepare vulnerability.
      */
     public function test_get_history_with_percent_in_status() {
-        $history_class = new AIPS_History();
+        $history_class = new \AIPS\Controllers\History();
 
         // Scenario 1: Status contains '%s'
         // Vulnerable code would interpret this as a placeholder in the second prepare call

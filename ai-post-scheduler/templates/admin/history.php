@@ -3,17 +3,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Allow this template to be included either via AIPS_History::render_page()
-// (where $history is already an array) or directly with an AIPS_History
+// Allow this template to be included either via \AIPS\Controllers\History::render_page()
+// (where $history is already an array) or directly with a \AIPS\Controllers\History
 // instance (e.g. $history or $History).
-if (isset($history) && $history instanceof AIPS_History) {
+if (isset($history) && $history instanceof \AIPS\Controllers\History) {
     $history_handler = $history;
-} elseif (isset($History) && $History instanceof AIPS_History) {
+} elseif (isset($History) && $History instanceof \AIPS\Controllers\History) {
     $history_handler = $History;
 }
 
-// Also handle the case where $stats might be an AIPS_History object
-if (isset($stats) && $stats instanceof AIPS_History) {
+// Also handle the case where $stats might be a \AIPS\Controllers\History object
+if (isset($stats) && $stats instanceof \AIPS\Controllers\History) {
     if (!isset($history_handler)) {
         $history_handler = $stats;
     }
@@ -21,7 +21,7 @@ if (isset($stats) && $stats instanceof AIPS_History) {
 }
 
 if (isset($history_handler)) {
-    // Derive filters similarly to AIPS_History::render_page().
+    // Derive filters similarly to \AIPS\Controllers\History::render_page().
     $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
     $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
     $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '');

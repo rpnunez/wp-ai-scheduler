@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Changed
+- Refactored admin page rendering into an `AdminRouter` and namespaced controllers (History, Templates, Voices, System Status) with PSR-4 autoloading.
+
 ## [wizard-sections-search-copy] - 2025-12-25
 ### Added
 - Added client-side search functionality to the Prompt Sections admin page.

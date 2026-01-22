@@ -31,8 +31,8 @@ if (!defined('ABSPATH')) {
                 </thead>
                 <tbody>
                     <?php
-                    $history_service = new AIPS_History();
-                    $templates_class = new AIPS_Templates();
+                    $history_service = new \AIPS\Controllers\History();
+                    $templates_class = new \AIPS\Controllers\Templates();
 
                     // Pre-fetch stats to avoid N+1 queries
                     $all_generated_counts = $history_service->get_all_template_stats();

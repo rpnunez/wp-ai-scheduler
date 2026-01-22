@@ -139,7 +139,7 @@ class AIPS_Planner {
     public function render_page() {
         // Just for consistency if we want to render the planner page separately,
         // but currently we might include it in the main admin view.
-        $templates_obj = new AIPS_Templates();
+        $templates_obj = new \AIPS\Controllers\Templates();
         $templates = $templates_obj->get_all(true); // Active only
 
         include AIPS_PLUGIN_DIR . 'templates/admin/planner.php';
