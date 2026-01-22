@@ -31,7 +31,7 @@ class AIPS_Article_Structure_Manager {
 	private $section_repository;
 	
 	/**
-	 * @var AIPS_Template_Processor
+	 * @var \AIPS\Helper\TemplateProcessor
 	 */
 	private $template_processor;
 	
@@ -41,7 +41,7 @@ class AIPS_Article_Structure_Manager {
 	public function __construct() {
 		$this->structure_repository = new \AIPS\Repository\ArticleStructure();
 		$this->section_repository = new \AIPS\Repository\PromptSection();
-		$this->template_processor = new AIPS_Template_Processor();
+		$this->template_processor = new \AIPS\Helper\TemplateProcessor();
 	}
 	
 	/**

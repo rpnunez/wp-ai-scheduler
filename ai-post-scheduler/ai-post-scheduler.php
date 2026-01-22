@@ -64,15 +64,11 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
 
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-processor.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-builder.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-type-selector.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-interval-calculator.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-helper.php';
         
         // Generation Context architecture
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-creator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dev-tools.php';

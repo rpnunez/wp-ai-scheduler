@@ -1,6 +1,6 @@
 <?php
 /**
- * Test AIPS_Prompt_Builder class
+ * Test PromptBuilder helper class
  *
  * @package AI_Post_Scheduler
  * @subpackage Tests
@@ -12,9 +12,9 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 * Test build_content_prompt with basic template.
 	 */
 	public function test_build_content_prompt_basic() {
-		$template_processor = new AIPS_Template_Processor();
+		$template_processor = new \AIPS\Helper\TemplateProcessor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$template = (object) array(
 			'prompt_template' => 'Write about {{topic}}',
@@ -31,9 +31,9 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 * Test build_content_prompt with voice instructions.
 	 */
 	public function test_build_content_prompt_with_voice() {
-		$template_processor = new AIPS_Template_Processor();
+		$template_processor = new \AIPS\Helper\TemplateProcessor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$template = (object) array(
 			'prompt_template' => 'Write about {{topic}}',
@@ -54,9 +54,9 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 * Test build_title_prompt with template only.
 	 */
 	public function test_build_title_prompt_template_only() {
-		$template_processor = new AIPS_Template_Processor();
+		$template_processor = new \AIPS\Helper\TemplateProcessor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$template = (object) array(
 			'title_prompt' => 'Create an engaging title about {{topic}}',
@@ -74,9 +74,9 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 * Test build_title_prompt with voice override.
 	 */
 	public function test_build_title_prompt_voice_override() {
-		$template_processor = new AIPS_Template_Processor();
+		$template_processor = new \AIPS\Helper\TemplateProcessor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$template = (object) array(
 			'title_prompt' => 'Create a template title about {{topic}}',
@@ -98,9 +98,9 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 * Test build_title_prompt without instructions.
 	 */
 	public function test_build_title_prompt_no_instructions() {
-		$template_processor = new AIPS_Template_Processor();
+		$template_processor = new \AIPS\Helper\TemplateProcessor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$template = (object) array(
 			'title_prompt' => '',
@@ -117,9 +117,9 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 * Test build_excerpt_prompt with basic inputs.
 	 */
 	public function test_build_excerpt_prompt_basic() {
-		$template_processor = new AIPS_Template_Processor();
+		$template_processor = new \AIPS\Helper\TemplateProcessor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$title = 'Understanding AI Technology';
 		$content = 'This article discusses various aspects of artificial intelligence...';
@@ -138,9 +138,9 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 * Test build_excerpt_prompt with voice instructions.
 	 */
 	public function test_build_excerpt_prompt_with_voice() {
-		$template_processor = new AIPS_Template_Processor();
+		$template_processor = new \AIPS\Helper\TemplateProcessor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$voice = (object) array(
 			'excerpt_instructions' => 'Write in a conversational style about {{topic}}',
@@ -159,9 +159,9 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 * Test build_excerpt_instructions (legacy method).
 	 */
 	public function test_build_excerpt_instructions_with_voice() {
-		$template_processor = new AIPS_Template_Processor();
+		$template_processor = new \AIPS\Helper\TemplateProcessor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$voice = (object) array(
 			'excerpt_instructions' => 'Use simple language for {{topic}}',
@@ -176,9 +176,9 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 * Test build_excerpt_instructions returns null when no voice.
 	 */
 	public function test_build_excerpt_instructions_no_voice() {
-		$template_processor = new AIPS_Template_Processor();
+		$template_processor = new \AIPS\Helper\TemplateProcessor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$result = $builder->build_excerpt_instructions(null, 'Testing');
 
@@ -191,7 +191,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_build_excerpt_instructions_empty_voice() {
 		$template_processor = new AIPS_Template_Processor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$voice = (object) array(
 			'excerpt_instructions' => '',
@@ -208,7 +208,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_build_title_prompt_with_filter() {
 		$template_processor = new AIPS_Template_Processor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		// Add filter to modify title prompt
 		add_filter('aips_title_prompt', function($prompt) {
@@ -234,7 +234,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_build_excerpt_prompt_with_filter() {
 		$template_processor = new AIPS_Template_Processor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		// Add filter to modify excerpt prompt
 		add_filter('aips_excerpt_prompt', function($prompt) {
@@ -258,7 +258,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_build_content_prompt_with_filter() {
 		$template_processor = new AIPS_Template_Processor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		// Add filter to modify content prompt
 		add_filter('aips_content_prompt', function($prompt) {
@@ -284,7 +284,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_build_title_prompt_empty_content() {
 		$template_processor = new AIPS_Template_Processor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$template = (object) array(
 			'title_prompt' => 'Create title',
@@ -302,7 +302,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_build_excerpt_prompt_empty_content() {
 		$template_processor = new AIPS_Template_Processor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new \AIPS\Helper\PromptBuilder($template_processor, $structure_manager);
 
 		$title = 'Test Title';
 		

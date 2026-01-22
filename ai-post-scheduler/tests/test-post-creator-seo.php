@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for AIPS_Post_Creator SEO metadata handling.
+ * Tests for PostCreator SEO metadata handling.
  *
  * @package AI_Post_Scheduler
  */
@@ -35,7 +35,7 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
             'post_tags' => '',
         );
 
-        $creator = new AIPS_Post_Creator();
+        $creator = new \AIPS\Helper\PostCreator();
 
         $post_id = $creator->create_post(array(
             'title' => 'AI SEO Title',
@@ -64,7 +64,7 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
             'post_tags' => '',
         );
 
-        $creator = new AIPS_Post_Creator();
+        $creator = new \AIPS\Helper\PostCreator();
 
         $post_id = $creator->create_post(array(
             'title' => 'AI SEO Title',
@@ -96,7 +96,7 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
             'post_tags' => '',
         );
 
-        $creator = new AIPS_Post_Creator();
+        $creator = new \AIPS\Helper\PostCreator();
 
         $post_id = $creator->create_post(array(
             'title' => 'Title Used As Keyword',

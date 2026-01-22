@@ -2,7 +2,7 @@
 /**
  * Test case for Template Processor
  *
- * Tests the extraction and functionality of AIPS_Template_Processor class.
+ * Tests the extraction and functionality of TemplateProcessor helper class.
  *
  * @package AI_Post_Scheduler
  * @since 1.4.0
@@ -14,7 +14,7 @@ class Test_AIPS_Template_Processor extends WP_UnitTestCase {
 
     public function setUp(): void {
         parent::setUp();
-        $this->processor = new AIPS_Template_Processor();
+        $this->processor = new \AIPS\Helper\TemplateProcessor();
     }
 
     /**

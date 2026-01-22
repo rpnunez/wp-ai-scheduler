@@ -197,7 +197,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                             <?php echo esc_html__( 'Frequency', 'ai-post-scheduler' ); ?>
                         </th>
                         <td>
-                            <?php AIPS_Template_Helper::render_frequency_dropdown( 'schedule-frequency', 'frequency', $default_research_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
+                            <?php \AIPS\Helper\TemplateHelper::render_frequency_dropdown( 'schedule-frequency', 'frequency', $default_research_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
                         </td>
                     </tr>
                 </table>
