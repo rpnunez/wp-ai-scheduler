@@ -82,7 +82,8 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY post_id (post_id),
             KEY template_id (template_id),
-            KEY status (status)
+            KEY status (status),
+            KEY template_status_created (template_id, status, created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (

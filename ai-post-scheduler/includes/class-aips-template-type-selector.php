@@ -221,14 +221,25 @@ class AIPS_Template_Type_Selector {
 
 		// Count completed generations for this template
 		// Note: We use template_id since history doesn't directly link to schedule
-		$count = $wpdb->get_var($wpdb->prepare(
-			"SELECT COUNT(*) FROM $table_history 
+
+		// Optimization (Bolt): Use created_at from object if available to avoid subquery
+		$created_at_sql = "";
+		$args = array($schedule->template_id);
+
+		if (!empty($schedule->created_at)) {
+			$created_at_sql = "AND created_at >= %s";
+			$args[] = $schedule->created_at;
+		} else {
+			$created_at_sql = "AND created_at >= (SELECT created_at FROM $table_schedule WHERE id = %d)";
+			$args[] = $schedule_id;
+		}
+
+		$query = "SELECT COUNT(*) FROM $table_history
 			WHERE template_id = %d 
 			AND status = 'completed' 
-			AND created_at >= (SELECT created_at FROM $table_schedule WHERE id = %d)",
-			$schedule->template_id,
-			$schedule_id
-		));
+			$created_at_sql";
+
+		$count = $wpdb->get_var($wpdb->prepare($query, $args));
 		
 		$count = (int) $count;
 

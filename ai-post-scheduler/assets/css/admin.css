@@ -215,6 +215,17 @@
     margin-top: 5px;
 }
 
+/* Flexbox input group for aligning inputs with buttons */
+.aips-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.aips-input-group input {
+    flex: 1;
+}
+
 .aips-form-columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
