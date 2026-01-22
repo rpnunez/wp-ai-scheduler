@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
     <div class="aips-dashboard">
         <div class="aips-stats-grid">
             <div class="aips-stat-card">
-                <div class="aips-stat-icon dashicons dashicons-edit"></div>
+                <div class="aips-stat-icon dashicons dashicons-edit" aria-hidden="true"></div>
                 <div class="aips-stat-content">
                     <span class="aips-stat-number"><?php echo esc_html($total_generated); ?></span>
                     <span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
             </div>
             
             <div class="aips-stat-card">
-                <div class="aips-stat-icon dashicons dashicons-clock"></div>
+                <div class="aips-stat-icon dashicons dashicons-clock" aria-hidden="true"></div>
                 <div class="aips-stat-content">
                     <span class="aips-stat-number"><?php echo esc_html($pending_scheduled); ?></span>
                     <span class="aips-stat-label"><?php esc_html_e('Active Schedules', 'ai-post-scheduler'); ?></span>
@@ -31,7 +31,7 @@ if (!defined('ABSPATH')) {
             </div>
             
             <div class="aips-stat-card">
-                <div class="aips-stat-icon dashicons dashicons-media-document"></div>
+                <div class="aips-stat-icon dashicons dashicons-media-document" aria-hidden="true"></div>
                 <div class="aips-stat-content">
                     <span class="aips-stat-number"><?php echo esc_html($total_templates); ?></span>
                     <span class="aips-stat-label"><?php esc_html_e('Active Templates', 'ai-post-scheduler'); ?></span>
@@ -39,7 +39,7 @@ if (!defined('ABSPATH')) {
             </div>
             
             <div class="aips-stat-card aips-stat-warning">
-                <div class="aips-stat-icon dashicons dashicons-warning"></div>
+                <div class="aips-stat-icon dashicons dashicons-warning" aria-hidden="true"></div>
                 <div class="aips-stat-content">
                     <span class="aips-stat-number"><?php echo esc_html($failed_count); ?></span>
                     <span class="aips-stat-label"><?php esc_html_e('Failed Generations', 'ai-post-scheduler'); ?></span>
