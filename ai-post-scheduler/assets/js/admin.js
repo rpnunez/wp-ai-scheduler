@@ -28,7 +28,9 @@
             $(document).on('keyup', '#voice_search', this.searchVoices);
 
             // AI Variables scanning
-            $(document).on('input', '.aips-ai-var-input', this.scanForAIVariables);
+            $(document).on('input', '.aips-ai-var-input', function() {
+                AIPS.scanAllAIVariables();
+            });
             $(document).on('click', '.aips-ai-var-tag', this.copyAIVariable);
 
             $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
@@ -1606,15 +1608,21 @@
         // AI Variables feature methods
         initAIVariablesScanner: function() {
             // Initial scan when modal opens or form loads
-            $('.aips-ai-var-input').each(function() {
-                AIPS.scanForAIVariables.call(this);
-            });
+            AIPS.scanAllAIVariables();
         },
 
-        scanForAIVariables: function() {
-            var text = $(this).val() || '';
-            var aiVariables = AIPS.extractAIVariables(text);
-            AIPS.updateAIVariablesPanel(aiVariables);
+        scanAllAIVariables: function() {
+            var allVariables = [];
+            $('.aips-ai-var-input').each(function() {
+                var text = $(this).val() || '';
+                var vars = AIPS.extractAIVariables(text);
+                vars.forEach(function(v) {
+                    if (allVariables.indexOf(v) === -1) {
+                        allVariables.push(v);
+                    }
+                });
+            });
+            AIPS.updateAIVariablesPanel(allVariables);
         },
 
         extractAIVariables: function(text) {
