@@ -42,7 +42,13 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         <div class="aips-authors-container">
             <div class="aips-authors-list">
                 <?php if (!empty($authors)): ?>
-                    <table class="wp-list-table widefat fixed striped">
+                    <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+                        <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
+                        <input type="search" id="aips-author-search" class="regular-text" placeholder="<?php esc_attr_e('Search authors...', 'ai-post-scheduler'); ?>">
+                        <button type="button" id="aips-author-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    </div>
+
+                    <table class="wp-list-table widefat fixed striped aips-authors-table">
                         <thead>
                             <tr>
                                 <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
@@ -102,6 +108,15 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+
+                    <div id="aips-author-search-no-results" class="aips-empty-state" style="display: none;">
+                        <span class="dashicons dashicons-search" aria-hidden="true"></span>
+                        <h3><?php esc_html_e('No Authors Found', 'ai-post-scheduler'); ?></h3>
+                        <p><?php esc_html_e('No authors match your search criteria.', 'ai-post-scheduler'); ?></p>
+                        <button type="button" class="button button-primary aips-clear-author-search-btn">
+                            <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
                 <?php else: ?>
                     <div class="aips-empty-state">
                         <span class="dashicons dashicons-admin-users" aria-hidden="true"></span>
