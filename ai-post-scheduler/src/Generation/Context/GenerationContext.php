@@ -1,22 +1,21 @@
 <?php
+namespace AIPS\Generation\Context;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
- * Interface AIPS_Generation_Context
+ * Interface GenerationContext
  *
  * Defines the contract for all generation context types.
  * A context represents the source and configuration for generating a post,
  * which could be a Template, a Topic, a Research Result, or any future source.
  *
- * This interface decouples the Generator from specific context implementations,
- * allowing it to work with any context type that provides the necessary data.
- *
  * @package AI_Post_Scheduler
  * @since 1.9.0
  */
-interface AIPS_Generation_Context {
+interface GenerationContext {
 
 	/**
 	 * Get the context type identifier.

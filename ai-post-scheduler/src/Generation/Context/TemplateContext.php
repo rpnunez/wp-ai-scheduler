@@ -1,18 +1,19 @@
 <?php
+namespace AIPS\Generation\Context;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
- * Class AIPS_Template_Context
+ * Class TemplateContext
  *
  * Wraps a Template object to provide it as a Generation Context.
- * This allows templates to work with the refactored Generator architecture.
  *
  * @package AI_Post_Scheduler
  * @since 1.9.0
  */
-class AIPS_Template_Context implements AIPS_Generation_Context {
+class TemplateContext implements GenerationContext {
 
 	/**
 	 * @var object Template object.

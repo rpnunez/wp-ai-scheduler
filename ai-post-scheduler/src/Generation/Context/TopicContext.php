@@ -1,18 +1,19 @@
 <?php
+namespace AIPS\Generation\Context;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
- * Class AIPS_Topic_Context
+ * Class TopicContext
  *
  * Wraps an Author and Topic pair to provide them as a Generation Context.
- * This eliminates the need to mock templates when generating posts from topics.
  *
  * @package AI_Post_Scheduler
  * @since 1.9.0
  */
-class AIPS_Topic_Context implements AIPS_Generation_Context {
+class TopicContext implements GenerationContext {
 
 	/**
 	 * @var object Author object.
@@ -72,25 +73,20 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	/**
 	 * Get the content prompt for AI generation.
 	 *
-	 * Builds a comprehensive prompt from the topic title, author's field/niche,
-	 * and any expanded context from similar approved topics.
-	 *
 	 * @return string Content generation prompt.
 	 */
 	public function get_content_prompt() {
 		$prompt = "Write a comprehensive blog post about: {$this->topic->topic_title}\n\nField/Niche: {$this->author->field_niche}";
-		
+
 		if (!empty($this->expanded_context)) {
 			$prompt .= "\n\n" . $this->expanded_context;
 		}
-		
+
 		return $prompt;
 	}
 
 	/**
 	 * Get the title prompt for AI title generation.
-	 *
-	 * Uses the topic title as the title prompt.
 	 *
 	 * @return string Title generation prompt.
 	 */
@@ -100,8 +96,6 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 
 	/**
 	 * Get the image prompt for featured image generation.
-	 *
-	 * Uses the topic title as the image prompt.
 	 *
 	 * @return string|null Image prompt.
 	 */
@@ -202,14 +196,32 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	/**
 	 * Get topic string.
 	 *
-	 * @return string Topic title.
+	 * @return string|null Topic or null.
 	 */
 	public function get_topic() {
 		return $this->topic->topic_title;
 	}
 
 	/**
-	 * Get the underlying author object.
+	 * Get author ID (for topic context).
+	 *
+	 * @return int Author ID.
+	 */
+	public function get_author_id() {
+		return $this->author->id;
+	}
+
+	/**
+	 * Get topic ID (alias of get_id()).
+	 *
+	 * @return int Topic ID.
+	 */
+	public function get_topic_id() {
+		return $this->topic->id;
+	}
+
+	/**
+	 * Get the author object.
 	 *
 	 * @return object Author object.
 	 */
@@ -218,7 +230,7 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
-	 * Get the underlying topic object.
+	 * Get the topic object.
 	 *
 	 * @return object Topic object.
 	 */
@@ -227,26 +239,41 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the expanded context.
+	 *
+	 * @return string Expanded context string.
+	 */
+	public function get_expanded_context() {
+		return $this->expanded_context;
+	}
+
+	/**
 	 * Get all context data as an array.
 	 *
 	 * @return array Context data.
 	 */
 	public function to_array() {
-		return array(
+		$data = array(
 			'type' => $this->get_type(),
 			'id' => $this->get_id(),
 			'name' => $this->get_name(),
-			'topic' => $this->get_topic(),
 			'author_id' => $this->author->id,
 			'author_name' => $this->author->name,
-			'field_niche' => $this->author->field_niche,
-			'content_prompt' => $this->get_content_prompt(),
-			'title_prompt' => $this->get_title_prompt(),
+			'topic_title' => $this->topic->topic_title,
 			'post_status' => $this->get_post_status(),
 			'post_category' => $this->get_post_category(),
 			'post_tags' => $this->get_post_tags(),
 			'post_author' => $this->get_post_author(),
-			'article_structure_id' => $this->get_article_structure_id(),
 		);
+
+		if (!empty($this->expanded_context)) {
+			$data['expanded_context'] = $this->expanded_context;
+		}
+
+		if ($this->get_article_structure_id()) {
+			$data['article_structure_id'] = $this->get_article_structure_id();
+		}
+
+		return $data;
 	}
 }
