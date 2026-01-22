@@ -9,28 +9,28 @@
  * @since 1.8.0
  */
 
+namespace AIPS\Repository;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
- * Class AIPS_Author_Topics_Repository
- *
  * Repository pattern implementation for author topic data access.
  * Encapsulates all database operations related to author topics.
  */
-class AIPS_Author_Topics_Repository {
-	
+class AuthorTopics {
+
 	/**
 	 * @var string The author_topics table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
-	
+
 	/**
 	 * Initialize the repository.
 	 */
@@ -39,7 +39,7 @@ class AIPS_Author_Topics_Repository {
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_author_topics';
 	}
-	
+
 	/**
 	 * Get all topics for an author.
 	 *
@@ -60,7 +60,7 @@ class AIPS_Author_Topics_Repository {
 			$author_id
 		));
 	}
-	
+
 	/**
 	 * Get a single topic by ID.
 	 *
@@ -73,7 +73,7 @@ class AIPS_Author_Topics_Repository {
 			$id
 		));
 	}
-	
+
 	/**
 	 * Create a new topic.
 	 *
@@ -84,7 +84,7 @@ class AIPS_Author_Topics_Repository {
 		$result = $this->wpdb->insert($this->table_name, $data);
 		return $result ? $this->wpdb->insert_id : false;
 	}
-	
+
 	/**
 	 * Create multiple topics at once.
 	 *
@@ -110,7 +110,7 @@ class AIPS_Author_Topics_Repository {
 		$this->wpdb->query('COMMIT');
 		return true;
 	}
-	
+
 	/**
 	 * Update a topic.
 	 *
@@ -127,7 +127,7 @@ class AIPS_Author_Topics_Repository {
 			array('%d')
 		);
 	}
-	
+
 	/**
 	 * Update topic status.
 	 *
@@ -141,14 +141,14 @@ class AIPS_Author_Topics_Repository {
 			'status' => $status,
 			'reviewed_at' => current_time('mysql')
 		);
-		
+
 		if ($user_id) {
 			$data['reviewed_by'] = $user_id;
 		}
-		
+
 		return $this->update($id, $data);
 	}
-	
+
 	/**
 	 * Delete a topic.
 	 *
@@ -162,7 +162,7 @@ class AIPS_Author_Topics_Repository {
 			array('%d')
 		);
 	}
-	
+
 	/**
 	 * Get approved topics for an author (for post generation).
 	 *
@@ -181,7 +181,7 @@ class AIPS_Author_Topics_Repository {
 			$limit
 		));
 	}
-	
+
 	/**
 	 * Get summary of approved topics for context (for feedback loop).
 	 *
@@ -201,7 +201,7 @@ class AIPS_Author_Topics_Repository {
 		));
 		return $results ? $results : array();
 	}
-	
+
 	/**
 	 * Get summary of rejected topics for context (for feedback loop).
 	 *
@@ -221,7 +221,7 @@ class AIPS_Author_Topics_Repository {
 		));
 		return $results ? $results : array();
 	}
-	
+
 	/**
 	 * Get topic counts by status for an author.
 	 *
@@ -236,17 +236,17 @@ class AIPS_Author_Topics_Repository {
 			GROUP BY status",
 			$author_id
 		), ARRAY_A);
-		
+
 		$counts = array(
 			'pending' => 0,
 			'approved' => 0,
 			'rejected' => 0
 		);
-		
+
 		foreach ($results as $row) {
 			$counts[$row['status']] = (int) $row['count'];
 		}
-		
+
 		return $counts;
 	}
 }

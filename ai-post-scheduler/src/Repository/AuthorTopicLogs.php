@@ -9,28 +9,28 @@
  * @since 1.8.0
  */
 
+namespace AIPS\Repository;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
- * Class AIPS_Author_Topic_Logs_Repository
- *
  * Repository pattern implementation for author topic log data access.
  * Encapsulates all database operations related to author topic logs.
  */
-class AIPS_Author_Topic_Logs_Repository {
-	
+class AuthorTopicLogs {
+
 	/**
 	 * @var string The author_topic_logs table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
-	
+
 	/**
 	 * Initialize the repository.
 	 */
@@ -39,7 +39,7 @@ class AIPS_Author_Topic_Logs_Repository {
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_author_topic_logs';
 	}
-	
+
 	/**
 	 * Get all logs for a topic.
 	 *
@@ -52,7 +52,7 @@ class AIPS_Author_Topic_Logs_Repository {
 			$author_topic_id
 		));
 	}
-	
+
 	/**
 	 * Get a single log by ID.
 	 *
@@ -65,7 +65,7 @@ class AIPS_Author_Topic_Logs_Repository {
 			$id
 		));
 	}
-	
+
 	/**
 	 * Create a new log entry.
 	 *
@@ -76,7 +76,7 @@ class AIPS_Author_Topic_Logs_Repository {
 		$result = $this->wpdb->insert($this->table_name, $data);
 		return $result ? $this->wpdb->insert_id : false;
 	}
-	
+
 	/**
 	 * Log an approval action.
 	 *
@@ -93,7 +93,7 @@ class AIPS_Author_Topic_Logs_Repository {
 			'notes' => $notes
 		));
 	}
-	
+
 	/**
 	 * Log a rejection action.
 	 *
@@ -110,7 +110,7 @@ class AIPS_Author_Topic_Logs_Repository {
 			'notes' => $notes
 		));
 	}
-	
+
 	/**
 	 * Log a post generation action.
 	 *
@@ -127,7 +127,7 @@ class AIPS_Author_Topic_Logs_Repository {
 			'metadata' => $metadata
 		));
 	}
-	
+
 	/**
 	 * Log an edit action.
 	 *
@@ -144,7 +144,7 @@ class AIPS_Author_Topic_Logs_Repository {
 			'notes' => $notes
 		));
 	}
-	
+
 	/**
 	 * Get logs by post ID.
 	 *
@@ -157,7 +157,7 @@ class AIPS_Author_Topic_Logs_Repository {
 			$post_id
 		));
 	}
-	
+
 	/**
 	 * Get all generated posts for a specific author.
 	 *
@@ -166,7 +166,7 @@ class AIPS_Author_Topic_Logs_Repository {
 	 */
 	public function get_generated_posts_by_author($author_id) {
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-		
+
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT l.*, t.topic_title, t.author_id 
 			FROM {$this->table_name} l

@@ -9,28 +9,28 @@
  * @since 1.5.0
  */
 
+namespace AIPS\Repository;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
- * Class AIPS_Article_Structure_Repository
- *
  * Repository pattern implementation for article structure data access.
  * Encapsulates all database operations related to article structures.
  */
-class AIPS_Article_Structure_Repository {
-	
+class ArticleStructure {
+
 	/**
 	 * @var string The article structures table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
-	
+
 	/**
 	 * Initialize the repository.
 	 */
@@ -39,7 +39,7 @@ class AIPS_Article_Structure_Repository {
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_article_structures';
 	}
-	
+
 	/**
 	 * Get all article structures with optional filtering.
 	 *
@@ -50,7 +50,7 @@ class AIPS_Article_Structure_Repository {
 		$where = $active_only ? "WHERE is_active = 1" : "";
 		return $this->wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
 	}
-	
+
 	/**
 	 * Get a single article structure by ID.
 	 *
@@ -63,7 +63,7 @@ class AIPS_Article_Structure_Repository {
 			$id
 		));
 	}
-	
+
 	/**
 	 * Get the default article structure.
 	 *
@@ -74,7 +74,7 @@ class AIPS_Article_Structure_Repository {
 			"SELECT * FROM {$this->table_name} WHERE is_default = 1 AND is_active = 1 ORDER BY id ASC LIMIT 1"
 		);
 	}
-	
+
 	/**
 	 * Get article structure by name.
 	 *
@@ -87,7 +87,7 @@ class AIPS_Article_Structure_Repository {
 			$name
 		));
 	}
-	
+
 	/**
 	 * Create a new article structure.
 	 *
@@ -110,19 +110,19 @@ class AIPS_Article_Structure_Repository {
 			'is_active' => !empty($data['is_active']) ? 1 : 0,
 			'is_default' => !empty($data['is_default']) ? 1 : 0,
 		);
-		
+
 		// If setting as default, unset other defaults
 		if ($insert_data['is_default']) {
 			$this->wpdb->update($this->table_name, array('is_default' => 0), array('is_default' => 1));
 		}
-		
+
 		$format = array('%s', '%s', '%s', '%d', '%d');
-		
+
 		$result = $this->wpdb->insert($this->table_name, $insert_data, $format);
-		
+
 		return $result ? $this->wpdb->insert_id : false;
 	}
-	
+
 	/**
 	 * Update an existing article structure.
 	 *
@@ -133,41 +133,41 @@ class AIPS_Article_Structure_Repository {
 	public function update($id, $data) {
 		$update_data = array();
 		$format = array();
-		
+
 		if (isset($data['name'])) {
 			$update_data['name'] = sanitize_text_field($data['name']);
 			$format[] = '%s';
 		}
-		
+
 		if (isset($data['description'])) {
 			$update_data['description'] = sanitize_textarea_field($data['description']);
 			$format[] = '%s';
 		}
-		
+
 		if (isset($data['structure_data'])) {
 			$update_data['structure_data'] = $data['structure_data'];
 			$format[] = '%s';
 		}
-		
+
 		if (isset($data['is_active'])) {
 			$update_data['is_active'] = $data['is_active'] ? 1 : 0;
 			$format[] = '%d';
 		}
-		
+
 		if (isset($data['is_default'])) {
 			$update_data['is_default'] = $data['is_default'] ? 1 : 0;
 			$format[] = '%d';
-			
+
 			// If setting as default, unset other defaults
 			if ($update_data['is_default']) {
 				$this->wpdb->update($this->table_name, array('is_default' => 0), array('is_default' => 1));
 			}
 		}
-		
+
 		if (empty($update_data)) {
 			return false;
 		}
-		
+
 		return $this->wpdb->update(
 			$this->table_name,
 			$update_data,
@@ -176,7 +176,7 @@ class AIPS_Article_Structure_Repository {
 			array('%d')
 		) !== false;
 	}
-	
+
 	/**
 	 * Delete an article structure by ID.
 	 *
@@ -186,7 +186,7 @@ class AIPS_Article_Structure_Repository {
 	public function delete($id) {
 		return $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
 	}
-	
+
 	/**
 	 * Toggle structure active status.
 	 *
@@ -197,7 +197,7 @@ class AIPS_Article_Structure_Repository {
 	public function set_active($id, $is_active) {
 		return $this->update($id, array('is_active' => $is_active));
 	}
-	
+
 	/**
 	 * Set a structure as default.
 	 *
@@ -207,11 +207,11 @@ class AIPS_Article_Structure_Repository {
 	public function set_default($id) {
 		// Unset all defaults first
 		$this->wpdb->update($this->table_name, array('is_default' => 0), array('is_default' => 1));
-		
+
 		// Set this one as default
 		return $this->update($id, array('is_default' => 1));
 	}
-	
+
 	/**
 	 * Count structures by status.
 	 *
@@ -227,13 +227,13 @@ class AIPS_Article_Structure_Repository {
 				SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
 			FROM {$this->table_name}
 		");
-		
+
 		return array(
 			'total' => (int) $results->total,
 			'active' => (int) $results->active,
 		);
 	}
-	
+
 	/**
 	 * Check if a structure name already exists.
 	 *
@@ -254,7 +254,7 @@ class AIPS_Article_Structure_Repository {
 				$name
 			));
 		}
-		
+
 		return $result > 0;
 	}
 }

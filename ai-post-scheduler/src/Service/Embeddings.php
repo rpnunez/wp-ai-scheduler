@@ -9,41 +9,44 @@
  * @since 1.10.0
  */
 
+namespace AIPS\Service;
+
+use AIPS_Logger;
+use WP_Error;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
- * Class AIPS_Embeddings_Service
- *
  * Service for generating and working with text embeddings.
  */
-class AIPS_Embeddings_Service {
-	
+class Embeddings {
+
 	/**
-	 * @var AIPS_AI_Service AI Service instance
+	 * @var AI AI Service instance
 	 */
 	private $ai_service;
-	
+
 	/**
 	 * @var AIPS_Logger Logger instance
 	 */
 	private $logger;
-	
+
 	/**
 	 * @var array Cache for embeddings to avoid redundant API calls
 	 */
 	private $embedding_cache;
-	
+
 	/**
 	 * Initialize the embeddings service.
 	 */
 	public function __construct($ai_service = null, $logger = null) {
-		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
+		$this->ai_service = $ai_service ?: new AI();
 		$this->logger = $logger ?: new AIPS_Logger();
 		$this->embedding_cache = array();
 	}
-	
+
 	/**
 	 * Generate an embedding for a text string using Meow AI.
 	 *
@@ -55,63 +58,63 @@ class AIPS_Embeddings_Service {
 		if (empty($text)) {
 			return new WP_Error('empty_text', __('Cannot generate embedding for empty text.', 'ai-post-scheduler'));
 		}
-		
+
 		// Check cache
 		$cache_key = md5($text);
 		if (isset($this->embedding_cache[$cache_key])) {
 			return $this->embedding_cache[$cache_key];
 		}
-		
+
 		if (!$this->ai_service->is_available()) {
 			return new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 		}
-		
+
 		// Get AI engine through global
 		$ai = null;
 		if (class_exists('Meow_MWAI_Core')) {
 			global $mwai_core;
 			$ai = $mwai_core;
 		}
-		
+
 		if (!$ai) {
 			return new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 		}
-		
+
 		try {
 			// Use Meow AI's embeddings functionality
 			// Note: This assumes Meow AI supports embeddings through a Query_Embed or similar class
 			if (class_exists('Meow_MWAI_Query_Embed')) {
-				$query = new Meow_MWAI_Query_Embed($text);
-				
+				$query = new \Meow_MWAI_Query_Embed($text);
+
 				// Set embeddings environment if specified
 				if (!empty($options['embeddings_env_id'])) {
 					if (method_exists($query, 'set_embeddings_env_id')) {
 						$query->set_embeddings_env_id($options['embeddings_env_id']);
 					}
 				}
-				
+
 				$response = $ai->run_query($query);
-				
+
 				if ($response && !empty($response->result)) {
 					$embedding = $response->result;
-					
+
 					// Cache the result
 					$this->embedding_cache[$cache_key] = $embedding;
-					
+
 					$this->logger->log('Generated embedding for text: ' . substr($text, 0, 50) . '...', 'debug');
 					return $embedding;
 				}
 			}
-			
+
 			// Fallback: If Meow AI doesn't support embeddings directly, return an error
 			return new WP_Error('embeddings_not_supported', __('Embeddings are not supported by the current AI Engine configuration.', 'ai-post-scheduler'));
-			
-		} catch (Exception $e) {
+
+		} catch (\Exception $e) {
 			$this->logger->log('Embedding generation failed: ' . $e->getMessage(), 'error');
 			return new WP_Error('embedding_failed', $e->getMessage());
 		}
 	}
-	
+
 	/**
 	 * Calculate cosine similarity between two embedding vectors.
 	 *
@@ -123,35 +126,35 @@ class AIPS_Embeddings_Service {
 		if (!is_array($embedding1) || !is_array($embedding2)) {
 			return new WP_Error('invalid_embeddings', __('Invalid embedding vectors provided.', 'ai-post-scheduler'));
 		}
-		
+
 		if (count($embedding1) !== count($embedding2)) {
 			return new WP_Error('dimension_mismatch', __('Embedding vectors must have the same dimensions.', 'ai-post-scheduler'));
 		}
-		
+
 		// Calculate cosine similarity
 		$dot_product = 0;
 		$magnitude1 = 0;
 		$magnitude2 = 0;
-		
+
 		for ($i = 0; $i < count($embedding1); $i++) {
 			$dot_product += $embedding1[$i] * $embedding2[$i];
 			$magnitude1 += $embedding1[$i] * $embedding1[$i];
 			$magnitude2 += $embedding2[$i] * $embedding2[$i];
 		}
-		
+
 		$magnitude1 = sqrt($magnitude1);
 		$magnitude2 = sqrt($magnitude2);
-		
+
 		if ($magnitude1 == 0 || $magnitude2 == 0) {
 			return new WP_Error('zero_magnitude', __('Cannot calculate similarity with zero magnitude vectors.', 'ai-post-scheduler'));
 		}
-		
+
 		$similarity = $dot_product / ($magnitude1 * $magnitude2);
-		
+
 		// Ensure result is in [0, 1] range (sometimes floating point errors can cause slight exceedance)
 		return max(0, min(1, $similarity));
 	}
-	
+
 	/**
 	 * Find the most similar items to a target embedding.
 	 *
@@ -162,14 +165,14 @@ class AIPS_Embeddings_Service {
 	 */
 	public function find_nearest_neighbors($target_embedding, $candidate_embeddings, $top_k = 5) {
 		$similarities = array();
-		
+
 		foreach ($candidate_embeddings as $candidate) {
 			if (!isset($candidate['id']) || !isset($candidate['embedding'])) {
 				continue;
 			}
-			
+
 			$similarity = $this->calculate_similarity($target_embedding, $candidate['embedding']);
-			
+
 			if (!is_wp_error($similarity)) {
 				$similarities[] = array(
 					'id' => $candidate['id'],
@@ -178,16 +181,16 @@ class AIPS_Embeddings_Service {
 				);
 			}
 		}
-		
+
 		// Sort by similarity (descending)
 		usort($similarities, function($a, $b) {
 			return $b['similarity'] <=> $a['similarity'];
 		});
-		
+
 		// Return top K results
 		return array_slice($similarities, 0, $top_k);
 	}
-	
+
 	/**
 	 * Batch generate embeddings for multiple texts.
 	 *
@@ -197,22 +200,22 @@ class AIPS_Embeddings_Service {
 	 */
 	public function batch_generate_embeddings($texts, $options = array()) {
 		$embeddings = array();
-		
+
 		foreach ($texts as $index => $text) {
 			$embedding = $this->generate_embedding($text, $options);
 			$embeddings[$index] = $embedding;
 		}
-		
+
 		return $embeddings;
 	}
-	
+
 	/**
 	 * Clear the embedding cache.
 	 */
 	public function clear_cache() {
 		$this->embedding_cache = array();
 	}
-	
+
 	/**
 	 * Check if embeddings are supported by the current AI Engine configuration.
 	 *

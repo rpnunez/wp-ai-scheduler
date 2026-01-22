@@ -3,6 +3,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+namespace AIPS\Controllers;
+
+use AIPS\Repository\PromptSection as PromptSectionRepository;
+
 /**
  * Controller for managing prompt sections via AJAX in the WordPress admin.
  *
@@ -10,12 +14,12 @@ if (!defined('ABSPATH')) {
  * @subpackage Controllers
  * @since 1.0.0
  */
-class AIPS_Prompt_Sections_Controller {
+class PromptSections {
 
 	/**
 	 * Repository used to manage prompt section records.
 	 *
-	 * @var AIPS_Prompt_Section_Repository
+	 * @var PromptSectionRepository
 	 */
 	private $repo;
 
@@ -25,12 +29,12 @@ class AIPS_Prompt_Sections_Controller {
 	 * Initializes the controller with a prompt section repository and
 	 * registers the AJAX actions used to manage prompt sections.
 	 *
-	 * @param AIPS_Prompt_Section_Repository|null $repo Optional repository instance for dependency injection.
+	 * @param PromptSectionRepository|null $repo Optional repository instance for dependency injection.
 	 *
 	 * @return void
 	 */
 	public function __construct($repo = null) {
-		$this->repo = $repo ?: new AIPS_Prompt_Section_Repository();
+		$this->repo = $repo ?: new PromptSectionRepository();
 
 		add_action('wp_ajax_aips_get_prompt_sections', array($this, 'ajax_get_sections'));
 		add_action('wp_ajax_aips_get_prompt_section', array($this, 'ajax_get_section'));
@@ -159,4 +163,3 @@ class AIPS_Prompt_Sections_Controller {
 		wp_send_json_success(array('message' => __('Section status updated.', 'ai-post-scheduler')));
 	}
 }
-

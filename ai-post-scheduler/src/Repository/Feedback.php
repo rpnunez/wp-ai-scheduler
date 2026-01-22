@@ -9,28 +9,28 @@
  * @since 1.9.0
  */
 
+namespace AIPS\Repository;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
- * Class AIPS_Feedback_Repository
- *
  * Repository pattern implementation for feedback data access.
  * Encapsulates all database operations related to topic feedback.
  */
-class AIPS_Feedback_Repository {
-	
+class Feedback {
+
 	/**
 	 * @var string The feedback table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
-	
+
 	/**
 	 * Initialize the repository.
 	 */
@@ -39,7 +39,7 @@ class AIPS_Feedback_Repository {
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_topic_feedback';
 	}
-	
+
 	/**
 	 * Get all feedback for a topic.
 	 *
@@ -52,7 +52,7 @@ class AIPS_Feedback_Repository {
 			$author_topic_id
 		));
 	}
-	
+
 	/**
 	 * Get all feedback for an author.
 	 *
@@ -61,7 +61,7 @@ class AIPS_Feedback_Repository {
 	 */
 	public function get_by_author($author_id) {
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-		
+
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT f.*, t.topic_title, t.author_id 
 			FROM {$this->table_name} f
@@ -71,7 +71,7 @@ class AIPS_Feedback_Repository {
 			$author_id
 		));
 	}
-	
+
 	/**
 	 * Get feedback by ID.
 	 *
@@ -84,7 +84,7 @@ class AIPS_Feedback_Repository {
 			$id
 		));
 	}
-	
+
 	/**
 	 * Create a feedback entry.
 	 *
@@ -112,11 +112,11 @@ class AIPS_Feedback_Repository {
 			'notes' => isset($data['notes']) ? sanitize_textarea_field($data['notes']) : '',
 			'created_at' => current_time('mysql')
 		);
-		
+
 		$result = $this->wpdb->insert($this->table_name, $insert_data);
 		return $result ? $this->wpdb->insert_id : false;
 	}
-	
+
 	/**
 	 * Record approval feedback.
 	 *
@@ -139,7 +139,7 @@ class AIPS_Feedback_Repository {
 			'source' => $source
 		));
 	}
-	
+
 	/**
 	 * Record rejection feedback.
 	 *
@@ -162,7 +162,7 @@ class AIPS_Feedback_Repository {
 			'source' => $source
 		));
 	}
-	
+
 	/**
 	 * Delete feedback by ID.
 	 *
@@ -176,7 +176,7 @@ class AIPS_Feedback_Repository {
 			array('%d')
 		);
 	}
-	
+
 	/**
 	 * Delete all feedback for a topic.
 	 *
@@ -190,7 +190,7 @@ class AIPS_Feedback_Repository {
 			array('%d')
 		);
 	}
-	
+
 	/**
 	 * Get feedback statistics for an author.
 	 *
@@ -199,7 +199,7 @@ class AIPS_Feedback_Repository {
 	 */
 	public function get_statistics($author_id) {
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-		
+
 		$results = $this->wpdb->get_row($this->wpdb->prepare(
 			"SELECT
 				COUNT(*) as total,
@@ -210,14 +210,14 @@ class AIPS_Feedback_Repository {
 			WHERE t.author_id = %d",
 			$author_id
 		));
-		
+
 		return array(
 			'total' => (int) $results->total,
 			'approved' => (int) $results->approved,
 			'rejected' => (int) $results->rejected
 		);
 	}
-	
+
 	/**
 	 * Get feedback by reason category.
 	 *
@@ -228,7 +228,7 @@ class AIPS_Feedback_Repository {
 	public function get_by_reason_category($reason_category, $author_id = null) {
 		if ($author_id) {
 			$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-			
+
 			return $this->wpdb->get_results($this->wpdb->prepare(
 				"SELECT f.*, t.topic_title, t.author_id 
 				FROM {$this->table_name} f
@@ -239,13 +239,13 @@ class AIPS_Feedback_Repository {
 				$author_id
 			));
 		}
-		
+
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} WHERE reason_category = %s ORDER BY created_at DESC",
 			$reason_category
 		));
 	}
-	
+
 	/**
 	 * Get feedback statistics by reason category.
 	 *
@@ -255,7 +255,7 @@ class AIPS_Feedback_Repository {
 	public function get_reason_category_statistics($author_id = null) {
 		if ($author_id) {
 			$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-			
+
 			$results = $this->wpdb->get_results($this->wpdb->prepare(
 				"SELECT f.reason_category, f.action, COUNT(*) as count
 				FROM {$this->table_name} f
@@ -272,7 +272,7 @@ class AIPS_Feedback_Repository {
 				ARRAY_A
 			);
 		}
-		
+
 		$stats = array();
 		foreach ($results as $row) {
 			if (!isset($stats[$row['reason_category']])) {
@@ -280,7 +280,7 @@ class AIPS_Feedback_Repository {
 			}
 			$stats[$row['reason_category']][$row['action']] = (int) $row['count'];
 		}
-		
+
 		return $stats;
 	}
 }

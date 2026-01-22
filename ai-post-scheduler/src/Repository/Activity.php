@@ -9,28 +9,28 @@
  * @since 1.7.0
  */
 
+namespace AIPS\Repository;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
- * Class AIPS_Activity_Repository
- *
  * Repository pattern implementation for activity data access.
  * Encapsulates all database operations related to activity logging.
  */
-class AIPS_Activity_Repository {
-	
+class Activity {
+
 	/**
 	 * @var string The activity table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
-	
+
 	/**
 	 * Initialize the repository.
 	 */
@@ -39,7 +39,7 @@ class AIPS_Activity_Repository {
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_activity';
 	}
-	
+
 	/**
 	 * Create a new activity record.
 	 *
@@ -66,14 +66,14 @@ class AIPS_Activity_Repository {
 			'message' => '',
 			'metadata' => null,
 		);
-		
+
 		$data = wp_parse_args($data, $defaults);
-		
+
 		// JSON encode metadata if it's an array
 		if (is_array($data['metadata'])) {
 			$data['metadata'] = wp_json_encode($data['metadata']);
 		}
-		
+
 		$result = $this->wpdb->insert(
 			$this->table_name,
 			array(
@@ -87,10 +87,10 @@ class AIPS_Activity_Repository {
 			),
 			array('%s', '%s', '%d', '%d', '%d', '%s', '%s')
 		);
-		
+
 		return $result ? $this->wpdb->insert_id : false;
 	}
-	
+
 	/**
 	 * Get recent activity with optional filtering.
 	 *
@@ -111,35 +111,35 @@ class AIPS_Activity_Repository {
 			'event_type' => '',
 			'event_status' => '',
 		);
-		
+
 		$args = wp_parse_args($args, $defaults);
-		
+
 		$where_clauses = array("1=1");
 		$where_args = array();
-		
+
 		if (!empty($args['event_type'])) {
 			$where_clauses[] = "event_type = %s";
 			$where_args[] = $args['event_type'];
 		}
-		
+
 		if (!empty($args['event_status'])) {
 			$where_clauses[] = "event_status = %s";
 			$where_args[] = $args['event_status'];
 		}
-		
+
 		$where_sql = implode(' AND ', $where_clauses);
 		$where_args[] = $args['limit'];
 		$where_args[] = $args['offset'];
-		
+
 		$sql = "SELECT * FROM {$this->table_name} WHERE $where_sql ORDER BY created_at DESC LIMIT %d OFFSET %d";
-		
+
 		if (empty($where_args)) {
 			return $this->wpdb->get_results($sql);
 		}
-		
+
 		return $this->wpdb->get_results($this->wpdb->prepare($sql, $where_args));
 	}
-	
+
 	/**
 	 * Get activity by event type.
 	 *
@@ -153,7 +153,7 @@ class AIPS_Activity_Repository {
 			'limit' => $limit,
 		));
 	}
-	
+
 	/**
 	 * Get failed schedule activities.
 	 *
@@ -166,7 +166,7 @@ class AIPS_Activity_Repository {
 			'limit' => $limit,
 		));
 	}
-	
+
 	/**
 	 * Get draft post activities.
 	 *
@@ -179,7 +179,7 @@ class AIPS_Activity_Repository {
 			'limit' => $limit,
 		));
 	}
-	
+
 	/**
 	 * Get activity count by type.
 	 *
@@ -190,13 +190,13 @@ class AIPS_Activity_Repository {
 		if (empty($event_type)) {
 			return (int) $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}");
 		}
-		
+
 		return (int) $this->wpdb->get_var($this->wpdb->prepare(
 			"SELECT COUNT(*) FROM {$this->table_name} WHERE event_type = %s",
 			$event_type
 		));
 	}
-	
+
 	/**
 	 * Delete old activity records.
 	 *
@@ -205,7 +205,7 @@ class AIPS_Activity_Repository {
 	 */
 	public function delete_old_records($days = 30) {
 		$date = date('Y-m-d H:i:s', strtotime("-{$days} days"));
-		
+
 		return $this->wpdb->query($this->wpdb->prepare(
 			"DELETE FROM {$this->table_name} WHERE created_at < %s",
 			$date

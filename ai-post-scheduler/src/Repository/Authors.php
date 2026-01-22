@@ -9,28 +9,28 @@
  * @since 1.8.0
  */
 
+namespace AIPS\Repository;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
- * Class AIPS_Authors_Repository
- *
  * Repository pattern implementation for author data access.
  * Encapsulates all database operations related to authors.
  */
-class AIPS_Authors_Repository {
-	
+class Authors {
+
 	/**
 	 * @var string The authors table name (with prefix)
 	 */
 	private $table_name;
-	
+
 	/**
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
-	
+
 	/**
 	 * Initialize the repository.
 	 */
@@ -39,7 +39,7 @@ class AIPS_Authors_Repository {
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_authors';
 	}
-	
+
 	/**
 	 * Get all authors with optional filtering.
 	 *
@@ -47,7 +47,7 @@ class AIPS_Authors_Repository {
 	 * @return array Array of author objects.
 	 */
 	public function get_all($active_only = false) {
-		if ( $active_only ) {
+		if ($active_only) {
 			$sql = $this->wpdb->prepare(
 				"SELECT * FROM {$this->table_name} WHERE is_active = %d ORDER BY name ASC",
 				1
@@ -56,9 +56,9 @@ class AIPS_Authors_Repository {
 			$sql = "SELECT * FROM {$this->table_name} ORDER BY name ASC";
 		}
 
-		return $this->wpdb->get_results( $sql );
+		return $this->wpdb->get_results($sql);
 	}
-	
+
 	/**
 	 * Get a single author by ID.
 	 *
@@ -71,7 +71,7 @@ class AIPS_Authors_Repository {
 			$id
 		));
 	}
-	
+
 	/**
 	 * Create a new author.
 	 *
@@ -82,7 +82,7 @@ class AIPS_Authors_Repository {
 		$result = $this->wpdb->insert($this->table_name, $data);
 		return $result ? $this->wpdb->insert_id : false;
 	}
-	
+
 	/**
 	 * Update an author.
 	 *
@@ -99,7 +99,7 @@ class AIPS_Authors_Repository {
 			array('%d')
 		);
 	}
-	
+
 	/**
 	 * Delete an author.
 	 *
@@ -113,7 +113,7 @@ class AIPS_Authors_Repository {
 			array('%d')
 		);
 	}
-	
+
 	/**
 	 * Get authors that need topic generation (where next_run is due).
 	 *
@@ -130,7 +130,7 @@ class AIPS_Authors_Repository {
 			$current_time
 		));
 	}
-	
+
 	/**
 	 * Get authors that need post generation (where post_generation_next_run is due).
 	 *
@@ -147,7 +147,7 @@ class AIPS_Authors_Repository {
 			$current_time
 		));
 	}
-	
+
 	/**
 	 * Update topic generation schedule for an author.
 	 *
@@ -167,7 +167,7 @@ class AIPS_Authors_Repository {
 			array('%d')
 		);
 	}
-	
+
 	/**
 	 * Update post generation schedule for an author.
 	 *
