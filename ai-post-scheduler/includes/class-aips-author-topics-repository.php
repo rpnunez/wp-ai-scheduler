@@ -249,4 +249,24 @@ class AIPS_Author_Topics_Repository {
 		
 		return $counts;
 	}
+	
+	/**
+	 * Get all approved topics across all authors for the generation queue.
+	 *
+	 * @return array Array of approved topic objects with author info.
+	 */
+	public function get_all_approved_for_queue() {
+		$authors_table = $this->wpdb->prefix . 'aips_authors';
+		
+		return $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT t.*, a.name as author_name, a.field_niche 
+				FROM {$this->table_name} t
+				INNER JOIN {$authors_table} a ON t.author_id = a.id
+				WHERE t.status = %s 
+				ORDER BY t.reviewed_at ASC",
+				'approved'
+			)
+		);
+	}
 }

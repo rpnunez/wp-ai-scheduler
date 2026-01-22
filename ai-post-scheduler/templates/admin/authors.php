@@ -31,77 +31,111 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         <button class="page-title-action aips-add-author-btn"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></button>
     </h1>
 
-    <div class="aips-authors-container">
-        <div class="aips-authors-list">
-            <?php if (!empty($authors)): ?>
-                <table class="wp-list-table widefat fixed striped">
-                    <thead>
-                        <tr>
-                            <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
-                            <th class="column-field"><?php esc_html_e('Field/Niche', 'ai-post-scheduler'); ?></th>
-                            <th class="column-topics"><?php esc_html_e('Topics', 'ai-post-scheduler'); ?></th>
-                            <th class="column-posts"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></th>
-                            <th class="column-active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
-                            <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($authors as $author):
-                            $status_counts = $topics_repository->get_status_counts($author->id);
-                            $total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
-                            $posts = $logs_repository->get_generated_posts_by_author($author->id);
-                            $posts_count = count($posts);
-                        ?>
-                            <tr data-author-id="<?php echo esc_attr($author->id); ?>">
-                                <td class="column-name">
-                                    <strong><?php echo esc_html($author->name); ?></strong>
-                                </td>
-                                <td class="column-field">
-                                    <?php echo esc_html($author->field_niche); ?>
-                                </td>
-                                <td class="column-topics">
-                                    <div style="font-size: 0.9em;">
-                                        <strong><?php echo esc_html($total_topics); ?></strong> total<br>
-                                        <span style="color: #d63638;"><?php echo esc_html($status_counts['pending']); ?> pending</span> |
-                                        <span style="color: #00a32a;"><?php echo esc_html($status_counts['approved']); ?> approved</span> |
-                                        <span style="color: #999;"><?php echo esc_html($status_counts['rejected']); ?> rejected</span>
-                                    </div>
-                                </td>
-                                <td class="column-posts">
-                                    <strong><?php echo esc_html($posts_count); ?></strong>
-                                </td>
-                                <td class="column-active">
-                                    <?php $active_status_class = $author->is_active ? 'active' : 'inactive'; ?>
-                                    <span class="aips-status aips-status-<?php echo esc_attr($active_status_class); ?>">
-                                        <?php echo $author->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?>
-                                    </span>
-                                </td>
-                                <td class="column-actions">
-                                    <button class="button aips-view-author" data-id="<?php echo esc_attr($author->id); ?>">
-                                        <?php esc_html_e('View Topics', 'ai-post-scheduler'); ?>
-                                    </button>
-                                    <button class="button aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>">
-                                        <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-                                    </button>
-                                    <button class="button aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
-                                        <?php esc_html_e('Generate Topics Now', 'ai-post-scheduler'); ?>
-                                    </button>
-                                    <button class="button button-link-delete aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>">
-                                        <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
-                                    </button>
-                                </td>
+    <!-- Add tabs for Authors List and Generation Queue -->
+    <div class="aips-authors-tabs">
+        <button class="aips-authors-tab-link active" data-tab="authors-list"><?php esc_html_e('Authors List', 'ai-post-scheduler'); ?></button>
+        <button class="aips-authors-tab-link" data-tab="generation-queue"><?php esc_html_e('Generation Queue', 'ai-post-scheduler'); ?></button>
+    </div>
+
+    <!-- Authors List Tab Content -->
+    <div id="authors-list-tab" class="aips-authors-tab-content active">
+        <div class="aips-authors-container">
+            <div class="aips-authors-list">
+                <?php if (!empty($authors)): ?>
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
+                                <th class="column-field"><?php esc_html_e('Field/Niche', 'ai-post-scheduler'); ?></th>
+                                <th class="column-topics"><?php esc_html_e('Topics', 'ai-post-scheduler'); ?></th>
+                                <th class="column-posts"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></th>
+                                <th class="column-active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
+                                <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php else: ?>
-                <div class="aips-empty-state">
-                    <span class="dashicons dashicons-admin-users" aria-hidden="true"></span>
-                    <h3><?php esc_html_e('No Authors Yet', 'ai-post-scheduler'); ?></h3>
-                    <p><?php esc_html_e('Create your first author to start generating topically diverse blog posts.', 'ai-post-scheduler'); ?></p>
-                    <button class="button button-primary aips-add-author-btn"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></button>
-                </div>
-            <?php endif; ?>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($authors as $author):
+                                $status_counts = $topics_repository->get_status_counts($author->id);
+                                $total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
+                                $posts = $logs_repository->get_generated_posts_by_author($author->id);
+                                $posts_count = count($posts);
+                            ?>
+                                <tr data-author-id="<?php echo esc_attr($author->id); ?>">
+                                    <td class="column-name">
+                                        <strong><?php echo esc_html($author->name); ?></strong>
+                                    </td>
+                                    <td class="column-field">
+                                        <?php echo esc_html($author->field_niche); ?>
+                                    </td>
+                                    <td class="column-topics">
+                                        <div style="font-size: 0.9em;">
+                                            <strong><?php echo esc_html($total_topics); ?></strong> total<br>
+                                            <span style="color: #d63638;"><?php echo esc_html($status_counts['pending']); ?> pending</span> |
+                                            <span style="color: #00a32a;"><?php echo esc_html($status_counts['approved']); ?> approved</span> |
+                                            <span style="color: #999;"><?php echo esc_html($status_counts['rejected']); ?> rejected</span>
+                                        </div>
+                                    </td>
+                                    <td class="column-posts">
+                                        <strong><?php echo esc_html($posts_count); ?></strong>
+                                    </td>
+                                    <td class="column-active">
+                                        <?php $active_status_class = $author->is_active ? 'active' : 'inactive'; ?>
+                                        <span class="aips-status aips-status-<?php echo esc_attr($active_status_class); ?>">
+                                            <?php echo $author->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?>
+                                        </span>
+                                    </td>
+                                    <td class="column-actions">
+                                        <button class="button aips-view-author" data-id="<?php echo esc_attr($author->id); ?>">
+                                            <?php esc_html_e('View Topics', 'ai-post-scheduler'); ?>
+                                        </button>
+                                        <button class="button aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>">
+                                            <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+                                        </button>
+                                        <button class="button aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
+                                            <?php esc_html_e('Generate Topics Now', 'ai-post-scheduler'); ?>
+                                        </button>
+                                        <button class="button button-link-delete aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>">
+                                            <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <div class="aips-empty-state">
+                        <span class="dashicons dashicons-admin-users" aria-hidden="true"></span>
+                        <h3><?php esc_html_e('No Authors Yet', 'ai-post-scheduler'); ?></h3>
+                        <p><?php esc_html_e('Create your first author to start generating topically diverse blog posts.', 'ai-post-scheduler'); ?></p>
+                        <button class="button button-primary aips-add-author-btn"><?php esc_html_e('Add New Author', 'ai-post-scheduler'); ?></button>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generation Queue Tab Content -->
+    <div id="generation-queue-tab" class="aips-authors-tab-content" style="display: none;">
+        <div class="aips-queue-container">
+            <p class="description">
+                <?php esc_html_e('This queue shows all approved topics across all authors, ready for post generation. Topics are processed in the order they were approved.', 'ai-post-scheduler'); ?>
+            </p>
+            
+            <!-- Bulk Actions -->
+            <div class="aips-bulk-actions">
+                <select id="aips-queue-bulk-action-select" class="aips-queue-bulk-action-select">
+                    <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+                    <option value="generate_now"><?php esc_html_e('Generate Now', 'ai-post-scheduler'); ?></option>
+                    <option value="schedule" disabled><?php esc_html_e('Schedule (Coming Soon)', 'ai-post-scheduler'); ?></option>
+                    <option value="unapprove" disabled><?php esc_html_e('Unapprove Topics (Coming Soon)', 'ai-post-scheduler'); ?></option>
+                </select>
+                <button class="button aips-queue-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+            </div>
+
+            <!-- Queue Topics List -->
+            <div id="aips-queue-topics-list">
+                <p><?php esc_html_e('Loading queue...', 'ai-post-scheduler'); ?></p>
+            </div>
         </div>
     </div>
 </div>

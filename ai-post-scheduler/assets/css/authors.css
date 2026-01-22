@@ -323,3 +323,70 @@
 #aips-topic-posts-content .button {
 	margin-right: 5px;
 }
+
+/* Authors Page Main Tabs */
+.aips-authors-tabs {
+	margin: 20px 0;
+	border-bottom: 1px solid #ccd0d4;
+}
+
+.aips-authors-tab-link {
+	background: none;
+	border: none;
+	padding: 12px 20px;
+	cursor: pointer;
+	border-bottom: 2px solid transparent;
+	margin-right: 10px;
+	font-size: 14px;
+	color: #50575e;
+	transition: all 0.2s ease;
+}
+
+.aips-authors-tab-link.active {
+	border-bottom-color: #2271b1;
+	font-weight: 600;
+	color: #2271b1;
+}
+
+.aips-authors-tab-link:hover {
+	color: #2271b1;
+}
+
+/* Authors Tab Content */
+.aips-authors-tab-content {
+	margin-top: 20px;
+}
+
+.aips-authors-tab-content.active {
+	display: block;
+}
+
+/* Generation Queue Styles */
+.aips-queue-container {
+	padding: 20px;
+	background: #fff;
+	border: 1px solid #ccd0d4;
+	border-radius: 4px;
+}
+
+.aips-queue-container .description {
+	margin-bottom: 20px;
+	padding: 10px;
+	background: #f0f6fc;
+	border-left: 4px solid #2271b1;
+	font-size: 13px;
+}
+
+#aips-queue-topics-list {
+	margin-top: 20px;
+	min-height: 200px;
+}
+
+.aips-queue-select-all,
+.aips-queue-topic-checkbox {
+	cursor: pointer;
+}
+
+.aips-queue-bulk-action-select {
+	min-width: 200px;
+}
