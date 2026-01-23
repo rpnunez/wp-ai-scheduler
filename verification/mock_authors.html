@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Authors Search</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Minimal WP Admin Styles for testing */
+        .screen-reader-text { position: absolute; margin: -1px; padding: 0; height: 1px; width: 1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; word-wrap: normal !important; }
+        .regular-text { width: 25em; }
+        .widefat { width: 100%; border-spacing: 0; clear: both; margin: 0; }
+        .widefat td, .widefat th { padding: 8px 10px; text-align: left; }
+        .striped > tbody > :nth-child(odd) { background-color: #f6f7f7; }
+        .aips-empty-state { text-align: center; padding: 40px 20px; display: none; }
+        .button { display: inline-block; text-decoration: none; font-size: 13px; line-height: 2.15384615; min-height: 30px; margin: 0; padding: 0 10px; cursor: pointer; border-width: 1px; border-style: solid; -webkit-appearance: none; border-radius: 3px; white-space: nowrap; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Authors</h1>
+
+        <div id="authors-list-tab" class="aips-authors-tab-content active">
+            <div class="aips-authors-container">
+                <div class="aips-authors-list">
+
+                    <!-- Search Box (Injected) -->
+                    <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+                        <label class="screen-reader-text" for="aips-author-search">Search Authors:</label>
+                        <input type="search" id="aips-author-search" class="regular-text" placeholder="Search authors...">
+                        <button type="button" id="aips-author-search-clear" class="button" style="display: none;">Clear</button>
+                    </div>
+
+                    <table class="wp-list-table widefat fixed striped aips-authors-table">
+                        <thead>
+                            <tr>
+                                <th class="column-name">Name</th>
+                                <th class="column-field">Field/Niche</th>
+                                <th class="column-topics">Topics</th>
+                                <th class="column-posts">Posts Generated</th>
+                                <th class="column-active">Active</th>
+                                <th class="column-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-author-id="1">
+                                <td class="column-name"><strong>John Doe</strong></td>
+                                <td class="column-field">PHP Programming</td>
+                                <td class="column-topics">10 total</td>
+                                <td class="column-posts"><strong>5</strong></td>
+                                <td class="column-active">Yes</td>
+                                <td class="column-actions"><button>Edit</button></td>
+                            </tr>
+                            <tr data-author-id="2">
+                                <td class="column-name"><strong>Jane Smith</strong></td>
+                                <td class="column-field">JavaScript Development</td>
+                                <td class="column-topics">15 total</td>
+                                <td class="column-posts"><strong>8</strong></td>
+                                <td class="column-active">Yes</td>
+                                <td class="column-actions"><button>Edit</button></td>
+                            </tr>
+                            <tr data-author-id="3">
+                                <td class="column-name"><strong>Bob Johnson</strong></td>
+                                <td class="column-field">Database Management</td>
+                                <td class="column-topics">5 total</td>
+                                <td class="column-posts"><strong>2</strong></td>
+                                <td class="column-active">No</td>
+                                <td class="column-actions"><button>Edit</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div id="aips-author-search-no-results" class="aips-empty-state" style="display: none;">
+                        <h3>No Authors Found</h3>
+                        <p>No authors match your search criteria.</p>
+                        <button type="button" class="button button-primary aips-clear-author-search-btn">Clear Search</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Local Admin JS -->
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+    <script>
+        // Mock aipsAjax global
+        window.aipsAjax = { ajaxUrl: 'mock-ajax.php', nonce: 'mock-nonce' };
+        window.aipsAdminL10n = {};
+    </script>
+</body>
+</html>

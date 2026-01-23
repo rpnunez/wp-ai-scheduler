@@ -86,6 +86,11 @@
             $(document).on('click', '#aips-structure-search-clear', this.clearStructureSearch);
             $(document).on('click', '.aips-clear-structure-search-btn', this.clearStructureSearch);
 
+            // Author Search
+            $(document).on('keyup search', '#aips-author-search', this.filterAuthors);
+            $(document).on('click', '#aips-author-search-clear', this.clearAuthorSearch);
+            $(document).on('click', '.aips-clear-author-search-btn', this.clearAuthorSearch);
+
             $(document).on('click', '.aips-view-template-posts', this.openTemplatePostsModal);
             $(document).on('click', '.aips-modal-page', this.paginateTemplatePosts);
 
@@ -1333,6 +1338,47 @@
         clearStructureSearch: function(e) {
             e.preventDefault();
             $('#aips-structure-search').val('').trigger('keyup');
+        },
+
+        filterAuthors: function() {
+            var term = $('#aips-author-search').val().toLowerCase().trim();
+            var $rows = $('.aips-authors-table tbody tr');
+            var $noResults = $('#aips-author-search-no-results');
+            var $table = $('.aips-authors-table');
+            var $clearBtn = $('#aips-author-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                var name = $row.find('.column-name').text().toLowerCase();
+                var field = $row.find('.column-field').text().toLowerCase();
+
+                if (name.indexOf(term) > -1 || field.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearAuthorSearch: function(e) {
+            e.preventDefault();
+            $('#aips-author-search').val('').trigger('keyup');
         },
 
         openTemplatePostsModal: function(e) {
