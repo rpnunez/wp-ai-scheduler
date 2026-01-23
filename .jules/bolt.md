@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-26 - [Lazy Loading Admin Tabs]
+**Learning:** Client-side tab switching forces loading all data upfront, causing performance bottlenecks on heavy tabs like 'History'. Switching to server-side page reloads (standard links) allows lazy loading of heavy resources only when needed.
+**Action:** Use standard links with `&tab=` parameters for heavy admin tabs instead of client-side JS switching.
