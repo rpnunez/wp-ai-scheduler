@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Author Search Verification</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-empty-state {
+            text-align: center;
+            padding: 40px;
+            background: #fff;
+            border: 1px solid #ccd0d4;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Authors</h1>
+
+        <div class="aips-authors-list">
+            <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+                <label class="screen-reader-text" for="aips-author-search">Search Authors:</label>
+                <input type="search" id="aips-author-search" class="regular-text" placeholder="Search authors...">
+                <button type="button" id="aips-author-search-clear" class="button" style="display: none;">Clear</button>
+            </div>
+
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th class="column-name">Name</th>
+                        <th class="column-field">Field/Niche</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="column-name"><strong>John Doe</strong></td>
+                        <td class="column-field">Technology</td>
+                    </tr>
+                    <tr>
+                        <td class="column-name"><strong>Jane Smith</strong></td>
+                        <td class="column-field">Cooking</td>
+                    </tr>
+                    <tr>
+                        <td class="column-name"><strong>Bob Jones</strong></td>
+                        <td class="column-field">Technology</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div id="aips-author-search-no-results" class="aips-empty-state" style="display: none;">
+                <h3>No Authors Found</h3>
+                <p>No authors match your search criteria.</p>
+                <button type="button" class="button button-primary aips-clear-author-search-btn">
+                    Clear Search
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock global variables
+        window.aipsAjax = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: 'mock_nonce' };
+        window.aipsAdminL10n = {};
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+</body>
+</html>

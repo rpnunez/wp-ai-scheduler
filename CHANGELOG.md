@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - [2026-01-17 08:24:50] Added Developer Mode and Dev Tools page for generating template scaffolds (Voices, Structures, Templates) using AI.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.
+- [2025-12-27] Added client-side search functionality to the Authors admin page for better manageability.
 
 ### Fixed
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
