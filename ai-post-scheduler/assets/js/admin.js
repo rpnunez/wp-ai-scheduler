@@ -1654,7 +1654,7 @@
             var html = '';
             variables.forEach(function(varName) {
                 html += '<span class="aips-ai-var-tag" data-variable="{{' + AIPS.escapeHtml(varName) + '}}" title="Click to copy">';
-                html += '<span class="dashicons dashicons-tag"></span>';
+                html += '<span class="dashicons dashicons-tag" aria-hidden="true"></span>';
                 html += '{{' + AIPS.escapeHtml(varName) + '}}';
                 html += '</span>';
             });

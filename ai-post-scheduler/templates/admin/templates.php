@@ -151,7 +151,7 @@ if (!defined('ABSPATH')) {
                     <!-- AI Variables Panel -->
                     <div class="aips-form-row aips-ai-variables-panel" style="display: none;">
                         <div class="aips-ai-variables-header">
-                            <span class="dashicons dashicons-admin-generic"></span>
+                            <span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>
                             <strong><?php esc_html_e('AI Variables Detected', 'ai-post-scheduler'); ?></strong>
                             <span class="aips-ai-variables-hint"><?php esc_html_e('(Click to copy)', 'ai-post-scheduler'); ?></span>
                         </div>
@@ -160,7 +160,7 @@ if (!defined('ABSPATH')) {
                         </div>
                         <div class="aips-ai-variables-info">
                             <p class="description">
-                                <span class="dashicons dashicons-info"></span>
+                                <span class="dashicons dashicons-info" aria-hidden="true"></span>
                                 <?php esc_html_e('These variables will be dynamically resolved by AI based on your generated content. Each post generation may produce different values.', 'ai-post-scheduler'); ?>
                             </p>
                         </div>
@@ -169,7 +169,7 @@ if (!defined('ABSPATH')) {
                     <div class="aips-form-row aips-ai-variables-instructions">
                         <details class="aips-collapsible">
                             <summary>
-                                <span class="dashicons dashicons-editor-help"></span>
+                                <span class="dashicons dashicons-editor-help" aria-hidden="true"></span>
                                 <?php esc_html_e('How to use AI Variables', 'ai-post-scheduler'); ?>
                             </summary>
                             <div class="aips-collapsible-content">

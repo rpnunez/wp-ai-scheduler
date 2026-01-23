@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [palette-a11y-icons-1735820000] - 2025-01-02
+### Fixed
+- Improved accessibility by hiding decorative Dashicons from screen readers in Templates and Schedule admin pages using `aria-hidden="true"`.
+
 ## [wizard-clone-template] - 2025-01-01
 ### Added
 - Added "Clone Template" functionality to allow users to easily duplicate templates with a single click.

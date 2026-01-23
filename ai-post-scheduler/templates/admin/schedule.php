@@ -124,7 +124,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         ?>
                         <div class="aips-schedule-status-wrapper">
                             <span class="aips-schedule-status <?php echo esc_attr($status_class); ?>">
-                                <span class="dashicons <?php echo esc_attr($status_icon); ?>"></span>
+                                <span class="dashicons <?php echo esc_attr($status_icon); ?>" aria-hidden="true"></span>
                                 <?php echo esc_html($status_text); ?>
                             </span>
                             <label class="aips-toggle">
