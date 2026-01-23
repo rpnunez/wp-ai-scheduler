@@ -196,6 +196,12 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
+        register_setting('aips_settings', 'aips_review_notifications_enabled', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_review_notifications_email', array(
+            'sanitize_callback' => 'sanitize_email'
+        ));
         
         add_settings_section(
             'aips_general_section',
@@ -256,6 +262,22 @@ class AIPS_Settings {
             'aips_developer_mode',
             __('Developer Mode', 'ai-post-scheduler'),
             array($this, 'developer_mode_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+        
+        add_settings_field(
+            'aips_review_notifications_enabled',
+            __('Send Email Notifications for Posts Awaiting Review', 'ai-post-scheduler'),
+            array($this, 'review_notifications_enabled_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+        
+        add_settings_field(
+            'aips_review_notifications_email',
+            __('Notifications Email Address', 'ai-post-scheduler'),
+            array($this, 'review_notifications_email_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -657,6 +679,39 @@ class AIPS_Settings {
             <input type="checkbox" name="aips_developer_mode" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Enable developer tools and features', 'ai-post-scheduler'); ?>
         </label>
+        <?php
+    }
+    
+    /**
+     * Render the review notifications enabled setting field.
+     *
+     * Displays a checkbox to enable or disable email notifications for posts awaiting review.
+     *
+     * @return void
+     */
+    public function review_notifications_enabled_field_callback() {
+        $value = get_option('aips_review_notifications_enabled', 0);
+        ?>
+        <label>
+            <input type="checkbox" name="aips_review_notifications_enabled" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Send daily email notifications when posts are awaiting review', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('A daily email will be sent with a list of draft posts pending review.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Render the review notifications email setting field.
+     *
+     * Displays an email input field for the notifications recipient.
+     *
+     * @return void
+     */
+    public function review_notifications_email_field_callback() {
+        $value = get_option('aips_review_notifications_email', get_option('admin_email'));
+        ?>
+        <input type="email" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
+        <p class="description"><?php esc_html_e('Email address to receive notifications about posts awaiting review.', 'ai-post-scheduler'); ?></p>
         <?php
     }
     

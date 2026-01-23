@@ -109,6 +109,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-review.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-review-notifications.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dev-tools.php';
 
@@ -157,7 +158,8 @@ final class AI_Post_Scheduler {
             'aips_generate_scheduled_posts' => 'hourly',
             'aips_generate_author_topics' => 'hourly',
             'aips_generate_author_posts' => 'hourly',
-            'aips_scheduled_research' => 'daily'
+            'aips_scheduled_research' => 'daily',
+            'aips_send_review_notifications' => 'daily'
         );
 
         foreach ($crons as $hook => $schedule) {
@@ -194,6 +196,7 @@ final class AI_Post_Scheduler {
         wp_clear_scheduled_hook('aips_generate_author_topics');
         wp_clear_scheduled_hook('aips_generate_author_posts');
         wp_clear_scheduled_hook('aips_scheduled_research');
+        wp_clear_scheduled_hook('aips_send_review_notifications');
         flush_rewrite_rules();
     }
     
@@ -206,6 +209,8 @@ final class AI_Post_Scheduler {
             'aips_retry_max_attempts' => 3,
             'aips_ai_model' => '',
             'aips_unsplash_access_key' => '',
+            'aips_review_notifications_enabled' => 0,
+            'aips_review_notifications_email' => get_option('admin_email'),
             'aips_db_version' => AIPS_VERSION,
         );
         
@@ -252,6 +257,7 @@ final class AI_Post_Scheduler {
         new AIPS_Scheduler();
         new AIPS_Author_Topics_Scheduler();
         new AIPS_Author_Post_Generator();
+        new AIPS_Post_Review_Notifications();
     }
 }
 

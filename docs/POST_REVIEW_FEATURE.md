@@ -48,6 +48,34 @@ The page includes checkboxes for each post and bulk action controls:
 
 The page displays the total count of draft posts awaiting review at the top.
 
+### 7. Email Notifications
+
+The Post Review feature includes email notifications to alert administrators when posts are awaiting review:
+
+- **Daily Email Notifications**: Automatically sends a daily email digest when draft posts are pending review
+- **Configurable Settings**: Enable/disable notifications and set recipient email address in Settings
+- **Email Content**: Includes:
+  - Total number of draft posts awaiting review
+  - List of up to 10 recent draft posts with titles, templates, and creation dates
+  - Direct link to the Post Review page
+- **Smart Delivery**: Only sends emails when draft posts exist and notifications are enabled
+- **Scheduled via WP Cron**: Runs daily at 9:00 AM server time
+
+## Configuration
+
+### Email Notification Settings
+
+Navigate to **AI Post Scheduler → Settings** to configure email notifications:
+
+1. **Send Email Notifications for Posts Awaiting Review**: Enable or disable daily email notifications
+2. **Notifications Email Address**: Specify the email address to receive notifications (defaults to site admin email)
+
+The email will be sent once per day via WordPress cron if:
+- Notifications are enabled
+- At least one draft post is awaiting review
+- The email address is valid
+
+
 ## Technical Implementation
 
 ### Classes
