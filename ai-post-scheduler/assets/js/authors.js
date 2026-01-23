@@ -571,8 +571,62 @@
 
 		viewTopicLog: function (e) {
 			e.preventDefault();
-			// TODO: Implement log viewing modal
-			alert('View log feature coming soon');
+			const topicId = $(e.currentTarget).data('id');
+
+			$('#aips-topic-logs-content').html('<p>' + (aipsAuthorsL10n.logViewerLoading || 'Loading logs...') + '</p>');
+			$('#aips-topic-logs-modal').fadeIn();
+
+			this.loadTopicLogs(topicId);
+		},
+
+		loadTopicLogs: function (topicId) {
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_topic_logs',
+					nonce: aipsAuthorsL10n.nonce,
+					topic_id: topicId
+				},
+				success: (response) => {
+					if (response.success) {
+						this.renderTopicLogs(response.data.logs);
+					} else {
+						 $('#aips-topic-logs-content').html(
+							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.logViewerError) + '</p>'
+						);
+					}
+				},
+				error: () => {
+					 $('#aips-topic-logs-content').html('<p>' + aipsAuthorsL10n.logViewerError + '</p>');
+				}
+			});
+		},
+
+		renderTopicLogs: function (logs) {
+			if (!logs || logs.length === 0) {
+				$('#aips-topic-logs-content').html('<p>' + aipsAuthorsL10n.noLogsFound + '</p>');
+				return;
+			}
+
+			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
+			html += '<th>' + aipsAuthorsL10n.logAction + '</th>';
+			html += '<th>' + aipsAuthorsL10n.logUser + '</th>';
+			html += '<th>' + aipsAuthorsL10n.logDate + '</th>';
+			html += '<th>' + aipsAuthorsL10n.logDetails + '</th>';
+			html += '</tr></thead><tbody>';
+
+			logs.forEach(log => {
+				html += '<tr>';
+				html += '<td><span class="aips-status aips-status-' + log.action + '">' + log.action + '</span></td>';
+				html += '<td>' + this.escapeHtml(log.user_name || 'System') + '</td>';
+				html += '<td>' + log.created_at + '</td>';
+				html += '<td>' + this.escapeHtml(log.notes || '-') + '</td>';
+				html += '</tr>';
+			});
+
+			html += '</tbody></table>';
+			$('#aips-topic-logs-content').html(html);
 		},
 		
 		viewTopicPosts: function (e) {

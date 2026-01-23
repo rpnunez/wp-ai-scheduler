@@ -396,6 +396,15 @@ class AIPS_Settings {
 				'confirmGenerateFromQueue' => __('Generate posts now for %d selected topic(s)?', 'ai-post-scheduler'),
 				'postsGenerated' => __('Posts generated successfully.', 'ai-post-scheduler'),
 				'execute' => __('Execute', 'ai-post-scheduler'),
+				// Log Viewer strings
+				'logViewerTitle' => __('Topic History Log', 'ai-post-scheduler'),
+				'logViewerLoading' => __('Loading logs...', 'ai-post-scheduler'),
+				'logViewerError' => __('Error loading logs.', 'ai-post-scheduler'),
+				'noLogsFound' => __('No history found for this topic.', 'ai-post-scheduler'),
+				'logAction' => __('Action', 'ai-post-scheduler'),
+				'logUser' => __('User', 'ai-post-scheduler'),
+				'logDate' => __('Date', 'ai-post-scheduler'),
+				'logDetails' => __('Details', 'ai-post-scheduler'),
 			));
 		}
         
