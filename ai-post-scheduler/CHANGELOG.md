@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [sentinel-secure-sql-import] - 2025-01-01
+### Security
+- [2025-01-01] Fixed a critical SQL Injection vulnerability in `AIPS_Data_Management_Import_MySQL::import`. Replaced loose validation with strict whitelisting of allowed SQL commands (`INSERT`, `CREATE`, `DROP`, `LOCK`, `UNLOCK`, `SET`) and plugin-specific tables.
+
 ## [wizard-clone-template] - 2025-01-01
 ### Added
 - Added "Clone Template" functionality to allow users to easily duplicate templates with a single click.
@@ -38,6 +42,7 @@ All notable changes to this project will be documented in this file.
 
 ### Enhanced
 - Enhanced AI Engine integration to support trend analysis prompts
+- Enhanced scheduling system to support bulk operations from trending topics
 - Enhanced scheduling system to support bulk operations from trending topics
 - Updated plugin version to 1.6.0
 - Updated documentation with Trending Topics feature information
