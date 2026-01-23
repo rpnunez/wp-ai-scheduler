@@ -60,6 +60,9 @@
 			
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
+			
+			// Topic detail expand/collapse
+			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
 		},
 
 		openAddModal: function (e) {
@@ -270,9 +273,13 @@
 			html += '</tr></thead><tbody>';
 
 			topics.forEach(topic => {
-				html += '<tr data-topic-id="' + topic.id + '">';
+				html += '<tr data-topic-id="' + topic.id + '" class="aips-topic-row">';
 				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
-				html += '<td class="topic-title-cell"><span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
+				html += '<td class="topic-title-cell">';
+				html += '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '">';
+				html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
+				html += '</button> ';
+				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
 				
 				// Add post count badge if there are any posts
 				if (topic.post_count && topic.post_count > 0) {
@@ -281,7 +288,8 @@
 					html += '</span>';
 				}
 				
-				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '"></td>';
+				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
+				html += '</td>';
 				html += '<td>' + topic.generated_at + '</td>';
 				html += '<td class="topic-actions">';
 
@@ -296,6 +304,21 @@
 				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.edit + '</button> ';
 				html += '<button class="button aips-delete-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.delete + '</button>';
 				html += '</td></tr>';
+				
+				// Add collapsible detail row
+				html += '<tr class="aips-topic-detail-row" data-topic-id="' + topic.id + '" style="display:none;">';
+				html += '<td colspan="4" class="aips-topic-detail-cell">';
+				html += '<div class="aips-topic-detail-content">';
+				if (topic.topic_description) {
+					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.description || 'Description') + ':</strong> ' + this.escapeHtml(topic.topic_description) + '</div>';
+				}
+				if (topic.topic_rationale) {
+					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.rationale || 'Rationale') + ':</strong> ' + this.escapeHtml(topic.topic_rationale) + '</div>';
+				}
+				if (topic.reviewed_at && topic.reviewed_by) {
+					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + topic.reviewed_at + ' by User ID ' + topic.reviewed_by + '</div>';
+				}
+				html += '</div></td></tr>';
 			});
 
 			html += '</tbody></table>';
@@ -320,6 +343,21 @@
 				this.loadFeedback();
 			} else {
 				this.loadTopics(status);
+			}
+		},
+
+		toggleTopicDetail: function (e) {
+			e.preventDefault();
+			const topicId = $(e.currentTarget).data('topic-id');
+			const $detailRow = $('.aips-topic-detail-row[data-topic-id="' + topicId + '"]');
+			const $icon = $(e.currentTarget).find('.dashicons');
+			
+			if ($detailRow.is(':visible')) {
+				$detailRow.slideUp(200);
+				$icon.removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-right-alt2');
+			} else {
+				$detailRow.slideDown(200);
+				$icon.removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
 			}
 		},
 

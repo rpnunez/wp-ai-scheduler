@@ -289,6 +289,55 @@
 	cursor: pointer;
 }
 
+/* Topic Expand Button */
+.aips-topic-expand-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	margin: 0 5px 0 0;
+	cursor: pointer;
+	color: #2271b1;
+	vertical-align: middle;
+	line-height: 1;
+}
+
+.aips-topic-expand-btn:hover {
+	color: #135e96;
+}
+
+.aips-topic-expand-btn .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+}
+
+/* Topic Detail Row */
+.aips-topic-detail-row {
+	background-color: #f6f7f7;
+}
+
+.aips-topic-detail-cell {
+	padding: 15px 20px !important;
+	border-top: 1px solid #c3c4c7;
+}
+
+.aips-topic-detail-content {
+	line-height: 1.6;
+}
+
+.aips-detail-section {
+	margin-bottom: 10px;
+}
+
+.aips-detail-section:last-child {
+	margin-bottom: 0;
+}
+
+.aips-detail-section strong {
+	color: #1d2327;
+	margin-right: 5px;
+}
+
 /* Post Count Badge */
 .aips-post-count-badge {
 	display: inline-block;
