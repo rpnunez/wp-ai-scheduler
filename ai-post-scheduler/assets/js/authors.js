@@ -8,6 +8,39 @@
 (function ($) {
 	'use strict';
 
+	// Shared utility for showing toast notifications
+	const showToast = function (message, type = 'info', duration = 5000) {
+		const iconMap = {
+			success: '✓',
+			error: '✕',
+			warning: '⚠',
+			info: 'ℹ'
+		};
+
+		const $toast = $('<div class="aips-toast ' + type + '">')
+			.append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
+			.append('<div class="aips-toast-message">' + $('<div>').text(message).html() + '</div>')
+			.append('<button class="aips-toast-close" aria-label="Close">&times;</button>');
+
+		$('body').append($toast);
+
+		// Close on click
+		$toast.find('.aips-toast-close').on('click', function() {
+			$toast.addClass('closing');
+			setTimeout(() => $toast.remove(), 300);
+		});
+
+		// Auto close
+		if (duration > 0) {
+			setTimeout(() => {
+				if ($toast.length) {
+					$toast.addClass('closing');
+					setTimeout(() => $toast.remove(), 300);
+				}
+			}, duration);
+		}
+	};
+
 	// Authors Module
 	const AuthorsModule = {
 		currentAuthorId: null,
@@ -137,15 +170,15 @@
 				data: formData + '&action=aips_save_author&nonce=' + aipsAuthorsL10n.nonce,
 				success: (response) => {
 					if (response.success) {
-						this.showToast(response.data.message || aipsAuthorsL10n.authorSaved, 'success');
+						showToast(response.data.message || aipsAuthorsL10n.authorSaved, 'success');
 
 						setTimeout(() => location.reload(), 1000);
 					} else {
-						this.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
 					}
 				},
 				error: () => {
-					this.showToast(aipsAuthorsL10n.errorSaving, 'error');
+					showToast(aipsAuthorsL10n.errorSaving, 'error');
 				},
 				complete: () => {
 					$submitBtn.prop('disabled', false).text(aipsAuthorsL10n.saveAuthor);
@@ -171,15 +204,15 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						this.showToast(response.data.message || aipsAuthorsL10n.authorDeleted, 'success');
+						showToast(response.data.message || aipsAuthorsL10n.authorDeleted, 'success');
 
 						setTimeout(() => location.reload(), 1000);
 					} else {
-						this.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting, 'error');
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting, 'error');
 					}
 				},
 				error: () => {
-					this.showToast(aipsAuthorsL10n.errorDeleting, 'error');
+					showToast(aipsAuthorsL10n.errorDeleting, 'error');
 				}
 			});
 		},
@@ -207,15 +240,15 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						this.showToast(response.data.message || aipsAuthorsL10n.topicsGenerated, 'success');
+						showToast(response.data.message || aipsAuthorsL10n.topicsGenerated, 'success');
 
 						setTimeout(() => location.reload(), 1000);
 					} else {
-						this.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating, 'error');
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating, 'error');
 					}
 				},
 				error: () => {
-					this.showToast(aipsAuthorsL10n.errorGenerating, 'error');
+					showToast(aipsAuthorsL10n.errorGenerating, 'error');
 				},
 				complete: () => {
 					$btn.prop('disabled', false).text(aipsAuthorsL10n.generateTopicsNow);
@@ -592,16 +625,16 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						alert(aipsAuthorsL10n.postGenerated);
+						showToast(aipsAuthorsL10n.postGenerated, 'success');
 						const activeTab = $('.aips-tab-link.active').data('tab');
 						this.loadTopics(activeTab);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost, 'error');
 						$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorGeneratingPost);
+					showToast(aipsAuthorsL10n.errorGeneratingPost, 'error');
 					$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
 				}
 			});
@@ -812,16 +845,16 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						alert(response.data.message);
+						showToast(response.data.message, 'success');
 						// Reload topics for current tab
 						const activeTab = $('.aips-tab-link.active').data('tab');
 						this.loadTopics(activeTab);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.');
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.');
+					showToast(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 				},
 				complete: () => {
 					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
@@ -858,38 +891,6 @@
 				"'": '&#039;'
 			};
 			return text.replace(/[&<>"']/g, m => map[m]);
-		},
-
-		showToast: function (message, type = 'info', duration = 5000) {
-			const iconMap = {
-				success: '✓',
-				error: '✕',
-				warning: '⚠',
-				info: 'ℹ'
-			};
-
-			const $toast = $('<div class="aips-toast ' + type + '">')
-				.append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
-				.append('<div class="aips-toast-message">' + this.escapeHtml(message) + '</div>')
-				.append('<button class="aips-toast-close" aria-label="Close">&times;</button>');
-
-			$('body').append($toast);
-
-			// Close on click
-			$toast.find('.aips-toast-close').on('click', function() {
-				$toast.addClass('closing');
-				setTimeout(() => $toast.remove(), 300);
-			});
-
-			// Auto close
-			if (duration > 0) {
-				setTimeout(() => {
-					if ($toast.length) {
-						$toast.addClass('closing');
-						setTimeout(() => $toast.remove(), 300);
-					}
-				}, duration);
-			}
 		}
 	};
 	
@@ -1043,16 +1044,16 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						alert(response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.');
+						showToast(response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.', 'success');
 						
 						// Reload the queue
 						this.loadQueueTopics();
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating || 'Error generating posts.');
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorGenerating || 'Error generating posts.');
+					showToast(aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
 				},
 				complete: () => {
 					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
