@@ -268,28 +268,4 @@ class AIPS_Post_Review_Notifications {
 		<?php
 		return ob_get_clean();
 	}
-	
-	/**
-	 * Schedule the daily notification cron job.
-	 * Called on plugin activation.
-	 *
-	 * @return void
-	 */
-	public static function schedule_notifications() {
-		if (!wp_next_scheduled('aips_send_review_notifications')) {
-			// Schedule for 9 AM daily
-			$timestamp = strtotime('tomorrow 9:00:00');
-			wp_schedule_event($timestamp, 'daily', 'aips_send_review_notifications');
-		}
-	}
-	
-	/**
-	 * Clear the daily notification cron job.
-	 * Called on plugin deactivation.
-	 *
-	 * @return void
-	 */
-	public static function clear_notifications() {
-		wp_clear_scheduled_hook('aips_send_review_notifications');
-	}
 }
