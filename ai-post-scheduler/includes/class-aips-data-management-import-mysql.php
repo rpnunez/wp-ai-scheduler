@@ -120,29 +120,10 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		$plugin_table_names = array_values($plugin_tables);
 		
 		foreach ($queries as $query) {
-			$query_upper = strtoupper(trim($query));
-			
-			// Skip if query is empty
-			if (empty($query_upper)) {
-				continue;
-			}
-			
-			// Extract table name from query
-			$has_valid_table = false;
-			foreach ($plugin_table_names as $table_name) {
-				if (stripos($query, $table_name) !== false) {
-					$has_valid_table = true;
-					break;
-				}
-			}
-			
-			// If query references a table, ensure it's one of ours
-			if (!$has_valid_table && 
-				(strpos($query_upper, 'TABLE') !== false || 
-				 strpos($query_upper, 'INSERT') !== false)) {
+			if (!$this->is_valid_query($query, $plugin_table_names)) {
 				return new WP_Error(
-					'invalid_table',
-					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
+					'invalid_query',
+					__('SQL file contains invalid queries or targets non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
 				);
 			}
 		}
@@ -199,6 +180,7 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 	private function split_sql_file($sql_content) {
 		// Remove comments
 		$sql_content = preg_replace('/--[^\n]*\n/', "\n", $sql_content);
+		$sql_content = preg_replace('/#[^\n]*\n/', "\n", $sql_content);
 		$sql_content = preg_replace('/\/\*.*?\*\//s', '', $sql_content);
 		
 		// Split by semicolon
@@ -210,5 +192,49 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		});
 		
 		return $queries;
+	}
+
+	/**
+	 * Validate a single SQL query against security rules
+	 *
+	 * @param string $query The SQL query
+	 * @param array $allowed_tables List of allowed table names
+	 * @return bool True if valid
+	 */
+	private function is_valid_query($query, $allowed_tables) {
+		$query = trim($query);
+		if (empty($query)) {
+			return true;
+		}
+
+		// Allow SET commands (used for SQL_MODE, time_zone)
+		if (stripos($query, 'SET') === 0) {
+			return true;
+		}
+
+		// Allow UNLOCK TABLES (harmless)
+		if (stripos($query, 'UNLOCK TABLES') === 0) {
+			return true;
+		}
+
+		// Whitelist allowed commands and extract table name
+		// Supports: INSERT INTO, INSERT IGNORE INTO, CREATE TABLE, DROP TABLE, LOCK TABLES
+		// Regex explanation:
+		// ^(?:...) : Start with one of the allowed command prefixes
+		// \s+ : Space
+		// `? : Optional backtick
+		// (\w+) : Capture table name (word characters)
+		// `? : Optional closing backtick
+		$pattern = '/^(?:INSERT(?:\s+IGNORE)?\s+INTO|CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|LOCK\s+TABLES)\s+`?(\w+)`?/i';
+
+		if (preg_match($pattern, $query, $matches)) {
+			$table_name = $matches[1];
+			// Check if the extracted table name is in the allowed list
+			// Use strict check (assuming table names match exactly)
+			return in_array($table_name, $allowed_tables, true);
+		}
+
+		// Reject everything else (DELETE, UPDATE, ALTER, TRUNCATE, SELECT, etc.)
+		return false;
 	}
 }
