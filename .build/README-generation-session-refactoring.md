@@ -33,9 +33,9 @@ This refactoring clarified the architectural confusion by:
 - **📖 Journal**: `.build/atlas-journal.md` (see entry: 2025-12-26 - Extract Generation Session Tracker)
 
 ### Code
-- **🔧 Class**: `ai-post-scheduler/includes/class-aips-generation-session.php` - The new session class
-- **✅ Tests**: `ai-post-scheduler/tests/test-generation-session.php` - 19 test cases
-- **🔄 Modified**: `ai-post-scheduler/includes/class-aips-generator.php` - Updated to use session
+- **🔧 Class**: `includes/class-aips-generation-session.php` - The new session class
+- **✅ Tests**: `tests/test-generation-session.php` - 19 test cases
+- **🔄 Modified**: `includes/class-aips-generator.php` - Updated to use session
 
 ## Key Concepts
 
@@ -108,7 +108,7 @@ Run the new tests:
 composer install
 
 # Run session tests
-vendor/bin/phpunit ai-post-scheduler/tests/test-generation-session.php --testdox
+vendor/bin/phpunit tests/test-generation-session.php --testdox
 
 # Run all tests
 composer test

@@ -405,15 +405,15 @@ The existing `.github/workflows/ci-pr.yml` workflow had basic PHPUnit support bu
 * Set package metadata (name, description, license, authors)
 
 ### 2. PHPUnit Configuration (`phpunit.xml`)
-* Configured test suite to run all tests in `ai-post-scheduler/tests/`
+* Configured test suite to run all tests in `tests/`
 * Enabled code coverage reporting (HTML and text formats)
-* Set coverage to include `ai-post-scheduler/includes/` (all plugin classes)
+* Set coverage to include `includes/` (all plugin classes)
 * Excluded vendor and test directories from coverage
 * Enabled strict test execution (fail on warnings, risky tests, output during tests)
 * Configured PHPUnit Polyfills path for compatibility
 * Set memory limit to 512M for test execution
 
-### 3. Test Bootstrap (`ai-post-scheduler/tests/bootstrap.php`)
+### 3. Test Bootstrap (`tests/bootstrap.php`)
 * Loads Composer autoloader and PHPUnit Polyfills
 * Attempts to load WordPress test library if available (standard WordPress testing approach)
 * **Fallback mode:** Provides mock WordPress functions and classes when test library unavailable

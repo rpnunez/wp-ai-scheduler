@@ -21,7 +21,7 @@ This significantly improves performance as inactive schedules accumulate.
 
 ## Testing Infrastructure
 
-### 1. PHPUnit Test (`ai-post-scheduler/tests/test-db-schema.php`)
+### 1. PHPUnit Test (`tests/test-db-schema.php`)
 
 Comprehensive test suite that verifies:
 - ✅ Composite index exists with correct name
@@ -33,7 +33,6 @@ Comprehensive test suite that verifies:
 
 **Run the test:**
 ```bash
-cd ai-post-scheduler
 composer install
 WP_TESTS_DIR=/tmp/wordpress-tests-lib \
 WP_CORE_DIR=/tmp/wordpress-tests-lib/src \
@@ -107,7 +106,7 @@ sleep 10
 
 # Run tests inside container
 docker-compose exec wordpress bash -c "
-  cd /var/www/html/wp-content/plugins/ai-post-scheduler && \
+  cd /var/www/html/wp-content/plugins/wp-ai-scheduler && \
   composer install && \
   vendor/bin/phpunit tests/test-db-schema.php --testdox
 "
@@ -155,11 +154,11 @@ If you have a WordPress installation with the plugin:
 ## File Changes
 
 ### Modified Files
-- `ai-post-scheduler/includes/class-aips-db-manager.php` (Line 113)
+- `includes/class-aips-db-manager.php` (Line 113)
   - Added: `KEY is_active_next_run (is_active, next_run)`
 
 ### New Files
-- `ai-post-scheduler/tests/test-db-schema.php` - PHPUnit test suite
+- `tests/test-db-schema.php` - PHPUnit test suite
 - `.github/workflows/test-composite-index.yml` - CI workflow
 - `verify-composite-index.php` - Standalone verification script
 - `test-composite-index.sh` - Bash test runner
@@ -187,7 +186,7 @@ As the number of inactive schedules grows (from paused campaigns, completed one-
 
 ### Adding More Schema Tests
 
-To add more schema validation tests, edit `ai-post-scheduler/tests/test-db-schema.php`:
+To add more schema validation tests, edit `tests/test-db-schema.php`:
 
 ```php
 public function test_my_new_schema_feature() {

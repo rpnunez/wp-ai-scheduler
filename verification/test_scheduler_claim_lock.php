@@ -77,7 +77,7 @@ class AIPS_Schedule_Repository {
 // Load Scheduler Class (assuming it's in the include path or we copy it)
 // We will verify the logic by implementing a minimal Scheduler subclass or copying the method
 // Ideally we include the real file
-require_once 'ai-post-scheduler/includes/class-aips-scheduler.php';
+require_once __DIR__ . '/../includes/class-aips-scheduler.php';
 
 // Test
 echo "--- TEST START ---\n";

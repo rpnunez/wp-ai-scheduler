@@ -19,7 +19,7 @@ The `AIPS_Generator` class contained a confusing mixture of two related but dist
 
 ### 1. Created AIPS_Generation_Session Class
 
-**File**: `ai-post-scheduler/includes/class-aips-generation-session.php`
+**File**: `includes/class-aips-generation-session.php`
 
 A dedicated class that encapsulates runtime session tracking:
 
@@ -95,7 +95,7 @@ private function log_ai_call($type, $prompt, $response, $options, $error) {
 
 ### 3. Created Comprehensive Tests
 
-**File**: `ai-post-scheduler/tests/test-generation-session.php`
+**File**: `tests/test-generation-session.php`
 
 19 test cases covering:
 - Session initialization
@@ -111,7 +111,7 @@ private function log_ai_call($type, $prompt, $response, $options, $error) {
 
 ### 4. Updated Bootstrap for Tests
 
-**File**: `ai-post-scheduler/tests/bootstrap.php`
+**File**: `tests/bootstrap.php`
 
 Added:
 - Class loading for `AIPS_Generation_Session`
@@ -201,14 +201,14 @@ The session is **serialized to JSON** and **stored in** the History record's `ge
 
 ## Files Modified
 
-1. `ai-post-scheduler/includes/class-aips-generator.php` - Refactored to use session
-2. `ai-post-scheduler/ai-post-scheduler.php` - Added class loading
-3. `ai-post-scheduler/tests/bootstrap.php` - Added class loading and mocks
+1. `includes/class-aips-generator.php` - Refactored to use session
+2. `ai-post-scheduler.php` - Added class loading
+3. `tests/bootstrap.php` - Added class loading and mocks
 
 ## Files Created
 
-1. `ai-post-scheduler/includes/class-aips-generation-session.php` - New session class
-2. `ai-post-scheduler/tests/test-generation-session.php` - Test suite
+1. `includes/class-aips-generation-session.php` - New session class
+2. `tests/test-generation-session.php` - Test suite
 3. `.build/generation-log-vs-history-analysis.md` - Analysis document
 
 ## Files Updated
@@ -234,7 +234,7 @@ composer test
 
 Specific session tests:
 ```bash
-vendor/bin/phpunit ai-post-scheduler/tests/test-generation-session.php --testdox
+vendor/bin/phpunit tests/test-generation-session.php --testdox
 ```
 
 ## Conclusion

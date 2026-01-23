@@ -15,6 +15,8 @@ jobs:
   phpunit-tests:
     name: PHPUnit Tests (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    env:
+      PLUGIN_SLUG: ${{ github.event.repository.name }}
 
     strategy:
       matrix:
@@ -119,26 +121,25 @@ jobs:
           # Create plugins directory in test WordPress
           mkdir -p /tmp/wordpress-tests-lib/src/wp-content/plugins
 
-          # Copy the plugin directory from the repo into the test WP plugins directory.
-          # The repository layout uses an `ai-post-scheduler` directory at the repo root for the plugin.
-          cp -r ai-post-scheduler /tmp/wordpress-tests-lib/src/wp-content/plugins/ || {
-            echo "Plugin directory 'ai-post-scheduler' not found at repository root"
+          # Copy the repository root as the plugin directory.
+          cp -r . /tmp/wordpress-tests-lib/src/wp-content/plugins/${PLUGIN_SLUG} || {
+            echo "Plugin directory '${PLUGIN_SLUG}' not found at repository root"
             echo "Repository root contents:"
             ls -la
             exit 1
           }
 
           # Verify plugin installation (list the plugin main file)
-          ls -la /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler/ || true
+          ls -la /tmp/wordpress-tests-lib/src/wp-content/plugins/${PLUGIN_SLUG}/ || true
 
       # Run Composer within the plugin directory (use cache)
       - name: Install Composer dependencies
-        working-directory: /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler
+        working-directory: /tmp/wordpress-tests-lib/src/wp-content/plugins/${{ env.PLUGIN_SLUG }}
         run: composer install --no-interaction --prefer-dist --no-progress
 
       # Run PHPUnit tests
       - name: Run PHPUnit tests
-        working-directory: /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler
+        working-directory: /tmp/wordpress-tests-lib/src/wp-content/plugins/${{ env.PLUGIN_SLUG }}
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress-tests-lib/src
@@ -147,7 +148,7 @@ jobs:
       # Code Coverage: Generate & Upload
       - name: Generate code coverage report (PHP 8.2 only)
         if: matrix.php == '8.2'
-        working-directory: /tmp/wordpress-tests-lib/src/wp-content/plugins/ai-post-scheduler
+        working-directory: /tmp/wordpress-tests-lib/src/wp-content/plugins/${{ env.PLUGIN_SLUG }}
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress-tests-lib/src
@@ -158,7 +159,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report-php${{ matrix.php }}
-          path: ai-post-scheduler/coverage/
+          path: /tmp/wordpress-tests-lib/src/wp-content/plugins/${{ env.PLUGIN_SLUG }}/coverage/
           retention-days: 7
 
       # Test Results: Upload
@@ -168,7 +169,7 @@ jobs:
         with:
           name: test-results-php${{ matrix.php }}
           path: |
-            ai-post-scheduler/.phpunit.result.cache
+            /tmp/wordpress-tests-lib/src/wp-content/plugins/${{ env.PLUGIN_SLUG }}/.phpunit.result.cache
           retention-days: 7
           if-no-files-found: ignore
 

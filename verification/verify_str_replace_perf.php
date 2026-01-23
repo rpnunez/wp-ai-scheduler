@@ -52,7 +52,7 @@ class AIPS_Template_Processor {
     }
 }
 
-require_once __DIR__ . '/../ai-post-scheduler/includes/class-aips-article-structure-manager.php';
+require_once __DIR__ . '/../includes/class-aips-article-structure-manager.php';
 
 // Verification Script
 $manager = new AIPS_Article_Structure_Manager();

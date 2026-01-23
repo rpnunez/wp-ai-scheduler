@@ -77,7 +77,7 @@ Developers can extend variables via the `aips_template_variables` filter.
 
 == Installation ==
 
-1. Upload the `ai-post-scheduler` folder to `/wp-content/plugins/`
+1. Upload the `wp-ai-scheduler` folder to `/wp-content/plugins/`
 2. Activate the plugin through the 'Plugins' menu in WordPress
 3. Ensure Meow Apps AI Engine is installed and configured
 4. Navigate to AI Post Scheduler in your admin menu
@@ -148,8 +148,8 @@ For developers contributing to this plugin:
 
 = Running Tests =
 
-1. Navigate to plugin directory:
-   `cd ai-post-scheduler`
+1. Navigate to the repository root:
+   `pwd`
 
 2. Install Composer dependencies:
    `composer install`

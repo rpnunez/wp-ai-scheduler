@@ -1,5 +1,5 @@
 ---
-applyTo: 'ai-post-scheduler/**,**/*.php,**/*.inc,**/*.js,**/*.jsx,**/*.ts,**/*.tsx,**/*.css,**/*.scss,**/*.json'
+applyTo: '**/*.php,**/*.inc,**/*.js,**/*.jsx,**/*.ts,**/*.tsx,**/*.css,**/*.scss,**/*.json'
 description: 'Coding, security, and testing rules for WordPress plugins and themes'
 ---
 

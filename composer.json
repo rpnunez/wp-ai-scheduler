@@ -19,12 +19,12 @@
   },
   "autoload": {
     "classmap": [
-      "ai-post-scheduler/includes/"
+      "includes/"
     ]
   },
   "autoload-dev": {
     "classmap": [
-      "ai-post-scheduler/tests/"
+      "tests/"
     ]
   },
   "scripts": {

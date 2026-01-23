@@ -1,7 +1,7 @@
 import re
 
 def verify_schema():
-    file_path = 'ai-post-scheduler/includes/class-aips-db-manager.php'
+    file_path = 'includes/class-aips-db-manager.php'
     with open(file_path, 'r') as f:
         content = f.read()
 

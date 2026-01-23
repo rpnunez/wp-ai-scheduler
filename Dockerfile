@@ -25,15 +25,15 @@ RUN curl -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh
   && chmod +x /usr/local/bin/wp
 
 # Copy plugin source into image so entrypoint can copy it into the mounted wp-content/plugins
-# Expecting plugin folder in build context at ./ai-post-scheduler
-COPY ai-post-scheduler /plugin-src/ai-post-scheduler
+# Expecting plugin source at repository root
+COPY . /plugin-src/wp-ai-scheduler
 
 # Copy custom entrypoint and make executable
 COPY docker-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Copy healthcheck script and make executable
-COPY healthcheck.sh /usr/local/bin/healthcheck.sh
+COPY tools/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
 
 # Define healthcheck

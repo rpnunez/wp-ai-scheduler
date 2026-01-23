@@ -8,14 +8,14 @@ This document summarizes the major architectural improvements implemented for th
 ### 1. Database Repository Layer ✅
 
 **Files Created:**
-- `ai-post-scheduler/includes/class-aips-history-repository.php` (340 lines)
-- `ai-post-scheduler/includes/class-aips-schedule-repository.php` (280 lines)
-- `ai-post-scheduler/includes/class-aips-template-repository.php` (300 lines)
+- `includes/class-aips-history-repository.php` (340 lines)
+- `includes/class-aips-schedule-repository.php` (280 lines)
+- `includes/class-aips-template-repository.php` (300 lines)
 
 **Files Modified:**
-- `ai-post-scheduler/includes/class-aips-history.php` - Now uses repository
-- `ai-post-scheduler/includes/class-aips-scheduler.php` - Now uses repository
-- `ai-post-scheduler/includes/class-aips-templates.php` - Now uses repository
+- `includes/class-aips-history.php` - Now uses repository
+- `includes/class-aips-scheduler.php` - Now uses repository
+- `includes/class-aips-templates.php` - Now uses repository
 
 **Benefits:**
 - ✅ Centralized database operations for easier maintenance
@@ -39,8 +39,8 @@ $results = $repository->get_history(['status' => 'completed']);
 ### 2. Event/Hook System ✅
 
 **Files Modified:**
-- `ai-post-scheduler/includes/class-aips-generator.php` - Dispatches events using native WordPress hooks
-- `ai-post-scheduler/includes/class-aips-scheduler.php` - Dispatches events using native WordPress hooks
+- `includes/class-aips-generator.php` - Dispatches events using native WordPress hooks
+- `includes/class-aips-scheduler.php` - Dispatches events using native WordPress hooks
 
 **Events Defined:**
 Uses native WordPress `do_action()` calls for all events:
@@ -72,7 +72,7 @@ add_action('aips_post_generation_completed', function($data, $context) {
 ### 3. Configuration Layer ✅
 
 **Files Created:**
-- `ai-post-scheduler/includes/class-aips-config.php` (350 lines)
+- `includes/class-aips-config.php` (350 lines)
 
 **Features:**
 - Singleton pattern for global access
@@ -132,7 +132,7 @@ $config->disable_feature('batch_generation');
 ### 4. Retry Logic & Resilience ✅
 
 **Files Modified:**
-- `ai-post-scheduler/includes/class-aips-ai-service.php` - Enhanced with retry logic
+- `includes/class-aips-ai-service.php` - Enhanced with retry logic
 
 **Features Implemented:**
 

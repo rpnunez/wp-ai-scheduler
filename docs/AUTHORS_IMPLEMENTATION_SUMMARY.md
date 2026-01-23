@@ -213,7 +213,7 @@ Complete logging of all actions:
 ## File Structure
 
 ```
-ai-post-scheduler/
+wp-ai-scheduler/
 ├── ai-post-scheduler.php (modified - added includes and initialization)
 ├── includes/
 │   ├── class-aips-db-manager.php (modified - added 3 tables)

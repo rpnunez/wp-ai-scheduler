@@ -35,7 +35,7 @@ Topics are generated automatically by the WordPress cron system:
   3. All new topics start with `status='pending'`
   4. Updates `topic_generation_next_run` based on author's `topic_generation_frequency`
 
-**File:** `ai-post-scheduler/includes/class-aips-author-topics-scheduler.php`
+**File:** `includes/class-aips-author-topics-scheduler.php`
 
 ```php
 // Hook at line 59
@@ -68,7 +68,7 @@ An administrator reviews pending topics and makes decisions:
 - **AJAX Endpoint:** `wp_ajax_aips_approve_topic`
 - **Controller Class:** `AIPS_Author_Topics_Controller`
 
-**File:** `ai-post-scheduler/includes/class-aips-author-topics-controller.php`
+**File:** `includes/class-aips-author-topics-controller.php`
 
 ```php
 // Approval process at line 84-140
@@ -109,7 +109,7 @@ Posts are generated on a **completely separate schedule** from topic generation:
 - **Generator Class:** `AIPS_Author_Post_Generator`
 - **Timing:** Based on each author's `post_generation_frequency` and `post_generation_next_run`
 
-**File:** `ai-post-scheduler/includes/class-aips-author-post-generator.php`
+**File:** `includes/class-aips-author-post-generator.php`
 
 ```php
 // Hook at line 83
@@ -185,7 +185,7 @@ Each Author has two separate scheduling configurations:
 **Database Query for Due Authors:**
 
 ```php
-// File: ai-post-scheduler/includes/class-aips-authors-repository.php
+// File: includes/class-aips-authors-repository.php
 // Lines 139-149
 public function get_due_for_post_generation() {
     $current_time = current_time('mysql');
@@ -203,7 +203,7 @@ public function get_due_for_post_generation() {
 **Calculation of Next Run Time:**
 
 ```php
-// File: ai-post-scheduler/includes/class-aips-interval-calculator.php
+// File: includes/class-aips-interval-calculator.php
 // Lines 122-165
 
 public function calculate_next_run($frequency, $base_time = null) {
@@ -301,7 +301,7 @@ Let's say you create an Author with these settings:
 
 If you want to generate a post immediately without waiting for the schedule:
 
-**File:** `ai-post-scheduler/includes/class-aips-author-topics-controller.php`
+**File:** `includes/class-aips-author-topics-controller.php`
 
 ```php
 // Lines 268-332

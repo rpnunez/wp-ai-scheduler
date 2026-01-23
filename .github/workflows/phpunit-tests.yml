@@ -15,9 +15,6 @@ jobs:
   phpunit-tests:
     name: PHPUnit Tests (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ai-post-scheduler
 
     strategy:
       matrix:
@@ -73,7 +70,7 @@ jobs:
       # Install WordPress Test Library using standard script
       - name: Install WordPress Test Library
         run: |
-          bash bin/install-wp-tests.sh wordpress_test root '' 127.0.0.1 latest true
+          bash tools/install-wp-tests.sh wordpress_test root '' 127.0.0.1 latest true
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress
@@ -98,7 +95,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report-php${{ matrix.php }}
-          path: ai-post-scheduler/coverage/
+          path: coverage/
           retention-days: 7
 
       # Test Results: Upload
@@ -108,7 +105,7 @@ jobs:
         with:
           name: test-results-php${{ matrix.php }}
           path: |
-            ai-post-scheduler/.phpunit.result.cache
+            .phpunit.result.cache
           retention-days: 7
           if-no-files-found: ignore
 

@@ -59,18 +59,17 @@ jobs:
           echo "Database created successfully."
 
       - name: Install Composer Dependencies
-        run: cd ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Install WordPress Test Library
         run: |
-          cd ai-post-scheduler
-          bash bin/install-wp-tests.sh wordpress_test root '' 127.0.0.1 latest true
+          bash tools/install-wp-tests.sh wordpress_test root '' 127.0.0.1 latest true
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress
 
       - name: Run Database Schema Tests
-        run: cd ai-post-scheduler && vendor/bin/phpunit tests/test-db-schema.php --testdox
+        run: vendor/bin/phpunit tests/test-db-schema.php --testdox
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress

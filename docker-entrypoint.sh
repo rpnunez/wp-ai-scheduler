@@ -114,7 +114,7 @@ fi
 # Ensure the plugins directory exists.
 mkdir -p /var/www/html/wp-content/plugins
 
-PLUGIN_SLUG="ai-post-scheduler"
+PLUGIN_SLUG="wp-ai-scheduler"
 
 # Check if the plugin source directory exists and if the plugin is not already copied.
 if [ -d "/plugin-src/${PLUGIN_SLUG}" ] && [ ! -d "/var/www/html/wp-content/plugins/${PLUGIN_SLUG}" ]; then

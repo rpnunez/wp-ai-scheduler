@@ -1,12 +1,10 @@
 # Composer
-ai-post-scheduler/vendor/
-ai-post-scheduler/composer.lock
 vendor/
 composer.lock
 
 # PHPUnit
-ai-post-scheduler/coverage/
-ai-post-scheduler/.phpunit.result.cache
+coverage/
+.phpunit.result.cache
 
 # IDE
 .idea/
@@ -23,5 +21,3 @@ Thumbs.db
 *.log
 *.tmp
 /tmp/
-/vendor/
-node_modules/

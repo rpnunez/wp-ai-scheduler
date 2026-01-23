@@ -45,8 +45,8 @@ if [ ! -d "$WP_TESTS_DIR" ]; then
     echo ""
 fi
 
-# Navigate to plugin directory
-cd "$(dirname "$0")/ai-post-scheduler"
+# Navigate to repository root
+cd "$(dirname "$0")"
 
 echo -e "${GREEN}Step 1: Installing Composer dependencies${NC}"
 if [ ! -d "vendor" ]; then

@@ -60,6 +60,6 @@ define('ABSPATH', true);
     </style>
 </head>
 <body>
-    <?php include 'ai-post-scheduler/templates/admin/history.php'; ?>
+    <?php include 'templates/admin/history.php'; ?>
 </body>
 </html>

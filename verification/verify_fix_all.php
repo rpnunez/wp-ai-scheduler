@@ -17,7 +17,7 @@ function __($t, $d) { return $t; }
 function sprintf($f, ...$a) { return vsprintf($f, $a); }
 
 // Include core classes we modified
-require_once 'ai-post-scheduler/includes/class-aips-interval-calculator.php';
+require_once __DIR__ . '/../includes/class-aips-interval-calculator.php';
 
 // Test Interval Calculator Catch-Up
 echo "Testing Interval Calculator Catch-Up...\n";
@@ -60,7 +60,7 @@ class AIPS_Template_Processor {
 class AIPS_Article_Structure_Manager {
     public function build_prompt($id, $t) { return "Structure Prompt"; }
 }
-require_once 'ai-post-scheduler/includes/class-aips-prompt-builder.php';
+require_once __DIR__ . '/../includes/class-aips-prompt-builder.php';
 
 $builder = new AIPS_Prompt_Builder(new AIPS_Template_Processor(), new AIPS_Article_Structure_Manager());
 $template = (object)['prompt_template' => 'Base Prompt', 'article_structure_id' => null];

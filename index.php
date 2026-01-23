@@ -261,7 +261,7 @@ header('Content-Type: text/html; charset=UTF-8');
                 <div class="section">
                     <h2>Installation</h2>
                     <ol class="install-steps">
-                        <li>Download the <code class="code">ai-post-scheduler</code> folder</li>
+                        <li>Download the <code class="code">wp-ai-scheduler</code> folder</li>
                         <li>Upload it to your WordPress <code class="code">/wp-content/plugins/</code> directory</li>
                         <li>Activate the plugin through the 'Plugins' menu in WordPress</li>
                         <li>Ensure Meow Apps AI Engine is installed and configured</li>
@@ -345,7 +345,7 @@ Write in a professional but approachable tone suitable for {{site_name}}.
                 <div class="section">
                     <h2>Plugin Structure</h2>
                     <div class="file-tree">
-                        <span class="folder">ai-post-scheduler/</span><br>
+                        <span class="folder">wp-ai-scheduler/</span><br>
                         ├── <span class="file">ai-post-scheduler.php</span> <span style="color:#646970">← Main plugin file</span><br>
                         ├── <span class="file">readme.txt</span><br>
                         ├── <span class="folder">assets/</span><br>
@@ -368,7 +368,7 @@ Write in a professional but approachable tone suitable for {{site_name}}.
                 </div>
                 
                 <div class="section notice-success notice">
-                    <strong>Ready to Use!</strong> Download the <code class="code">ai-post-scheduler</code> folder and upload it to your WordPress plugins directory to get started.
+                    <strong>Ready to Use!</strong> Download the <code class="code">wp-ai-scheduler</code> folder and upload it to your WordPress plugins directory to get started.
                 </div>
             </div>
             

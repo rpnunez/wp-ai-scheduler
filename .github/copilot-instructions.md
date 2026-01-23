@@ -16,7 +16,7 @@ This is a WordPress plugin that schedules AI-generated posts using Meow Apps AI 
 ## Project Structure
 
 ```
-ai-post-scheduler/           # Main plugin directory
+./                          # Main plugin directory
 ├── ai-post-scheduler.php    # Main plugin file (entry point)
 ├── includes/                # Core PHP classes
 │   ├── class-aips-*.php    # All classes use AIPS_ prefix
@@ -53,7 +53,7 @@ composer install
 composer test                # Run all tests
 composer test:verbose        # Run with verbose output
 composer test:coverage       # Generate HTML coverage report
-vendor/bin/phpunit ai-post-scheduler/tests/test-specific.php  # Run specific test file
+vendor/bin/phpunit tests/test-specific.php  # Run specific test file
 ```
 
 ### Important Notes

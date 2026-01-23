@@ -8,14 +8,14 @@ This feature integrates the topic expansion service from PR #443 into the author
 
 ### Modified Files
 
-1. **`ai-post-scheduler/includes/class-aips-author-post-generator.php`**
+1. **`includes/class-aips-author-post-generator.php`**
    - Added `AIPS_Topic_Expansion_Service` as a dependency
    - Modified `build_template_from_author()` to fetch and include expanded context
    - Added logging for when expanded context is added
 
 ### New Files
 
-1. **`ai-post-scheduler/tests/test-author-post-generator-expansion.php`**
+1. **`tests/test-author-post-generator-expansion.php`**
    - Unit tests for the expanded context feature
    - Tests both scenarios: with and without similar topics
 

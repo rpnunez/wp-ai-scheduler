@@ -28,7 +28,7 @@ require_once '/tmp/wordpress-tests-lib/includes/functions.php';
 
 // Load plugin
 function _load_plugin_for_test() {
-	require __DIR__ . '/ai-post-scheduler/ai-post-scheduler.php';
+	require __DIR__ . '/ai-post-scheduler.php';
 }
 tests_add_filter('muplugins_loaded', '_load_plugin_for_test');
 

@@ -9,10 +9,9 @@ This document describes how to run tests for the AI Post Scheduler plugin.
 
 ## Installation
 
-Navigate to the plugin directory and install development dependencies using Composer:
+Install development dependencies using Composer from the repository root:
 
 ```bash
-cd ai-post-scheduler
 composer install
 ```
 
@@ -23,10 +22,10 @@ This will install:
 
 ## Running Tests
 
-All commands should be run from the `ai-post-scheduler` directory:
+All commands should be run from the repository root:
 
 ```bash
-cd ai-post-scheduler
+pwd
 ```
 
 ### Run all tests
@@ -58,7 +57,7 @@ vendor/bin/phpunit --testdox --colors=always
 
 ## Test Structure
 
-Tests are located in `ai-post-scheduler/tests/`:
+Tests are located in `tests/`:
 
 - `test-template-processor.php` - Tests for template variable processing
 - `test-interval-calculator.php` - Tests for scheduling interval calculations
@@ -69,7 +68,7 @@ Tests are located in `ai-post-scheduler/tests/`:
 
 ## Configuration
 
-### PHPUnit Configuration (`ai-post-scheduler/phpunit.xml`)
+### PHPUnit Configuration (`phpunit.xml`)
 
 The `phpunit.xml` file configures:
 - Test suite location
@@ -78,7 +77,7 @@ The `phpunit.xml` file configures:
 - Error reporting
 - Memory limits
 
-### Bootstrap File (`ai-post-scheduler/tests/bootstrap.php`)
+### Bootstrap File (`tests/bootstrap.php`)
 
 The bootstrap file:
 - Loads Composer autoloader
@@ -93,7 +92,6 @@ The bootstrap file:
 Tests can run without a full WordPress installation. The bootstrap file provides mock implementations of WordPress functions and classes.
 
 ```bash
-cd ai-post-scheduler
 composer test
 ```
 
@@ -103,7 +101,7 @@ For full integration testing with WordPress:
 
 1. Install the WordPress test library:
 ```bash
-bash bin/install-wp-tests.sh wordpress_test root '' localhost latest
+bash tools/install-wp-tests.sh wordpress_test root '' localhost latest
 ```
 
 2. Set the `WP_TESTS_DIR` environment variable:
@@ -113,7 +111,6 @@ export WP_TESTS_DIR=/tmp/wordpress-tests-lib
 
 3. Run tests:
 ```bash
-cd ai-post-scheduler
 composer test
 ```
 
@@ -198,7 +195,6 @@ Increase the memory limit in `phpunit.xml`:
 Run specific test files instead of the entire suite:
 
 ```bash
-cd ai-post-scheduler
 vendor/bin/phpunit tests/test-specific.php
 ```
 
@@ -218,11 +214,10 @@ Coverage reports show which lines of code are executed during tests. To view:
 
 1. Generate coverage report:
 ```bash
-cd ai-post-scheduler
 composer test:coverage
 ```
 
-2. Open `ai-post-scheduler/coverage/index.html` in your browser
+2. Open `coverage/index.html` in your browser
 
 3. Click on files to see line-by-line coverage
 

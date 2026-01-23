@@ -8,7 +8,7 @@
 
 // Mock WordPress constants and functions
 define('ABSPATH', '/var/www/html/');
-define('AIPS_PLUGIN_DIR', __DIR__ . '/../ai-post-scheduler/');
+define('AIPS_PLUGIN_DIR', __DIR__ . '/../');
 
 // Mock WPDB
 class MockWPDB {

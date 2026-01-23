@@ -27,8 +27,8 @@ def get_changelog_content(branch):
     # Try root CHANGELOG.md
     content = run_command(f"git show {branch}:CHANGELOG.md")
     if content is None:
-        # Try ai-post-scheduler/CHANGELOG.md
-        content = run_command(f"git show {branch}:ai-post-scheduler/CHANGELOG.md")
+        # Try CHANGELOG.md at repository root
+        content = run_command(f"git show {branch}:CHANGELOG.md")
     return content
 
 def parse_changelog(content):
@@ -159,10 +159,10 @@ def main():
         final_content += f"## [{entry['branch']}] - {entry['date_str']}\n"
         final_content += f"{entry['content']}\n\n"
 
-    with open("ai-post-scheduler/CHANGELOG.md", "w") as f:
+    with open("CHANGELOG.md", "w") as f:
         f.write(final_content)
 
-    print("Successfully created ai-post-scheduler/CHANGELOG.md")
+    print("Successfully created CHANGELOG.md")
 
 if __name__ == "__main__":
     main()

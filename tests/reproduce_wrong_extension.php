@@ -59,7 +59,7 @@ class AIPS_Logger { public function log($m, $l, $c=[]) {} }
 class AIPS_AI_Service { public function generate_image($p) { return 'url'; } }
 
 // --- LOAD CLASS ---
-require_once __DIR__ . '/../ai-post-scheduler/includes/class-aips-image-service.php';
+require_once __DIR__ . '/../includes/class-aips-image-service.php';
 
 // --- RUN TEST ---
 echo "Starting verification...\n";

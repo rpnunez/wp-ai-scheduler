@@ -63,11 +63,17 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     }
     
     if (!defined('AIPS_PLUGIN_URL')) {
-        define('AIPS_PLUGIN_URL', 'http://example.com/wp-content/plugins/ai-post-scheduler/');
+        define(
+            'AIPS_PLUGIN_URL',
+            'http://example.com/wp-content/plugins/' . basename(dirname(__DIR__)) . '/'
+        );
     }
     
     if (!defined('AIPS_PLUGIN_BASENAME')) {
-        define('AIPS_PLUGIN_BASENAME', 'ai-post-scheduler/ai-post-scheduler.php');
+        define(
+            'AIPS_PLUGIN_BASENAME',
+            basename(dirname(__DIR__)) . '/ai-post-scheduler.php'
+        );
     }
 
     if (!isset($GLOBALS['aips_test_hooks'])) {

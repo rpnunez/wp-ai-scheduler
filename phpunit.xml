@@ -2,7 +2,7 @@
 <phpunit
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
-    bootstrap="ai-post-scheduler/tests/bootstrap.php"
+    bootstrap="tests/bootstrap.php"
     colors="true"
     beStrictAboutOutputDuringTests="true"
     failOnRisky="true"
@@ -14,16 +14,16 @@
 >
     <testsuites>
         <testsuite name="AI Post Scheduler Test Suite">
-            <directory suffix=".php">./ai-post-scheduler/tests</directory>
+            <directory suffix=".php">./tests</directory>
         </testsuite>
     </testsuites>
 
     <coverage processUncoveredFiles="true">
         <include>
-            <directory suffix=".php">./ai-post-scheduler/includes</directory>
+            <directory suffix=".php">./includes</directory>
         </include>
         <exclude>
-            <directory>./ai-post-scheduler/tests</directory>
+            <directory>./tests</directory>
             <directory>./vendor</directory>
         </exclude>
         <report>
