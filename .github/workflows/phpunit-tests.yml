@@ -15,6 +15,9 @@ jobs:
   phpunit-tests:
     name: PHPUnit Tests (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-post-scheduler
 
     strategy:
       matrix:
@@ -65,12 +68,11 @@ jobs:
 
       # Install Composer dependencies
       - name: Install Composer dependencies
-        run: cd ai-post-scheduler && composer install --no-interaction --prefer-dist --no-progress
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       # Install WordPress Test Library using standard script
       - name: Install WordPress Test Library
         run: |
-          cd ai-post-scheduler
           bash bin/install-wp-tests.sh wordpress_test root '' 127.0.0.1 latest true
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
@@ -78,7 +80,7 @@ jobs:
 
       # Run PHPUnit tests
       - name: Run PHPUnit tests
-        run: cd ai-post-scheduler && composer test -- --testdox
+        run: composer test -- --testdox
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress
@@ -86,7 +88,7 @@ jobs:
       # Code Coverage: Generate & Upload
       - name: Generate code coverage report (PHP 8.2 only)
         if: matrix.php == '8.2'
-        run: cd ai-post-scheduler && composer test:coverage
+        run: composer test:coverage
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WP_CORE_DIR: /tmp/wordpress
