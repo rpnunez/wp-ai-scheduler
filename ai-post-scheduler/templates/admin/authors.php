@@ -140,6 +140,17 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     </div>
 </div>
 
+<!-- Topic Logs Modal -->
+<div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">
+    <div class="aips-modal-content aips-modal-large">
+        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+        <h2 id="aips-topic-logs-modal-title"><?php esc_html_e('Topic History Log', 'ai-post-scheduler'); ?></h2>
+        <div id="aips-topic-logs-content">
+            <p><?php esc_html_e('Loading logs...', 'ai-post-scheduler'); ?></p>
+        </div>
+    </div>
+</div>
+
 <!-- Author Edit/Create Modal -->
 <div id="aips-author-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content">

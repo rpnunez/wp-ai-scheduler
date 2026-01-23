@@ -314,6 +314,12 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
 		}
 		
+		// Ensure topic exists before fetching logs
+		$topic = $this->repository->get_by_id($topic_id);
+		if (!$topic) {
+			wp_send_json_error(array('message' => __('Topic not found.', 'ai-post-scheduler')));
+		}
+
 		$logs = $this->logs_repository->get_by_topic($topic_id);
 		
 		// Enrich with user names
