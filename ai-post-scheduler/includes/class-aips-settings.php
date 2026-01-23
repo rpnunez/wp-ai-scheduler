@@ -284,6 +284,17 @@ class AIPS_Settings {
             true
         );
 
+        // Article Structures Page Scripts
+        if (strpos($hook, 'aips-structures') !== false) {
+            wp_enqueue_script(
+                'aips-admin-structures',
+                AIPS_PLUGIN_URL . 'assets/js/admin-structures.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
