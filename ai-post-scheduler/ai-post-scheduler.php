@@ -72,6 +72,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topic-logs-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-feedback-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-review-repository.php';
         
         // Services
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-embeddings-service.php';
@@ -107,6 +108,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-review.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-system-status.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dev-tools.php';
 
@@ -224,6 +226,7 @@ final class AI_Post_Scheduler {
             new AIPS_Templates();
             new AIPS_Templates_Controller();
             new AIPS_History();
+            new AIPS_Post_Review();
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
             new AIPS_Activity_Controller();

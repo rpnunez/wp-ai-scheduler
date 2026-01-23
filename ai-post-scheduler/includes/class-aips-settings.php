@@ -64,6 +64,15 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Post Review', 'ai-post-scheduler'),
+            __('Post Review', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-post-review',
+            array($this, 'render_post_review_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Schedule', 'ai-post-scheduler'),
             __('Schedule', 'ai-post-scheduler'),
             'manage_options',
@@ -468,6 +477,37 @@ class AIPS_Settings {
             'loadingError' => __('Failed to load activity data.', 'ai-post-scheduler'),
         ));
 
+        // Post Review Page Scripts
+        if (strpos($hook, 'aips-post-review') !== false) {
+            wp_enqueue_script(
+                'aips-admin-post-review',
+                AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+            
+            wp_localize_script('aips-admin-post-review', 'aipsPostReviewL10n', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('aips_ajax_nonce'),
+                'confirmPublish' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
+                'confirmBulkPublish' => __('Are you sure you want to publish %d selected post(s)?', 'ai-post-scheduler'),
+                'confirmDelete' => __('Are you sure you want to delete this post? This action cannot be undone.', 'ai-post-scheduler'),
+                'confirmBulkDelete' => __('Are you sure you want to delete %d selected post(s)? This action cannot be undone.', 'ai-post-scheduler'),
+                'confirmRegenerate' => __('Are you sure you want to regenerate this post? The current post will be deleted.', 'ai-post-scheduler'),
+                'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
+                'bulkPublishSuccess' => __('%d posts published successfully!', 'ai-post-scheduler'),
+                'deleteSuccess' => __('Post deleted successfully!', 'ai-post-scheduler'),
+                'bulkDeleteSuccess' => __('%d posts deleted successfully!', 'ai-post-scheduler'),
+                'regenerateSuccess' => __('Post regeneration started!', 'ai-post-scheduler'),
+                'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
+                'deleteError' => __('Failed to delete post.', 'ai-post-scheduler'),
+                'regenerateError' => __('Failed to regenerate post.', 'ai-post-scheduler'),
+                'loadingError' => __('Failed to load draft posts.', 'ai-post-scheduler'),
+                'noPostsSelected' => __('Please select at least one post.', 'ai-post-scheduler'),
+            ));
+        }
+
         if (strpos($hook, 'aips-dev-tools') !== false) {
             wp_enqueue_script(
                 'aips-admin-dev-tools',
@@ -736,6 +776,17 @@ class AIPS_Settings {
      */
     public function render_activity_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
+    }
+
+    /**
+     * Render the Post Review page.
+     *
+     * Includes the post review template file.
+     *
+     * @return void
+     */
+    public function render_post_review_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/post-review.php';
     }
 
     /*
