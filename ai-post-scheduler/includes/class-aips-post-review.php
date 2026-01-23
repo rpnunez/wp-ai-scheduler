@@ -116,6 +116,13 @@ class AIPS_Post_Review {
 			'message' => __('Post published from review queue', 'ai-post-scheduler'),
 		));
 		
+		/**
+		 * Fires after a post is published from the review queue.
+		 *
+		 * @param int $post_id Post ID that was published.
+		 */
+		do_action('aips_post_review_published', $post_id);
+		
 		wp_send_json_success(array(
 			'message' => __('Post published successfully.', 'ai-post-scheduler'),
 			'post_id' => $post_id,
@@ -218,6 +225,13 @@ class AIPS_Post_Review {
 			wp_send_json_error(array('message' => $result->get_error_message()));
 		}
 		
+		/**
+		 * Fires after a post is regenerated from the review queue.
+		 *
+		 * @param int $history_id History ID of the post being regenerated.
+		 */
+		do_action('aips_post_review_regenerated', $history_id);
+		
 		wp_send_json_success(array(
 			'message' => __('Post regeneration started successfully.', 'ai-post-scheduler'),
 			'history_id' => $history_id,
@@ -264,6 +278,13 @@ class AIPS_Post_Review {
 			'post_id' => $post_id,
 			'message' => __('Draft post deleted from review queue', 'ai-post-scheduler'),
 		));
+		
+		/**
+		 * Fires after a post is deleted from the review queue.
+		 *
+		 * @param int $post_id Post ID that was deleted.
+		 */
+		do_action('aips_post_review_deleted', $post_id);
 		
 		wp_send_json_success(array(
 			'message' => __('Post deleted successfully.', 'ai-post-scheduler'),

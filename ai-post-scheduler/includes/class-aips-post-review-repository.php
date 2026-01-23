@@ -134,12 +134,11 @@ class AIPS_Post_Review_Repository {
 		
 		// Query for total count
 		if (!empty($where_args)) {
-			$count_args = array_slice($where_args, 0, count($where_args) - 2); // Remove LIMIT and OFFSET
 			$total = $this->wpdb->get_var($this->wpdb->prepare(
 				"SELECT COUNT(*) FROM {$this->table_name} h 
 				INNER JOIN {$posts_table} p ON h.post_id = p.ID
 				WHERE $where_sql",
-				$count_args
+				$where_args
 			));
 		} else {
 			$total = $this->wpdb->get_var(
