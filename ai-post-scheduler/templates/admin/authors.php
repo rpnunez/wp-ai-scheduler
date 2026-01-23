@@ -126,8 +126,6 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                 <select id="aips-queue-bulk-action-select" class="aips-queue-bulk-action-select">
                     <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
                     <option value="generate_now"><?php esc_html_e('Generate Now', 'ai-post-scheduler'); ?></option>
-                    <option value="schedule" disabled><?php esc_html_e('Schedule (Coming Soon)', 'ai-post-scheduler'); ?></option>
-                    <option value="unapprove" disabled><?php esc_html_e('Unapprove Topics (Coming Soon)', 'ai-post-scheduler'); ?></option>
                 </select>
                 <button class="button aips-queue-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
             </div>

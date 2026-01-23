@@ -134,15 +134,15 @@
 				data: formData + '&action=aips_save_author&nonce=' + aipsAuthorsL10n.nonce,
 				success: (response) => {
 					if (response.success) {
-						alert(response.data.message || aipsAuthorsL10n.authorSaved);
+						this.showToast(response.data.message || aipsAuthorsL10n.authorSaved, 'success');
 
-						location.reload();
+						setTimeout(() => location.reload(), 1000);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving);
+						this.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorSaving);
+					this.showToast(aipsAuthorsL10n.errorSaving, 'error');
 				},
 				complete: () => {
 					$submitBtn.prop('disabled', false).text(aipsAuthorsL10n.saveAuthor);
@@ -168,15 +168,15 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						alert(response.data.message || aipsAuthorsL10n.authorDeleted);
+						this.showToast(response.data.message || aipsAuthorsL10n.authorDeleted, 'success');
 
-						location.reload();
+						setTimeout(() => location.reload(), 1000);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting);
+						this.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting, 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorDeleting);
+					this.showToast(aipsAuthorsL10n.errorDeleting, 'error');
 				}
 			});
 		},
@@ -204,15 +204,15 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						alert(response.data.message || aipsAuthorsL10n.topicsGenerated);
+						this.showToast(response.data.message || aipsAuthorsL10n.topicsGenerated, 'success');
 
-						location.reload();
+						setTimeout(() => location.reload(), 1000);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating);
+						this.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating, 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorGenerating);
+					this.showToast(aipsAuthorsL10n.errorGenerating, 'error');
 				},
 				complete: () => {
 					$btn.prop('disabled', false).text(aipsAuthorsL10n.generateTopicsNow);
@@ -820,6 +820,38 @@
 				"'": '&#039;'
 			};
 			return text.replace(/[&<>"']/g, m => map[m]);
+		},
+
+		showToast: function (message, type = 'info', duration = 5000) {
+			const iconMap = {
+				success: '✓',
+				error: '✕',
+				warning: '⚠',
+				info: 'ℹ'
+			};
+
+			const $toast = $('<div class="aips-toast ' + type + '">')
+				.append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
+				.append('<div class="aips-toast-message">' + this.escapeHtml(message) + '</div>')
+				.append('<button class="aips-toast-close" aria-label="Close">&times;</button>');
+
+			$('body').append($toast);
+
+			// Close on click
+			$toast.find('.aips-toast-close').on('click', function() {
+				$toast.addClass('closing');
+				setTimeout(() => $toast.remove(), 300);
+			});
+
+			// Auto close
+			if (duration > 0) {
+				setTimeout(() => {
+					if ($toast.length) {
+						$toast.addClass('closing');
+						setTimeout(() => $toast.remove(), 300);
+					}
+				}, duration);
+			}
 		}
 	};
 	
@@ -947,12 +979,6 @@
 			switch (action) {
 				case 'generate_now':
 					this.generateNowFromQueue(topicIds);
-					break;
-				case 'schedule':
-					alert(aipsAuthorsL10n.comingSoon || 'This feature is coming soon.');
-					break;
-				case 'unapprove':
-					alert(aipsAuthorsL10n.comingSoon || 'This feature is coming soon.');
 					break;
 				default:
 					alert(aipsAuthorsL10n.invalidAction || 'Invalid action.');
