@@ -55,8 +55,12 @@ class AIPS_Activity_Controller {
 		
 		$filter = isset($_POST['filter']) ? sanitize_text_field($_POST['filter']) : 'all';
 		$limit = isset($_POST['limit']) ? absint($_POST['limit']) : 50;
+		$search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
 		
-		$args = array('limit' => $limit);
+		$args = array(
+			'limit' => $limit,
+			'search' => $search
+		);
 		
 		switch ($filter) {
 			case 'failed':
