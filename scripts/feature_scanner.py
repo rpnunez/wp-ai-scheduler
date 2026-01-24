@@ -189,24 +189,29 @@ class FeatureScanner:
         }
         
         for class_name, feature in self.features.items():
+            # Normalize class name for matching: lowercase and strip common prefix.
             name_lower = class_name.lower()
+            base_name = re.sub(r'^aips_', '', name_lower)
             
-            if any(x in name_lower for x in ['generator', 'generation']):
+            if any(x in base_name for x in ['generator', 'generation']):
                 categories['Core Generation'].append(class_name)
-            elif any(x in name_lower for x in ['scheduler', 'cron', 'schedule']):
+            elif any(x in base_name for x in ['scheduler', 'cron', 'schedule']):
                 categories['Scheduling & Automation'].append(class_name)
-            elif any(x in name_lower for x in ['template', 'post', 'article', 'content']):
+            elif any(x in base_name for x in ['template', 'post', 'article', 'content']):
                 categories['Content Management'].append(class_name)
-            elif any(x in name_lower for x in ['data-management', 'export', 'import']):
+            elif any(x in base_name for x in ['data-management', 'export', 'import']):
                 categories['Data Management'].append(class_name)
-            elif any(x in name_lower for x in ['controller', 'admin', 'settings', 'ui']):
+            elif any(x in base_name for x in ['controller', 'admin', 'settings', 'ui']):
                 categories['User Interface'].append(class_name)
-            elif any(x in name_lower for x in ['ai', 'embeddings', 'openai']):
-                categories['AI Integration'].append(class_name)
-            elif any(x in name_lower for x in ['repository', 'db', 'database', 'migration']):
-                categories['Database'].append(class_name)
-            elif 'config' in name_lower:
+            elif 'config' in base_name:
                 categories['Configuration'].append(class_name)
+            elif (
+                any(x in base_name for x in ['ai_service', 'ai-engine', 'openai', 'embeddings'])
+                or any(p in base_name for p in ['_ai_', '-ai-', ' ai '])
+            ):
+                categories['AI Integration'].append(class_name)
+            elif any(x in base_name for x in ['repository', 'db', 'database', 'migration']):
+                categories['Database'].append(class_name)
             else:
                 categories['Utilities'].append(class_name)
         
