@@ -312,10 +312,9 @@
          * on the button and resets after 3 seconds if not clicked again.
          *
          * @param {jQuery} $btn - The button element that was clicked
-         * @param {Function} onConfirm - Callback function to execute when deletion is confirmed
          * @return {boolean} - Returns true if confirmed (ready to delete), false if waiting for confirmation
          */
-        softConfirm: function($btn, onConfirm) {
+        softConfirm: function($btn) {
             // First click - show confirmation state
             if (!$btn.data('is-confirming')) {
                 $btn.data('original-text', $btn.text());
@@ -333,10 +332,7 @@
                 return false;
             }
 
-            // Second click - execute deletion
-            if (typeof onConfirm === 'function') {
-                onConfirm();
-            }
+            // Second click - confirmed
             return true;
         },
 

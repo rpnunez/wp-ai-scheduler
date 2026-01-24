@@ -54,6 +54,9 @@
 	 * Soft Confirm Pattern - Utility function for delete confirmations
 	 * Instead of using a native confirm dialog, shows "Click again to confirm"
 	 * on the button and resets after 3 seconds if not clicked again.
+	 * 
+	 * Note: This is a standalone copy of the function from admin.js to keep
+	 * the authors module independent and self-contained.
 	 */
 	const softConfirm = function($btn) {
 		// First click - show confirmation state
@@ -78,6 +81,9 @@
 
 	/**
 	 * Reset soft confirm state on a button (used after AJAX errors)
+	 * 
+	 * Note: This is a standalone copy of the function from admin.js to keep
+	 * the authors module independent and self-contained.
 	 */
 	const resetSoftConfirm = function($btn) {
 		if ($btn.data('original-text')) {
