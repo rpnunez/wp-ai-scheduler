@@ -12,7 +12,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List
 from datetime import datetime
 from collections import defaultdict
 
