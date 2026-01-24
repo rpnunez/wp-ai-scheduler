@@ -153,8 +153,8 @@ class AIPS_Template_Repository {
 	public function get_all() { return array(); }
 }
 
-class AIPS_Schedule_Controller {
-	public function generate_post($template) { return true; }
+class AIPS_Generator {
+	public function generate_post($template, $voice = null, $topic = null) { return rand(1, 1000); }
 }
 
 // Include controller class

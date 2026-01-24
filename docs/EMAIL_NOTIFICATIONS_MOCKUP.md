@@ -116,7 +116,7 @@ When enabled, users receive an email that looks like this:
 
 ### When Email is Sent
 - **Frequency**: Once per day
-- **Time**: 9:00 AM server time
+- **Time**: Once per day at approximately the same time the schedule was activated or last updated (based on WordPress cron)
 - **Condition**: Only when draft posts exist AND notifications are enabled
 - **Maximum posts shown**: 10 (with indication of more if applicable)
 

@@ -102,7 +102,6 @@
         $(document).on('click', '.aips-regenerate-post', function(e) {
             e.preventDefault();
             var historyId = $(this).data('history-id');
-            var postId = $(this).data('post-id');
             var row = $(this).closest('tr');
             
             if (!confirm(aipsPostReviewL10n.confirmRegenerate)) {
@@ -322,14 +321,9 @@
         
         // Update draft count
         function updateDraftCount() {
-            var currentCount = parseInt($('#aips-draft-count').text()) || 0;
             var visibleRows = $('.aips-post-review-table tbody tr:visible').length;
             
-            if (visibleRows === 0) {
-                currentCount = Math.max(0, currentCount - 1);
-            }
-            
-            $('#aips-draft-count').text(currentCount);
+            $('#aips-draft-count').text(visibleRows);
         }
         
         // Check if table is empty and show empty state
@@ -356,7 +350,9 @@
             type = type || 'info';
             
             var noticeClass = 'notice-' + type;
-            var notice = $('<div class="notice ' + noticeClass + ' is-dismissible"><p>' + message + '</p></div>');
+            var notice = $('<div class="notice ' + noticeClass + ' is-dismissible"></div>');
+            var paragraph = $('<p></p>').text(message);
+            notice.append(paragraph);
             
             $('.wrap h1').after(notice);
             

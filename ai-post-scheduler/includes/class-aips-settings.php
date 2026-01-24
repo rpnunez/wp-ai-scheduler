@@ -692,6 +692,7 @@ class AIPS_Settings {
     public function review_notifications_enabled_field_callback() {
         $value = get_option('aips_review_notifications_enabled', 0);
         ?>
+        <input type="hidden" name="aips_review_notifications_enabled" value="0">
         <label>
             <input type="checkbox" name="aips_review_notifications_enabled" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Send daily email notifications when posts are awaiting review', 'ai-post-scheduler'); ?>
@@ -841,6 +842,14 @@ class AIPS_Settings {
      * @return void
      */
     public function render_post_review_page() {
+        // Get the globally-initialized Post Review handler to avoid duplicate AJAX registration
+        global $aips_post_review_handler;
+        if (!isset($aips_post_review_handler)) {
+            // Fallback: repository only (AJAX handlers already registered in main init)
+            $post_review_handler = null;
+        } else {
+            $post_review_handler = $aips_post_review_handler;
+        }
         include AIPS_PLUGIN_DIR . 'templates/admin/post-review.php';
     }
 

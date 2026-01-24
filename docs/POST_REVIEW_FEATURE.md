@@ -59,7 +59,7 @@ The Post Review feature includes email notifications to alert administrators whe
   - List of up to 10 recent draft posts with titles, templates, and creation dates
   - Direct link to the Post Review page
 - **Smart Delivery**: Only sends emails when draft posts exist and notifications are enabled
-- **Scheduled via WP Cron**: Runs daily at 9:00 AM server time
+- **Scheduled via WP Cron**: Runs once per day via WordPress cron
 
 ## Configuration
 
@@ -173,21 +173,11 @@ do_action('aips_post_review_deleted', $post_id);
 do_action('aips_post_review_regenerated', $history_id);
 ```
 
-#### Filtering Results
-
-You can filter the draft posts query using:
-
-```php
-add_filter('aips_post_review_query_args', function($args) {
-    // Modify query arguments
-    return $args;
-});
-```
-
 ## Security
 
 - All AJAX requests are protected with nonce verification
 - User capability checks ensure only administrators can access the feature
+- Per-post capability checks validate user permissions for each specific post
 - All inputs are sanitized and outputs are escaped
 - SQL queries use prepared statements via the repository pattern
 
