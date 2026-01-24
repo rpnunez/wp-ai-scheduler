@@ -72,16 +72,20 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			1
 		);
 
-		$post_creator = new class($action_called) use (&$action_called) {
-			private $action_called;
+		// Create a simple reference container
+		$ref_container = new stdClass();
+		$ref_container->action_called =& $action_called;
+
+		$post_creator = new class($ref_container) {
+			private $ref_container;
 			public $received_data;
 
-			public function __construct($action_called) {
-				$this->action_called =& $action_called;
+			public function __construct($ref_container) {
+				$this->ref_container = $ref_container;
 			}
 
 			public function create_post($data) {
-				if (!$this->action_called) {
+				if (!$this->ref_container->action_called) {
 					throw new Exception('Expected pre-create action to fire before post creation.');
 				}
 
