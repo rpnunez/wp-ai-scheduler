@@ -1039,3 +1039,88 @@
     color: #00a32a;
     font-style: normal;
 }
+
+/* Post Review Page Styles */
+.aips-post-review-stats {
+    margin: 20px 0;
+    padding: 15px 20px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+}
+
+.aips-stat-inline {
+    display: inline-block;
+    margin-right: 30px;
+}
+
+.aips-stat-inline .aips-stat-label {
+    font-weight: 600;
+    color: #646970;
+    margin-right: 8px;
+}
+
+.aips-stat-inline .aips-stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #2271b1;
+}
+
+.aips-post-review-filters {
+    margin-bottom: 10px;
+}
+
+.aips-post-review-table .column-actions {
+    width: 400px;
+}
+
+.aips-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.aips-action-buttons .button {
+    margin: 0;
+}
+
+.aips-post-review-table .button-link-delete {
+    color: #b32d2e;
+}
+
+.aips-post-review-table .button-link-delete:hover {
+    color: #ffffff;
+    background: #b32d2e;
+}
+
+.aips-log-details {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.aips-log-details h3 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: #1d2327;
+}
+
+.aips-log-details h3:first-child {
+    margin-top: 0;
+}
+
+.aips-log-details pre {
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    padding: 15px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.aips-post-review-table tr[data-post-id] {
+    transition: opacity 0.3s ease;
+}
