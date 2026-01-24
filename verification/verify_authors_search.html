@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Authors Search</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Basic WP Admin styles */
+        .wrap { margin: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; }
+        .wp-list-table { border-collapse: collapse; width: 100%; border: 1px solid #c3c4c7; }
+        .wp-list-table th, .wp-list-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #c3c4c7; }
+        .button { display: inline-block; text-decoration: none; font-size: 13px; line-height: 2.15384615; min-height: 30px; margin: 0; padding: 0 10px; cursor: pointer; border-width: 1px; border-style: solid; -webkit-appearance: none; border-radius: 3px; white-space: nowrap; box-sizing: border-box; }
+        .aips-empty-state { text-align: center; padding: 40px; display: none; }
+        .regular-text { width: 25em; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Authors</h1>
+
+        <div class="aips-authors-list">
+            <!-- Search Box (To be added) -->
+            <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+                <label class="screen-reader-text" for="aips-author-search">Search Authors:</label>
+                <input type="search" id="aips-author-search" class="regular-text" placeholder="Search authors...">
+                <button type="button" id="aips-author-search-clear" class="button" style="display: none;">Clear</button>
+            </div>
+
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th class="column-name">Name</th>
+                        <th class="column-field">Field/Niche</th>
+                        <th class="column-topics">Topics</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-author-id="1">
+                        <td class="column-name"><strong>John Doe</strong></td>
+                        <td class="column-field">PHP Programming</td>
+                        <td class="column-topics">10 topics</td>
+                    </tr>
+                    <tr data-author-id="2">
+                        <td class="column-name"><strong>Jane Smith</strong></td>
+                        <td class="column-field">React Development</td>
+                        <td class="column-topics">5 topics</td>
+                    </tr>
+                    <tr data-author-id="3">
+                        <td class="column-name"><strong>Bob Jones</strong></td>
+                        <td class="column-field">WordPress SEO</td>
+                        <td class="column-topics">8 topics</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Empty State (To be added) -->
+            <div id="aips-author-search-no-results" class="aips-empty-state" style="display: none;">
+                <h3>No Authors Found</h3>
+                <p>No authors match your search criteria.</p>
+                <button type="button" class="button button-primary aips-clear-author-search-btn">Clear Search</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var aipsAjax = { ajaxUrl: 'mock_url', nonce: 'mock_nonce' };
+        var aipsAdminL10n = {};
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+</body>
+</html>
