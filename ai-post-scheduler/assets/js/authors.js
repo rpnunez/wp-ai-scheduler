@@ -50,6 +50,44 @@
 		}
 	};
 
+	/**
+	 * Soft Confirm Pattern - Utility function for delete confirmations
+	 * Instead of using a native confirm dialog, shows "Click again to confirm"
+	 * on the button and resets after 3 seconds if not clicked again.
+	 */
+	const softConfirm = function($btn) {
+		// First click - show confirmation state
+		if (!$btn.data('is-confirming')) {
+			$btn.data('original-text', $btn.text());
+			$btn.text('Click again to confirm');
+			$btn.addClass('aips-confirm-delete');
+			$btn.data('is-confirming', true);
+
+			// Reset after 3 seconds
+			setTimeout(function() {
+				$btn.text($btn.data('original-text'));
+				$btn.removeClass('aips-confirm-delete');
+				$btn.data('is-confirming', false);
+			}, 3000);
+			
+			return false;
+		}
+
+		return true;
+	};
+
+	/**
+	 * Reset soft confirm state on a button (used after AJAX errors)
+	 */
+	const resetSoftConfirm = function($btn) {
+		if ($btn.data('original-text')) {
+			$btn.text($btn.data('original-text'));
+		}
+		$btn.removeClass('aips-confirm-delete');
+		$btn.data('is-confirming', false);
+		$btn.prop('disabled', false);
+	};
+
 	// Authors Module
 	const AuthorsModule = {
 		currentAuthorId: null,
@@ -197,11 +235,16 @@
 
 		deleteAuthor: function (e) {
 			e.preventDefault();
-			const authorId = $(e.currentTarget).data('id');
+			const $btn = $(e.currentTarget);
+			const authorId = $btn.data('id');
 
-			if (!confirm(aipsAuthorsL10n.confirmDelete)) {
+			// Use soft confirm pattern
+			if (!softConfirm($btn)) {
 				return;
 			}
+
+			// Confirmed, proceed with deletion
+			$btn.prop('disabled', true).text('Deleting...');
 
 			$.ajax({
 				url: ajaxurl,
@@ -218,10 +261,12 @@
 						setTimeout(() => location.reload(), 1000);
 					} else {
 						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting, 'error');
+						resetSoftConfirm($btn);
 					}
 				},
 				error: () => {
 					showToast(aipsAuthorsL10n.errorDeleting, 'error');
+					resetSoftConfirm($btn);
 				}
 			});
 		},

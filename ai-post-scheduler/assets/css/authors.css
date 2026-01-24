@@ -586,3 +586,23 @@
 .aips-toast.closing {
 	animation: slideOut 0.3s ease-in forwards;
 }
+
+/* Soft Confirm Delete Pattern */
+.aips-confirm-delete {
+    background: #d63638 !important;
+    color: #fff !important;
+    border-color: #d63638 !important;
+    font-weight: 600 !important;
+    animation: aips-pulse 0.5s ease-in-out;
+}
+
+.aips-confirm-delete:hover {
+    background: #b32d2e !important;
+    border-color: #b32d2e !important;
+}
+
+@keyframes aips-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
