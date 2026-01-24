@@ -25,3 +25,4 @@ Thumbs.db
 /tmp/
 /vendor/
 node_modules/
+scripts/__pycache__/
