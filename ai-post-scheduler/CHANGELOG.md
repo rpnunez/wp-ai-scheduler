@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [wizard-bulk-delete-schedules] - 2025-01-04
+### Added
+- Added bulk delete functionality to the Post Schedules admin page, allowing users to select and delete multiple schedules at once.
+- Added `delete_bulk` to `AIPS_Schedule_Repository` and `ajax_bulk_delete_schedules` to `AIPS_Schedule_Controller`.
+
 ## [wizard-authors-search] - 2025-12-27
 ### Added
 - Added client-side search functionality to the Authors list admin page.
