@@ -8,6 +8,48 @@
 (function ($) {
 	'use strict';
 
+	// Shared utility for showing toast notifications
+	const showToast = function (message, type = 'info', duration = 5000) {
+		const iconMap = {
+			success: '✓',
+			error: '✕',
+			warning: '⚠',
+			info: 'ℹ'
+		};
+
+		// Ensure toast container exists
+		let $container = $('#aips-toast-container');
+		if (!$container.length) {
+			$container = $('<div id="aips-toast-container"></div>');
+			$('body').append($container);
+		}
+
+		const closeLabel = ( window.aipsAuthorsL10n && aipsAuthorsL10n.toastCloseLabel ) ? aipsAuthorsL10n.toastCloseLabel : 'Close';
+
+		const $toast = $('<div class="aips-toast ' + type + '">')
+			.append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
+			.append('<div class="aips-toast-message">' + $('<div>').text(message).html() + '</div>')
+			.append('<button class="aips-toast-close" aria-label="' + String(closeLabel).replace(/"/g, '&quot;') + '">&times;</button>');
+
+		$container.append($toast);
+
+		// Close on click
+		$toast.find('.aips-toast-close').on('click', function() {
+			$toast.addClass('closing');
+			setTimeout(() => $toast.remove(), 300);
+		});
+
+		// Auto close
+		if (duration > 0) {
+			setTimeout(() => {
+				if ($toast.length) {
+					$toast.addClass('closing');
+					setTimeout(() => $toast.remove(), 300);
+				}
+			}, duration);
+		}
+	};
+
 	// Authors Module
 	const AuthorsModule = {
 		currentAuthorId: null,
@@ -60,6 +102,9 @@
 			
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
+			
+			// Topic detail expand/collapse
+			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
 		},
 
 		openAddModal: function (e) {
@@ -105,13 +150,13 @@
 						$('#post_generation_frequency').val(author.post_generation_frequency);
 						$('#is_active').prop('checked', author.is_active == 1);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
 
 						$('#aips-author-modal').fadeOut();
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorLoading);
+					showToast(aipsAuthorsL10n.errorLoading, 'error');
 
 					$('#aips-author-modal').fadeOut();
 				}
@@ -134,15 +179,15 @@
 				data: formData + '&action=aips_save_author&nonce=' + aipsAuthorsL10n.nonce,
 				success: (response) => {
 					if (response.success) {
-						alert(response.data.message || aipsAuthorsL10n.authorSaved);
+						showToast(response.data.message || aipsAuthorsL10n.authorSaved, 'success');
 
-						location.reload();
+						setTimeout(() => location.reload(), 1000);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorSaving);
+					showToast(aipsAuthorsL10n.errorSaving, 'error');
 				},
 				complete: () => {
 					$submitBtn.prop('disabled', false).text(aipsAuthorsL10n.saveAuthor);
@@ -168,15 +213,15 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						alert(response.data.message || aipsAuthorsL10n.authorDeleted);
+						showToast(response.data.message || aipsAuthorsL10n.authorDeleted, 'success');
 
-						location.reload();
+						setTimeout(() => location.reload(), 1000);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting, 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorDeleting);
+					showToast(aipsAuthorsL10n.errorDeleting, 'error');
 				}
 			});
 		},
@@ -204,15 +249,15 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						alert(response.data.message || aipsAuthorsL10n.topicsGenerated);
+						showToast(response.data.message || aipsAuthorsL10n.topicsGenerated, 'success');
 
-						location.reload();
+						setTimeout(() => location.reload(), 1000);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating, 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorGenerating);
+					showToast(aipsAuthorsL10n.errorGenerating, 'error');
 				},
 				complete: () => {
 					$btn.prop('disabled', false).text(aipsAuthorsL10n.generateTopicsNow);
@@ -270,9 +315,13 @@
 			html += '</tr></thead><tbody>';
 
 			topics.forEach(topic => {
-				html += '<tr data-topic-id="' + topic.id + '">';
+				html += '<tr data-topic-id="' + topic.id + '" class="aips-topic-row">';
 				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
-				html += '<td class="topic-title-cell"><span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
+				html += '<td class="topic-title-cell">';
+				html += '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '">';
+				html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
+				html += '</button> ';
+				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
 				
 				// Add post count badge if there are any posts
 				if (topic.post_count && topic.post_count > 0) {
@@ -281,7 +330,8 @@
 					html += '</span>';
 				}
 				
-				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '"></td>';
+				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
+				html += '</td>';
 				html += '<td>' + topic.generated_at + '</td>';
 				html += '<td class="topic-actions">';
 
@@ -296,6 +346,21 @@
 				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.edit + '</button> ';
 				html += '<button class="button aips-delete-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.delete + '</button>';
 				html += '</td></tr>';
+				
+				// Add collapsible detail row
+				html += '<tr class="aips-topic-detail-row" data-topic-id="' + topic.id + '" style="display:none;">';
+				html += '<td colspan="4" class="aips-topic-detail-cell">';
+				html += '<div class="aips-topic-detail-content">';
+				if (topic.topic_description) {
+					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.description || 'Description') + ':</strong> ' + this.escapeHtml(topic.topic_description) + '</div>';
+				}
+				if (topic.topic_rationale) {
+					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.rationale || 'Rationale') + ':</strong> ' + this.escapeHtml(topic.topic_rationale) + '</div>';
+				}
+				if (topic.reviewed_at && topic.reviewed_by) {
+					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + this.escapeHtml(String(topic.reviewed_at)) + ' by User ID ' + this.escapeHtml(String(topic.reviewed_by)) + '</div>';
+				}
+				html += '</div></td></tr>';
 			});
 
 			html += '</tbody></table>';
@@ -320,6 +385,30 @@
 				this.loadFeedback();
 			} else {
 				this.loadTopics(status);
+			}
+		},
+
+		toggleTopicDetail: function (e) {
+			e.preventDefault();
+			const $button = $(e.currentTarget);
+			const $row = $button.closest('tr');
+			const $detailRow = $row.next('.aips-topic-detail-row');
+
+			// If no corresponding detail row is found, do nothing.
+			if (!$detailRow.length) {
+				return;
+			}
+
+			const $icon = $button.find('.dashicons');
+
+			if ($detailRow.is(':visible')) {
+				$detailRow.slideUp(200);
+				$icon.removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-right-alt2');
+				$button.attr('aria-expanded', 'false');
+			} else {
+				$detailRow.slideDown(200);
+				$icon.removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
+				$button.attr('aria-expanded', 'true');
 			}
 		},
 
@@ -374,11 +463,11 @@
 
 						this.loadTopics('pending');
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
 					}
 				},
 				error: () => {
-					alert(action === 'approve' ? aipsAuthorsL10n.errorApproving : aipsAuthorsL10n.errorRejecting);
+					showToast(action === 'approve' ? aipsAuthorsL10n.errorApproving : aipsAuthorsL10n.errorRejecting, 'error');
 				}
 			});
 		},
@@ -462,11 +551,11 @@
 						const activeTab = $('.aips-tab-link.active').data('tab');
 						this.loadTopics(activeTab);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeletingTopic);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeletingTopic, 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorDeletingTopic);
+					showToast(aipsAuthorsL10n.errorDeletingTopic, 'error');
 				}
 			});
 		},
@@ -495,7 +584,7 @@
 			const newTitle = $row.find('.topic-title-edit').val();
 
 			if (!newTitle.trim()) {
-				alert(aipsAuthorsL10n.topicTitleRequired);
+				showToast(aipsAuthorsL10n.topicTitleRequired, 'warning');
 				return;
 			}
 
@@ -515,11 +604,11 @@
 						$row.find('.aips-edit-topic').show();
 						$row.find('.aips-save-topic, .aips-cancel-edit-topic').remove();
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSavingTopic);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSavingTopic);
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorSavingTopic);
+					showToast(aipsAuthorsL10n.errorSavingTopic, 'error');
 				}
 			});
 		},
@@ -554,16 +643,16 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						alert(aipsAuthorsL10n.postGenerated);
+						showToast(aipsAuthorsL10n.postGenerated, 'success');
 						const activeTab = $('.aips-tab-link.active').data('tab');
 						this.loadTopics(activeTab);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost, 'error');
 						$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorGeneratingPost);
+					showToast(aipsAuthorsL10n.errorGeneratingPost, 'error');
 					$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
 				}
 			});
@@ -721,7 +810,7 @@
 			const action = $dropdown.val();
 
 			if (!action) {
-				alert(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.');
+				showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
 				return;
 			}
 
@@ -732,7 +821,7 @@
 			});
 
 			if (topicIds.length === 0) {
-				alert(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
+				showToast(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.', 'warning');
 				return;
 			}
 
@@ -758,7 +847,7 @@
 					ajaxAction = 'aips_bulk_delete_topics';
 					break;
 				default:
-					alert('Invalid bulk action.');
+					showToast('Invalid bulk action.', 'error');
 					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
 					return;
 			}
@@ -774,16 +863,16 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						alert(response.data.message);
+						showToast(response.data.message, 'success');
 						// Reload topics for current tab
 						const activeTab = $('.aips-tab-link.active').data('tab');
 						this.loadTopics(activeTab);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.');
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.');
+					showToast(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 				},
 				complete: () => {
 					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
@@ -928,7 +1017,7 @@
 			const action = $('#aips-queue-bulk-action-select').val();
 
 			if (!action) {
-				alert(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.');
+				showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
 				return;
 			}
 
@@ -939,7 +1028,7 @@
 			});
 
 			if (topicIds.length === 0) {
-				alert(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
+				showToast(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.', 'warning');
 				return;
 			}
 
@@ -948,14 +1037,8 @@
 				case 'generate_now':
 					this.generateNowFromQueue(topicIds);
 					break;
-				case 'schedule':
-					alert(aipsAuthorsL10n.comingSoon || 'This feature is coming soon.');
-					break;
-				case 'unapprove':
-					alert(aipsAuthorsL10n.comingSoon || 'This feature is coming soon.');
-					break;
 				default:
-					alert(aipsAuthorsL10n.invalidAction || 'Invalid action.');
+					showToast(aipsAuthorsL10n.invalidAction || 'Invalid action.', 'error');
 			}
 		},
 
@@ -979,16 +1062,16 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						alert(response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.');
+						showToast(response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.', 'success');
 						
 						// Reload the queue
 						this.loadQueueTopics();
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating || 'Error generating posts.');
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorGenerating || 'Error generating posts.');
+					showToast(aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
 				},
 				complete: () => {
 					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
