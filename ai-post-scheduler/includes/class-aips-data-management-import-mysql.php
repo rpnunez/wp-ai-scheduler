@@ -120,29 +120,10 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		$plugin_table_names = array_values($plugin_tables);
 		
 		foreach ($queries as $query) {
-			$query_upper = strtoupper(trim($query));
-			
-			// Skip if query is empty
-			if (empty($query_upper)) {
-				continue;
-			}
-			
-			// Extract table name from query
-			$has_valid_table = false;
-			foreach ($plugin_table_names as $table_name) {
-				if (stripos($query, $table_name) !== false) {
-					$has_valid_table = true;
-					break;
-				}
-			}
-			
-			// If query references a table, ensure it's one of ours
-			if (!$has_valid_table && 
-				(strpos($query_upper, 'TABLE') !== false || 
-				 strpos($query_upper, 'INSERT') !== false)) {
+			if (!$this->is_valid_query($query, $plugin_table_names)) {
 				return new WP_Error(
-					'invalid_table',
-					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
+					'invalid_query',
+					__('SQL file contains unauthorized or malformed queries. Only standard backup/restore operations on plugin tables are allowed.', 'ai-post-scheduler')
 				);
 			}
 		}
@@ -210,5 +191,48 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		});
 		
 		return $queries;
+	}
+
+	/**
+	 * Validate if a query is safe to execute
+	 *
+	 * @param string $query
+	 * @param array $allowed_tables
+	 * @return bool
+	 */
+	private function is_valid_query($query, $allowed_tables) {
+		$query = trim($query);
+		if (empty($query)) {
+			return true;
+		}
+
+		$query_upper = strtoupper($query);
+
+		// 1. Allowed SET commands
+		if (strpos($query_upper, 'SET SQL_MODE') === 0 ||
+			strpos($query_upper, 'SET TIME_ZONE') === 0 ||
+			strpos($query_upper, 'SET NAMES') === 0 ||
+			strpos($query_upper, 'SET CHARACTER SET') === 0) {
+			return true;
+		}
+
+		// 2. Identify command type and extract table name
+		$table_name = '';
+
+		if (preg_match('/^DROP\s+TABLE(?:\s+IF\s+EXISTS)?\s+`?([a-zA-Z0-9_]+)`?/i', $query, $matches)) {
+			$table_name = $matches[1];
+		} elseif (preg_match('/^CREATE\s+TABLE\s+`?([a-zA-Z0-9_]+)`?/i', $query, $matches)) {
+			$table_name = $matches[1];
+		} elseif (preg_match('/^INSERT\s+(?:IGNORE\s+)?INTO\s+`?([a-zA-Z0-9_]+)`?/i', $query, $matches)) {
+			$table_name = $matches[1];
+		} elseif (preg_match('/^LOCK\s+TABLES\s+`?([a-zA-Z0-9_]+)`?/i', $query, $matches)) {
+			$table_name = $matches[1];
+		} else {
+			// Query does not match allowed patterns (UPDATE, DELETE, etc.)
+			return false;
+		}
+
+		// 3. Verify table name matches one of the plugin tables
+		return in_array($table_name, $allowed_tables);
 	}
 }
