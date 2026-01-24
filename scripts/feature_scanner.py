@@ -8,7 +8,6 @@ This script analyzes the plugin's PHP files to generate comprehensive documentat
 - Missing functionality and improvement recommendations
 """
 
-import os
 import re
 import sys
 from pathlib import Path
