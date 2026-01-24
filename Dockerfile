@@ -33,7 +33,7 @@ COPY docker-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Copy healthcheck script and make executable
-COPY healthcheck.sh /usr/local/bin/healthcheck.sh
+COPY tools/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
 
 # Define healthcheck
