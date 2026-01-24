@@ -64,6 +64,15 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Post Review', 'ai-post-scheduler'),
+            __('Post Review', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-post-review',
+            array($this, 'render_post_review_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Schedule', 'ai-post-scheduler'),
             __('Schedule', 'ai-post-scheduler'),
             'manage_options',
@@ -187,6 +196,12 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
+        register_setting('aips_settings', 'aips_review_notifications_enabled', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_review_notifications_email', array(
+            'sanitize_callback' => 'sanitize_email'
+        ));
         
         add_settings_section(
             'aips_general_section',
@@ -247,6 +262,22 @@ class AIPS_Settings {
             'aips_developer_mode',
             __('Developer Mode', 'ai-post-scheduler'),
             array($this, 'developer_mode_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+        
+        add_settings_field(
+            'aips_review_notifications_enabled',
+            __('Send Email Notifications for Posts Awaiting Review', 'ai-post-scheduler'),
+            array($this, 'review_notifications_enabled_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+        
+        add_settings_field(
+            'aips_review_notifications_email',
+            __('Notifications Email Address', 'ai-post-scheduler'),
+            array($this, 'review_notifications_email_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -468,6 +499,37 @@ class AIPS_Settings {
             'loadingError' => __('Failed to load activity data.', 'ai-post-scheduler'),
         ));
 
+        // Post Review Page Scripts
+        if (strpos($hook, 'aips-post-review') !== false) {
+            wp_enqueue_script(
+                'aips-admin-post-review',
+                AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+            
+            wp_localize_script('aips-admin-post-review', 'aipsPostReviewL10n', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('aips_ajax_nonce'),
+                'confirmPublish' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
+                'confirmBulkPublish' => __('Are you sure you want to publish %d selected post(s)?', 'ai-post-scheduler'),
+                'confirmDelete' => __('Are you sure you want to delete this post? This action cannot be undone.', 'ai-post-scheduler'),
+                'confirmBulkDelete' => __('Are you sure you want to delete %d selected post(s)? This action cannot be undone.', 'ai-post-scheduler'),
+                'confirmRegenerate' => __('Are you sure you want to regenerate this post? The current post will be deleted.', 'ai-post-scheduler'),
+                'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
+                'bulkPublishSuccess' => __('%d posts published successfully!', 'ai-post-scheduler'),
+                'deleteSuccess' => __('Post deleted successfully!', 'ai-post-scheduler'),
+                'bulkDeleteSuccess' => __('%d posts deleted successfully!', 'ai-post-scheduler'),
+                'regenerateSuccess' => __('Post regeneration started!', 'ai-post-scheduler'),
+                'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
+                'deleteError' => __('Failed to delete post.', 'ai-post-scheduler'),
+                'regenerateError' => __('Failed to regenerate post.', 'ai-post-scheduler'),
+                'loadingError' => __('Failed to load draft posts.', 'ai-post-scheduler'),
+                'noPostsSelected' => __('Please select at least one post.', 'ai-post-scheduler'),
+            ));
+        }
+
         if (strpos($hook, 'aips-dev-tools') !== false) {
             wp_enqueue_script(
                 'aips-admin-dev-tools',
@@ -621,6 +683,40 @@ class AIPS_Settings {
     }
     
     /**
+     * Render the review notifications enabled setting field.
+     *
+     * Displays a checkbox to enable or disable email notifications for posts awaiting review.
+     *
+     * @return void
+     */
+    public function review_notifications_enabled_field_callback() {
+        $value = get_option('aips_review_notifications_enabled', 0);
+        ?>
+        <input type="hidden" name="aips_review_notifications_enabled" value="0">
+        <label>
+            <input type="checkbox" name="aips_review_notifications_enabled" value="1" <?php checked($value, 1); ?>>
+            <?php esc_html_e('Send daily email notifications when posts are awaiting review', 'ai-post-scheduler'); ?>
+        </label>
+        <p class="description"><?php esc_html_e('A daily email will be sent with a list of draft posts pending review.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Render the review notifications email setting field.
+     *
+     * Displays an email input field for the notifications recipient.
+     *
+     * @return void
+     */
+    public function review_notifications_email_field_callback() {
+        $value = get_option('aips_review_notifications_email', get_option('admin_email'));
+        ?>
+        <input type="email" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
+        <p class="description"><?php esc_html_e('Email address to receive notifications about posts awaiting review.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+    
+    /**
      * Render the main dashboard page.
      *
      * Fetches statistics and recent activity from the database to display
@@ -736,6 +832,25 @@ class AIPS_Settings {
      */
     public function render_activity_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
+    }
+
+    /**
+     * Render the Post Review page.
+     *
+     * Includes the post review template file.
+     *
+     * @return void
+     */
+    public function render_post_review_page() {
+        // Get the globally-initialized Post Review handler to avoid duplicate AJAX registration
+        global $aips_post_review_handler;
+        if (!isset($aips_post_review_handler)) {
+            // Fallback: repository only (AJAX handlers already registered in main init)
+            $post_review_handler = null;
+        } else {
+            $post_review_handler = $aips_post_review_handler;
+        }
+        include AIPS_PLUGIN_DIR . 'templates/admin/post-review.php';
     }
 
     /*
