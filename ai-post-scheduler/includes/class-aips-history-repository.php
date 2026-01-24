@@ -160,6 +160,21 @@ class AIPS_History_Repository {
     }
     
     /**
+     * Check if a post has a completed history entry.
+     *
+     * @param int $post_id The post ID to check.
+     * @return bool True if the post has a completed history entry, false otherwise.
+     */
+    public function post_has_history_and_completed($post_id) {
+        $count = $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->table_name} WHERE post_id = %d AND status = 'completed'",
+            $post_id
+        ));
+        
+        return (bool) $count;
+    }
+    
+    /**
      * Add a log entry to a history item.
      *
      * @param int    $history_id The ID of the history item.
