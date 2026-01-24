@@ -378,4 +378,25 @@ class AIPS_Schedule_Repository {
             'active' => (int) $results->active,
         );
     }
+
+    /**
+     * Update the next_run timestamp for a schedule conditionally (Optimistic Locking).
+     *
+     * @param int    $id           Schedule ID.
+     * @param string $new_next_run New timestamp in MySQL format.
+     * @param string $old_next_run Expected current timestamp in MySQL format.
+     * @return bool True on success (lock acquired), false on failure.
+     */
+    public function update_next_run_conditional($id, $new_next_run, $old_next_run) {
+        $query = $this->wpdb->prepare(
+            "UPDATE {$this->schedule_table} SET next_run = %s WHERE id = %d AND next_run = %s",
+            $new_next_run,
+            $id,
+            $old_next_run
+        );
+
+        $this->wpdb->query($query);
+
+        return $this->wpdb->rows_affected > 0;
+    }
 }
