@@ -17,10 +17,12 @@
 			info: 'ℹ'
 		};
 
+		const closeLabel = ( window.aipsAuthorsL10n && aipsAuthorsL10n.toastCloseLabel ) ? aipsAuthorsL10n.toastCloseLabel : 'Close';
+
 		const $toast = $('<div class="aips-toast ' + type + '">')
 			.append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
 			.append('<div class="aips-toast-message">' + $('<div>').text(message).html() + '</div>')
-			.append('<button class="aips-toast-close" aria-label="Close">&times;</button>');
+			.append('<button class="aips-toast-close" aria-label="' + String(closeLabel).replace(/"/g, '&quot;') + '">&times;</button>');
 
 		$('body').append($toast);
 
@@ -309,7 +311,7 @@
 				html += '<tr data-topic-id="' + topic.id + '" class="aips-topic-row">';
 				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
 				html += '<td class="topic-title-cell">';
-				html += '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '">';
+				html += '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '">';
 				html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
 				html += '</button> ';
 				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
@@ -349,7 +351,7 @@
 					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.rationale || 'Rationale') + ':</strong> ' + this.escapeHtml(topic.topic_rationale) + '</div>';
 				}
 				if (topic.reviewed_at && topic.reviewed_by) {
-					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + topic.reviewed_at + ' by User ID ' + topic.reviewed_by + '</div>';
+					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + this.escapeHtml(String(topic.reviewed_at)) + ' by User ID ' + this.escapeHtml(String(topic.reviewed_by)) + '</div>';
 				}
 				html += '</div></td></tr>';
 			});
@@ -381,16 +383,25 @@
 
 		toggleTopicDetail: function (e) {
 			e.preventDefault();
-			const topicId = $(e.currentTarget).data('topic-id');
-			const $detailRow = $('.aips-topic-detail-row[data-topic-id="' + topicId + '"]');
-			const $icon = $(e.currentTarget).find('.dashicons');
-			
+			const $button = $(e.currentTarget);
+			const $row = $button.closest('tr');
+			const $detailRow = $row.next('.aips-topic-detail-row');
+
+			// If no corresponding detail row is found, do nothing.
+			if (!$detailRow.length) {
+				return;
+			}
+
+			const $icon = $button.find('.dashicons');
+
 			if ($detailRow.is(':visible')) {
 				$detailRow.slideUp(200);
 				$icon.removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-right-alt2');
+				$button.attr('aria-expanded', 'false');
 			} else {
 				$detailRow.slideDown(200);
 				$icon.removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
+				$button.attr('aria-expanded', 'true');
 			}
 		},
 
