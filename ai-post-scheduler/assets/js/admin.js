@@ -125,6 +125,7 @@
                 $('#structure_id').val('');
                 $('#aips-structure-modal-title').text('Add New Article Structure');
                 $('#aips-structure-modal').show();
+                setTimeout(function() { $('#structure_name').focus(); }, 100);
             });
 
             // @TODO: Refactor to AIPS.closeModal -- or use existing function
@@ -189,6 +190,7 @@
                         $('#structure_is_default').prop('checked', s.is_default == 1);
                         $('#aips-structure-modal-title').text('Edit Article Structure');
                         $('#aips-structure-modal').show();
+                        setTimeout(function() { $('#structure_name').focus(); }, 100);
                     } else {
                         alert(response.data.message || aipsAdminL10n.loadStructureFailed);
                     }
@@ -218,6 +220,7 @@
                 $('#section_id').val('');
                 $('#aips-section-modal-title').text('Add New Prompt Section');
                 $('#aips-section-modal').show();
+                setTimeout(function() { $('#section_name').focus(); }, 100);
             });
 
             $(document).on('click', '.aips-save-section', function(){
@@ -261,6 +264,7 @@
                         $('#section_is_active').prop('checked', s.is_active == 1);
                         $('#aips-section-modal-title').text('Edit Prompt Section');
                         $('#aips-section-modal').show();
+                        setTimeout(function() { $('#section_name').focus(); }, 100);
                     } else {
                         alert(response.data.message || aipsAdminL10n.loadSectionFailed);
                     }
@@ -400,6 +404,7 @@
             // Reset AI Variables panel
             AIPS.updateAIVariablesPanel([]);
             $('#aips-template-modal').show();
+            setTimeout(function() { $('#template_name').focus(); }, 100);
         },
 
         editTemplate: function(e) {
@@ -441,6 +446,7 @@
                         AIPS.initAIVariablesScanner();
                         $('#aips-modal-title').text('Edit Template');
                         $('#aips-template-modal').show();
+                        setTimeout(function() { $('#template_name').focus(); }, 100);
                     } else {
                         alert(response.data.message);
                     }
@@ -699,6 +705,7 @@
             $('#voice_id').val('');
             $('#aips-voice-modal-title').text('Add New Voice');
             $('#aips-voice-modal').show();
+            setTimeout(function() { $('#voice_name').focus(); }, 100);
         },
 
         editVoice: function(e) {
@@ -723,6 +730,7 @@
                         $('#voice_is_active').prop('checked', v.is_active == 1);
                         $('#aips-voice-modal-title').text('Edit Voice');
                         $('#aips-voice-modal').show();
+                        setTimeout(function() { $('#voice_name').focus(); }, 100);
                     }
                 }
             });
@@ -797,6 +805,7 @@
             $('#schedule_id').val('');
             $('#aips-schedule-modal-title').text('Add New Schedule');
             $('#aips-schedule-modal').show();
+            setTimeout(function() { $('#schedule_template').focus(); }, 100);
         },
 
         cloneSchedule: function(e) {
@@ -827,6 +836,7 @@
             // Update title and show
             $('#aips-schedule-modal-title').text('Clone Schedule');
             $('#aips-schedule-modal').show();
+            setTimeout(function() { $('#schedule_template').focus(); }, 100);
         },
 
         saveSchedule: function(e) {

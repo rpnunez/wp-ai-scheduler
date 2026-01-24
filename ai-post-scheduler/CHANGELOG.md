@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [palette-modal-focus] - 2024-05-24
+### Improved
+- Improved modal accessibility by implementing auto-focus on the first input field when opening templates, schedules, voices, structures, and sections modals.
+
 ## [wizard-authors-search] - 2025-12-27
 ### Added
 - Added client-side search functionality to the Authors list admin page.
