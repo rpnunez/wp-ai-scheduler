@@ -288,9 +288,11 @@ class AIPS_Post_Review {
 		$generator = new AIPS_Generator();
 		$result = $generator->generate_post($template);
 		
+		// Initialize activity repository once for logging
+		$activity_repository = new AIPS_Activity_Repository();
+		
 		if (is_wp_error($result)) {
 			// Log the regeneration failure
-			$activity_repository = new AIPS_Activity_Repository();
 			$activity_repository->create(array(
 				'event_type' => 'post_regenerated',
 				'event_status' => 'failed',
@@ -301,7 +303,6 @@ class AIPS_Post_Review {
 		}
 		
 		// Log the regeneration success
-		$activity_repository = new AIPS_Activity_Repository();
 		$activity_repository->create(array(
 			'event_type' => 'post_regenerated',
 			'event_status' => 'success',
@@ -409,10 +410,10 @@ class AIPS_Post_Review {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 		
-		$items = ( isset( $_POST['items'] ) && is_array( $_POST['items'] ) ) ? $_POST['items'] : array();
+		$items = (isset($_POST['items']) && is_array($_POST['items'])) ? $_POST['items'] : array();
 		
-		if ( empty( $items ) ) {
-			wp_send_json_error( array( 'message' => __( 'No posts selected.', 'ai-post-scheduler' ) ) );
+		if (empty($items)) {
+			wp_send_json_error(array('message' => __('No posts selected.', 'ai-post-scheduler')));
 		}
 		
 		$success_count = 0;
@@ -421,15 +422,15 @@ class AIPS_Post_Review {
 		global $wpdb;
 		$history_table = $wpdb->prefix . 'aips_history';
 		
-		foreach ( $items as $item ) {
-			if ( ! is_array( $item ) ) {
+		foreach ($items as $item) {
+			if (!is_array($item)) {
 				continue;
 			}
 
-			$post_id    = isset( $item['post_id'] ) ? absint( $item['post_id'] ) : 0;
-			$history_id = isset( $item['history_id'] ) ? absint( $item['history_id'] ) : 0;
+			$post_id = isset($item['post_id']) ? absint($item['post_id']) : 0;
+			$history_id = isset($item['history_id']) ? absint($item['history_id']) : 0;
 			
-			if ( ! $post_id ) {
+			if (!$post_id) {
 				continue;
 			}
 			

@@ -7,13 +7,13 @@ if (!defined('ABSPATH')) {
 global $aips_post_review_handler;
 if (!isset($aips_post_review_handler) && !isset($post_review_handler)) {
 	// Fallback: use repository directly (AJAX handlers already registered in main init)
-	$repository = new AIPS_Post_Review_Repository();
+	$post_review_data_source = new AIPS_Post_Review_Repository();
 } elseif (isset($post_review_handler)) {
 	// Use the handler passed from render method
-	$repository = $post_review_handler;
+	$post_review_data_source = $post_review_handler;
 } else {
 	// Use the global handler
-	$repository = $aips_post_review_handler;
+	$post_review_data_source = $aips_post_review_handler;
 }
 
 // Get filter parameters
@@ -22,7 +22,7 @@ $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
 $template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
 
 // Get draft posts
-$draft_posts = $repository->get_draft_posts(array(
+$draft_posts = $post_review_data_source->get_draft_posts(array(
 	'page' => $current_page,
 	'search' => $search_query,
 	'template_id' => $template_id,
