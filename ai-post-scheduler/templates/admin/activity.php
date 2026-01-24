@@ -8,18 +8,27 @@ if (!defined('ABSPATH')) {
 	
 	<div class="aips-activity-container">
 		<div class="aips-activity-filters">
-			<button class="button aips-filter-btn active" data-filter="all">
-				<?php esc_html_e('All Activity', 'ai-post-scheduler'); ?>
-			</button>
-			<button class="button aips-filter-btn" data-filter="published">
-				<?php esc_html_e('Published', 'ai-post-scheduler'); ?>
-			</button>
-			<button class="button aips-filter-btn" data-filter="drafts">
-				<?php esc_html_e('Drafts', 'ai-post-scheduler'); ?>
-			</button>
-			<button class="button aips-filter-btn" data-filter="failed">
-				<?php esc_html_e('Failed', 'ai-post-scheduler'); ?>
-			</button>
+			<div class="aips-filter-group">
+				<button class="button aips-filter-btn active" data-filter="all">
+					<?php esc_html_e('All Activity', 'ai-post-scheduler'); ?>
+				</button>
+				<button class="button aips-filter-btn" data-filter="published">
+					<?php esc_html_e('Published', 'ai-post-scheduler'); ?>
+				</button>
+				<button class="button aips-filter-btn" data-filter="drafts">
+					<?php esc_html_e('Drafts', 'ai-post-scheduler'); ?>
+				</button>
+				<button class="button aips-filter-btn" data-filter="failed">
+					<?php esc_html_e('Failed', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+
+			<div class="aips-search-box" style="margin-left: auto;">
+				<label class="screen-reader-text" for="aips-activity-search"><?php esc_html_e('Search Activity:', 'ai-post-scheduler'); ?></label>
+				<input type="search" id="aips-activity-search" class="regular-text" placeholder="<?php esc_attr_e('Search activity...', 'ai-post-scheduler'); ?>">
+				<button type="button" id="aips-activity-search-btn" class="button"><?php esc_html_e('Search', 'ai-post-scheduler'); ?></button>
+				<button type="button" id="aips-activity-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+			</div>
 		</div>
 		
 		<div class="aips-activity-feed">
