@@ -441,11 +441,38 @@
 }
 
 /* Toast Notification Styles */
-.aips-toast {
+#aips-toast-container {
 	position: fixed;
 	top: 32px;
 	right: 20px;
 	z-index: 100000;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	pointer-events: none;
+}
+
+/* Responsive adjustments for mobile */
+@media screen and (max-width: 782px) {
+	#aips-toast-container {
+		top: 46px; /* WordPress mobile admin bar height */
+		right: 10px;
+		left: 10px;
+		max-width: calc(100vw - 20px);
+	}
+}
+
+@media screen and (max-width: 600px) {
+	#aips-toast-container {
+		top: 46px;
+		right: 5px;
+		left: 5px;
+		max-width: calc(100vw - 10px);
+	}
+}
+
+.aips-toast {
+	position: relative;
 	min-width: 300px;
 	max-width: 500px;
 	padding: 15px 20px;
@@ -457,6 +484,24 @@
 	display: flex;
 	align-items: center;
 	gap: 10px;
+	pointer-events: auto;
+}
+
+/* Responsive toast width */
+@media screen and (max-width: 782px) {
+	.aips-toast {
+		min-width: 250px;
+		max-width: 100%;
+		width: 100%;
+	}
+}
+
+@media screen and (max-width: 600px) {
+	.aips-toast {
+		min-width: 200px;
+		padding: 12px 15px;
+		font-size: 14px;
+	}
 }
 
 .aips-toast.success {

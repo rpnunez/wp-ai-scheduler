@@ -17,6 +17,13 @@
 			info: 'ℹ'
 		};
 
+		// Ensure toast container exists
+		let $container = $('#aips-toast-container');
+		if (!$container.length) {
+			$container = $('<div id="aips-toast-container"></div>');
+			$('body').append($container);
+		}
+
 		const closeLabel = ( window.aipsAuthorsL10n && aipsAuthorsL10n.toastCloseLabel ) ? aipsAuthorsL10n.toastCloseLabel : 'Close';
 
 		const $toast = $('<div class="aips-toast ' + type + '">')
@@ -24,7 +31,7 @@
 			.append('<div class="aips-toast-message">' + $('<div>').text(message).html() + '</div>')
 			.append('<button class="aips-toast-close" aria-label="' + String(closeLabel).replace(/"/g, '&quot;') + '">&times;</button>');
 
-		$('body').append($toast);
+		$container.append($toast);
 
 		// Close on click
 		$toast.find('.aips-toast-close').on('click', function() {
@@ -143,13 +150,13 @@
 						$('#post_generation_frequency').val(author.post_generation_frequency);
 						$('#is_active').prop('checked', author.is_active == 1);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
 
 						$('#aips-author-modal').fadeOut();
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorLoading);
+					showToast(aipsAuthorsL10n.errorLoading, 'error');
 
 					$('#aips-author-modal').fadeOut();
 				}
@@ -456,11 +463,11 @@
 
 						this.loadTopics('pending');
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
 					}
 				},
 				error: () => {
-					alert(action === 'approve' ? aipsAuthorsL10n.errorApproving : aipsAuthorsL10n.errorRejecting);
+					showToast(action === 'approve' ? aipsAuthorsL10n.errorApproving : aipsAuthorsL10n.errorRejecting, 'error');
 				}
 			});
 		},
@@ -544,11 +551,11 @@
 						const activeTab = $('.aips-tab-link.active').data('tab');
 						this.loadTopics(activeTab);
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeletingTopic);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeletingTopic, 'error');
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorDeletingTopic);
+					showToast(aipsAuthorsL10n.errorDeletingTopic, 'error');
 				}
 			});
 		},
@@ -577,7 +584,7 @@
 			const newTitle = $row.find('.topic-title-edit').val();
 
 			if (!newTitle.trim()) {
-				alert(aipsAuthorsL10n.topicTitleRequired);
+				showToast(aipsAuthorsL10n.topicTitleRequired, 'warning');
 				return;
 			}
 
@@ -597,11 +604,11 @@
 						$row.find('.aips-edit-topic').show();
 						$row.find('.aips-save-topic, .aips-cancel-edit-topic').remove();
 					} else {
-						alert(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSavingTopic);
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSavingTopic);
 					}
 				},
 				error: () => {
-					alert(aipsAuthorsL10n.errorSavingTopic);
+					showToast(aipsAuthorsL10n.errorSavingTopic, 'error');
 				}
 			});
 		},
@@ -803,7 +810,7 @@
 			const action = $dropdown.val();
 
 			if (!action) {
-				alert(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.');
+				showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
 				return;
 			}
 
@@ -814,7 +821,7 @@
 			});
 
 			if (topicIds.length === 0) {
-				alert(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
+				showToast(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.', 'warning');
 				return;
 			}
 
@@ -840,7 +847,7 @@
 					ajaxAction = 'aips_bulk_delete_topics';
 					break;
 				default:
-					alert('Invalid bulk action.');
+					showToast('Invalid bulk action.', 'error');
 					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
 					return;
 			}
@@ -1010,7 +1017,7 @@
 			const action = $('#aips-queue-bulk-action-select').val();
 
 			if (!action) {
-				alert(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.');
+				showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
 				return;
 			}
 
@@ -1021,7 +1028,7 @@
 			});
 
 			if (topicIds.length === 0) {
-				alert(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
+				showToast(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.', 'warning');
 				return;
 			}
 
@@ -1031,7 +1038,7 @@
 					this.generateNowFromQueue(topicIds);
 					break;
 				default:
-					alert(aipsAuthorsL10n.invalidAction || 'Invalid action.');
+					showToast(aipsAuthorsL10n.invalidAction || 'Invalid action.', 'error');
 			}
 		},
 
