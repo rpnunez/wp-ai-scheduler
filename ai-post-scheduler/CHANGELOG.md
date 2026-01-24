@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [wizard-authors-search] - 2025-12-27
+### Added
+- Added client-side search functionality to the Authors list admin page.
+- 
+## [wizard-activity-search] - 2025-01-02
+### Added
+- Added server-side search functionality to the Activity Log page, allowing users to search by message and metadata.
+
 ## [wizard-clone-template] - 2025-01-01
 ### Added
 - Added "Clone Template" functionality to allow users to easily duplicate templates with a single click.

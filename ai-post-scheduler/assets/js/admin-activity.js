@@ -14,6 +14,7 @@
 		
 		currentActivityFilter: 'all',
 		currentActivityPostId: null,
+		currentActivitySearch: '',
 		
 		/**
 		 * Load activity feed from server.
@@ -34,6 +35,7 @@
 					action: 'aips_get_activity',
 					nonce: aipsActivityL10n.nonce,
 					filter: window.AIPS.currentActivityFilter,
+					search: window.AIPS.currentActivitySearch,
 					limit: 50
 				},
 				success: function(response) {
@@ -156,6 +158,32 @@
 			$('.aips-filter-btn').removeClass('active');
 			$(this).addClass('active');
 			window.AIPS.currentActivityFilter = $(this).data('filter');
+			window.AIPS.loadActivity();
+		},
+
+		/**
+		 * Handle search.
+		 */
+		handleSearch: function() {
+			const searchQuery = $('#aips-activity-search').val().trim();
+			window.AIPS.currentActivitySearch = searchQuery;
+
+			if (searchQuery) {
+				$('#aips-activity-search-clear').show();
+			} else {
+				$('#aips-activity-search-clear').hide();
+			}
+
+			window.AIPS.loadActivity();
+		},
+
+		/**
+		 * Handle clear search.
+		 */
+		handleClearSearch: function() {
+			$('#aips-activity-search').val('');
+			window.AIPS.currentActivitySearch = '';
+			$('#aips-activity-search-clear').hide();
 			window.AIPS.loadActivity();
 		},
 		
@@ -371,6 +399,16 @@
 		// Filter buttons
 		$(document).on('click', '.aips-filter-btn', window.AIPS.handleFilterClick);
 		
+		// Search handlers
+		$(document).on('click', '#aips-activity-search-btn', window.AIPS.handleSearch);
+		$(document).on('keypress', '#aips-activity-search', function(e) {
+			if (e.which === 13) {
+				e.preventDefault();
+				window.AIPS.handleSearch();
+			}
+		});
+		$(document).on('click', '#aips-activity-search-clear', window.AIPS.handleClearSearch);
+
 		// Activity item click
 		$(document).on('click', '.aips-activity-item', window.AIPS.handleActivityItemClick);
 		

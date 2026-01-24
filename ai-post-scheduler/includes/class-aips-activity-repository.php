@@ -110,6 +110,7 @@ class AIPS_Activity_Repository {
 			'offset' => 0,
 			'event_type' => '',
 			'event_status' => '',
+			'search' => '',
 		);
 		
 		$args = wp_parse_args($args, $defaults);
@@ -125,6 +126,13 @@ class AIPS_Activity_Repository {
 		if (!empty($args['event_status'])) {
 			$where_clauses[] = "event_status = %s";
 			$where_args[] = $args['event_status'];
+		}
+
+		if (!empty($args['search'])) {
+			$search_term = '%' . $this->wpdb->esc_like($args['search']) . '%';
+			$where_clauses[] = "(message LIKE %s OR metadata LIKE %s)";
+			$where_args[] = $search_term;
+			$where_args[] = $search_term;
 		}
 		
 		$where_sql = implode(' AND ', $where_clauses);
