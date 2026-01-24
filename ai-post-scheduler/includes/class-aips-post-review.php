@@ -124,14 +124,8 @@ class AIPS_Post_Review {
 		
 		// Verify the post is in the review queue (has a history record)
 		$history_repository = new AIPS_History_Repository();
-		global $wpdb;
-		$history_table = $wpdb->prefix . 'aips_history';
-		$history_exists = $wpdb->get_var($wpdb->prepare(
-			"SELECT COUNT(*) FROM {$history_table} WHERE post_id = %d AND status = 'completed'",
-			$post_id
-		));
 		
-		if (!$history_exists) {
+		if (!$history_repository->post_has_history_and_completed($post_id)) {
 			$activity_repository->create(array(
 				'event_type' => 'post_published',
 				'event_status' => 'failed',
@@ -227,8 +221,7 @@ class AIPS_Post_Review {
 		
 		$success_count = 0;
 		$failed_count = 0;
-		global $wpdb;
-		$history_table = $wpdb->prefix . 'aips_history';
+		$history_repository = new AIPS_History_Repository();
 		
 		foreach ($post_ids as $post_id) {
 			// Verify the post exists and is a draft
@@ -245,12 +238,7 @@ class AIPS_Post_Review {
 			}
 			
 			// Verify the post is in the review queue
-			$history_exists = $wpdb->get_var($wpdb->prepare(
-				"SELECT COUNT(*) FROM {$history_table} WHERE post_id = %d AND status = 'completed'",
-				$post_id
-			));
-			
-			if (!$history_exists) {
+			if (!$history_repository->post_has_history_and_completed($post_id)) {
 				$failed_count++;
 				$activity_repository->create(array(
 					'event_type' => 'post_published',
@@ -442,14 +430,9 @@ class AIPS_Post_Review {
 		}
 		
 		// Verify the post is in the review queue
-		global $wpdb;
-		$history_table = $wpdb->prefix . 'aips_history';
-		$history_exists = $wpdb->get_var($wpdb->prepare(
-			"SELECT COUNT(*) FROM {$history_table} WHERE post_id = %d AND status = 'completed'",
-			$post_id
-		));
+		$history_repository = new AIPS_History_Repository();
 		
-		if (!$history_exists) {
+		if (!$history_repository->post_has_history_and_completed($post_id)) {
 			$activity_repository->create(array(
 				'event_type' => 'post_deleted',
 				'event_status' => 'failed',
@@ -543,8 +526,6 @@ class AIPS_Post_Review {
 		$success_count = 0;
 		$failed_count = 0;
 		$history_repository = new AIPS_History_Repository();
-		global $wpdb;
-		$history_table = $wpdb->prefix . 'aips_history';
 		
 		foreach ($items as $item) {
 			if (!is_array($item)) {
@@ -574,12 +555,7 @@ class AIPS_Post_Review {
 			}
 			
 			// Verify the post is in the review queue
-			$history_exists = $wpdb->get_var($wpdb->prepare(
-				"SELECT COUNT(*) FROM {$history_table} WHERE post_id = %d AND status = 'completed'",
-				$post_id
-			));
-			
-			if (!$history_exists) {
+			if (!$history_repository->post_has_history_and_completed($post_id)) {
 				$failed_count++;
 				$activity_repository->create(array(
 					'event_type' => 'post_deleted',
