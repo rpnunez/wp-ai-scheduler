@@ -63,9 +63,12 @@ class AIPS_Post_Creator {
         }
 
         $post_data = array(
-            'post_title' => $title,
-            'post_content' => $content,
-            'post_excerpt' => $excerpt,
+            // SECURITY: Sanitize title to prevent XSS (though wp_insert_post handles some, explicit is safer)
+            'post_title' => sanitize_text_field($title),
+            // SECURITY: Sanitize content from AI to prevent Stored XSS (e.g. malicious scripts via prompt injection)
+            // when the user has unfiltered_html capability (admins).
+            'post_content' => wp_kses_post($content),
+            'post_excerpt' => wp_kses_post($excerpt),
             'post_status' => $post_status,
             'post_author' => $post_author,
             'post_type' => 'post',
