@@ -925,6 +925,11 @@
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
+
+			// Queue Search
+			$(document).on('keyup search', '#aips-queue-search', this.filterQueue.bind(this));
+			$(document).on('click', '#aips-queue-search-clear', this.clearQueueSearch.bind(this));
+			$(document).on('click', '.aips-clear-queue-search-btn', this.clearQueueSearch.bind(this));
 		},
 
 		switchMainTab: function (e) {
@@ -1004,6 +1009,57 @@
 
 			html += '</tbody></table>';
 			$('#aips-queue-topics-list').html(html);
+
+			// Re-apply filter if search term exists
+			if ($('#aips-queue-search').val()) {
+				this.filterQueue();
+			}
+		},
+
+		filterQueue: function () {
+			var term = $('#aips-queue-search').val().toLowerCase().trim();
+			var $rows = $('#aips-queue-topics-list table tbody tr');
+			var $noResults = $('#aips-queue-search-no-results');
+			var $table = $('#aips-queue-topics-list table');
+			var $clearBtn = $('#aips-queue-search-clear');
+			var hasVisible = false;
+
+			if (term.length > 0) {
+				$clearBtn.show();
+			} else {
+				$clearBtn.hide();
+			}
+
+			// If table doesn't exist (e.g. still loading or empty), just return
+			if (!$rows.length) return;
+
+			$rows.each(function() {
+				var $row = $(this);
+				// Columns: 1: Title, 2: Author, 3: Field/Niche
+				var title = $row.find('td:eq(0)').text().toLowerCase();
+				var author = $row.find('td:eq(1)').text().toLowerCase();
+				var field = $row.find('td:eq(2)').text().toLowerCase();
+
+				if (title.indexOf(term) > -1 || author.indexOf(term) > -1 || field.indexOf(term) > -1) {
+					$row.show();
+					hasVisible = true;
+				} else {
+					$row.hide();
+				}
+			});
+
+			if (!hasVisible && term.length > 0) {
+				$table.hide();
+				$noResults.show();
+			} else {
+				$table.show();
+				$noResults.hide();
+			}
+		},
+
+		clearQueueSearch: function (e) {
+			e.preventDefault();
+			$('#aips-queue-search').val('').trigger('keyup');
 		},
 
 		toggleQueueSelectAll: function (e) {
