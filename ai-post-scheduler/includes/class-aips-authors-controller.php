@@ -69,6 +69,7 @@ class AIPS_Authors_Controller {
 		add_action('wp_ajax_aips_get_author_feedback', array($this, 'ajax_get_author_feedback'));
 		add_action('wp_ajax_aips_generate_topics_now', array($this, 'ajax_generate_topics_now'));
 		add_action('wp_ajax_aips_get_topic_posts', array($this, 'ajax_get_topic_posts'));
+		add_action('wp_ajax_aips_bulk_delete_authors', array($this, 'ajax_bulk_delete_authors'));
 	}
 	
 	/**
@@ -121,12 +122,15 @@ class AIPS_Authors_Controller {
 		if ($author_id) {
 			$result = $this->repository->update($author_id, $data);
 			$id = $author_id;
+			// For update, 0 rows affected is still a success (no changes)
+			$success = $result !== false;
 		} else {
 			$id = $this->repository->create($data);
 			$result = $id !== false;
+			$success = $result;
 		}
 		
-		if ($result) {
+		if ($success) {
 			wp_send_json_success(array(
 				'message' => __('Author saved successfully.', 'ai-post-scheduler'),
 				'author_id' => $id
@@ -153,27 +157,15 @@ class AIPS_Authors_Controller {
 		}
 		
 		// Delete child records first to avoid orphaned records
-		global $wpdb;
-		$topics_table = $wpdb->prefix . 'aips_author_topics';
-		$logs_table = $wpdb->prefix . 'aips_author_topic_logs';
-		
-		// Get all topic IDs for this author
-		$topic_ids = $wpdb->get_col($wpdb->prepare(
-			"SELECT id FROM {$topics_table} WHERE author_id = %d",
-			$author_id
-		));
+		$topic_ids = $this->topics_repository->get_ids_by_author($author_id);
 		
 		// Delete logs for these topics
 		if (!empty($topic_ids)) {
-			$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
-			$wpdb->query($wpdb->prepare(
-				"DELETE FROM {$logs_table} WHERE author_topic_id IN ({$placeholders})",
-				...$topic_ids
-			));
+			$this->logs_repository->delete_by_topic_ids($topic_ids);
 		}
 		
 		// Delete topics
-		$wpdb->delete($topics_table, array('author_id' => $author_id), array('%d'));
+		$this->topics_repository->delete_by_author($author_id);
 		
 		// Delete author
 		$result = $this->repository->delete($author_id);
@@ -182,6 +174,52 @@ class AIPS_Authors_Controller {
 			wp_send_json_success(array('message' => __('Author deleted successfully.', 'ai-post-scheduler')));
 		} else {
 			wp_send_json_error(array('message' => __('Failed to delete author.', 'ai-post-scheduler')));
+		}
+	}
+
+	/**
+	 * AJAX handler for bulk deleting authors.
+	 */
+	public function ajax_bulk_delete_authors() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$author_ids = isset($_POST['author_ids']) ? array_map('absint', $_POST['author_ids']) : array();
+
+		if (empty($author_ids)) {
+			wp_send_json_error(array('message' => __('No authors selected.', 'ai-post-scheduler')));
+		}
+
+		// Process each author to clean up dependencies
+		foreach ($author_ids as $author_id) {
+			// Get topic IDs for this author
+			$topic_ids = $this->topics_repository->get_ids_by_author($author_id);
+
+			// Delete logs for these topics
+			if (!empty($topic_ids)) {
+				$this->logs_repository->delete_by_topic_ids($topic_ids);
+			}
+
+			// Delete topics
+			$this->topics_repository->delete_by_author($author_id);
+		}
+
+		// Bulk delete authors
+		$result = $this->repository->delete_bulk($author_ids);
+
+		if ($result !== false) {
+			wp_send_json_success(array(
+				'message' => sprintf(
+					/* translators: %d: number of authors deleted */
+					__('%d authors deleted successfully.', 'ai-post-scheduler'),
+					count($author_ids)
+				)
+			));
+		} else {
+			wp_send_json_error(array('message' => __('Failed to delete authors.', 'ai-post-scheduler')));
 		}
 	}
 	
@@ -227,20 +265,9 @@ class AIPS_Authors_Controller {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 		
-		$topics = $this->topics_repository->get_by_author($author_id, $status);
+		// Use optimized method to avoid N+1 queries
+		$topics = $this->topics_repository->get_by_author_with_counts($author_id, $status);
 		$status_counts = $this->topics_repository->get_status_counts($author_id);
-		
-		// Add post count to each topic
-		foreach ($topics as &$topic) {
-			$logs = $this->logs_repository->get_by_topic($topic->id);
-			$post_count = 0;
-			foreach ($logs as $log) {
-				if ($log->action === 'post_generated' && $log->post_id) {
-					$post_count++;
-				}
-			}
-			$topic->post_count = $post_count;
-		}
 		
 		wp_send_json_success(array(
 			'topics' => $topics,

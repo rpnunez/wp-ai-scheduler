@@ -99,6 +99,24 @@ class AIPS_Authors_Repository {
 			array('%d')
 		);
 	}
+
+	/**
+	 * Delete multiple authors.
+	 *
+	 * @param array $ids Author IDs.
+	 * @return int|false The number of rows deleted, or false on error.
+	 */
+	public function delete_bulk($ids) {
+		if (empty($ids)) {
+			return 0;
+		}
+
+		$placeholders = implode(',', array_fill(0, count($ids), '%d'));
+		return $this->wpdb->query($this->wpdb->prepare(
+			"DELETE FROM {$this->table_name} WHERE id IN ({$placeholders})",
+			...$ids
+		));
+	}
 	
 	/**
 	 * Delete an author.

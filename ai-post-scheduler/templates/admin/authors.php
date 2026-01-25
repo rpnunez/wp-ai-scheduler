@@ -42,15 +42,30 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         <div class="aips-authors-container">
             <div class="aips-authors-list">
                 <?php if (!empty($authors)): ?>
-                    <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
-                        <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
-                        <input type="search" id="aips-author-search" class="regular-text" placeholder="<?php esc_attr_e('Search authors...', 'ai-post-scheduler'); ?>">
-                        <button type="button" id="aips-author-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <div class="tablenav top" style="margin-top: 0;">
+                        <div class="alignleft actions bulkactions">
+                            <label for="bulk-action-selector-top" class="screen-reader-text"><?php esc_html_e('Select bulk action', 'ai-post-scheduler'); ?></label>
+                            <select name="action" id="bulk-action-selector-top">
+                                <option value="-1"><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+                                <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+                            </select>
+                            <input type="submit" id="doaction" class="button action aips-authors-bulk-action" value="<?php esc_attr_e('Apply', 'ai-post-scheduler'); ?>">
+                        </div>
+                        <div class="aips-search-box" style="float: right;">
+                            <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
+                            <input type="search" id="aips-author-search" class="regular-text" placeholder="<?php esc_attr_e('Search authors...', 'ai-post-scheduler'); ?>">
+                            <button type="button" id="aips-author-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                        </div>
+                        <br class="clear">
                     </div>
 
                     <table class="wp-list-table widefat fixed striped">
                         <thead>
                             <tr>
+                                <td id="cb" class="manage-column column-cb check-column">
+                                    <label class="screen-reader-text" for="cb-select-all-1"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
+                                    <input id="cb-select-all-1" type="checkbox" class="aips-author-select-all">
+                                </td>
                                 <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
                                 <th class="column-field"><?php esc_html_e('Field/Niche', 'ai-post-scheduler'); ?></th>
                                 <th class="column-topics"><?php esc_html_e('Topics', 'ai-post-scheduler'); ?></th>
@@ -67,6 +82,13 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                 $posts_count = count($posts);
                             ?>
                                 <tr data-author-id="<?php echo esc_attr($author->id); ?>">
+                                    <th scope="row" class="check-column">
+                                        <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($author->id); ?>"><?php
+                                            /* translators: %s: Author name */
+                                            printf(esc_html__('Select %s', 'ai-post-scheduler'), esc_html($author->name));
+                                        ?></label>
+                                        <input id="cb-select-<?php echo esc_attr($author->id); ?>" type="checkbox" name="author[]" value="<?php echo esc_attr($author->id); ?>" class="aips-author-checkbox">
+                                    </th>
                                     <td class="column-name">
                                         <strong><?php echo esc_html($author->name); ?></strong>
                                     </td>

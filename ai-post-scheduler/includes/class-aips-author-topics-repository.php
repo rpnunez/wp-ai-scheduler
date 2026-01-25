@@ -60,6 +60,36 @@ class AIPS_Author_Topics_Repository {
 			$author_id
 		));
 	}
+
+	/**
+	 * Get all topics for an author with post counts, optimized to avoid N+1 queries.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param string $status Optional. Filter by status.
+	 * @return array Array of topic objects with post_count property.
+	 */
+	public function get_by_author_with_counts($author_id, $status = null) {
+		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+
+		$where_clause = "t.author_id = %d";
+		$params = array($author_id);
+
+		if ($status) {
+			$where_clause .= " AND t.status = %s";
+			$params[] = $status;
+		}
+
+		$sql = "SELECT t.*,
+				(SELECT COUNT(*) FROM {$logs_table} l
+				 WHERE l.author_topic_id = t.id
+				 AND l.action = 'post_generated'
+				 AND l.post_id IS NOT NULL) as post_count
+				FROM {$this->table_name} t
+				WHERE {$where_clause}
+				ORDER BY t.generated_at DESC";
+
+		return $this->wpdb->get_results($this->wpdb->prepare($sql, ...$params));
+	}
 	
 	/**
 	 * Get a single topic by ID.
@@ -128,6 +158,33 @@ class AIPS_Author_Topics_Repository {
 		);
 	}
 	
+	/**
+	 * Delete all topics for an author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return int|false The number of rows deleted, or false on error.
+	 */
+	public function delete_by_author($author_id) {
+		return $this->wpdb->delete(
+			$this->table_name,
+			array('author_id' => $author_id),
+			array('%d')
+		);
+	}
+
+	/**
+	 * Get all topic IDs for an author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return array Array of topic IDs.
+	 */
+	public function get_ids_by_author($author_id) {
+		return $this->wpdb->get_col($this->wpdb->prepare(
+			"SELECT id FROM {$this->table_name} WHERE author_id = %d",
+			$author_id
+		));
+	}
+
 	/**
 	 * Update topic status.
 	 *

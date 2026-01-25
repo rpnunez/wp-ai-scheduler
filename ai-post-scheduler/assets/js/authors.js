@@ -105,6 +105,10 @@
 			
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
+
+			// Main Authors List Bulk Actions
+			$(document).on('click', '.aips-author-select-all', this.toggleAuthorSelectAll.bind(this));
+			$(document).on('click', '.aips-authors-bulk-action', this.executeAuthorBulkAction.bind(this));
 		},
 
 		openAddModal: function (e) {
@@ -893,6 +897,65 @@
 			};
 			const template = messages[action] || 'Are you sure you want to %s %d topics?';
 			return template.replace('%d', count).replace('%s', action);
+		},
+
+		toggleAuthorSelectAll: function (e) {
+			const isChecked = $(e.currentTarget).prop('checked');
+			$('.aips-author-checkbox').prop('checked', isChecked);
+		},
+
+		executeAuthorBulkAction: function (e) {
+			e.preventDefault();
+
+			const action = $('#bulk-action-selector-top').val();
+
+			if (action !== 'delete') {
+				showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
+				return;
+			}
+
+			// Get all checked author IDs
+			const authorIds = [];
+			$('.aips-author-checkbox:checked').each(function () {
+				authorIds.push($(this).val());
+			});
+
+			if (authorIds.length === 0) {
+				showToast(aipsAuthorsL10n.noAuthorsSelected || 'Please select at least one author.', 'warning');
+				return;
+			}
+
+			const confirmMessage = (aipsAuthorsL10n.confirmBulkDeleteAuthors || 'Are you sure you want to delete %d authors? This will delete all associated topics and logs.').replace('%d', authorIds.length);
+
+			if (!confirm(confirmMessage)) {
+				return;
+			}
+
+			const $button = $(e.currentTarget);
+			$button.prop('disabled', true).val(aipsAuthorsL10n.processing || 'Processing...');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_bulk_delete_authors',
+					nonce: aipsAuthorsL10n.nonce,
+					author_ids: authorIds
+				},
+				success: (response) => {
+					if (response.success) {
+						showToast(response.data.message || aipsAuthorsL10n.authorsDeleted || 'Authors deleted successfully.', 'success');
+						setTimeout(() => location.reload(), 1000);
+					} else {
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeletingAuthors || 'Error deleting authors.', 'error');
+						$button.prop('disabled', false).val(aipsAuthorsL10n.apply || 'Apply');
+					}
+				},
+				error: () => {
+					showToast(aipsAuthorsL10n.errorDeletingAuthors || 'Error deleting authors.', 'error');
+					$button.prop('disabled', false).val(aipsAuthorsL10n.apply || 'Apply');
+				}
+			});
 		},
 
 		closeModals: function (e) {
