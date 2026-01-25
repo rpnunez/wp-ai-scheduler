@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Admin</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        window.aipsAjax = {
+            ajaxUrl: '/wp-admin/admin-ajax.php',
+            nonce: '123456'
+        };
+        window.aipsAdminL10n = {
+            saveStructureFailed: 'Failed',
+            errorTryAgain: 'Error',
+            loadStructureFailed: 'Failed',
+            deleteStructureConfirm: 'Confirm?',
+            deleteStructureFailed: 'Failed',
+            saveSectionFailed: 'Failed',
+            loadSectionFailed: 'Failed',
+            deleteSectionConfirm: 'Confirm?',
+            deleteSectionFailed: 'Failed',
+            errorOccurred: 'Error'
+        };
+        window.wp = {
+            media: function() { return { on: function() {}, open: function() {}, state: function() { return { get: function() { return { each: function() {} } } } } } }
+        };
+    </script>
+    <style>
+        .aips-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+        }
+        .aips-modal-content {
+            background: white;
+            padding: 20px;
+            margin: 50px auto;
+            width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <button class="aips-add-template-btn">Add Template</button>
+
+    <div id="aips-template-modal" class="aips-modal">
+        <div class="aips-modal-content">
+            <h2 id="aips-modal-title">Modal Title</h2>
+            <form id="aips-template-form">
+                <input type="hidden" id="template_id">
+                <label>Name: <input type="text" id="template_name" placeholder="Name"></label>
+                <br>
+                <textarea id="prompt_template"></textarea>
+                <!-- Other fields -->
+                <input type="checkbox" id="generate_featured_image">
+                <input type="text" id="featured_image_source">
+                <input type="text" id="featured_image_unsplash_keywords">
+                <input type="hidden" id="featured_image_media_ids">
+                <input type="text" id="title_prompt">
+                <input type="number" id="post_quantity">
+                <input type="text" id="image_prompt">
+                <input type="text" id="post_status">
+                <input type="text" id="post_category">
+                <input type="text" id="post_tags">
+                <input type="text" id="post_author">
+                <input type="checkbox" id="is_active">
+
+                <div class="aips-ai-variables-panel" style="display:none;"><div id="aips-ai-variables-list"></div></div>
+            </form>
+            <button class="aips-modal-close">Close</button>
+        </div>
+    </div>
+
+    <!-- Script under test -->
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+</body>
+</html>
