@@ -89,26 +89,47 @@ class AIPS_Author_Topics_Repository {
 	 * Create multiple topics at once.
 	 *
 	 * @param array $topics Array of topic data arrays.
-	 * @return bool True on success, false on failure.
+	 * @return int|false Number of rows inserted or false on failure.
 	 */
 	public function create_bulk($topics) {
 		if (empty($topics)) {
 			return false;
 		}
 
-		// Ensure all inserts either succeed or fail together.
-		$this->wpdb->query('START TRANSACTION');
+		$values = array();
+		$placeholders = array();
+		$query = "INSERT INTO {$this->table_name} (author_id, topic_title, topic_prompt, status, score, metadata) VALUES ";
 
-		foreach ($topics as $topic) {
-			$result = $this->create($topic);
-			if (!$result) {
-				$this->wpdb->query('ROLLBACK');
-				return false;
-			}
+		foreach ($topics as $data) {
+			array_push($values,
+				absint($data['author_id']),
+				sanitize_text_field($data['topic_title']),
+				isset($data['topic_prompt']) ? sanitize_text_field($data['topic_prompt']) : '',
+				isset($data['status']) ? sanitize_text_field($data['status']) : 'pending',
+				isset($data['score']) ? absint($data['score']) : 50,
+				isset($data['metadata']) ? $data['metadata'] : ''
+			);
+			$placeholders[] = "(%d, %s, %s, %s, %d, %s)";
 		}
 
-		$this->wpdb->query('COMMIT');
-		return true;
+		$query .= implode(', ', $placeholders);
+
+		return $this->wpdb->query($this->wpdb->prepare($query, $values));
+	}
+
+	/**
+	 * Get latest topics for an author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $limit Number of topics to retrieve.
+	 * @return array Array of topic objects.
+	 */
+	public function get_latest_for_author($author_id, $limit) {
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT * FROM {$this->table_name} WHERE author_id = %d ORDER BY id DESC LIMIT %d",
+			$author_id,
+			$limit
+		));
 	}
 	
 	/**
