@@ -60,11 +60,15 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($authors as $author):
-                                $status_counts = $topics_repository->get_status_counts($author->id);
+                            <?php
+                            // Pre-fetch data to avoid N+1 queries
+                            $all_status_counts = $topics_repository->get_all_status_counts();
+                            $all_generated_post_counts = $logs_repository->get_all_generated_post_counts();
+
+                            foreach ($authors as $author):
+                                $status_counts = isset($all_status_counts[$author->id]) ? $all_status_counts[$author->id] : array('pending' => 0, 'approved' => 0, 'rejected' => 0);
                                 $total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
-                                $posts = $logs_repository->get_generated_posts_by_author($author->id);
-                                $posts_count = count($posts);
+                                $posts_count = isset($all_generated_post_counts[$author->id]) ? $all_generated_post_counts[$author->id] : 0;
                             ?>
                                 <tr data-author-id="<?php echo esc_attr($author->id); ?>">
                                     <td class="column-name">

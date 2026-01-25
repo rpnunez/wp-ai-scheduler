@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-27 - N+1 Query Fix in Authors List
+**Learning:** The Authors list view was executing two sub-queries (topic counts and generated post counts) for every author row, leading to poor performance with many authors.
+**Action:** Implemented `get_all_status_counts` and `get_all_generated_post_counts` repositories methods to fetch all necessary data in two single queries before the loop, reducing database round-trips from 2N+1 to 3.
