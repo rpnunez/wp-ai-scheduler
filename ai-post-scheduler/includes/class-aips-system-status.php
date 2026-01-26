@@ -15,6 +15,7 @@ class AIPS_System_Status {
             'environment' => $this->check_environment(),
             'plugin' => $this->check_plugin(),
             'database' => $this->check_database(),
+            'usage' => $this->check_usage(),
             'filesystem' => $this->check_filesystem(),
             'cron' => $this->check_cron(),
             'logs' => $this->check_logs(),
@@ -106,15 +107,56 @@ class AIPS_System_Status {
                     'status' => 'error',
                 );
             } else {
+                // Get table size
+                $table_status = $wpdb->get_row($wpdb->prepare("SHOW TABLE STATUS LIKE %s", $full_table_name));
+                $size_mb = 0;
+                if ($table_status) {
+                    $size_bytes = $table_status->Data_length + $table_status->Index_length;
+                    $size_mb = round($size_bytes / 1024 / 1024, 2);
+                }
+
                 $results[$table_name] = array(
                     'label' => "Table: $table_name",
-                    'value' => 'OK',
+                    'value' => "OK (Size: {$size_mb} MB)",
                     'status' => 'ok',
                 );
             }
         }
 
         return $results;
+    }
+
+    private function check_usage() {
+        global $wpdb;
+        $tables = AIPS_DB_Manager::get_full_table_names();
+
+        $usage = array();
+
+        // Schedules
+        $count = $wpdb->get_var("SELECT COUNT(*) FROM {$tables['aips_schedule']}");
+        $usage['schedules'] = array(
+            'label' => 'Total Schedules',
+            'value' => $count,
+            'status' => 'info'
+        );
+
+        // Authors
+        $count = $wpdb->get_var("SELECT COUNT(*) FROM {$tables['aips_authors']}");
+        $usage['authors'] = array(
+            'label' => 'Total Authors',
+            'value' => $count,
+            'status' => 'info'
+        );
+
+        // History
+        $count = $wpdb->get_var("SELECT COUNT(*) FROM {$tables['aips_history']}");
+        $usage['history'] = array(
+            'label' => 'History Items',
+            'value' => $count,
+            'status' => 'info'
+        );
+
+        return $usage;
     }
 
     private function check_filesystem() {

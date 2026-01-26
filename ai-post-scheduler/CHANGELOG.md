@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [atlas-hunter-bolt-wizard-improvements] - 2025-12-28
+### Improved
+- **Atlas**: Refactored dependency loading into `includes/class-aips-loader.php`, cleaning up the main plugin class.
+- **Hunter**: Added error logging for `dbDelta` and default data seeding in `AIPS_DB_Manager` to improve debugging and reliability.
+- **Bolt**: Added a composite index `(template_id, status, created_at)` to the `aips_history` table to optimize dashboard queries.
+- **Wizard**: Enhanced the System Status page to display total usage counts (schedules, authors, history) and database table sizes.
+
 ## [wizard-authors-search] - 2025-12-27
 ### Added
 - Added client-side search functionality to the Authors list admin page.
