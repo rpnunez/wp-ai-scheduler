@@ -88,6 +88,33 @@ class AIPS_Activity_Repository {
 			array('%s', '%s', '%d', '%d', '%d', '%s', '%s')
 		);
 		
+		// Also log to the unified history system if there's a post_id
+		// This allows activities to be visible in the Generated Posts session view
+		if ($result && $data['post_id']) {
+			// Find the history entry for this post
+			$history_id = $this->wpdb->get_var($this->wpdb->prepare(
+				"SELECT id FROM {$this->wpdb->prefix}aips_history WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
+				$data['post_id']
+			));
+			
+			if ($history_id) {
+				$history_repo = new AIPS_History_Repository();
+				$activity_details = array(
+					'event_type' => $data['event_type'],
+					'event_status' => $data['event_status'],
+					'message' => $data['message'],
+					'metadata' => $data['metadata'],
+					'timestamp' => current_time('mysql'),
+				);
+				$history_repo->add_log_entry(
+					$history_id,
+					'activity_' . $data['event_type'],
+					$activity_details,
+					AIPS_History_Type::ACTIVITY
+				);
+			}
+		}
+		
 		return $result ? $this->wpdb->insert_id : false;
 	}
 	
