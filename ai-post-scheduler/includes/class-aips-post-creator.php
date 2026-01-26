@@ -167,15 +167,15 @@ class AIPS_Post_Creator {
         // Remove leading "thinking" text patterns common in AI responses
         // Match patterns like "Let's create...", "I'll help...", "Here's...", etc.
         // followed by a newline or separator
-        $content = preg_replace("/^(Let's|I'll|I will|Here's|Here is)\s+[^\n]*\n+/i", '', $content);
+        $content = preg_replace('/^(Let\'s|I\'ll|I will|Here\'s|Here is)\s+[^\n]*\n+/i', '', $content);
 
         // Remove markdown horizontal rules (---, ***, ___) on their own line
         $content = preg_replace('/^\s*[-*_]{3,}\s*$/m', '', $content);
 
         // Remove markdown code fences and convert to HTML if needed
-        // Pattern: ```language\n...code...\n``` or just ```\n...code...\n```
+        // Pattern: ```language\n...code...\n?``` (newline before closing fence is optional)
         $content = preg_replace_callback(
-            '/```(?:html|css|javascript|js|php|python|java|xml|json)?\s*\n(.*?)\n```/is',
+            '/```(?:html|css|javascript|js|php|python|java|xml|json)?\s*\n(.*?)\n?```/is',
             function($matches) {
                 $code = $matches[1];
                 // Check if it's already HTML content (starts with tags)
