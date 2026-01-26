@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-26 - [Extract Admin Assets] **Context:** `AIPS_Settings` was becoming a 'God Class' handling menus, settings, rendering, AND asset management, violating SRP. **Decision:** Extracted asset enqueueing logic into a dedicated `AIPS_Admin_Assets` class. **Consequence:** Improved separation of concerns; `AIPS_Settings` is now focused on settings/menus. Asset logic is isolated. Increased file count by 1.
