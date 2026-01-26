@@ -779,14 +779,14 @@
 				html += '<tr>';
 				html += '<td>' + post.post_id + '</td>';
 				html += '<td>' + this.escapeHtml(post.post_title) + '</td>';
-				html += '<td>' + post.date_generated + '</td>';
-				html += '<td>' + (post.date_published || aipsAuthorsL10n.notPublished) + '</td>';
+				html += '<td>' + this.escapeHtml(post.date_generated) + '</td>';
+				html += '<td>' + this.escapeHtml(post.date_published || aipsAuthorsL10n.notPublished) + '</td>';
 				html += '<td>';
 				if (post.edit_url) {
-					html += '<a href="' + post.edit_url + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
+					html += '<a href="' + this.escapeHtml(post.edit_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
 				}
 				if (post.post_url && post.post_status === 'publish') {
-					html += '<a href="' + post.post_url + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
+					html += '<a href="' + this.escapeHtml(post.post_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
 				}
 				html += '</td>';
 				html += '</tr>';
