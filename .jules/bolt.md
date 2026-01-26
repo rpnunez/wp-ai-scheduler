@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-26 - [Trending Topics Bulk Insert]
+**Learning:** Found another N+1 write pattern in `save_research_batch`. Implementing `create_bulk` with a single `INSERT` statement is a consistent and effective optimization pattern across this codebase.
+**Action:** Systematically check all "batch" or "save all" methods to ensure they utilize single-query bulk inserts rather than iterative creation.

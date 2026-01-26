@@ -211,26 +211,79 @@ class AIPS_Trending_Topics_Repository {
             return false;
         }
         
-        $saved_count = 0;
-        
+        // Prepare topics for bulk insert
+        $bulk_data = array();
         foreach ($topics as $topic) {
-            $result = $this->create(array(
+             $bulk_data[] = array(
                 'niche' => $niche,
                 'topic' => $topic['topic'],
                 'score' => $topic['score'],
                 'reason' => isset($topic['reason']) ? $topic['reason'] : '',
                 'keywords' => isset($topic['keywords']) ? $topic['keywords'] : array(),
                 'researched_at' => isset($topic['researched_at']) ? $topic['researched_at'] : current_time('mysql'),
-            ));
+             );
+        }
+
+        return $this->create_bulk($bulk_data);
+    }
+
+    /**
+     * Create multiple trending topics in a single query.
+     *
+     * @param array $topics Array of topic data arrays.
+     * @return int Number of rows inserted.
+     */
+    public function create_bulk($topics) {
+        if (empty($topics)) {
+            return 0;
+        }
+
+        $values = array();
+        $placeholders = array();
+        $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES ";
+
+        foreach ($topics as $data) {
+            $defaults = array(
+                'niche' => '',
+                'topic' => '',
+                'score' => 50,
+                'reason' => '',
+                'keywords' => array(),
+                'researched_at' => current_time('mysql'),
+            );
+            $data = wp_parse_args($data, $defaults);
             
-            if ($result !== false) {
-                $saved_count++;
+            // Validate required fields
+            if (empty($data['topic']) || empty($data['niche'])) {
+                continue;
             }
+
+            $keywords_json = is_array($data['keywords'])
+                ? wp_json_encode($data['keywords'])
+                : '[]';
+
+            array_push($values,
+                sanitize_text_field($data['niche']),
+                sanitize_text_field($data['topic']),
+                absint($data['score']),
+                sanitize_text_field($data['reason']),
+                $keywords_json,
+                $data['researched_at']
+            );
+            $placeholders[] = "(%s, %s, %d, %s, %s, %s)";
         }
         
-        return $saved_count;
+        if (empty($placeholders)) {
+            return 0;
+        }
+
+        $query .= implode(', ', $placeholders);
+
+        $result = $this->wpdb->query($this->wpdb->prepare($query, $values));
+
+        return $result ? $result : 0;
     }
-    
+
     /**
      * Create a new trending topic record.
      *
