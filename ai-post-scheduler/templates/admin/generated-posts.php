@@ -344,6 +344,21 @@ if (!defined('ABSPATH')) {
 
 <script>
 jQuery(document).ready(function($) {
+	// History type constants (mirror PHP AIPS_History_Type)
+	var AIPS_History_Type = {
+		LOG: <?php echo AIPS_History_Type::LOG; ?>,
+		ERROR: <?php echo AIPS_History_Type::ERROR; ?>,
+		WARNING: <?php echo AIPS_History_Type::WARNING; ?>,
+		INFO: <?php echo AIPS_History_Type::INFO; ?>,
+		AI_REQUEST: <?php echo AIPS_History_Type::AI_REQUEST; ?>,
+		AI_RESPONSE: <?php echo AIPS_History_Type::AI_RESPONSE; ?>,
+		DEBUG: <?php echo AIPS_History_Type::DEBUG; ?>,
+		ACTIVITY: <?php echo AIPS_History_Type::ACTIVITY; ?>,
+		SESSION_METADATA: <?php echo AIPS_History_Type::SESSION_METADATA; ?>
+	};
+	
+	var aipsAjaxNonce = '<?php echo wp_create_nonce('aips_ajax_nonce'); ?>';
+	
 	// View Session button handler
 	$(document).on('click', '.aips-view-session', function() {
 		var historyId = $(this).data('history-id');
@@ -353,7 +368,7 @@ jQuery(document).ready(function($) {
 			type: 'POST',
 			data: {
 				action: 'aips_get_post_session',
-				nonce: '<?php echo wp_create_nonce('aips_ajax_nonce'); ?>',
+				nonce: aipsAjaxNonce,
 				history_id: historyId
 			},
 			success: function(response) {
@@ -401,7 +416,7 @@ jQuery(document).ready(function($) {
 		var logsHtml = '';
 		if (data.logs.length > 0) {
 			data.logs.forEach(function(log) {
-				var cssClass = log.type_id === 2 ? 'error' : (log.type_id === 3 ? 'warning' : '');
+				var cssClass = log.type_id === AIPS_History_Type.ERROR ? 'error' : (log.type_id === AIPS_History_Type.WARNING ? 'warning' : '');
 				logsHtml += '<div class="aips-log-entry ' + cssClass + '">';
 				logsHtml += '<h4>' + escapeHtml(log.type) + ' - ' + escapeHtml(log.log_type) + '</h4>';
 				logsHtml += '<div class="aips-log-timestamp">' + escapeHtml(log.timestamp) + '</div>';

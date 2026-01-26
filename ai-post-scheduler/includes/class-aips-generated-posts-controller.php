@@ -68,14 +68,12 @@ class AIPS_Generated_Posts_Controller {
 				continue;
 			}
 			
-			// Get schedule info if exists
+			// Get most recent schedule for this template (if exists)
 			$schedule = null;
 			if ($item->template_id) {
-				global $wpdb;
-				$schedule = $wpdb->get_row($wpdb->prepare(
-					"SELECT * FROM {$wpdb->prefix}aips_schedule WHERE template_id = %d ORDER BY created_at DESC LIMIT 1",
-					$item->template_id
-				));
+				$schedules = $this->schedule_repository->get_by_template($item->template_id);
+				// get_by_template returns multiple schedules, get the first one
+				$schedule = !empty($schedules) ? $schedules[0] : null;
 			}
 			
 			$posts_data[] = array(

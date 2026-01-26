@@ -180,10 +180,15 @@ class AIPS_History_Repository {
      * @param int    $history_id      The ID of the history item.
      * @param string $log_type        The type of log entry (e.g., 'ai_call', 'error').
      * @param array  $details         The details of the log entry.
-     * @param int    $history_type_id Optional. History type constant from AIPS_History_Type. Default LOG (1).
+     * @param int    $history_type_id Optional. History type constant from AIPS_History_Type. Default AIPS_History_Type::LOG.
      * @return int|false The inserted ID on success, false on failure.
      */
-    public function add_log_entry($history_id, $log_type, $details, $history_type_id = 1) {
+    public function add_log_entry($history_id, $log_type, $details, $history_type_id = null) {
+        // Default to LOG type if not specified
+        if ($history_type_id === null) {
+            $history_type_id = AIPS_History_Type::LOG;
+        }
+        
         $insert_data = array(
             'history_id' => $history_id,
             'log_type' => $log_type,
