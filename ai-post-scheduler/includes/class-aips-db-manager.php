@@ -82,7 +82,8 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY post_id (post_id),
             KEY template_id (template_id),
-            KEY status (status)
+            KEY status (status),
+            KEY template_status_created (template_id, status, created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (
@@ -301,7 +302,10 @@ class AIPS_DB_Manager {
         $instance = new self();
         $schema = $instance->get_schema();
         foreach ($schema as $sql) {
-            dbDelta($sql);
+            $result = dbDelta($sql);
+            if (!empty($result)) {
+                error_log('AIPS dbDelta result: ' . print_r($result, true));
+            }
         }
         
         // Seed default data for new installations or upgrades
@@ -533,7 +537,10 @@ class AIPS_DB_Manager {
             ));
             
             if (!$exists) {
-                $wpdb->insert($table_sections, $section);
+                $result = $wpdb->insert($table_sections, $section);
+                if ($result === false) {
+                    error_log("AIPS Error: Failed to insert default prompt section '{$section['name']}'. DB Error: " . $wpdb->last_error);
+                }
             }
         }
         
@@ -597,7 +604,10 @@ class AIPS_DB_Manager {
             ));
             
             if (!$exists) {
-                $wpdb->insert($table_structures, $structure);
+                $result = $wpdb->insert($table_structures, $structure);
+                if ($result === false) {
+                    error_log("AIPS Error: Failed to insert default article structure '{$structure['name']}'. DB Error: " . $wpdb->last_error);
+                }
             }
         }
     }
