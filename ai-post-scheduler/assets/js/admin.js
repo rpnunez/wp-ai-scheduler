@@ -402,6 +402,35 @@
             $('#aips-template-modal').show();
         },
 
+        cloneTemplate: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Cloning...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_clone_template',
+                    nonce: aipsAjax.nonce,
+                    template_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                        $btn.prop('disabled', false).text('Clone');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    $btn.prop('disabled', false).text('Clone');
+                }
+            });
+        },
+
         editTemplate: function(e) {
             e.preventDefault();
             var id = $(this).data('id');
