@@ -63,6 +63,7 @@ final class AI_Post_Scheduler {
         
         // Repository layer
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-container.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-repository.php';

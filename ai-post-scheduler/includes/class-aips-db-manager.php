@@ -67,6 +67,7 @@ class AIPS_DB_Manager {
 
         $sql[] = "CREATE TABLE $table_history (
             id bigint(20) NOT NULL AUTO_INCREMENT,
+            uuid varchar(36) DEFAULT NULL,
             post_id bigint(20) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
             status varchar(50) NOT NULL DEFAULT 'pending',
@@ -78,6 +79,7 @@ class AIPS_DB_Manager {
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             completed_at datetime DEFAULT NULL,
             PRIMARY KEY  (id),
+            UNIQUE KEY uuid (uuid),
             KEY post_id (post_id),
             KEY template_id (template_id),
             KEY status (status)

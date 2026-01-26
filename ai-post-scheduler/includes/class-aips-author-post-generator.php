@@ -176,36 +176,31 @@ class AIPS_Author_Post_Generator {
 			if (is_wp_error($post_id)) {
 				$this->logger->log("Failed to generate post for topic {$topic->id}: " . $post_id->get_error_message(), 'error');
 				
-				// Log failure activity using History Service
-				// Find the most recent history entry for this generation
-				$recent_history = $this->history_repository->get_history(array(
-					'per_page' => 1,
-					'page' => 1,
-					'orderby' => 'created_at',
-					'order' => 'DESC'
+				// The Generator now handles all logging internally via History Container
+				// We can optionally log additional high-level activity here
+				$history = $this->history_service->create('topic_post_generation', array(
+					'topic_id' => $topic->id,
+					'author_id' => $author->id,
 				));
 				
-				if (!empty($recent_history['items'])) {
-					$history_id = $recent_history['items'][0]->id;
-					$history_service = new AIPS_History_Service();
-					$history_service->set_history_id($history_id);
-					$history_service->log_activity(
-						'topic_post_generation',
-						'failed',
-						sprintf(
-							__('Failed to generate post from topic "%s": %s', 'ai-post-scheduler'),
-							$topic->topic_title,
-							$post_id->get_error_message()
-						),
-						array(
-							'topic_id' => $topic->id,
-							'topic_title' => $topic->topic_title,
-							'author_id' => $author->id,
-							'author_name' => $author->name,
-							'error' => $post_id->get_error_message(),
-						)
-					);
-				}
+				$history->record(
+					'activity',
+					sprintf(
+						__('Failed to generate post from topic "%s": %s', 'ai-post-scheduler'),
+						$topic->topic_title,
+						$post_id->get_error_message()
+					),
+					array(
+						'topic_id' => $topic->id,
+						'topic_title' => $topic->topic_title,
+					),
+					null,
+					array(
+						'author_id' => $author->id,
+						'author_name' => $author->name,
+						'error' => $post_id->get_error_message(),
+					)
+				);
 				
 				return $post_id;
 			}
@@ -225,12 +220,15 @@ class AIPS_Author_Post_Generator {
 			$post_status = $post ? $post->post_status : 'unknown';
 			$post_title = $post ? $post->post_title : $topic->topic_title;
 			
-			// Log successful post generation using History Service
-			$history_service = new AIPS_History_Service();
-			$history_service->set_history_id($history_id);
-			$history_service->log_activity(
-				'topic_post_generation',
-				$post_status === 'publish' ? 'success' : 'draft',
+			// Log successful post generation using new History API
+			$history = $this->history_service->create('topic_post_generation', array(
+				'post_id' => $post_id,
+				'topic_id' => $topic->id,
+				'author_id' => $author->id,
+			));
+			
+			$history->record(
+				'activity',
 				sprintf(
 					__('Generated %s from topic "%s" for author "%s"', 'ai-post-scheduler'),
 					$post_status === 'publish' ? __('post', 'ai-post-scheduler') : __('draft', 'ai-post-scheduler'),
@@ -240,11 +238,15 @@ class AIPS_Author_Post_Generator {
 				array(
 					'topic_id' => $topic->id,
 					'topic_title' => $topic->topic_title,
-					'author_id' => $author->id,
-					'author_name' => $author->name,
+				),
+				array(
+					'post_id' => $post_id,
 					'post_title' => $post_title,
 					'post_status' => $post_status,
-					'history_id' => $history_id,
+				),
+				array(
+					'author_id' => $author->id,
+					'author_name' => $author->name,
 				)
 			);
 			
@@ -255,9 +257,14 @@ class AIPS_Author_Post_Generator {
 		} catch (Exception $e) {
 			$this->logger->log("Exception generating post for topic {$topic->id}: " . $e->getMessage(), 'error');
 			
-			// Log exception using History Service
-			$history_service = new AIPS_History_Service();
-			$history_service->log_activity(
+			// Log exception using new History API
+			$history = $this->history_service->create('topic_post_generation', array(
+				'topic_id' => $topic->id,
+				'author_id' => $author->id,
+			));
+			
+			$history->record(
+				'activity',
 				'topic_post_generation',
 				'failed',
 				sprintf(
@@ -268,6 +275,9 @@ class AIPS_Author_Post_Generator {
 				array(
 					'topic_id' => $topic->id,
 					'topic_title' => $topic->topic_title,
+				),
+				null,
+				array(
 					'author_id' => $author->id,
 					'author_name' => $author->name,
 					'error' => $e->getMessage(),

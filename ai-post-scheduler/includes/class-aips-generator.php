@@ -22,6 +22,11 @@ class AIPS_Generator {
      */
     private $history_service;
     
+    /**
+     * @var AIPS_History_Container|null Current history container
+     */
+    private $current_history;
+    
     private $template_processor;
     private $image_service;
     private $structure_manager;
@@ -74,14 +79,24 @@ class AIPS_Generator {
      * @return void
      */
     private function log_ai_call($type, $prompt, $response, $options = array(), $error = null) {
+        if (!$this->current_history) {
+            return;
+        }
+        
         // Log AI request
-        $this->history_service->log_ai_request($type, $prompt, $options);
+        $this->current_history->record('ai_request', "AI request for {$type}", array(
+            'type' => $type,
+            'prompt' => $prompt,
+            'options' => $options,
+        ), null, array('component' => $type));
         
         // Log response or error
         if ($error) {
-            $this->history_service->log_error($type, $error, array('prompt' => $prompt));
+            $this->current_history->record('error', "AI {$type} failed: {$error}", array(
+                'prompt' => $prompt,
+            ), null, array('component' => $type));
         } else {
-            $this->history_service->log_ai_response($type, $response);
+            $this->current_history->record('ai_response', "AI response for {$type}", null, $response, array('component' => $type));
         }
     }
 
@@ -447,10 +462,13 @@ class AIPS_Generator {
         // Dispatch post generation started event
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
         
-        // Start new generation session using History Service
-        $history_id = $this->history_service->start_generation($context);
+        // Create new history container using new API
+        $template_id = $context->get_type() === 'template' ? $context->get_id() : null;
+        $this->current_history = $this->history_service->create('post_generation', array(
+            'template_id' => $template_id,
+        ))->with_session($context);
         
-        if (!$history_id) {
+        if (!$this->current_history->get_id()) {
             // Fallback if history creation fails (though unlikely)
             $this->logger->log('Failed to create history record', 'error');
         }
@@ -469,8 +487,11 @@ class AIPS_Generator {
         $content = $this->generate_content($content_prompt, $content_options, 'content');
         
         if (is_wp_error($content)) {
-            // Use unified history service to complete with failure
-            $this->history_service->complete_with_failure($content->get_error_message(), 'content');
+            // Use new history API to complete with failure
+            $this->current_history->complete_failure($content->get_error_message(), array(
+                'component' => 'content',
+                'prompt' => $content_prompt,
+            ));
             
             // Dispatch post generation failed event
             do_action('aips_post_generation_failed', $context->get_id(), $content->get_error_message(), $context->get_topic());
@@ -537,8 +558,12 @@ class AIPS_Generator {
         $post_id = $this->post_creator->create_post($post_creation_data);
         
         if (is_wp_error($post_id)) {
-            // Use unified history service to complete with failure
-            $this->history_service->complete_with_failure($post_id->get_error_message(), 'post_creation');
+            // Use new history API to complete with failure
+            $this->current_history->complete_failure($post_id->get_error_message(), array(
+                'component' => 'post_creation',
+                'title' => $title,
+                'content_length' => strlen($content),
+            ));
             
             return $post_id;
         }
@@ -546,14 +571,19 @@ class AIPS_Generator {
         // Handle featured image generation/selection.
         $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title);
         
-        // Use unified history service to complete with success
-        $this->history_service->complete_with_success($post_id, $title, $content);
+        // Use new history API to complete with success
+        $this->current_history->complete_success(array(
+            'post_id' => $post_id,
+            'generated_title' => $title,
+            'generated_content' => $content,
+        ));
         
         // Log activity
-        $this->history_service->log_activity(
-            'post_published',
-            'success',
+        $this->current_history->record(
+            'activity',
             sprintf('Post "%s" generated successfully', $title),
+            null,
+            null,
             array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
@@ -572,9 +602,9 @@ class AIPS_Generator {
         // For backward compatibility, extract template if it's a template context
         if ($context->get_type() === 'template') {
             $template_obj = $context->get_template();
-            do_action('aips_post_generated', $post_id, $template_obj, $this->history_service->get_history_id());
+            do_action('aips_post_generated', $post_id, $template_obj, $this->current_history->get_id());
         } else {
-            do_action('aips_post_generated', $post_id, $context, $this->history_service->get_history_id());
+            do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id());
         }
         
         return $post_id;
