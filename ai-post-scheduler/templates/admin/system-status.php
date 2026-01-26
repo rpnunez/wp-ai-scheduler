@@ -5,6 +5,13 @@ if (!defined('ABSPATH')) {
 ?>
 <div class="wrap">
     <h1 class="wp-heading-inline"><?php esc_html_e('System Status', 'ai-post-scheduler'); ?></h1>
+    <?php
+    // Generate text report for clipboard
+    $text_report = $this->get_text_report($system_info);
+    ?>
+    <button class="page-title-action aips-copy-btn" data-clipboard-text="<?php echo esc_attr($text_report); ?>">
+        <?php esc_html_e('Copy System Report', 'ai-post-scheduler'); ?>
+    </button>
     <hr class="wp-header-end">
 
     <div class="aips-status-page">
@@ -33,6 +40,11 @@ if (!defined('ABSPATH')) {
                                         <?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>
                                     </a>
                                     <div id="log-details-<?php echo esc_attr($key); ?>" class="aips-log-details" style="display:none; margin-top: 10px;">
+                                        <p>
+                                            <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="<?php echo esc_attr(implode("\n", $check['details'])); ?>">
+                                                <span class="dashicons dashicons-admin-page"></span> <?php esc_html_e('Copy Log', 'ai-post-scheduler'); ?>
+                                            </button>
+                                        </p>
                                         <textarea class="large-text code" rows="10" readonly><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
                                     </div>
                                 <?php endif; ?>
