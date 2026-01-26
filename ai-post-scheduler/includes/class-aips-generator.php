@@ -89,13 +89,47 @@ class AIPS_Generator {
         }
 
         if ($this->history_id) {
-            $details = array(
+            // Log the AI request
+            $request_details = array(
+                'type' => $type,
                 'prompt' => $prompt,
                 'options' => $options,
-                'response' => base64_encode($response),
-                'error' => $error,
+                'timestamp' => current_time('mysql'),
             );
-            $this->history_repository->add_log_entry($this->history_id, $type, $details);
+            $this->history_repository->add_log_entry(
+                $this->history_id,
+                $type . '_request',
+                $request_details,
+                AIPS_History_Type::AI_REQUEST
+            );
+            
+            // Log the AI response or error
+            if ($error) {
+                $error_details = array(
+                    'type' => $type,
+                    'error' => $error,
+                    'prompt' => $prompt,
+                    'timestamp' => current_time('mysql'),
+                );
+                $this->history_repository->add_log_entry(
+                    $this->history_id,
+                    $type . '_error',
+                    $error_details,
+                    AIPS_History_Type::ERROR
+                );
+            } else {
+                $response_details = array(
+                    'type' => $type,
+                    'response' => base64_encode($response),
+                    'timestamp' => current_time('mysql'),
+                );
+                $this->history_repository->add_log_entry(
+                    $this->history_id,
+                    $type . '_response',
+                    $response_details,
+                    AIPS_History_Type::AI_RESPONSE
+                );
+            }
         }
     }
 

@@ -61,6 +61,15 @@ class AIPS_Settings {
             'aips-activity',
             array($this, 'render_activity_page')
         );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Generated Posts', 'ai-post-scheduler'),
+            __('Generated Posts', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-generated-posts',
+            array($this, 'render_generated_posts_page')
+        );
 
         add_submenu_page(
             'ai-post-scheduler',
@@ -832,6 +841,16 @@ class AIPS_Settings {
      */
     public function render_activity_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
+    }
+    
+    /**
+     * Render the Generated Posts page.
+     *
+     * @return void
+     */
+    public function render_generated_posts_page() {
+        $controller = new AIPS_Generated_Posts_Controller();
+        $controller->render_page();
     }
 
     /**
