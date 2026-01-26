@@ -44,6 +44,11 @@
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
 
+            // Schedule Bulk Actions
+            $(document).on('change', '.aips-schedules-table #cb-select-all-1', this.toggleAllSchedules);
+            $(document).on('change', '.aips-schedules-table input[name="schedule[]"]', this.toggleScheduleSelection);
+            $(document).on('click', '#aips-schedule-bulk-action-btn', this.deleteSelectedSchedules);
+
             $(document).on('click', '.aips-clear-history', this.clearHistory);
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
@@ -916,6 +921,64 @@
                 },
                 error: function() {
                     alert('An error occurred. Please try again.');
+                }
+            });
+        },
+
+        toggleAllSchedules: function() {
+            var isChecked = $(this).prop('checked');
+            $('.aips-schedules-table input[name="schedule[]"]').prop('checked', isChecked);
+        },
+
+        toggleScheduleSelection: function() {
+            var allChecked = $('.aips-schedules-table input[name="schedule[]"]').length === $('.aips-schedules-table input[name="schedule[]"]:checked').length;
+            $('.aips-schedules-table #cb-select-all-1').prop('checked', allChecked);
+        },
+
+        deleteSelectedSchedules: function(e) {
+            e.preventDefault();
+            var action = $('#aips-schedule-bulk-action').val();
+
+            if (action !== 'delete') {
+                return;
+            }
+
+            var ids = [];
+            $('.aips-schedules-table input[name="schedule[]"]:checked').each(function() {
+                ids.push($(this).val());
+            });
+
+            if (ids.length === 0) {
+                alert('Please select at least one schedule.');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete ' + ids.length + ' schedule(s)?')) {
+                return;
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Processing...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_delete_schedules',
+                    nonce: aipsAjax.nonce,
+                    ids: ids
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                        $btn.prop('disabled', false).text('Apply');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    $btn.prop('disabled', false).text('Apply');
                 }
             });
         },

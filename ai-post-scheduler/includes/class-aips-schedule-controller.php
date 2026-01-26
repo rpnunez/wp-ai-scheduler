@@ -12,6 +12,7 @@ class AIPS_Schedule_Controller {
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
+        add_action('wp_ajax_aips_bulk_delete_schedules', array($this, 'ajax_bulk_delete_schedules'));
         add_action('wp_ajax_aips_toggle_schedule', array($this, 'ajax_toggle_schedule'));
         add_action('wp_ajax_aips_run_now', array($this, 'ajax_run_now'));
     }
@@ -72,6 +73,26 @@ class AIPS_Schedule_Controller {
             wp_send_json_success(array('message' => __('Schedule deleted successfully.', 'ai-post-scheduler')));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete schedule.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_bulk_delete_schedules() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $ids = isset($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
+
+        if (empty($ids)) {
+            wp_send_json_error(array('message' => __('No schedules selected.', 'ai-post-scheduler')));
+        }
+
+        if ($this->scheduler->delete_schedule_bulk($ids)) {
+            wp_send_json_success(array('message' => __('Schedules deleted successfully.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to delete schedules.', 'ai-post-scheduler')));
         }
     }
 
