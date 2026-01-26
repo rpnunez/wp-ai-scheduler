@@ -167,7 +167,7 @@ class AIPS_Post_Creator {
         // Remove leading "thinking" text patterns common in AI responses
         // Match patterns like "Let's create...", "I'll help...", "Here's...", etc.
         // followed by a newline or separator
-        $content = preg_replace('/^(Let\'s|I\'ll|I will|Here\'s|Here is)\s+[^\n]*\n+/i', '', $content);
+        $content = preg_replace("/^(Let's|I'll|I will|Here's|Here is)\s+[^\n]*\n+/i", '', $content);
 
         // Remove markdown horizontal rules (---, ***, ___) on their own line
         $content = preg_replace('/^\s*[-*_]{3,}\s*$/m', '', $content);

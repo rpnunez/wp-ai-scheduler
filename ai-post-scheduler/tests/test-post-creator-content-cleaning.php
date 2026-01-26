@@ -180,6 +180,7 @@ class AIPS_Post_Creator_Content_Cleaning_Test extends WP_UnitTestCase {
      * Test that wp_kses_post is applied after cleaning.
      *
      * Ensures that XSS prevention happens after cleaning markdown artifacts.
+     * Tests various XSS vectors including script tags, event handlers, and data URIs.
      */
     public function test_sanitizes_after_cleaning() {
         $template = (object) array(
@@ -190,11 +191,11 @@ class AIPS_Post_Creator_Content_Cleaning_Test extends WP_UnitTestCase {
 
         $creator = new AIPS_Post_Creator();
 
-        // Content with potential XSS in markdown fence
+        // Test 1: Script tag in markdown fence
         $content_with_xss = "```html\n<h2>Title</h2>\n<script>alert('XSS')</script>\n<p>Content</p>\n```";
 
         $post_id = $creator->create_post(array(
-            'title' => 'Security Test',
+            'title' => 'Security Test 1',
             'content' => $content_with_xss,
             'excerpt' => 'Security testing',
             'template' => $template,
@@ -209,6 +210,35 @@ class AIPS_Post_Creator_Content_Cleaning_Test extends WP_UnitTestCase {
         // Safe content should remain
         $this->assertStringContainsString("<h2>Title</h2>", $post->post_content);
         $this->assertStringContainsString("<p>Content</p>", $post->post_content);
+
+        // Test 2: Event handler attributes
+        $content_with_onclick = "<p onclick=\"alert('XSS')\">Click me</p>";
+        
+        $post_id2 = $creator->create_post(array(
+            'title' => 'Security Test 2',
+            'content' => $content_with_onclick,
+            'excerpt' => 'Testing event handlers',
+            'template' => $template,
+        ));
+
+        $post2 = get_post($post_id2);
+        // Event handler attributes should be stripped
+        $this->assertStringNotContainsString("onclick", $post2->post_content);
+        
+        // Test 3: iframe tag
+        $content_with_iframe = "<h2>Title</h2>\n<iframe src=\"javascript:alert('XSS')\"></iframe>\n<p>Content</p>";
+        
+        $post_id3 = $creator->create_post(array(
+            'title' => 'Security Test 3',
+            'content' => $content_with_iframe,
+            'excerpt' => 'Testing iframe',
+            'template' => $template,
+        ));
+
+        $post3 = get_post($post_id3);
+        // iframe tags should be stripped
+        $this->assertStringNotContainsString("<iframe", $post3->post_content);
+        $this->assertStringNotContainsString("javascript:", $post3->post_content);
     }
 
     /**
