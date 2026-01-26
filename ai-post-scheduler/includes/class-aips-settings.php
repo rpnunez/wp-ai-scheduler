@@ -840,6 +840,30 @@ class AIPS_Settings {
      * @return void
      */
     public function render_activity_page() {
+        // Use History Service to get activity feed
+        $history_service = new AIPS_History_Service();
+        
+        $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+        $per_page = 50;
+        $offset = ($current_page - 1) * $per_page;
+        
+        $event_type = isset($_GET['event_type']) ? sanitize_text_field($_GET['event_type']) : '';
+        $event_status = isset($_GET['event_status']) ? sanitize_text_field($_GET['event_status']) : '';
+        $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+        
+        $filters = array();
+        if ($event_type) {
+            $filters['event_type'] = $event_type;
+        }
+        if ($event_status) {
+            $filters['event_status'] = $event_status;
+        }
+        if ($search_query) {
+            $filters['search'] = $search_query;
+        }
+        
+        $activities = $history_service->get_activity_feed($per_page, $offset, $filters);
+        
         include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
     }
     

@@ -18,21 +18,15 @@ class AIPS_Generator {
     private $logger;
     
     /**
-     * @var AIPS_Generation_Session Current generation session tracker.
-     *
-     * This tracks runtime details of a single post generation attempt.
-     * It is ephemeral (exists only during the current request) and is
-     * serialized to JSON for storage in the History database table.
+     * @var AIPS_History_Service History service for unified logging
      */
-    private $current_session;
+    private $history_service;
     
     private $template_processor;
     private $image_service;
     private $structure_manager;
     private $post_creator;
-    private $history_repository;
     private $prompt_builder;
-    private $history_id;
     
     /**
      * Constructor.
@@ -46,7 +40,7 @@ class AIPS_Generator {
      * @param object|null $image_service
      * @param object|null $structure_manager
      * @param object|null $post_creator
-     * @param object|null $history_repository
+     * @param object|null $history_service
      * @param object|null $prompt_builder
      */
     public function __construct(
@@ -56,7 +50,7 @@ class AIPS_Generator {
         $image_service = null,
         $structure_manager = null,
         $post_creator = null,
-        $history_repository = null,
+        $history_service = null,
         $prompt_builder = null
     ) {
         $this->logger = $logger ?: new AIPS_Logger();
@@ -65,11 +59,8 @@ class AIPS_Generator {
         $this->image_service = $image_service ?: new AIPS_Image_Service($this->ai_service);
         $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
-        $this->history_repository = $history_repository ?: new AIPS_History_Repository();
+        $this->history_service = $history_service ?: new AIPS_History_Service();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
-
-        // Initialize session tracker
-        $this->current_session = new AIPS_Generation_Session();
     }
     
     /**
@@ -83,53 +74,14 @@ class AIPS_Generator {
      * @return void
      */
     private function log_ai_call($type, $prompt, $response, $options = array(), $error = null) {
-        $this->current_session->log_ai_call();
+        // Log AI request
+        $this->history_service->log_ai_request($type, $prompt, $options);
+        
+        // Log response or error
         if ($error) {
-            $this->current_session->add_error();
-        }
-
-        if ($this->history_id) {
-            // Log the AI request
-            $request_details = array(
-                'type' => $type,
-                'prompt' => $prompt,
-                'options' => $options,
-                'timestamp' => current_time('mysql'),
-            );
-            $this->history_repository->add_log_entry(
-                $this->history_id,
-                $type . '_request',
-                $request_details,
-                AIPS_History_Type::AI_REQUEST
-            );
-            
-            // Log the AI response or error
-            if ($error) {
-                $error_details = array(
-                    'type' => $type,
-                    'error' => $error,
-                    'prompt' => $prompt,
-                    'timestamp' => current_time('mysql'),
-                );
-                $this->history_repository->add_log_entry(
-                    $this->history_id,
-                    $type . '_error',
-                    $error_details,
-                    AIPS_History_Type::ERROR
-                );
-            } else {
-                $response_details = array(
-                    'type' => $type,
-                    'response' => base64_encode($response),
-                    'timestamp' => current_time('mysql'),
-                );
-                $this->history_repository->add_log_entry(
-                    $this->history_id,
-                    $type . '_response',
-                    $response_details,
-                    AIPS_History_Type::AI_RESPONSE
-                );
-            }
+            $this->history_service->log_error($type, $error, array('prompt' => $prompt));
+        } else {
+            $this->history_service->log_ai_response($type, $response);
         }
     }
 
@@ -495,18 +447,11 @@ class AIPS_Generator {
         // Dispatch post generation started event
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
         
-        // Start new generation session - track runtime details
-        $this->current_session->start($context);
+        // Start new generation session using History Service
+        $history_id = $this->history_service->start_generation($context);
         
-        // Create initial history record using Repository
-        $this->history_id = $this->history_repository->create(array(
-            'template_id' => $context->get_type() === 'template' ? $context->get_id() : null,
-            'status' => 'processing',
-            'prompt' => $context->get_content_prompt(),
-        ));
-        
-        if (!$this->history_id) {
-            // Fallback if repository fails (though unlikely)
+        if (!$history_id) {
+            // Fallback if history creation fails (though unlikely)
             $this->logger->log('Failed to create history record', 'error');
         }
         
@@ -524,19 +469,8 @@ class AIPS_Generator {
         $content = $this->generate_content($content_prompt, $content_options, 'content');
         
         if (is_wp_error($content)) {
-            // Complete session with failure result and update history
-            $this->current_session->complete(array(
-                'success' => false,
-                'error' => $content->get_error_message(),
-            ));
-            
-            if ($this->history_id) {
-                $this->history_repository->update($this->history_id, array(
-                    'status' => 'failed',
-                    'error_message' => $content->get_error_message(),
-                    'completed_at' => current_time('mysql'),
-                ));
-            }
+            // Use unified history service to complete with failure
+            $this->history_service->complete_with_failure($content->get_error_message(), 'content');
             
             // Dispatch post generation failed event
             do_action('aips_post_generation_failed', $context->get_id(), $content->get_error_message(), $context->get_topic());
@@ -603,24 +537,8 @@ class AIPS_Generator {
         $post_id = $this->post_creator->create_post($post_creation_data);
         
         if (is_wp_error($post_id)) {
-            // Complete session with failure result and update history
-            $this->current_session->complete(array(
-                'success' => false,
-                'error' => $post_id->get_error_message(),
-                'generated_title' => $title,
-                'generated_content' => $content,
-                'generated_excerpt' => $excerpt,
-            ));
-            
-            if ($this->history_id) {
-                $this->history_repository->update($this->history_id, array(
-                    'status' => 'failed',
-                    'error_message' => $post_id->get_error_message(),
-                    'generated_title' => $title,
-                    'generated_content' => $content,
-                    'completed_at' => current_time('mysql'),
-                ));
-            }
+            // Use unified history service to complete with failure
+            $this->history_service->complete_with_failure($post_id->get_error_message(), 'post_creation');
             
             return $post_id;
         }
@@ -628,25 +546,20 @@ class AIPS_Generator {
         // Handle featured image generation/selection.
         $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title);
         
-        // Complete session with success result and update history
-        $this->current_session->complete(array(
-            'success' => true,
-            'post_id' => $post_id,
-            'generated_title' => $title,
-            'generated_content' => $content,
-            'generated_excerpt' => $excerpt,
-            'featured_image_id' => $featured_image_id,
-        ));
+        // Use unified history service to complete with success
+        $this->history_service->complete_with_success($post_id, $title, $content);
         
-        if ($this->history_id) {
-            $this->history_repository->update($this->history_id, array(
+        // Log activity
+        $this->history_service->log_activity(
+            'post_published',
+            'success',
+            sprintf('Post "%s" generated successfully', $title),
+            array(
                 'post_id' => $post_id,
-                'status' => 'completed',
-                'generated_title' => $title,
-                'generated_content' => $content,
-                'completed_at' => current_time('mysql'),
-            ));
-        }
+                'context_type' => $context->get_type(),
+                'context_id' => $context->get_id(),
+            )
+        );
         
         $this->logger->log('Post generated successfully', 'info', array(
             'post_id' => $post_id,
@@ -659,12 +572,11 @@ class AIPS_Generator {
         // For backward compatibility, extract template if it's a template context
         if ($context->get_type() === 'template') {
             $template_obj = $context->get_template();
-            do_action('aips_post_generated', $post_id, $template_obj, $this->history_id);
+            do_action('aips_post_generated', $post_id, $template_obj, $this->history_service->get_history_id());
         } else {
-            do_action('aips_post_generated', $post_id, $context, $this->history_id);
+            do_action('aips_post_generated', $post_id, $context, $this->history_service->get_history_id());
         }
         
-        $this->history_id = null;
         return $post_id;
     }
 
