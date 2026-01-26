@@ -41,9 +41,9 @@ class AIPS_Author_Topics_Scheduler {
 	private $interval_calculator;
 	
 	/**
-	 * @var AIPS_Activity_Repository Repository for activity logging
+	 * @var AIPS_History_Service Service for history logging
 	 */
-	private $activity_repository;
+	private $history_service;
 	
 	/**
 	 * Initialize the scheduler.
@@ -53,7 +53,7 @@ class AIPS_Author_Topics_Scheduler {
 		$this->topics_generator = new AIPS_Author_Topics_Generator();
 		$this->logger = new AIPS_Logger();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->activity_repository = new AIPS_Activity_Repository();
+		$this->history_service = new AIPS_History_Service();
 		
 		// Hook into WordPress cron
 		add_action('aips_generate_author_topics', array($this, 'process_topic_generation'));
@@ -100,23 +100,23 @@ class AIPS_Author_Topics_Scheduler {
 		if (is_wp_error($result)) {
 			$this->logger->log("Failed to generate topics for author {$author->id}: " . $result->get_error_message(), 'error');
 			
-			// Log to activity feed
-			$this->activity_repository->create(array(
-				'event_type' => 'author_topic_generation',
-				'event_status' => 'failed',
-				'message' => sprintf(
+			// Log using History Service
+			$this->history_service->log_activity(
+				'author_topic_generation',
+				'failed',
+				sprintf(
 					__('Failed to generate topics for author "%s": %s', 'ai-post-scheduler'),
 					$author->name,
 					$result->get_error_message()
 				),
-				'metadata' => array(
+				array(
 					'author_id' => $author->id,
 					'author_name' => $author->name,
 					'field_niche' => $author->field_niche,
 					'requested_quantity' => $author->topic_generation_quantity,
 					'error' => $result->get_error_message(),
-				),
-			));
+				)
+			);
 			
 			// Still update the schedule to avoid getting stuck
 			$this->update_author_schedule($author);
@@ -126,25 +126,25 @@ class AIPS_Author_Topics_Scheduler {
 		// Update the author's next run time
 		$this->update_author_schedule($author);
 		
-		// Log successful topic generation to activity feed
+		// Log successful topic generation using History Service
 		// $result is an array of topic data on success
 		$topic_count = is_array($result) ? count($result) : 0;
-		$this->activity_repository->create(array(
-			'event_type' => 'author_topic_generation',
-			'event_status' => 'success',
-			'message' => sprintf(
+		$this->history_service->log_activity(
+			'author_topic_generation',
+			'success',
+			sprintf(
 				__('Generated %d topics for author "%s"', 'ai-post-scheduler'),
 				$topic_count,
 				$author->name
 			),
-			'metadata' => array(
+			array(
 				'author_id' => $author->id,
 				'author_name' => $author->name,
 				'field_niche' => $author->field_niche,
 				'topics_generated' => $topic_count,
 				'requested_quantity' => $author->topic_generation_quantity,
-			),
-		));
+			)
+		);
 		
 		$this->logger->log("Successfully generated topics for author {$author->id}", 'info');
 		return true;
