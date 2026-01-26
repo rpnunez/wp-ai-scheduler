@@ -54,6 +54,7 @@ class AIPS_Research_Controller {
         add_action('wp_ajax_aips_research_topics', array($this, 'ajax_research_topics'));
         add_action('wp_ajax_aips_get_trending_topics', array($this, 'ajax_get_trending_topics'));
         add_action('wp_ajax_aips_delete_trending_topic', array($this, 'ajax_delete_trending_topic'));
+        add_action('wp_ajax_aips_delete_trending_topic_bulk', array($this, 'ajax_delete_trending_topic_bulk'));
         add_action('wp_ajax_aips_schedule_trending_topics', array($this, 'ajax_schedule_trending_topics'));
         
         // Scheduled research cron
@@ -175,6 +176,34 @@ class AIPS_Research_Controller {
             wp_send_json_error(array('message' => __('Failed to delete topic.', 'ai-post-scheduler')));
         }
     }
+
+    /**
+     * AJAX handler: Bulk delete trending topics.
+     */
+    public function ajax_delete_trending_topic_bulk() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
+
+        if (empty($topic_ids)) {
+            wp_send_json_error(array('message' => __('Topic IDs are required.', 'ai-post-scheduler')));
+        }
+
+        $result = $this->repository->delete_bulk($topic_ids);
+
+        if ($result !== false) {
+            wp_send_json_success(array(
+                'message' => sprintf(__('%d topics deleted successfully.', 'ai-post-scheduler'), $result),
+                'count' => $result
+            ));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to delete topics.', 'ai-post-scheduler')));
+        }
+    }
     
     /**
      * AJAX handler: Schedule posts from trending topics.
@@ -212,41 +241,40 @@ class AIPS_Research_Controller {
         
         // Use scheduler to create schedules
         $scheduler = new AIPS_Scheduler();
-        $schedule_repository = new AIPS_Schedule_Repository();
         $interval_calculator = new AIPS_Interval_Calculator();
         
-        $count = 0;
         $base_time = strtotime($start_date);
-        
-        // Get interval duration
-        $interval_duration = $interval_calculator->get_interval_duration($frequency);
-        if (!$interval_duration) {
-            $interval_duration = 86400; // Default to daily
+        if ($base_time === false) {
+             wp_send_json_error(array('message' => __('Invalid start date provided.', 'ai-post-scheduler')));
         }
+        
+        // Get interval duration and validate frequency
+        $valid_intervals = $interval_calculator->get_intervals();
+        if (!array_key_exists($frequency, $valid_intervals)) {
+             wp_send_json_error(array('message' => __('Invalid frequency provided.', 'ai-post-scheduler')));
+        }
+
+        $count = 0;
+        $interval_duration = $interval_calculator->get_interval_duration($frequency);
+
+        $schedules_to_create = array();
         
         foreach ($topics as $index => $topic) {
             $next_run_time = $base_time + ($interval_duration * $index);
             
-            $schedule_data = array(
+            $schedules_to_create[] = array(
                 'template_id' => $template_id,
                 'frequency' => $frequency,
                 'next_run' => date('Y-m-d H:i:s', $next_run_time),
-                'active' => 1,
-                'created_at' => current_time('mysql'),
+                'is_active' => 1,
                 'topic' => $topic,
             );
-            
-            $schedule_id = $schedule_repository->create($schedule_data);
-            
-            if ($schedule_id) {
-                $count++;
-                
-                // Fire event for schedule creation
-                do_action('aips_trending_topic_scheduled', $schedule_id, $topic, $template_id);
-            }
         }
         
-        if ($count > 0) {
+        $result = $scheduler->save_schedule_bulk($schedules_to_create);
+
+        if ($result) {
+            $count = count($schedules_to_create);
             $this->logger->log("Scheduled {$count} trending topics for generation", 'info', array(
                 'template_id' => $template_id,
                 'frequency' => $frequency,
