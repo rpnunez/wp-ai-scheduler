@@ -102,4 +102,35 @@ class AIPS_History_Service {
 		
 		return $wpdb->get_results($wpdb->prepare($sql, $where_args));
 	}
+	
+	/**
+	 * Check if a post has history and is completed.
+	 *
+	 * @param int $post_id Post ID
+	 * @return bool True if post has completed history
+	 */
+	public function post_has_history_and_completed($post_id) {
+		return $this->repository->post_has_history_and_completed($post_id);
+	}
+	
+	/**
+	 * Get history item by ID.
+	 *
+	 * @param int $history_id History ID
+	 * @return object|null History item or null if not found
+	 */
+	public function get_by_id($history_id) {
+		return $this->repository->get_by_id($history_id);
+	}
+	
+	/**
+	 * Update a history record.
+	 *
+	 * @param int $history_id History ID
+	 * @param array $data Data to update
+	 * @return bool Success status
+	 */
+	public function update_history_record($history_id, $data) {
+		return $this->repository->update($history_id, $data);
+	}
 }

@@ -97,22 +97,8 @@ class AIPS_Activity_Repository {
 				$data['post_id']
 			));
 			
-			if ($history_id) {
-				$history_repo = new AIPS_History_Repository();
-				$activity_details = array(
-					'event_type' => $data['event_type'],
-					'event_status' => $data['event_status'],
-					'message' => $data['message'],
-					'metadata' => $data['metadata'],
-					'timestamp' => current_time('mysql'),
-				);
-				$history_repo->add_log_entry(
-					$history_id,
-					'activity_' . $data['event_type'],
-					$activity_details,
-					AIPS_History_Type::ACTIVITY
-				);
-			}
+			// Note: Activity logging is now handled through AIPS_History_Service
+			// This legacy path should be migrated to use History Containers
 		}
 		
 		return $result ? $this->wpdb->insert_id : false;

@@ -135,9 +135,7 @@ class AIPS_Post_Review {
 		}
 		
 		// Verify the post is in the review queue (has a history record)
-		$history_repository = new AIPS_History_Repository();
-		
-		if (!$history_repository->post_has_history_and_completed($post_id)) {
+		if (!$this->history_service->post_has_history_and_completed($post_id)) {
 			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
 			$history->record(
 				'activity',
@@ -245,7 +243,6 @@ class AIPS_Post_Review {
 		
 		$success_count = 0;
 		$failed_count = 0;
-		$history_repository = new AIPS_History_Repository();
 		
 		foreach ($post_ids as $post_id) {
 			// Verify the post exists and is a draft
@@ -264,7 +261,7 @@ class AIPS_Post_Review {
 			}
 			
 			// Verify the post is in the review queue
-			if (!$history_repository->post_has_history_and_completed($post_id)) {
+			if (!$this->history_service->post_has_history_and_completed($post_id)) {
 				$failed_count++;
 				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
 				$history->record(
@@ -352,8 +349,7 @@ class AIPS_Post_Review {
 		}
 		
 		// Get the history item
-		$history_repository = new AIPS_History_Repository();
-		$history_item = $history_repository->get_by_id($history_id);
+		$history_item = $this->history_service->get_by_id($history_id);
 		
 		if (!$history_item || !$history_item->template_id) {
 			wp_send_json_error(array('message' => __('History item not found or no template associated.', 'ai-post-scheduler')));
@@ -377,7 +373,7 @@ class AIPS_Post_Review {
 		}
 		
 		// Update history status to pending for regeneration
-		$history_repository->update($history_id, array(
+		$this->history_service->update_history_record($history_id, array(
 			'status' => 'pending',
 			'post_id' => null,
 			'error_message' => null,
@@ -399,6 +395,7 @@ class AIPS_Post_Review {
 			);
 			
 			wp_send_json_error(array('message' => $result->get_error_message()));
+			return;
 		}
 		
 		// Log the regeneration success
@@ -472,9 +469,7 @@ class AIPS_Post_Review {
 		}
 		
 		// Verify the post is in the review queue
-		$history_repository = new AIPS_History_Repository();
-		
-		if (!$history_repository->post_has_history_and_completed($post_id)) {
+		if (!$this->history_service->post_has_history_and_completed($post_id)) {
 			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
 			$history->record(
 				'activity',
@@ -516,8 +511,7 @@ class AIPS_Post_Review {
 		
 		// Update history if history_id is provided
 		if ($history_id) {
-			$history_repository = new AIPS_History_Repository();
-			$history_repository->update($history_id, array(
+			$this->history_service->update_history_record($history_id, array(
 				'post_id' => null,
 			));
 		}
@@ -579,7 +573,6 @@ class AIPS_Post_Review {
 		
 		$success_count = 0;
 		$failed_count = 0;
-		$history_repository = new AIPS_History_Repository();
 		
 		foreach ($items as $item) {
 			if (!is_array($item)) {
@@ -611,7 +604,7 @@ class AIPS_Post_Review {
 			}
 			
 			// Verify the post is in the review queue
-			if (!$history_repository->post_has_history_and_completed($post_id)) {
+			if (!$this->history_service->post_has_history_and_completed($post_id)) {
 				$failed_count++;
 				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
 				$history->record(
@@ -645,7 +638,7 @@ class AIPS_Post_Review {
 				
 				// Update history if history_id is provided
 				if ($history_id) {
-					$history_repository->update($history_id, array(
+					$this->history_service->update_history_record($history_id, array(
 						'post_id' => null,
 					));
 				}

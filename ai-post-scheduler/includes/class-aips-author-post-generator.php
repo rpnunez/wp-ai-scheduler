@@ -50,10 +50,7 @@ class AIPS_Author_Post_Generator {
 	 */
 	private $interval_calculator;
 	
-	/**
-	 * @var AIPS_History_Repository Repository for history
-	 */
-	private $history_repository;
+
 	
 	/**
 	 * @var AIPS_Topic_Expansion_Service Service for topic expansion
@@ -75,7 +72,6 @@ class AIPS_Author_Post_Generator {
 		$this->generator = new AIPS_Generator();
 		$this->logger = new AIPS_Logger();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->history_repository = new AIPS_History_Repository();
 		$this->expansion_service = new AIPS_Topic_Expansion_Service();
 		$this->history_service = new AIPS_History_Service();
 		
@@ -160,16 +156,8 @@ class AIPS_Author_Post_Generator {
 		// Build a context object for the generator (no more template mocking!)
 		$context = new AIPS_Topic_Context($author, $topic, $expanded_context);
 		
-		// Create a history entry
-		$history_id = $this->history_repository->create(array(
-			'template_id' => null, // No template, this is from an author
-			'status' => 'pending',
-			'prompt' => $topic->topic_title,
-			'generated_title' => null,
-			'generated_content' => null
-		));
-		
 		// Generate the post using the context
+		// Note: The Generator internally creates its own history container
 		try {
 			$post_id = $this->generator->generate_post($context);
 			
@@ -210,7 +198,6 @@ class AIPS_Author_Post_Generator {
 				$topic->id,
 				$post_id,
 				wp_json_encode(array(
-					'history_id' => $history_id,
 					'author_id' => $author->id
 				))
 			);
