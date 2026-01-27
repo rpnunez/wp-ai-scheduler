@@ -264,6 +264,29 @@ class AIPS_Schedule_Repository {
 
         return $result !== false;
     }
+
+    /**
+     * Delete multiple schedules by ID.
+     *
+     * @param array $ids Array of Schedule IDs.
+     * @return int|false Number of rows deleted or false on failure.
+     */
+    public function delete_bulk($ids) {
+        if (empty($ids) || !is_array($ids)) {
+            return 0;
+        }
+
+        $ids = array_map('absint', $ids);
+        $ids_string = implode(',', $ids);
+
+        $result = $this->wpdb->query("DELETE FROM {$this->schedule_table} WHERE id IN ($ids_string)");
+
+        if ($result !== false) {
+            delete_transient('aips_pending_schedule_stats');
+        }
+
+        return $result;
+    }
     
     /**
      * Delete all schedules for a template.

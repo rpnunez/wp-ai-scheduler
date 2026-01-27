@@ -23,3 +23,7 @@
 ## 2025-12-27 - Author Search Consistency
 **Learning:** The "Authors" table was the last major list without search, breaking the expectation set by Templates, Schedules, and Structures. Consistency in basic data tools (search/filter) significantly reduces cognitive load.
 **Action:** Implemented client-side search for Authors using the standard pattern (search input + JS filter), ensuring the entire admin suite now behaves predictably.
+
+## 2025-05-30 - Schedule Bulk Actions
+**Learning:** The `schedule.php` template lacked bulk actions which were present in other lists like `history.php`, creating an inconsistent user experience for managing multiple items.
+**Action:** Implemented "Select All" / Individual checkboxes and a "Delete Selected" button in `schedule.php` backed by new repository and controller methods, aligning it with `history.php` patterns.
