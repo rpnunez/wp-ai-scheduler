@@ -211,24 +211,43 @@ class AIPS_Trending_Topics_Repository {
             return false;
         }
         
-        $saved_count = 0;
+        $values = array();
+        $placeholders = array();
         
+        // Prepare data for bulk insert
         foreach ($topics as $topic) {
-            $result = $this->create(array(
-                'niche' => $niche,
-                'topic' => $topic['topic'],
-                'score' => $topic['score'],
-                'reason' => isset($topic['reason']) ? $topic['reason'] : '',
-                'keywords' => isset($topic['keywords']) ? $topic['keywords'] : array(),
-                'researched_at' => isset($topic['researched_at']) ? $topic['researched_at'] : current_time('mysql'),
-            ));
-            
-            if ($result !== false) {
-                $saved_count++;
+            // Validate required fields - topic is mandatory
+            if (empty($topic['topic'])) {
+                continue;
             }
+
+            // Prepare keywords as JSON
+            $keywords = isset($topic['keywords']) ? $topic['keywords'] : array();
+            $keywords_json = is_array($keywords) ? wp_json_encode($keywords) : '[]';
+
+            array_push($values,
+                sanitize_text_field($niche),
+                sanitize_text_field($topic['topic']),
+                isset($topic['score']) ? absint($topic['score']) : 50,
+                isset($topic['reason']) ? sanitize_text_field($topic['reason']) : '',
+                $keywords_json,
+                isset($topic['researched_at']) ? $topic['researched_at'] : current_time('mysql')
+            );
+
+            $placeholders[] = "(%s, %s, %d, %s, %s, %s)";
         }
         
-        return $saved_count;
+        if (empty($placeholders)) {
+            return 0;
+        }
+
+        $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES ";
+        $query .= implode(', ', $placeholders);
+
+        // Bolt: Optimized to use single query insert instead of loop
+        $result = $this->wpdb->query($this->wpdb->prepare($query, $values));
+
+        return $result;
     }
     
     /**

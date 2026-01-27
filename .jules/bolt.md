@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-27 - [Trending Topics Bulk Insert]
+**Learning:** `AIPS_Trending_Topics_Repository::save_research_batch` was iterating through topics and executing individual `INSERT` queries. Converting this to a single `INSERT` query significantly reduces database overhead.
+**Action:** Always prefer bulk `INSERT` statements over iterative inserts when IDs are not immediately needed or can be ignored.

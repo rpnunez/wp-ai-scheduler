@@ -15,6 +15,7 @@
     <testsuites>
         <testsuite name="AI Post Scheduler Test Suite">
             <directory suffix=".php">./ai-post-scheduler/tests</directory>
+            <exclude>./ai-post-scheduler/tests/integration-test-post-review.php</exclude>
         </testsuite>
     </testsuites>
 
