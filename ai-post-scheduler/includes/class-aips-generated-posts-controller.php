@@ -141,9 +141,9 @@ class AIPS_Generated_Posts_Controller {
 					if ($type_id === AIPS_History_Type::AI_REQUEST) {
 						$ai_calls[$component_type]['request'] = $details;
 					} else {
-						// Decode base64 response
-						if (isset($details['response'])) {
-							$details['response'] = base64_decode($details['response']);
+						// Decode base64-encoded AI output if flagged
+						if (isset($details['output']) && !empty($details['output_encoded'])) {
+							$details['output'] = base64_decode($details['output']);
 						}
 						$ai_calls[$component_type]['response'] = $details;
 					}

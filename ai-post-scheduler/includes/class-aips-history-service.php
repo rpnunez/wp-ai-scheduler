@@ -59,8 +59,8 @@ class AIPS_History_Service {
 	public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) {
 		global $wpdb;
 		
-		$where_clauses = array("history_type_id = " . AIPS_History_Type::ACTIVITY);
-		$where_args = array();
+		$where_clauses = array("history_type_id = %d");
+		$where_args = array(AIPS_History_Type::ACTIVITY);
 		
 		// Event type filter
 		if (!empty($filters['event_type'])) {

@@ -112,7 +112,7 @@ if (!defined('ABSPATH')) {
 						_n('%s item', '%s items', $history['total'], 'ai-post-scheduler'),
 						number_format_i18n($history['total'])
 					) . '</span>';
-					echo $page_links;
+					echo wp_kses_post( $page_links );
 				}
 				?>
 			</div>
@@ -417,7 +417,7 @@ jQuery(document).ready(function($) {
 		if (data.logs.length > 0) {
 			data.logs.forEach(function(log) {
 				var cssClass = log.type_id === AIPS_History_Type.ERROR ? 'error' : (log.type_id === AIPS_History_Type.WARNING ? 'warning' : '');
-				logsHtml += '<div class="aips-log-entry ' + cssClass + '">';
+				logsHtml += '<div class="aips-log-entry ' + escapeHtml(cssClass) + '">';
 				logsHtml += '<h4>' + escapeHtml(log.type) + ' - ' + escapeHtml(log.log_type) + '</h4>';
 				logsHtml += '<div class="aips-log-timestamp">' + escapeHtml(log.timestamp) + '</div>';
 				logsHtml += '<div class="aips-json-viewer"><pre>' + escapeHtml(JSON.stringify(log.details, null, 2)) + '</pre></div>';
