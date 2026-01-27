@@ -247,11 +247,14 @@
 .aips-wizard-step.completed .aips-step-number {
     background: #00a32a;
     border-color: #00a32a;
-    color: #fff;
+    color: transparent; /* Hide original step number text */
+    position: relative;
 }
 
 .aips-wizard-step.completed .aips-step-number::before {
     content: '✓';
+    color: #fff;
+    font-weight: 700;
 }
 
 .aips-step-label {
