@@ -1374,3 +1374,159 @@
 .aips-post-review-table tr[data-post-id] {
     transition: opacity 0.3s ease;
 }
+
+
+/* Preview Drawer Styles */
+.aips-preview-drawer {
+    position: relative;
+    background: #f0f0f1;
+    border-top: 1px solid #c3c4c7;
+}
+
+.aips-preview-drawer-toggle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    background: #e5e5e5;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.aips-preview-drawer-toggle:hover {
+    background: #d0d0d0;
+}
+
+.aips-preview-drawer-handle {
+    background: none;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #50575e;
+    font-size: 13px;
+    width: 100%;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.aips-preview-drawer-handle:hover {
+    color: #2271b1;
+}
+
+.aips-preview-drawer-handle .dashicons {
+    transition: transform 0.3s ease;
+}
+
+.aips-preview-drawer.expanded .aips-preview-drawer-handle .dashicons {
+    transform: rotate(180deg);
+}
+
+.aips-preview-drawer-label {
+    font-weight: 500;
+}
+
+.aips-preview-drawer-content {
+    padding: 20px;
+    max-height: 500px;
+    overflow-y: auto;
+    background: #fff;
+}
+
+.aips-preview-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #646970;
+}
+
+.aips-preview-loading .spinner {
+    float: none;
+    margin: 0 10px 0 0;
+}
+
+.aips-preview-error {
+    padding: 15px;
+    background: #fcf0f1;
+    border-left: 4px solid #d63638;
+    color: #d63638;
+    margin-bottom: 20px;
+}
+
+.aips-preview-metadata {
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.aips-preview-meta-item {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.aips-preview-meta-item strong {
+    color: #1d2327;
+}
+
+.aips-preview-meta-item span {
+    color: #646970;
+}
+
+.aips-preview-section {
+    margin-bottom: 25px;
+}
+
+.aips-preview-section:last-child {
+    margin-bottom: 0;
+}
+
+.aips-preview-section h4 {
+    margin: 0 0 10px 0;
+    color: #1d2327;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.aips-preview-prompt-text {
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    padding: 15px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #1d2327;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.aips-preview-prompts .dashicons {
+    vertical-align: middle;
+    margin-top: -2px;
+    margin-right: 4px;
+}
+
+@media screen and (max-width: 782px) {
+    .aips-preview-drawer-content {
+        max-height: 400px;
+    }
+    
+    .aips-preview-metadata {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .aips-preview-prompt-text {
+        font-size: 11px;
+        max-height: 200px;
+    }
+}

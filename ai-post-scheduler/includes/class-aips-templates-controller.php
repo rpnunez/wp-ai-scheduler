@@ -16,6 +16,7 @@ class AIPS_Templates_Controller {
         add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
         add_action('wp_ajax_aips_get_template_posts', array($this, 'ajax_get_template_posts'));
         add_action('wp_ajax_aips_clone_template', array($this, 'ajax_clone_template'));
+        add_action('wp_ajax_aips_preview_template_prompts', array($this, 'ajax_preview_template_prompts'));
     }
 
     public function ajax_save_template() {
@@ -268,5 +269,97 @@ class AIPS_Templates_Controller {
         $html = ob_get_clean();
 
         wp_send_json_success(array('html' => $html));
+    }
+
+    /**
+     * Preview the prompts that will be generated for a template.
+     *
+     * This endpoint processes the template configuration and returns the actual prompts
+     * that would be sent to the AI service, including voice and article structure integration.
+     *
+     * @since 1.7.0
+     */
+    public function ajax_preview_template_prompts() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        // Collect template data from POST
+        $template_data = (object) array(
+            'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
+            'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field($_POST['title_prompt']) : '',
+            'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
+            'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
+            'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
+            'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
+            'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
+        );
+
+        if (empty($template_data->prompt_template)) {
+            wp_send_json_error(array('message' => __('Content prompt is required.', 'ai-post-scheduler')));
+        }
+
+        // Initialize required services
+        $template_processor = new AIPS_Template_Processor();
+        $structure_manager = new AIPS_Article_Structure_Manager();
+        $prompt_builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+
+        // Get voice if selected
+        $voice = null;
+        if ($template_data->voice_id > 0) {
+            $voice_service = new AIPS_Voices();
+            $voice = $voice_service->get($template_data->voice_id);
+        }
+
+        // Use a sample topic for preview
+        $sample_topic = 'Example Topic';
+
+        // Build content prompt
+        $content_prompt = $prompt_builder->build_content_prompt($template_data, $sample_topic, $voice);
+
+        // Build title prompt
+        $sample_content = '[Generated article content would appear here]';
+        $title_prompt = $prompt_builder->build_title_prompt($template_data, $sample_topic, $voice, $sample_content);
+
+        // Build excerpt prompt (requires title and content)
+        $sample_title = '[Generated title would appear here]';
+        $excerpt_prompt = $prompt_builder->build_excerpt_prompt($sample_title, $sample_content, $voice, $sample_topic);
+
+        // Build image prompt if enabled
+        $image_prompt_processed = '';
+        if ($template_data->generate_featured_image && $template_data->featured_image_source === 'ai_prompt' && !empty($template_data->image_prompt)) {
+            $image_prompt_processed = $template_processor->process($template_data->image_prompt, $sample_topic);
+        }
+
+        // Get voice name if applicable
+        $voice_name = '';
+        if ($voice) {
+            $voice_name = $voice->name;
+        }
+
+        // Get article structure name if applicable
+        $structure_name = '';
+        if ($template_data->article_structure_id > 0) {
+            $structure = $structure_manager->get_structure($template_data->article_structure_id);
+            if ($structure && !is_wp_error($structure)) {
+                $structure_name = $structure['name'];
+            }
+        }
+
+        wp_send_json_success(array(
+            'prompts' => array(
+                'content' => $content_prompt,
+                'title' => $title_prompt,
+                'excerpt' => $excerpt_prompt,
+                'image' => $image_prompt_processed,
+            ),
+            'metadata' => array(
+                'voice' => $voice_name,
+                'article_structure' => $structure_name,
+                'sample_topic' => $sample_topic,
+            ),
+        ));
     }
 }
