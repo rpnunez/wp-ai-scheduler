@@ -28,6 +28,7 @@ class AIPS_Templates_Controller {
         $data = array(
             'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
             'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
+            'description' => isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '',
             'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
             'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field($_POST['title_prompt']) : '',
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
@@ -127,6 +128,7 @@ class AIPS_Templates_Controller {
 
         $new_data = array(
             'name' => $template->name . ' ' . __('(Copy)', 'ai-post-scheduler'),
+            'description' => isset($template->description) ? $template->description : '',
             'prompt_template' => $template->prompt_template,
             'title_prompt' => $template->title_prompt,
             'voice_id' => $template->voice_id,
