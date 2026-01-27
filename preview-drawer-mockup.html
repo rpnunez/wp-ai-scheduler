@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template Preview Drawer - Visual Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            background: #f0f0f1;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .wizard-modal {
+            border: 1px solid #c3c4c7;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #dcdcde;
+            background: #fff;
+        }
+        
+        .modal-header h2 {
+            font-size: 20px;
+            margin: 0;
+        }
+        
+        .wizard-progress {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+            background: #f6f7f7;
+            border-bottom: 1px solid #dcdcde;
+        }
+        
+        .wizard-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+        
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #dcdcde;
+            color: #50575e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        
+        .wizard-step.active .step-number {
+            background: #2271b1;
+            color: white;
+        }
+        
+        .step-label {
+            font-size: 12px;
+            color: #646970;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            min-height: 200px;
+        }
+        
+        .form-field {
+            margin-bottom: 20px;
+        }
+        
+        .form-field label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1d2327;
+        }
+        
+        .form-field input,
+        .form-field textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #8c8f94;
+            border-radius: 4px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-top: 1px solid #dcdcde;
+            background: #f6f7f7;
+        }
+        
+        .footer-section {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: 1px solid #2271b1;
+            background: white;
+            color: #2271b1;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        button.primary {
+            background: #2271b1;
+            color: white;
+        }
+        
+        button:hover {
+            background: #135e96;
+            color: white;
+            border-color: #135e96;
+        }
+        
+        /* Preview Drawer Styles */
+        .preview-drawer {
+            background: #f0f0f1;
+            border-top: 1px solid #c3c4c7;
+        }
+        
+        .drawer-toggle {
+            background: #e5e5e5;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .drawer-toggle:hover {
+            background: #d0d0d0;
+        }
+        
+        .drawer-handle {
+            color: #50575e;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        
+        .drawer-handle::before {
+            content: "▼";
+            margin-right: 8px;
+        }
+        
+        .drawer-content {
+            padding: 20px;
+            background: white;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .preview-metadata {
+            background: #f6f7f7;
+            border: 1px solid #dcdcde;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .meta-item {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .meta-item strong {
+            color: #1d2327;
+        }
+        
+        .preview-section {
+            margin-bottom: 25px;
+        }
+        
+        .preview-section h4 {
+            margin-bottom: 10px;
+            color: #1d2327;
+            font-size: 14px;
+        }
+        
+        .prompt-text {
+            background: #f6f7f7;
+            border: 1px solid #dcdcde;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .note {
+            background: #d7f5ff;
+            border-left: 4px solid #00a0d2;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        
+        .arrow {
+            text-align: center;
+            font-size: 24px;
+            color: #2271b1;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center; margin-bottom: 30px; color: #1d2327;">Template Preview Drawer - Visual Mockup</h1>
+    
+    <div class="note">
+        <strong>📋 Implementation Details:</strong><br>
+        This mockup shows the Template Modal Wizard with the new Preview Drawer component. 
+        The drawer appears directly below the wizard footer as a gray bar and expands to show 
+        the actual prompts that will be sent to the AI service.
+    </div>
+    
+    <!-- COLLAPSED STATE -->
+    <h2 style="margin: 30px 0 15px; color: #1d2327;">1. Collapsed State (Default)</h2>
+    <div class="container">
+        <div class="wizard-modal">
+            <div class="modal-header">
+                <h2>Add New Template</h2>
+            </div>
+            
+            <div class="wizard-progress">
+                <div class="wizard-step active">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Basic Info</div>
+                </div>
+                <div class="wizard-step">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Title & Excerpt</div>
+                </div>
+                <div class="wizard-step">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Content</div>
+                </div>
+                <div class="wizard-step">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Featured Image</div>
+                </div>
+                <div class="wizard-step">
+                    <div class="step-number">5</div>
+                    <div class="step-label">Summary</div>
+                </div>
+            </div>
+            
+            <div class="modal-body">
+                <div class="form-field">
+                    <label>Template Name *</label>
+                    <input type="text" value="My Blog Post Template" />
+                </div>
+                <div class="form-field">
+                    <label>Template Description</label>
+                    <textarea rows="3">A template for generating tech blog posts</textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <div class="footer-section">
+                    <button>← Back</button>
+                </div>
+                <div class="footer-section">
+                    <button>💾 Save Draft</button>
+                    <button style="background: #2271b1; color: white; border-color: #2271b1;">👁️ Preview Prompts</button>
+                </div>
+                <div class="footer-section">
+                    <button>Cancel</button>
+                    <button class="primary">Next →</button>
+                </div>
+            </div>
+            
+            <!-- COLLAPSED DRAWER -->
+            <div class="preview-drawer">
+                <div class="drawer-toggle">
+                    <div class="drawer-handle">Prompt Preview</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="arrow">↓ Click "Preview Prompts" button ↓</div>
+    
+    <!-- EXPANDED STATE -->
+    <h2 style="margin: 30px 0 15px; color: #1d2327;">2. Expanded State (After Clicking Preview)</h2>
+    <div class="container">
+        <div class="wizard-modal">
+            <div class="modal-header">
+                <h2>Add New Template</h2>
+            </div>
+            
+            <div class="wizard-progress">
+                <div class="wizard-step">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Basic Info</div>
+                </div>
+                <div class="wizard-step">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Title & Excerpt</div>
+                </div>
+                <div class="wizard-step active">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Content</div>
+                </div>
+                <div class="wizard-step">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Featured Image</div>
+                </div>
+                <div class="wizard-step">
+                    <div class="step-number">5</div>
+                    <div class="step-label">Summary</div>
+                </div>
+            </div>
+            
+            <div class="modal-body">
+                <div class="form-field">
+                    <label>Content Prompt *</label>
+                    <textarea rows="4">Write a comprehensive blog post about {{topic}}. Include practical examples and best practices.</textarea>
+                </div>
+                <div class="form-field">
+                    <label>Voice</label>
+                    <input type="text" value="Professional Tech Writer" readonly />
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <div class="footer-section">
+                    <button>← Back</button>
+                </div>
+                <div class="footer-section">
+                    <button>💾 Save Draft</button>
+                    <button style="background: #135e96; color: white; border-color: #135e96;">👁️ Preview Prompts</button>
+                </div>
+                <div class="footer-section">
+                    <button>Cancel</button>
+                    <button class="primary">Next →</button>
+                </div>
+            </div>
+            
+            <!-- EXPANDED DRAWER -->
+            <div class="preview-drawer">
+                <div class="drawer-toggle">
+                    <div class="drawer-handle" style="color: #2271b1;">Prompt Preview</div>
+                </div>
+                <div class="drawer-content">
+                    <div class="preview-metadata">
+                        <div class="meta-item">
+                            <strong>Voice:</strong>
+                            <span>Professional Tech Writer</span>
+                        </div>
+                        <div class="meta-item">
+                            <strong>Sample Topic:</strong>
+                            <span>Example Topic</span>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <h4>Content Prompt</h4>
+                        <div class="prompt-text">Write in a professional, authoritative tone suitable for tech professionals.
+Use clear, precise language with industry-standard terminology.
+
+Write a comprehensive blog post about Example Topic. Include practical examples and best practices.</div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <h4>Title Prompt</h4>
+                        <div class="prompt-text">Generate a title for a blog post, based on the content below. Here are your instructions:
+
+Create a professional, SEO-friendly title that captures the essence of the content.
+
+Here is the content:
+
+[Generated article content would appear here]</div>
+                    </div>
+                    
+                    <div class="preview-section">
+                        <h4>Excerpt Prompt</h4>
+                        <div class="prompt-text">Generate a concise excerpt for the following blog post:
+
+Title: [Generated title would appear here]
+
+Content: [Generated article content would appear here]
+
+The excerpt should be 1-2 sentences that summarize the key points.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="note" style="margin-top: 30px;">
+        <strong>✅ Key Features:</strong><br>
+        • Gray bar underneath wizard modal in collapsed state<br>
+        • Smooth slide animation on expand/collapse<br>
+        • Shows all prompts with voice instructions mixed in<br>
+        • Template variables are processed ({{topic}} → "Example Topic")<br>
+        • Matches WordPress admin UI styling<br>
+        • Mobile responsive design<br>
+        • Loading and error states included
+    </div>
+    
+    <div style="margin-top: 30px; padding: 20px; background: #f6f7f7; border-radius: 4px;">
+        <h3 style="margin-bottom: 10px; color: #1d2327;">Implementation Files:</h3>
+        <ul style="line-height: 1.8; color: #646970;">
+            <li><code>includes/class-aips-templates-controller.php</code> - AJAX endpoint</li>
+            <li><code>templates/admin/templates.php</code> - Drawer HTML</li>
+            <li><code>assets/css/admin.css</code> - Drawer styles</li>
+            <li><code>assets/js/admin.js</code> - Preview functionality</li>
+            <li><code>tests/test-templates-controller-preview.php</code> - Unit tests</li>
+        </ul>
+    </div>
+</body>
+</html>
