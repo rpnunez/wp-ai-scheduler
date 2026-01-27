@@ -100,15 +100,22 @@ class AIPS_Author_Topics_Scheduler {
 		if (is_wp_error($result)) {
 			$this->logger->log("Failed to generate topics for author {$author->id}: " . $result->get_error_message(), 'error');
 			
-			// Log using History Service
-			$this->history_service->log_activity(
-				'author_topic_generation',
-				'failed',
+			// Log using History Container
+			$fail_history = $this->history_service->create('author_topic_generation', array(
+				'author_id' => $author->id,
+			));
+			$fail_history->record(
+				'activity',
 				sprintf(
 					__('Failed to generate topics for author "%s": %s', 'ai-post-scheduler'),
 					$author->name,
 					$result->get_error_message()
 				),
+				array(
+					'event_type' => 'author_topic_generation',
+					'event_status' => 'failed',
+				),
+				null,
 				array(
 					'author_id' => $author->id,
 					'author_name' => $author->name,
@@ -126,17 +133,24 @@ class AIPS_Author_Topics_Scheduler {
 		// Update the author's next run time
 		$this->update_author_schedule($author);
 		
-		// Log successful topic generation using History Service
+		// Log successful topic generation using History Container
 		// $result is an array of topic data on success
 		$topic_count = is_array($result) ? count($result) : 0;
-		$this->history_service->log_activity(
-			'author_topic_generation',
-			'success',
+		$success_history = $this->history_service->create('author_topic_generation', array(
+			'author_id' => $author->id,
+		));
+		$success_history->record(
+			'activity',
 			sprintf(
 				__('Generated %d topics for author "%s"', 'ai-post-scheduler'),
 				$topic_count,
 				$author->name
 			),
+			array(
+				'event_type' => 'author_topic_generation',
+				'event_status' => 'success',
+			),
+			null,
 			array(
 				'author_id' => $author->id,
 				'author_name' => $author->name,

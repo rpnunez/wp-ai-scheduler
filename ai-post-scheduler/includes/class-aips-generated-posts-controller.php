@@ -126,8 +126,8 @@ class AIPS_Generated_Posts_Controller {
 			switch ($type_id) {
 				case AIPS_History_Type::AI_REQUEST:
 				case AIPS_History_Type::AI_RESPONSE:
-					// Group AI requests and responses together
-					$component_type = isset($details['type']) ? $details['type'] : 'unknown';
+					// Group AI requests and responses together by component
+					$component_type = isset($details['context']['component']) ? $details['context']['component'] : 'unknown';
 					
 					if (!isset($ai_calls[$component_type])) {
 						$ai_calls[$component_type] = array(

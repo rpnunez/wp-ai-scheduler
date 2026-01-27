@@ -212,14 +212,21 @@ class AIPS_Scheduler {
                 // NEW: Select article structure for this execution
                 $article_structure_id = $this->template_type_selector->select_structure($schedule);
                 
-                // Log schedule execution using History Service
-                $this->history_service->log_activity(
-                    'schedule_executed',
-                    'success',
+                // Log schedule execution using History Container
+                $history = $this->history_service->create('schedule_execution', array(
+                    'schedule_id' => $schedule->schedule_id,
+                ));
+                $history->record(
+                    'activity',
                     sprintf(
                         __('Schedule "%s" started execution', 'ai-post-scheduler'),
                         $schedule->template_name
                     ),
+                    array(
+                        'event_type' => 'schedule_executed',
+                        'event_status' => 'success',
+                    ),
+                    null,
                     array(
                         'schedule_id' => $schedule->schedule_id,
                         'template_id' => $schedule->template_id,
@@ -261,14 +268,21 @@ class AIPS_Scheduler {
                         ));
                         $logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
 
-                        // Log using History Service
-                        $this->history_service->log_activity(
-                            'schedule_failed',
-                            'failed',
+                        // Log using History Container
+                        $fail_history = $this->history_service->create('schedule_execution', array(
+                            'schedule_id' => $schedule->schedule_id,
+                        ));
+                        $fail_history->record(
+                            'activity',
                             sprintf(
                                 __('One-time schedule "%s" failed and was deactivated', 'ai-post-scheduler'),
                                 $schedule->template_name
                             ),
+                            array(
+                                'event_type' => 'schedule_failed',
+                                'event_status' => 'failed',
+                            ),
+                            null,
                             array(
                                 'schedule_id' => $schedule->schedule_id,
                                 'template_id' => $schedule->template_id,
@@ -288,15 +302,22 @@ class AIPS_Scheduler {
                         'schedule_id' => $schedule->schedule_id
                     ));
 
-                    // Log recurring schedule failures using History Service
+                    // Log recurring schedule failures using History Container
                     if ($schedule->frequency !== 'once') {
-                        $this->history_service->log_activity(
-                            'schedule_failed',
-                            'failed',
+                        $recurring_fail_history = $this->history_service->create('schedule_execution', array(
+                            'schedule_id' => $schedule->schedule_id,
+                        ));
+                        $recurring_fail_history->record(
+                            'activity',
                             sprintf(
                                 __('Schedule "%s" failed to generate post', 'ai-post-scheduler'),
                                 $schedule->template_name
                             ),
+                            array(
+                                'event_type' => 'schedule_failed',
+                                'event_status' => 'failed',
+                            ),
+                            null,
                             array(
                                 'schedule_id' => $schedule->schedule_id,
                                 'template_id' => $schedule->template_id,
@@ -320,16 +341,24 @@ class AIPS_Scheduler {
                         $event_status = ($post->post_status === 'draft') ? 'draft' : 'success';
                         $event_type = ($post->post_status === 'draft') ? 'post_draft' : 'post_published';
 
-                        // Log using History Service
-                        $this->history_service->log_activity(
-                            $event_type,
-                            $event_status,
+                        // Log using History Container
+                        $success_history = $this->history_service->create('schedule_execution', array(
+                            'schedule_id' => $schedule->schedule_id,
+                            'post_id' => $result,
+                        ));
+                        $success_history->record(
+                            'activity',
                             sprintf(
                                 __('%s created by schedule "%s": %s', 'ai-post-scheduler'),
                                 ($post->post_status === 'draft') ? __('Draft', 'ai-post-scheduler') : __('Post', 'ai-post-scheduler'),
                                 $schedule->template_name,
                                 $post->post_title
                             ),
+                            array(
+                                'event_type' => $event_type,
+                                'event_status' => $event_status,
+                            ),
+                            null,
                             array(
                                 'schedule_id' => $schedule->schedule_id,
                                 'post_id' => $result,

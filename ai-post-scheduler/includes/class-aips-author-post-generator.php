@@ -265,8 +265,6 @@ class AIPS_Author_Post_Generator {
 			
 			$history->record(
 				'activity',
-				'topic_post_generation',
-				'failed',
 				sprintf(
 					__('Exception while generating post from topic "%s": %s', 'ai-post-scheduler'),
 					$topic->topic_title,

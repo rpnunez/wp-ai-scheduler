@@ -69,61 +69,6 @@ class AIPS_Generator {
     }
     
     /**
-     * Log an AI call to the current generation session and history log.
-     *
-     * @param string      $type     Type of AI call (e.g., 'title', 'content', 'excerpt', 'featured_image').
-     * @param string      $prompt   The prompt sent to AI.
-     * @param string|null $response The AI response, if successful.
-     * @param array       $options  Options used for the call.
-     * @param string|null $error    Error message, if call failed.
-     * @return void
-     */
-    private function log_ai_call($type, $prompt, $response, $options = array(), $error = null) {
-        if (!$this->current_history) {
-            return;
-        }
-        
-        // Log AI request
-        $this->current_history->record('ai_request', "AI request for {$type}", array(
-            'type' => $type,
-            'prompt' => $prompt,
-            'options' => $options,
-        ), null, array('component' => $type));
-        
-        // Log response or error
-        if ($error) {
-            $this->current_history->record('error', "AI {$type} failed: {$error}", array(
-                'prompt' => $prompt,
-            ), null, array('component' => $type));
-        } else {
-            $this->current_history->record('ai_response', "AI response for {$type}", null, $response, array('component' => $type));
-        }
-    }
-
-    /**
-     * Log a message with optional AI data to both the logger and the session.
-     *
-     * @param string $message Message to log.
-     * @param string $level   Log level (info, error, warning).
-     * @param array  $ai_data Optional AI call data to log.
-     * @param array  $context Optional context data.
-     * @return void
-     */
-    private function log($message, $level, $ai_data = array(), $context = array()) {
-        $this->logger->log($message, $level, $context);
-
-        if (!empty($ai_data) && isset($ai_data['type']) && isset($ai_data['prompt'])) {
-            $type = $ai_data['type'];
-            $prompt = $ai_data['prompt'];
-            $response = isset($ai_data['response']) ? $ai_data['response'] : null;
-            $options = isset($ai_data['options']) ? $ai_data['options'] : array();
-            $error = isset($ai_data['error']) ? $ai_data['error'] : null;
-
-            $this->log_ai_call($type, $prompt, $response, $options, $error);
-        }
-    }
-    
-    /**
      * Check if AI is available in the configured AI service.
      *
      * @return bool True if AI Engine is available, false otherwise.
@@ -144,24 +89,55 @@ class AIPS_Generator {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_content($prompt, $options = array(), $log_type = 'content') {
+        // Log AI request before making the call
+        if ($this->current_history) {
+            $this->current_history->record(
+                'ai_request',
+                "Requesting AI generation for {$log_type}",
+                array(
+                    'prompt' => $prompt,
+                    'options' => $options,
+                ),
+                null,
+                array('component' => $log_type)
+            );
+        }
+        
         $result = $this->ai_service->generate_text($prompt, $options);
         
         if (is_wp_error($result)) {
-            // Log the error and record the failed AI call in the session
-            $this->log($result->get_error_message(), 'error', array(
-                'type' => $log_type,
-                'prompt' => $prompt,
-                'options' => $options,
-                'error' => $result->get_error_message()
+            // Log the error
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'error',
+                    "AI generation failed for {$log_type}: " . $result->get_error_message(),
+                    array(
+                        'prompt' => $prompt,
+                        'options' => $options,
+                    ),
+                    null,
+                    array('component' => $log_type, 'error' => $result->get_error_message())
+                );
+            }
+            
+            $this->logger->log($result->get_error_message(), 'error', array(
+                'component' => $log_type,
+                'prompt_length' => strlen($prompt)
             ));
         } else {
-            // Successful generation: log details and metrics
-            $this->log('Content generated successfully', 'info', array(
-                'type' => $log_type,
-                'prompt' => $prompt,
-                'response' => $result,
-                'options' => $options
-            ), array(
+            // Log successful AI response
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'ai_response',
+                    "AI generation successful for {$log_type}",
+                    null,
+                    $result,
+                    array('component' => $log_type)
+                );
+            }
+            
+            $this->logger->log('Content generated successfully', 'info', array(
+                'component' => $log_type,
                 'prompt_length' => strlen($prompt),
                 'response_length' => strlen($result)
             ));
@@ -682,6 +658,21 @@ class AIPS_Generator {
             $image_prompt = $context->get_image_prompt();
             $topic_str = $context->get_topic();
             $processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
+            
+            // Log AI request for featured image
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'ai_request',
+                    "Requesting AI generation for featured image",
+                    array(
+                        'prompt' => $processed_image_prompt,
+                        'title' => $title,
+                    ),
+                    null,
+                    array('component' => 'featured_image')
+                );
+            }
+            
             $featured_image_result = $this->image_service->generate_and_upload_featured_image($processed_image_prompt, $title);
 
             if (!is_wp_error($featured_image_result)) {
@@ -689,7 +680,16 @@ class AIPS_Generator {
 
                 $this->post_creator->set_featured_image($post_id, $featured_image_id);
 
-                $this->log_ai_call('featured_image', $processed_image_prompt, null, array('featured_image_id' => $featured_image_id));
+                // Log successful featured image generation
+                if ($this->current_history) {
+                    $this->current_history->record(
+                        'ai_response',
+                        "Featured image generated successfully",
+                        null,
+                        array('featured_image_id' => $featured_image_id),
+                        array('component' => 'featured_image')
+                    );
+                }
             }
         } else {
             $featured_image_result = new WP_Error('missing_image_prompt', __('Image prompt is required to generate a featured image.', 'ai-post-scheduler'));
@@ -698,27 +698,18 @@ class AIPS_Generator {
         if (is_wp_error($featured_image_result)) {
             $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
 
-            $this->log_error('featured_image', $featured_image_result->get_error_message());
+            // Log featured image generation error
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'error',
+                    "Featured image generation failed: " . $featured_image_result->get_error_message(),
+                    array('prompt' => isset($processed_image_prompt) ? $processed_image_prompt : ''),
+                    null,
+                    array('component' => 'featured_image', 'error' => $featured_image_result->get_error_message())
+                );
+            }
         }
 
         return $featured_image_id;
-    }
-
-    /**
-     * Log an error to the current generation session and history log.
-     *
-     * @param string $type    The type of error.
-     * @param string $message The error message.
-     * @return void
-     */
-    private function log_error($type, $message) {
-        $this->current_session->add_error();
-
-        if ($this->history_id) {
-            $details = array(
-                'message' => $message,
-            );
-            $this->history_repository->add_log_entry($this->history_id, $type . '_error', $details);
-        }
     }
 }

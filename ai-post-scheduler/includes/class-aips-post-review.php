@@ -26,10 +26,16 @@ class AIPS_Post_Review {
 	private $repository;
 	
 	/**
+	 * @var AIPS_History_Service Service for history logging
+	 */
+	private $history_service;
+	
+	/**
 	 * Initialize the post review handler.
 	 */
 	public function __construct() {
 		$this->repository = new AIPS_Post_Review_Repository();
+		$this->history_service = new AIPS_History_Service();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_draft_posts', array($this, 'ajax_get_draft_posts'));
@@ -88,35 +94,38 @@ class AIPS_Post_Review {
 	public function ajax_publish_post() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
-		$activity_repository = new AIPS_Activity_Repository();
-		
 		if (!current_user_can('manage_options')) {
-			$activity_repository->create(array(
-				'event_type' => 'post_published',
-				'event_status' => 'failed',
-				'message' => __('Post publish failed: Permission denied', 'ai-post-scheduler'),
-			));
+			$history = $this->history_service->create('post_review_action', array());
+			$history->record(
+				'activity',
+				__('Post publish failed: Permission denied', 'ai-post-scheduler'),
+				array('event_type' => 'post_published', 'event_status' => 'failed'),
+				null,
+				array()
+			);
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		
 		if (!$post_id) {
-			$activity_repository->create(array(
-				'event_type' => 'post_published',
-				'event_status' => 'failed',
-				'message' => __('Post publish failed: Invalid post ID', 'ai-post-scheduler'),
-			));
+			$history = $this->history_service->create('post_review_action', array());
+			$history->record(
+				'activity',
+				__('Post publish failed: Invalid post ID', 'ai-post-scheduler'),
+				array('event_type' => 'post_published', 'event_status' => 'failed'),
+				null,
+				array()
+			);
 			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
 		}
 		
 		// Verify the post exists and is a draft managed by this plugin
 		$post = get_post($post_id);
 		if (!$post || $post->post_status !== 'draft') {
-			$activity_repository->create(array(
-				'event_type' => 'post_published',
-				'event_status' => 'failed',
-				'post_id' => $post_id,
+			$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
+			$history->record(
+				'activity',
 				'message' => __('Post publish failed: Post not found or not a draft', 'ai-post-scheduler'),
 			));
 			wp_send_json_error(array('message' => __('Post not found or not a draft.', 'ai-post-scheduler')));
