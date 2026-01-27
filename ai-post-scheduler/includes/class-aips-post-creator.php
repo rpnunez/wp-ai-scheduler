@@ -39,9 +39,12 @@ class AIPS_Post_Creator {
      * @return int|WP_Error Post ID on success, WP_Error on failure.
      */
     public function create_post($data) {
-        $title = isset($data['title']) ? $data['title'] : '';
-        $content = isset($data['content']) ? $data['content'] : '';
-        $excerpt = isset($data['excerpt']) ? $data['excerpt'] : '';
+        // SECURITY: Explicitly sanitize AI-generated content to prevent Stored XSS.
+        // Even if the AI output is considered "trusted", hallucinations or prompt injections
+        // can lead to malicious scripts.
+        $title = isset($data['title']) ? sanitize_text_field($data['title']) : '';
+        $content = isset($data['content']) ? wp_kses_post($data['content']) : '';
+        $excerpt = isset($data['excerpt']) ? wp_kses_post($data['excerpt']) : '';
         
         // Support both legacy template and new context approaches
         $context = isset($data['context']) ? $data['context'] : null;

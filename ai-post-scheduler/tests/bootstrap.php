@@ -373,6 +373,14 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('wp_insert_post')) {
         function wp_insert_post($postarr, $wp_error = false) {
             static $post_id = 1;
+
+            // Store inserted post data for verification
+            global $aips_test_posts;
+            if (!isset($aips_test_posts)) {
+                $aips_test_posts = array();
+            }
+            $aips_test_posts[$post_id] = $postarr;
+
             return $post_id++;
         }
     }

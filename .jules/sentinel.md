@@ -22,3 +22,8 @@
 **Vulnerability:** Unescaped insertion of database content (`generated_title`, `error_message`, `template.name`) into the DOM via string concatenation in `admin.js`.
 **Learning:** Admin interfaces are often treated as "trusted zones," but data originating from complex flows (like AI generation or indirect inputs) can be compromised (e.g., via Prompt Injection or Stored XSS). Concatenating HTML strings in JS without explicit escaping is a persistent vulnerability pattern.
 **Prevention:** Use a dedicated escaping utility (like `AIPS.escapeHtml()`) for ALL dynamic data inserted into the DOM, regardless of its source (database, API, or user input).
+
+## 2025-05-02 - [Stored XSS via AI Generation]
+**Vulnerability:** AI-generated post content was inserted into the database without sanitization, allowing potential Stored XSS if the AI output contained scripts (e.g., via prompt injection).
+**Learning:** AI models are not trusted sources. They can be manipulated to generate malicious payloads. Relying on `wp_insert_post` to sanitize content is unsafe because it skips checks for administrators, who are the primary users of this plugin.
+**Prevention:** Explicitly sanitize all AI-generated HTML content using `wp_kses_post()` and titles using `sanitize_text_field()` before insertion into the database.
