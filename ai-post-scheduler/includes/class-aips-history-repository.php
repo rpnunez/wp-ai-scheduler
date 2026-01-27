@@ -106,18 +106,31 @@ class AIPS_History_Repository {
         $templates_table = $this->wpdb->prefix . 'aips_templates';
         
         // Query for items
+        // Optimize using Late Row Lookups: Get IDs first, then fetch full data with joins
         $query_args = $where_args;
         $query_args[] = $args['per_page'];
         $query_args[] = $offset;
 
-        $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.*, t.name as template_name 
+        $ids = $this->wpdb->get_col($this->wpdb->prepare("
+            SELECT h.id
             FROM {$this->table_name} h 
-            LEFT JOIN {$templates_table} t ON h.template_id = t.id 
             WHERE $where_sql
             ORDER BY h.$orderby $order 
             LIMIT %d OFFSET %d
         ", $query_args));
+
+        if (empty($ids)) {
+            $results = array();
+        } else {
+            $ids_placeholder = implode(',', array_map('absint', $ids));
+            $results = $this->wpdb->get_results("
+                SELECT h.*, t.name as template_name
+                FROM {$this->table_name} h
+                LEFT JOIN {$templates_table} t ON h.template_id = t.id
+                WHERE h.id IN ($ids_placeholder)
+                ORDER BY FIELD(h.id, $ids_placeholder)
+            ");
+        }
         
         // Query for total count
         if (!empty($where_args)) {
