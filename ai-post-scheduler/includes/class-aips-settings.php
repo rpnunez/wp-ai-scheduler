@@ -332,6 +332,15 @@ class AIPS_Settings {
             'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
             'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
         ));
+
+        // Enqueue History script
+        wp_enqueue_script(
+            'aips-admin-history',
+            AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
+            array('aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
 		
 		// Enqueue Authors-specific assets
 		if (strpos($hook, 'aips-authors') !== false) {

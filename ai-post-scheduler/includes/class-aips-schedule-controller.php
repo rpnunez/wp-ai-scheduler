@@ -141,6 +141,10 @@ class AIPS_Schedule_Controller {
         $generator = new AIPS_Generator();
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
+        if (strlen($topic) > 255) {
+            wp_send_json_error(array('message' => __('Topic cannot exceed 255 characters.', 'ai-post-scheduler')));
+        }
+
         // Enforce hard limit of 5 to prevent timeouts (Bolt)
         if ($quantity > 5) {
             $quantity = 5;
