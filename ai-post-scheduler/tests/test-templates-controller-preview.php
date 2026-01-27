@@ -5,7 +5,7 @@
  * @package AI_Post_Scheduler
  */
 
-class Test_Templates_Controller_Preview extends WP_UnitTestCase {
+class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 
 	private $controller;
 	private $admin_user;
@@ -22,6 +22,7 @@ class Test_Templates_Controller_Preview extends WP_UnitTestCase {
 	}
 
 	public function tearDown(): void {
+		$_POST = array();
 		parent::tearDown();
 		wp_set_current_user(0);
 	}
@@ -33,7 +34,7 @@ class Test_Templates_Controller_Preview extends WP_UnitTestCase {
 		$_POST['prompt_template'] = 'Test content prompt';
 		$_POST['nonce'] = 'invalid_nonce';
 
-		$this->expectException('WPDieException');
+		$this->expectException(WPAjaxDieStopException::class);
 		$this->controller->ajax_preview_template_prompts();
 	}
 
