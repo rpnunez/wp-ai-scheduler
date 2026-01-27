@@ -150,22 +150,30 @@ if (!defined('ABSPATH')) {
             
             <div class="aips-modal-body">
                 <form id="aips-template-form">
-                <form id="aips-template-form">
                     <input type="hidden" name="template_id" id="template_id" value="">
                     
                     <!-- Step 1: Basic Info (Name + Description) -->
                     <div class="aips-wizard-step-content" data-step="1">
-                        <h3><?php esc_html_e('Basic Information', 'ai-post-scheduler'); ?></h3>
+                        <h3>
+                            <?php esc_html_e('Basic Information', 'ai-post-scheduler'); ?>
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Give your template a unique name and optional description to help organize your templates.', 'ai-post-scheduler'); ?>"></span>
+                        </h3>
                         <p class="description"><?php esc_html_e('Give your template a name and brief description to help you identify it later.', 'ai-post-scheduler'); ?></p>
                         
                         <div class="aips-form-row">
-                            <label for="template_name"><?php esc_html_e('Template Name', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
+                            <label for="template_name">
+                                <?php esc_html_e('Template Name', 'ai-post-scheduler'); ?> <span class="required">*</span>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Enter a unique, descriptive name for this template. This helps you identify it when creating schedules.', 'ai-post-scheduler'); ?>"></span>
+                            </label>
                             <input type="text" id="template_name" name="name" required class="regular-text" placeholder="<?php esc_attr_e('e.g., Tech News Blog Post', 'ai-post-scheduler'); ?>">
                             <p class="description"><?php esc_html_e('A descriptive name for your template', 'ai-post-scheduler'); ?></p>
                         </div>
                         
                         <div class="aips-form-row">
-                            <label for="template_description"><?php esc_html_e('Template Description', 'ai-post-scheduler'); ?></label>
+                            <label for="template_description">
+                                <?php esc_html_e('Template Description', 'ai-post-scheduler'); ?>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Optional notes about what this template is used for, target audience, or any special instructions.', 'ai-post-scheduler'); ?>"></span>
+                            </label>
                             <textarea id="template_description" name="description" rows="4" class="large-text" placeholder="<?php esc_attr_e('Optional: Describe what this template is used for...', 'ai-post-scheduler'); ?>"></textarea>
                             <p class="description"><?php esc_html_e('Optional. Helps you remember the purpose of this template.', 'ai-post-scheduler'); ?></p>
                         </div>
@@ -173,11 +181,17 @@ if (!defined('ABSPATH')) {
                     
                     <!-- Step 2: Title & Excerpt -->
                     <div class="aips-wizard-step-content" data-step="2" style="display: none;">
-                        <h3><?php esc_html_e('Title & Excerpt Settings', 'ai-post-scheduler'); ?></h3>
+                        <h3>
+                            <?php esc_html_e('Title & Excerpt Settings', 'ai-post-scheduler'); ?>
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Configure how AI generates titles and excerpts for your posts. Leave blank to auto-generate from content.', 'ai-post-scheduler'); ?>"></span>
+                        </h3>
                         <p class="description"><?php esc_html_e('Configure how the AI generates titles and excerpts for your posts.', 'ai-post-scheduler'); ?></p>
                         
                         <div class="aips-form-row">
-                            <label for="title_prompt"><?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?></label>
+                            <label for="title_prompt">
+                                <?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Optional. Instruct the AI how to generate titles. Leave empty to auto-generate based on content. Supports AI variables like {{Framework1}}.', 'ai-post-scheduler'); ?>"></span>
+                            </label>
                             <input type="text" id="title_prompt" name="title_prompt" class="regular-text aips-ai-var-input" placeholder="<?php esc_attr_e('Leave empty to auto-generate from content prompt', 'ai-post-scheduler'); ?>">
                             <p class="description">
                                 <?php esc_html_e('Supports AI Variables: Use custom variables like {{PHPFramework1Name}} that AI will dynamically resolve based on your content. Example: "PHP Framework Comparison: {{Framework1}} vs. {{Framework2}}"', 'ai-post-scheduler'); ?>
@@ -229,11 +243,17 @@ if (!defined('ABSPATH')) {
                     
                     <!-- Step 3: Content -->
                     <div class="aips-wizard-step-content" data-step="3" style="display: none;">
-                        <h3><?php esc_html_e('Content Settings', 'ai-post-scheduler'); ?></h3>
+                        <h3>
+                            <?php esc_html_e('Content Settings', 'ai-post-scheduler'); ?>
+                            <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Define the main content prompt that guides AI to generate your blog post content.', 'ai-post-scheduler'); ?>"></span>
+                        </h3>
                         <p class="description"><?php esc_html_e('Define the content prompt that guides AI to generate your post content.', 'ai-post-scheduler'); ?></p>
                         
                         <div class="aips-form-row">
-                            <label for="prompt_template"><?php esc_html_e('Content Prompt', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
+                            <label for="prompt_template">
+                                <?php esc_html_e('Content Prompt', 'ai-post-scheduler'); ?> <span class="required">*</span>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Required. Detailed instructions for the AI about what content to generate. Be specific about topic, style, length, and target audience.', 'ai-post-scheduler'); ?>"></span>
+                            </label>
                             <textarea id="prompt_template" name="prompt_template" rows="8" required class="large-text" placeholder="<?php esc_attr_e('Write a detailed blog post about...', 'ai-post-scheduler'); ?>"></textarea>
                             <p class="description">
                                 <?php esc_html_e('Available variables: {{date}}, {{year}}, {{month}}, {{day}}, {{time}}, {{site_name}}, {{site_description}}, {{random_number}}', 'ai-post-scheduler'); ?>
@@ -396,13 +416,18 @@ if (!defined('ABSPATH')) {
                         </div>
                     </div>
                 </form>
-                </form>
             </div>
             <div class="aips-modal-footer aips-wizard-footer">
                 <div class="aips-footer-left">
                     <button type="button" class="button aips-wizard-back" style="display: none;">
                         <span class="dashicons dashicons-arrow-left-alt2"></span>
                         <?php esc_html_e('Back', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
+                <div class="aips-footer-center">
+                    <button type="button" class="button aips-save-draft-template" title="<?php esc_attr_e('Save current progress as inactive template', 'ai-post-scheduler'); ?>">
+                        <span class="dashicons dashicons-cloud-saved"></span>
+                        <?php esc_html_e('Save Draft', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
                 <div class="aips-footer-right">

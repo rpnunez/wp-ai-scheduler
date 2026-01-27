@@ -302,10 +302,22 @@
 }
 
 .aips-footer-left,
+.aips-footer-center,
 .aips-footer-right {
     display: flex;
     gap: 10px;
     align-items: center;
+}
+
+.aips-footer-center {
+    flex: 1;
+    justify-content: center;
+}
+
+.aips-save-draft-template .dashicons {
+    vertical-align: middle;
+    margin-top: -2px;
+    margin-right: 4px;
 }
 
 .aips-wizard-next .dashicons,
@@ -360,6 +372,71 @@
     color: #646970;
     word-break: break-word;
 }
+
+/* Help Tooltips */
+.aips-help-tooltip {
+    font-size: 16px;
+    color: #2271b1;
+    cursor: help;
+    margin-left: 5px;
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.aips-help-tooltip:hover {
+    color: #135e96;
+}
+
+.aips-help-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    background: #1d2327;
+    color: #fff;
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 1.4;
+    white-space: nowrap;
+    max-width: 300px;
+    white-space: normal;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    pointer-events: none;
+    z-index: 1000;
+    width: max-content;
+}
+
+.aips-help-tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.aips-help-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1d2327;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.aips-help-tooltip:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
 
 
 .aips-form-row {

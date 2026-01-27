@@ -19,6 +19,7 @@
             $(document).on('click', '.aips-clone-template', this.cloneTemplate);
             $(document).on('click', '.aips-delete-template', this.deleteTemplate);
             $(document).on('click', '.aips-save-template', this.saveTemplate);
+            $(document).on('click', '.aips-save-draft-template', this.saveDraftTemplate);
             $(document).on('click', '.aips-test-template', this.testTemplate);
             $(document).on('click', '.aips-run-now', this.runNow);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
@@ -603,6 +604,61 @@
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Template');
+                }
+            });
+        },
+
+        saveDraftTemplate: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            
+            // Validate at least name is provided
+            if (!$('#template_name').val().trim()) {
+                alert(aipsAdminL10n.templateNameRequired);
+                $('#template_name').focus();
+                AIPS.wizardGoToStep(1);
+                return;
+            }
+
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-cloud-saved"></span> Saving...');
+
+            // Save with is_active set to 0 (inactive)
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_save_template',
+                    nonce: aipsAjax.nonce,
+                    template_id: $('#template_id').val(),
+                    name: $('#template_name').val(),
+                    description: $('#template_description').val(),
+                    prompt_template: $('#prompt_template').val() || '',
+                    title_prompt: $('#title_prompt').val(),
+                    voice_id: $('#voice_id').val(),
+                    post_quantity: $('#post_quantity').val(),
+                    generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
+                    image_prompt: $('#image_prompt').val(),
+                    featured_image_source: $('#featured_image_source').val(),
+                    featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
+                    featured_image_media_ids: $('#featured_image_media_ids').val(),
+                    post_status: $('#post_status').val(),
+                    post_category: $('#post_category').val(),
+                    post_tags: $('#post_tags').val(),
+                    post_author: $('#post_author').val(),
+                    is_active: 0 // Save as inactive draft
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-cloud-saved"></span> Save Draft');
                 }
             });
         },
@@ -1678,7 +1734,7 @@
                 case 1:
                     // Validate name (required)
                     if (!$('#template_name').val().trim()) {
-                        errorMessage = 'Template Name is required.';
+                        errorMessage = aipsAdminL10n.templateNameRequired;
                         isValid = false;
                         $('#template_name').focus();
                     }
@@ -1689,7 +1745,7 @@
                 case 3:
                     // Validate content prompt (required)
                     if (!$('#prompt_template').val().trim()) {
-                        errorMessage = 'Content Prompt is required.';
+                        errorMessage = aipsAdminL10n.contentPromptRequired;
                         isValid = false;
                         $('#prompt_template').focus();
                     }
