@@ -1937,8 +1937,8 @@
                 nonce: aipsAjax.nonce,
                 prompt_template: $('#prompt_template').val(),
                 title_prompt: $('#title_prompt').val(),
-                voice_id: $('#voice_id').val(),
-                article_structure_id: $('#article_structure_id').val() || 0,
+                voice_id: parseInt($('#voice_id').val()) || 0,
+                article_structure_id: parseInt($('#article_structure_id').val()) || 0,
                 image_prompt: $('#image_prompt').val(),
                 generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
                 featured_image_source: $('#featured_image_source').val()
@@ -1984,12 +1984,13 @@
                         
                         $sections.show();
                     } else {
-                        $error.text(response.data.message || 'Failed to generate preview').show();
+                        var errorMsg = response.data.message || 'Failed to generate preview. Please check that all required fields are filled.';
+                        $error.text(errorMsg).show();
                     }
                 },
                 error: function() {
                     $loading.hide();
-                    $error.text('An error occurred while generating the preview. Please try again.').show();
+                    $error.text('An error occurred while generating the preview. Please check your network connection and try again.').show();
                 }
             });
         },

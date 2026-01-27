@@ -283,7 +283,7 @@ class AIPS_Templates_Controller {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+            wp_send_json_error(array('message' => __('You do not have permission to preview template prompts.', 'ai-post-scheduler')));
         }
 
         // Collect template data from POST
@@ -298,7 +298,7 @@ class AIPS_Templates_Controller {
         );
 
         if (empty($template_data->prompt_template)) {
-            wp_send_json_error(array('message' => __('Content prompt is required.', 'ai-post-scheduler')));
+            wp_send_json_error(array('message' => __('Please enter a content prompt to generate the preview.', 'ai-post-scheduler')));
         }
 
         // Initialize required services
