@@ -277,6 +277,8 @@ class AIPS_Templates_Controller {
      * This endpoint processes the template configuration and returns the actual prompts
      * that would be sent to the AI service, including voice and article structure integration.
      *
+     * Uses AIPS_Prompt_Preview_Service to ensure consistency with actual generation.
+     *
      * @since 1.7.0
      */
     public function ajax_preview_template_prompts() {
@@ -301,65 +303,15 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => __('Please enter a content prompt to generate the preview.', 'ai-post-scheduler')));
         }
 
-        // Initialize required services
-        $template_processor = new AIPS_Template_Processor();
-        $structure_manager = new AIPS_Article_Structure_Manager();
-        $prompt_builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
-
+        // Use the centralized Prompt Preview Service to generate previews
+        $preview_service = new AIPS_Prompt_Preview_Service();
+        
         // Get voice if selected
-        $voice = null;
-        if ($template_data->voice_id > 0) {
-            $voice_service = new AIPS_Voices();
-            $voice = $voice_service->get($template_data->voice_id);
-        }
+        $voice = $preview_service->get_voice($template_data->voice_id);
 
-        // Use a sample topic for preview
-        $sample_topic = 'Example Topic';
+        // Generate prompt previews using the service
+        $result = $preview_service->preview_prompts($template_data, null, $voice);
 
-        // Build content prompt
-        $content_prompt = $prompt_builder->build_content_prompt($template_data, $sample_topic, $voice);
-
-        // Build title prompt
-        $sample_content = '[Generated article content would appear here]';
-        $title_prompt = $prompt_builder->build_title_prompt($template_data, $sample_topic, $voice, $sample_content);
-
-        // Build excerpt prompt (requires title and content)
-        $sample_title = '[Generated title would appear here]';
-        $excerpt_prompt = $prompt_builder->build_excerpt_prompt($sample_title, $sample_content, $voice, $sample_topic);
-
-        // Build image prompt if enabled
-        $image_prompt_processed = '';
-        if ($template_data->generate_featured_image && $template_data->featured_image_source === 'ai_prompt' && !empty($template_data->image_prompt)) {
-            $image_prompt_processed = $template_processor->process($template_data->image_prompt, $sample_topic);
-        }
-
-        // Get voice name if applicable
-        $voice_name = '';
-        if ($voice) {
-            $voice_name = $voice->name;
-        }
-
-        // Get article structure name if applicable
-        $structure_name = '';
-        if ($template_data->article_structure_id > 0) {
-            $structure = $structure_manager->get_structure($template_data->article_structure_id);
-            if ($structure && !is_wp_error($structure)) {
-                $structure_name = $structure['name'];
-            }
-        }
-
-        wp_send_json_success(array(
-            'prompts' => array(
-                'content' => $content_prompt,
-                'title' => $title_prompt,
-                'excerpt' => $excerpt_prompt,
-                'image' => $image_prompt_processed,
-            ),
-            'metadata' => array(
-                'voice' => $voice_name,
-                'article_structure' => $structure_name,
-                'sample_topic' => $sample_topic,
-            ),
-        ));
+        wp_send_json_success($result);
     }
 }
