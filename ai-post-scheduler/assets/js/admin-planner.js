@@ -111,6 +111,7 @@
                 $('#planner-results').slideUp();
                 $('#planner-niche').val('');
                 $('#planner-manual-topics').val('');
+                $('#planner-topic-search').val(''); // Clear search input
                 window.AIPS.updateSelectionCount();
 
                 // Reset button
@@ -130,6 +131,14 @@
 
                 $btn.data('timeout', timeout);
             }
+        },
+
+        filterTopics: function() {
+            var term = $(this).val().toLowerCase();
+            $('.topic-item').each(function() {
+                var text = $(this).find('.topic-text-input').val().toLowerCase();
+                $(this).toggle(text.indexOf(term) > -1);
+            });
         },
 
         copySelectedTopics: function() {
@@ -269,6 +278,7 @@
         $(document).on('click', '#btn-copy-topics', window.AIPS.copySelectedTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
+        $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
     });
 
 })(jQuery);
