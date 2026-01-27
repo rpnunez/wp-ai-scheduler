@@ -27,6 +27,10 @@
             $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
             $(document).on('keyup', '#voice_search', this.searchVoices);
 
+            // Wizard navigation
+            $(document).on('click', '.aips-wizard-next', this.wizardNext);
+            $(document).on('click', '.aips-wizard-back', this.wizardBack);
+
             // AI Variables scanning
             $(document).on('input', '.aips-ai-var-input', function() {
                 AIPS.scanAllAIVariables();
@@ -399,6 +403,8 @@
             AIPS.toggleImagePrompt();
             // Reset AI Variables panel
             AIPS.updateAIVariablesPanel([]);
+            // Initialize wizard to step 1
+            AIPS.wizardGoToStep(1);
             $('#aips-template-modal').show();
         },
 
@@ -422,6 +428,7 @@
                         var t = response.data.template;
                         $('#template_id').val(t.id);
                         $('#template_name').val(t.name);
+                        $('#template_description').val(t.description || '');
                         $('#prompt_template').val(t.prompt_template);
                         $('#title_prompt').val(t.title_prompt);
                         $('#post_quantity').val(t.post_quantity || 1);
@@ -440,6 +447,8 @@
                         // Scan for AI Variables after loading template data
                         AIPS.initAIVariablesScanner();
                         $('#aips-modal-title').text('Edit Template');
+                        // Initialize wizard to step 1
+                        AIPS.wizardGoToStep(1);
                         $('#aips-template-modal').show();
                     } else {
                         alert(response.data.message);
@@ -566,6 +575,7 @@
                     nonce: aipsAjax.nonce,
                     template_id: $('#template_id').val(),
                     name: $('#template_name').val(),
+                    description: $('#template_description').val(),
                     prompt_template: $('#prompt_template').val(),
                     title_prompt: $('#title_prompt').val(),
                     voice_id: $('#voice_id').val(),
@@ -1592,6 +1602,138 @@
                 $target.hide();
             } else {
                 $('.aips-modal').hide();
+            }
+        },
+
+        // Wizard Navigation Functions
+        wizardGoToStep: function(step) {
+            var totalSteps = 5;
+            
+            // Hide all steps
+            $('.aips-wizard-step-content').hide();
+            
+            // Show current step
+            $('.aips-wizard-step-content[data-step="' + step + '"]').show();
+            
+            // Update progress indicator
+            $('.aips-wizard-step').removeClass('active completed');
+            $('.aips-wizard-step').each(function() {
+                var stepNum = parseInt($(this).data('step'));
+                if (stepNum < step) {
+                    $(this).addClass('completed');
+                } else if (stepNum === step) {
+                    $(this).addClass('active');
+                }
+            });
+            
+            // Update button visibility
+            if (step === 1) {
+                $('.aips-wizard-back').hide();
+            } else {
+                $('.aips-wizard-back').show();
+            }
+            
+            if (step === totalSteps) {
+                $('.aips-wizard-next').hide();
+                $('.aips-save-template').show();
+                // Update summary
+                AIPS.updateWizardSummary();
+            } else {
+                $('.aips-wizard-next').show();
+                $('.aips-save-template').hide();
+            }
+            
+            // Store current step
+            AIPS.currentWizardStep = step;
+        },
+
+        wizardNext: function(e) {
+            e.preventDefault();
+            var currentStep = AIPS.currentWizardStep || 1;
+            
+            // Validate current step before proceeding
+            if (!AIPS.validateWizardStep(currentStep)) {
+                return;
+            }
+            
+            if (currentStep < 5) {
+                AIPS.wizardGoToStep(currentStep + 1);
+            }
+        },
+
+        wizardBack: function(e) {
+            e.preventDefault();
+            var currentStep = AIPS.currentWizardStep || 1;
+            
+            if (currentStep > 1) {
+                AIPS.wizardGoToStep(currentStep - 1);
+            }
+        },
+
+        validateWizardStep: function(step) {
+            var isValid = true;
+            var errorMessage = '';
+            
+            switch(step) {
+                case 1:
+                    // Validate name (required)
+                    if (!$('#template_name').val().trim()) {
+                        errorMessage = 'Template Name is required.';
+                        isValid = false;
+                        $('#template_name').focus();
+                    }
+                    break;
+                case 2:
+                    // Title prompt is optional, so no validation needed
+                    break;
+                case 3:
+                    // Validate content prompt (required)
+                    if (!$('#prompt_template').val().trim()) {
+                        errorMessage = 'Content Prompt is required.';
+                        isValid = false;
+                        $('#prompt_template').focus();
+                    }
+                    break;
+                case 4:
+                    // Featured image settings are optional
+                    break;
+                case 5:
+                    // Final step, just display summary
+                    break;
+            }
+            
+            if (!isValid && errorMessage) {
+                alert(errorMessage);
+            }
+            
+            return isValid;
+        },
+
+        updateWizardSummary: function() {
+            // Update summary display with current form values
+            $('#summary_name').text($('#template_name').val() || '-');
+            $('#summary_description').text($('#template_description').val() || '-');
+            
+            var titlePrompt = $('#title_prompt').val();
+            $('#summary_title_prompt').text(titlePrompt || 'Auto-generate from content');
+            
+            var contentPrompt = $('#prompt_template').val();
+            if (contentPrompt.length > 100) {
+                contentPrompt = contentPrompt.substring(0, 100) + '...';
+            }
+            $('#summary_content_prompt').text(contentPrompt || '-');
+            
+            var voiceText = $('#voice_id option:selected').text();
+            $('#summary_voice').text(voiceText || 'None');
+            
+            $('#summary_quantity').text($('#post_quantity').val() || '1');
+            
+            var featuredImage = $('#generate_featured_image').is(':checked');
+            if (featuredImage) {
+                var source = $('#featured_image_source option:selected').text();
+                $('#summary_featured_image').text('Yes (' + source + ')');
+            } else {
+                $('#summary_featured_image').text('No');
             }
         },
 
