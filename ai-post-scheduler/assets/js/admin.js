@@ -288,6 +288,35 @@
             });
         },
 
+        copyText: function(text) {
+            return new Promise(function(resolve, reject) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text).then(resolve, reject);
+                } else {
+                    try {
+                        var textArea = document.createElement("textarea");
+                        textArea.value = text;
+                        // Position off-screen to avoid layout shifts
+                        textArea.style.position = "fixed";
+                        textArea.style.left = "-9999px";
+                        textArea.style.top = "0";
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        var successful = document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        if (successful) {
+                            resolve();
+                        } else {
+                            reject(new Error('execCommand copy failed'));
+                        }
+                    } catch (err) {
+                        reject(err);
+                    }
+                }
+            });
+        },
+
         copyToClipboard: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -321,26 +350,10 @@
                 }, 2000);
             };
 
-            // Fallback for older browsers
-            if (!navigator.clipboard) {
-                var textArea = document.createElement("textarea");
-                textArea.value = text;
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    showSuccess();
-                } catch (err) {
-                    console.error('Fallback: Oops, unable to copy', err);
-                }
-                document.body.removeChild(textArea);
-                return;
-            }
-
-            navigator.clipboard.writeText(text).then(function() {
+            AIPS.copyText(text).then(function() {
                 showSuccess();
-            }, function(err) {
-                console.error('Async: Could not copy text: ', err);
+            }).catch(function(err) {
+                console.error('Copy failed: ', err);
             });
         },
 
@@ -1914,7 +1927,6 @@
 
             if (!variable) return;
 
-            // Use the existing copy functionality
             var showSuccess = function() {
                 $tag.addClass('aips-ai-var-copied');
                 setTimeout(function() {
@@ -1922,26 +1934,10 @@
                 }, 1500);
             };
 
-            // Fallback for older browsers
-            if (!navigator.clipboard) {
-                var textArea = document.createElement('textarea');
-                textArea.value = variable;
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    showSuccess();
-                } catch (err) {
-                    console.error('Fallback: Unable to copy', err);
-                }
-                document.body.removeChild(textArea);
-                return;
-            }
-
-            navigator.clipboard.writeText(variable).then(function() {
+            AIPS.copyText(variable).then(function() {
                 showSuccess();
-            }, function(err) {
-                console.error('Could not copy text: ', err);
+            }).catch(function(err) {
+                console.error('Copy failed: ', err);
             });
         }
     });
