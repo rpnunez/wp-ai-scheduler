@@ -285,4 +285,52 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $expected = '2024-01-02 10:00:00';
         $this->assertEquals($expected, $next);
     }
+
+    /**
+     * Test that calculate_next_run preserves phase even when catch-up loop limit is exceeded.
+     *
+     * If the limit is 100, and we are 200 intervals behind, the loop will exit early
+     * and reset the schedule to 'now', losing the original minute/second phase.
+     */
+    public function test_calculate_next_run_preserves_phase_long_delay() {
+        $now = current_time('timestamp');
+
+        // Create a start time that is 200 hours ago, but with a specific minute offset (e.g. 30 mins past the hour)
+        // ensure we don't align with current minute
+        $current_minute = (int) date('i', $now);
+        $offset_minute = ($current_minute + 30) % 60;
+
+        // Align start_time to be exactly on the $offset_minute
+        // Start 200 hours ago
+        $start_timestamp = $now - (200 * 3600);
+
+        // Adjust start_timestamp to match offset_minute
+        $start_date_array = getdate($start_timestamp);
+        $start_timestamp = mktime(
+            $start_date_array['hours'],
+            $offset_minute,
+            $start_date_array['seconds'],
+            $start_date_array['mon'],
+            $start_date_array['mday'],
+            $start_date_array['year']
+        );
+
+        $start_time = date('Y-m-d H:i:s', $start_timestamp);
+
+        // Run calculation
+        $next_run = $this->calculator->calculate_next_run('hourly', $start_time);
+        $next_run_timestamp = strtotime($next_run);
+
+        // Assert that the minute component is preserved
+        $next_run_minute = (int) date('i', $next_run_timestamp);
+
+        $this->assertEquals(
+            $offset_minute,
+            $next_run_minute,
+            "Phase lost! Expected minute $offset_minute but got $next_run_minute. The schedule likely reset to 'now' due to loop limit."
+        );
+
+        // Also assert it is in the future
+        $this->assertGreaterThan($now, $next_run_timestamp);
+    }
 }
