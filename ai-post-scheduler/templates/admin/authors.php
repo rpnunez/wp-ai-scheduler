@@ -91,16 +91,16 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                         </span>
                                     </td>
                                     <td class="column-actions">
-                                        <button class="button aips-view-author" data-id="<?php echo esc_attr($author->id); ?>">
+                                        <button class="button aips-view-author" data-id="<?php echo esc_attr($author->id); ?>" aria-label="<?php printf(esc_attr__('View topics for %s', 'ai-post-scheduler'), esc_attr($author->name)); ?>">
                                             <?php esc_html_e('View Topics', 'ai-post-scheduler'); ?>
                                         </button>
-                                        <button class="button aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>">
+                                        <button class="button aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" aria-label="<?php printf(esc_attr__('Edit author %s', 'ai-post-scheduler'), esc_attr($author->name)); ?>">
                                             <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                                         </button>
-                                        <button class="button aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
+                                        <button class="button aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" aria-label="<?php printf(esc_attr__('Generate topics for %s', 'ai-post-scheduler'), esc_attr($author->name)); ?>">
                                             <?php esc_html_e('Generate Topics Now', 'ai-post-scheduler'); ?>
                                         </button>
-                                        <button class="button button-link-delete aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>">
+                                        <button class="button button-link-delete aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>" aria-label="<?php printf(esc_attr__('Delete author %s', 'ai-post-scheduler'), esc_attr($author->name)); ?>">
                                             <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                                         </button>
                                     </td>

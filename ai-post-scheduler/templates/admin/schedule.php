@@ -73,7 +73,10 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
                     data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
                     <td class="column-template">
-                        <?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?>
+                        <?php
+                        $template_name = $schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler');
+                        echo esc_html($template_name);
+                        ?>
                     </td>
                     <td class="column-structure">
                         <?php echo esc_html($structure_display); ?>
@@ -134,10 +137,10 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         </div>
                     </td>
                     <td class="column-actions">
-                        <button class="button aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>">
+                        <button class="button aips-clone-schedule" aria-label="<?php printf(esc_attr__('Clone schedule for %s', 'ai-post-scheduler'), esc_attr($template_name)); ?>">
                             <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
                         </button>
-                        <button class="button button-link-delete aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>">
+                        <button class="button button-link-delete aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php printf(esc_attr__('Delete schedule for %s', 'ai-post-scheduler'), esc_attr($template_name)); ?>">
                             <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                         </button>
                     </td>
