@@ -82,7 +82,10 @@ class AIPS_DB_Manager {
             UNIQUE KEY uuid (uuid),
             KEY post_id (post_id),
             KEY template_id (template_id),
-            KEY status (status)
+            KEY status (status),
+            KEY created_at (created_at),
+            KEY status_created (status, created_at),
+            KEY template_created (template_id, created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (
