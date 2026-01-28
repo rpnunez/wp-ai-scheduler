@@ -334,6 +334,10 @@ class AIPS_Settings {
             // Template Wizard strings
             'templateNameRequired' => __('Template Name is required.', 'ai-post-scheduler'),
             'contentPromptRequired' => __('Content Prompt is required.', 'ai-post-scheduler'),
+            // Bulk delete strings
+            'bulkDeleteConfirm' => __('Are you sure you want to delete %d schedule(s)?', 'ai-post-scheduler'),
+            'deleting' => __('Deleting...', 'ai-post-scheduler'),
+            'deleteSelected' => __('Delete Selected', 'ai-post-scheduler'),
         ));
 		
 		// Enqueue Authors-specific assets
