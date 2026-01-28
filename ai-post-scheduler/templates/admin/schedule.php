@@ -46,7 +46,12 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>
-                    <td id="cb" class="manage-column column-cb check-column"><input type="checkbox" id="cb-select-all-1"></td>
+                    <td id="cb" class="manage-column column-cb check-column">
+                        <label class="screen-reader-text" for="cb-select-all-1">
+                            <?php esc_html_e( 'Select all schedules', 'ai-post-scheduler' ); ?>
+                        </label>
+                        <input type="checkbox" id="cb-select-all-1">
+                    </td>
                     <th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
                     <th class="column-structure"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></th>
                     <th class="column-frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
@@ -78,7 +83,12 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     data-topic="<?php echo esc_attr($schedule->topic); ?>"
                     data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
                     data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
-                    <th scope="row" class="check-column"><input type="checkbox" name="schedules[]" value="<?php echo esc_attr($schedule->id); ?>" class="aips-schedule-cb"></th>
+                    <th scope="row" class="check-column">
+                        <input type="checkbox" id="aips-schedule-cb-<?php echo esc_attr($schedule->id); ?>" name="schedules[]" value="<?php echo esc_attr($schedule->id); ?>" class="aips-schedule-cb">
+                        <label class="screen-reader-text" for="aips-schedule-cb-<?php echo esc_attr($schedule->id); ?>">
+                            <?php esc_html_e( 'Select schedule', 'ai-post-scheduler' ); ?>
+                        </label>
+                    </th>
                     <td class="column-template">
                         <?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?>
                     </td>

@@ -77,7 +77,7 @@
             $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
 
             // Schedule Bulk Actions
-            $(document).on('change', '#cb-select-all-1', this.toggleAllSchedules);
+            $(document).on('change', '.aips-schedules-table #cb-select-all-1', this.toggleAllSchedules);
             $(document).on('change', '.aips-schedule-cb', this.toggleScheduleSelection);
             $(document).on('click', '#aips-delete-selected-schedules-btn', this.deleteSelectedSchedules);
 
@@ -993,25 +993,30 @@
 
         toggleAllSchedules: function() {
             var isChecked = $(this).prop('checked');
-            $('.aips-schedule-cb').prop('checked', isChecked);
+            // Only toggle checkboxes that are currently visible (e.g., after filtering)
+            $('.aips-schedule-cb:visible').prop('checked', isChecked);
             AIPS.updateScheduleDeleteButton();
         },
 
         toggleScheduleSelection: function() {
-            var allChecked = $('.aips-schedule-cb').length === $('.aips-schedule-cb:checked').length;
+            // Determine "select all" state based only on visible checkboxes
+            var $visibleCbs = $('.aips-schedule-cb:visible');
+            var allChecked = $visibleCbs.length > 0 && $visibleCbs.length === $visibleCbs.filter(':checked').length;
             $('#cb-select-all-1').prop('checked', allChecked);
             AIPS.updateScheduleDeleteButton();
         },
 
         updateScheduleDeleteButton: function() {
-            var count = $('.aips-schedule-cb:checked').length;
+            // Only count checked checkboxes that are currently visible
+            var count = $('.aips-schedule-cb:visible:checked').length;
             $('#aips-delete-selected-schedules-btn').prop('disabled', count === 0);
         },
 
         deleteSelectedSchedules: function(e) {
             e.preventDefault();
             var ids = [];
-            $('.aips-schedule-cb:checked').each(function() {
+            // Only delete schedules that are both checked and visible to the user
+            $('.aips-schedule-cb:visible:checked').each(function() {
                 ids.push($(this).val());
             });
 

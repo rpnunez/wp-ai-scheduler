@@ -276,11 +276,24 @@ class AIPS_Schedule_Repository {
             return 0;
         }
 
+        // Sanitize and keep only positive integer IDs.
         $ids = array_map('absint', $ids);
-        $ids_string = implode(',', $ids);
+        $ids = array_filter($ids, function ($id) {
+            return $id > 0;
+        });
 
-        $result = $this->wpdb->query("DELETE FROM {$this->schedule_table} WHERE id IN ($ids_string)");
+        if (empty($ids)) {
+            return 0;
+        }
 
+        // Build a prepared DELETE query with an IN () clause.
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+        $sql          = $this->wpdb->prepare(
+            "DELETE FROM {$this->schedule_table} WHERE id IN ($placeholders)",
+            $ids
+        );
+
+        $result = $this->wpdb->query($sql);
         if ($result !== false) {
             delete_transient('aips_pending_schedule_stats');
         }
