@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Admin</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var aipsAjax = {
+            ajaxUrl: "/ajax",
+            nonce: "test_nonce"
+        };
+        var aipsAdminL10n = {
+            saveStructureFailed: "Failed",
+            errorTryAgain: "Error",
+            loadStructureFailed: "Failed",
+            errorOccurred: "Error",
+            deleteStructureConfirm: "Delete?",
+            deleteStructureFailed: "Failed",
+            saveSectionFailed: "Failed",
+            loadSectionFailed: "Failed",
+            deleteSectionConfirm: "Delete?",
+            deleteSectionFailed: "Failed"
+        };
+        // Mock wp.media
+        window.wp = {
+            media: function() { return { on: function(){}, open: function(){} }; }
+        };
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+    <style>
+        .aips-modal { display: none; }
+    </style>
+</head>
+<body>
+    <button class="aips-add-template-btn">Add Template</button>
+
+    <div id="aips-template-modal" class="aips-modal">
+        <form id="aips-template-form">
+            <input type="hidden" id="template_id">
+            <input type="text" id="template_name" class="regular-text">
+            <textarea id="prompt_template"></textarea>
+            <input type="text" id="title_prompt" class="aips-ai-var-input">
+            <div class="aips-ai-variables-panel" style="display:none;"></div>
+            <div id="aips-ai-variables-list"></div>
+            <input type="checkbox" id="generate_featured_image">
+            <div class="aips-featured-image-settings"></div>
+            <select id="featured_image_source"></select>
+            <div class="aips-image-source-unsplash"></div>
+            <div class="aips-image-source-media"></div>
+            <div class="aips-image-source-ai"></div>
+            <input type="hidden" id="featured_image_media_ids">
+            <div id="featured_image_media_preview"></div>
+        </form>
+    </div>
+
+</body>
+</html>
