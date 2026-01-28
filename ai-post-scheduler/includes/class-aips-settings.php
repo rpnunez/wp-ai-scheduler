@@ -61,6 +61,15 @@ class AIPS_Settings {
             'aips-activity',
             array($this, 'render_activity_page')
         );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Generated Posts', 'ai-post-scheduler'),
+            __('Generated Posts', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-generated-posts',
+            array($this, 'render_generated_posts_page')
+        );
 
         add_submenu_page(
             'ai-post-scheduler',
@@ -502,6 +511,17 @@ class AIPS_Settings {
             'loadingError' => __('Failed to load activity data.', 'ai-post-scheduler'),
         ));
 
+        // Generated Posts Page Scripts
+        if (strpos($hook, 'aips-generated-posts') !== false) {
+            wp_enqueue_script(
+                'aips-admin-generated-posts',
+                AIPS_PLUGIN_URL . 'assets/js/admin-generated-posts.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
         // Post Review Page Scripts
         if (strpos($hook, 'aips-post-review') !== false) {
             wp_enqueue_script(
@@ -834,7 +854,41 @@ class AIPS_Settings {
      * @return void
      */
     public function render_activity_page() {
+        // Use History Service to get activity feed
+        $history_service = new AIPS_History_Service();
+        
+        $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+        $per_page = 50;
+        $offset = ($current_page - 1) * $per_page;
+        
+        $event_type = isset($_GET['event_type']) ? sanitize_text_field($_GET['event_type']) : '';
+        $event_status = isset($_GET['event_status']) ? sanitize_text_field($_GET['event_status']) : '';
+        $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+        
+        $filters = array();
+        if ($event_type) {
+            $filters['event_type'] = $event_type;
+        }
+        if ($event_status) {
+            $filters['event_status'] = $event_status;
+        }
+        if ($search_query) {
+            $filters['search'] = $search_query;
+        }
+        
+        $activities = $history_service->get_activity_feed($per_page, $offset, $filters);
+        
         include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
+    }
+    
+    /**
+     * Render the Generated Posts page.
+     *
+     * @return void
+     */
+    public function render_generated_posts_page() {
+        $controller = new AIPS_Generated_Posts_Controller();
+        $controller->render_page();
     }
 
     /**
