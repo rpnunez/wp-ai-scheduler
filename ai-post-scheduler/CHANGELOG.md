@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [palette-modal-focus-fix] - 2026-01-25
+### Fixed
+- Improved accessibility by adding focus management to all custom modals in the admin interface. Focus is now automatically set to the first input field (or close button) when a modal opens, ensuring a smoother experience for keyboard users.
+
 ## [wizard-authors-search] - 2025-12-27
 ### Added
 - Added client-side search functionality to the Authors list admin page.

@@ -134,6 +134,7 @@
                 $('#structure_id').val('');
                 $('#aips-structure-modal-title').text('Add New Article Structure');
                 $('#aips-structure-modal').show();
+                AIPS.setModalFocus($('#aips-structure-modal'));
             });
 
             // @TODO: Refactor to AIPS.closeModal -- or use existing function
@@ -198,6 +199,7 @@
                         $('#structure_is_default').prop('checked', s.is_default == 1);
                         $('#aips-structure-modal-title').text('Edit Article Structure');
                         $('#aips-structure-modal').show();
+                        AIPS.setModalFocus($('#aips-structure-modal'));
                     } else {
                         alert(response.data.message || aipsAdminL10n.loadStructureFailed);
                     }
@@ -227,6 +229,7 @@
                 $('#section_id').val('');
                 $('#aips-section-modal-title').text('Add New Prompt Section');
                 $('#aips-section-modal').show();
+                AIPS.setModalFocus($('#aips-section-modal'));
             });
 
             $(document).on('click', '.aips-save-section', function(){
@@ -270,6 +273,7 @@
                         $('#section_is_active').prop('checked', s.is_active == 1);
                         $('#aips-section-modal-title').text('Edit Prompt Section');
                         $('#aips-section-modal').show();
+                        AIPS.setModalFocus($('#aips-section-modal'));
                     } else {
                         alert(response.data.message || aipsAdminL10n.loadSectionFailed);
                     }
@@ -290,6 +294,17 @@
                     }
                 }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
             });
+        },
+
+        setModalFocus: function($modal) {
+            setTimeout(function() {
+                var $focusable = $modal.find('input, select, textarea, button').not('[disabled], [type="hidden"], .aips-modal-close').first();
+                if ($focusable.length) {
+                    $focusable.focus();
+                } else {
+                    $modal.find('.aips-modal-close').first().focus();
+                }
+            }, 100);
         },
 
         copyToClipboard: function(e) {
@@ -411,6 +426,7 @@
             // Initialize wizard to step 1
             AIPS.wizardGoToStep(1);
             $('#aips-template-modal').show();
+            AIPS.setModalFocus($('#aips-template-modal'));
         },
 
         editTemplate: function(e) {
@@ -455,6 +471,7 @@
                         // Initialize wizard to step 1
                         AIPS.wizardGoToStep(1);
                         $('#aips-template-modal').show();
+                        AIPS.setModalFocus($('#aips-template-modal'));
                     } else {
                         alert(response.data.message);
                     }
@@ -769,6 +786,7 @@
             $('#voice_id').val('');
             $('#aips-voice-modal-title').text('Add New Voice');
             $('#aips-voice-modal').show();
+            AIPS.setModalFocus($('#aips-voice-modal'));
         },
 
         editVoice: function(e) {
@@ -793,6 +811,7 @@
                         $('#voice_is_active').prop('checked', v.is_active == 1);
                         $('#aips-voice-modal-title').text('Edit Voice');
                         $('#aips-voice-modal').show();
+                        AIPS.setModalFocus($('#aips-voice-modal'));
                     }
                 }
             });
@@ -867,6 +886,7 @@
             $('#schedule_id').val('');
             $('#aips-schedule-modal-title').text('Add New Schedule');
             $('#aips-schedule-modal').show();
+            AIPS.setModalFocus($('#aips-schedule-modal'));
         },
 
         cloneSchedule: function(e) {
@@ -897,6 +917,7 @@
             // Update title and show
             $('#aips-schedule-modal-title').text('Clone Schedule');
             $('#aips-schedule-modal').show();
+            AIPS.setModalFocus($('#aips-schedule-modal'));
         },
 
         saveSchedule: function(e) {
@@ -1455,6 +1476,7 @@
             e.preventDefault();
             var id = $(this).data('id');
             $('#aips-template-posts-modal').data('template-id', id).show();
+            AIPS.setModalFocus($('#aips-template-posts-modal'));
             AIPS.loadTemplatePosts(id, 1);
         },
 
@@ -1499,6 +1521,7 @@
             $('#aips-details-loading').show();
             $('#aips-details-content').hide();
             $('#aips-details-modal').show();
+            AIPS.setModalFocus($('#aips-details-modal'));
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
