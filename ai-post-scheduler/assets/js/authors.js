@@ -927,8 +927,9 @@
 
 		/**
 		 * Sanitize and validate URLs for use in href attributes
+		 * Validates URL protocol and format without HTML-escaping (browsers handle href encoding)
 		 * @param {string} url - The URL to sanitize
-		 * @returns {string} - Sanitized URL or empty string if invalid
+		 * @returns {string} - Validated URL or empty string if invalid
 		 */
 		sanitizeUrl: function (url) {
 			try {
@@ -937,38 +938,44 @@
 					return '';
 				}
 				
-				// Convert to string
-				const urlStr = String(url);
+				// Convert to string and trim whitespace
+				const urlStr = String(url).trim();
 				
-				// Check for allowed protocols
-				const allowedProtocols = ['http://', 'https://', '/'];
-				const isValidProtocol = allowedProtocols.some(protocol => {
-					if (protocol === '/') {
-						return urlStr.startsWith('/');
+				if (!urlStr) {
+					return '';
+				}
+				
+				// Check for dangerous protocols (case-insensitive)
+				const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
+				const lowerUrl = urlStr.toLowerCase();
+				
+				for (const protocol of dangerousProtocols) {
+					if (lowerUrl.startsWith(protocol)) {
+						console.warn('Dangerous URL protocol detected:', protocol);
+						return '';
 					}
-					return urlStr.toLowerCase().startsWith(protocol);
-				});
-				
-				if (!isValidProtocol) {
-					console.warn('Invalid URL protocol:', urlStr);
-					return '';
 				}
 				
-				// Encode the URL to prevent injection
-				// For relative URLs, just escape HTML entities
+				// For absolute URLs, validate with URL constructor
+				if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
+					try {
+						const urlObj = new URL(urlStr);
+						// Return the normalized URL (URL constructor already handles encoding)
+						return urlObj.href;
+					} catch (e) {
+						console.warn('Invalid URL format:', urlStr);
+						return '';
+					}
+				}
+				
+				// For relative URLs (WordPress admin paths), return as-is after validation
 				if (urlStr.startsWith('/')) {
-					return this.escapeHtml(urlStr);
+					return urlStr;
 				}
 				
-				// For absolute URLs, validate and encode
-				try {
-					const urlObj = new URL(urlStr);
-					// Return the sanitized URL with HTML entities escaped
-					return this.escapeHtml(urlObj.href);
-				} catch (e) {
-					console.warn('Invalid URL format:', urlStr);
-					return '';
-				}
+				// Reject anything else
+				console.warn('URL does not match allowed patterns:', urlStr);
+				return '';
 			} catch (error) {
 				console.error('Error in sanitizeUrl:', error);
 				return '';
