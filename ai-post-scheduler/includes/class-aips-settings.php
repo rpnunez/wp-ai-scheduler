@@ -73,15 +73,6 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
-            __('Post Review', 'ai-post-scheduler'),
-            __('Post Review', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-post-review',
-            array($this, 'render_post_review_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
             __('Schedule', 'ai-post-scheduler'),
             __('Schedule', 'ai-post-scheduler'),
             'manage_options',
@@ -522,8 +513,8 @@ class AIPS_Settings {
             );
         }
 
-        // Post Review Page Scripts
-        if (strpos($hook, 'aips-post-review') !== false) {
+        // Post Review Page Scripts (now part of Generated Posts page)
+        if (strpos($hook, 'aips-post-review') !== false || strpos($hook, 'aips-generated-posts') !== false) {
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
