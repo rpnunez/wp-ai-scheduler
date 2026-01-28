@@ -383,8 +383,10 @@
         },
 
         switchTab: function(e) {
-            e.preventDefault();
             var tabId = $(this).data('tab');
+            if (!tabId) return;
+
+            e.preventDefault();
 
             var url = new URL(window.location.href);
             url.searchParams.set('tab', tabId);

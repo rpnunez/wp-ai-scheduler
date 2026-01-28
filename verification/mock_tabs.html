@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tabs Verification</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Mock WP globals
+        window.aipsAjax = { ajaxUrl: 'mock-ajax.php', nonce: 'mock-nonce' };
+        window.aipsAdminL10n = {};
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+    <style>
+        .nav-tab-active { font-weight: bold; color: red; }
+        .aips-tab-content { border: 1px solid #ccc; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>AI Post Scheduler</h1>
+
+        <div class="nav-tab-wrapper">
+            <!-- New style tabs (real links, no data-tab) -->
+            <a href="?page=aips-templates&tab=templates" class="nav-tab nav-tab-active" id="tab-templates">Templates</a>
+            <a href="?page=aips-templates&tab=schedule" class="nav-tab" id="tab-schedule">Schedule</a>
+            <a href="?page=aips-templates&tab=history" class="nav-tab" id="tab-history">History</a>
+
+            <!-- Old style tab (for comparison/regression testing) -->
+            <a href="#other" class="nav-tab" data-tab="other" id="tab-other">Other (JS Tab)</a>
+        </div>
+
+        <div id="templates-tab" class="aips-tab-content active">Templates Content</div>
+        <div id="schedule-tab" class="aips-tab-content" style="display:none;">Schedule Content</div>
+        <div id="history-tab" class="aips-tab-content" style="display:none;">History Content</div>
+        <div id="other-tab" class="aips-tab-content" style="display:none;">Other Content</div>
+    </div>
+</body>
+</html>
