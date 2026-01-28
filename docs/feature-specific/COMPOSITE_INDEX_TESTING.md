@@ -82,7 +82,7 @@ Bash wrapper script that:
 
 **Run:**
 ```bash
-./test-composite-index.sh
+./tools/test-composite-index.sh
 ```
 
 ## Verification Steps
