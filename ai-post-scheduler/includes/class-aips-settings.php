@@ -73,15 +73,6 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
-            __('Post Review', 'ai-post-scheduler'),
-            __('Post Review', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-post-review',
-            array($this, 'render_post_review_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
             __('Schedule', 'ai-post-scheduler'),
             __('Schedule', 'ai-post-scheduler'),
             'manage_options',
