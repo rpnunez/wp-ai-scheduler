@@ -449,13 +449,36 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
 		}
 		
+		// Create history container for bulk delete operation
+		$history = $this->history_service->create('bulk_delete', array(
+			'user_id' => get_current_user_id(),
+			'source' => 'manual_ui',
+			'trigger' => 'ajax_bulk_delete_topics',
+			'entity_type' => 'topics',
+			'entity_count' => count($topic_ids)
+		));
+		
+		$history->record_user_action(
+			'bulk_delete_topics',
+			sprintf(__('User initiated bulk delete for %d topics', 'ai-post-scheduler'), count($topic_ids)),
+			array('topic_ids' => $topic_ids, 'topic_count' => count($topic_ids))
+		);
+		
 		$success_count = 0;
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->delete($topic_id);
 			if ($result) {
 				$success_count++;
+			} else {
+				$history->record('warning', sprintf(__('Failed to delete topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array('topic_id' => $topic_id));
 			}
 		}
+		
+		$history->record('activity', sprintf(__('Deleted %d topics', 'ai-post-scheduler'), $success_count), null, null, array(
+			'deleted_count' => $success_count,
+			'requested_count' => count($topic_ids)
+		));
+		$history->complete_success(array('deleted_count' => $success_count));
 		
 		wp_send_json_success(array(
 			'message' => sprintf(__('%d topics deleted successfully.', 'ai-post-scheduler'), $success_count)
@@ -479,11 +502,39 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid post or topic ID.', 'ai-post-scheduler')));
 		}
 		
+		// Create history container for regeneration
+		$history = $this->history_service->create('manual_regeneration', array(
+			'user_id' => get_current_user_id(),
+			'source' => 'manual_ui',
+			'trigger' => 'ajax_regenerate_post',
+			'post_id' => $post_id,
+			'topic_id' => $topic_id
+		));
+		
+		$history->record_user_action(
+			'regenerate_post',
+			sprintf(__('User initiated post regeneration for post ID %d from topic ID %d', 'ai-post-scheduler'), $post_id, $topic_id),
+			array('post_id' => $post_id, 'topic_id' => $topic_id)
+		);
+		
 		$result = $this->post_generator->regenerate_post($post_id, $topic_id);
 		
 		if (is_wp_error($result)) {
+			$history->record_error(
+				sprintf(__('Post regeneration failed for post ID %d', 'ai-post-scheduler'), $post_id),
+				array('post_id' => $post_id, 'topic_id' => $topic_id, 'error_code' => 'REGENERATION_FAILED'),
+				$result
+			);
+			$history->complete_failure($result->get_error_message(), array('post_id' => $post_id, 'topic_id' => $topic_id));
 			wp_send_json_error(array('message' => $result->get_error_message()));
 		}
+		
+		$history->record('activity', __('Post regenerated successfully', 'ai-post-scheduler'), null, null, array(
+			'post_id' => $result,
+			'original_post_id' => $post_id,
+			'topic_id' => $topic_id
+		));
+		$history->complete_success(array('post_id' => $result));
 		
 		wp_send_json_success(array(
 			'message' => __('Post regenerated successfully.', 'ai-post-scheduler'),

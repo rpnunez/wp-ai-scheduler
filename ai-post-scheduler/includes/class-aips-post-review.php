@@ -546,30 +546,29 @@ class AIPS_Post_Review {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
 		if (!current_user_can('manage_options')) {
-			$history = $this->history_service->create('post_review_action', array());
-			$history->record(
-				'activity',
-				__('Bulk delete failed: Permission denied', 'ai-post-scheduler'),
-				array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-				null,
-				array()
-			);
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 		
 		$items = (isset($_POST['items']) && is_array($_POST['items'])) ? $_POST['items'] : array();
 		
 		if (empty($items)) {
-			$history = $this->history_service->create('post_review_action', array());
-			$history->record(
-				'activity',
-				__('Bulk delete failed: No posts selected', 'ai-post-scheduler'),
-				array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-				null,
-				array()
-			);
 			wp_send_json_error(array('message' => __('No posts selected.', 'ai-post-scheduler')));
 		}
+		
+		// Create history container for bulk delete operation
+		$history = $this->history_service->create('bulk_delete', array(
+			'user_id' => get_current_user_id(),
+			'source' => 'manual_ui',
+			'trigger' => 'ajax_bulk_delete_draft_posts',
+			'entity_type' => 'draft_posts',
+			'entity_count' => count($items)
+		));
+		
+		$history->record_user_action(
+			'bulk_delete_drafts',
+			sprintf(__('User initiated bulk delete for %d draft posts', 'ai-post-scheduler'), count($items)),
+			array('item_count' => count($items))
+		);
 		
 		$success_count = 0;
 		$failed_count = 0;
@@ -592,42 +591,21 @@ class AIPS_Post_Review {
 			$post = get_post($post_id);
 			if (!$post || $post->post_status !== 'draft') {
 				$failed_count++;
-				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-				$history->record(
-					'activity',
-					__('Bulk delete failed: Post not found or not a draft', 'ai-post-scheduler'),
-					array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-					null,
-					array('post_id' => $post_id)
-				);
+				$history->record('warning', sprintf(__('Cannot delete post ID %d: Not found or not a draft', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
 				continue;
 			}
 			
 			// Verify the post is in the review queue
 			if (!$this->history_service->post_has_history_and_completed($post_id)) {
 				$failed_count++;
-				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-				$history->record(
-					'activity',
-					__('Bulk delete failed: Post not in review queue', 'ai-post-scheduler'),
-					array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-					null,
-					array('post_id' => $post_id)
-				);
+				$history->record('warning', sprintf(__('Cannot delete post ID %d: Not in review queue', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
 				continue;
 			}
 			
 			// Check per-post capability
 			if (!current_user_can('delete_post', $post_id)) {
 				$failed_count++;
-				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-				$history->record(
-					'activity',
-					__('Bulk delete failed: Insufficient permissions', 'ai-post-scheduler'),
-					array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-					null,
-					array('post_id' => $post_id)
-				);
+				$history->record('warning', sprintf(__('Cannot delete post ID %d: Insufficient permissions', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
 				continue;
 			}
 			
@@ -643,16 +621,6 @@ class AIPS_Post_Review {
 					));
 				}
 				
-				// Log the delete activity
-				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-				$history->record(
-					'activity',
-					__('Draft post deleted from review queue (bulk)', 'ai-post-scheduler'),
-					array('event_type' => 'post_deleted', 'event_status' => 'success'),
-					null,
-					array('post_id' => $post_id)
-				);
-				
 				/**
 				 * Fires after a post is deleted from the review queue.
 				 *
@@ -661,15 +629,23 @@ class AIPS_Post_Review {
 				do_action('aips_post_review_deleted', $post_id);
 			} else {
 				$failed_count++;
-				$history = $this->history_service->create('post_review_action', array('post_id' => $post_id));
-				$history->record(
-					'activity',
-					__('Bulk delete failed: Unable to delete post', 'ai-post-scheduler'),
-					array('event_type' => 'post_deleted', 'event_status' => 'failed'),
-					null,
-					array('post_id' => $post_id)
-				);
+				$history->record('warning', sprintf(__('Failed to delete post ID %d', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
 			}
+		}
+		
+		$history->record('activity', sprintf(__('Bulk delete completed: %d deleted, %d failed', 'ai-post-scheduler'), $success_count, $failed_count), null, null, array(
+			'deleted_count' => $success_count,
+			'failed_count' => $failed_count,
+			'requested_count' => count($items)
+		));
+		
+		if ($failed_count > 0) {
+			$history->complete_failure(
+				sprintf(__('Bulk delete completed with %d failures', 'ai-post-scheduler'), $failed_count),
+				array('success_count' => $success_count, 'failed_count' => $failed_count)
+			);
+		} else {
+			$history->complete_success(array('deleted_count' => $success_count));
 		}
 		
 		wp_send_json_success(array(
