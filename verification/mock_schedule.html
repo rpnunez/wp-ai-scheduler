@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock Schedules</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .screen-reader-text { display: none; }
+        .tablenav { clear: both; margin: 6px 0 4px; vertical-align: middle; }
+        .tablenav .actions { overflow: hidden; padding: 2px 8px 0 0; float: left; }
+        .tablenav .bulkactions { display: block; }
+        .alignleft { float: left; }
+        .wp-list-table { border-spacing: 0; width: 100%; clear: both; margin: 0; }
+        .wp-list-table th, .wp-list-table td { border-bottom: 1px solid #c3c4c7; padding: 8px 10px; text-align: left; }
+    </style>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <div class="aips-schedules-container">
+            <div class="tablenav top">
+                <div class="alignleft actions bulkactions">
+                    <select id="aips-schedule-bulk-action">
+                        <option value="">Bulk Actions</option>
+                        <option value="delete">Delete</option>
+                    </select>
+                    <button type="button" id="aips-schedule-bulk-action-btn" class="button action">Apply</button>
+                </div>
+                <div class="aips-search-box" style="margin-bottom: 10px; text-align: right; float: right;">
+                    <label class="screen-reader-text" for="aips-schedule-search">Search Schedules:</label>
+                    <input type="search" id="aips-schedule-search" class="regular-text" placeholder="Search schedules...">
+                    <button type="button" id="aips-schedule-search-clear" class="button" style="display: none;">Clear</button>
+                </div>
+            </div>
+
+            <table class="wp-list-table widefat fixed striped aips-schedules-table">
+                <thead>
+                    <tr>
+                        <td id="cb" class="manage-column column-cb check-column">
+                            <label class="screen-reader-text" for="cb-select-all-1">Select All</label>
+                            <input id="cb-select-all-1" type="checkbox">
+                        </td>
+                        <th class="column-template">Template</th>
+                        <th class="column-structure">Article Structure</th>
+                        <th class="column-frequency">Frequency</th>
+                        <th class="column-next-run">Next Run</th>
+                        <th class="column-last-run">Last Run</th>
+                        <th class="column-status">Status</th>
+                        <th class="column-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-schedule-id="1">
+                        <th scope="row" class="check-column">
+                            <label class="screen-reader-text" for="cb-select-1">Select Schedule</label>
+                            <input id="cb-select-1" type="checkbox" name="schedule[]" value="1">
+                        </th>
+                        <td class="column-template">Tech Blog</td>
+                        <td class="column-structure">Default</td>
+                        <td class="column-frequency">Daily</td>
+                        <td class="column-next-run">2024-01-01 10:00:00</td>
+                        <td class="column-last-run">Never</td>
+                        <td class="column-status">Active</td>
+                        <td class="column-actions"><button>Edit</button></td>
+                    </tr>
+                    <tr data-schedule-id="2">
+                        <th scope="row" class="check-column">
+                            <label class="screen-reader-text" for="cb-select-2">Select Schedule</label>
+                            <input id="cb-select-2" type="checkbox" name="schedule[]" value="2">
+                        </th>
+                        <td class="column-template">News Update</td>
+                        <td class="column-structure">News Article</td>
+                        <td class="column-frequency">Hourly</td>
+                        <td class="column-next-run">2024-01-01 11:00:00</td>
+                        <td class="column-last-run">Yesterday</td>
+                        <td class="column-status">Active</td>
+                        <td class="column-actions"><button>Edit</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        var aipsAjax = { ajaxUrl: 'mock-ajax.php', nonce: 'mock' };
+        var aipsAdminL10n = {};
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+</body>
+</html>
