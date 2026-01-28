@@ -124,20 +124,20 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         ?>
                         <div class="aips-schedule-status-wrapper">
                             <span class="aips-schedule-status <?php echo esc_attr($status_class); ?>">
-                                <span class="dashicons <?php echo esc_attr($status_icon); ?>"></span>
+                                <span class="dashicons <?php echo esc_attr($status_icon); ?>" aria-hidden="true"></span>
                                 <?php echo esc_html($status_text); ?>
                             </span>
                             <label class="aips-toggle">
-                                <input type="checkbox" class="aips-toggle-schedule" aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>" data-id="<?php echo esc_attr($schedule->id); ?>" <?php checked($schedule->is_active, 1); ?>>
+                                <input type="checkbox" class="aips-toggle-schedule" aria-label="<?php echo esc_attr(sprintf(__('Toggle schedule status for %s', 'ai-post-scheduler'), $schedule->template_name)); ?>" data-id="<?php echo esc_attr($schedule->id); ?>" <?php checked($schedule->is_active, 1); ?>>
                                 <span class="aips-toggle-slider"></span>
                             </label>
                         </div>
                     </td>
                     <td class="column-actions">
-                        <button class="button aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>">
+                        <button class="button aips-clone-schedule" aria-label="<?php echo esc_attr(sprintf(__('Clone schedule for %s', 'ai-post-scheduler'), $schedule->template_name)); ?>">
                             <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
                         </button>
-                        <button class="button button-link-delete aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>">
+                        <button class="button button-link-delete aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php echo esc_attr(sprintf(__('Delete schedule for %s', 'ai-post-scheduler'), $schedule->template_name)); ?>">
                             <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
                         </button>
                     </td>
