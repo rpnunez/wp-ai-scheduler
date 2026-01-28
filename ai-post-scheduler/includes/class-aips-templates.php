@@ -47,6 +47,7 @@ class AIPS_Templates {
 
         $template_data = array(
             'name' => sanitize_text_field($data['name']),
+            'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
             'prompt_template' => wp_kses_post($data['prompt_template']),
             'title_prompt' => isset($data['title_prompt']) ? sanitize_text_field($data['title_prompt']) : '',
             'voice_id' => isset($data['voice_id']) ? absint($data['voice_id']) : null,

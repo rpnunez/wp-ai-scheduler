@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template Wizard - Visual Mockup</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            background: #f0f0f1;
+            margin: 0;
+            padding: 20px;
+        }
+        .mockup-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .mockup-header {
+            background: #2271b1;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .mockup-content {
+            padding: 30px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        h2 {
+            color: #1d2327;
+            margin-top: 0;
+        }
+        .step-showcase {
+            margin-bottom: 40px;
+            border: 2px solid #dcdcde;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .modal-header {
+            background: #f6f7f7;
+            padding: 15px 20px;
+            border-bottom: 1px solid #dcdcde;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d2327;
+            margin: 0;
+        }
+        .close-btn {
+            font-size: 24px;
+            color: #646970;
+            cursor: pointer;
+        }
+        .wizard-progress {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px 30px 10px;
+            background: #f6f7f7;
+            border-bottom: 1px solid #dcdcde;
+            position: relative;
+        }
+        .wizard-progress::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 60px;
+            right: 60px;
+            height: 2px;
+            background: #dcdcde;
+            z-index: 0;
+        }
+        .wizard-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #dcdcde;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #646970;
+        }
+        .wizard-step.active .step-number {
+            background: #2271b1;
+            border-color: #2271b1;
+            color: #fff;
+        }
+        .wizard-step.completed .step-number {
+            background: #00a32a;
+            border-color: #00a32a;
+            color: #fff;
+        }
+        .wizard-step.completed .step-number::before {
+            content: '✓';
+        }
+        .step-label {
+            font-size: 12px;
+            color: #646970;
+            font-weight: 500;
+            text-align: center;
+        }
+        .wizard-step.active .step-label {
+            color: #2271b1;
+            font-weight: 600;
+        }
+        .modal-body {
+            padding: 20px;
+            min-height: 300px;
+        }
+        .form-row {
+            margin-bottom: 20px;
+        }
+        .form-row label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1d2327;
+        }
+        .required {
+            color: #d63638;
+        }
+        .form-row input[type="text"],
+        .form-row textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #8c8f94;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-row textarea {
+            min-height: 100px;
+        }
+        .description {
+            font-size: 13px;
+            color: #646970;
+            font-style: italic;
+            margin-top: 5px;
+        }
+        .template-summary {
+            background: #f6f7f7;
+            border: 1px solid #dcdcde;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .summary-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: #fff;
+            border-radius: 3px;
+            margin-bottom: 10px;
+        }
+        .summary-item strong {
+            min-width: 150px;
+            color: #1d2327;
+        }
+        .summary-item span {
+            color: #646970;
+        }
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #dcdcde;
+            display: flex;
+            justify-content: space-between;
+        }
+        .footer-left, .footer-right {
+            display: flex;
+            gap: 10px;
+        }
+        .button {
+            padding: 8px 16px;
+            border: 1px solid #2271b1;
+            background: #fff;
+            color: #2271b1;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .button-primary {
+            background: #2271b1;
+            color: #fff;
+        }
+        .button:hover {
+            background: #f0f0f1;
+        }
+        .button-primary:hover {
+            background: #135e96;
+        }
+        .step-description {
+            color: #646970;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mockup-container">
+        <div class="mockup-header">
+            <h1>🎨 AI Post Scheduler - Template Wizard Mockup</h1>
+            <p style="margin:5px 0 0 0; opacity: 0.9;">Multi-Step Template Creation Interface</p>
+        </div>
+        
+        <div class="mockup-content">
+            <h2>Step 1: Basic Information</h2>
+            <div class="step-showcase">
+                <div class="modal-header">
+                    <h3 class="modal-title">Add New Template</h3>
+                    <span class="close-btn">&times;</span>
+                </div>
+                
+                <div class="wizard-progress">
+                    <div class="wizard-step active">
+                        <div class="step-number">1</div>
+                        <div class="step-label">Basic Info</div>
+                    </div>
+                    <div class="wizard-step">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Title & Excerpt</div>
+                    </div>
+                    <div class="wizard-step">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Content</div>
+                    </div>
+                    <div class="wizard-step">
+                        <div class="step-number">4</div>
+                        <div class="step-label">Featured Image</div>
+                    </div>
+                    <div class="wizard-step">
+                        <div class="step-number">5</div>
+                        <div class="step-label">Summary</div>
+                    </div>
+                </div>
+                
+                <div class="modal-body">
+                    <h3 style="margin-top:0;">Basic Information</h3>
+                    <p class="step-description">Give your template a name and brief description to help you identify it later.</p>
+                    
+                    <div class="form-row">
+                        <label>Template Name <span class="required">*</span></label>
+                        <input type="text" placeholder="e.g., Tech News Blog Post" value="Tech News Weekly">
+                        <p class="description">A descriptive name for your template</p>
+                    </div>
+                    
+                    <div class="form-row">
+                        <label>Template Description</label>
+                        <textarea placeholder="Optional: Describe what this template is used for...">This template generates weekly technology news articles with the latest trends and updates.</textarea>
+                        <p class="description">Optional. Helps you remember the purpose of this template.</p>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <div class="footer-left">
+                        <button class="button" style="opacity:0.5; cursor:not-allowed;">◀ Back</button>
+                    </div>
+                    <div class="footer-right">
+                        <button class="button">Cancel</button>
+                        <button class="button button-primary">Next ▶</button>
+                    </div>
+                </div>
+            </div>
+            
+            <h2>Step 3: Content (Example with Progress)</h2>
+            <div class="step-showcase">
+                <div class="modal-header">
+                    <h3 class="modal-title">Add New Template</h3>
+                    <span class="close-btn">&times;</span>
+                </div>
+                
+                <div class="wizard-progress">
+                    <div class="wizard-step completed">
+                        <div class="step-number"></div>
+                        <div class="step-label">Basic Info</div>
+                    </div>
+                    <div class="wizard-step completed">
+                        <div class="step-number"></div>
+                        <div class="step-label">Title & Excerpt</div>
+                    </div>
+                    <div class="wizard-step active">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Content</div>
+                    </div>
+                    <div class="wizard-step">
+                        <div class="step-number">4</div>
+                        <div class="step-label">Featured Image</div>
+                    </div>
+                    <div class="wizard-step">
+                        <div class="step-number">5</div>
+                        <div class="step-label">Summary</div>
+                    </div>
+                </div>
+                
+                <div class="modal-body">
+                    <h3 style="margin-top:0;">Content Settings</h3>
+                    <p class="step-description">Define the content prompt that guides AI to generate your post content.</p>
+                    
+                    <div class="form-row">
+                        <label>Content Prompt <span class="required">*</span></label>
+                        <textarea placeholder="Write a detailed blog post about...">Write a comprehensive blog post about the latest technology trends. Include information about AI, machine learning, and emerging technologies. Make it engaging and informative for a general audience.</textarea>
+                        <p class="description">Available variables: {{date}}, {{year}}, {{month}}, {{day}}, {{time}}, {{site_name}}, {{site_description}}, {{random_number}}</p>
+                    </div>
+                    
+                    <div class="form-row">
+                        <label>Voice</label>
+                        <select style="width:100%; padding:8px; border:1px solid #8c8f94; border-radius:4px;">
+                            <option>No Voice (Use Default)</option>
+                            <option>Professional</option>
+                            <option>Casual & Friendly</option>
+                        </select>
+                        <p class="description">Optional. A voice provides pre-configured title and content instructions.</p>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <div class="footer-left">
+                        <button class="button">◀ Back</button>
+                    </div>
+                    <div class="footer-right">
+                        <button class="button">Cancel</button>
+                        <button class="button button-primary">Next ▶</button>
+                    </div>
+                </div>
+            </div>
+            
+            <h2>Step 5: Summary (Final Step)</h2>
+            <div class="step-showcase">
+                <div class="modal-header">
+                    <h3 class="modal-title">Add New Template</h3>
+                    <span class="close-btn">&times;</span>
+                </div>
+                
+                <div class="wizard-progress">
+                    <div class="wizard-step completed">
+                        <div class="step-number"></div>
+                        <div class="step-label">Basic Info</div>
+                    </div>
+                    <div class="wizard-step completed">
+                        <div class="step-number"></div>
+                        <div class="step-label">Title & Excerpt</div>
+                    </div>
+                    <div class="wizard-step completed">
+                        <div class="step-number"></div>
+                        <div class="step-label">Content</div>
+                    </div>
+                    <div class="wizard-step completed">
+                        <div class="step-number"></div>
+                        <div class="step-label">Featured Image</div>
+                    </div>
+                    <div class="wizard-step active">
+                        <div class="step-number">5</div>
+                        <div class="step-label">Summary</div>
+                    </div>
+                </div>
+                
+                <div class="modal-body">
+                    <h3 style="margin-top:0;">Review & Post Settings</h3>
+                    <p class="step-description">Review your template configuration and set post publishing options.</p>
+                    
+                    <div class="template-summary">
+                        <h4 style="margin:0 0 15px 0;">Template Summary</h4>
+                        <div class="summary-item">
+                            <strong>Template Name:</strong>
+                            <span>Tech News Weekly</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Description:</strong>
+                            <span>This template generates weekly technology news articles with the latest trends and updates.</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Title Prompt:</strong>
+                            <span>Auto-generate from content</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Content Prompt:</strong>
+                            <span>Write a comprehensive blog post about the latest technology trends. Include information...</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Voice:</strong>
+                            <span>Professional</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Post Quantity:</strong>
+                            <span>1</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Featured Image:</strong>
+                            <span>Yes (Generate with AI Prompt)</span>
+                        </div>
+                    </div>
+                    
+                    <h4>Post Settings</h4>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                        <div class="form-row">
+                            <label>Post Status</label>
+                            <select style="width:100%; padding:8px; border:1px solid #8c8f94; border-radius:4px;">
+                                <option selected>Draft</option>
+                                <option>Pending Review</option>
+                                <option>Published</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <label>Category</label>
+                            <select style="width:100%; padding:8px; border:1px solid #8c8f94; border-radius:4px;">
+                                <option>Select Category</option>
+                                <option selected>Technology</option>
+                                <option>News</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <div class="footer-left">
+                        <button class="button">◀ Back</button>
+                    </div>
+                    <div class="footer-right">
+                        <button class="button">Cancel</button>
+                        <button class="button button-primary" style="background:#00a32a; border-color:#00a32a;">Save Template</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top:40px; padding:20px; background:#f6f7f7; border-radius:4px;">
+                <h3 style="margin-top:0;">✨ Key Features</h3>
+                <ul>
+                    <li><strong>Visual Progress Tracking:</strong> See your progress through the wizard with clear step indicators</li>
+                    <li><strong>Step Validation:</strong> Required fields are validated before moving to the next step</li>
+                    <li><strong>Easy Navigation:</strong> Back and Next buttons make it simple to review and edit</li>
+                    <li><strong>Comprehensive Summary:</strong> Review all settings before saving</li>
+                    <li><strong>New Description Field:</strong> Add context to help identify templates later</li>
+                    <li><strong>Smooth Animations:</strong> Gentle fade-in transitions between steps</li>
+                    <li><strong>Responsive Design:</strong> Works on desktop, tablet, and mobile</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -98,6 +98,7 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_templates (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
+            description text,
             prompt_template text NOT NULL,
             title_prompt text,
             voice_id bigint(20) DEFAULT NULL,

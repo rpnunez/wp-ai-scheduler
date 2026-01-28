@@ -176,4 +176,100 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$this->assertNotEmpty($indexes, 'Composite index should exist after dbDelta');
 		$this->assertCount(2, $indexes, 'Composite index should have 2 columns');
 	}
+
+	/**
+	 * Test that aips_templates table has description column.
+	 */
+	public function test_templates_table_has_description_column() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_templates';
+		
+		// Get columns
+		$columns = $wpdb->get_results("SHOW COLUMNS FROM {$table_name}");
+		$column_names = array_map(function($col) {
+			return $col->Field;
+		}, $columns);
+		
+		// Verify description column exists
+		$this->assertContains(
+			'description',
+			$column_names,
+			"Column 'description' should exist in aips_templates table"
+		);
+		
+		// Get specific column details
+		$description_column = null;
+		foreach ($columns as $col) {
+			if ($col->Field === 'description') {
+				$description_column = $col;
+				break;
+			}
+		}
+		
+		// Verify column properties
+		$this->assertNotNull($description_column, 'Description column should be found');
+		$this->assertEquals('YES', $description_column->Null, 'Description column should be nullable');
+		$this->assertStringContainsString('text', strtolower($description_column->Type), 'Description column should be TEXT type');
+	}
+
+	/**
+	 * Test that templates can be saved with description field.
+	 */
+	public function test_templates_can_save_description() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_templates';
+		
+		// Insert a template with description
+		$result = $wpdb->insert($table_name, array(
+			'name' => 'Test Template',
+			'description' => 'This is a test template description',
+			'prompt_template' => 'Write a blog post about testing',
+			'post_status' => 'draft',
+			'is_active' => 1,
+		));
+		
+		$this->assertNotFalse($result, 'Template should be inserted successfully');
+		
+		// Retrieve the template
+		$template = $wpdb->get_row($wpdb->prepare(
+			"SELECT * FROM {$table_name} WHERE name = %s",
+			'Test Template'
+		));
+		
+		$this->assertNotNull($template, 'Template should be retrieved');
+		$this->assertEquals('This is a test template description', $template->description, 'Description should match');
+		
+		// Clean up
+		$wpdb->query($wpdb->prepare("DELETE FROM {$table_name} WHERE id = %d", $template->id));
+	}
+
+	/**
+	 * Test that templates can be saved without description (NULL).
+	 */
+	public function test_templates_can_save_without_description() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_templates';
+		
+		// Insert a template without description
+		$result = $wpdb->insert($table_name, array(
+			'name' => 'Test Template No Description',
+			'prompt_template' => 'Write a blog post about testing',
+			'post_status' => 'draft',
+			'is_active' => 1,
+		));
+		
+		$this->assertNotFalse($result, 'Template should be inserted successfully without description');
+		
+		// Retrieve the template
+		$template = $wpdb->get_row($wpdb->prepare(
+			"SELECT * FROM {$table_name} WHERE name = %s",
+			'Test Template No Description'
+		));
+		
+		$this->assertNotNull($template, 'Template should be retrieved');
+		$this->assertNull($template->description, 'Description should be NULL when not provided');
+		
+		// Clean up
+		$wpdb->query($wpdb->prepare("DELETE FROM {$table_name} WHERE id = %d", $template->id));
+	}
 }
