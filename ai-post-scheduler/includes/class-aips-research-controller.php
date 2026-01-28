@@ -294,8 +294,8 @@ class AIPS_Research_Controller {
                  * }
                  */
                 do_action('aips_trending_topic_scheduled', $schedule_data);
-            }
-            $count = count($schedules_to_create);
+        if ($result > 0) {
+            $count = (int) $result;
             $this->logger->log("Scheduled {$count} trending topics for generation", 'info', array(
                 'template_id' => $template_id,
                 'frequency' => $frequency,
