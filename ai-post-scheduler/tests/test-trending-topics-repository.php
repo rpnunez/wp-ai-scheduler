@@ -446,7 +446,8 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
         $this->assertEquals(1, $saved_count);
         
         // Verify only one new topic was added (total should be 2)
-        $all_topics = $this->repository->get_by_niche('TestNiche');
+        // Using 7 days to match the deduplication window in save_research_batch
+        $all_topics = $this->repository->get_by_niche('TestNiche', 20, 7);
         $this->assertCount(2, $all_topics);
     }
     
@@ -588,7 +589,8 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
         
         $this->assertEquals(2, $result);
         
-        $remaining = $this->repository->get_by_niche('DeleteTest');
+        // Explicitly pass days parameter for test clarity
+        $remaining = $this->repository->get_by_niche('DeleteTest', 20, 1);
         $this->assertCount(1, $remaining);
         $this->assertEquals('To Keep', $remaining[0]['topic']);
     }
