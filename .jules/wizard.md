@@ -23,3 +23,7 @@
 ## 2025-12-27 - Author Search Consistency
 **Learning:** The "Authors" table was the last major list without search, breaking the expectation set by Templates, Schedules, and Structures. Consistency in basic data tools (search/filter) significantly reduces cognitive load.
 **Action:** Implemented client-side search for Authors using the standard pattern (search input + JS filter), ensuring the entire admin suite now behaves predictably.
+
+## 2026-01-25 - Structure Sections Search Consistency
+**Learning:** The "Structure Sections" tab within the Structures page lacked search functionality, unlike the main "Article Structures" tab and other admin lists, breaking UI consistency and discoverability for granular components.
+**Action:** Implemented client-side search for Structure Sections using the standard pattern (CSS classes + JS filtering) to align with the rest of the application.
