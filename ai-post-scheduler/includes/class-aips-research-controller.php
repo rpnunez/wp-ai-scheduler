@@ -188,6 +188,11 @@ class AIPS_Research_Controller {
         }
 
         $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
+        
+        // Filter out any IDs that are 0 or less (invalid)
+        $topic_ids = array_filter($topic_ids, function($id) {
+            return $id > 0;
+        });
 
         if (empty($topic_ids)) {
             wp_send_json_error(array('message' => __('Topic IDs are required.', 'ai-post-scheduler')));
@@ -294,7 +299,8 @@ class AIPS_Research_Controller {
                  * }
                  */
                 do_action('aips_trending_topic_scheduled', $schedule_data);
-        if ($result > 0) {
+            }
+            
             $count = (int) $result;
             $this->logger->log("Scheduled {$count} trending topics for generation", 'info', array(
                 'template_id' => $template_id,

@@ -411,4 +411,220 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
         $this->assertArrayHasKey('niche', $niches[0]);
         $this->assertArrayHasKey('count', $niches[0]);
     }
+    
+    /**
+     * Test save_research_batch skips existing topics within 7 days.
+     */
+    public function test_save_research_batch_skips_existing_topics() {
+        // Create an existing topic
+        $this->repository->create(array(
+            'niche' => 'TestNiche',
+            'topic' => 'Existing Topic',
+            'score' => 85,
+            'researched_at' => current_time('mysql'),
+        ));
+        
+        // Try to save a batch that includes the existing topic
+        $topics = array(
+            array(
+                'topic' => 'Existing Topic',  // This should be skipped
+                'score' => 90,
+                'reason' => 'Test',
+                'keywords' => array('test'),
+            ),
+            array(
+                'topic' => 'New Topic',  // This should be saved
+                'score' => 88,
+                'reason' => 'Test',
+                'keywords' => array('test'),
+            ),
+        );
+        
+        $saved_count = $this->repository->save_research_batch($topics, 'TestNiche');
+        
+        // Only the new topic should be saved
+        $this->assertEquals(1, $saved_count);
+        
+        // Verify only one new topic was added (total should be 2)
+        $all_topics = $this->repository->get_by_niche('TestNiche');
+        $this->assertCount(2, $all_topics);
+    }
+    
+    /**
+     * Test save_research_batch skips duplicates within the same batch.
+     */
+    public function test_save_research_batch_skips_batch_duplicates() {
+        $topics = array(
+            array(
+                'topic' => 'Duplicate Topic',
+                'score' => 90,
+                'reason' => 'Test',
+                'keywords' => array('test'),
+            ),
+            array(
+                'topic' => 'Duplicate Topic',  // Same as above, should be skipped
+                'score' => 85,
+                'reason' => 'Test',
+                'keywords' => array('test'),
+            ),
+            array(
+                'topic' => 'Unique Topic',
+                'score' => 88,
+                'reason' => 'Test',
+                'keywords' => array('test'),
+            ),
+        );
+        
+        $saved_count = $this->repository->save_research_batch($topics, 'DuplicateTest');
+        
+        // Only 2 unique topics should be saved
+        $this->assertEquals(2, $saved_count);
+        
+        $all_topics = $this->repository->get_by_niche('DuplicateTest');
+        $this->assertCount(2, $all_topics);
+    }
+    
+    /**
+     * Test save_research_batch returns 0 for empty batch.
+     */
+    public function test_save_research_batch_empty_batch() {
+        $saved_count = $this->repository->save_research_batch(array(), 'EmptyTest');
+        $this->assertEquals(0, $saved_count);
+    }
+    
+    /**
+     * Test create_bulk inserts multiple topics successfully.
+     */
+    public function test_create_bulk_success() {
+        $topics = array(
+            array(
+                'niche' => 'BulkTest',
+                'topic' => 'Bulk Topic 1',
+                'score' => 90,
+                'reason' => 'Test reason 1',
+                'keywords' => array('bulk', 'test'),
+                'researched_at' => current_time('mysql'),
+            ),
+            array(
+                'niche' => 'BulkTest',
+                'topic' => 'Bulk Topic 2',
+                'score' => 85,
+                'reason' => 'Test reason 2',
+                'keywords' => array('bulk', 'test2'),
+                'researched_at' => current_time('mysql'),
+            ),
+        );
+        
+        $result = $this->repository->create_bulk($topics);
+        
+        $this->assertTrue($result);
+        
+        $saved_topics = $this->repository->get_by_niche('BulkTest');
+        $this->assertCount(2, $saved_topics);
+    }
+    
+    /**
+     * Test create_bulk skips entries with missing required fields.
+     */
+    public function test_create_bulk_skips_invalid_entries() {
+        $topics = array(
+            array(
+                'niche' => 'ValidTest',
+                'topic' => 'Valid Topic',
+                'score' => 90,
+            ),
+            array(
+                'niche' => 'ValidTest',
+                // Missing 'topic' field - should be skipped
+                'score' => 85,
+            ),
+            array(
+                // Missing 'niche' field - should be skipped
+                'topic' => 'Invalid Topic',
+                'score' => 80,
+            ),
+        );
+        
+        $result = $this->repository->create_bulk($topics);
+        
+        $this->assertTrue($result);
+        
+        $saved_topics = $this->repository->get_by_niche('ValidTest');
+        $this->assertCount(1, $saved_topics);
+        $this->assertEquals('Valid Topic', $saved_topics[0]['topic']);
+    }
+    
+    /**
+     * Test create_bulk returns false for empty array.
+     */
+    public function test_create_bulk_empty_array() {
+        $result = $this->repository->create_bulk(array());
+        $this->assertFalse($result);
+    }
+    
+    /**
+     * Test delete_bulk deletes multiple topics by ID.
+     */
+    public function test_delete_bulk_deletes_multiple() {
+        $id1 = $this->repository->create(array(
+            'niche' => 'DeleteTest',
+            'topic' => 'To Delete 1',
+            'score' => 80,
+        ));
+        
+        $id2 = $this->repository->create(array(
+            'niche' => 'DeleteTest',
+            'topic' => 'To Delete 2',
+            'score' => 85,
+        ));
+        
+        $id3 = $this->repository->create(array(
+            'niche' => 'DeleteTest',
+            'topic' => 'To Keep',
+            'score' => 90,
+        ));
+        
+        $result = $this->repository->delete_bulk(array($id1, $id2));
+        
+        $this->assertEquals(2, $result);
+        
+        $remaining = $this->repository->get_by_niche('DeleteTest');
+        $this->assertCount(1, $remaining);
+        $this->assertEquals('To Keep', $remaining[0]['topic']);
+    }
+    
+    /**
+     * Test delete_bulk handles invalid/0 IDs by filtering them out.
+     */
+    public function test_delete_bulk_filters_invalid_ids() {
+        $id1 = $this->repository->create(array(
+            'niche' => 'FilterTest',
+            'topic' => 'To Delete',
+            'score' => 80,
+        ));
+        
+        // Pass mix of valid and invalid IDs
+        $result = $this->repository->delete_bulk(array($id1, 0, -5, 'invalid'));
+        
+        $this->assertEquals(1, $result);
+        
+        $topic = $this->repository->get_by_id($id1);
+        $this->assertNull($topic);
+    }
+    
+    /**
+     * Test delete_bulk returns 0 for empty array.
+     */
+    public function test_delete_bulk_empty_array() {
+        $result = $this->repository->delete_bulk(array());
+        $this->assertEquals(0, $result);
+    }
+    
+    /**
+     * Test delete_bulk returns 0 when all IDs are invalid.
+     */
+    public function test_delete_bulk_all_invalid_ids() {
+        $result = $this->repository->delete_bulk(array(0, -1, 'invalid'));
+        $this->assertEquals(0, $result);
+    }
 }
