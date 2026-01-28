@@ -230,6 +230,61 @@ class AIPS_History_Container {
 	}
 	
 	/**
+	 * Log an error with comprehensive context
+	 * 
+	 * Standardized error logging that captures all relevant context for debugging.
+	 * Automatically includes PHP error state, memory usage, and performance metrics.
+	 *
+	 * @param string $message Human-readable error message
+	 * @param array $error_details Error-specific details (e.g., component, error_code, attempt)
+	 * @param WP_Error|null $wp_error Optional WP_Error object for additional context
+	 * @return int|false Log entry ID on success, false on failure
+	 */
+	public function record_error($message, $error_details = array(), $wp_error = null) {
+		$context = array_merge(
+			array(
+				'timestamp' => microtime(true),
+				'php_error' => error_get_last(),
+				'memory_usage' => memory_get_usage(true),
+				'memory_peak' => memory_get_peak_usage(true),
+			),
+			$error_details
+		);
+		
+		// Add WP_Error details if provided
+		if ($wp_error && is_wp_error($wp_error)) {
+			$context['wp_error_code'] = $wp_error->get_error_code();
+			$context['wp_error_message'] = $wp_error->get_error_message();
+			$context['wp_error_data'] = $wp_error->get_error_data();
+		}
+		
+		return $this->record('error', $message, $error_details, null, $context);
+	}
+	
+	/**
+	 * Log a user-initiated action
+	 * 
+	 * Tracks manual operations triggered by users (vs automated/scheduled operations).
+	 * Includes user context automatically.
+	 *
+	 * @param string $action Action type (e.g., 'manual_generation', 'bulk_delete', 'manual_publish')
+	 * @param string $message Human-readable description
+	 * @param array $action_data Data specific to this action
+	 * @return int|false Log entry ID on success, false on failure
+	 */
+	public function record_user_action($action, $message, $action_data = array()) {
+		$context = array(
+			'action_type' => $action,
+			'user_id' => get_current_user_id(),
+			'user_login' => wp_get_current_user()->user_login,
+			'timestamp' => microtime(true),
+			'source' => 'manual_ui',
+		);
+		
+		return $this->record('activity', $message, $action_data, null, $context);
+	}
+	
+	/**
 	 * Complete this history container with success
 	 *
 	 * @param array $result_data Result data (e.g., post_id, title, content)
