@@ -276,21 +276,45 @@ class AIPS_Trending_Topics_Repository {
         $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES ";
 
         foreach ($topics as $data) {
-            $keywords_json = is_array($data['keywords'])
-                ? wp_json_encode($data['keywords'])
-                : (isset($data['keywords']) ? $data['keywords'] : '[]');
+            // Validate required fields.
+            $niche = isset($data['niche']) ? sanitize_text_field($data['niche']) : '';
+            $topic = isset($data['topic']) ? sanitize_text_field($data['topic']) : '';
 
-            array_push($values,
-                sanitize_text_field($data['niche']),
-                sanitize_text_field($data['topic']),
-                absint($data['score']),
-                isset($data['reason']) ? sanitize_text_field($data['reason']) : '',
+            if ($niche === '' || $topic === '') {
+                // Skip entries without a valid niche or topic.
+                continue;
+            }
+
+            $score = isset($data['score']) ? absint($data['score']) : 0;
+            $reason = isset($data['reason']) ? sanitize_text_field($data['reason']) : '';
+
+            if (isset($data['keywords'])) {
+                $keywords_value = $data['keywords'];
+                $keywords_json = is_array($keywords_value)
+                    ? wp_json_encode($keywords_value)
+                    : $keywords_value;
+            } else {
+                $keywords_json = '[]';
+            }
+
+            $researched_at = isset($data['researched_at']) ? $data['researched_at'] : current_time('mysql');
+
+            array_push(
+                $values,
+                $niche,
+                $topic,
+                $score,
+                $reason,
                 $keywords_json,
-                isset($data['researched_at']) ? $data['researched_at'] : current_time('mysql')
+                $researched_at
             );
             $placeholders[] = "(%s, %s, %d, %s, %s, %s)";
         }
 
+        if (empty($placeholders)) {
+            // No valid rows to insert.
+            return false;
+        }
         $query .= implode(', ', $placeholders);
 
         $result = $this->wpdb->query($this->wpdb->prepare($query, $values));
@@ -442,10 +466,24 @@ class AIPS_Trending_Topics_Repository {
             return 0;
         }
 
+        // Sanitize IDs and remove any invalid (zero) values
         $ids = array_map('absint', $ids);
-        $ids_string = implode(',', $ids);
+        $ids = array_filter($ids, function ($id) {
+            return $id > 0;
+        });
 
-        return $this->wpdb->query("DELETE FROM {$this->table_name} WHERE id IN ($ids_string)");
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+
+        $query = $this->wpdb->prepare(
+            "DELETE FROM {$this->table_name} WHERE id IN ($placeholders)",
+            $ids
+        );
+
+        return $this->wpdb->query($query);
     }
 
     /**

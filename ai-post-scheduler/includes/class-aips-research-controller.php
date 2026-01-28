@@ -274,6 +274,27 @@ class AIPS_Research_Controller {
         $result = $scheduler->save_schedule_bulk($schedules_to_create);
 
         if ($result) {
+            // Restore per-topic hook for backward compatibility.
+            foreach ($schedules_to_create as $schedule_data) {
+                /**
+                 * Fires when a trending topic is scheduled for generation.
+                 *
+                 * This action is documented in HOOKS.md and is expected to run
+                 * once per scheduled trending topic.
+                 *
+                 * @since 1.6.0
+                 *
+                 * @param array $schedule_data {
+                 *     Data used to create the schedule, including:
+                 *     @type int    $template_id Template ID used for generation.
+                 *     @type string $frequency   Schedule frequency key.
+                 *     @type string $next_run    Next run datetime (Y-m-d H:i:s).
+                 *     @type int    $is_active   Active flag.
+                 *     @type string $topic       Trending topic text.
+                 * }
+                 */
+                do_action('aips_trending_topic_scheduled', $schedule_data);
+            }
             $count = count($schedules_to_create);
             $this->logger->log("Scheduled {$count} trending topics for generation", 'info', array(
                 'template_id' => $template_id,
