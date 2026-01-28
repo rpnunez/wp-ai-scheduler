@@ -23,3 +23,7 @@
 ## 2025-12-27 - Author Search Consistency
 **Learning:** The "Authors" table was the last major list without search, breaking the expectation set by Templates, Schedules, and Structures. Consistency in basic data tools (search/filter) significantly reduces cognitive load.
 **Action:** Implemented client-side search for Authors using the standard pattern (search input + JS filter), ensuring the entire admin suite now behaves predictably.
+
+## 2025-12-28 - Generation Queue Search Consistency
+**Learning:** The "Generation Queue" tab in `authors.php` loaded all items at once but lacked search functionality, unlike the main "Authors List" and other admin pages, creating an inconsistent experience for users managing large queues.
+**Action:** Implemented client-side search for Generation Queue using the established pattern (search input + JS `filterQueue`), ensuring consistent discoverability across all author-related tabs.
