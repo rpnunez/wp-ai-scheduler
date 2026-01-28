@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-26 - Eliminate Subquery in Execution Count
+**Learning:** `get_schedule_execution_count` was running a subquery to fetch `created_at` for every call, despite the parent object having the data.
+**Action:** Pass available data in objects to avoid redundant DB lookups in helper methods.
