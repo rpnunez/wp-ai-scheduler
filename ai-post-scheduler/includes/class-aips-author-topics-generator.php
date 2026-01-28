@@ -95,12 +95,21 @@ class AIPS_Author_Topics_Generator {
 		
 		// Save topics to database
 		$saved_topics = array();
-		foreach ($topics as $topic_data) {
-			$topic_id = $this->topics_repository->create($topic_data);
-			if ($topic_id) {
-				$saved_topics[] = array_merge($topic_data, array('id' => $topic_id));
-				$this->logger->log("Created topic: {$topic_data['topic_title']}", 'info', array(
-					'topic_id' => $topic_id,
+
+		$result = $this->topics_repository->create_bulk($topics);
+
+		if ($result) {
+			// Fetch the created topics to get their IDs
+			// They are returned in DESC order (latest first), so we reverse to match generation order
+			$created_topics_objects = $this->topics_repository->get_latest_for_author($author->id, count($topics));
+			$created_topics_objects = array_reverse($created_topics_objects);
+
+			foreach ($created_topics_objects as $topic_obj) {
+				$topic_arr = (array) $topic_obj;
+				$saved_topics[] = $topic_arr;
+
+				$this->logger->log("Created topic: {$topic_arr['topic_title']}", 'info', array(
+					'topic_id' => $topic_arr['id'],
 					'author_id' => $author->id
 				));
 			}

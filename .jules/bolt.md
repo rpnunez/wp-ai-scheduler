@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-24 - [Bulk Insert for Topics]
+**Learning:** Replaced iterative inserts with a single `INSERT INTO ... VALUES` query in `AIPS_Author_Topics_Repository::create_bulk`. This required fetching the created IDs separately via `get_latest_for_author` to maintain the return value contract.
+**Action:** When optimizing inserts where IDs are needed, consider if `LAST_INSERT_ID()` + row count logic or a separate fetch query is more robust than N separate inserts.
