@@ -269,4 +269,33 @@ class AIPS_Author_Topics_Repository {
 			)
 		);
 	}
+
+	/**
+	 * Get topic counts by status for all authors.
+	 *
+	 * @return array Associative array of author_id => array('pending' => int, 'approved' => int, 'rejected' => int).
+	 */
+	public function get_all_status_counts() {
+		$results = $this->wpdb->get_results("
+			SELECT author_id, status, COUNT(*) as count
+			FROM {$this->table_name}
+			GROUP BY author_id, status
+		");
+
+		$counts = array();
+
+		foreach ($results as $row) {
+			$author_id = (int) $row->author_id;
+			if (!isset($counts[$author_id])) {
+				$counts[$author_id] = array(
+					'pending' => 0,
+					'approved' => 0,
+					'rejected' => 0
+				);
+			}
+			$counts[$author_id][$row->status] = (int) $row->count;
+		}
+
+		return $counts;
+	}
 }

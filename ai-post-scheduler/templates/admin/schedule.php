@@ -171,7 +171,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2 id="aips-schedule-modal-title"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <form id="aips-schedule-form">

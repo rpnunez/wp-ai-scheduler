@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [hunter-bolt-stability-performance] - 2025-01-16
+### Fixed
+- Fixed potential form submission issues in admin modals by explicitly defining `type="button"` for close buttons in `sections.php`, `voices.php`, `templates.php`, `schedule.php`, and `structures.php`.
+### Improved
+- Optimized the Authors list view by replacing N+1 queries with bulk data fetching, reducing database load when displaying many authors.
+
 ## [wizard-authors-search] - 2025-12-27
 ### Added
 - Added client-side search functionality to the Authors list admin page.

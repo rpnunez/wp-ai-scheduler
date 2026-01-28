@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Modal Verification</title>
+    <style>
+        /* Basic styling to make it visible */
+        .aips-modal { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); font-family: sans-serif; }
+        .aips-modal-content { background: white; margin: 100px auto; padding: 20px; width: 500px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .aips-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 10px; }
+        .aips-modal-close { cursor: pointer; border: none; background: none; font-size: 20px; }
+        .button { padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="aips-section-modal" class="aips-modal">
+        <div class="aips-modal-content">
+            <div class="aips-modal-header">
+                <h2 id="aips-section-modal-title">Add New Prompt Section</h2>
+                <!-- The target element -->
+                <button type="button" class="aips-modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <form id="aips-section-form">
+                    <p>Form content...</p>
+                    <input type="text" placeholder="Some input">
+                </form>
+            </div>
+            <div class="aips-modal-footer" style="margin-top: 20px; text-align: right;">
+                <button type="button" class="button aips-modal-close">Cancel</button>
+                <button type="button" class="button button-primary aips-save-section">Save Section</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

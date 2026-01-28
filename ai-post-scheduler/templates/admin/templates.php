@@ -121,7 +121,7 @@ if (!defined('ABSPATH')) {
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 id="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             
             <!-- Wizard Progress Indicator -->
@@ -507,7 +507,7 @@ if (!defined('ABSPATH')) {
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2><?php esc_html_e('Test Generation Result', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <div id="aips-test-content"></div>
@@ -522,7 +522,7 @@ if (!defined('ABSPATH')) {
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <div id="aips-template-posts-content">

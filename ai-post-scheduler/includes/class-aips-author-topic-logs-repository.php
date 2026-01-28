@@ -178,4 +178,29 @@ class AIPS_Author_Topic_Logs_Repository {
 			$author_id
 		));
 	}
+
+	/**
+	 * Get generated post counts for all authors.
+	 *
+	 * @return array Associative array of author_id => count.
+	 */
+	public function get_all_generated_post_counts() {
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+
+		$results = $this->wpdb->get_results("
+			SELECT t.author_id, COUNT(*) as count
+			FROM {$this->table_name} l
+			INNER JOIN {$topics_table} t ON l.author_topic_id = t.id
+			WHERE l.action = 'post_generated'
+			AND l.post_id IS NOT NULL
+			GROUP BY t.author_id
+		");
+
+		$counts = array();
+		foreach ($results as $row) {
+			$counts[$row->author_id] = (int) $row->count;
+		}
+
+		return $counts;
+	}
 }
