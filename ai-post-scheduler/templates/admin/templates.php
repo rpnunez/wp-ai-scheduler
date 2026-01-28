@@ -429,6 +429,10 @@ if (!defined('ABSPATH')) {
                         <span class="dashicons dashicons-cloud-saved"></span>
                         <?php esc_html_e('Save Draft', 'ai-post-scheduler'); ?>
                     </button>
+                    <button type="button" class="button aips-preview-prompts" title="<?php esc_attr_e('Preview the prompts that will be sent to AI', 'ai-post-scheduler'); ?>">
+                        <span class="dashicons dashicons-visibility"></span>
+                        <?php esc_html_e('Preview Prompts', 'ai-post-scheduler'); ?>
+                    </button>
                 </div>
                 <div class="aips-footer-right">
                     <button type="button" class="button aips-modal-close">
@@ -441,6 +445,59 @@ if (!defined('ABSPATH')) {
                     <button type="button" class="button button-primary aips-save-template" style="display: none;">
                         <?php esc_html_e('Save Template', 'ai-post-scheduler'); ?>
                     </button>
+                </div>
+            </div>
+            
+            <!-- Preview Drawer -->
+            <div class="aips-preview-drawer" id="aips-preview-drawer">
+                <div class="aips-preview-drawer-toggle">
+                    <button type="button" class="aips-preview-drawer-handle" aria-label="<?php esc_attr_e('Toggle preview drawer', 'ai-post-scheduler'); ?>">
+                        <span class="dashicons dashicons-arrow-down-alt2"></span>
+                        <span class="aips-preview-drawer-label"><?php esc_html_e('Prompt Preview', 'ai-post-scheduler'); ?></span>
+                    </button>
+                </div>
+                <div class="aips-preview-drawer-content" style="display: none;">
+                    <div class="aips-preview-loading" style="display: none;">
+                        <span class="spinner is-active"></span>
+                        <span><?php esc_html_e('Generating preview...', 'ai-post-scheduler'); ?></span>
+                    </div>
+                    <div class="aips-preview-error" style="display: none;"></div>
+                    <div class="aips-preview-sections" style="display: none;">
+                        <div class="aips-preview-metadata">
+                            <div class="aips-preview-meta-item" id="aips-preview-voice" style="display: none;">
+                                <strong><?php esc_html_e('Voice:', 'ai-post-scheduler'); ?></strong>
+                                <span class="aips-preview-voice-name"></span>
+                            </div>
+                            <div class="aips-preview-meta-item" id="aips-preview-structure" style="display: none;">
+                                <strong><?php esc_html_e('Article Structure:', 'ai-post-scheduler'); ?></strong>
+                                <span class="aips-preview-structure-name"></span>
+                            </div>
+                            <div class="aips-preview-meta-item">
+                                <strong><?php esc_html_e('Sample Topic:', 'ai-post-scheduler'); ?></strong>
+                                <span class="aips-preview-sample-topic"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="aips-preview-section">
+                            <h4><?php esc_html_e('Content Prompt', 'ai-post-scheduler'); ?></h4>
+                            <div class="aips-preview-prompt-text" id="aips-preview-content-prompt"></div>
+                        </div>
+                        
+                        <div class="aips-preview-section">
+                            <h4><?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?></h4>
+                            <div class="aips-preview-prompt-text" id="aips-preview-title-prompt"></div>
+                        </div>
+                        
+                        <div class="aips-preview-section">
+                            <h4><?php esc_html_e('Excerpt Prompt', 'ai-post-scheduler'); ?></h4>
+                            <div class="aips-preview-prompt-text" id="aips-preview-excerpt-prompt"></div>
+                        </div>
+                        
+                        <div class="aips-preview-section" id="aips-preview-image-section" style="display: none;">
+                            <h4><?php esc_html_e('Image Prompt', 'ai-post-scheduler'); ?></h4>
+                            <div class="aips-preview-prompt-text" id="aips-preview-image-prompt"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
