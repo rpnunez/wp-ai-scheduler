@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [hunter-fix-scheduler-race-condition] - 2026-01-24
+### Fixed
+- Resolved a race condition in schedule execution where concurrent processes could execute the same schedule twice.
+- Implemented optimistic locking in `AIPS_Schedule_Repository` using `update_next_run_conditional`.
+
 ## [wizard-authors-search] - 2025-12-27
 ### Added
 - Added client-side search functionality to the Authors list admin page.
