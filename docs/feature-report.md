@@ -25,7 +25,7 @@
 
 This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **64 core classes** organized into **9 functional categories**.
 
-- **Total Lines of Code**: 18,366
+- **Total Lines of Code**: 18,373
 - **Total Features**: 64
 - **Categories**: Core Generation, Scheduling & Automation, Content Management, Data Management, User Interface, AI Integration, Database, Configuration, Utilities
 
@@ -181,8 +181,8 @@ flowchart TD
     Templates_Controller["Templates Controller"]
     Templates["Templates"]
 
-    Article_Structure_Manager --> Article_Structure_Repository
     Article_Structure_Manager --> Template_Processor
+    Article_Structure_Manager --> Article_Structure_Repository
     Post_Review_Notifications --> Post_Review_Repository
     Post_Review --> Template_Repository
     Post_Review --> Post_Review_Repository
@@ -794,7 +794,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_DB_Manager`
 
-**Lines of Code**: 605
+**Lines of Code**: 606
 
 **Technical Details**:
 
@@ -807,7 +807,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 605 lines (may violate SRP)
+1. Consider refactoring - class has 606 lines (may violate SRP)
 2. Consider using Repository pattern for database access instead of direct $wpdb
 3. Document all custom hooks in HOOKS.md for third-party developers
 4. Ensure unit tests cover all public methods and edge cases
@@ -1698,7 +1698,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Settings`
 
-**Lines of Code**: 957
+**Lines of Code**: 960
 
 **Technical Details**:
 
@@ -1713,7 +1713,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 957 lines (may violate SRP)
+1. Consider refactoring - class has 960 lines (may violate SRP)
 2. High method count (30+ methods) - consider splitting responsibilities
 3. High coupling - depends on 11 classes
 4. Document all custom hooks in HOOKS.md for third-party developers
@@ -1905,7 +1905,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Templates`
 
-**Lines of Code**: 249
+**Lines of Code**: 250
 
 **Technical Details**:
 
@@ -1931,7 +1931,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Templates_Controller`
 
-**Lines of Code**: 271
+**Lines of Code**: 273
 
 **Technical Details**:
 
@@ -2130,11 +2130,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 | Class | Lines | File |
 |-------|-------|------|
-| Settings | 957 | `class-aips-settings.php` |
+| Settings | 960 | `class-aips-settings.php` |
 | Generator | 749 | `class-aips-generator.php` |
 | Author Topics Controller | 657 | `class-aips-author-topics-controller.php` |
 | Post Review | 625 | `class-aips-post-review.php` |
-| Db Manager | 605 | `class-aips-db-manager.php` |
+| Db Manager | 606 | `class-aips-db-manager.php` |
 | Trending Topics Repository | 495 | `class-aips-trending-topics-repository.php` |
 | Ai Service | 454 | `class-aips-ai-service.php` |
 | History Repository | 437 | `class-aips-history-repository.php` |
