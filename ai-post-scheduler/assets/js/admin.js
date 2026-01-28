@@ -70,6 +70,11 @@
             $(document).on('change', '.aips-history-table input[name="history[]"]', this.toggleHistorySelection);
             $(document).on('click', '#aips-delete-selected-btn', this.deleteSelectedHistory);
 
+            // Schedule Bulk Actions
+            $(document).on('change', '#cb-select-all-schedules', this.toggleAllSchedules);
+            $(document).on('change', '.aips-schedules-table input[name="schedule[]"]', this.toggleScheduleSelection);
+            $(document).on('click', '#aips-delete-selected-schedules-btn', this.deleteSelectedSchedules);
+
             // Template Search
             $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
             $(document).on('click', '#aips-template-search-clear', this.clearTemplateSearch);
@@ -1835,6 +1840,68 @@
                 type: 'POST',
                 data: {
                     action: 'aips_bulk_delete_history',
+                    nonce: aipsAjax.nonce,
+                    ids: ids
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                        $btn.prop('disabled', false).text('Delete Selected');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    $btn.prop('disabled', false).text('Delete Selected');
+                }
+            });
+        },
+
+        toggleAllSchedules: function() {
+            var isChecked = $(this).prop('checked');
+            $('.aips-schedules-table input[name="schedule[]"]').prop('checked', isChecked);
+            AIPS.updateScheduleDeleteButton();
+        },
+
+        toggleScheduleSelection: function() {
+            var allChecked = $('.aips-schedules-table input[name="schedule[]"]').length === $('.aips-schedules-table input[name="schedule[]"]:checked').length;
+            $('#cb-select-all-schedules').prop('checked', allChecked);
+            AIPS.updateScheduleDeleteButton();
+        },
+
+        updateScheduleDeleteButton: function() {
+            var count = $('.aips-schedules-table input[name="schedule[]"]:checked').length;
+            var $btn = $('#aips-delete-selected-schedules-btn');
+
+            if (count > 0) {
+                $btn.prop('disabled', false).show();
+            } else {
+                $btn.prop('disabled', true).hide();
+            }
+        },
+
+        deleteSelectedSchedules: function(e) {
+            e.preventDefault();
+            var ids = [];
+            $('.aips-schedules-table input[name="schedule[]"]:checked').each(function() {
+                ids.push($(this).val());
+            });
+
+            if (ids.length === 0) return;
+
+            if (!confirm('Are you sure you want to delete ' + ids.length + ' schedule(s)?')) {
+                return;
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Deleting...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_delete_schedules_bulk',
                     nonce: aipsAjax.nonce,
                     ids: ids
                 },

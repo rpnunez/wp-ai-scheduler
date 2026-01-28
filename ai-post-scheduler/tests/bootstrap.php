@@ -201,6 +201,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('delete_transient')) {
+        function delete_transient($transient) {
+            return delete_option($transient);
+        }
+    }
+
     if (!isset($GLOBALS['aips_test_options'])) {
         $GLOBALS['aips_test_options'] = array();
     }
@@ -566,6 +572,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 if (empty($args)) {
                     return $query;
                 }
+
+                // Handle array argument (WP 3.5+ style)
+                if (count($args) === 1 && is_array($args[0])) {
+                    $args = $args[0];
+                }
+
                 // Replace placeholders in order
                 foreach ($args as $arg) {
                     $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
