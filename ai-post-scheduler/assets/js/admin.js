@@ -1022,12 +1022,12 @@
 
             if (ids.length === 0) return;
 
-            if (!confirm('Are you sure you want to delete ' + ids.length + ' schedule(s)?')) {
+            if (!confirm(aipsAdminL10n.bulkDeleteConfirm.replace('%d', ids.length))) {
                 return;
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true).text('Deleting...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.deleting);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1042,12 +1042,12 @@
                         location.reload();
                     } else {
                         alert(response.data.message);
-                        $btn.prop('disabled', false).text('Delete Selected');
+                        $btn.prop('disabled', false).text(aipsAdminL10n.deleteSelected);
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
-                    $btn.prop('disabled', false).text('Delete Selected');
+                    alert(aipsAdminL10n.errorTryAgain);
+                    $btn.prop('disabled', false).text(aipsAdminL10n.deleteSelected);
                 }
             });
         },
