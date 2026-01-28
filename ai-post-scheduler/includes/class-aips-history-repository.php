@@ -106,18 +106,45 @@ class AIPS_History_Repository {
         $templates_table = $this->wpdb->prefix . 'aips_templates';
         
         // Query for items
+        // Bolt: Late Row Lookup implementation
+        // 1. Fetch IDs first (covering index scan if possible)
         $query_args = $where_args;
         $query_args[] = $args['per_page'];
         $query_args[] = $offset;
 
-        $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.*, t.name as template_name 
+        $ids = $this->wpdb->get_col($this->wpdb->prepare("
+            SELECT h.id
             FROM {$this->table_name} h 
-            LEFT JOIN {$templates_table} t ON h.template_id = t.id 
             WHERE $where_sql
             ORDER BY h.$orderby $order 
             LIMIT %d OFFSET %d
         ", $query_args));
+
+        $results = array();
+
+        // 2. Fetch full rows only for the retrieved IDs
+        if (!empty($ids)) {
+            $ids_placeholder = implode(',', array_fill(0, count($ids), '%d'));
+
+            $rows = $this->wpdb->get_results($this->wpdb->prepare("
+                SELECT h.*, t.name as template_name
+                FROM {$this->table_name} h
+                LEFT JOIN {$templates_table} t ON h.template_id = t.id
+                WHERE h.id IN ($ids_placeholder)
+            ", $ids));
+
+            // 3. Re-order results to match the original sort order (IN clause doesn't guarantee order)
+            $rows_by_id = array();
+            foreach ($rows as $row) {
+                $rows_by_id[$row->id] = $row;
+            }
+
+            foreach ($ids as $id) {
+                if (isset($rows_by_id[$id])) {
+                    $results[] = $rows_by_id[$id];
+                }
+            }
+        }
         
         // Query for total count
         if (!empty($where_args)) {
