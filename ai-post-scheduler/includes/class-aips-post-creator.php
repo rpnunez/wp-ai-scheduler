@@ -62,10 +62,18 @@ class AIPS_Post_Creator {
             return new WP_Error('missing_context', 'Either a template object or generation context is required for post creation.');
         }
 
+        // Clean up AI-generated content to remove markdown artifacts and thinking text
+        $content = $this->clean_ai_content($content);
+        $excerpt = $this->clean_ai_content($excerpt);
+
         $post_data = array(
-            'post_title' => $title,
-            'post_content' => $content,
-            'post_excerpt' => $excerpt,
+            // SECURITY: Sanitize title to prevent XSS (though wp_insert_post handles some, explicit is safer)
+            'post_title' => sanitize_text_field($title),
+            // SECURITY: Sanitize content from AI to prevent Stored XSS (e.g. malicious scripts via prompt injection)
+            // wp_kses_post allows safe HTML tags while stripping <script>, <iframe>, and event handlers.
+            // Code samples should be HTML-encoded within <pre><code> tags, which wp_kses_post preserves.
+            'post_content' => wp_kses_post($content),
+            'post_excerpt' => wp_kses_post($excerpt),
             'post_status' => $post_status,
             'post_author' => $post_author,
             'post_type' => 'post',
@@ -136,6 +144,60 @@ class AIPS_Post_Creator {
         $this->apply_seo_metadata($post_id, $seo_data);
 
         return $post_id;
+    }
+
+    /**
+     * Clean AI-generated content to remove markdown artifacts and preamble text.
+     *
+     * AI models sometimes respond with:
+     * 1. Thinking text before the actual content (e.g., "Let's create...")
+     * 2. Markdown code fences (```html, ```, etc.)
+     * 3. Horizontal rules (---, ***, ___)
+     *
+     * This method strips these artifacts to produce clean HTML content.
+     *
+     * @param string $content Raw AI-generated content.
+     * @return string Cleaned content ready for WordPress.
+     */
+    private function clean_ai_content($content) {
+        if (empty($content)) {
+            return $content;
+        }
+
+        // Remove leading "thinking" text patterns common in AI responses
+        // Match patterns like "Let's create...", "I'll help...", "Here's...", etc.
+        // followed by a newline or separator
+        $content = preg_replace('/^(Let\'s|I\'ll|I will|Here\'s|Here is)\s+[^\n]*\n+/i', '', $content);
+
+        // Remove markdown horizontal rules (---, ***, ___) on their own line
+        $content = preg_replace('/^\s*[-*_]{3,}\s*$/m', '', $content);
+
+        // Remove markdown code fences and convert to HTML if needed
+        // Pattern: ```language\n...code...\n?``` (newline before closing fence is optional)
+        $content = preg_replace_callback(
+            '/```(?:html|css|javascript|js|php|python|java|xml|json)?\s*\n(.*?)\n?```/is',
+            function($matches) {
+                $code = $matches[1];
+                // Check if it's already HTML content (starts with tags)
+                if (preg_match('/^\s*<[a-z]/i', $code)) {
+                    // It's HTML content that was mistakenly wrapped in code fences
+                    return $code;
+                } else {
+                    // It's actual code that should be displayed as code
+                    // HTML-encode it and wrap in <pre><code>
+                    return '<pre><code>' . esc_html($code) . '</code></pre>';
+                }
+            },
+            $content
+        );
+
+        // Clean up excessive blank lines (more than 2 consecutive newlines)
+        $content = preg_replace('/\n{3,}/', "\n\n", $content);
+
+        // Trim leading and trailing whitespace
+        $content = trim($content);
+
+        return $content;
     }
 
     /**
