@@ -777,16 +777,16 @@
 			
 			posts.forEach(post => {
 				html += '<tr>';
-				html += '<td>' + post.post_id + '</td>';
+				html += '<td>' + this.escapeHtml(post.post_id) + '</td>';
 				html += '<td>' + this.escapeHtml(post.post_title) + '</td>';
 				html += '<td>' + this.escapeHtml(post.date_generated) + '</td>';
 				html += '<td>' + this.escapeHtml(post.date_published || aipsAuthorsL10n.notPublished) + '</td>';
 				html += '<td>';
 				if (post.edit_url) {
-					html += '<a href="' + this.escapeHtml(post.edit_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
+					html += '<a href="' + this.sanitizeUrl(post.edit_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
 				}
 				if (post.post_url && post.post_status === 'publish') {
-					html += '<a href="' + this.escapeHtml(post.post_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
+					html += '<a href="' + this.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
 				}
 				html += '</td>';
 				html += '</tr>';
@@ -901,14 +901,78 @@
 		},
 
 		escapeHtml: function (text) {
-			const map = {
-				'&': '&amp;',
-				'<': '&lt;',
-				'>': '&gt;',
-				'"': '&quot;',
-				"'": '&#039;'
-			};
-			return text.replace(/[&<>"']/g, m => map[m]);
+			try {
+				// Handle null, undefined, or non-string values
+				if (text === null || text === undefined) {
+					return '';
+				}
+				
+				// Convert to string if not already
+				const str = String(text);
+				
+				const map = {
+					'&': '&amp;',
+					'<': '&lt;',
+					'>': '&gt;',
+					'"': '&quot;',
+					"'": '&#039;'
+				};
+				return str.replace(/[&<>"']/g, m => map[m]);
+			} catch (error) {
+				console.error('Error in escapeHtml:', error);
+				// Return empty string as a safe fallback
+				return '';
+			}
+		},
+
+		/**
+		 * Sanitize and validate URLs for use in href attributes
+		 * @param {string} url - The URL to sanitize
+		 * @returns {string} - Sanitized URL or empty string if invalid
+		 */
+		sanitizeUrl: function (url) {
+			try {
+				// Handle null, undefined, or empty values
+				if (!url) {
+					return '';
+				}
+				
+				// Convert to string
+				const urlStr = String(url);
+				
+				// Check for allowed protocols
+				const allowedProtocols = ['http://', 'https://', '/'];
+				const isValidProtocol = allowedProtocols.some(protocol => {
+					if (protocol === '/') {
+						return urlStr.startsWith('/');
+					}
+					return urlStr.toLowerCase().startsWith(protocol);
+				});
+				
+				if (!isValidProtocol) {
+					console.warn('Invalid URL protocol:', urlStr);
+					return '';
+				}
+				
+				// Encode the URL to prevent injection
+				// For relative URLs, just escape HTML entities
+				if (urlStr.startsWith('/')) {
+					return this.escapeHtml(urlStr);
+				}
+				
+				// For absolute URLs, validate and encode
+				try {
+					const urlObj = new URL(urlStr);
+					// Return the sanitized URL with HTML entities escaped
+					return this.escapeHtml(urlObj.href);
+				} catch (e) {
+					console.warn('Invalid URL format:', urlStr);
+					return '';
+				}
+			} catch (error) {
+				console.error('Error in sanitizeUrl:', error);
+				return '';
+			}
 		}
 	};
 	
