@@ -133,6 +133,10 @@ class AIPS_Scheduler {
         return $this->repository->delete($id);
     }
 
+    public function delete_schedule_bulk($ids) {
+        return $this->repository->delete_bulk($ids);
+    }
+
     public function toggle_active($id, $is_active) {
         return $this->repository->set_active($id, $is_active);
     }
