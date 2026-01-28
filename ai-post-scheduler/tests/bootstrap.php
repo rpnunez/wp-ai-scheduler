@@ -628,6 +628,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-interval-calculator.php',
         'class-aips-resilience-service.php',
         'class-aips-ai-service.php',
+        'class-aips-variable-resolution-service.php',
         'class-aips-image-service.php',
         'interface-aips-generation-context.php',
         'class-aips-template-context.php',

@@ -28,3 +28,6 @@ All notable changes to this project will be documented in this file.
 - [2025-12-21 01:48:42] Added search functionality to the Generation History page to filter posts by title.
 - [2024-05-22 10:00:00] Refactored Scheduler: Extracted AJAX handlers to `AIPS_Schedule_Controller`, enhanced `AIPS_Scheduler` with better topic and next_run support, and updated `AIPS_Planner` to use the Scheduler service instead of direct SQL.
 - [2024-05-22 10:00:00] Made generated topic titles editable in the Planner before scheduling.
+
+### Refactor
+- [2026-01-28 20:32:09] Extracted AI variable resolution logic from `AIPS_Generator` to `AIPS_Variable_Resolution_Service` to improve separation of concerns and maintainability.

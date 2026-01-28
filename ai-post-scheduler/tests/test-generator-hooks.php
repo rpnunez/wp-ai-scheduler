@@ -34,10 +34,29 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			public function process($value, $topic = null) {
 				return str_replace('{{topic}}', $topic, $value);
 			}
+			public function extract_ai_variables($template) {
+				return array();
+			}
 		};
 
 		$prompt_builder = new class {
 			public function __construct() {
+			}
+
+			public function build_content_prompt($context) {
+				return 'Content prompt';
+			}
+
+			public function build_content_context($context) {
+				return 'Content context';
+			}
+
+			public function build_title_prompt($context, $topic = null, $voice = null, $content = '') {
+				return 'Title prompt';
+			}
+
+			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
+				return 'Excerpt prompt';
 			}
 
 			public function build_base_content_prompt($template, $topic) {
@@ -51,7 +70,23 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 
 		$history_repository = new class {
 			public function create($data) {
-				return 99;
+				return new class {
+					public function with_session($context) {
+						return $this;
+					}
+					public function get_id() {
+						return 99;
+					}
+					public function complete_success($data) {
+						return true;
+					}
+					public function complete_failure($msg, $data) {
+						return true;
+					}
+					public function record($type, $msg, $input = null, $output = null, $context = []) {
+						return true;
+					}
+				};
 			}
 
 			public function update($id, $data) {
@@ -129,6 +164,10 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 		$this->assertTrue($action_called);
 		$this->assertIsArray($captured_data);
 		$this->assertSame('Generated content', $captured_data['content']);
-		$this->assertSame($template, $captured_data['template']);
+
+		// The captured data now contains 'context' instead of 'template'
+		$this->assertTrue(isset($captured_data['context']));
+		$this->assertInstanceOf('AIPS_Template_Context', $captured_data['context']);
+		$this->assertSame($template, $captured_data['context']->get_template());
 	}
 }

@@ -20,3 +20,5 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2026-01-28 - [Extract Variable Resolution Service] **Context:** `AIPS_Generator` contained mixed concerns: pipeline orchestration and specific AI variable resolution logic (building prompts, truncating content, parsing responses). **Decision:** Extracted variable resolution logic into `AIPS_Variable_Resolution_Service`. **Consequence:** `AIPS_Generator` is now cleaner and focused on pipeline orchestration. Variable resolution logic is isolated and easier to test/maintain.
