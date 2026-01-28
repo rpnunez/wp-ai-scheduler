@@ -105,6 +105,11 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        // Hunter: Validate topic length to prevent DB errors and ensure data integrity
+        if (isset($_POST['topic']) && strlen(sanitize_text_field($_POST['topic'])) > 255) {
+            wp_send_json_error(array('message' => __('Topic is too long. Maximum 255 characters allowed.', 'ai-post-scheduler')));
+        }
+
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
         if (!$template_id) {

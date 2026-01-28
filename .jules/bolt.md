@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-25 - Fail-Fast Validation
+**Learning:** Validating input length (e.g., topic length) before attempting expensive operations prevents DB errors and saves resources.
+**Action:** Added 255-char limit check for `topic` in `AIPS_Schedule_Controller::ajax_run_now`.
