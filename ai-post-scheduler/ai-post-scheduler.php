@@ -78,7 +78,6 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-embeddings-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-topic-expansion-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-topic-penalty-service.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-preview-service.php';
         
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-templates-controller.php';

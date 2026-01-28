@@ -277,7 +277,7 @@ class AIPS_Templates_Controller {
      * This endpoint processes the template configuration and returns the actual prompts
      * that would be sent to the AI service, including voice and article structure integration.
      *
-     * Uses AIPS_Prompt_Preview_Service to ensure consistency with actual generation.
+     * Uses AIPS_Prompt_Builder to ensure consistency with actual generation.
      *
      * @since 1.7.0
      */
@@ -303,14 +303,14 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => __('Please enter a content prompt to generate the preview.', 'ai-post-scheduler')));
         }
 
-        // Use the centralized Prompt Preview Service to generate previews
-        $preview_service = new AIPS_Prompt_Preview_Service();
+        // Use Prompt Builder to build all prompts
+        $prompt_builder = new AIPS_Prompt_Builder();
         
         // Get voice if selected
-        $voice = $preview_service->get_voice($template_data->voice_id);
+        $voice = $prompt_builder->get_voice($template_data->voice_id);
 
-        // Generate prompt previews using the service
-        $result = $preview_service->preview_prompts($template_data, null, $voice);
+        // Build prompts using the centralized method
+        $result = $prompt_builder->build_prompts($template_data, null, $voice);
 
         wp_send_json_success($result);
     }
