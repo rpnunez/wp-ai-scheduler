@@ -39,6 +39,7 @@ class AIPS_Generated_Posts_Controller {
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
+		add_action('wp_ajax_aips_get_session_json', array($this, 'ajax_get_session_json'));
 	}
 	
 	/**
@@ -179,6 +180,35 @@ class AIPS_Generated_Posts_Controller {
 			),
 			'logs' => $logs,
 			'ai_calls' => $ai_calls,
+		));
+	}
+	
+	/**
+	 * AJAX handler to get complete session JSON for debugging/BI purposes
+	 */
+	public function ajax_get_session_json() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+		
+		if (!$history_id) {
+			wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
+		}
+		
+		// Use the Session To JSON converter
+		$converter = new AIPS_Session_To_JSON();
+		$json_string = $converter->generate_json_string($history_id, true);
+		
+		if (is_wp_error($json_string)) {
+			wp_send_json_error(array('message' => $json_string->get_error_message()));
+		}
+		
+		wp_send_json_success(array(
+			'json' => $json_string,
 		));
 	}
 }

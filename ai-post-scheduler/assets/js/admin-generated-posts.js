@@ -38,6 +38,9 @@
 			// View Session button handler
 			$(document).on('click', '.aips-view-session', this.handleViewSession.bind(this));
 			
+			// Copy Session JSON button handler
+			$(document).on('click', '.aips-copy-session-json', this.handleCopySessionJSON.bind(this));
+			
 			// Close modal handlers
 			$(document).on('click', '.aips-modal-close, .aips-modal-overlay', this.closeModal.bind(this));
 			
@@ -117,6 +120,9 @@
 		 * Display session data in modal
 		 */
 		displaySessionModal: function(data) {
+			// Store current history ID for JSON export
+			this.currentHistoryId = data.history.id;
+			
 			// Update session info
 			$('#aips-session-title').text(data.history.generated_title || 'N/A');
 			$('#aips-session-created').text(data.history.created_at || 'N/A');
@@ -218,10 +224,120 @@
 		},
 		
 		/**
+		 * Handle Copy Session JSON button click
+		 */
+		handleCopySessionJSON: function(e) {
+			e.preventDefault();
+			var self = this;
+			var $button = $(e.currentTarget);
+			
+			// Check if we have a history ID stored
+			if (!this.currentHistoryId) {
+				this.showNotification('No session data available.', 'error');
+				return;
+			}
+			
+			// Disable button and show loading state
+			$button.prop('disabled', true).text('Loading...');
+			
+			// Fetch the JSON data
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_session_json',
+					nonce: this.ajaxNonce,
+					history_id: this.currentHistoryId
+				},
+				success: function(response) {
+					if (response.success && response.data.json) {
+						// Copy to clipboard
+						self.copyToClipboard(response.data.json, $button);
+					} else {
+						self.showNotification(response.data.message || 'Failed to generate JSON.', 'error');
+						$button.prop('disabled', false).text('Copy Session JSON');
+					}
+				},
+				error: function(xhr, status, error) {
+					console.error('AJAX error:', status, error);
+					self.showNotification('Failed to load session JSON. Please try again.', 'error');
+					$button.prop('disabled', false).text('Copy Session JSON');
+				}
+			});
+		},
+		
+		/**
+		 * Copy text to clipboard
+		 */
+		copyToClipboard: function(text, $button) {
+			var self = this;
+			
+			// Try modern clipboard API first
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(text).then(function() {
+					self.showNotification('Session JSON copied to clipboard!', 'success');
+					$button.prop('disabled', false).text('Copy Session JSON');
+				}).catch(function(err) {
+					console.error('Failed to copy:', err);
+					self.fallbackCopyToClipboard(text, $button);
+				});
+			} else {
+				// Fallback for older browsers
+				self.fallbackCopyToClipboard(text, $button);
+			}
+		},
+		
+		/**
+		 * Fallback clipboard copy method for older browsers
+		 */
+		fallbackCopyToClipboard: function(text, $button) {
+			var self = this;
+			var $temp = $('<textarea>');
+			$('body').append($temp);
+			$temp.val(text).select();
+			
+			try {
+				var successful = document.execCommand('copy');
+				if (successful) {
+					self.showNotification('Session JSON copied to clipboard!', 'success');
+				} else {
+					self.showNotification('Failed to copy to clipboard.', 'error');
+				}
+			} catch (err) {
+				console.error('Fallback copy failed:', err);
+				self.showNotification('Failed to copy to clipboard.', 'error');
+			}
+			
+			$temp.remove();
+			$button.prop('disabled', false).text('Copy Session JSON');
+		},
+		
+		/**
+		 * Show notification message
+		 */
+		showNotification: function(message, type) {
+			// Remove existing notifications
+			$('.aips-notification').remove();
+			
+			// Create notification element
+			var $notification = $('<div class="aips-notification aips-notification-' + type + '">')
+				.text(message)
+				.appendTo('.aips-modal-body');
+			
+			// Auto-hide after 3 seconds
+			setTimeout(function() {
+				$notification.fadeOut(function() {
+					$(this).remove();
+				});
+			}, 3000);
+		},
+		
+		/**
 		 * Close the modal
 		 */
 		closeModal: function() {
 			$('#aips-session-modal').hide();
+			this.currentHistoryId = null;
 		},
 		
 		/**
