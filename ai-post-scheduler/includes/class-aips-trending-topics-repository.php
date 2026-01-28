@@ -211,24 +211,77 @@ class AIPS_Trending_Topics_Repository {
             return false;
         }
         
-        $saved_count = 0;
+        // Prepare data for bulk insert
+        $batch_data = array();
         
         foreach ($topics as $topic) {
-            $result = $this->create(array(
+            $batch_data[] = array(
                 'niche' => $niche,
                 'topic' => $topic['topic'],
                 'score' => $topic['score'],
                 'reason' => isset($topic['reason']) ? $topic['reason'] : '',
                 'keywords' => isset($topic['keywords']) ? $topic['keywords'] : array(),
                 'researched_at' => isset($topic['researched_at']) ? $topic['researched_at'] : current_time('mysql'),
-            ));
+            );
+        }
+
+        // Use bulk insert
+        return $this->create_bulk($batch_data);
+    }
+
+    /**
+     * Create multiple trending topic records.
+     *
+     * @param array $topics Array of topic data arrays.
+     * @return int|false Number of inserted rows or false on failure.
+     */
+    public function create_bulk($topics) {
+        if (empty($topics)) {
+            return false;
+        }
+
+        $values = array();
+        $placeholders = array();
+
+        $defaults = array(
+            'niche' => '',
+            'topic' => '',
+            'score' => 50,
+            'reason' => '',
+            'keywords' => array(),
+            'researched_at' => current_time('mysql'),
+        );
+
+        foreach ($topics as $topic_data) {
+            $data = wp_parse_args($topic_data, $defaults);
             
-            if ($result !== false) {
-                $saved_count++;
+            // Validate
+            if (empty($data['topic']) || empty($data['niche'])) {
+                continue;
             }
+
+            $keywords_json = is_array($data['keywords'])
+                ? wp_json_encode($data['keywords'])
+                : '[]';
+
+            $placeholders[] = "(%s, %s, %d, %s, %s, %s)";
+            array_push($values,
+                $data['niche'],
+                $data['topic'],
+                $data['score'],
+                $data['reason'],
+                $keywords_json,
+                $data['researched_at']
+            );
         }
         
-        return $saved_count;
+        if (empty($placeholders)) {
+            return 0;
+        }
+
+        $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES " . implode(', ', $placeholders);
+
+        return $this->wpdb->query($this->wpdb->prepare($query, $values));
     }
     
     /**
