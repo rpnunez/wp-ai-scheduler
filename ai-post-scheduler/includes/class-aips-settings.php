@@ -513,8 +513,8 @@ class AIPS_Settings {
             );
         }
 
-        // Post Review Page Scripts
-        if (strpos($hook, 'aips-post-review') !== false) {
+        // Post Review Page Scripts (now part of Generated Posts page)
+        if (strpos($hook, 'aips-post-review') !== false || strpos($hook, 'aips-generated-posts') !== false) {
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',

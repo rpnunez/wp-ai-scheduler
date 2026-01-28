@@ -11,6 +11,19 @@
         init: function() {
             this.bindEvents();
             this.initAIVariablesScanner();
+            this.handleInitialTabFromHash();
+        },
+        
+        handleInitialTabFromHash: function() {
+            // Check for hash in URL and activate the corresponding tab
+            var hash = window.location.hash;
+            if (hash) {
+                var tabId = hash.substring(1); // Remove the # prefix
+                var $tabLink = $('.nav-tab[data-tab="' + tabId + '"]');
+                if ($tabLink.length) {
+                    $tabLink.trigger('click');
+                }
+            }
         },
 
         bindEvents: function() {
@@ -386,9 +399,8 @@
             e.preventDefault();
             var tabId = $(this).data('tab');
 
-            var url = new URL(window.location.href);
-            url.searchParams.set('tab', tabId);
-            window.history.pushState({}, '', url.toString());
+            // Update the URL hash instead of query parameter
+            window.location.hash = '#' + tabId;
 
             $('.nav-tab').removeClass('nav-tab-active');
             $(this).addClass('nav-tab-active');
