@@ -2,90 +2,113 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Authors Mock</title>
+    <title>Mock Authors Page</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Minimal CSS to make modals work */
-        .aips-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .aips-modal-content {
-            background: #fff;
-            padding: 20px;
-            width: 600px;
-            max-width: 90%;
-            border-radius: 4px;
-            position: relative;
-            margin: 100px auto; /* Centering hack */
-        }
-        .aips-modal-close {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            cursor: pointer;
-            border: none;
-            background: none;
-            font-size: 20px;
-        }
-        /* WP Admin styles mock */
-        .wrap { margin: 20px; }
-        .button { padding: 5px 10px; cursor: pointer; }
-        .widefat { width: 100%; border-collapse: collapse; }
-        .widefat td, .widefat th { border: 1px solid #ccc; padding: 8px; }
-        .aips-status-topic_approved { color: green; font-weight: bold; }
+        .aips-wrap { padding: 20px; }
+        .wp-list-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .wp-list-table th, .wp-list-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        .screen-reader-text { display: none; }
+        .tablenav { margin-bottom: 10px; }
+        .aips-toast { position: fixed; top: 20px; right: 20px; background: #fff; border: 1px solid #ccc; padding: 10px; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .aips-toast.success { border-left: 4px solid green; }
+        .aips-toast.error { border-left: 4px solid red; }
     </style>
+    <script>
+        var ajaxurl = '/wp-admin/admin-ajax.php';
+        var aipsAuthorsL10n = {
+            nonce: 'mock_nonce',
+            confirmDelete: 'Are you sure?',
+            confirmBulkDeleteAuthors: 'Are you sure you want to delete %d authors? This will delete all associated topics and logs.',
+            authorsDeleted: 'Authors deleted successfully.',
+            errorDeletingAuthors: 'Error deleting authors.',
+            selectBulkAction: 'Please select a bulk action.',
+            noAuthorsSelected: 'Please select at least one author.'
+        };
+    </script>
 </head>
 <body>
+    <div class="wrap aips-wrap">
+        <h1>Authors <button class="page-title-action aips-add-author-btn">Add New Author</button></h1>
 
-<div class="wrap aips-wrap">
-    <h1>Authors Mock</h1>
+        <div id="authors-list-tab" class="aips-authors-tab-content active">
+            <div class="aips-authors-container">
+                <div class="aips-authors-list">
+                    <div class="tablenav top" style="margin-top: 0;">
+                        <div class="alignleft actions bulkactions">
+                            <label for="bulk-action-selector-top" class="screen-reader-text">Select bulk action</label>
+                            <select name="action" id="bulk-action-selector-top">
+                                <option value="-1">Bulk Actions</option>
+                                <option value="delete">Delete</option>
+                            </select>
+                            <input type="submit" id="doaction" class="button action aips-authors-bulk-action" value="Apply">
+                        </div>
+                    </div>
 
-    <!-- Button to trigger View Topics (which contains the View Log button in real app) -->
-    <!-- For testing View Log directly, I'll add a mock "View Topic Log" button here -->
-    <button class="button aips-view-topic-log" data-id="123">View Topic Log</button>
-
-    <!-- Topic Logs Modal (Copied from authors.php) -->
-    <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">
-        <div class="aips-modal-content aips-modal-large">
-            <button type="button" class="aips-modal-close" aria-label="Close modal">&times;</button>
-            <h2 id="aips-topic-logs-modal-title">Topic History Log</h2>
-            <div id="aips-topic-logs-content">
-                <p>Loading logs...</p>
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <td id="cb" class="manage-column column-cb check-column">
+                                    <input id="cb-select-all-1" type="checkbox" class="aips-author-select-all">
+                                </td>
+                                <th class="column-name">Name</th>
+                                <th class="column-field">Field/Niche</th>
+                                <th class="column-topics">Topics</th>
+                                <th class="column-posts">Posts Generated</th>
+                                <th class="column-active">Active</th>
+                                <th class="column-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-author-id="1">
+                                <th scope="row" class="check-column">
+                                    <input id="cb-select-1" type="checkbox" name="author[]" value="1" class="aips-author-checkbox">
+                                </th>
+                                <td class="column-name"><strong>John Doe</strong></td>
+                                <td class="column-field">Tech</td>
+                                <td class="column-topics">10 total</td>
+                                <td class="column-posts"><strong>5</strong></td>
+                                <td class="column-active">Yes</td>
+                                <td class="column-actions"><button>Edit</button></td>
+                            </tr>
+                            <tr data-author-id="2">
+                                <th scope="row" class="check-column">
+                                    <input id="cb-select-2" type="checkbox" name="author[]" value="2" class="aips-author-checkbox">
+                                </th>
+                                <td class="column-name"><strong>Jane Smith</strong></td>
+                                <td class="column-field">Science</td>
+                                <td class="column-topics">15 total</td>
+                                <td class="column-posts"><strong>8</strong></td>
+                                <td class="column-active">Yes</td>
+                                <td class="column-actions"><button>Edit</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
-</div>
+    <div id="aips-toast-container"></div>
 
-<script>
-    // Mock Localization
-    var aipsAuthorsL10n = {
-        nonce: 'mock_nonce',
-        logViewerLoading: 'Loading logs...',
-        logViewerError: 'Error loading logs.',
-        noLogsFound: 'No history found for this topic.',
-        logAction: 'Action',
-        logUser: 'User',
-        logDate: 'Date',
-        logDetails: 'Details'
-    };
-    var ajaxurl = 'https://example.com/wp-admin/admin-ajax.php'; // Absolute URL for network interception
+    <script src="../ai-post-scheduler/assets/js/authors.js"></script>
 
-    // Mock jQuery script that we just modified
-    // We will load the actual JS file via Playwright or inject it?
-    // Better to include it via script tag referencing the local file
-</script>
-<script src="../ai-post-scheduler/assets/js/authors.js"></script>
-
+    <!-- Mock AJAX interceptor -->
+    <script>
+        $.ajax = function(options) {
+            console.log('AJAX call intercepted:', options);
+            if (options.data.action === 'aips_bulk_delete_authors') {
+                 // Simulate success after a delay
+                 setTimeout(function() {
+                     if (options.success) {
+                         options.success({
+                             success: true,
+                             data: { message: '2 authors deleted successfully.' }
+                         });
+                     }
+                 }, 500);
+            }
+        };
+    </script>
 </body>
 </html>

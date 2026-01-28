@@ -76,6 +76,24 @@ class AIPS_Author_Topic_Logs_Repository {
 		$result = $this->wpdb->insert($this->table_name, $data);
 		return $result ? $this->wpdb->insert_id : false;
 	}
+
+	/**
+	 * Delete logs for multiple topics.
+	 *
+	 * @param array $topic_ids Array of topic IDs.
+	 * @return int|false The number of rows deleted, or false on error.
+	 */
+	public function delete_by_topic_ids($topic_ids) {
+		if (empty($topic_ids)) {
+			return 0;
+		}
+
+		$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
+		return $this->wpdb->query($this->wpdb->prepare(
+			"DELETE FROM {$this->table_name} WHERE author_topic_id IN ({$placeholders})",
+			...$topic_ids
+		));
+	}
 	
 	/**
 	 * Log an approval action.
