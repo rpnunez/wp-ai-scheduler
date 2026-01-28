@@ -402,9 +402,11 @@
             // Update the URL hash instead of query parameter
             window.location.hash = '#' + tabId;
 
-            $('.nav-tab').removeClass('nav-tab-active');
-            $(this).addClass('nav-tab-active');
+            // Update nav-tab states
+            $('.nav-tab').removeClass('nav-tab-active').attr('aria-selected', 'false');
+            $(this).addClass('nav-tab-active').attr('aria-selected', 'true');
 
+            // Update tab content visibility
             $('.aips-tab-content').hide();
             $('#' + tabId + '-tab').show();
         },
