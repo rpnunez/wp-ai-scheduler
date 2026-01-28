@@ -106,8 +106,9 @@ class AIPS_Interval_Calculator {
         // If start time is in the past, add intervals until future (Catch-up logic)
         // This prevents schedule drift by preserving the phase of the schedule
         if ($base_time < $now) {
-            // Safety limit to prevent infinite loops if interval is 0 or very small/broken
-            $limit = 100;
+            // Safety limit to prevent infinite loops if interval is 0 or very small/broken.
+            // Increased to 50,000 to cover significant downtime (e.g., ~5 years of hourly runs).
+            $limit = 50000;
             while ($base_time <= $now && $limit > 0) {
                 $base_time = $this->calculate_next_timestamp($frequency, $base_time);
                 $limit--;
