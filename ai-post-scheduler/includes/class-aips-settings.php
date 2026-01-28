@@ -511,6 +511,17 @@ class AIPS_Settings {
             'loadingError' => __('Failed to load activity data.', 'ai-post-scheduler'),
         ));
 
+        // Generated Posts Page Scripts
+        if (strpos($hook, 'aips-generated-posts') !== false) {
+            wp_enqueue_script(
+                'aips-admin-generated-posts',
+                AIPS_PLUGIN_URL . 'assets/js/admin-generated-posts.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
         // Post Review Page Scripts
         if (strpos($hook, 'aips-post-review') !== false) {
             wp_enqueue_script(
