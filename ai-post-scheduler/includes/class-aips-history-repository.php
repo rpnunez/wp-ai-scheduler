@@ -105,19 +105,38 @@ class AIPS_History_Repository {
         
         $templates_table = $this->wpdb->prefix . 'aips_templates';
         
-        // Query for items
+        // Query for items using Late Row Lookup (Atlas: Performance Optimization)
         $query_args = $where_args;
         $query_args[] = $args['per_page'];
         $query_args[] = $offset;
 
-        $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.*, t.name as template_name 
+        // Step 1: Fetch IDs only
+        $ids = $this->wpdb->get_col($this->wpdb->prepare("
+            SELECT h.id
             FROM {$this->table_name} h 
             LEFT JOIN {$templates_table} t ON h.template_id = t.id 
             WHERE $where_sql
             ORDER BY h.$orderby $order 
             LIMIT %d OFFSET %d
         ", $query_args));
+
+        if (empty($ids)) {
+            $results = array();
+        } else {
+            // Step 2: Fetch full rows
+            $ids_placeholder = implode(',', array_fill(0, count($ids), '%d'));
+
+            // We pass the IDs twice: once for the IN clause, and once for ORDER BY FIELD to preserve order
+            $query_params = array_merge($ids, $ids);
+
+            $results = $this->wpdb->get_results($this->wpdb->prepare("
+                SELECT h.*, t.name as template_name
+                FROM {$this->table_name} h
+                LEFT JOIN {$templates_table} t ON h.template_id = t.id
+                WHERE h.id IN ($ids_placeholder)
+                ORDER BY FIELD(h.id, $ids_placeholder)
+            ", $query_params));
+        }
         
         // Query for total count
         if (!empty($where_args)) {

@@ -285,4 +285,31 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $expected = '2024-01-02 10:00:00';
         $this->assertEquals($expected, $next);
     }
+
+    /**
+     * Test calculate_next_run preserves phase even with long delays (catch-up logic)
+     */
+    public function test_calculate_next_run_preserves_phase_long_delay() {
+        // Define a start time 200 hours ago
+        // This exceeds the default limit of 100 iterations if not increased
+        $now = time();
+        $hours_ago = 200;
+        $start_time = date('Y-m-d H:i:s', $now - ($hours_ago * 3600));
+
+        // Use 200 hours + 30 minutes ago to test phase preservation
+        $start_time_phased = date('Y-m-d H:i:s', $now - ($hours_ago * 3600) - 1800);
+        $next_run_phased = $this->calculator->calculate_next_run('hourly', $start_time_phased);
+        $next_run_phased_ts = strtotime($next_run_phased);
+
+        // Check if it's in the future
+        $this->assertGreaterThan($now, $next_run_phased_ts, 'Next run should be in the future');
+
+        // Check if phase is preserved (minutes should be same as start time)
+        $start_min = date('i', strtotime($start_time_phased));
+        $next_run_min = date('i', $next_run_phased_ts);
+
+        // If the loop limit is hit, it defaults to now + interval, which likely resets the phase to current minute
+        // This assertion will fail if the loop limit is too low (e.g. 100)
+        $this->assertEquals($start_min, $next_run_min, 'Phase (minutes) should be preserved even after long delay');
+    }
 }

@@ -20,3 +20,8 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-25 - Late Row Lookup Strategy
+**Context:** `OFFSET` performance degrades significantly on large tables (like `aips_history`).
+**Decision:** Refactored `AIPS_History_Repository::get_history` to use "Late Row Lookup": 1) Fetch IDs with `LIMIT/OFFSET`, 2) Fetch full rows via `WHERE id IN (...)`.
+**Consequence:** Improved performance for deep pagination by avoiding reading full rows during the offset scan.

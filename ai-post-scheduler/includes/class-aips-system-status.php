@@ -106,9 +106,17 @@ class AIPS_System_Status {
                     'status' => 'error',
                 );
             } else {
+                // Wizard: Add table size information
+                $table_status = $wpdb->get_row($wpdb->prepare("SHOW TABLE STATUS LIKE %s", $full_table_name));
+                $size_msg = '';
+                if ($table_status && isset($table_status->Data_length) && isset($table_status->Index_length)) {
+                    $size = $table_status->Data_length + $table_status->Index_length;
+                    $size_msg = ' (Size: ' . size_format($size, 2) . ')';
+                }
+
                 $results[$table_name] = array(
                     'label' => "Table: $table_name",
-                    'value' => 'OK',
+                    'value' => 'OK' . $size_msg,
                     'status' => 'ok',
                 );
             }

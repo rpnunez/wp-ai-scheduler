@@ -23,3 +23,7 @@
 ## 2025-12-27 - Author Search Consistency
 **Learning:** The "Authors" table was the last major list without search, breaking the expectation set by Templates, Schedules, and Structures. Consistency in basic data tools (search/filter) significantly reduces cognitive load.
 **Action:** Implemented client-side search for Authors using the standard pattern (search input + JS filter), ensuring the entire admin suite now behaves predictably.
+
+## 2024-05-25 - System Status DB Visibility
+**Learning:** Users lack visibility into table sizes, which is critical for monitoring database growth (logs, history).
+**Action:** Added logic to `AIPS_System_Status::check_database` to execute `SHOW TABLE STATUS` and append size information to the report.
