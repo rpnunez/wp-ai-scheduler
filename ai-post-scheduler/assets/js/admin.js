@@ -19,6 +19,7 @@
             $(document).on('click', '.aips-clone-template', this.cloneTemplate);
             $(document).on('click', '.aips-delete-template', this.deleteTemplate);
             $(document).on('click', '.aips-save-template', this.saveTemplate);
+            $(document).on('click', '.aips-save-draft-template', this.saveDraftTemplate);
             $(document).on('click', '.aips-test-template', this.testTemplate);
             $(document).on('click', '.aips-run-now', this.runNow);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
@@ -26,6 +27,10 @@
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
             $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
             $(document).on('keyup', '#voice_search', this.searchVoices);
+
+            // Wizard navigation
+            $(document).on('click', '.aips-wizard-next', this.wizardNext);
+            $(document).on('click', '.aips-wizard-back', this.wizardBack);
 
             // AI Variables scanning
             $(document).on('input', '.aips-ai-var-input', function() {
@@ -404,6 +409,8 @@
             AIPS.toggleImagePrompt();
             // Reset AI Variables panel
             AIPS.updateAIVariablesPanel([]);
+            // Initialize wizard to step 1
+            AIPS.wizardGoToStep(1);
             $('#aips-template-modal').show();
         },
 
@@ -427,6 +434,7 @@
                         var t = response.data.template;
                         $('#template_id').val(t.id);
                         $('#template_name').val(t.name);
+                        $('#template_description').val(t.description || '');
                         $('#prompt_template').val(t.prompt_template);
                         $('#title_prompt').val(t.title_prompt);
                         $('#post_quantity').val(t.post_quantity || 1);
@@ -445,6 +453,8 @@
                         // Scan for AI Variables after loading template data
                         AIPS.initAIVariablesScanner();
                         $('#aips-modal-title').text('Edit Template');
+                        // Initialize wizard to step 1
+                        AIPS.wizardGoToStep(1);
                         $('#aips-template-modal').show();
                     } else {
                         alert(response.data.message);
@@ -571,6 +581,7 @@
                     nonce: aipsAjax.nonce,
                     template_id: $('#template_id').val(),
                     name: $('#template_name').val(),
+                    description: $('#template_description').val(),
                     prompt_template: $('#prompt_template').val(),
                     title_prompt: $('#title_prompt').val(),
                     voice_id: $('#voice_id').val(),
@@ -598,6 +609,61 @@
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Template');
+                }
+            });
+        },
+
+        saveDraftTemplate: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            
+            // Validate at least name is provided
+            if (!$('#template_name').val().trim()) {
+                alert(aipsAdminL10n.templateNameRequired);
+                $('#template_name').focus();
+                AIPS.wizardGoToStep(1);
+                return;
+            }
+
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-cloud-saved"></span> Saving...');
+
+            // Save with is_active set to 0 (inactive)
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_save_template',
+                    nonce: aipsAjax.nonce,
+                    template_id: $('#template_id').val(),
+                    name: $('#template_name').val(),
+                    description: $('#template_description').val(),
+                    prompt_template: $('#prompt_template').val() || '',
+                    title_prompt: $('#title_prompt').val(),
+                    voice_id: $('#voice_id').val(),
+                    post_quantity: $('#post_quantity').val(),
+                    generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
+                    image_prompt: $('#image_prompt').val(),
+                    featured_image_source: $('#featured_image_source').val(),
+                    featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
+                    featured_image_media_ids: $('#featured_image_media_ids').val(),
+                    post_status: $('#post_status').val(),
+                    post_category: $('#post_category').val(),
+                    post_tags: $('#post_tags').val(),
+                    post_author: $('#post_author').val(),
+                    is_active: 0 // Save as inactive draft
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-cloud-saved"></span> Save Draft');
                 }
             });
         },
@@ -1653,6 +1719,138 @@
                 $target.hide();
             } else {
                 $('.aips-modal').hide();
+            }
+        },
+
+        // Wizard Navigation Functions
+        wizardGoToStep: function(step) {
+            var totalSteps = 5;
+            
+            // Hide all steps
+            $('.aips-wizard-step-content').hide();
+            
+            // Show current step
+            $('.aips-wizard-step-content[data-step="' + step + '"]').show();
+            
+            // Update progress indicator
+            $('.aips-wizard-step').removeClass('active completed');
+            $('.aips-wizard-step').each(function() {
+                var stepNum = parseInt($(this).data('step'));
+                if (stepNum < step) {
+                    $(this).addClass('completed');
+                } else if (stepNum === step) {
+                    $(this).addClass('active');
+                }
+            });
+            
+            // Update button visibility
+            if (step === 1) {
+                $('.aips-wizard-back').hide();
+            } else {
+                $('.aips-wizard-back').show();
+            }
+            
+            if (step === totalSteps) {
+                $('.aips-wizard-next').hide();
+                $('.aips-save-template').show();
+                // Update summary
+                AIPS.updateWizardSummary();
+            } else {
+                $('.aips-wizard-next').show();
+                $('.aips-save-template').hide();
+            }
+            
+            // Store current step
+            AIPS.currentWizardStep = step;
+        },
+
+        wizardNext: function(e) {
+            e.preventDefault();
+            var currentStep = AIPS.currentWizardStep || 1;
+            
+            // Validate current step before proceeding
+            if (!AIPS.validateWizardStep(currentStep)) {
+                return;
+            }
+            
+            if (currentStep < 5) {
+                AIPS.wizardGoToStep(currentStep + 1);
+            }
+        },
+
+        wizardBack: function(e) {
+            e.preventDefault();
+            var currentStep = AIPS.currentWizardStep || 1;
+            
+            if (currentStep > 1) {
+                AIPS.wizardGoToStep(currentStep - 1);
+            }
+        },
+
+        validateWizardStep: function(step) {
+            var isValid = true;
+            var errorMessage = '';
+            
+            switch(step) {
+                case 1:
+                    // Validate name (required)
+                    if (!$('#template_name').val().trim()) {
+                        errorMessage = aipsAdminL10n.templateNameRequired;
+                        isValid = false;
+                        $('#template_name').focus();
+                    }
+                    break;
+                case 2:
+                    // Title prompt is optional, so no validation needed
+                    break;
+                case 3:
+                    // Validate content prompt (required)
+                    if (!$('#prompt_template').val().trim()) {
+                        errorMessage = aipsAdminL10n.contentPromptRequired;
+                        isValid = false;
+                        $('#prompt_template').focus();
+                    }
+                    break;
+                case 4:
+                    // Featured image settings are optional
+                    break;
+                case 5:
+                    // Final step, just display summary
+                    break;
+            }
+            
+            if (!isValid && errorMessage) {
+                alert(errorMessage);
+            }
+            
+            return isValid;
+        },
+
+        updateWizardSummary: function() {
+            // Update summary display with current form values
+            $('#summary_name').text($('#template_name').val() || '-');
+            $('#summary_description').text($('#template_description').val() || '-');
+            
+            var titlePrompt = $('#title_prompt').val();
+            $('#summary_title_prompt').text(titlePrompt || 'Auto-generate from content');
+            
+            var contentPrompt = $('#prompt_template').val();
+            if (contentPrompt.length > 100) {
+                contentPrompt = contentPrompt.substring(0, 100) + '...';
+            }
+            $('#summary_content_prompt').text(contentPrompt || '-');
+            
+            var voiceText = $('#voice_id option:selected').text();
+            $('#summary_voice').text(voiceText || 'None');
+            
+            $('#summary_quantity').text($('#post_quantity').val() || '1');
+            
+            var featuredImage = $('#generate_featured_image').is(':checked');
+            if (featuredImage) {
+                var source = $('#featured_image_source option:selected').text();
+                $('#summary_featured_image').text('Yes (' + source + ')');
+            } else {
+                $('#summary_featured_image').text('No');
             }
         },
 
