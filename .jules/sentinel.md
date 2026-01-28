@@ -22,3 +22,8 @@
 **Vulnerability:** Unescaped insertion of database content (`generated_title`, `error_message`, `template.name`) into the DOM via string concatenation in `admin.js`.
 **Learning:** Admin interfaces are often treated as "trusted zones," but data originating from complex flows (like AI generation or indirect inputs) can be compromised (e.g., via Prompt Injection or Stored XSS). Concatenating HTML strings in JS without explicit escaping is a persistent vulnerability pattern.
 **Prevention:** Use a dedicated escaping utility (like `AIPS.escapeHtml()`) for ALL dynamic data inserted into the DOM, regardless of its source (database, API, or user input).
+
+## 2024-05-27 - [Sensitive Data Exposure in UI]
+**Vulnerability:** Unsplash API key displayed in a plain text input field (`<input type="text">`).
+**Learning:** Developers often default to `type="text"` for configuration settings, forgetting that API keys and secrets should be treated as sensitive data even within an admin interface to prevent casual exposure (shoulder surfing).
+**Prevention:** Always use `<input type="password">` or similar masking mechanisms for fields containing API keys, passwords, or other secrets.
