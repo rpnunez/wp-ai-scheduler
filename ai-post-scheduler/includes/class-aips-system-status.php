@@ -261,4 +261,20 @@ class AIPS_System_Status {
 
         return array_reverse($errors); // Most recent first
     }
+
+    public function get_text_report($system_info) {
+        $report = "### AIPS System Report ###\n\n";
+        foreach ($system_info as $section => $checks) {
+            if (empty($checks)) continue;
+            $report .= "## " . ucfirst($section) . "\n";
+            foreach ($checks as $key => $check) {
+                 $report .= "- " . $check['label'] . ": " . $check['value'] . " (" . strtoupper($check['status']) . ")\n";
+                 if (!empty($check['details']) && is_array($check['details'])) {
+                     $report .= "  Details:\n  " . implode("\n  ", $check['details']) . "\n";
+                 }
+            }
+            $report .= "\n";
+        }
+        return $report;
+    }
 }

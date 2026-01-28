@@ -23,3 +23,7 @@
 ## 2025-12-27 - Author Search Consistency
 **Learning:** The "Authors" table was the last major list without search, breaking the expectation set by Templates, Schedules, and Structures. Consistency in basic data tools (search/filter) significantly reduces cognitive load.
 **Action:** Implemented client-side search for Authors using the standard pattern (search input + JS filter), ensuring the entire admin suite now behaves predictably.
+
+## 2025-12-28 - Copy Button Pattern
+**Learning:** The project uses a `data-clipboard-text` attribute on `.aips-copy-btn` elements to handle clipboard interactions, with built-in support for icon feedback (swapping to checkmark).
+**Action:** Always reuse `.aips-copy-btn` class and `data-clipboard-text` attribute for copy functionality instead of writing custom JS handlers.
