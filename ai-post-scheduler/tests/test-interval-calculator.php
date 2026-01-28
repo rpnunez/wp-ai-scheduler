@@ -60,10 +60,10 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run for hourly frequency
      */
     public function test_calculate_next_run_hourly() {
-        $start = '2024-01-01 10:00:00';
+        $start = date('Y-m-d H:i:s', strtotime('+1 day', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('hourly', $start);
         
-        $expected = '2024-01-01 11:00:00';
+        $expected = date('Y-m-d H:i:s', strtotime('+1 hour', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 
@@ -71,10 +71,10 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run for daily frequency
      */
     public function test_calculate_next_run_daily() {
-        $start = '2024-01-01 10:00:00';
+        $start = date('Y-m-d H:i:s', strtotime('+1 day', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('daily', $start);
         
-        $expected = '2024-01-02 10:00:00';
+        $expected = date('Y-m-d H:i:s', strtotime('+1 day', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 
@@ -82,10 +82,10 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run for weekly frequency
      */
     public function test_calculate_next_run_weekly() {
-        $start = '2024-01-01 10:00:00';
+        $start = date('Y-m-d H:i:s', strtotime('+1 day', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('weekly', $start);
         
-        $expected = '2024-01-08 10:00:00';
+        $expected = date('Y-m-d H:i:s', strtotime('+1 week', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 
@@ -93,10 +93,10 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run for monthly frequency
      */
     public function test_calculate_next_run_monthly() {
-        $start = '2024-01-15 10:00:00';
+        $start = date('Y-m-d H:i:s', strtotime('+1 day', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('monthly', $start);
         
-        $expected = '2024-02-15 10:00:00';
+        $expected = date('Y-m-d H:i:s', strtotime('+1 month', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 
@@ -104,10 +104,10 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run for every 4 hours
      */
     public function test_calculate_next_run_every_4_hours() {
-        $start = '2024-01-01 10:00:00';
+        $start = date('Y-m-d H:i:s', strtotime('+1 day', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('every_4_hours', $start);
         
-        $expected = '2024-01-01 14:00:00';
+        $expected = date('Y-m-d H:i:s', strtotime('+4 hours', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 
@@ -115,10 +115,10 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run for every 6 hours
      */
     public function test_calculate_next_run_every_6_hours() {
-        $start = '2024-01-01 10:00:00';
+        $start = date('Y-m-d H:i:s', strtotime('+1 day', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('every_6_hours', $start);
         
-        $expected = '2024-01-01 16:00:00';
+        $expected = date('Y-m-d H:i:s', strtotime('+6 hours', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 
@@ -126,10 +126,10 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run for every 12 hours
      */
     public function test_calculate_next_run_every_12_hours() {
-        $start = '2024-01-01 10:00:00';
+        $start = date('Y-m-d H:i:s', strtotime('+1 day', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('every_12_hours', $start);
         
-        $expected = '2024-01-01 22:00:00';
+        $expected = date('Y-m-d H:i:s', strtotime('+12 hours', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 
@@ -137,10 +137,10 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run for bi-weekly frequency
      */
     public function test_calculate_next_run_bi_weekly() {
-        $start = '2024-01-01 10:00:00';
+        $start = date('Y-m-d H:i:s', strtotime('+1 day', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('bi_weekly', $start);
         
-        $expected = '2024-01-15 10:00:00';
+        $expected = date('Y-m-d H:i:s', strtotime('+2 weeks', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 
@@ -148,12 +148,12 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run for day-specific frequency
      */
     public function test_calculate_next_run_day_specific() {
-        // January 1, 2024 is a Monday
-        $start = '2024-01-01 10:00:00';
+        // Use next Monday from now as start
+        $start = date('Y-m-d H:i:s', strtotime('next Monday 10:00:00', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('every_monday', $start);
         
-        // Next Monday should be January 8, 2024
-        $expected = '2024-01-08 10:00:00';
+        // Next Monday should be 1 week later
+        $expected = date('Y-m-d H:i:s', strtotime('+1 week', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 
@@ -161,12 +161,12 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run preserves time for day-specific
      */
     public function test_calculate_next_run_preserves_time() {
-        // January 1, 2024 is a Monday, set time to 14:30
-        $start = '2024-01-01 14:30:00';
+        // Use next Monday 14:30 from now as start
+        $start = date('Y-m-d H:i:s', strtotime('next Monday 14:30:00', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('every_wednesday', $start);
         
-        // Next Wednesday should be January 3, 2024 at 14:30
-        $expected = '2024-01-03 14:30:00';
+        // Next Wednesday after start (Monday)
+        $expected = date('Y-m-d H:i:s', strtotime('next Wednesday 14:30:00', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 
@@ -278,11 +278,11 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
      * Test calculate_next_run with invalid frequency defaults to daily
      */
     public function test_calculate_next_run_invalid_defaults_to_daily() {
-        $start = '2024-01-01 10:00:00';
+        $start = date('Y-m-d H:i:s', strtotime('+1 day', current_time('timestamp')));
         $next = $this->calculator->calculate_next_run('invalid_frequency', $start);
         
         // Should default to +1 day
-        $expected = '2024-01-02 10:00:00';
+        $expected = date('Y-m-d H:i:s', strtotime('+1 day', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
 }

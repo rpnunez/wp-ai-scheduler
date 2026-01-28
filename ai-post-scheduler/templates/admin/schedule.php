@@ -85,7 +85,21 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         <?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->frequency))); ?>
                     </td>
                     <td class="column-next-run">
-                        <?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($schedule->next_run))); ?>
+                        <?php
+                        $next_run_ts = strtotime($schedule->next_run);
+                        echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $next_run_ts));
+
+                        $now_ts = current_time('timestamp');
+                        $time_diff = human_time_diff($next_run_ts, $now_ts);
+
+                        if ($next_run_ts > $now_ts) {
+                            $relative_time = sprintf(__(' (in %s)', 'ai-post-scheduler'), $time_diff);
+                        } else {
+                            $relative_time = sprintf(__(' (%s ago)', 'ai-post-scheduler'), $time_diff);
+                        }
+
+                        echo '<br><small style="color: #666;">' . esc_html($relative_time) . '</small>';
+                        ?>
                     </td>
                     <td class="column-last-run">
                         <?php 
