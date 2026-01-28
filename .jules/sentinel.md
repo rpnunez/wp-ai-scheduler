@@ -22,3 +22,8 @@
 **Vulnerability:** Unescaped insertion of database content (`generated_title`, `error_message`, `template.name`) into the DOM via string concatenation in `admin.js`.
 **Learning:** Admin interfaces are often treated as "trusted zones," but data originating from complex flows (like AI generation or indirect inputs) can be compromised (e.g., via Prompt Injection or Stored XSS). Concatenating HTML strings in JS without explicit escaping is a persistent vulnerability pattern.
 **Prevention:** Use a dedicated escaping utility (like `AIPS.escapeHtml()`) for ALL dynamic data inserted into the DOM, regardless of its source (database, API, or user input).
+
+## 2025-05-27 - [Arbitrary SQL Execution in Data Import]
+**Vulnerability:** Weak keyword-based validation (`strpos` check for 'TABLE' or 'INSERT') allowed arbitrary SQL execution (e.g. `UPDATE`, `DELETE`) on non-plugin tables during MySQL dump import.
+**Learning:** Keyword blacklisting/whitelisting using simple string search is insufficient for SQL validation because SQL syntax is flexible (e.g., `DELETE` doesn't require the word `TABLE`). "Fail open" logic where queries are allowed if they *don't* match a pattern is dangerous.
+**Prevention:** Use a strict "fail closed" whitelist of allowed SQL commands (`INSERT`, `CREATE`, etc.) and parse the target table name using Regex to enforce that operations only affect specific allowed tables.
