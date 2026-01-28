@@ -214,4 +214,84 @@ class Test_Session_To_JSON extends WP_UnitTestCase {
 		$this->assertEquals('This is encoded content', $log['details']['output']);
 		$this->assertArrayNotHasKey('output_encoded', $log['details']);
 	}
+	
+	/**
+	 * Test that malformed JSON in log details is handled gracefully
+	 */
+	public function test_malformed_json_handling() {
+		// Create a history entry
+		$history_id = $this->history_repository->create(array(
+			'template_id' => 1,
+			'status' => 'completed',
+			'generated_title' => 'Test Post',
+		));
+		
+		// Manually insert a log with malformed JSON
+		global $wpdb;
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_history_log',
+			array(
+				'history_id' => $history_id,
+				'log_type' => 'malformed_test',
+				'history_type_id' => AIPS_History_Type::LOG,
+				'details' => '{invalid json here}', // Malformed JSON
+			),
+			array('%d', '%s', '%d', '%s')
+		);
+		
+		// Generate session JSON - should not throw error
+		$session_data = $this->converter->generate_session_json($history_id);
+		
+		// Verify the log entry exists with error information
+		$logs = $session_data['history_containers'][0]['logs'];
+		$this->assertCount(1, $logs);
+		
+		$log = $logs[0];
+		$this->assertArrayHasKey('details', $log);
+		
+		// Should have error information
+		$this->assertArrayHasKey('error', $log['details']);
+		$this->assertArrayHasKey('json_error', $log['details']);
+		$this->assertArrayHasKey('raw_details', $log['details']);
+		$this->assertEquals('{invalid json here}', $log['details']['raw_details']);
+	}
+	
+	/**
+	 * Test that malformed base64 is handled gracefully
+	 */
+	public function test_malformed_base64_handling() {
+		// Create a history entry
+		$history_id = $this->history_repository->create(array(
+			'template_id' => 1,
+			'status' => 'completed',
+			'generated_title' => 'Test Post',
+		));
+		
+		// Add log with malformed base64
+		$this->history_repository->add_log_entry(
+			$history_id,
+			'content_response',
+			array(
+				'output' => 'not-valid-base64!!!', // Invalid base64
+				'output_encoded' => true,
+			),
+			AIPS_History_Type::AI_RESPONSE
+		);
+		
+		// Generate session JSON - should not throw error
+		$session_data = $this->converter->generate_session_json($history_id);
+		
+		// Verify log exists
+		$logs = $session_data['history_containers'][0]['logs'];
+		$this->assertCount(1, $logs);
+		
+		$log = $logs[0];
+		$this->assertArrayHasKey('details', $log);
+		$this->assertArrayHasKey('output', $log['details']);
+		
+		// Should keep original value and flag the decode error
+		$this->assertEquals('not-valid-base64!!!', $log['details']['output']);
+		$this->assertArrayHasKey('output_decode_error', $log['details']);
+		$this->assertTrue($log['details']['output_decode_error']);
+	}
 }

@@ -105,7 +105,7 @@ class AIPS_Session_To_JSON {
 			'post_status' => $post->post_status,
 			'comment_status' => $post->comment_status,
 			'ping_status' => $post->ping_status,
-			'post_password' => $post->post_password,
+			// Note: post_password excluded for security reasons
 			'post_name' => $post->post_name,
 			'to_ping' => $post->to_ping,
 			'pinged' => $post->pinged,
@@ -118,6 +118,7 @@ class AIPS_Session_To_JSON {
 			'post_type' => $post->post_type,
 			'post_mime_type' => $post->post_mime_type,
 			'comment_count' => $post->comment_count,
+			'has_password' => !empty($post->post_password), // Boolean flag instead of actual password
 		);
 		
 		// Add post meta
@@ -209,10 +210,25 @@ class AIPS_Session_To_JSON {
 		foreach ($history_item->log as $log_entry) {
 			$details = json_decode($log_entry->details, true);
 			
+			// Handle JSON decode errors
+			if (json_last_error() !== JSON_ERROR_NONE) {
+				$details = array(
+					'error' => 'Failed to decode log details',
+					'json_error' => json_last_error_msg(),
+					'raw_details' => $log_entry->details,
+				);
+			}
+			
 			// Decode base64-encoded output if present
 			if (isset($details['output']) && !empty($details['output_encoded'])) {
-				$details['output'] = base64_decode($details['output']);
-				unset($details['output_encoded']);
+				$decoded = base64_decode($details['output'], true);
+				if ($decoded !== false) {
+					$details['output'] = $decoded;
+					unset($details['output_encoded']);
+				} else {
+					// Keep original if decode fails
+					$details['output_decode_error'] = true;
+				}
 			}
 			
 			$log_data = array(
