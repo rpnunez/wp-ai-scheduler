@@ -191,12 +191,15 @@ class AIPS_Scheduler {
                 }
 
                 // Update next_run immediately to lock this schedule from concurrent runs
-                $lock_result = $this->repository->update($schedule->schedule_id, array(
-                    'next_run' => $new_next_run
-                ));
+                // We use conditional update (optimistic locking) to ensure we own this schedule.
+                $lock_result = $this->repository->update_next_run_conditional(
+                    $schedule->schedule_id,
+                    $new_next_run,
+                    $original_next_run
+                );
 
                 if ($lock_result === false) {
-                    $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
+                    $logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id . '. Race condition detected.', 'warning');
                     continue; // Skip generation if we couldn't lock
                 }
 
