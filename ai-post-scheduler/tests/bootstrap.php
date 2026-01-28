@@ -341,6 +341,29 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = '') {
+            if (is_object($args)) {
+                $r = get_object_vars($args);
+            } elseif (is_array($args)) {
+                $r = $args;
+            } else {
+                wp_parse_str($args, $r);
+            }
+
+            if (is_array($defaults)) {
+                return array_merge($defaults, $r);
+            }
+            return $r;
+        }
+    }
+
+    if (!function_exists('wp_parse_str')) {
+        function wp_parse_str($string, &$array) {
+            parse_str($string, $array);
+        }
+    }
+
     if (!function_exists('get_bloginfo')) {
         function get_bloginfo($show = '', $filter = 'raw') {
             switch ($show) {
@@ -566,9 +589,16 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 if (empty($args)) {
                     return $query;
                 }
+
+                // Handle array argument (vs variadic)
+                if (count($args) === 1 && is_array($args[0])) {
+                    $args = $args[0];
+                }
+
                 // Replace placeholders in order
                 foreach ($args as $arg) {
-                    $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                    $val = is_numeric($arg) ? $arg : "'" . $arg . "'";
+                    $query = preg_replace('/%[sd]/', $val, $query, 1);
                 }
                 return $query;
             }
@@ -601,6 +631,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             
             public function delete($table, $where, $where_format = null) {
                 return true;
+            }
+
+            public function get_charset_collate() {
+                return "DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
             }
         };
     }
@@ -647,6 +681,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
+        'class-aips-research-service.php',
+        'class-aips-trending-topics-repository.php',
     ];
     
     foreach ($files as $file) {

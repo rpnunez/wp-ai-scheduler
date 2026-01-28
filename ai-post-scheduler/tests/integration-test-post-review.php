@@ -83,23 +83,23 @@ echo "\n";
 echo "Test 3: Checking if classes are defined...\n";
 
 // Mock WordPress functions
-function esc_html__($text, $domain) { return $text; }
-function esc_html_e($text, $domain) { echo $text; }
-function esc_attr_e($text, $domain) { echo $text; }
-function esc_html($text) { return htmlspecialchars($text, ENT_QUOTES, 'UTF-8'); }
-function esc_attr($text) { return htmlspecialchars($text, ENT_QUOTES, 'UTF-8'); }
-function esc_url($url) { return $url; }
-function sanitize_text_field($text) { return $text; }
-function wp_parse_args($args, $defaults) { return array_merge($defaults, $args); }
-function admin_url($path) { return "http://localhost/wp-admin/$path"; }
-function get_option($key, $default = '') { return $default; }
-function current_time($type) { return date('Y-m-d H:i:s'); }
-function selected($selected, $current, $echo = true) { return ($selected === $current) ? 'selected' : ''; }
-function get_edit_post_link($post_id) { return "http://localhost/wp-admin/post.php?post=$post_id&action=edit"; }
-function get_permalink($post_id) { return "http://localhost/?p=$post_id"; }
-function date_i18n($format, $timestamp = null) { return date($format, $timestamp ?: time()); }
-function _n($single, $plural, $count, $domain) { return $count === 1 ? $single : $plural; }
-function add_action($hook, $callback) { return true; }
+if (!function_exists('esc_html__')) { function esc_html__($text, $domain) { return $text; } }
+if (!function_exists('esc_html_e')) { function esc_html_e($text, $domain) { echo $text; } }
+if (!function_exists('esc_attr_e')) { function esc_attr_e($text, $domain) { echo $text; } }
+if (!function_exists('esc_html')) { function esc_html($text) { return htmlspecialchars($text, ENT_QUOTES, 'UTF-8'); } }
+if (!function_exists('esc_attr')) { function esc_attr($text) { return htmlspecialchars($text, ENT_QUOTES, 'UTF-8'); } }
+if (!function_exists('esc_url')) { function esc_url($url) { return $url; } }
+if (!function_exists('sanitize_text_field')) { function sanitize_text_field($text) { return $text; } }
+if (!function_exists('wp_parse_args')) { function wp_parse_args($args, $defaults) { return array_merge($defaults, $args); } }
+if (!function_exists('admin_url')) { function admin_url($path) { return "http://localhost/wp-admin/$path"; } }
+if (!function_exists('get_option')) { function get_option($key, $default = '') { return $default; } }
+if (!function_exists('current_time')) { function current_time($type) { return date('Y-m-d H:i:s'); } }
+if (!function_exists('selected')) { function selected($selected, $current, $echo = true) { return ($selected === $current) ? 'selected' : ''; } }
+if (!function_exists('get_edit_post_link')) { function get_edit_post_link($post_id) { return "http://localhost/wp-admin/post.php?post=$post_id&action=edit"; } }
+if (!function_exists('get_permalink')) { function get_permalink($post_id) { return "http://localhost/?p=$post_id"; } }
+if (!function_exists('date_i18n')) { function date_i18n($format, $timestamp = null) { return date($format, $timestamp ?: time()); } }
+if (!function_exists('_n')) { function _n($single, $plural, $count, $domain) { return $count === 1 ? $single : $plural; } }
+if (!function_exists('add_action')) { function add_action($hook, $callback) { return true; } }
 
 // Mock wpdb
 class MockWpdb {
@@ -128,15 +128,15 @@ if (class_exists('AIPS_Post_Review_Repository')) {
 }
 
 // Mock additional WordPress functions for controller
-function wp_send_json_error($data) { echo json_encode(array('success' => false, 'data' => $data)); }
-function wp_send_json_success($data) { echo json_encode(array('success' => true, 'data' => $data)); }
-function current_user_can($capability) { return true; }
-function check_ajax_referer($action, $key) { return true; }
-function absint($value) { return abs((int) $value); }
-function wp_update_post($data) { return $data['ID']; }
-function is_wp_error($thing) { return false; }
-function wp_delete_post($post_id, $force_delete = false) { return true; }
-function wp_insert_post($data, $wp_error = false) { return rand(1, 1000); }
+if (!function_exists('wp_send_json_error')) { function wp_send_json_error($data) { echo json_encode(array('success' => false, 'data' => $data)); } }
+if (!function_exists('wp_send_json_success')) { function wp_send_json_success($data) { echo json_encode(array('success' => true, 'data' => $data)); } }
+if (!function_exists('current_user_can')) { function current_user_can($capability) { return true; } }
+if (!function_exists('check_ajax_referer')) { function check_ajax_referer($action, $key) { return true; } }
+if (!function_exists('absint')) { function absint($value) { return abs((int) $value); } }
+if (!function_exists('wp_update_post')) { function wp_update_post($data) { return $data['ID']; } }
+if (!function_exists('is_wp_error')) { function is_wp_error($thing) { return false; } }
+if (!function_exists('wp_delete_post')) { function wp_delete_post($post_id, $force_delete = false) { return true; } }
+if (!function_exists('wp_insert_post')) { function wp_insert_post($data, $wp_error = false) { return rand(1, 1000); } }
 
 // Mock other classes
 class AIPS_Activity_Repository {
