@@ -925,6 +925,10 @@
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
+
+			// Search functionality
+			$('#aips-queue-search').on('input', this.filterQueue.bind(this));
+			$('#aips-queue-search-clear, .aips-clear-queue-search-btn').on('click', this.clearQueueSearch.bind(this));
 		},
 
 		switchMainTab: function (e) {
@@ -1006,9 +1010,55 @@
 			$('#aips-queue-topics-list').html(html);
 		},
 
+		filterQueue: function (e) {
+			const searchTerm = $(e.target).val().toLowerCase();
+			const $rows = $('#aips-queue-topics-list tbody tr');
+			const $noResults = $('#aips-queue-search-no-results');
+			const $clearBtn = $('#aips-queue-search-clear');
+			const $tableContainer = $('#aips-queue-topics-list table');
+
+			// Toggle clear button
+			if (searchTerm.length > 0) {
+				$clearBtn.show();
+			} else {
+				$clearBtn.hide();
+			}
+
+			let hasVisibleRows = false;
+
+			$rows.each(function () {
+				const $row = $(this);
+				// Check cells: Topic Title (1), Author (2), Field/Niche (3) - 0 is checkbox
+				const title = $row.find('td:eq(0)').text().toLowerCase();
+				const author = $row.find('td:eq(1)').text().toLowerCase();
+				const field = $row.find('td:eq(2)').text().toLowerCase();
+
+				if (title.includes(searchTerm) || author.includes(searchTerm) || field.includes(searchTerm)) {
+					$row.show();
+					hasVisibleRows = true;
+				} else {
+					$row.hide();
+				}
+			});
+
+			if (hasVisibleRows) {
+				$tableContainer.show();
+				$noResults.hide();
+			} else {
+				$tableContainer.hide();
+				$noResults.show();
+			}
+		},
+
+		clearQueueSearch: function (e) {
+			e.preventDefault();
+			$('#aips-queue-search').val('').trigger('input');
+			$('#aips-queue-search').focus();
+		},
+
 		toggleQueueSelectAll: function (e) {
 			const isChecked = $(e.currentTarget).prop('checked');
-			$('.aips-queue-topic-checkbox').prop('checked', isChecked);
+			$('.aips-queue-topic-checkbox:visible').prop('checked', isChecked);
 		},
 
 		executeQueueBulkAction: function (e) {
