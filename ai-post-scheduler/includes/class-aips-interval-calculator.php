@@ -107,7 +107,7 @@ class AIPS_Interval_Calculator {
         // This prevents schedule drift by preserving the phase of the schedule
         if ($base_time < $now) {
             // Safety limit to prevent infinite loops if interval is 0 or very small/broken
-            $limit = 100;
+            $limit = 50000;
             while ($base_time <= $now && $limit > 0) {
                 $base_time = $this->calculate_next_timestamp($frequency, $base_time);
                 $limit--;
