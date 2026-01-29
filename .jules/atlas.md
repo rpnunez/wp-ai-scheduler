@@ -20,3 +20,10 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2024-05-25 - [JS Modularization - Templates]
+**Context:** The `admin.js` file was still a God Object (2000+ lines) handling distinct domains including complex template management logic (wizard, variables, preview, CRUD).
+**Decision:** Extracted all template-related functionality into a new module `admin-templates.js`. This includes the wizard logic, AI variables scanner, prompt preview drawer, and template CRUD operations. The new file extends the shared `window.AIPS` namespace.
+**Consequence:**
+- **Positive:** `admin.js` size reduced by ~50%. Template logic is isolated and easier to maintain.
+- **Negative:** Increased file count (1 new JS file). Dependency on load order (admin.js must load first), managed via `wp_enqueue_script` dependencies.
