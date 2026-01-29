@@ -110,14 +110,30 @@ class AIPS_History_Repository {
         $query_args[] = $args['per_page'];
         $query_args[] = $offset;
 
-        $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.*, t.name as template_name 
+        // Late Row Lookup Optimization (Bolt)
+        // 1. Fetch IDs only (faster, especially if no join needed for filtering)
+        $ids = $this->wpdb->get_col($this->wpdb->prepare("
+            SELECT h.id
             FROM {$this->table_name} h 
-            LEFT JOIN {$templates_table} t ON h.template_id = t.id 
             WHERE $where_sql
             ORDER BY h.$orderby $order 
             LIMIT %d OFFSET %d
         ", $query_args));
+
+        if (empty($ids)) {
+            $results = array();
+        } else {
+            // 2. Fetch full rows for the specific IDs
+            $ids_sql = implode(',', array_map('absint', $ids));
+            // We need to re-apply ordering to ensure correct order after IN clause
+            $results = $this->wpdb->get_results("
+                SELECT h.*, t.name as template_name
+                FROM {$this->table_name} h
+                LEFT JOIN {$templates_table} t ON h.template_id = t.id
+                WHERE h.id IN ($ids_sql)
+                ORDER BY h.$orderby $order
+            ");
+        }
         
         // Query for total count
         if (!empty($where_args)) {

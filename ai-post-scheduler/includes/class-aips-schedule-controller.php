@@ -141,6 +141,10 @@ class AIPS_Schedule_Controller {
         $generator = new AIPS_Generator();
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
+        if (mb_strlen($topic) > 255) {
+            $topic = mb_substr($topic, 0, 255);
+        }
+
         // Enforce hard limit of 5 to prevent timeouts (Bolt)
         if ($quantity > 5) {
             $quantity = 5;

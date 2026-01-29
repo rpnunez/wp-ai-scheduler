@@ -68,6 +68,7 @@
             // History Bulk Actions
             $(document).on('change', '#cb-select-all-1', this.toggleAllHistory);
             $(document).on('change', '.aips-history-table input[name="history[]"]', this.toggleHistorySelection);
+            $(document).on('click', '#aips-retry-selected-btn', this.retrySelectedHistory);
             $(document).on('click', '#aips-delete-selected-btn', this.deleteSelectedHistory);
 
             // Template Search
@@ -1812,6 +1813,47 @@
         updateDeleteButton: function() {
             var count = $('.aips-history-table input[name="history[]"]:checked').length;
             $('#aips-delete-selected-btn').prop('disabled', count === 0);
+            $('#aips-retry-selected-btn').prop('disabled', count === 0);
+        },
+
+        retrySelectedHistory: function(e) {
+            e.preventDefault();
+            var ids = [];
+            $('.aips-history-table input[name="history[]"]:checked').each(function() {
+                ids.push($(this).val());
+            });
+
+            if (ids.length === 0) return;
+
+            if (!confirm('Are you sure you want to retry generation for ' + ids.length + ' item(s)?')) {
+                return;
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Retrying...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_retry_history',
+                    nonce: aipsAjax.nonce,
+                    ids: ids
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                        $btn.prop('disabled', false).text('Retry Selected');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    $btn.prop('disabled', false).text('Retry Selected');
+                }
+            });
         },
 
         deleteSelectedHistory: function(e) {

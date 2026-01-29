@@ -21,6 +21,7 @@ class AIPS_History {
         add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
         add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
         add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
+        add_action('wp_ajax_aips_bulk_retry_history', array($this, 'ajax_bulk_retry_history'));
         add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
     }
     
@@ -117,6 +118,68 @@ class AIPS_History {
             'message' => __('Post regenerated successfully!', 'ai-post-scheduler'),
             'post_id' => $result
         ));
+    }
+
+    public function ajax_bulk_retry_history() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $ids = isset($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
+
+        if (empty($ids)) {
+            wp_send_json_error(array('message' => __('No items selected.', 'ai-post-scheduler')));
+        }
+
+        // Limit to 5
+        $limit = 5;
+        $total_requested = count($ids);
+        if ($total_requested > $limit) {
+            $ids = array_slice($ids, 0, $limit);
+        }
+
+        $generator = new AIPS_Generator();
+        $templates = new AIPS_Templates();
+
+        $success_count = 0;
+        $errors = array();
+
+        foreach ($ids as $history_id) {
+            $history_item = $this->repository->get_by_id($history_id);
+
+            // Only retry failed items
+            if (!$history_item || !$history_item->template_id || $history_item->status !== 'failed') {
+                continue;
+            }
+
+            $template = $templates->get($history_item->template_id);
+
+            if (!$template) {
+                $errors[] = sprintf(__('Template for history item %d not found.', 'ai-post-scheduler'), $history_id);
+                continue;
+            }
+
+            $result = $generator->generate_post($template);
+
+            if (is_wp_error($result)) {
+                $errors[] = $result->get_error_message();
+            } else {
+                $success_count++;
+            }
+        }
+
+        if ($success_count === 0 && !empty($errors)) {
+            wp_send_json_error(array('message' => __('Failed to retry items.', 'ai-post-scheduler'), 'errors' => $errors));
+        }
+
+        $message = sprintf(__('%d item(s) retried successfully.', 'ai-post-scheduler'), $success_count);
+        if ($total_requested > $limit) {
+            $message .= ' ' . sprintf(__('(Limited to %d items per batch).', 'ai-post-scheduler'), $limit);
+        }
+
+        wp_send_json_success(array('message' => $message));
     }
     
     public function ajax_get_history_details() {
