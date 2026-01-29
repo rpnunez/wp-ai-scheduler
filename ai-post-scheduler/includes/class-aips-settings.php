@@ -211,6 +211,10 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_review_notifications_email', array(
             'sanitize_callback' => 'sanitize_email'
         ));
+
+        register_setting('aips_settings', 'aips_feature_flags', array(
+            'sanitize_callback' => array($this, 'sanitize_feature_flags')
+        ));
         
         add_settings_section(
             'aips_general_section',
@@ -290,6 +294,27 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
+
+        add_settings_section(
+            'aips_feature_flags_section',
+            __('Feature Flags', 'ai-post-scheduler'),
+            array($this, 'feature_flags_section_callback'),
+            'aips-settings'
+        );
+
+        $config = AIPS_Config::get_instance();
+        $features = $config->get_available_features();
+
+        foreach ($features as $key => $feature) {
+            add_settings_field(
+                'aips_feature_' . $key,
+                $feature['name'],
+                array($this, 'feature_flag_field_callback'),
+                'aips-settings',
+                'aips_feature_flags_section',
+                array('feature_key' => $key, 'description' => $feature['description'])
+            );
+        }
     }
     
     /**
@@ -736,6 +761,49 @@ class AIPS_Settings {
         ?>
         <input type="email" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
         <p class="description"><?php esc_html_e('Email address to receive notifications about posts awaiting review.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Sanitize feature flags array.
+     *
+     * @param array $input Input array.
+     * @return array Sanitized array.
+     */
+    public function sanitize_feature_flags($input) {
+        $output = array();
+        if (is_array($input)) {
+            foreach ($input as $key => $value) {
+                $output[sanitize_key($key)] = (bool) $value;
+            }
+        }
+        return $output;
+    }
+
+    /**
+     * Render the feature flags section description.
+     *
+     * @return void
+     */
+    public function feature_flags_section_callback() {
+        echo '<p>' . esc_html__('Enable or disable specific features of the plugin.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render a feature flag checkbox.
+     *
+     * @param array $args Field arguments.
+     * @return void
+     */
+    public function feature_flag_field_callback($args) {
+        $key = $args['feature_key'];
+        $config = AIPS_Config::get_instance();
+        $enabled = $config->is_feature_enabled($key, false);
+        ?>
+        <label>
+            <input type="checkbox" name="aips_feature_flags[<?php echo esc_attr($key); ?>]" value="1" <?php checked($enabled, true); ?>>
+            <?php echo esc_html($args['description']); ?>
+        </label>
         <?php
     }
     
