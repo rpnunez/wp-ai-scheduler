@@ -23,3 +23,7 @@
 ## 2025-12-27 - Author Search Consistency
 **Learning:** The "Authors" table was the last major list without search, breaking the expectation set by Templates, Schedules, and Structures. Consistency in basic data tools (search/filter) significantly reduces cognitive load.
 **Action:** Implemented client-side search for Authors using the standard pattern (search input + JS filter), ensuring the entire admin suite now behaves predictably.
+
+## 2026-01-20 - Planner Filter & Bulk Select
+**Learning:** When implementing client-side filtering on a list with bulk actions (like "Select All"), users expect the bulk action to apply only to the *visible* (filtered) items, not the hidden ones.
+**Action:** Updated `toggleAllTopics` in `admin-planner.js` to target `.topic-checkbox:visible`, ensuring that "Select All" respects the current search filter.
