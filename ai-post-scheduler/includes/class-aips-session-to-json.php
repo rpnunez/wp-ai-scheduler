@@ -292,6 +292,62 @@ class AIPS_Session_To_JSON {
 	}
 	
 	/**
+	 * Write session JSON to a temporary file in the uploads directory and return the path/URL
+	 *
+	 * This is useful for very large sessions where returning the JSON string directly may
+	 * be impractical. The file will be created under wp_upload_dir()/aips-exports.
+	 *
+	 * @param int  $history_id   The history item ID
+	 * @param bool $pretty_print Whether to format JSON with indentation
+	 * @return array|WP_Error Array with 'path' and 'url' on success, WP_Error on failure
+	 */
+	public function generate_json_to_tempfile($history_id, $pretty_print = true) {
+		$session_data = $this->generate_session_json($history_id);
+		if (is_wp_error($session_data)) {
+			return $session_data;
+		}
+
+		$options = 0;
+		if ($pretty_print) {
+			$options = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
+		}
+
+		$json_string = wp_json_encode($session_data, $options);
+		if ($json_string === false) {
+			return new WP_Error('json_encode_failed', __('Failed to encode JSON.', 'ai-post-scheduler'));
+		}
+
+		$upload = wp_upload_dir();
+		$base_dir = trailingslashit($upload['basedir']) . 'aips-exports';
+		$base_url = trailingslashit($upload['baseurl']) . 'aips-exports';
+
+		if (!file_exists($base_dir)) {
+			if (!wp_mkdir_p($base_dir)) {
+				return new WP_Error('mkdir_failed', __('Failed to create export directory.', 'ai-post-scheduler'));
+			}
+		}
+
+		$timestamp = current_time('Ymd-His');
+		$filename = sprintf('aips-session-%d-%s.json', $history_id, $timestamp);
+		$filepath = trailingslashit($base_dir) . $filename;
+		$fileurl = trailingslashit($base_url) . $filename;
+
+		$bytes = file_put_contents($filepath, $json_string, LOCK_EX);
+		if ($bytes === false) {
+			return new WP_Error('write_failed', __('Failed to write export file.', 'ai-post-scheduler'));
+		}
+
+		// Try to set restrictive permissions
+		@chmod($filepath, 0644);
+
+		return array(
+			'path' => $filepath,
+			'url' => $fileurl,
+			'size' => $bytes,
+		);
+	}
+
+	/**
 	 * Convert session data to formatted JSON string
 	 *
 	 * @param int  $history_id    The history item ID
@@ -300,16 +356,16 @@ class AIPS_Session_To_JSON {
 	 */
 	public function generate_json_string($history_id, $pretty_print = true) {
 		$session_data = $this->generate_session_json($history_id);
-		
+
 		if (is_wp_error($session_data)) {
 			return $session_data;
 		}
-		
+
 		$options = 0;
 		if ($pretty_print) {
 			$options = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 		}
-		
+
 		return wp_json_encode($session_data, $options);
 	}
 }

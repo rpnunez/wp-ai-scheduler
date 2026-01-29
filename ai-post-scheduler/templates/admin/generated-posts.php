@@ -130,6 +130,9 @@ if (!defined('ABSPATH')) {
 				<button class="button button-primary aips-copy-session-json">
 					<?php esc_html_e('Copy Session JSON', 'ai-post-scheduler'); ?>
 				</button>
+				<button class="button aips-download-session-json">
+					<?php esc_html_e('Download Session JSON', 'ai-post-scheduler'); ?>
+				</button>
 				<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
 					<span class="dashicons dashicons-no"></span>
 				</button>

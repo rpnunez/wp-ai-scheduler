@@ -41,6 +41,9 @@
 			// Copy Session JSON button handler
 			$(document).on('click', '.aips-copy-session-json', this.handleCopySessionJSON.bind(this));
 			
+			// Download Session JSON button handler
+			$(document).on('click', '.aips-download-session-json', this.handleDownloadSessionJSON.bind(this));
+
 			// Close modal handlers
 			$(document).on('click', '.aips-modal-close, .aips-modal-overlay', this.closeModal.bind(this));
 			
@@ -122,7 +125,9 @@
 		displaySessionModal: function(data) {
 			// Store current history ID for JSON export
 			this.currentHistoryId = data.history.id;
-			
+			// Store current log count so we can choose client vs server download strategy
+			this.currentLogCount = Array.isArray(data.logs) ? data.logs.length : 0;
+
 			// Update session info
 			$('#aips-session-title').text(data.history.generated_title || 'N/A');
 			$('#aips-session-created').text(data.history.created_at || 'N/A');
@@ -267,6 +272,108 @@
 		},
 		
 		/**
+		 * Handle Download Session JSON button click
+		 */
+		handleDownloadSessionJSON: function(e) {
+			e.preventDefault();
+			var self = this;
+			var $button = $(e.currentTarget);
+
+			// Check if we have a history ID stored
+			if (!this.currentHistoryId) {
+				this.showNotification('No session data available for download.', 'error');
+				return;
+			}
+
+			// Threshold (number of logs) below which we fetch JSON via AJAX and use client-side blob download
+			// Threshold can be provided by the server via localization; fallback to 50
+			var CLIENT_LOG_THRESHOLD = (window.aipsGeneratedPostsConfig && typeof window.aipsGeneratedPostsConfig.clientLogThreshold !== 'undefined') ? parseInt(window.aipsGeneratedPostsConfig.clientLogThreshold, 10) : 50;
+
+			if (typeof this.currentLogCount === 'number' && this.currentLogCount <= CLIENT_LOG_THRESHOLD) {
+				// Small session: fetch the JSON via existing AJAX endpoint and trigger client-side download
+				$button.prop('disabled', true).text('Preparing download...');
+				$.ajax({
+					url: ajaxurl,
+					type: 'POST',
+					data: {
+						action: 'aips_get_session_json',
+						nonce: this.ajaxNonce,
+						history_id: this.currentHistoryId
+					},
+					success: function(response) {
+						if (response.success && response.data.json) {
+							var filename = 'aips-session-' + self.currentHistoryId + '.json';
+							self.downloadJSON(response.data.json, filename);
+							$button.prop('disabled', false).text('Download Session JSON');
+							// Admin notice
+							self.showAdminNotice('Session JSON download started. Check your browser downloads.');
+						} else {
+							self.showNotification(response.data.message || 'Failed to generate JSON for download.', 'error');
+							$button.prop('disabled', false).text('Download Session JSON');
+						}
+					},
+					error: function(xhr, status, error) {
+						console.error('AJAX error:', status, error);
+						self.showNotification('Failed to load session JSON for download. Please try again.', 'error');
+						$button.prop('disabled', false).text('Download Session JSON');
+					}
+				});
+				return;
+			}
+
+			// Large session: use a form POST to the new ajax download endpoint in a new tab/window so the browser handles the download
+			var form = document.createElement('form');
+			form.method = 'POST';
+			form.action = ajaxurl;
+			form.target = '_blank';
+
+			var inputAction = document.createElement('input');
+			inputAction.type = 'hidden';
+			inputAction.name = 'action';
+			inputAction.value = 'aips_download_session_json';
+			form.appendChild(inputAction);
+
+			var inputNonce = document.createElement('input');
+			inputNonce.type = 'hidden';
+			inputNonce.name = 'nonce';
+			inputNonce.value = this.ajaxNonce;
+			form.appendChild(inputNonce);
+
+			var inputHistory = document.createElement('input');
+			inputHistory.type = 'hidden';
+			inputHistory.name = 'history_id';
+			inputHistory.value = this.currentHistoryId;
+			form.appendChild(inputHistory);
+
+			document.body.appendChild(form);
+			form.submit();
+			document.body.removeChild(form);
+
+			// Re-enable button quickly since download happens in new tab
+			$button.prop('disabled', false).text('Download Session JSON');
+
+			// Show admin notice that download has started
+			this.showAdminNotice('Session JSON download started. Check your browser downloads.');
+		},
+
+		/**
+		 * Download JSON data as a file
+		 */
+		downloadJSON: function(jsonData, fileName) {
+			var blob = new Blob([jsonData], { type: 'application/json' });
+			var url = URL.createObjectURL(blob);
+			var a = document.createElement('a');
+			a.href = url;
+			a.download = fileName;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+
+			this.showNotification('Session JSON is being downloaded.', 'success');
+		},
+
+		/**
 		 * Copy text to clipboard
 		 */
 		copyToClipboard: function(text, $button) {
@@ -332,6 +439,27 @@
 			}, 3000);
 		},
 		
+		/**
+		 * Show a small admin notice at the top of the admin page
+		 * This uses WP admin notice classes for consistency and is dismissible.
+		 */
+		showAdminNotice: function(message, type) {
+			var noticeType = type === 'error' ? 'notice-error' : 'notice-success';
+			var $notice = $('<div class="notice ' + noticeType + ' is-dismissible aips-admin-notice">')
+				.append($('<p>').text(message));
+
+			// Add dismiss button behavior
+			$notice.append('<button type="button" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button>');
+
+			// Insert notice at top of main .wrap
+			$('.wrap').first().prepend($notice);
+
+			// Dismiss handler
+			$notice.on('click', '.notice-dismiss', function() {
+				$notice.remove();
+			});
+		},
+
 		/**
 		 * Close the modal
 		 */
