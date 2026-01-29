@@ -324,6 +324,14 @@ class AIPS_Settings {
             true
         );
 
+        wp_enqueue_script(
+            'aips-admin-templates',
+            AIPS_PLUGIN_URL . 'assets/js/admin-templates.js',
+            array('aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
+
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
