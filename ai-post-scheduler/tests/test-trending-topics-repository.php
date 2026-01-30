@@ -34,7 +34,9 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
             KEY researched_at_idx (researched_at)
         ) {$charset_collate};";
         
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        if (!function_exists('dbDelta')) {
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        }
         dbDelta($sql);
     }
     
