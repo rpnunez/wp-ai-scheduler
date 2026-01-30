@@ -40,8 +40,8 @@ class AIPS_Generated_Posts_Controller {
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
 		add_action('wp_ajax_aips_get_session_json', array($this, 'ajax_get_session_json'));
-        // AJAX endpoint to download the session JSON as a file
-        add_action('wp_ajax_aips_download_session_json', array($this, 'ajax_download_session_json'));
+		// AJAX endpoint to download the session JSON as a file
+		add_action('wp_ajax_aips_download_session_json', array($this, 'ajax_download_session_json'));
 	}
 	
 	/**

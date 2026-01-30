@@ -286,8 +286,8 @@
 			}
 
 			// Threshold (number of logs) below which we fetch JSON via AJAX and use client-side blob download
-			// Threshold can be provided by the server via localization; fallback to 50
-			var CLIENT_LOG_THRESHOLD = (window.aipsGeneratedPostsConfig && typeof window.aipsGeneratedPostsConfig.clientLogThreshold !== 'undefined') ? parseInt(window.aipsGeneratedPostsConfig.clientLogThreshold, 10) : 50;
+			// Threshold can be provided by the server via localization; fallback to 20 (matches PHP default)
+			var CLIENT_LOG_THRESHOLD = (window.aipsGeneratedPostsConfig && typeof window.aipsGeneratedPostsConfig.clientLogThreshold !== 'undefined') ? parseInt(window.aipsGeneratedPostsConfig.clientLogThreshold, 10) : 20;
 
 			if (typeof this.currentLogCount === 'number' && this.currentLogCount <= CLIENT_LOG_THRESHOLD) {
 				// Small session: fetch the JSON via existing AJAX endpoint and trigger client-side download
