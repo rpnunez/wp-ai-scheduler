@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Planner Search</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .topic-item { display: flex; align-items: center; padding: 10px; border: 1px solid #eee; }
+        .topic-item input[type="text"] { width: 100%; }
+        .selection-count { margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <div id="planner-results">
+        <div class="aips-toolbar-right">
+            <input type="search" id="planner-topic-search" class="regular-text" placeholder="Filter topics...">
+        </div>
+        <div class="aips-toolbar-left">
+             <label><input type="checkbox" id="check-all-topics"> Select All</label>
+             <span class="selection-count">0 selected</span>
+        </div>
+
+        <div id="topics-list">
+            <!-- Mock Topics -->
+            <div class="topic-item">
+                <input type="checkbox" class="topic-checkbox">
+                <input type="text" class="topic-text-input" value="React Tutorial">
+            </div>
+            <div class="topic-item">
+                <input type="checkbox" class="topic-checkbox">
+                <input type="text" class="topic-text-input" value="PHP Guide">
+            </div>
+            <div class="topic-item">
+                <input type="checkbox" class="topic-checkbox">
+                <input type="text" class="topic-text-input" value="CSS Flexbox">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var aipsAjax = { ajaxUrl: 'mock', nonce: 'mock' };
+        window.AIPS = window.AIPS || {};
+        window.AIPS.updateSelectionCount = function() {
+             var count = $('.topic-checkbox:checked').length;
+             $('.selection-count').text(count + ' selected');
+        };
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin-planner.js"></script>
+</body>
+</html>

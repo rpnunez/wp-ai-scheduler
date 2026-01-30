@@ -43,6 +43,7 @@ $default_planner_frequency = 'daily';
                 <span class="selection-count"></span>
             </div>
             <div class="aips-toolbar-right">
+                <input type="search" id="planner-topic-search" class="regular-text" placeholder="<?php esc_attr_e('Filter topics...', 'ai-post-scheduler'); ?>" style="margin-right: 10px; max-width: 200px;">
                 <button type="button" id="btn-copy-topics" class="button button-secondary button-small"><?php echo esc_html__('Copy Selected', 'ai-post-scheduler'); ?></button>
                 <button type="button" id="btn-clear-topics" class="button button-link-delete button-small"><?php echo esc_html__('Clear List', 'ai-post-scheduler'); ?></button>
             </div>

@@ -21,9 +21,16 @@ if (!defined('ABSPATH')) {
 class AIPS_Post_Review_Notifications {
 	
 	/**
+	 * @var AIPS_History_Service Service for history logging
+	 */
+	private $history_service;
+	
+	/**
 	 * Initialize the notification handler.
 	 */
 	public function __construct() {
+		$this->history_service = new AIPS_History_Service();
+		
 		// Hook into the cron event
 		add_action('aips_send_review_notifications', array($this, 'send_review_notification_email'));
 	}
@@ -81,16 +88,18 @@ class AIPS_Post_Review_Notifications {
 		
 		// Log the result
 		if ($sent) {
-			$activity_repository = new AIPS_Activity_Repository();
-			$activity_repository->create(array(
-				'event_type' => 'review_notification_sent',
-				'event_status' => 'success',
-				'message' => sprintf(
+			$history = $this->history_service->create('notification_sent', array());
+			$history->record(
+				'activity',
+				sprintf(
 					__('Review notification email sent to %s (%d posts)', 'ai-post-scheduler'),
 					$to_email,
 					$draft_count
 				),
-			));
+				array('event_type' => 'review_notification_sent', 'event_status' => 'success'),
+				null,
+				array('to_email' => $to_email, 'draft_count' => $draft_count)
+			);
 		}
 	}
 	

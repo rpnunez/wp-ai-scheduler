@@ -88,6 +88,19 @@ class AIPS_Activity_Repository {
 			array('%s', '%s', '%d', '%d', '%d', '%s', '%s')
 		);
 		
+		// Also log to the unified history system if there's a post_id
+		// This allows activities to be visible in the Generated Posts session view
+		if ($result && $data['post_id']) {
+			// Find the history entry for this post
+			$history_id = $this->wpdb->get_var($this->wpdb->prepare(
+				"SELECT id FROM {$this->wpdb->prefix}aips_history WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
+				$data['post_id']
+			));
+			
+			// Note: Activity logging is now handled through AIPS_History_Service
+			// This legacy path should be migrated to use History Containers
+		}
+		
 		return $result ? $this->wpdb->insert_id : false;
 	}
 	

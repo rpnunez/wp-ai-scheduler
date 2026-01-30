@@ -16,6 +16,7 @@ class AIPS_Templates_Controller {
         add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
         add_action('wp_ajax_aips_get_template_posts', array($this, 'ajax_get_template_posts'));
         add_action('wp_ajax_aips_clone_template', array($this, 'ajax_clone_template'));
+        add_action('wp_ajax_aips_preview_template_prompts', array($this, 'ajax_preview_template_prompts'));
     }
 
     public function ajax_save_template() {
@@ -268,5 +269,49 @@ class AIPS_Templates_Controller {
         $html = ob_get_clean();
 
         wp_send_json_success(array('html' => $html));
+    }
+
+    /**
+     * Preview the prompts that will be generated for a template.
+     *
+     * This endpoint processes the template configuration and returns the actual prompts
+     * that would be sent to the AI service, including voice and article structure integration.
+     *
+     * Uses AIPS_Prompt_Builder to ensure consistency with actual generation.
+     *
+     * @since 1.7.0
+     */
+    public function ajax_preview_template_prompts() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        // Collect template data from POST
+        $template_data = (object) array(
+            'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
+            'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field($_POST['title_prompt']) : '',
+            'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
+            'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
+            'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
+            'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
+            'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
+        );
+
+        if (empty($template_data->prompt_template)) {
+            wp_send_json_error(array('message' => __('Please enter a content prompt to generate the preview.', 'ai-post-scheduler')));
+        }
+
+        // Use Prompt Builder to build all prompts
+        $prompt_builder = new AIPS_Prompt_Builder();
+        
+        // Get voice if selected
+        $voice = $prompt_builder->get_voice($template_data->voice_id);
+
+        // Build prompts using the centralized method
+        $result = $prompt_builder->build_prompts($template_data, null, $voice);
+
+        wp_send_json_success($result);
     }
 }
