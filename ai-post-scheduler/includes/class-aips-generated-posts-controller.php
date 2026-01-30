@@ -225,14 +225,33 @@ class AIPS_Generated_Posts_Controller {
 				wp_send_json_error(array('message' => $temp->get_error_message()));
 			}
 			
-			// Redirect to the public URL of the tempfile so the browser downloads it.
-			// Use a 302 redirect and then exit.
-			if (!headers_sent()) {
-				wp_redirect($temp['url']);
-			} else {
-				// Fallback: send JSON with URL if headers already sent
-				wp_send_json_success(array('download_url' => $temp['url']));
+			// Read the file and send it directly instead of redirecting
+			// This prevents double downloads when form is submitted with target="_blank"
+			$filepath = $temp['path'];
+			$filename = basename($filepath);
+			
+			if (!file_exists($filepath)) {
+				wp_send_json_error(array('message' => __('Export file not found.', 'ai-post-scheduler')));
 			}
+			
+			$json_string = file_get_contents($filepath);
+			if ($json_string === false) {
+				wp_send_json_error(array('message' => __('Failed to read export file.', 'ai-post-scheduler')));
+			}
+			
+			// Send download headers and the JSON payload
+			if (!headers_sent()) {
+				header('Content-Description: File Transfer');
+				header('Content-Type: application/json; charset=utf-8');
+				header('Content-Disposition: attachment; filename="' . $filename . '"');
+				header('Content-Transfer-Encoding: binary');
+				header('Expires: 0');
+				header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+				header('Pragma: public');
+				header('Content-Length: ' . strlen($json_string));
+			}
+			
+			echo $json_string;
 			exit;
 		}
 		
