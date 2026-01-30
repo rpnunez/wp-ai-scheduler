@@ -65,8 +65,26 @@ if (!defined('ABSPATH')) {
 					<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_generated']))); ?>
 				</td>
 				<td>
-					<a href="<?php echo esc_url(get_permalink($post_data['post_id'])); ?>" class="button button-small" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr(sprintf(__('View "%s" (opens in a new tab)', 'ai-post-scheduler'), $post_data['title'])); ?>">
-						<?php esc_html_e('View', 'ai-post-scheduler'); ?>
+					<?php
+					$post_status = get_post_status( $post_data['post_id'] );
+					if ( 'publish' === $post_status ) {
+						$view_url   = get_permalink( $post_data['post_id'] );
+						$view_label = __( 'View', 'ai-post-scheduler' );
+						$aria_label = sprintf(
+							__( 'View "%s" (opens in a new tab)', 'ai-post-scheduler' ),
+							$post_data['title']
+						);
+					} else {
+						$view_url   = get_preview_post_link( $post_data['post_id'] );
+						$view_label = __( 'Preview', 'ai-post-scheduler' );
+						$aria_label = sprintf(
+							__( 'Preview "%s" (opens in a new tab)', 'ai-post-scheduler' ),
+							$post_data['title']
+						);
+					}
+					?>
+					<a href="<?php echo esc_url( $view_url ); ?>" class="button button-small" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr( $aria_label ); ?>">
+						<?php echo esc_html( $view_label ); ?>
 					</a>
 					<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="button button-small">
 						<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
