@@ -105,55 +105,21 @@ class AIPS_Generation_Session {
 	/**
 	 * Start a new generation session.
 	 *
-	 * Supports both legacy template-based calls and new context-based calls.
-	 *
-	 * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
-	 * @param object|null $voice    Optional voice object (legacy, ignored if context is provided).
+	 * @param AIPS_Generation_Context $context Generation context.
 	 * @return void
 	 */
-	public function start($template_or_context, $voice = null) {
+	public function start($context) {
 		$this->reset();
 		$this->started_at = current_time('mysql');
 
-		// Check if we're using the new context-based approach
-		if ($template_or_context instanceof AIPS_Generation_Context) {
-			// New context-based approach
-			$this->context = $template_or_context->to_array();
+		// Store context data
+		$this->context = $context->to_array();
+		
+		// For backward compatibility, still populate template/voice if it's a template context
+		if ($context->get_type() === 'template') {
+			$template = $context->get_template();
+			$voice_obj = $context->get_voice();
 			
-			// For backward compatibility, still populate template/voice if it's a template context
-			if ($template_or_context->get_type() === 'template') {
-				$template = $template_or_context->get_template();
-				$voice_obj = $template_or_context->get_voice();
-				
-				$this->template = array(
-					'id' => $template->id,
-					'name' => $template->name,
-					'prompt_template' => $template->prompt_template,
-					'title_prompt' => isset($template->title_prompt) ? $template->title_prompt : '',
-					'post_status' => $template->post_status,
-					'post_category' => $template->post_category,
-					'post_tags' => isset($template->post_tags) ? $template->post_tags : '',
-					'post_author' => isset($template->post_author) ? $template->post_author : '',
-					'post_quantity' => isset($template->post_quantity) ? $template->post_quantity : 1,
-					'generate_featured_image' => isset($template->generate_featured_image) ? $template->generate_featured_image : 0,
-					'image_prompt' => isset($template->image_prompt) ? $template->image_prompt : '',
-				);
-				
-				if ($voice_obj) {
-					$this->voice = array(
-						'id' => $voice_obj->id,
-						'name' => $voice_obj->name,
-						'title_prompt' => isset($voice_obj->title_prompt) ? $voice_obj->title_prompt : '',
-						'content_instructions' => isset($voice_obj->content_instructions) ? $voice_obj->content_instructions : '',
-						'excerpt_instructions' => isset($voice_obj->excerpt_instructions) ? $voice_obj->excerpt_instructions : '',
-					);
-				}
-			}
-		} else {
-			// Legacy template-based approach (for backward compatibility)
-			$template = $template_or_context;
-			
-			// Store template configuration
 			$this->template = array(
 				'id' => $template->id,
 				'name' => $template->name,
@@ -167,27 +133,15 @@ class AIPS_Generation_Session {
 				'generate_featured_image' => isset($template->generate_featured_image) ? $template->generate_featured_image : 0,
 				'image_prompt' => isset($template->image_prompt) ? $template->image_prompt : '',
 			);
-
-			// Store voice configuration if provided
-			if ($voice) {
+			
+			if ($voice_obj) {
 				$this->voice = array(
-					'id' => $voice->id,
-					'name' => $voice->name,
-					'title_prompt' => isset($voice->title_prompt) ? $voice->title_prompt : '',
-					'content_instructions' => isset($voice->content_instructions) ? $voice->content_instructions : '',
-					'excerpt_instructions' => isset($voice->excerpt_instructions) ? $voice->excerpt_instructions : '',
+					'id' => $voice_obj->id,
+					'name' => $voice_obj->name,
+					'title_prompt' => isset($voice_obj->title_prompt) ? $voice_obj->title_prompt : '',
+					'content_instructions' => isset($voice_obj->content_instructions) ? $voice_obj->content_instructions : '',
+					'excerpt_instructions' => isset($voice_obj->excerpt_instructions) ? $voice_obj->excerpt_instructions : '',
 				);
-			}
-			
-			// Build context from template for consistency
-			$this->context = array(
-				'type' => 'template',
-				'id' => $template->id,
-				'name' => $template->name,
-			);
-			
-			if ($voice) {
-				$this->context['voice_id'] = $voice->id;
 			}
 		}
 	}
