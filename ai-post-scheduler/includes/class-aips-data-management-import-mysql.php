@@ -120,29 +120,67 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		$plugin_table_names = array_values($plugin_tables);
 		
 		foreach ($queries as $query) {
-			$query_upper = strtoupper(trim($query));
+			$query = trim($query);
+			$query_upper = strtoupper($query);
 			
 			// Skip if query is empty
-			if (empty($query_upper)) {
+			if (empty($query)) {
 				continue;
 			}
+
+			// 1. Allow Global Safe Commands
+			// SET commands (e.g. SET SQL_MODE...) and UNLOCK TABLES are safe and don't target specific tables
+			if (strpos($query_upper, 'SET ') === 0 || strpos($query_upper, 'UNLOCK TABLES') === 0) {
+				continue;
+			}
+
+			// 2. Validate Table-Specific Commands
+			// We only allow specific commands (INSERT, CREATE, DROP) and they MUST target an allowed plugin table.
+			// This whitelist approach blocks UPDATE, DELETE, TRUNCATE, ALTER, GRANT, etc.
 			
-			// Extract table name from query
-			$has_valid_table = false;
-			foreach ($plugin_table_names as $table_name) {
-				if (stripos($query, $table_name) !== false) {
-					$has_valid_table = true;
-					break;
+			$is_valid = false;
+			$target_table = '';
+
+			// Regex to match allowed commands and capture the table name.
+			// Supports:
+			// - INSERT INTO `table` ... VALUES ...
+			// - CREATE TABLE [IF NOT EXISTS] `table` ...
+			// - DROP TABLE [IF EXISTS] `table`
+			// Note: We enforce 'VALUES' for INSERT to prevent 'INSERT INTO ... SELECT' attacks.
+
+			$patterns = array(
+				// INSERT INTO table ... VALUES (
+				// Matches optional column list (e.g. `(col1, col2)`) before VALUES
+				'/^INSERT\s+INTO\s+(?:`?)([a-zA-Z0-9_$]+)(?:`?)\s+(?:\([^)]+\)\s+)?VALUES\s*\(/is',
+				// CREATE TABLE [IF NOT EXISTS] table (
+				'/^CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(?:`?)([a-zA-Z0-9_$]+)(?:`?)\s*\(/i',
+				// DROP TABLE [IF EXISTS] table
+				'/^DROP\s+TABLE(?:\s+IF\s+EXISTS)?\s+(?:`?)([a-zA-Z0-9_$]+)(?:`?)/i'
+			);
+
+			foreach ($patterns as $pattern) {
+				if (preg_match($pattern, $query, $matches)) {
+					$target_table = $matches[1];
+					// Check if the captured table is in our allowed list
+					if (in_array($target_table, $plugin_table_names)) {
+						$is_valid = true;
+					} else {
+						// Found a command targeting a disallowed table
+						return new WP_Error(
+							'invalid_table',
+							sprintf(__('Security Error: Query targets non-plugin table "%s".', 'ai-post-scheduler'), esc_html($target_table))
+						);
+					}
+					break; // Match found
 				}
 			}
-			
-			// If query references a table, ensure it's one of ours
-			if (!$has_valid_table && 
-				(strpos($query_upper, 'TABLE') !== false || 
-				 strpos($query_upper, 'INSERT') !== false)) {
+
+			if (!$is_valid) {
+				// The query did not match any allowed pattern (or matched but table was wrong)
+				// This blocks any command not in the whitelist (UPDATE, DELETE, etc.) or malformed queries.
 				return new WP_Error(
-					'invalid_table',
-					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
+					'invalid_query',
+					__('Security Error: potentially unsafe or unsupported SQL query detected.', 'ai-post-scheduler')
 				);
 			}
 		}
