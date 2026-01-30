@@ -5,6 +5,16 @@ if (!defined('ABSPATH')) {
 
 /**
  * Class AIPS_Settings
+// Enqueue modern UI script
+wp_enqueue_script(
+'aips-authors-modern-script',
+AIPS_PLUGIN_URL . 'assets/js/authors-modern.js',
+array('jquery'),
+AIPS_VERSION,
+true
+);
+
+// Keep old script for backwards compatibility
  *
  * Handles the registration of admin menu pages, settings, and rendering of admin interfaces
  * for the AI Post Scheduler plugin.
@@ -347,6 +357,15 @@ class AIPS_Settings {
 		
 		// Enqueue Authors-specific assets
 		if (strpos($hook, 'aips-authors') !== false) {
+			// Enqueue modern UI styles
+			wp_enqueue_style(
+				'aips-authors-modern-style',
+				AIPS_PLUGIN_URL . 'assets/css/authors-modern.css',
+				array(),
+				AIPS_VERSION
+			);
+			
+			// Keep old styles for backwards compatibility
 			wp_enqueue_style(
 				'aips-authors-style',
 				AIPS_PLUGIN_URL . 'assets/css/authors.css',
@@ -354,6 +373,42 @@ class AIPS_Settings {
 				AIPS_VERSION
 			);
 			
+			// Enqueue Alpine.js from CDN (v3.x)
+			wp_enqueue_script(
+				'alpinejs',
+				'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',
+				array(),
+				'3.x.x',
+				true
+			);
+			
+			// Add defer attribute to Alpine.js
+			add_filter('script_loader_tag', function($tag, $handle) {
+				if ('alpinejs' === $handle) {
+					return str_replace(' src', ' defer src', $tag);
+				}
+				return $tag;
+			}, 10, 2);
+			
+			// Enqueue Alpine.js-based modern UI script
+			wp_enqueue_script(
+				'aips-authors-alpine-script',
+				AIPS_PLUGIN_URL . 'assets/js/authors-alpine.js',
+				array('alpinejs'),
+				AIPS_VERSION,
+				true
+			);
+			
+			// Keep old jQuery-based script for backwards compatibility
+			wp_enqueue_script(
+				'aips-authors-modern-script',
+				AIPS_PLUGIN_URL . 'assets/js/authors-modern.js',
+				array('jquery'),
+				AIPS_VERSION,
+				true
+			);
+			
+			// Keep old script for backwards compatibility
 			wp_enqueue_script(
 				'aips-authors-script',
 				AIPS_PLUGIN_URL . 'assets/js/authors.js',
@@ -843,7 +898,7 @@ class AIPS_Settings {
      * @return void
      */
     public function render_authors_page() {
-        include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
+        include AIPS_PLUGIN_DIR . 'templates/admin/authors-alpine.php';
     }
     
     /**
@@ -1010,4 +1065,13 @@ class AIPS_Settings {
             wp_send_json_success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . esc_html($result)));
         }
     }
+// Enqueue modern UI styles
+wp_enqueue_style(
+'aips-authors-modern-style',
+AIPS_PLUGIN_URL . 'assets/css/authors-modern.css',
+array(),
+AIPS_VERSION
+);
+
+// Keep old styles for backwards compatibility
 }
