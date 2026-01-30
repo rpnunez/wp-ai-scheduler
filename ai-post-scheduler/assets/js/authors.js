@@ -378,8 +378,8 @@
 			const $tab = $(e.currentTarget);
 			const status = $tab.data('tab');
 
-			$('.aips-tab-link').removeClass('active');
-			$tab.addClass('active');
+			$('.aips-tab-link').removeClass('active').attr('aria-selected', 'false');
+			$tab.addClass('active').attr('aria-selected', 'true');
 
 			if (status === 'feedback') {
 				this.loadFeedback();
@@ -1010,8 +1010,8 @@
 			}
 
 			// Update active tab button
-			$('.aips-authors-tab-link').removeClass('active');
-			$tab.addClass('active');
+			$('.aips-authors-tab-link').removeClass('active').attr('aria-selected', 'false');
+			$tab.addClass('active').attr('aria-selected', 'true');
 
 			// Show/hide tab content
 			$('.aips-authors-tab-content').hide();
