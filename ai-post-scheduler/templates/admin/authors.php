@@ -32,13 +32,13 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     </h1>
 
     <!-- Add tabs for Authors List and Generation Queue -->
-    <div class="aips-authors-tabs">
-        <button class="aips-authors-tab-link active" data-tab="authors-list"><?php esc_html_e('Authors List', 'ai-post-scheduler'); ?></button>
-        <button class="aips-authors-tab-link" data-tab="generation-queue"><?php esc_html_e('Generation Queue', 'ai-post-scheduler'); ?></button>
+    <div class="aips-authors-tabs" role="tablist">
+        <button class="aips-authors-tab-link active" role="tab" aria-selected="true" aria-controls="authors-list-tab" id="tab-authors-list" data-tab="authors-list"><?php esc_html_e('Authors List', 'ai-post-scheduler'); ?></button>
+        <button class="aips-authors-tab-link" role="tab" aria-selected="false" aria-controls="generation-queue-tab" id="tab-generation-queue" data-tab="generation-queue"><?php esc_html_e('Generation Queue', 'ai-post-scheduler'); ?></button>
     </div>
 
     <!-- Authors List Tab Content -->
-    <div id="authors-list-tab" class="aips-authors-tab-content active">
+    <div id="authors-list-tab" class="aips-authors-tab-content active" role="tabpanel" aria-labelledby="tab-authors-list">
         <div class="aips-authors-container">
             <div class="aips-authors-list">
                 <?php if (!empty($authors)): ?>
@@ -129,7 +129,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     </div>
 
     <!-- Generation Queue Tab Content -->
-    <div id="generation-queue-tab" class="aips-authors-tab-content" style="display: none;">
+    <div id="generation-queue-tab" class="aips-authors-tab-content" style="display: none;" role="tabpanel" aria-labelledby="tab-generation-queue">
         <div class="aips-queue-container">
             <p class="description">
                 <?php esc_html_e('This queue shows all approved topics across all authors, ready for post generation. Topics are processed in the order they were approved.', 'ai-post-scheduler'); ?>
@@ -257,11 +257,11 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <h2 id="aips-topics-modal-title"><?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?></h2>
 
-        		<div class="aips-topics-tabs">
-                    <button class="aips-tab-link active" data-tab="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?> (<span id="pending-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="approved"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?> (<span id="approved-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?> (<span id="rejected-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="feedback"><?php esc_html_e('Feedback History', 'ai-post-scheduler'); ?></button>
+			<div class="aips-topics-tabs" role="tablist">
+                    <button class="aips-tab-link active" role="tab" aria-selected="true" data-tab="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?> (<span id="pending-count">0</span>)</button>
+                    <button class="aips-tab-link" role="tab" aria-selected="false" data-tab="approved"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?> (<span id="approved-count">0</span>)</button>
+                    <button class="aips-tab-link" role="tab" aria-selected="false" data-tab="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?> (<span id="rejected-count">0</span>)</button>
+                    <button class="aips-tab-link" role="tab" aria-selected="false" data-tab="feedback"><?php esc_html_e('Feedback History', 'ai-post-scheduler'); ?></button>
                 </div>
         
                 <div class="aips-topics-list-container">

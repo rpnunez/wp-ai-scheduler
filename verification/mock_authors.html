@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Authors Page</title>
+    <style>
+        .active { font-weight: bold; color: blue; }
+        .aips-authors-tab-content { border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
+        .aips-authors-tab-link { cursor: pointer; padding: 5px 10px; }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="wrap aips-wrap">
+        <h1>Authors</h1>
+
+        <!-- Add tabs for Authors List and Generation Queue -->
+        <div class="aips-authors-tabs" role="tablist">
+            <button class="aips-authors-tab-link active" role="tab" aria-selected="true" aria-controls="authors-list-tab" id="tab-authors-list" data-tab="authors-list">Authors List</button>
+            <button class="aips-authors-tab-link" role="tab" aria-selected="false" aria-controls="generation-queue-tab" id="tab-generation-queue" data-tab="generation-queue">Generation Queue</button>
+        </div>
+
+        <!-- Authors List Tab Content -->
+        <div id="authors-list-tab" class="aips-authors-tab-content active" role="tabpanel" aria-labelledby="tab-authors-list">
+            <div class="aips-authors-container">
+                <h2>Authors List Content</h2>
+                <p>List of authors goes here.</p>
+            </div>
+        </div>
+
+        <!-- Generation Queue Tab Content -->
+        <div id="generation-queue-tab" class="aips-authors-tab-content" style="display: none;" role="tabpanel" aria-labelledby="tab-generation-queue">
+            <div class="aips-queue-container">
+                <h2>Generation Queue Content</h2>
+                <p>Queue items go here.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mocking the AuthorsModule logic relevant to tabs
+        (function ($) {
+            'use strict';
+            const GenerationQueueModule = {
+                init: function () {
+                    this.bindEvents();
+                },
+                bindEvents: function () {
+                    $(document).on('click', '.aips-authors-tab-link', this.switchMainTab.bind(this));
+                },
+                switchMainTab: function (e) {
+                    e.preventDefault();
+                    const $tab = $(e.currentTarget);
+                    const tabId = $tab.data('tab');
+
+                    $('.aips-authors-tab-link').removeClass('active').attr('aria-selected', 'false');
+                    $tab.addClass('active').attr('aria-selected', 'true');
+
+                    $('.aips-authors-tab-content').hide();
+                    $('#' + tabId + '-tab').show();
+                },
+                loadQueueTopics: function() { console.log('loadQueueTopics mock'); }
+            };
+            $(document).ready(function () {
+                GenerationQueueModule.init();
+            });
+        })(jQuery);
+    </script>
+</body>
+</html>
