@@ -17,7 +17,8 @@ class AIPS_DB_Manager {
         'aips_authors',
         'aips_author_topics',
         'aips_author_topic_logs',
-        'aips_topic_feedback'
+        'aips_topic_feedback',
+        'aips_activity'
     );
 
     public function __construct() {
@@ -62,6 +63,7 @@ class AIPS_DB_Manager {
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
+        $table_activity = $tables['aips_activity'];
 
         $sql = array();
 
@@ -275,6 +277,25 @@ class AIPS_DB_Manager {
             KEY user_id (user_id),
             KEY reason_category (reason_category),
             KEY source (source),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_activity (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            event_type varchar(50) NOT NULL,
+            event_status varchar(50) NOT NULL,
+            schedule_id bigint(20) DEFAULT NULL,
+            post_id bigint(20) DEFAULT NULL,
+            template_id bigint(20) DEFAULT NULL,
+            message text,
+            metadata longtext,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY event_type (event_type),
+            KEY event_status (event_status),
+            KEY schedule_id (schedule_id),
+            KEY post_id (post_id),
+            KEY template_id (template_id),
             KEY created_at (created_at)
         ) $charset_collate;";
 
