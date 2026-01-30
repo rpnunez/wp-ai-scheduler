@@ -470,6 +470,9 @@ class AIPS_Settings {
             'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
             'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
             'delete' => __('Delete', 'ai-post-scheduler'),
+            'clearFilters' => __('Clear Filters', 'ai-post-scheduler'),
+            'libraryEmpty' => __('Your research library is empty.', 'ai-post-scheduler'),
+            'startResearch' => __('Start Research', 'ai-post-scheduler'),
         ));
 
         // Planner Page Scripts

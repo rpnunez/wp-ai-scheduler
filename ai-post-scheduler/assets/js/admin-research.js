@@ -113,7 +113,30 @@
         // Display topics table
         function displayTopicsTable(topics) {
             if (!topics || topics.length === 0) {
-                $('#topics-container').html('<p>' + aipsResearchL10n.noTopicsFound + '</p>');
+                // Check if filters are active
+                const niche = $('#filter-niche').val();
+                const minScore = $('#filter-score').val();
+                const freshOnly = $('#filter-fresh').is(':checked');
+
+                const isFiltered = niche || minScore !== '0' || freshOnly;
+
+                let emptyStateHtml = '<div class="aips-empty-state">';
+                emptyStateHtml += '<span class="dashicons dashicons-search" aria-hidden="true"></span>';
+
+                if (isFiltered) {
+                    emptyStateHtml += '<h3>' + aipsResearchL10n.noTopicsFound + '</h3>';
+                    emptyStateHtml += '<p>' + aipsResearchL10n.noTopicsFound + '</p>';
+                    emptyStateHtml += '<button type="button" class="button button-primary" id="aips-clear-filters">' + aipsResearchL10n.clearFilters + '</button>';
+                } else {
+                    emptyStateHtml += '<h3>' + aipsResearchL10n.libraryEmpty + '</h3>';
+                    emptyStateHtml += '<p>' + aipsResearchL10n.libraryEmpty + '</p>';
+                    emptyStateHtml += '<button type="button" class="button button-primary" id="aips-start-research">' + aipsResearchL10n.startResearch + '</button>';
+                }
+
+                emptyStateHtml += '</div>';
+
+                $('#topics-container').html(emptyStateHtml);
+                $('#bulk-schedule-section').hide();
                 return;
             }
 
@@ -249,6 +272,22 @@
                     $spinner.removeClass('is-active');
                 }
             });
+        });
+
+        // Clear filters handler
+        $(document).on('click', '#aips-clear-filters', function() {
+            $('#filter-niche').val('');
+            $('#filter-score').val('0');
+            $('#filter-fresh').prop('checked', false);
+            $('#load-topics').trigger('click');
+        });
+
+        // Start research handler
+        $(document).on('click', '#aips-start-research', function() {
+            $('html, body').animate({
+                scrollTop: $('#aips-research-form').offset().top - 50
+            }, 500);
+            $('#research-niche').focus();
         });
 
         // Auto-load topics on page load if elements exist

@@ -76,8 +76,15 @@ if (!defined('ABSPATH')) {
 				<?php endforeach; ?>
 			<?php else: ?>
 				<tr>
-					<td colspan="5" class="no-items">
-						<?php esc_html_e('No generated posts found.', 'ai-post-scheduler'); ?>
+					<td colspan="5">
+						<div class="aips-empty-state">
+							<span class="dashicons dashicons-admin-post" aria-hidden="true"></span>
+							<h3><?php esc_html_e('No Generated Posts', 'ai-post-scheduler'); ?></h3>
+							<p><?php esc_html_e('No posts have been generated yet. Configure a schedule or run a manual generation to get started.', 'ai-post-scheduler'); ?></p>
+							<a href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule')); ?>" class="button button-primary">
+								<?php esc_html_e('View Schedule', 'ai-post-scheduler'); ?>
+							</a>
+						</div>
 					</td>
 				</tr>
 			<?php endif; ?>
