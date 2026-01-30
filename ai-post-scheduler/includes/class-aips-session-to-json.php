@@ -320,31 +320,113 @@ class AIPS_Session_To_JSON {
 		$upload = wp_upload_dir();
 		$base_dir = trailingslashit($upload['basedir']) . 'aips-exports';
 		$base_url = trailingslashit($upload['baseurl']) . 'aips-exports';
-
+		
 		if (!file_exists($base_dir)) {
 			if (!wp_mkdir_p($base_dir)) {
 				return new WP_Error('mkdir_failed', __('Failed to create export directory.', 'ai-post-scheduler'));
 			}
+			
+			// Add .htaccess to protect directory
+			$this->create_htaccess_protection($base_dir);
 		}
-
+		
+		// Generate filename with random component for security
 		$timestamp = current_time('Ymd-His');
-		$filename = sprintf('aips-session-%d-%s.json', $history_id, $timestamp);
+		$random = wp_generate_password(12, false);
+		$filename = sprintf('aips-session-%d-%s-%s.json', $history_id, $timestamp, $random);
 		$filepath = trailingslashit($base_dir) . $filename;
 		$fileurl = trailingslashit($base_url) . $filename;
-
+		
 		$bytes = file_put_contents($filepath, $json_string, LOCK_EX);
 		if ($bytes === false) {
 			return new WP_Error('write_failed', __('Failed to write export file.', 'ai-post-scheduler'));
 		}
-
+		
 		// Try to set restrictive permissions
 		@chmod($filepath, 0644);
-
+		
 		return array(
 			'path' => $filepath,
 			'url' => $fileurl,
 			'size' => $bytes,
 		);
+	}
+	
+	/**
+	 * Create .htaccess file to protect export directory
+	 *
+	 * @param string $dir Directory path
+	 */
+	private function create_htaccess_protection($dir) {
+		$htaccess_file = trailingslashit($dir) . '.htaccess';
+		
+		// Only create if it doesn't exist
+		if (file_exists($htaccess_file)) {
+			return;
+		}
+		
+		$content = "# Protect AIPS export files\n";
+		$content .= "# Files are accessed through authenticated download handler\n";
+		$content .= "<Files *.json>\n";
+		$content .= "    Order Allow,Deny\n";
+		$content .= "    Deny from all\n";
+		$content .= "</Files>\n";
+		
+		@file_put_contents($htaccess_file, $content);
+	}
+	
+	/**
+	 * Clean up old export files
+	 *
+	 * Removes files older than the specified age in seconds.
+	 * Should be called regularly via WP-Cron.
+	 *
+	 * @param int $max_age Maximum age in seconds (default: 1 hour)
+	 * @return array Array with 'deleted' count and 'errors' array
+	 */
+	public static function cleanup_old_exports($max_age = 3600) {
+		$upload = wp_upload_dir();
+		$base_dir = trailingslashit($upload['basedir']) . 'aips-exports';
+		
+		$result = array(
+			'deleted' => 0,
+			'errors' => array(),
+		);
+		
+		if (!file_exists($base_dir) || !is_dir($base_dir)) {
+			return $result;
+		}
+		
+		$current_time = time();
+		$files = glob($base_dir . '/aips-session-*.json');
+		
+		if ($files === false) {
+			$result['errors'][] = 'Failed to read export directory';
+			return $result;
+		}
+		
+		foreach ($files as $file) {
+			if (!is_file($file)) {
+				continue;
+			}
+			
+			$file_time = filemtime($file);
+			if ($file_time === false) {
+				$result['errors'][] = 'Could not get modification time for: ' . basename($file);
+				continue;
+			}
+			
+			// Delete if older than max age
+			if (($current_time - $file_time) > $max_age) {
+				if (@unlink($file)) {
+					$result['deleted']++;
+				} else {
+					$result['errors'][] = 'Failed to delete: ' . basename($file);
+				}
+			}
+		}
+		
+		return $result;
 	}
 
 	/**
