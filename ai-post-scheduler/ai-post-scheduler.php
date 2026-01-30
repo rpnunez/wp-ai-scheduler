@@ -163,7 +163,8 @@ final class AI_Post_Scheduler {
             'aips_generate_author_topics' => 'hourly',
             'aips_generate_author_posts' => 'hourly',
             'aips_scheduled_research' => 'daily',
-            'aips_send_review_notifications' => 'daily'
+            'aips_send_review_notifications' => 'daily',
+            'aips_cleanup_export_files' => 'daily'
         );
 
         foreach ($crons as $hook => $schedule) {
@@ -201,6 +202,7 @@ final class AI_Post_Scheduler {
         wp_clear_scheduled_hook('aips_generate_author_posts');
         wp_clear_scheduled_hook('aips_scheduled_research');
         wp_clear_scheduled_hook('aips_send_review_notifications');
+        wp_clear_scheduled_hook('aips_cleanup_export_files');
         flush_rewrite_rules();
     }
     
@@ -274,6 +276,35 @@ function aips_init() {
 }
 
 add_action('plugins_loaded', 'aips_init', 5);
+
+// Register cleanup cron handler
+add_action('aips_cleanup_export_files', 'aips_cleanup_export_files_handler');
+
+/**
+ * Cron handler to clean up old export files
+ * 
+ * Runs daily to remove session export files older than 24 hours.
+ */
+function aips_cleanup_export_files_handler() {
+	// Clean up files older than 24 hours (86400 seconds)
+	$result = AIPS_Session_To_JSON::cleanup_old_exports(86400);
+	
+	// Log the cleanup results
+	if (class_exists('AIPS_Logger')) {
+		$logger = new AIPS_Logger();
+		$logger->log(sprintf(
+			'Export files cleanup completed. Deleted: %d files. Errors: %d',
+			$result['deleted'],
+			count($result['errors'])
+		));
+		
+		if (!empty($result['errors'])) {
+			foreach ($result['errors'] as $error) {
+				$logger->log('Export cleanup error: ' . $error);
+			}
+		}
+	}
+}
 
 function aips_activate_callback() {
     AI_Post_Scheduler::get_instance()->activate();
