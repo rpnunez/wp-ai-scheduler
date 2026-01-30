@@ -148,9 +148,17 @@ if (!defined('ABSPATH')) {
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
 			<h2><?php esc_html_e('View Session', 'ai-post-scheduler'); ?></h2>
-			<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
-				<span class="dashicons dashicons-no"></span>
-			</button>
+			<div class="aips-modal-header-actions">
+				<button class="button button-primary aips-copy-session-json">
+					<?php esc_html_e('Copy Session JSON', 'ai-post-scheduler'); ?>
+				</button>
+				<button class="button aips-download-session-json">
+					<?php esc_html_e('Download Session JSON', 'ai-post-scheduler'); ?>
+				</button>
+				<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
+					<span class="dashicons dashicons-no"></span>
+				</button>
+			</div>
 		</div>
 		<div class="aips-modal-body">
 			<div class="aips-session-info">
