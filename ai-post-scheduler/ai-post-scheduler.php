@@ -106,6 +106,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-controller.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-dashboard-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generated-posts-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
