@@ -927,7 +927,7 @@
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
 
 			// Search functionality
-			$('#aips-queue-search').on('input', this.filterQueue.bind(this));
+			$(document).on('keyup search', '#aips-queue-search', this.filterQueue.bind(this));
 			$('#aips-queue-search-clear, .aips-clear-queue-search-btn').on('click', this.clearQueueSearch.bind(this));
 		},
 
@@ -1028,12 +1028,12 @@
 
 			$rows.each(function () {
 				const $row = $(this);
-				// Check cells: Topic Title (1), Author (2), Field/Niche (3) - 0 is checkbox
+				// Check cells: Topic Title (0), Author (1), Field/Niche (2)
 				const title = $row.find('td:eq(0)').text().toLowerCase();
 				const author = $row.find('td:eq(1)').text().toLowerCase();
 				const field = $row.find('td:eq(2)').text().toLowerCase();
 
-				if (title.includes(searchTerm) || author.includes(searchTerm) || field.includes(searchTerm)) {
+				if (title.indexOf(searchTerm) > -1 || author.indexOf(searchTerm) > -1 || field.indexOf(searchTerm) > -1) {
 					$row.show();
 					hasVisibleRows = true;
 				} else {
@@ -1041,18 +1041,18 @@
 				}
 			});
 
-			if (hasVisibleRows) {
-				$tableContainer.show();
-				$noResults.hide();
-			} else {
+			if (!hasVisibleRows && searchTerm.length > 0) {
 				$tableContainer.hide();
 				$noResults.show();
+			} else {
+				$tableContainer.show();
+				$noResults.hide();
 			}
 		},
 
 		clearQueueSearch: function (e) {
 			e.preventDefault();
-			$('#aips-queue-search').val('').trigger('input');
+			$('#aips-queue-search').val('').trigger('keyup');
 			$('#aips-queue-search').focus();
 		},
 
