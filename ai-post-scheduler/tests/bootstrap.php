@@ -341,6 +341,21 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = array()) {
+            if (is_object($args)) {
+                $args = get_object_vars($args);
+            } elseif (!is_array($args)) {
+                $args = array();
+            }
+
+            if (is_array($defaults)) {
+                return array_merge($defaults, $args);
+            }
+            return $args;
+        }
+    }
+
     if (!function_exists('get_bloginfo')) {
         function get_bloginfo($show = '', $filter = 'raw') {
             switch ($show) {
