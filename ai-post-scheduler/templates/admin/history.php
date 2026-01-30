@@ -20,10 +20,12 @@ if (isset($stats) && $stats instanceof AIPS_History) {
     $stats = null; // Will be set below
 }
 
+// Ensure status filter is initialized for the view
+$status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
+
 if (isset($history_handler)) {
     // Derive filters similarly to AIPS_History::render_page().
     $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
-    $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
     $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '');
 
     $history = $history_handler->get_history(array(
