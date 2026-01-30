@@ -13,6 +13,16 @@
             this.initAIVariablesScanner();
         },
 
+        setModalFocus: function($modal) {
+             // Find first visible input, textarea, or select that is not disabled
+             var $input = $modal.find('input, textarea, select').not(':disabled, [type="hidden"]').filter(':visible').first();
+             if ($input.length) {
+                 setTimeout(function() {
+                     $input.focus();
+                 }, 100);
+             }
+        },
+
         bindEvents: function() {
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
@@ -411,6 +421,7 @@
             // Initialize wizard to step 1
             AIPS.wizardGoToStep(1);
             $('#aips-template-modal').show();
+            AIPS.setModalFocus($('#aips-template-modal'));
         },
 
         editTemplate: function(e) {
@@ -455,6 +466,7 @@
                         // Initialize wizard to step 1
                         AIPS.wizardGoToStep(1);
                         $('#aips-template-modal').show();
+                        AIPS.setModalFocus($('#aips-template-modal'));
                     } else {
                         alert(response.data.message);
                     }
@@ -769,6 +781,7 @@
             $('#voice_id').val('');
             $('#aips-voice-modal-title').text('Add New Voice');
             $('#aips-voice-modal').show();
+            AIPS.setModalFocus($('#aips-voice-modal'));
         },
 
         editVoice: function(e) {
@@ -793,6 +806,7 @@
                         $('#voice_is_active').prop('checked', v.is_active == 1);
                         $('#aips-voice-modal-title').text('Edit Voice');
                         $('#aips-voice-modal').show();
+                        AIPS.setModalFocus($('#aips-voice-modal'));
                     }
                 }
             });
@@ -867,6 +881,7 @@
             $('#schedule_id').val('');
             $('#aips-schedule-modal-title').text('Add New Schedule');
             $('#aips-schedule-modal').show();
+            AIPS.setModalFocus($('#aips-schedule-modal'));
         },
 
         cloneSchedule: function(e) {
@@ -897,6 +912,7 @@
             // Update title and show
             $('#aips-schedule-modal-title').text('Clone Schedule');
             $('#aips-schedule-modal').show();
+            AIPS.setModalFocus($('#aips-schedule-modal'));
         },
 
         saveSchedule: function(e) {
