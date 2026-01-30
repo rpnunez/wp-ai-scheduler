@@ -777,16 +777,16 @@
 			
 			posts.forEach(post => {
 				html += '<tr>';
-				html += '<td>' + post.post_id + '</td>';
+				html += '<td>' + this.escapeHtml(post.post_id) + '</td>';
 				html += '<td>' + this.escapeHtml(post.post_title) + '</td>';
-				html += '<td>' + post.date_generated + '</td>';
-				html += '<td>' + (post.date_published || aipsAuthorsL10n.notPublished) + '</td>';
+				html += '<td>' + this.escapeHtml(post.date_generated || '') + '</td>';
+				html += '<td>' + this.escapeHtml(post.date_published || aipsAuthorsL10n.notPublished) + '</td>';
 				html += '<td>';
 				if (post.edit_url) {
-					html += '<a href="' + post.edit_url + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
+					html += '<a href="' + this.sanitizeUrl(post.edit_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
 				}
 				if (post.post_url && post.post_status === 'publish') {
-					html += '<a href="' + post.post_url + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
+					html += '<a href="' + this.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
 				}
 				html += '</td>';
 				html += '</tr>';
@@ -901,14 +901,85 @@
 		},
 
 		escapeHtml: function (text) {
-			const map = {
-				'&': '&amp;',
-				'<': '&lt;',
-				'>': '&gt;',
-				'"': '&quot;',
-				"'": '&#039;'
-			};
-			return text.replace(/[&<>"']/g, m => map[m]);
+			try {
+				// Handle null, undefined, or non-string values
+				if (text === null || text === undefined) {
+					return '';
+				}
+				
+				// Convert to string if not already
+				const str = String(text);
+				
+				const map = {
+					'&': '&amp;',
+					'<': '&lt;',
+					'>': '&gt;',
+					'"': '&quot;',
+					"'": '&#039;'
+				};
+				return str.replace(/[&<>"']/g, m => map[m]);
+			} catch (error) {
+				console.error('Error in escapeHtml:', error);
+				// Return empty string as a safe fallback
+				return '';
+			}
+		},
+
+		/**
+		 * Sanitize and validate URLs for use in href attributes
+		 * Validates URL protocol and format without HTML-escaping (browsers handle href encoding)
+		 * @param {string} url - The URL to sanitize
+		 * @returns {string} - Validated URL or empty string if invalid
+		 */
+		sanitizeUrl: function (url) {
+			try {
+				// Handle null, undefined, or empty values
+				if (!url) {
+					return '';
+				}
+				
+				// Convert to string and trim whitespace
+				const urlStr = String(url).trim();
+				
+				if (!urlStr) {
+					return '';
+				}
+				
+				// Check for dangerous protocols (case-insensitive)
+				const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
+				const lowerUrl = urlStr.toLowerCase();
+				
+				for (const protocol of dangerousProtocols) {
+					if (lowerUrl.startsWith(protocol)) {
+						console.warn('Dangerous URL protocol detected:', protocol);
+						return '';
+					}
+				}
+				
+				// For absolute URLs, validate with URL constructor
+				if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
+					try {
+						const urlObj = new URL(urlStr);
+						// Return the normalized URL (URL constructor already handles encoding)
+						return urlObj.href;
+					} catch (e) {
+						console.warn('Invalid URL format:', urlStr);
+						return '';
+					}
+				}
+				
+				// For relative URLs (WordPress admin paths), return as-is after validation
+				if (urlStr.startsWith('/')) {
+					return urlStr;
+				}
+				
+				// Reject anything else
+				console.warn('URL does not match allowed patterns:', urlStr);
+				return '';
+			} catch (error) {
+				console.error('Error in sanitizeUrl:', error);
+				return '';
+			}
 		}
 	};
 	
