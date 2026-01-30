@@ -779,7 +779,7 @@
 				html += '<tr>';
 				html += '<td>' + this.escapeHtml(post.post_id) + '</td>';
 				html += '<td>' + this.escapeHtml(post.post_title) + '</td>';
-				html += '<td>' + this.escapeHtml(post.date_generated) + '</td>';
+				html += '<td>' + this.escapeHtml(post.date_generated || '') + '</td>';
 				html += '<td>' + this.escapeHtml(post.date_published || aipsAuthorsL10n.notPublished) + '</td>';
 				html += '<td>';
 				if (post.edit_url) {
