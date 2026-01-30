@@ -86,7 +86,7 @@ if (!defined('ABSPATH')) {
 					<a href="<?php echo esc_url( $view_url ); ?>" class="button button-small" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr( $aria_label ); ?>">
 						<?php echo esc_html( $view_label ); ?>
 					</a>
-					<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="button button-small">
+					<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="button button-small" aria-label="<?php echo esc_attr(sprintf(__('Edit "%s"', 'ai-post-scheduler'), $post_data['title'])); ?>">
 						<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
 					</a>
 					<button class="button button-small aips-view-session" data-history-id="<?php echo esc_attr($post_data['history_id']); ?>">
