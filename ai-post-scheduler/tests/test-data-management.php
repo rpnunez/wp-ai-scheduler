@@ -169,4 +169,36 @@ class Test_AIPS_Data_Management extends WP_UnitTestCase {
 		$this->assertWPError($result);
 		$this->assertEquals('file_too_large', $result->get_error_code());
 	}
+
+	public function test_import_mysql_blocks_unsafe_queries() {
+		// Create a temporary file with malicious SQL
+		$sql = "-- AI Post Scheduler Data Export\nUPDATE wp_users SET user_pass='123';";
+		$file = tempnam(sys_get_temp_dir(), 'aips_test_sqli_');
+		file_put_contents($file, $sql);
+
+		// Attempt import
+		$result = $this->import_mysql->import($file);
+
+		unlink($file);
+
+		// Should return error due to unsafe query (UPDATE not in whitelist)
+		$this->assertWPError($result);
+		$this->assertEquals('invalid_query', $result->get_error_code());
+	}
+
+	public function test_import_mysql_blocks_non_plugin_tables() {
+		// Create a temporary file with SQL targeting non-plugin table
+		$sql = "-- AI Post Scheduler Data Export\nINSERT INTO wp_users (user_login) VALUES ('hacker');";
+		$file = tempnam(sys_get_temp_dir(), 'aips_test_table_');
+		file_put_contents($file, $sql);
+
+		// Attempt import
+		$result = $this->import_mysql->import($file);
+
+		unlink($file);
+
+		// Should return error due to invalid table
+		$this->assertWPError($result);
+		$this->assertEquals('invalid_table', $result->get_error_code());
+	}
 }

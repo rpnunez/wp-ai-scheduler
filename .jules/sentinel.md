@@ -22,3 +22,8 @@
 **Vulnerability:** Unescaped insertion of database content (`generated_title`, `error_message`, `template.name`) into the DOM via string concatenation in `admin.js`.
 **Learning:** Admin interfaces are often treated as "trusted zones," but data originating from complex flows (like AI generation or indirect inputs) can be compromised (e.g., via Prompt Injection or Stored XSS). Concatenating HTML strings in JS without explicit escaping is a persistent vulnerability pattern.
 **Prevention:** Use a dedicated escaping utility (like `AIPS.escapeHtml()`) for ALL dynamic data inserted into the DOM, regardless of its source (database, API, or user input).
+
+## 2025-05-20 - [SQL Injection via Import Validation Bypass]
+**Vulnerability:** Loose validation (`stripos`) in the MySQL import feature allowed execution of arbitrary SQL commands (like `UPDATE wp_users`) because it only checked for the presence of the table name and the absence of specific keywords ("TABLE", "INSERT").
+**Learning:** Blacklisting keywords is insufficient for SQL validation. A whitelist approach enforcing specific command structures (Regex matching `COMMAND table`) is required when executing raw SQL is unavoidable.
+**Prevention:** When implementing SQL import features, use strict whitelist validation to ensure every query begins with an allowed command and targets an allowed table.
