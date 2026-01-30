@@ -44,7 +44,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
         <table class="wp-list-table widefat fixed striped aips-schedules-table">
             <thead>
                 <tr>
-                    <th class="manage-column column-cb check-column">
+                    <th scope="col" class="manage-column column-cb check-column">
                         <input id="cb-select-all-schedules" type="checkbox">
                         <label for="cb-select-all-schedules" class="screen-reader-text"><?php esc_html_e( 'Select All', 'ai-post-scheduler' ); ?></label>
                     </th>
@@ -80,7 +80,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
                     data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
                     <th scope="row" class="check-column">
-                        <input type="checkbox" name="schedule[]" value="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php printf(esc_attr__('Select schedule for %s', 'ai-post-scheduler'), $schedule->template_name); ?>">
+                        <input type="checkbox" name="schedule[]" value="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php printf(esc_attr__('Select schedule for %s', 'ai-post-scheduler'), esc_attr($schedule->template_name)); ?>">
                     </th>
                     <td class="column-template">
                         <?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?>
