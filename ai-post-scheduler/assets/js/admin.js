@@ -297,6 +297,13 @@
             var $btn = $(this);
             var text = $btn.data('clipboard-text');
 
+            if (!text && $btn.data('clipboard-target')) {
+                var $target = $($btn.data('clipboard-target'));
+                if ($target.length) {
+                    text = $target.val() || $target.text();
+                }
+            }
+
             if (!text) return;
 
             var showSuccess = function() {

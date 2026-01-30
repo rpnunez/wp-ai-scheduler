@@ -31,3 +31,7 @@
 ## 2026-01-21 - Generated Posts Empty State
 **Learning:** `generated-posts.php` was missing the standard Empty State pattern (`.aips-empty-state`) and a direct "View" action, causing inconsistency with `history.php`.
 **Action:** Implemented the standard Empty State and added a "View" button with accessibility attributes (`aria-label`, `rel="noopener"`) to match the "Feature Wizard" polish standards.
+
+## 2026-01-22 - System Status Copy Log
+**Learning:** The "System Status" page displayed read-only textareas for logs/details but lacked a quick way to copy the content, which is a frequent need for support and debugging.
+**Action:** Implemented a "Copy Log" button for each detail section in `system-status.php` and enhanced `admin.js` to support `data-clipboard-target` for copying content from specific elements.
