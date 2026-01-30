@@ -4,13 +4,14 @@
  * Post Review Feature Integration Test
  * 
  * This script tests that all the Post Review components are properly integrated.
- * Run from repository root: php ai-post-scheduler/tests/integration-test-post-review.php
+ * Run from repository root: php scripts/manual-integration-test-post-review.php
  */
 
 // Simulate WordPress constants
 define('ABSPATH', '/tmp/');
 define('AIPS_VERSION', '1.8.0');
-define('AIPS_PLUGIN_DIR', __DIR__ . '/../');
+// Adjusted path to point to the plugin directory from scripts/
+define('AIPS_PLUGIN_DIR', __DIR__ . '/../ai-post-scheduler/');
 define('AIPS_PLUGIN_URL', 'http://localhost/wp-content/plugins/ai-post-scheduler/');
 define('AIPS_PLUGIN_BASENAME', 'ai-post-scheduler/ai-post-scheduler.php');
 

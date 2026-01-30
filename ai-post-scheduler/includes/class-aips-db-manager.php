@@ -14,7 +14,6 @@ class AIPS_DB_Manager {
         'aips_article_structures',
         'aips_prompt_sections',
         'aips_trending_topics',
-        'aips_activity',
         'aips_authors',
         'aips_author_topics',
         'aips_author_topic_logs',
@@ -59,7 +58,6 @@ class AIPS_DB_Manager {
         $table_structures = $tables['aips_article_structures'];
         $table_sections = $tables['aips_prompt_sections'];
         $table_trending_topics = $tables['aips_trending_topics'];
-        $table_activity = $tables['aips_activity'];
         $table_authors = $tables['aips_authors'];
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
@@ -69,6 +67,7 @@ class AIPS_DB_Manager {
 
         $sql[] = "CREATE TABLE $table_history (
             id bigint(20) NOT NULL AUTO_INCREMENT,
+            uuid varchar(36) DEFAULT NULL,
             post_id bigint(20) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
             status varchar(50) NOT NULL DEFAULT 'pending',
@@ -80,6 +79,7 @@ class AIPS_DB_Manager {
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             completed_at datetime DEFAULT NULL,
             PRIMARY KEY  (id),
+            UNIQUE KEY uuid (uuid),
             KEY post_id (post_id),
             KEY template_id (template_id),
             KEY status (status)
@@ -89,10 +89,12 @@ class AIPS_DB_Manager {
             id bigint(20) NOT NULL AUTO_INCREMENT,
             history_id bigint(20) NOT NULL,
             log_type varchar(50) NOT NULL,
+            history_type_id int DEFAULT 1,
             timestamp datetime DEFAULT CURRENT_TIMESTAMP,
             details longtext,
             PRIMARY KEY  (id),
-            KEY history_id (history_id)
+            KEY history_id (history_id),
+            KEY history_type_id (history_type_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_templates (
@@ -189,24 +191,6 @@ class AIPS_DB_Manager {
             KEY niche_idx (niche),
             KEY score_idx (score),
             KEY researched_at_idx (researched_at)
-        ) $charset_collate;";
-
-        $sql[] = "CREATE TABLE $table_activity (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            event_type varchar(50) NOT NULL,
-            event_status varchar(20) NOT NULL,
-            schedule_id bigint(20) DEFAULT NULL,
-            post_id bigint(20) DEFAULT NULL,
-            template_id bigint(20) DEFAULT NULL,
-            message text,
-            metadata longtext,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id),
-            KEY event_type (event_type),
-            KEY event_status (event_status),
-            KEY schedule_id (schedule_id),
-            KEY post_id (post_id),
-            KEY created_at (created_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_authors (

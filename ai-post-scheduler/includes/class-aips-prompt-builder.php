@@ -321,4 +321,88 @@ class AIPS_Prompt_Builder {
     private function get_output_instructions() {
         return 'Output the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.';
     }
+
+    /**
+     * Build all prompts for a template configuration.
+     *
+     * Generates content, title, excerpt, and image prompts for a given template
+     * configuration, ensuring consistency across preview and generation flows.
+     *
+     * @since 1.7.0
+     * @param object      $template_data Template data object with configuration.
+     * @param string|null $sample_topic  Sample topic to use (default: 'Example Topic').
+     * @param object|null $voice         Optional voice object.
+     * @return array Array containing 'prompts' and 'metadata' keys.
+     */
+    public function build_prompts($template_data, $sample_topic = null, $voice = null) {
+        if (empty($sample_topic)) {
+            $sample_topic = 'Example Topic';
+        }
+
+        // Build content prompt
+        $content_prompt = $this->build_content_prompt($template_data, $sample_topic, $voice);
+
+        // Build title prompt
+        $sample_content = '[Generated article content would appear here]';
+        $title_prompt = $this->build_title_prompt($template_data, $sample_topic, $voice, $sample_content);
+
+        // Build excerpt prompt (requires title and content)
+        $sample_title = '[Generated title would appear here]';
+        $excerpt_prompt = $this->build_excerpt_prompt($sample_title, $sample_content, $voice, $sample_topic);
+
+        // Build image prompt if enabled
+        $image_prompt_processed = '';
+        if (isset($template_data->generate_featured_image) && $template_data->generate_featured_image 
+            && isset($template_data->featured_image_source) && $template_data->featured_image_source === 'ai_prompt' 
+            && !empty($template_data->image_prompt)) {
+            $image_prompt_processed = $this->template_processor->process($template_data->image_prompt, $sample_topic);
+        }
+
+        // Get voice name if applicable
+        $voice_name = '';
+        if ($voice && isset($voice->name)) {
+            $voice_name = $voice->name;
+        }
+
+        // Get article structure name if applicable
+        $structure_name = '';
+        if (isset($template_data->article_structure_id) && $template_data->article_structure_id > 0) {
+            $structure = $this->structure_manager->get_structure($template_data->article_structure_id);
+            if ($structure && !is_wp_error($structure) && isset($structure['name'])) {
+                $structure_name = $structure['name'];
+            }
+        }
+
+        return array(
+            'prompts' => array(
+                'content' => $content_prompt,
+                'title' => $title_prompt,
+                'excerpt' => $excerpt_prompt,
+                'image' => $image_prompt_processed,
+            ),
+            'metadata' => array(
+                'voice' => $voice_name,
+                'article_structure' => $structure_name,
+                'sample_topic' => $sample_topic,
+            ),
+        );
+    }
+
+    /**
+     * Get voice object by ID.
+     *
+     * Helper method to retrieve voice configuration.
+     *
+     * @since 1.7.0
+     * @param int $voice_id Voice ID.
+     * @return object|null Voice object or null if not found.
+     */
+    public function get_voice($voice_id) {
+        if ($voice_id <= 0) {
+            return null;
+        }
+
+        $voice_service = new AIPS_Voices();
+        return $voice_service->get($voice_id);
+    }
 }
