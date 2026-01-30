@@ -84,6 +84,7 @@ class AIPS_Schedule_Controller {
         }
 
         $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
+        $ids = array_filter($ids);
 
         if (empty($ids)) {
             wp_send_json_error(array('message' => __('No schedules selected.', 'ai-post-scheduler')));

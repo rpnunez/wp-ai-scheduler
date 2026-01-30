@@ -1895,6 +1895,7 @@
             }
 
             var $btn = $(this);
+            var originalLabel = $btn.text();
             $btn.prop('disabled', true).text('Deleting...');
 
             $.ajax({
@@ -1910,12 +1911,12 @@
                         location.reload();
                     } else {
                         alert(response.data.message);
-                        $btn.prop('disabled', false).text('Delete Selected');
+                        $btn.prop('disabled', false).text(originalLabel);
                     }
                 },
                 error: function() {
                     alert('An error occurred. Please try again.');
-                    $btn.prop('disabled', false).text('Delete Selected');
+                    $btn.prop('disabled', false).text(originalLabel);
                 }
             });
         },
