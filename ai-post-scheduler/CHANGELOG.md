@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [bolt-optimize-history-query] - 2026-01-30
+### Improved
+- Optimized `AIPS_History_Repository::get_history` to select only necessary columns instead of `SELECT *`, reducing memory usage and database load by avoiding large TEXT/BLOB columns when listing history items.
+
 ## [wizard-authors-search] - 2025-12-27
 ### Added
 - Added client-side search functionality to the Authors list admin page.
