@@ -144,6 +144,11 @@ class AIPS_Schedule_Repository {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
+        // Validate next_run format (Y-m-d H:i:s)
+        if (empty($data['next_run']) || !DateTime::createFromFormat('Y-m-d H:i:s', $data['next_run'])) {
+            return false;
+        }
+
         $insert_data = array(
             'template_id' => absint($data['template_id']),
             'frequency' => sanitize_text_field($data['frequency']),
@@ -196,6 +201,10 @@ class AIPS_Schedule_Repository {
         }
         
         if (isset($data['next_run'])) {
+            // Validate next_run format if provided
+            if (!DateTime::createFromFormat('Y-m-d H:i:s', $data['next_run'])) {
+                return false;
+            }
             $update_data['next_run'] = sanitize_text_field($data['next_run']);
             $format[] = '%s';
         }
