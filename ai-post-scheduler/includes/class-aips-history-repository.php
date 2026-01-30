@@ -230,16 +230,26 @@ class AIPS_History_Repository {
             FROM {$this->table_name}
         ");
 
-        $stats = array(
-            'total' => (int) $results->total,
-            'completed' => (int) $results->completed,
-            'failed' => (int) $results->failed,
-            'processing' => (int) $results->processing,
-        );
-        
-        $stats['success_rate'] = $stats['total'] > 0 
-            ? round(($stats['completed'] / $stats['total']) * 100, 1) 
-            : 0;
+        if (!$results) {
+            $stats = array(
+                'total' => 0,
+                'completed' => 0,
+                'failed' => 0,
+                'processing' => 0,
+                'success_rate' => 0,
+            );
+        } else {
+            $stats = array(
+                'total' => (int) $results->total,
+                'completed' => (int) $results->completed,
+                'failed' => (int) $results->failed,
+                'processing' => (int) $results->processing,
+            );
+
+            $stats['success_rate'] = $stats['total'] > 0
+                ? round(($stats['completed'] / $stats['total']) * 100, 1)
+                : 0;
+        }
 
         set_transient('aips_history_stats', $stats, HOUR_IN_SECONDS);
         

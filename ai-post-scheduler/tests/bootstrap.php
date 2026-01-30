@@ -51,7 +51,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     // Define minimal WordPress constants and functions for basic testing
     if (!defined('ABSPATH')) {
-        define('ABSPATH', dirname(__DIR__) . '/');
+        define('ABSPATH', dirname(__DIR__) . '/tests/mocks/');
     }
     
     if (!defined('AIPS_VERSION')) {
@@ -68,6 +68,26 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     if (!defined('AIPS_PLUGIN_BASENAME')) {
         define('AIPS_PLUGIN_BASENAME', 'ai-post-scheduler/ai-post-scheduler.php');
+    }
+
+    // Time constants
+    if (!defined('MINUTE_IN_SECONDS')) {
+        define('MINUTE_IN_SECONDS', 60);
+    }
+    if (!defined('HOUR_IN_SECONDS')) {
+        define('HOUR_IN_SECONDS', 60 * MINUTE_IN_SECONDS);
+    }
+    if (!defined('DAY_IN_SECONDS')) {
+        define('DAY_IN_SECONDS', 24 * HOUR_IN_SECONDS);
+    }
+    if (!defined('WEEK_IN_SECONDS')) {
+        define('WEEK_IN_SECONDS', 7 * DAY_IN_SECONDS);
+    }
+    if (!defined('MONTH_IN_SECONDS')) {
+        define('MONTH_IN_SECONDS', 30 * DAY_IN_SECONDS);
+    }
+    if (!defined('YEAR_IN_SECONDS')) {
+        define('YEAR_IN_SECONDS', 365 * DAY_IN_SECONDS);
     }
 
     if (!isset($GLOBALS['aips_test_hooks'])) {
@@ -196,6 +216,32 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 } elseif (isset($GLOBALS['aips_test_hooks']['filters'][$hook_name][$priority])) {
                     unset($GLOBALS['aips_test_hooks']['filters'][$hook_name][$priority]);
                 }
+            }
+            return true;
+        }
+    }
+
+    if (!isset($GLOBALS['aips_test_transients'])) {
+        $GLOBALS['aips_test_transients'] = array();
+    }
+
+    if (!function_exists('get_transient')) {
+        function get_transient($transient) {
+            return isset($GLOBALS['aips_test_transients'][$transient]) ? $GLOBALS['aips_test_transients'][$transient] : false;
+        }
+    }
+
+    if (!function_exists('set_transient')) {
+        function set_transient($transient, $value, $expiration = 0) {
+            $GLOBALS['aips_test_transients'][$transient] = $value;
+            return true;
+        }
+    }
+
+    if (!function_exists('delete_transient')) {
+        function delete_transient($transient) {
+            if (isset($GLOBALS['aips_test_transients'][$transient])) {
+                unset($GLOBALS['aips_test_transients'][$transient]);
             }
             return true;
         }
@@ -543,6 +589,121 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $text;
         }
     }
+
+    if (!function_exists('esc_html')) {
+        function esc_html($text) {
+            return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+        }
+    }
+
+    if (!function_exists('esc_html_e')) {
+        function esc_html_e($text, $domain = 'default') {
+            echo esc_html($text);
+        }
+    }
+
+    if (!function_exists('esc_attr')) {
+        function esc_attr($text) {
+            return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+        }
+    }
+
+    if (!function_exists('esc_attr_e')) {
+        function esc_attr_e($text, $domain = 'default') {
+            echo esc_attr($text);
+        }
+    }
+
+    if (!function_exists('esc_url')) {
+        function esc_url($url) {
+            return $url;
+        }
+    }
+
+    if (!function_exists('get_edit_post_link')) {
+        function get_edit_post_link($id = 0, $context = 'display') {
+            return 'http://example.com/wp-admin/post.php?post=' . $id . '&action=edit';
+        }
+    }
+
+    if (!function_exists('get_permalink')) {
+        function get_permalink($post = 0, $leavename = false) {
+            return 'http://example.com/?p=' . (is_object($post) ? $post->ID : $post);
+        }
+    }
+
+    if (!function_exists('date_i18n')) {
+        function date_i18n($format, $timestamp_with_offset = false, $gmt = false) {
+            $timestamp = $timestamp_with_offset ? $timestamp_with_offset : time();
+            return date($format, $timestamp);
+        }
+    }
+
+    if (!function_exists('admin_url')) {
+        function admin_url($path = '', $scheme = 'admin') {
+            return 'http://example.com/wp-admin/' . $path;
+        }
+    }
+
+    if (!function_exists('selected')) {
+        function selected($selected, $current = true, $echo = true) {
+            $result = ((string) $selected === (string) $current) ? " selected='selected'" : '';
+            if ($echo) echo $result;
+            return $result;
+        }
+    }
+
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = '') {
+            if (is_object($args)) {
+                $r = get_object_vars($args);
+            } elseif (is_array($args)) {
+                $r =& $args;
+            } else {
+                wp_parse_str($args, $r);
+            }
+
+            if (is_array($defaults)) {
+                return array_merge($defaults, $r);
+            }
+            return $r;
+        }
+    }
+
+    if (!function_exists('wp_parse_str')) {
+        function wp_parse_str($string, &$array) {
+            parse_str($string, $array);
+        }
+    }
+
+    if (!function_exists('add_query_arg')) {
+        function add_query_arg() {
+            $args = func_get_args();
+            $url = '';
+            $params = array();
+
+            if (is_array($args[0])) {
+                $params = $args[0];
+                $url = isset($args[1]) ? $args[1] : '';
+            } else {
+                $params = array($args[0] => $args[1]);
+                $url = isset($args[2]) ? $args[2] : '';
+            }
+
+            if (empty($url)) {
+                $url = 'http://example.com';
+            }
+
+            $parts = explode('?', $url);
+            $base = $parts[0];
+            $query = isset($parts[1]) ? $parts[1] : '';
+
+            parse_str($query, $existing_params);
+            $final_params = array_merge($existing_params, $params);
+
+            return $base . '?' . http_build_query($final_params);
+        }
+    }
     
     // AJAX exception classes for testing
     if (!class_exists('WPAjaxDieContinueException')) {
@@ -566,6 +727,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 if (empty($args)) {
                     return $query;
                 }
+
+                // Handle case where args are passed as an array in the first argument
+                if (count($args) === 1 && is_array($args[0])) {
+                    $args = $args[0];
+                }
+
                 // Replace placeholders in order
                 foreach ($args as $arg) {
                     $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
@@ -601,6 +768,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             
             public function delete($table, $where, $where_format = null) {
                 return true;
+            }
+
+            public function get_charset_collate() {
+                return 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
             }
         };
     }
