@@ -272,4 +272,78 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		// Clean up
 		$wpdb->query($wpdb->prepare("DELETE FROM {$table_name} WHERE id = %d", $template->id));
 	}
+
+	/**
+	 * Test that aips_activity table exists and has correct structure.
+	 */
+	public function test_activity_table_exists() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_activity';
+		
+		// Check table exists
+		$table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'");
+		$this->assertEquals($table_name, $table_exists, 'aips_activity table should exist');
+		
+		// Get columns
+		$columns = $wpdb->get_results("SHOW COLUMNS FROM {$table_name}");
+		$column_names = array_map(function($col) {
+			return $col->Field;
+		}, $columns);
+		
+		// Expected columns
+		$expected_columns = array(
+			'id',
+			'event_type',
+			'event_status',
+			'schedule_id',
+			'post_id',
+			'template_id',
+			'message',
+			'metadata',
+			'created_at',
+		);
+		
+		foreach ($expected_columns as $expected_column) {
+			$this->assertContains(
+				$expected_column,
+				$column_names,
+				"Column '{$expected_column}' should exist in aips_activity table"
+			);
+		}
+	}
+
+	/**
+	 * Test that aips_activity table has expected indexes.
+	 */
+	public function test_activity_table_has_indexes() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_activity';
+		
+		// Get all indexes for the table
+		$indexes = $wpdb->get_results("SHOW INDEX FROM {$table_name}");
+		
+		// Extract unique index names
+		$index_names = array_unique(array_map(function($index) {
+			return $index->Key_name;
+		}, $indexes));
+		
+		// Expected indexes
+		$expected_indexes = array(
+			'PRIMARY',
+			'event_type',
+			'event_status',
+			'schedule_id',
+			'post_id',
+			'template_id',
+			'created_at',
+		);
+		
+		foreach ($expected_indexes as $expected_index) {
+			$this->assertContains(
+				$expected_index,
+				$index_names,
+				"Index '{$expected_index}' should exist on aips_activity table"
+			);
+		}
+	}
 }
