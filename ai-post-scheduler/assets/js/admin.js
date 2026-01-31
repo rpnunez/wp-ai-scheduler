@@ -58,6 +58,7 @@
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
             $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
+            $(document).on('click', '#aips-export-history-btn', this.exportHistory);
             $(document).on('keypress', '#aips-history-search-input', function(e) {
                 if(e.which == 13) {
                     AIPS.filterHistory(e);
@@ -1074,6 +1075,18 @@
             url.searchParams.set('tab', 'history');
             
             window.location.href = url.toString();
+        },
+
+        exportHistory: function(e) {
+            e.preventDefault();
+            var status = $('#aips-filter-status').val();
+            var search = $('#aips-history-search-input').val();
+
+            var url = aipsAjax.ajaxUrl + '?action=aips_export_history&nonce=' + aipsAjax.nonce;
+            if (status) url += '&status=' + encodeURIComponent(status);
+            if (search) url += '&search=' + encodeURIComponent(search);
+
+            window.location.href = url;
         },
 
         reloadHistory: function(e) {
