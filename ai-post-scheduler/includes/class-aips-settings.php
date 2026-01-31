@@ -470,6 +470,9 @@ class AIPS_Settings {
             'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
             'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
             'delete' => __('Delete', 'ai-post-scheduler'),
+            'deleteBulkConfirm' => __('Are you sure you want to delete %d selected topics?', 'ai-post-scheduler'),
+            'selectTopicDelete' => __('Please select at least one topic to delete.', 'ai-post-scheduler'),
+            'bulkDeleteSuccess' => __('%d topics deleted successfully.', 'ai-post-scheduler'),
         ));
 
         // Planner Page Scripts

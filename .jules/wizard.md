@@ -31,3 +31,7 @@
 ## 2026-01-21 - Generated Posts Empty State
 **Learning:** `generated-posts.php` was missing the standard Empty State pattern (`.aips-empty-state`) and a direct "View" action, causing inconsistency with `history.php`.
 **Action:** Implemented the standard Empty State and added a "View" button with accessibility attributes (`aria-label`, `rel="noopener"`) to match the "Feature Wizard" polish standards.
+
+## 2026-01-22 - Research Bulk Actions
+**Learning:** The "Trending Topics Library" in `research.php` allowed bulk scheduling but lacked bulk deletion, creating an asymmetry with `history.php` and forcing manual cleanup.
+**Action:** Implemented a "Delete Selected" button in the `.aips-filters` toolbar, utilizing the existing `delete_bulk` repository method and ensuring consistent bulk action behavior across the plugin.

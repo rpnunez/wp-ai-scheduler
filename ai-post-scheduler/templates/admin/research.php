@@ -152,6 +152,10 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <button type="button" class="button" id="load-topics">
                     <?php echo esc_html__('Load Topics', 'ai-post-scheduler'); ?>
                 </button>
+
+                <button type="button" class="button button-link-delete" id="delete-selected-topics" disabled>
+                    <?php echo esc_html__('Delete Selected', 'ai-post-scheduler'); ?>
+                </button>
             </div>
             
             <!-- Topics Table -->
