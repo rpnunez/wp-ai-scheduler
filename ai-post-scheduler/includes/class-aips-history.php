@@ -22,6 +22,7 @@ class AIPS_History {
         add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
         add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
         add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
+        add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
     }
     
     public function get_history($args = array()) {
@@ -247,6 +248,64 @@ class AIPS_History {
         ));
     }
     
+    /**
+     * AJAX handler to export history as CSV.
+     */
+    public function ajax_export_history() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Permission denied.', 'ai-post-scheduler'));
+        }
+
+        $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+        $search_query = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
+
+        $history = $this->repository->get_history(array(
+            'page'   => 1,
+            'per_page' => 999999, // Large limit to export all matching records
+            'status' => $status_filter,
+            'search' => $search_query,
+        ));
+
+        $filename = 'aips-history-' . date('Y-m-d') . '.csv';
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename);
+
+        $output = fopen('php://output', 'w');
+
+        // Headers
+        fputcsv($output, array(
+            'ID',
+            'Generated Title',
+            'Template',
+            'Status',
+            'Created At',
+            'Completed At',
+            'Post ID',
+            'Error Message'
+        ));
+
+        if (!empty($history['items'])) {
+            foreach ($history['items'] as $item) {
+                fputcsv($output, array(
+                    $item->id,
+                    $item->generated_title,
+                    $item->template_name,
+                    $item->status,
+                    $item->created_at,
+                    $item->completed_at,
+                    $item->post_id,
+                    $item->error_message
+                ));
+            }
+        }
+
+        fclose($output);
+        exit;
+    }
+
     public function render_page() {
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';

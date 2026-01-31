@@ -188,6 +188,38 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('has_action')) {
+        function has_action($hook, $function_to_check = false) {
+            if (!isset($GLOBALS['aips_test_hooks']['actions'][$hook])) {
+                return false;
+            }
+
+            if ($function_to_check === false) {
+                return true;
+            }
+
+            foreach ($GLOBALS['aips_test_hooks']['actions'][$hook] as $priority => $callbacks) {
+                foreach ($callbacks as $callback) {
+                    if ($callback['callback'] == $function_to_check) {
+                        return $priority;
+                    }
+                }
+            }
+
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_die')) {
+        function wp_die($message = '', $title = '', $args = array()) {
+            throw new WPDieException($message);
+        }
+    }
+
+    if (!class_exists('WPDieException')) {
+        class WPDieException extends Exception {}
+    }
+
     if (!function_exists('remove_all_filters')) {
         function remove_all_filters($hook_name, $priority = false) {
             if (isset($GLOBALS['aips_test_hooks']['filters'][$hook_name])) {
