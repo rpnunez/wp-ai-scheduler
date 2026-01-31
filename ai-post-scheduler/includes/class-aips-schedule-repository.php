@@ -148,7 +148,7 @@ class AIPS_Schedule_Repository {
             'template_id' => absint($data['template_id']),
             'frequency' => sanitize_text_field($data['frequency']),
             'next_run' => sanitize_text_field($data['next_run']),
-            'is_active' => isset($data['is_active']) ? 1 : 0,
+            'is_active' => !empty($data['is_active']) ? 1 : 0,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
         );

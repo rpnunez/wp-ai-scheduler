@@ -15,9 +15,33 @@ class AIPS_System_Status {
             'environment' => $this->check_environment(),
             'plugin' => $this->check_plugin(),
             'database' => $this->check_database(),
+            'scheduler' => $this->check_scheduler(),
             'filesystem' => $this->check_filesystem(),
             'cron' => $this->check_cron(),
             'logs' => $this->check_logs(),
+        );
+    }
+
+    private function check_scheduler() {
+        $repo = new AIPS_Schedule_Repository();
+        $counts = $repo->count_by_status();
+        $total = $counts['total'];
+        $active = $counts['active'];
+
+        $due = $repo->get_due_schedules();
+        $due_count = count($due);
+
+        return array(
+            'active_schedules' => array(
+                'label' => 'Active Schedules',
+                'value' => "$active / $total",
+                'status' => 'info',
+            ),
+            'due_now' => array(
+                'label' => 'Schedules Due Now',
+                'value' => $due_count,
+                'status' => $due_count > 0 ? 'info' : 'ok',
+            ),
         );
     }
 
