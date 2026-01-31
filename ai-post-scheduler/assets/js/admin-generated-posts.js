@@ -38,6 +38,9 @@
 			// View Session button handler
 			$(document).on('click', '.aips-view-session', this.handleViewSession.bind(this));
 			
+			// Clear History button handler
+			$(document).on('click', '#aips-clear-history', this.handleClearHistory.bind(this));
+
 			// Close modal handlers
 			$(document).on('click', '.aips-modal-close, .aips-modal-overlay', this.closeModal.bind(this));
 			
@@ -68,6 +71,44 @@
 			}
 			
 			this.loadSessionData(historyId);
+		},
+
+		/**
+		 * Handle Clear History button click
+		 */
+		handleClearHistory: function(e) {
+			e.preventDefault();
+
+			if (!confirm(window.aipsAdminL10n.clearHistoryConfirm || 'Are you sure you want to clear all history?')) {
+				return;
+			}
+
+			var self = this;
+            var $button = $(e.currentTarget);
+            var originalText = $button.text();
+            $button.prop('disabled', true).text('Clearing...');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_clear_history',
+					nonce: this.ajaxNonce
+				},
+				success: function(response) {
+					if (response.success) {
+						window.location.reload();
+					} else {
+						alert(response.data.message || 'Failed to clear history.');
+                        $button.prop('disabled', false).text(originalText);
+					}
+				},
+				error: function(xhr, status, error) {
+					console.error('AJAX error:', status, error);
+					alert('Failed to clear history.');
+                    $button.prop('disabled', false).text(originalText);
+				}
+			});
 		},
 		
 		/**

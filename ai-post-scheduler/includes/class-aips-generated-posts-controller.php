@@ -39,6 +39,7 @@ class AIPS_Generated_Posts_Controller {
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
+		add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
 	}
 	
 	/**
@@ -180,5 +181,25 @@ class AIPS_Generated_Posts_Controller {
 			'logs' => $logs,
 			'ai_calls' => $ai_calls,
 		));
+	}
+
+	/**
+	 * AJAX handler to clear all history
+	 */
+	public function ajax_clear_history() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		// Delete all history logs
+		$result = $this->history_repository->delete_by_status('');
+
+		if ($result !== false) {
+			wp_send_json_success(array('message' => __('History cleared successfully.', 'ai-post-scheduler')));
+		} else {
+			wp_send_json_error(array('message' => __('Failed to clear history.', 'ai-post-scheduler')));
+		}
 	}
 }

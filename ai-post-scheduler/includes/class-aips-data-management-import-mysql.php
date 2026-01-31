@@ -145,6 +145,15 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
 				);
 			}
+
+			// Block INSERT ... SELECT statements to prevent data exfiltration
+			// We check if it is an INSERT statement and if it contains a SELECT clause
+			if (strpos($query_upper, 'INSERT') !== false && preg_match('/\s+SELECT\s+/i', $query)) {
+				return new WP_Error(
+					'invalid_table',
+					__('SQL file contains potentially unsafe queries (INSERT ... SELECT). Import blocked.', 'ai-post-scheduler')
+				);
+			}
 		}
 		
 		// Execute each query
