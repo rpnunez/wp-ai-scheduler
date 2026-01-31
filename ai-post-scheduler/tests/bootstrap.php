@@ -96,6 +96,61 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $text;
         }
     }
+
+    if (!function_exists('get_transient')) {
+        function get_transient($transient) {
+            return false;
+        }
+    }
+
+    if (!function_exists('set_transient')) {
+        function set_transient($transient, $value, $expiration = 0) {
+            return true;
+        }
+    }
+
+    if (!function_exists('delete_transient')) {
+        function delete_transient($transient) {
+            return true;
+        }
+    }
+
+    if (!function_exists('add_query_arg')) {
+        function add_query_arg(...$args) {
+            // Simplified mock that just returns the URL part if present, or a default string
+            // We don't need full query string manipulation for these basic tests
+            $url = 'http://example.com/wp-admin/admin.php';
+            foreach ($args as $arg) {
+                if (is_string($arg) && strpos($arg, 'http') === 0) {
+                    $url = $arg;
+                }
+            }
+            return $url;
+        }
+    }
+
+    if (!function_exists('admin_url')) {
+        function admin_url($path = '', $scheme = 'admin') {
+            return 'http://example.com/wp-admin/' . $path;
+        }
+    }
+
+    if (!function_exists('date_i18n')) {
+        function date_i18n($format, $timestamp_with_offset = false, $gmt = false) {
+            if ( $timestamp_with_offset === false ) {
+                $timestamp_with_offset = time();
+            }
+            return date($format, $timestamp_with_offset);
+        }
+    }
+
+    if (!function_exists('selected')) {
+        function selected($selected, $current = true, $echo = true) {
+            $result = (string)$selected === (string)$current ? " selected='selected'" : '';
+            if ($echo) echo $result;
+            return $result;
+        }
+    }
     
     if (!function_exists('plugin_dir_path')) {
         function plugin_dir_path($file) {
@@ -335,6 +390,29 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = '') {
+            if (is_object($args)) {
+                $r = get_object_vars($args);
+            } elseif (is_array($args)) {
+                $r = &$args;
+            } else {
+                wp_parse_str($args, $r);
+            }
+
+            if (is_array($defaults)) {
+                return array_merge($defaults, $r);
+            }
+            return $r;
+        }
+    }
+
+    if (!function_exists('wp_parse_str')) {
+        function wp_parse_str($string, &$array) {
+            parse_str($string, $array);
+        }
+    }
+
     if (!function_exists('absint')) {
         function absint($maybeint) {
             return abs(intval($maybeint));
@@ -566,9 +644,16 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 if (empty($args)) {
                     return $query;
                 }
+
+                // Handle case where args are passed as an array
+                if (isset($args[0]) && is_array($args[0])) {
+                    $args = $args[0];
+                }
+
                 // Replace placeholders in order
                 foreach ($args as $arg) {
-                    $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                    $val = is_numeric($arg) ? $arg : "'" . addslashes((string)$arg) . "'";
+                    $query = preg_replace('/%[sd]/', $val, $query, 1);
                 }
                 return $query;
             }

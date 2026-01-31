@@ -110,8 +110,10 @@ class AIPS_History_Repository {
         $query_args[] = $args['per_page'];
         $query_args[] = $offset;
 
+        // Optimize query by selecting only necessary columns for the list view
+        // This avoids fetching large 'generated_content' and 'generation_log' fields
         $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.*, t.name as template_name 
+            SELECT h.id, h.post_id, h.generated_title, h.status, h.error_message, h.created_at, h.completed_at, h.template_id, t.name as template_name
             FROM {$this->table_name} h 
             LEFT JOIN {$templates_table} t ON h.template_id = t.id 
             WHERE $where_sql
