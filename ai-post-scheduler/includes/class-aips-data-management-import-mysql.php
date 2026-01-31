@@ -120,29 +120,56 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		$plugin_table_names = array_values($plugin_tables);
 		
 		foreach ($queries as $query) {
-			$query_upper = strtoupper(trim($query));
+			$query = trim($query);
 			
 			// Skip if query is empty
-			if (empty($query_upper)) {
+			if (empty($query)) {
+				continue;
+			}
+
+			$query_upper = strtoupper($query);
+
+			// 1. Allow non-data/structure commands that are safe
+			// SET commands (e.g. SQL_MODE, time_zone)
+			if (strpos($query_upper, 'SET ') === 0) {
 				continue;
 			}
 			
-			// Extract table name from query
-			$has_valid_table = false;
+			// UNLOCK TABLES
+			if ($query_upper === 'UNLOCK TABLES') {
+				continue;
+			}
+
+			// 2. For all other commands, they MUST operate on a valid plugin table
+			// AND must be one of the allowed commands (DROP, CREATE, INSERT, LOCK, ALTER)
+			$is_valid = false;
+
 			foreach ($plugin_table_names as $table_name) {
-				if (stripos($query, $table_name) !== false) {
-					$has_valid_table = true;
+				$escaped_table = preg_quote($table_name, '/');
+
+				// Verify the query starts with an allowed command AND targets the specific plugin table
+				// The table name must immediately follow the command (ignoring optional IF EXISTS)
+				$safe_pattern = '/^(' .
+					'INSERT\s+INTO|' .
+					'CREATE\s+TABLE|' .
+					'DROP\s+TABLE(\s+IF\s+EXISTS)?|' .
+					'LOCK\s+TABLES|' .
+					'ALTER\s+TABLE' .
+					')\s+[`]?' . $escaped_table . '[`]?/i';
+
+				if (preg_match($safe_pattern, $query)) {
+					$is_valid = true;
 					break;
 				}
 			}
 			
-			// If query references a table, ensure it's one of ours
-			if (!$has_valid_table && 
-				(strpos($query_upper, 'TABLE') !== false || 
-				 strpos($query_upper, 'INSERT') !== false)) {
+			if (!$is_valid) {
 				return new WP_Error(
-					'invalid_table',
-					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
+					'invalid_query',
+					sprintf(
+						__('Security Alert: Query blocked because it does not appear to operate on a valid plugin table. Query start: %s', 'ai-post-scheduler'),
+						substr($query, 0, 100)
+					)
 				);
 			}
 		}
