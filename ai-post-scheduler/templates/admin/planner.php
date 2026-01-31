@@ -43,7 +43,7 @@ $default_planner_frequency = 'daily';
                 <span class="selection-count"></span>
             </div>
             <div class="aips-toolbar-right">
-                <input type="search" id="planner-topic-search" class="regular-text" placeholder="<?php esc_attr_e('Filter topics...', 'ai-post-scheduler'); ?>" style="margin-right: 10px; max-width: 200px;">
+                <input type="search" id="planner-topic-search" class="regular-text" placeholder="<?php esc_attr_e('Filter topics...', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Filter topics', 'ai-post-scheduler'); ?>" style="margin-right: 10px; max-width: 200px;">
                 <button type="button" id="btn-copy-topics" class="button button-secondary button-small"><?php echo esc_html__('Copy Selected', 'ai-post-scheduler'); ?></button>
                 <button type="button" id="btn-clear-topics" class="button button-link-delete button-small"><?php echo esc_html__('Clear List', 'ai-post-scheduler'); ?></button>
             </div>
@@ -59,13 +59,13 @@ $default_planner_frequency = 'daily';
             <div class="aips-row">
                 <div class="aips-col">
                     <label for="bulk-template"><?php echo esc_html__('Use Template', 'ai-post-scheduler'); ?></label>
-                    <select id="bulk-template">
+                    <select id="bulk-template" aria-describedby="bulk-template-desc">
                         <option value=""><?php echo esc_html__('Select a Template...', 'ai-post-scheduler'); ?></option>
                         <?php foreach ($templates as $template): ?>
                             <option value="<?php echo esc_attr($template->id); ?>"><?php echo esc_html($template->name); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <p class="description"><?php echo esc_html__('The {{topic}} variable in the template will be replaced by the topic title.', 'ai-post-scheduler'); ?></p>
+                    <p id="bulk-template-desc" class="description"><?php echo esc_html__('The {{topic}} variable in the template will be replaced by the topic title.', 'ai-post-scheduler'); ?></p>
                 </div>
 
                 <div class="aips-col">
@@ -74,7 +74,6 @@ $default_planner_frequency = 'daily';
                 </div>
 
                 <div class="aips-col">
-                    <label for="bulk-frequency"><?php echo esc_html__('Frequency', 'ai-post-scheduler'); ?></label>
                     <?php AIPS_Template_Helper::render_frequency_dropdown( 'bulk-frequency', 'bulk-frequency', $default_planner_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
                 </div>
             </div>

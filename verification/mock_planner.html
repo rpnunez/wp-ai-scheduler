@@ -2,49 +2,154 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Verify Planner Search</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <title>Planner Mock</title>
     <style>
-        .topic-item { display: flex; align-items: center; padding: 10px; border: 1px solid #eee; }
-        .topic-item input[type="text"] { width: 100%; }
-        .selection-count { margin-left: 10px; }
+        /* Minimal WP Admin Styles */
+        body { font-family: sans-serif; background: #f1f1f1; padding: 20px; }
+        .aips-card { background: #fff; padding: 20px; border: 1px solid #ccc; max-width: 800px; margin: 0 auto; }
+        .aips-form-row { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="text"], textarea { width: 100%; padding: 5px; }
+        .aips-row { display: flex; gap: 20px; }
+        .aips-col { flex: 1; }
     </style>
 </head>
 <body>
-    <div id="planner-results">
-        <div class="aips-toolbar-right">
-            <input type="search" id="planner-topic-search" class="regular-text" placeholder="Filter topics...">
-        </div>
-        <div class="aips-toolbar-left">
-             <label><input type="checkbox" id="check-all-topics"> Select All</label>
-             <span class="selection-count">0 selected</span>
+<div class="aips-planner-container">
+    <div class="aips-card">
+        <h3>Topic Brainstorming</h3>
+        <p>Generate article ideas based on a niche, or paste your own list of topics.</p>
+
+        <div class="aips-form-row">
+            <label for="planner-niche">Niche / Topic</label>
+            <input type="text" id="planner-niche" class="regular-text" placeholder="e.g. React.js Tutorials, Healthy Keto Recipes...">
         </div>
 
-        <div id="topics-list">
-            <!-- Mock Topics -->
-            <div class="topic-item">
-                <input type="checkbox" class="topic-checkbox">
-                <input type="text" class="topic-text-input" value="React Tutorial">
-            </div>
-            <div class="topic-item">
-                <input type="checkbox" class="topic-checkbox">
-                <input type="text" class="topic-text-input" value="PHP Guide">
-            </div>
-            <div class="topic-item">
-                <input type="checkbox" class="topic-checkbox">
-                <input type="text" class="topic-text-input" value="CSS Flexbox">
-            </div>
+        <div class="aips-form-row">
+            <label for="planner-count">Number of Topics</label>
+            <input type="number" id="planner-count" class="small-text" value="10" min="1" max="50">
+        </div>
+
+        <div class="aips-form-actions">
+            <button type="button" id="btn-generate-topics" class="button button-primary">
+                Generate Topics            </button>
+            <span class="spinner"></span>
+        </div>
+
+        <hr>
+
+        <div class="aips-form-row">
+            <label for="planner-manual-topics">Or Paste Topics (One per line)</label>
+            <textarea id="planner-manual-topics" class="large-text" rows="5" placeholder="Topic 1&#10;Topic 2&#10;Topic 3"></textarea>
+            <button type="button" id="btn-parse-manual" class="button button-secondary" style="margin-top: 10px;">
+                Add to List            </button>
         </div>
     </div>
 
-    <script>
-        var aipsAjax = { ajaxUrl: 'mock', nonce: 'mock' };
-        window.AIPS = window.AIPS || {};
-        window.AIPS.updateSelectionCount = function() {
-             var count = $('.topic-checkbox:checked').length;
-             $('.selection-count').text(count + ' selected');
-        };
-    </script>
-    <script src="../ai-post-scheduler/assets/js/admin-planner.js"></script>
+    <div id="planner-results" class="aips-card" style="display:none; margin-top: 20px;">
+        <h3>Review & Schedule</h3>
+
+        <div class="aips-toolbar">
+            <div class="aips-toolbar-left">
+                <label><input type="checkbox" id="check-all-topics"> Select All</label>
+                <span class="selection-count"></span>
+            </div>
+            <div class="aips-toolbar-right">
+                <input type="search" id="planner-topic-search" class="regular-text" placeholder="Filter topics..." aria-label="Filter topics" style="margin-right: 10px; max-width: 200px;">
+                <button type="button" id="btn-copy-topics" class="button button-secondary button-small">Copy Selected</button>
+                <button type="button" id="btn-clear-topics" class="button button-link-delete button-small">Clear List</button>
+            </div>
+        </div>
+
+        <div id="topics-list" class="aips-topics-grid">
+            <!-- Topics inserted via JS -->
+        </div>
+
+        <div class="aips-schedule-settings" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+            <h4>Bulk Schedule Settings</h4>
+
+            <div class="aips-row">
+                <div class="aips-col">
+                    <label for="bulk-template">Use Template</label>
+                    <select id="bulk-template" aria-describedby="bulk-template-desc">
+                        <option value="">Select a Template...</option>
+                                                    <option value="1">Test Template</option>
+                                            </select>
+                    <p id="bulk-template-desc" class="description">The {{topic}} variable in the template will be replaced by the topic title.</p>
+                </div>
+
+                <div class="aips-col">
+                    <label for="bulk-start-date">Start Date</label>
+                    <input type="datetime-local" id="bulk-start-date" value="2026-01-31T15:24">
+                </div>
+
+                <div class="aips-col">
+                    <label for="bulk-frequency">Frequency</label><select id="bulk-frequency"><option>Daily</option></select>                </div>
+            </div>
+
+            <div class="aips-form-actions" style="margin-top: 20px;">
+                <button type="button" id="btn-bulk-schedule" class="button button-primary button-large">
+                    Schedule Selected Topics                </button>
+                <span class="spinner"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.aips-topics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+}
+.topic-item {
+    background: #fff;
+    padding: 10px;
+    border: 1px solid #eee;
+    display: flex;
+    align-items: center;
+}
+.topic-checkbox {
+    margin-right: 10px !important;
+}
+.topic-text-input {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 3px 5px;
+    font-size: 14px;
+    color: #1d2327;
+}
+.topic-text-input:hover {
+    border: 1px solid #ccc;
+    background: #fff;
+}
+.topic-text-input:focus {
+    border: 1px solid #2271b1;
+    background: #fff;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+.topic-checkbox:checked + .topic-text-input {
+    font-weight: 500;
+}
+.aips-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+}
+.aips-col {
+    flex: 1;
+}
+.aips-col select, .aips-col input {
+    width: 100%;
+    max-width: 100%;
+}
+</style>
 </body>
 </html>
