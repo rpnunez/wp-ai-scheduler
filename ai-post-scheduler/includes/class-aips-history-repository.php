@@ -389,6 +389,8 @@ class AIPS_History_Repository {
         delete_transient('aips_history_stats');
 
         if (empty($status)) {
+            // Truncate both history and log tables to ensure a clean state
+            $this->wpdb->query("TRUNCATE TABLE {$this->table_name_log}");
             return $this->wpdb->query("TRUNCATE TABLE {$this->table_name}");
         }
         
