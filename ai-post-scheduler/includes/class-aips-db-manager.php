@@ -282,7 +282,9 @@ class AIPS_DB_Manager {
     }
 
     public static function install_tables() {
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        if ( ! function_exists( 'dbDelta' ) ) {
+            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+        }
         $instance = new self();
         $schema = $instance->get_schema();
         foreach ($schema as $sql) {

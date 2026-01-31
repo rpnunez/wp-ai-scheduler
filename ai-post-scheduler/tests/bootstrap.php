@@ -89,6 +89,26 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!defined('ARRAY_N')) {
         define('ARRAY_N', 'ARRAY_N');
     }
+
+    if (!defined('MINUTE_IN_SECONDS')) {
+        define('MINUTE_IN_SECONDS', 60);
+    }
+
+    if (!defined('HOUR_IN_SECONDS')) {
+        define('HOUR_IN_SECONDS', 60 * MINUTE_IN_SECONDS);
+    }
+
+    if (!defined('DAY_IN_SECONDS')) {
+        define('DAY_IN_SECONDS', 24 * HOUR_IN_SECONDS);
+    }
+
+    if (!defined('WEEK_IN_SECONDS')) {
+        define('WEEK_IN_SECONDS', 7 * DAY_IN_SECONDS);
+    }
+
+    if (!defined('YEAR_IN_SECONDS')) {
+        define('YEAR_IN_SECONDS', 365 * DAY_IN_SECONDS);
+    }
     
     // Mock WordPress functions if not available
     if (!function_exists('esc_html__')) {
@@ -233,6 +253,32 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return true;
         }
     }
+
+    if (!isset($GLOBALS['aips_test_transients'])) {
+        $GLOBALS['aips_test_transients'] = array();
+    }
+
+    if (!function_exists('get_transient')) {
+        function get_transient($transient) {
+            return isset($GLOBALS['aips_test_transients'][$transient]) ? $GLOBALS['aips_test_transients'][$transient] : false;
+        }
+    }
+
+    if (!function_exists('set_transient')) {
+        function set_transient($transient, $value, $expiration = 0) {
+            $GLOBALS['aips_test_transients'][$transient] = $value;
+            return true;
+        }
+    }
+
+    if (!function_exists('delete_transient')) {
+        function delete_transient($transient) {
+            if (isset($GLOBALS['aips_test_transients'][$transient])) {
+                unset($GLOBALS['aips_test_transients'][$transient]);
+            }
+            return true;
+        }
+    }
     
     if (!function_exists('current_time')) {
         function current_time($type = 'mysql', $gmt = 0) {
@@ -256,6 +302,109 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('wp_json_encode')) {
         function wp_json_encode($data, $options = 0, $depth = 512) {
             return json_encode($data, $options, $depth);
+        }
+    }
+
+    if (!function_exists('esc_url')) {
+        function esc_url($url) {
+            return $url;
+        }
+    }
+
+    if (!function_exists('esc_attr')) {
+        function esc_attr($text) {
+            return $text;
+        }
+    }
+
+    if (!function_exists('esc_html')) {
+        function esc_html($text) {
+            return $text;
+        }
+    }
+
+    if (!function_exists('esc_html_e')) {
+        function esc_html_e($text, $domain = 'default') {
+            echo $text;
+        }
+    }
+
+    if (!function_exists('esc_attr_e')) {
+        function esc_attr_e($text, $domain = 'default') {
+            echo $text;
+        }
+    }
+
+    if (!function_exists('admin_url')) {
+        function admin_url($path = '') {
+            return 'http://example.com/wp-admin/' . $path;
+        }
+    }
+
+    if (!function_exists('date_i18n')) {
+        function date_i18n($format, $timestamp_with_offset = false, $gmt = false) {
+             $timestamp = $timestamp_with_offset === false ? time() : $timestamp_with_offset;
+             return date($format, $timestamp);
+        }
+    }
+
+    if (!function_exists('get_edit_post_link')) {
+        function get_edit_post_link($id) {
+            return 'http://example.com/wp-admin/post.php?post=' . $id . '&action=edit';
+        }
+    }
+
+    if (!function_exists('get_permalink')) {
+        function get_permalink($id) {
+            return 'http://example.com/?p=' . $id;
+        }
+    }
+
+    if (!function_exists('wp_parse_str')) {
+        function wp_parse_str($string, &$array) {
+            parse_str($string, $array);
+        }
+    }
+
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = '') {
+            if (is_object($args)) {
+                $r = get_object_vars($args);
+            } elseif (is_array($args)) {
+                $r =& $args;
+            } else {
+                wp_parse_str($args, $r);
+            }
+            if (is_array($defaults)) {
+                return array_merge($defaults, $r);
+            }
+            return $r;
+        }
+    }
+
+    if (!function_exists('add_query_arg')) {
+        function add_query_arg() {
+            $args = func_get_args();
+            // Last argument might be URL
+            $url = end($args);
+            if (is_array($url)) {
+                 $url = ''; // Fallback
+            }
+            return $url . (strpos($url, '?') !== false ? '&' : '?') . 'mock_query_arg=1';
+        }
+    }
+
+    if (!function_exists('selected')) {
+        function selected($selected, $current = true, $echo = true) {
+            if ((string) $selected === (string) $current) {
+                $result = " selected='selected'";
+            } else {
+                $result = '';
+            }
+            if ($echo) {
+                echo $result;
+            }
+            return $result;
         }
     }
     
@@ -433,6 +582,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             
             public function tearDown(): void {
                 $this->reset_hooks();
+                $this->reset_transients();
                 parent::tearDown();
             }
 
@@ -446,6 +596,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                     'actions' => array(),
                     'filters' => array(),
                 );
+            }
+
+            private function reset_transients() {
+                $GLOBALS['aips_test_transients'] = array();
             }
         }
     }
@@ -602,7 +756,17 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public function delete($table, $where, $where_format = null) {
                 return true;
             }
+
+            public function get_charset_collate() {
+                return "DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+            }
         };
+    }
+
+    if (!function_exists('dbDelta')) {
+        function dbDelta($queries = '', $execute = true) {
+            return array();
+        }
     }
     
     // Mock global $wp_filter for action/filter hooks
