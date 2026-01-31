@@ -176,7 +176,58 @@
             selectedTopics = $('.topic-checkbox:checked').map(function() {
                 return $(this).val();
             }).get();
+
+            // Update button state
+            $('#delete-selected-topics').prop('disabled', selectedTopics.length === 0);
         }
+
+        // Bulk delete handler
+        $('#delete-selected-topics').on('click', function() {
+            if (selectedTopics.length === 0) {
+                alert(aipsResearchL10n.selectTopicDelete);
+                return;
+            }
+
+            if (!confirm(aipsResearchL10n.deleteBulkConfirm.replace('%d', selectedTopics.length))) {
+                return;
+            }
+
+            const $btn = $(this);
+            $btn.prop('disabled', true).addClass('is-loading');
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'aips_delete_trending_topic_bulk',
+                    nonce: $('#aips_nonce').val(),
+                    topic_ids: selectedTopics
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(aipsResearchL10n.bulkDeleteSuccess.replace('%d', response.data.count));
+                        selectedTopics = [];
+                        $('#select-all-topics').prop('checked', false);
+                        $('#load-topics').trigger('click');
+                    } else {
+                        alert('Error: ' + response.data.message);
+                        // Re-enable if deletion failed but we still have selection
+                        if (selectedTopics.length > 0) {
+                            $btn.prop('disabled', false);
+                        }
+                    }
+                },
+                error: function() {
+                    alert('An error occurred.');
+                    if (selectedTopics.length > 0) {
+                        $btn.prop('disabled', false);
+                    }
+                },
+                complete: function() {
+                    $btn.removeClass('is-loading');
+                }
+            });
+        });
 
         // Delete topic
         $(document).on('click', '.delete-topic', function() {

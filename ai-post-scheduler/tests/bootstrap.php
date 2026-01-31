@@ -560,6 +560,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public $insert_id = 0;
             private $data = array();
             
+            public function get_charset_collate() {
+                return 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+            }
+
             public function prepare($query, ...$args) {
                 // Simple mock prepare - just return the query with args
                 // In real implementation, this would properly escape and format
