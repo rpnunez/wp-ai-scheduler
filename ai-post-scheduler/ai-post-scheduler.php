@@ -103,6 +103,7 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generation-session.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-creator.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-variable-resolution-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-controller.php';
