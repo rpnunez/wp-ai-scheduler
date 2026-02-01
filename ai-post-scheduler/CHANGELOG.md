@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [wizard-run-schedule-now] - 2025-01-05
+### Added
+- Added "Run Schedule Now" capability to `AIPS_Scheduler` and `AIPS_Schedule_Controller`, allowing immediate execution of schedules regardless of their timing or active status.
+- Added `run_schedule_now($schedule_id)` method to `AIPS_Scheduler` for manual execution logic.
+- Updated `ajax_run_now` in `AIPS_Schedule_Controller` to support `schedule_id` alongside `template_id`.
+
+### Removed
+- Removed obsolete `AIPS_Activity_Repository` and `AIPS_Activity_Controller` classes and `ACTIVITY_MIGRATION_TODO.md` file as migration to `AIPS_History_Service` is complete.
+
 ## [wizard-authors-search] - 2025-12-27
 ### Added
 - Added client-side search functionality to the Authors list admin page.

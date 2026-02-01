@@ -233,6 +233,24 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return true;
         }
     }
+
+    if (!function_exists('set_transient')) {
+        function set_transient($transient, $value, $expiration = 0) {
+            return update_option('_transient_' . $transient, $value);
+        }
+    }
+
+    if (!function_exists('get_transient')) {
+        function get_transient($transient) {
+            return get_option('_transient_' . $transient);
+        }
+    }
+
+    if (!function_exists('delete_transient')) {
+        function delete_transient($transient) {
+            return delete_option('_transient_' . $transient);
+        }
+    }
     
     if (!function_exists('current_time')) {
         function current_time($type = 'mysql', $gmt = 0) {
@@ -377,6 +395,23 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('get_post')) {
+        function get_post($post_id = null) {
+            $post = new stdClass();
+            $post->ID = $post_id ? $post_id : 1;
+            $post->post_title = 'Test Post';
+            $post->post_status = 'draft';
+            $post->post_type = 'post';
+            return $post;
+        }
+    }
+
+    if (!function_exists('get_edit_post_link')) {
+        function get_edit_post_link($id = 0, $context = 'display') {
+            return 'http://example.com/wp-admin/post.php?post=' . $id . '&action=edit';
+        }
+    }
+
     if (!function_exists('wp_set_post_tags')) {
         function wp_set_post_tags($post_id, $tags) {
             return true;
@@ -434,6 +469,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public function tearDown(): void {
                 $this->reset_hooks();
                 parent::tearDown();
+            }
+
+            public function assertWPError($actual, $message = '') {
+                $this->assertTrue(is_wp_error($actual), $message);
             }
 
             /**
