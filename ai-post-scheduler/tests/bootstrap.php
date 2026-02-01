@@ -234,6 +234,24 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('get_transient')) {
+        function get_transient($transient) {
+            return get_option('_transient_' . $transient);
+        }
+    }
+
+    if (!function_exists('set_transient')) {
+        function set_transient($transient, $value, $expiration = 0) {
+            return update_option('_transient_' . $transient, $value);
+        }
+    }
+
+    if (!function_exists('delete_transient')) {
+        function delete_transient($transient) {
+            return delete_option('_transient_' . $transient);
+        }
+    }
+
     if (!function_exists('current_time')) {
         function current_time($type = 'mysql', $gmt = 0) {
             if ($type === 'timestamp') {
@@ -269,6 +287,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 'baseurl' => 'http://example.com/wp-content/uploads',
                 'error' => false,
             ];
+        }
+    }
+
+    if (!function_exists('wp_mkdir_p')) {
+        function wp_mkdir_p($target) {
+            return is_dir($target) || @mkdir($target, 0777, true);
         }
     }
     
@@ -367,6 +391,19 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('get_current_user_id')) {
         function get_current_user_id() {
             return 1;
+        }
+    }
+
+    if (!function_exists('get_post')) {
+        function get_post($post = null, $output = OBJECT, $filter = 'raw') {
+            if (is_numeric($post)) {
+                return (object) array(
+                    'ID' => $post,
+                    'post_title' => 'Test Post',
+                    'post_status' => 'draft',
+                );
+            }
+            return null;
         }
     }
 

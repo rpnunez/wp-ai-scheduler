@@ -31,3 +31,7 @@
 ## 2026-01-21 - Generated Posts Empty State
 **Learning:** `generated-posts.php` was missing the standard Empty State pattern (`.aips-empty-state`) and a direct "View" action, causing inconsistency with `history.php`.
 **Action:** Implemented the standard Empty State and added a "View" button with accessibility attributes (`aria-label`, `rel="noopener"`) to match the "Feature Wizard" polish standards.
+
+## 2026-01-22 - Schedule Manual Execution
+**Learning:** Users had no way to immediately test a schedule's configuration (structure, rotation, topic) without waiting for the cron job or running the base template (which ignores schedule settings). A "Run Now" action on the schedule itself is critical for verifying complex setups.
+**Action:** Implemented "Run Now" in `schedule.php` backed by a new `AIPS_Scheduler::run_schedule_now` method that respects schedule-specific overrides while forcing a single execution.

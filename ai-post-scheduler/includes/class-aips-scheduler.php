@@ -148,6 +148,111 @@ class AIPS_Scheduler {
         return $this->interval_calculator->calculate_next_run($frequency, $start_time);
     }
     
+    /**
+     * Run a schedule immediately, bypassing next_run check.
+     *
+     * @param int $schedule_id Schedule ID.
+     * @return int|WP_Error Post ID on success, WP_Error on failure.
+     */
+    public function run_schedule_now($schedule_id) {
+        $schedule = $this->repository->get_by_id($schedule_id);
+
+        if (!$schedule) {
+            return false;
+        }
+
+        $template_repo = new AIPS_Template_Repository();
+        $template_data = $template_repo->get_by_id($schedule->template_id);
+
+        if (!$template_data) {
+            return false;
+        }
+
+        $generator = $this->generator ?: new AIPS_Generator();
+        $logger = new AIPS_Logger();
+
+        $logger->log('Manual schedule run started', 'info', array('schedule_id' => $schedule_id));
+
+        // Select article structure
+        $article_structure_id = $this->template_type_selector->select_structure($schedule);
+
+        $template = (object) array(
+            'id' => $template_data->id,
+            'name' => $template_data->name,
+            'prompt_template' => $template_data->prompt_template,
+            'title_prompt' => $template_data->title_prompt,
+            'post_status' => $template_data->post_status,
+            'post_category' => $template_data->post_category,
+            'post_tags' => $template_data->post_tags,
+            'post_author' => $template_data->post_author,
+            'post_quantity' => 1, // Force 1 for schedule run
+            'generate_featured_image' => isset($template_data->generate_featured_image) ? $template_data->generate_featured_image : 0,
+            'image_prompt' => isset($template_data->image_prompt) ? $template_data->image_prompt : '',
+            'featured_image_source' => isset($template_data->featured_image_source) ? $template_data->featured_image_source : 'ai_prompt',
+            'featured_image_unsplash_keywords' => isset($template_data->featured_image_unsplash_keywords) ? $template_data->featured_image_unsplash_keywords : '',
+            'featured_image_media_ids' => isset($template_data->featured_image_media_ids) ? $template_data->featured_image_media_ids : '',
+            'voice_id' => isset($template_data->voice_id) ? $template_data->voice_id : null,
+            'article_structure_id' => $article_structure_id,
+        );
+
+        $topic = isset($schedule->topic) ? $schedule->topic : null;
+
+        // Load voice if needed (generator might handle it but usually controller passes it)
+        $voice = null;
+        if (!empty($template->voice_id)) {
+            $voices = new AIPS_Voices();
+            $voice = $voices->get($template->voice_id);
+        }
+
+        $result = $generator->generate_post($template, $voice, $topic);
+
+        // Update last_run only
+        $this->repository->update_last_run($schedule_id, current_time('mysql'));
+
+        if (is_wp_error($result)) {
+             $logger->log('Manual schedule run failed: ' . $result->get_error_message(), 'error', array('schedule_id' => $schedule_id));
+
+             $history = $this->history_service->create('schedule_execution', array(
+                'schedule_id' => $schedule_id,
+            ));
+            $history->record(
+                'activity',
+                sprintf(__('Manual run of schedule "%s" failed', 'ai-post-scheduler'), $template->name),
+                array('event_type' => 'schedule_failed', 'event_status' => 'failed'),
+                null,
+                array(
+                    'schedule_id' => $schedule_id,
+                    'error' => $result->get_error_message()
+                )
+            );
+        } else {
+            $logger->log('Manual schedule run success', 'info', array('schedule_id' => $schedule_id, 'post_id' => $result));
+
+             $post = get_post($result);
+             if ($post) {
+                $history = $this->history_service->create('schedule_execution', array(
+                    'schedule_id' => $schedule_id,
+                    'post_id' => $result,
+                ));
+                $history->record(
+                    'activity',
+                    sprintf(__('Manual run of schedule "%s" created: %s', 'ai-post-scheduler'), $template->name, $post->post_title),
+                    array('event_type' => 'post_published', 'event_status' => 'success'),
+                    null,
+                    array(
+                        'schedule_id' => $schedule_id,
+                        'post_id' => $result
+                    )
+                );
+             }
+
+             // Invalidate cache
+             $this->template_type_selector->invalidate_count_cache($schedule_id);
+        }
+
+        return $result;
+    }
+
     public function process_scheduled_posts() {
         global $wpdb;
         
