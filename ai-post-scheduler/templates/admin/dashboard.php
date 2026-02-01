@@ -58,6 +58,7 @@ if (!defined('ABSPATH')) {
                                 <th><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
+                                <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -66,6 +67,14 @@ if (!defined('ABSPATH')) {
                                 <td><?php echo esc_html($item->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?></td>
                                 <td><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->next_run))); ?></td>
                                 <td><?php echo esc_html(ucfirst($item->frequency)); ?></td>
+                                <td>
+                                    <button class="button button-small aips-run-schedule-now"
+                                            data-schedule-id="<?php echo esc_attr($item->id); ?>"
+                                            data-nonce="<?php echo esc_attr(wp_create_nonce('aips_ajax_nonce')); ?>">
+                                        <span class="dashicons dashicons-controls-play" style="vertical-align: middle; font-size: 16px;"></span>
+                                        <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
+                                    </button>
+                                </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>

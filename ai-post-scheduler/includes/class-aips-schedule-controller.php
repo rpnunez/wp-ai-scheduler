@@ -105,6 +105,24 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
+
+        if ($schedule_id) {
+            // Run a specific schedule immediately
+            $result = $this->scheduler->run_schedule_now($schedule_id);
+
+            if (is_wp_error($result)) {
+                wp_send_json_error(array('message' => $result->get_error_message()));
+            } else {
+                wp_send_json_success(array(
+                    'message' => __('Schedule executed successfully!', 'ai-post-scheduler'),
+                    'post_ids' => array($result),
+                    'edit_url' => get_edit_post_link($result, 'raw')
+                ));
+            }
+            return;
+        }
+
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
         if (!$template_id) {

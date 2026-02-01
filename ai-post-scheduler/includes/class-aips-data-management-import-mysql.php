@@ -119,12 +119,34 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		$plugin_tables = AIPS_DB_Manager::get_full_table_names();
 		$plugin_table_names = array_values($plugin_tables);
 		
+		// Allowed SQL commands whitelist
+		$allowed_commands = array('SET', 'UNLOCK', 'INSERT', 'CREATE', 'DROP', 'LOCK', 'ALTER');
+
 		foreach ($queries as $query) {
 			$query_upper = strtoupper(trim($query));
+			$query_clean = trim($query);
 			
 			// Skip if query is empty
 			if (empty($query_upper)) {
 				continue;
+			}
+
+			// Validate command against whitelist
+			$first_word = strtok($query_upper, " \n\t");
+			if (!in_array($first_word, $allowed_commands, true)) {
+				return new WP_Error(
+					'invalid_command',
+					sprintf(__('SQL command not allowed: %s', 'ai-post-scheduler'), $first_word)
+				);
+			}
+
+			// Block INSERT without VALUES (e.g. INSERT INTO ... SELECT)
+			// MySQL dumps always use VALUES (or VALUE).
+			if ($first_word === 'INSERT' && stripos($query_upper, 'VALUES') === false && stripos($query_upper, 'VALUE') === false) {
+				return new WP_Error(
+					'security_violation',
+					__('INSERT statements must use VALUES syntax.', 'ai-post-scheduler')
+				);
 			}
 			
 			// Extract table name from query
