@@ -115,35 +115,12 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 			return new WP_Error('no_queries', __('No valid SQL queries found in file.', 'ai-post-scheduler'));
 		}
 		
-		// Validate queries only affect plugin tables
-		$plugin_tables = AIPS_DB_Manager::get_full_table_names();
-		$plugin_table_names = array_values($plugin_tables);
-		
+		// STRICT SECURITY VALIDATION
+		// Before executing ANY query, we valid ALL queries to ensure they only touch plugin tables.
 		foreach ($queries as $query) {
-			$query_upper = strtoupper(trim($query));
-			
-			// Skip if query is empty
-			if (empty($query_upper)) {
-				continue;
-			}
-			
-			// Extract table name from query
-			$has_valid_table = false;
-			foreach ($plugin_table_names as $table_name) {
-				if (stripos($query, $table_name) !== false) {
-					$has_valid_table = true;
-					break;
-				}
-			}
-			
-			// If query references a table, ensure it's one of ours
-			if (!$has_valid_table && 
-				(strpos($query_upper, 'TABLE') !== false || 
-				 strpos($query_upper, 'INSERT') !== false)) {
-				return new WP_Error(
-					'invalid_table',
-					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
-				);
+			$validation_result = $this->validate_query($query);
+			if (is_wp_error($validation_result)) {
+				return $validation_result;
 			}
 		}
 		
@@ -189,6 +166,81 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		
 		return true;
 	}
+
+	/**
+	 * Validate a single SQL query for security
+	 *
+	 * @param string $query The SQL query
+	 * @return bool|WP_Error True if valid, WP_Error if invalid
+	 */
+	private function validate_query($query) {
+		$query = trim($query);
+		if (empty($query)) return true;
+
+		// Normalize whitespace
+		$query_normalized = preg_replace('/\s+/', ' ', $query);
+
+		// 1. Check allowed commands (Whitelist)
+		$allowed_commands = ['INSERT', 'CREATE', 'DROP', 'LOCK', 'UNLOCK', 'SET', 'ALTER'];
+		$first_word = strtoupper(strtok($query_normalized, ' '));
+
+		if (!in_array($first_word, $allowed_commands)) {
+			return new WP_Error('invalid_query', sprintf(__('Query type %s is not allowed.', 'ai-post-scheduler'), $first_word));
+		}
+
+		// 2. If command targets a table, verify it's a plugin table
+		if (in_array($first_word, ['INSERT', 'CREATE', 'DROP', 'LOCK', 'ALTER'])) {
+			$plugin_tables = AIPS_DB_Manager::get_full_table_names();
+			$plugin_table_names = array_values($plugin_tables);
+
+			$table_found = false;
+			foreach ($plugin_table_names as $table_name) {
+				// Construct a comprehensive regex for the allowed table
+				// We need to match the specific table name strictly as the target
+
+				$escaped_name = preg_quote($table_name, '/');
+				// Allow optional backticks and verify word boundary if no backticks
+				$table_pattern = '`?' . $escaped_name . '`?';
+
+				// Check if this table is the one being targeted
+				// We look for: COMMAND ... TABLE_NAME ...
+				// But we must ensure TABLE_NAME is the *primary* target, not just present.
+
+				// For INSERT: INSERT INTO table ...
+				if ($first_word === 'INSERT') {
+					 if (!preg_match('/^INSERT\s+INTO\s+' . $table_pattern . '(\s|\(|$)/i', $query_normalized)) continue;
+				}
+				// For CREATE: CREATE TABLE table ...
+				elseif ($first_word === 'CREATE') {
+					 if (!preg_match('/^CREATE\s+TABLE\s+' . $table_pattern . '(\s|\(|$)/i', $query_normalized)) continue;
+				}
+				// For DROP: DROP TABLE [IF EXISTS] table
+				elseif ($first_word === 'DROP') {
+					 if (!preg_match('/^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?' . $table_pattern . '(\s|;|$)/i', $query_normalized)) continue;
+				}
+				// For LOCK: LOCK TABLES table ...
+				elseif ($first_word === 'LOCK') {
+					 if (!preg_match('/^LOCK\s+TABLES\s+' . $table_pattern . '(\s+WRITE|\s+READ|\s|;|$)/i', $query_normalized)) continue;
+				}
+				// For ALTER: ALTER TABLE table ...
+				elseif ($first_word === 'ALTER') {
+					 if (!preg_match('/^ALTER\s+TABLE\s+' . $table_pattern . '(\s|$)/i', $query_normalized)) continue;
+				}
+
+				$table_found = true;
+				break;
+			}
+
+			if (!$table_found) {
+				return new WP_Error(
+					'invalid_table',
+					sprintf(__('Query targets unauthorized or unknown table. Only plugin tables are allowed.', 'ai-post-scheduler'))
+				);
+			}
+		}
+
+		return true;
+	}
 	
 	/**
 	 * Split SQL file into individual queries
@@ -199,6 +251,8 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 	private function split_sql_file($sql_content) {
 		// Remove comments
 		$sql_content = preg_replace('/--[^\n]*\n/', "\n", $sql_content);
+		// Remove # comments as well
+		$sql_content = preg_replace('/#[^\n]*\n/', "\n", $sql_content);
 		$sql_content = preg_replace('/\/\*.*?\*\//s', '', $sql_content);
 		
 		// Split by semicolon
