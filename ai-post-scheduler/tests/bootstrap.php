@@ -89,11 +89,77 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!defined('ARRAY_N')) {
         define('ARRAY_N', 'ARRAY_N');
     }
+
+    if (!defined('HOUR_IN_SECONDS')) {
+        define('HOUR_IN_SECONDS', 3600);
+    }
     
     // Mock WordPress functions if not available
     if (!function_exists('esc_html__')) {
         function esc_html__($text, $domain = 'default') {
             return $text;
+        }
+    }
+
+    if (!function_exists('esc_html_e')) {
+        function esc_html_e($text, $domain = 'default') {
+            echo $text;
+        }
+    }
+
+    if (!function_exists('esc_html')) {
+        function esc_html($text) {
+            return $text;
+        }
+    }
+
+    if (!function_exists('esc_attr')) {
+        function esc_attr($text) {
+            return $text;
+        }
+    }
+
+    if (!function_exists('esc_url')) {
+        function esc_url($text) {
+            return $text;
+        }
+    }
+
+    if (!function_exists('esc_attr_e')) {
+        function esc_attr_e($text, $domain = 'default') {
+            echo $text;
+        }
+    }
+
+    if (!function_exists('admin_url')) {
+        function admin_url($path = '', $scheme = 'admin') {
+            return 'http://example.com/wp-admin/' . $path;
+        }
+    }
+
+    if (!function_exists('add_query_arg')) {
+        function add_query_arg() {
+            $args = func_get_args();
+            if (is_array($args[0])) {
+                if (count($args) < 2 || false === $args[1]) {
+                    $uri = $_SERVER['REQUEST_URI'];
+                } else {
+                    $uri = $args[1];
+                }
+            } else {
+                if (count($args) < 3 || false === $args[2]) {
+                    $uri = $_SERVER['REQUEST_URI'];
+                } else {
+                    $uri = $args[2];
+                }
+            }
+            return $uri . '?' . http_build_query($args[0]);
+        }
+    }
+
+    if (!function_exists('get_edit_post_link')) {
+        function get_edit_post_link($id = 0, $context = 'display') {
+            return 'http://example.com/wp-admin/post.php?post=' . $id . '&action=edit';
         }
     }
     
@@ -198,6 +264,24 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 }
             }
             return true;
+        }
+    }
+
+    if (!function_exists('get_transient')) {
+        function get_transient($transient) {
+            return get_option('_transient_' . $transient);
+        }
+    }
+
+    if (!function_exists('set_transient')) {
+        function set_transient($transient, $value, $expiration = 0) {
+            return update_option('_transient_' . $transient, $value);
+        }
+    }
+
+    if (!function_exists('delete_transient')) {
+        function delete_transient($transient) {
+            return delete_option('_transient_' . $transient);
         }
     }
 
@@ -338,6 +422,36 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('absint')) {
         function absint($maybeint) {
             return abs(intval($maybeint));
+        }
+    }
+
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = '') {
+            if (is_object($args)) {
+                $r = get_object_vars($args);
+            } elseif (is_array($args)) {
+                $r = $args;
+            } else {
+                wp_parse_str($args, $r);
+            }
+
+            if (is_array($defaults)) {
+                return array_merge($defaults, $r);
+            }
+            return $r;
+        }
+    }
+
+    if (!function_exists('wp_parse_str')) {
+        function wp_parse_str($string, &$array) {
+            parse_str($string, $array);
+        }
+    }
+
+    if (!function_exists('date_i18n')) {
+        function date_i18n($format, $timestamp_with_offset = false, $gmt = false) {
+            $timestamp = $timestamp_with_offset === false ? current_time('timestamp') : $timestamp_with_offset;
+            return date($format, $timestamp);
         }
     }
 
@@ -566,6 +680,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 if (empty($args)) {
                     return $query;
                 }
+
+                // Unpack array if single argument is array
+                if (count($args) === 1 && is_array($args[0])) {
+                    $args = $args[0];
+                }
+
                 // Replace placeholders in order
                 foreach ($args as $arg) {
                     $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
@@ -585,6 +705,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 return null;
             }
             
+            public function get_charset_collate() {
+                return 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+            }
+
             public function query($query) {
                 return true;
             }
@@ -637,6 +761,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-generator.php',
         'class-aips-scheduler.php',
         'class-aips-schedule-controller.php',
+        'class-aips-dashboard-controller.php',
         'class-aips-planner.php',
         'class-aips-history.php',
         'class-aips-settings.php',

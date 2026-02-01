@@ -373,6 +373,13 @@ class AIPS_Schedule_Repository {
             FROM {$this->schedule_table}
         ");
         
+        if (null === $results) {
+            $results = (object) array(
+                'total' => 0,
+                'active' => 0,
+            );
+        }
+
         return array(
             'total' => (int) $results->total,
             'active' => (int) $results->active,

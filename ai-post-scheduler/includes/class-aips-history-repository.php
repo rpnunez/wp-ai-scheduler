@@ -230,6 +230,15 @@ class AIPS_History_Repository {
             FROM {$this->table_name}
         ");
 
+        if (null === $results) {
+            $results = (object) array(
+                'total' => 0,
+                'completed' => 0,
+                'failed' => 0,
+                'processing' => 0
+            );
+        }
+
         $stats = array(
             'total' => (int) $results->total,
             'completed' => (int) $results->completed,

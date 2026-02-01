@@ -281,6 +281,13 @@ class AIPS_Template_Repository {
             FROM {$this->table_name}
         ");
         
+        if (null === $results) {
+            $results = (object) array(
+                'total' => 0,
+                'active' => 0,
+            );
+        }
+
         return array(
             'total' => (int) $results->total,
             'active' => (int) $results->active,
