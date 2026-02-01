@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-25 - [History List Optimization]
+**Learning:** `get_history` was selecting `*` which includes `longtext` columns like `generated_content` and `generation_log`. These were unused in list views.
+**Action:** Always check if `SELECT *` is fetching heavy unused columns, especially for list views.
