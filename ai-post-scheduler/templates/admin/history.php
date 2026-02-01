@@ -37,6 +37,10 @@ if (isset($history_handler)) {
     }
 }
 
+// Ensure filters are defined to avoid warnings if not set above
+$status_filter = isset($status_filter) ? $status_filter : '';
+$search_query  = isset($search_query) ? $search_query : '';
+
 $history_base_page = isset($history_base_page) ? $history_base_page : 'aips-history';
 $history_base_args = isset($history_base_args) && is_array($history_base_args) ? $history_base_args : array();
 $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=' . $history_base_page));
@@ -133,16 +137,19 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
                     <?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->created_at))); ?>
                 </td>
                 <td class="column-actions">
+                    <?php
+                    $item_title = $item->generated_title ?: __('Untitled', 'ai-post-scheduler');
+                    ?>
                     <?php if ($item->post_id): ?>
-                    <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="button button-small" target="_blank">
+                    <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="button button-small" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr(sprintf(__('View "%s" in new tab', 'ai-post-scheduler'), $item_title)); ?>">
                         <?php esc_html_e('View', 'ai-post-scheduler'); ?>
                     </a>
                     <?php endif; ?>
-                    <button class="button button-small aips-view-details" data-id="<?php echo esc_attr($item->id); ?>">
+                    <button class="button button-small aips-view-details" data-id="<?php echo esc_attr($item->id); ?>" aria-label="<?php echo esc_attr(sprintf(__('View details for "%s"', 'ai-post-scheduler'), $item_title)); ?>">
                         <?php esc_html_e('Details', 'ai-post-scheduler'); ?>
                     </button>
                     <?php if ($item->status === 'failed' && $item->template_id): ?>
-                    <button class="button button-small aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>">
+                    <button class="button button-small aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>" aria-label="<?php echo esc_attr(sprintf(__('Retry generation for "%s"', 'ai-post-scheduler'), $item_title)); ?>">
                         <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
                     </button>
                     <?php endif; ?>
@@ -207,7 +214,9 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
     <div class="aips-modal-content aips-modal-large">
         <div class="aips-modal-header">
             <h2 id="aips-details-title"><?php esc_html_e('Generation Details', 'ai-post-scheduler'); ?></h2>
-            <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">
+                <span class="dashicons dashicons-no"></span>
+            </button>
         </div>
         <div class="aips-modal-body">
             <div id="aips-details-loading" class="aips-loading">
