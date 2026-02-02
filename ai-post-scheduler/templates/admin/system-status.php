@@ -2,9 +2,30 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// Generate Text Report for Clipboard
+$report_text = "System Status Report\nGenerated: " . date('Y-m-d H:i:s') . "\n\n";
+foreach ($system_info as $section => $checks) {
+    if (empty($checks)) continue;
+    $report_text .= "## " . ucfirst($section) . "\n";
+    foreach ($checks as $key => $check) {
+        $report_text .= "- " . $check['label'] . ": " . $check['value'] . " (" . $check['status'] . ")\n";
+        if (!empty($check['details'])) {
+            $report_text .= "  Details:\n  " . implode("\n  ", $check['details']) . "\n";
+        }
+    }
+    $report_text .= "\n";
+}
 ?>
 <div class="wrap">
     <h1 class="wp-heading-inline"><?php esc_html_e('System Status', 'ai-post-scheduler'); ?></h1>
+
+    <button type="button" class="button button-secondary aips-copy-btn page-title-action" data-clipboard-target="#aips-full-system-report">
+        <span class="dashicons dashicons-clipboard" style="margin-top: 3px;"></span>
+        <?php esc_html_e('Copy System Report', 'ai-post-scheduler'); ?>
+    </button>
+    <textarea id="aips-full-system-report" style="display:none;"><?php echo esc_textarea($report_text); ?></textarea>
+
     <hr class="wp-header-end">
 
     <div class="aips-status-page">
@@ -33,6 +54,11 @@ if (!defined('ABSPATH')) {
                                         <?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>
                                     </a>
                                     <div id="log-details-<?php echo esc_attr($key); ?>" class="aips-log-details" style="display:none; margin-top: 10px;">
+                                        <p style="text-align: right; margin-bottom: 5px;">
+                                            <button type="button" class="button button-small aips-copy-btn" data-clipboard-text="<?php echo esc_attr(implode("\n", $check['details'])); ?>">
+                                                <span class="dashicons dashicons-clipboard"></span> <?php esc_html_e('Copy Log', 'ai-post-scheduler'); ?>
+                                            </button>
+                                        </p>
                                         <textarea class="large-text code" rows="10" readonly><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
                                     </div>
                                 <?php endif; ?>
