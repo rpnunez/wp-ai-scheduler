@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Schedule Toggle</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Schedule Toggle Verification</h1>
+
+    <!-- Mock Switch -->
+    <label class="switch">
+        <input type="checkbox" class="aips-toggle-schedule" data-id="123" id="toggle-123">
+        <span class="slider round"></span>
+    </label>
+
+    <script>
+        // Mock WordPress environment
+        var aipsAjax = {
+            ajaxUrl: 'mock_url',
+            nonce: 'mock_nonce'
+        };
+        var aipsAdminL10n = {
+            errorTryAgain: 'Error occurred'
+        };
+    </script>
+
+    <!-- Load the script under test -->
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+</body>
+</html>

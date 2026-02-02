@@ -973,7 +973,8 @@
 
         toggleSchedule: function() {
             var id = $(this).data('id');
-            var isActive = $(this).is(':checked') ? 1 : 0;
+            var $toggle = $(this);
+            var isActive = $toggle.is(':checked') ? 1 : 0;
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -984,7 +985,14 @@
                     schedule_id: id,
                     is_active: isActive
                 },
+                success: function(response) {
+                    if (!response.success) {
+                        $toggle.prop('checked', !isActive);
+                        alert(response.data.message || 'Failed to update schedule.');
+                    }
+                },
                 error: function() {
+                    $toggle.prop('checked', !isActive);
                     alert('An error occurred. Please try again.');
                 }
             });
