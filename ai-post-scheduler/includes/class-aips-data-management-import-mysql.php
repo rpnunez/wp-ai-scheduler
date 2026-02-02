@@ -120,29 +120,72 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		$plugin_table_names = array_values($plugin_tables);
 		
 		foreach ($queries as $query) {
-			$query_upper = strtoupper(trim($query));
+			$query = trim($query);
+			$query_upper = strtoupper($query);
 			
 			// Skip if query is empty
 			if (empty($query_upper)) {
 				continue;
 			}
 			
-			// Extract table name from query
-			$has_valid_table = false;
-			foreach ($plugin_table_names as $table_name) {
-				if (stripos($query, $table_name) !== false) {
-					$has_valid_table = true;
-					break;
-				}
+			// Allowed Global commands (no table check needed)
+			if (strpos($query_upper, 'SET ') === 0 ||
+				strpos($query_upper, 'UNLOCK TABLES') === 0 ||
+				strpos($query_upper, 'START TRANSACTION') === 0 ||
+				strpos($query_upper, 'COMMIT') === 0) {
+				continue;
+			}
+
+			// Validate Table Operations
+			$is_valid_command = false;
+			$extracted_table = '';
+
+			// Check against allowed patterns and extract table name
+			// INSERT INTO `table` ...
+			if (preg_match('/^INSERT\s+(?:INTO\s+)?[`\'"]?([a-zA-Z0-9_$]+)[`\'"]?/i', $query, $matches)) {
+				$is_valid_command = true;
+				$extracted_table = $matches[1];
+			}
+			// CREATE TABLE `table` ...
+			elseif (preg_match('/^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`\'"]?([a-zA-Z0-9_$]+)[`\'"]?/i', $query, $matches)) {
+				$is_valid_command = true;
+				$extracted_table = $matches[1];
+			}
+			// DROP TABLE `table` ...
+			elseif (preg_match('/^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?[`\'"]?([a-zA-Z0-9_$]+)[`\'"]?/i', $query, $matches)) {
+				$is_valid_command = true;
+				$extracted_table = $matches[1];
+			}
+			// LOCK TABLES `table` ...
+			elseif (preg_match('/^LOCK\s+TABLES\s+[`\'"]?([a-zA-Z0-9_$]+)[`\'"]?/i', $query, $matches)) {
+				$is_valid_command = true;
+				$extracted_table = $matches[1];
+			}
+			// ALTER TABLE `table` ...
+			elseif (preg_match('/^ALTER\s+TABLE\s+[`\'"]?([a-zA-Z0-9_$]+)[`\'"]?/i', $query, $matches)) {
+				$is_valid_command = true;
+				$extracted_table = $matches[1];
+			}
+
+			if (!$is_valid_command) {
+				return new WP_Error(
+					'invalid_command',
+					sprintf(__('SQL command not allowed: %s', 'ai-post-scheduler'), substr($query, 0, 50))
+				);
 			}
 			
-			// If query references a table, ensure it's one of ours
-			if (!$has_valid_table && 
-				(strpos($query_upper, 'TABLE') !== false || 
-				 strpos($query_upper, 'INSERT') !== false)) {
+			// Verify extracted table is a plugin table
+			// Remove any potential backticks or quotes if regex captured them
+			$extracted_table = trim($extracted_table, "`'\"");
+
+			// Note: $plugin_table_names contains full table names (e.g. wp_aips_history)
+			if (!in_array($extracted_table, $plugin_table_names, true)) {
 				return new WP_Error(
 					'invalid_table',
-					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
+					sprintf(
+						__('SQL query references a non-plugin table (%s). For security, only plugin tables can be imported.', 'ai-post-scheduler'),
+						esc_html($extracted_table)
+					)
 				);
 			}
 		}
