@@ -9,10 +9,57 @@
 class Test_History_Template extends WP_UnitTestCase {
 
     private $history_instance;
+    private $original_wpdb;
+    private $wpdb_mock;
 
     public function setUp(): void {
         parent::setUp();
+
+        global $wpdb;
+        $this->original_wpdb = $wpdb;
+
+        $this->wpdb_mock = $this->getMockBuilder('stdClass')
+            ->setMethods(array('prepare', 'get_results', 'get_var', 'esc_like', 'get_row', 'query', 'insert', 'update', 'delete'))
+            ->getMock();
+
+        $this->wpdb_mock->prefix = 'wp_';
+
+        // Mock methods
+        $this->wpdb_mock->method('prepare')->will($this->returnCallback(function($query, ...$args) {
+             // Handle array arg if passed as single argument
+             if (isset($args[0]) && is_array($args[0])) {
+                 $args = $args[0];
+             }
+             return $query;
+        }));
+
+        $this->wpdb_mock->method('get_results')->willReturn(array());
+
+        $this->wpdb_mock->method('get_row')->willReturn((object) array(
+            'total' => 0,
+            'completed' => 0,
+            'failed' => 0,
+            'processing' => 0,
+            'log' => array(),
+            'id' => 1,
+            'template_id' => 1,
+            'status' => 'completed',
+            'created_at' => current_time('mysql'),
+            'generated_title' => 'Test Title',
+            'post_id' => 1
+        ));
+
+        $this->wpdb_mock->method('get_var')->willReturn(0);
+
+        $wpdb = $this->wpdb_mock;
+
         $this->history_instance = new AIPS_History();
+    }
+
+    public function tearDown(): void {
+        global $wpdb;
+        $wpdb = $this->original_wpdb;
+        parent::tearDown();
     }
 
     /**
@@ -60,6 +107,8 @@ class Test_History_Template extends WP_UnitTestCase {
             'failed' => 0,
             'success_rate' => 0
         );
+        $status_filter = '';
+        $search_query = '';
         
         // Capture output
         ob_start();

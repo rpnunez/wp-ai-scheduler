@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2024-05-26 - [History List Query Optimization]
+**Learning:** The history list view was fetching all columns (`SELECT *`), including large BLOBs (`generated_content`, `generation_log`), for every row. This caused unnecessary memory usage and database IO.
+**Action:** Always explicitly select only the necessary columns in list views, especially when the table contains large text/blob fields.
