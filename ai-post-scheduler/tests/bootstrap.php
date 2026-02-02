@@ -201,6 +201,24 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('get_transient')) {
+        function get_transient($transient) {
+            return get_option('_transient_' . $transient);
+        }
+    }
+
+    if (!function_exists('set_transient')) {
+        function set_transient($transient, $value, $expiration = 0) {
+            return update_option('_transient_' . $transient, $value);
+        }
+    }
+
+    if (!function_exists('delete_transient')) {
+        function delete_transient($transient) {
+            return delete_option('_transient_' . $transient);
+        }
+    }
+
     if (!isset($GLOBALS['aips_test_options'])) {
         $GLOBALS['aips_test_options'] = array();
     }

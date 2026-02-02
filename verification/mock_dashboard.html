@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dashicons/3.2.0/css/dashicons.min.css">
+    <style>
+        body { font-family: sans-serif; background: #f1f1f1; padding: 20px; }
+        .wrap { max-width: 1200px; margin: 0 auto; }
+        .aips-dashboard { display: grid; gap: 20px; }
+        .aips-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
+        .aips-stat-card { background: #fff; padding: 20px; border-radius: 4px; border: 1px solid #ccd0d4; display: flex; align-items: center; }
+        .aips-stat-icon { font-size: 32px; width: 32px; height: 32px; margin-right: 15px; color: #2271b1; }
+        .aips-stat-content { display: flex; flex-direction: column; }
+        .aips-stat-number { font-size: 24px; font-weight: bold; color: #1d2327; }
+        .aips-stat-label { color: #646970; }
+        .aips-stat-warning .aips-stat-icon { color: #d63638; }
+        .widefat { width: 100%; border-spacing: 0; background: #fff; border: 1px solid #c3c4c7; }
+        .widefat td, .widefat th { padding: 8px 10px; text-align: left; }
+        .widefat thead th { border-bottom: 1px solid #c3c4c7; }
+        .button { background: #f6f7f7; border: 1px solid #2271b1; color: #2271b1; padding: 4px 10px; cursor: pointer; border-radius: 3px; }
+        .button-primary { background: #2271b1; color: #fff; }
+    </style>
+</head>
+<body>
+<div class="wrap aips-wrap">
+    <h1>AI Post Scheduler</h1>
+
+        <div class="notice notice-error">
+        <p>AI Engine plugin is not installed or activated. This plugin requires Meow Apps AI Engine to function.</p>
+    </div>
+
+    <div class="aips-dashboard">
+        <div class="aips-stats-grid">
+            <div class="aips-stat-card">
+                <div class="aips-stat-icon dashicons dashicons-edit" aria-hidden="true"></div>
+                <div class="aips-stat-content">
+                    <span class="aips-stat-number">120</span>
+                    <span class="aips-stat-label">Posts Generated</span>
+                </div>
+            </div>
+
+            <div class="aips-stat-card">
+                <div class="aips-stat-icon dashicons dashicons-clock" aria-hidden="true"></div>
+                <div class="aips-stat-content">
+                    <span class="aips-stat-number">5</span>
+                    <span class="aips-stat-label">Active Schedules</span>
+                </div>
+            </div>
+
+            <div class="aips-stat-card">
+                <div class="aips-stat-icon dashicons dashicons-media-document" aria-hidden="true"></div>
+                <div class="aips-stat-content">
+                    <span class="aips-stat-number">10</span>
+                    <span class="aips-stat-label">Active Templates</span>
+                </div>
+            </div>
+
+            <div class="aips-stat-card aips-stat-warning">
+                <div class="aips-stat-icon dashicons dashicons-warning" aria-hidden="true"></div>
+                <div class="aips-stat-content">
+                    <span class="aips-stat-number">2</span>
+                    <span class="aips-stat-label">Failed Generations</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="aips-dashboard-columns">
+            <div class="aips-dashboard-column">
+                <div class="aips-card">
+                    <h2>Upcoming Scheduled Posts</h2>
+                                        <table class="widefat striped">
+                        <thead>
+                            <tr>
+                                <th>Template</th>
+                                <th>Next Run</th>
+                                <th>Frequency</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                        <tr>
+                                <td>Tech News</td>
+                                <td>February 2, 2026 5:05 am</td>
+                                <td>Daily</td>
+                                <td>
+                                    <button type="button" class="button button-small aips-run-schedule-btn" data-schedule-id="1">
+                                        Run Now                                    </button>
+                                </td>
+                            </tr>
+                                                        <tr>
+                                <td>Weekly Digest</td>
+                                <td>February 3, 2026 4:05 am</td>
+                                <td>Weekly</td>
+                                <td>
+                                    <button type="button" class="button button-small aips-run-schedule-btn" data-schedule-id="2">
+                                        Run Now                                    </button>
+                                </td>
+                            </tr>
+                                                    </tbody>
+                    </table>
+                                    </div>
+            </div>
+
+            <div class="aips-dashboard-column">
+                <div class="aips-card">
+                    <h2>Recent Activity</h2>
+                                        <table class="widefat striped">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                        <tr>
+                                <td>
+                                                                        <a href="http://example.com/wp-admin/post.php?post=101&action=edit">
+                                        AI Revolution                                    </a>
+                                                                    </td>
+                                <td>
+                                    <span class="aips-status aips-status-completed">
+                                        Completed                                    </span>
+                                </td>
+                                <td>February 2, 2026</td>
+                            </tr>
+                                                        <tr>
+                                <td>
+                                                                        <a href="http://example.com/wp-admin/post.php?post=102&action=edit">
+                                        Machine Learning                                    </a>
+                                                                    </td>
+                                <td>
+                                    <span class="aips-status aips-status-failed">
+                                        Failed                                    </span>
+                                </td>
+                                <td>February 2, 2026</td>
+                            </tr>
+                                                    </tbody>
+                    </table>
+                    <p>
+                        <a href="http://example.com/wp-admin/admin.php?page=aips-templates&tab=history">
+                            View All History &rarr;
+                        </a>
+                    </p>
+                                    </div>
+            </div>
+        </div>
+
+        <div class="aips-card aips-quick-actions">
+            <h2>Quick Actions</h2>
+            <div class="aips-button-group">
+                <a href="http://example.com/wp-admin/admin.php?page=aips-templates" class="button button-primary button-large">
+                    <span class="dashicons dashicons-plus-alt"></span>
+                    Create Template                </a>
+                <a href="http://example.com/wp-admin/admin.php?page=aips-schedule" class="button button-secondary button-large">
+                    <span class="dashicons dashicons-calendar-alt"></span>
+                    Add Schedule                </a>
+                <a href="http://example.com/wp-admin/admin.php?page=aips-settings" class="button button-secondary button-large">
+                    <span class="dashicons dashicons-admin-generic"></span>
+                    Settings                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
