@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://example.com/ai-post-scheduler
  * Description: Schedule AI-generated posts using Meow Apps AI Engine
- * Version: 1.7.0
+ * Version: 1.7.1
  * Author: Your Name
  * Author URI: https://example.com
  * License: GPL v2 or later
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIPS_VERSION', '1.7.0');
+define('AIPS_VERSION', '1.7.1');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));

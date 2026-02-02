@@ -78,6 +78,9 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
                 <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
             </select>
             <button class="button" id="aips-filter-btn"><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
+            <?php if (!empty($status_filter) || !empty($search_query)): ?>
+                <a href="<?php echo esc_url($history_base_url); ?>" class="button"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+            <?php endif; ?>
             <button class="button" id="aips-delete-selected-btn" disabled><?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?></button>
         </div>
         <div class="alignright">

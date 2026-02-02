@@ -128,7 +128,7 @@ class AIPS_Schedule_Controller {
 
         // SECURITY: Enforce a hard limit for immediate execution to prevent PHP timeouts
         // and potential API rate limiting issues.
-        $max_run_now = 5;
+        $max_run_now = 2;
         $capped = false;
         if ($quantity > $max_run_now) {
             $quantity = $max_run_now;
@@ -140,11 +140,6 @@ class AIPS_Schedule_Controller {
 
         $generator = new AIPS_Generator();
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
-
-        // Enforce hard limit of 5 to prevent timeouts (Bolt)
-        if ($quantity > 5) {
-            $quantity = 5;
-        }
 
         for ($i = 0; $i < $quantity; $i++) {
             $result = $generator->generate_post($template, $voice, $topic);

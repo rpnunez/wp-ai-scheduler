@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock History</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Minimal WP Admin Styles */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f1f1f1; padding: 20px; }
+        .button { background: #f6f7f7; border: 1px solid #c3c4c7; color: #2271b1; cursor: pointer; text-decoration: none; padding: 4px 10px; border-radius: 3px; font-size: 13px; line-height: 2.15384615; min-height: 30px; margin: 0; display: inline-block; }
+        .button:hover { background: #f0f0f1; border-color: #0a4b78; color: #0a4b78; }
+        .tablenav { clear: both; height: 30px; margin: 6px 0 4px; vertical-align: middle; }
+        .tablenav .actions { padding: 2px 8px 0 0; float: left; }
+        .alignleft { float: left; }
+        select { font-size: 14px; line-height: 2; color: #2c3338; border-color: #8c8f94; box-shadow: none; border-radius: 3px; padding: 0 24px 0 8px; min-height: 30px; max-width: 25rem; -webkit-appearance: none; background: #fff url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%206l5%205%205-5%202%201-7%207-7-7%202-1z%22%20fill%3D%22%23555%22%2F%3E%3C%2Fsvg%3E") no-repeat right 5px top 55%; background-size: 16px 16px; cursor: pointer; vertical-align: middle; }
+    </style>
+</head>
+<body>
+
+    <div class="tablenav top">
+        <div class="alignleft actions">
+            <select id="aips-filter-status">
+                <option value="">All Statuses</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="processing">Processing</option>
+            </select>
+            <button class="button" id="aips-filter-btn">Filter</button>
+
+            <!-- This is the element I added -->
+            <a href="admin.php?page=aips-history" class="button">Clear Filters</a>
+
+            <button class="button" id="aips-delete-selected-btn" disabled>Delete Selected</button>
+        </div>
+    </div>
+
+</body>
+</html>

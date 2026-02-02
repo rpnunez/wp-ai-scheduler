@@ -82,7 +82,9 @@ class AIPS_DB_Manager {
             UNIQUE KEY uuid (uuid),
             KEY post_id (post_id),
             KEY template_id (template_id),
-            KEY status (status)
+            KEY status (status),
+            KEY created_at (created_at),
+            KEY generated_title (generated_title(191))
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (
@@ -117,7 +119,8 @@ class AIPS_DB_Manager {
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id)
+            PRIMARY KEY  (id),
+            KEY name (name)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_schedule (
