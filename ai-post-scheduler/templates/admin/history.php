@@ -103,19 +103,23 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($history['items'] as $item): ?>
+            <?php foreach ($history['items'] as $item):
+                $item_title = $item->generated_title ?: __('Untitled', 'ai-post-scheduler');
+            ?>
             <tr>
                 <th scope="row" class="check-column">
-                    <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>"><?php esc_html_e('Select Item', 'ai-post-scheduler'); ?></label>
+                    <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>">
+                        <?php printf(esc_html__('Select "%s"', 'ai-post-scheduler'), esc_html($item_title)); ?>
+                    </label>
                     <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" name="history[]" value="<?php echo esc_attr($item->id); ?>">
                 </th>
                 <td class="column-title">
                     <?php if ($item->post_id): ?>
                     <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
-                        <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
+                        <?php echo esc_html($item_title); ?>
                     </a>
                     <?php else: ?>
-                    <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
+                    <?php echo esc_html($item_title); ?>
                     <?php endif; ?>
                     <?php if ($item->status === 'failed' && $item->error_message): ?>
                     <div class="aips-error-message"><?php echo esc_html($item->error_message); ?></div>
@@ -134,15 +138,23 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
                 </td>
                 <td class="column-actions">
                     <?php if ($item->post_id): ?>
-                    <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="button button-small" target="_blank">
+                    <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>"
+                       class="button button-small"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       aria-label="<?php echo esc_attr(sprintf(__('View "%s" in new tab', 'ai-post-scheduler'), $item_title)); ?>">
                         <?php esc_html_e('View', 'ai-post-scheduler'); ?>
                     </a>
                     <?php endif; ?>
-                    <button class="button button-small aips-view-details" data-id="<?php echo esc_attr($item->id); ?>">
+                    <button class="button button-small aips-view-details"
+                            data-id="<?php echo esc_attr($item->id); ?>"
+                            aria-label="<?php echo esc_attr(sprintf(__('View details for "%s"', 'ai-post-scheduler'), $item_title)); ?>">
                         <?php esc_html_e('Details', 'ai-post-scheduler'); ?>
                     </button>
                     <?php if ($item->status === 'failed' && $item->template_id): ?>
-                    <button class="button button-small aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>">
+                    <button class="button button-small aips-retry-generation"
+                            data-id="<?php echo esc_attr($item->id); ?>"
+                            aria-label="<?php echo esc_attr(sprintf(__('Retry generation for "%s"', 'ai-post-scheduler'), $item_title)); ?>">
                         <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
                     </button>
                     <?php endif; ?>
