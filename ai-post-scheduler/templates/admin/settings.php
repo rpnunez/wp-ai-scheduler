@@ -55,7 +55,14 @@ if (!defined('ABSPATH')) {
     <div class="aips-card">
         <h2><?php esc_html_e('Template Variables', 'ai-post-scheduler'); ?></h2>
         <p><?php esc_html_e('You can use these variables in your prompt templates:', 'ai-post-scheduler'); ?></p>
-        <table class="widefat striped">
+
+        <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+            <label class="screen-reader-text" for="aips-variable-search"><?php esc_html_e('Search Variables:', 'ai-post-scheduler'); ?></label>
+            <input type="search" id="aips-variable-search" class="regular-text" placeholder="<?php esc_attr_e('Search variables...', 'ai-post-scheduler'); ?>">
+            <button type="button" id="aips-variable-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+        </div>
+
+        <table id="aips-variables-table" class="widefat striped">
             <thead>
                 <tr>
                     <th><?php esc_html_e('Variable', 'ai-post-scheduler'); ?></th>
@@ -174,5 +181,14 @@ if (!defined('ABSPATH')) {
                 </tr>
             </tbody>
         </table>
+
+        <div id="aips-variable-search-no-results" class="aips-empty-state" style="display: none;">
+            <span class="dashicons dashicons-search" aria-hidden="true"></span>
+            <h3><?php esc_html_e('No Variables Found', 'ai-post-scheduler'); ?></h3>
+            <p><?php esc_html_e('No template variables match your search criteria.', 'ai-post-scheduler'); ?></p>
+            <button type="button" class="button button-primary aips-clear-variable-search-btn">
+                <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+            </button>
+        </div>
     </div>
 </div>

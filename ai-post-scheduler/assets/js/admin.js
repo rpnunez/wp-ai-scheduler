@@ -100,6 +100,11 @@
             $(document).on('click', '#aips-author-search-clear', this.clearAuthorSearch);
             $(document).on('click', '.aips-clear-author-search-btn', this.clearAuthorSearch);
 
+            // Variable Search
+            $(document).on('keyup search', '#aips-variable-search', this.filterVariables);
+            $(document).on('click', '#aips-variable-search-clear', this.clearVariableSearch);
+            $(document).on('click', '.aips-clear-variable-search-btn', this.clearVariableSearch);
+
             $(document).on('click', '.aips-view-template-posts', this.openTemplatePostsModal);
             $(document).on('click', '.aips-modal-page', this.paginateTemplatePosts);
 
@@ -1449,6 +1454,48 @@
         clearAuthorSearch: function(e) {
             e.preventDefault();
             $('#aips-author-search').val('').trigger('keyup');
+        },
+
+        filterVariables: function() {
+            var term = $('#aips-variable-search').val().toLowerCase().trim();
+            var $rows = $('#aips-variables-table tbody tr');
+            var $noResults = $('#aips-variable-search-no-results');
+            var $table = $('#aips-variables-table');
+            var $clearBtn = $('#aips-variable-search-clear');
+            var hasVisible = false;
+
+            if (term.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+
+            $rows.each(function() {
+                var $row = $(this);
+                // Column 1 is Variable, Column 2 is Description.
+                var variable = $row.find('td').eq(0).text().toLowerCase();
+                var description = $row.find('td').eq(1).text().toLowerCase();
+
+                if (variable.indexOf(term) > -1 || description.indexOf(term) > -1) {
+                    $row.show();
+                    hasVisible = true;
+                } else {
+                    $row.hide();
+                }
+            });
+
+            if (!hasVisible && term.length > 0) {
+                $table.hide();
+                $noResults.show();
+            } else {
+                $table.show();
+                $noResults.hide();
+            }
+        },
+
+        clearVariableSearch: function(e) {
+            e.preventDefault();
+            $('#aips-variable-search').val('').trigger('keyup');
         },
 
         openTemplatePostsModal: function(e) {
