@@ -19,6 +19,11 @@ class AIPS_Scheduler {
      * @var AIPS_Schedule_Repository Repository for database operations
      */
     private $repository;
+
+    /**
+     * @var AIPS_Template_Repository Repository for templates
+     */
+    private $template_repository;
     
     /**
      * @var AIPS_History_Service Service for history logging
@@ -31,6 +36,7 @@ class AIPS_Scheduler {
         $this->templates_table = $wpdb->prefix . 'aips_templates';
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->repository = new AIPS_Schedule_Repository();
+        $this->template_repository = new AIPS_Template_Repository();
         $this->history_service = new AIPS_History_Service();
         $this->template_type_selector = new AIPS_Template_Type_Selector();
         
@@ -45,6 +51,24 @@ class AIPS_Scheduler {
      */
     public function set_generator($generator) {
         $this->generator = $generator;
+    }
+
+    /**
+     * Set a custom repository instance (dependency injection).
+     *
+     * @param AIPS_Schedule_Repository $repository
+     */
+    public function set_repository($repository) {
+        $this->repository = $repository;
+    }
+
+    /**
+     * Set a custom template repository instance (dependency injection).
+     *
+     * @param AIPS_Template_Repository $repository
+     */
+    public function set_template_repository($repository) {
+        $this->template_repository = $repository;
     }
     
     /**
@@ -148,6 +172,114 @@ class AIPS_Scheduler {
         return $this->interval_calculator->calculate_next_run($frequency, $start_time);
     }
     
+    /**
+     * Run a specific schedule immediately.
+     *
+     * @param int $schedule_id The schedule ID.
+     * @return int|WP_Error Post ID on success, or WP_Error on failure.
+     */
+    public function run_schedule_now($schedule_id) {
+        $schedule = $this->repository->get_by_id($schedule_id);
+
+        if (!$schedule) {
+            return new WP_Error('schedule_not_found', __('Schedule not found.', 'ai-post-scheduler'));
+        }
+
+        $template = $this->template_repository->get_by_id($schedule->template_id);
+
+        if (!$template) {
+            return new WP_Error('template_not_found', __('Template not found.', 'ai-post-scheduler'));
+        }
+
+        // Apply schedule overrides to template
+        $template->post_quantity = 1; // Force quantity to 1 for manual run
+
+        // Select article structure for this execution
+        $article_structure_id = $this->template_type_selector->select_structure($schedule);
+        if ($article_structure_id) {
+            $template->article_structure_id = $article_structure_id;
+        }
+
+        $generator = $this->generator ?: new AIPS_Generator();
+        $topic = isset($schedule->topic) ? $schedule->topic : null;
+
+        // Log manual execution using History Container
+        $history = $this->history_service->create('manual_schedule_execution', array(
+            'schedule_id' => $schedule_id,
+            'user_id' => get_current_user_id()
+        ));
+
+        $history->record(
+            'activity',
+            sprintf(
+                __('Manual execution of schedule "%s" started', 'ai-post-scheduler'),
+                $template->name
+            ),
+            array(
+                'event_type' => 'manual_schedule_started',
+                'event_status' => 'success',
+            ),
+            null,
+            array(
+                'schedule_id' => $schedule_id,
+                'template_id' => $template->id,
+                'topic' => $topic
+            )
+        );
+
+        // Generate the post
+        $result = $generator->generate_post($template, null, $topic);
+
+        if (is_wp_error($result)) {
+             $history->record(
+                'activity',
+                sprintf(
+                    __('Manual execution of schedule "%s" failed: %s', 'ai-post-scheduler'),
+                    $template->name,
+                    $result->get_error_message()
+                ),
+                array(
+                    'event_type' => 'manual_schedule_failed',
+                    'event_status' => 'failed',
+                ),
+                null,
+                array(
+                    'schedule_id' => $schedule_id,
+                    'error' => $result->get_error_message()
+                )
+            );
+            return $result;
+        }
+
+        // Log success
+        $post = get_post($result);
+        if ($post) {
+             $history->record(
+                'activity',
+                sprintf(
+                    __('Manual execution of schedule "%s" completed. Post: %s', 'ai-post-scheduler'),
+                    $template->name,
+                    $post->post_title
+                ),
+                array(
+                    'event_type' => 'manual_schedule_completed',
+                    'event_status' => 'success',
+                ),
+                null,
+                array(
+                    'schedule_id' => $schedule_id,
+                    'post_id' => $result,
+                    'post_status' => $post->post_status
+                )
+            );
+        }
+
+        // Invalidate cache for rotation logic
+        $this->template_type_selector->invalidate_count_cache($schedule_id);
+
+        return $result;
+    }
+
     public function process_scheduled_posts() {
         global $wpdb;
         
