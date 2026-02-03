@@ -32,15 +32,24 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
     
     <div class="aips-schedules-container">
         <?php if (!empty($schedules)): ?>
-        <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
-            <label class="screen-reader-text" for="aips-schedule-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
-            <input type="search" id="aips-schedule-search" class="regular-text" placeholder="<?php esc_attr_e('Search schedules...', 'ai-post-scheduler'); ?>">
-            <button type="button" id="aips-schedule-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+        <div class="aips-actions-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div class="aips-bulk-actions">
+                 <button type="button" class="button" id="aips-delete-selected-schedules-btn" disabled><?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?></button>
+            </div>
+            <div class="aips-search-box" style="text-align: right;">
+                <label class="screen-reader-text" for="aips-schedule-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
+                <input type="search" id="aips-schedule-search" class="regular-text" placeholder="<?php esc_attr_e('Search schedules...', 'ai-post-scheduler'); ?>">
+                <button type="button" id="aips-schedule-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+            </div>
         </div>
 
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>
+                    <td id="cb" class="manage-column column-cb check-column">
+                        <label class="screen-reader-text" for="cb-select-all-schedules"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
+                        <input id="cb-select-all-schedules" type="checkbox">
+                    </td>
                     <th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
                     <th class="column-structure"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></th>
                     <th class="column-frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
@@ -72,6 +81,10 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     data-topic="<?php echo esc_attr($schedule->topic); ?>"
                     data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
                     data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
+                    <th scope="row" class="check-column">
+                        <label class="screen-reader-text" for="cb-select-schedule-<?php echo esc_attr($schedule->id); ?>"><?php esc_html_e('Select Schedule', 'ai-post-scheduler'); ?></label>
+                        <input id="cb-select-schedule-<?php echo esc_attr($schedule->id); ?>" type="checkbox" name="schedules[]" value="<?php echo esc_attr($schedule->id); ?>" class="aips-schedule-checkbox">
+                    </th>
                     <td class="column-template">
                         <?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?>
                     </td>

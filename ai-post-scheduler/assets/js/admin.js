@@ -80,6 +80,11 @@
             $(document).on('click', '#aips-schedule-search-clear', this.clearScheduleSearch);
             $(document).on('click', '.aips-clear-schedule-search-btn', this.clearScheduleSearch);
 
+            // Schedule Bulk Actions
+            $(document).on('change', '#cb-select-all-schedules', this.toggleAllSchedules);
+            $(document).on('change', '.aips-schedule-checkbox', this.toggleScheduleSelection);
+            $(document).on('click', '#aips-delete-selected-schedules-btn', this.deleteSelectedSchedules);
+
             // Voice Search
             $(document).on('keyup search', '#aips-voice-search', this.filterVoices);
             $(document).on('click', '#aips-voice-search-clear', this.clearVoiceSearch);
@@ -539,6 +544,8 @@
                     if (response.success) {
                         $row.fadeOut(function() {
                             $(this).remove();
+                            // Update select all checkbox state if needed
+                            AIPS.toggleScheduleSelection();
                         });
                     } else {
                         alert(response.data.message);
@@ -971,6 +978,67 @@
             });
         },
 
+        toggleAllSchedules: function() {
+            var isChecked = $(this).prop('checked');
+            // Only toggle visible rows to respect search
+            var $visibleRows = $('.aips-schedules-container table tbody tr:visible');
+            $visibleRows.find('.aips-schedule-checkbox').prop('checked', isChecked);
+            AIPS.updateDeleteSchedulesButton();
+        },
+
+        toggleScheduleSelection: function() {
+            var $visibleCheckboxes = $('.aips-schedules-container table tbody tr:visible .aips-schedule-checkbox');
+            var $checkedVisibleCheckboxes = $('.aips-schedules-container table tbody tr:visible .aips-schedule-checkbox:checked');
+            var allChecked = $visibleCheckboxes.length > 0 && $visibleCheckboxes.length === $checkedVisibleCheckboxes.length;
+
+            $('#cb-select-all-schedules').prop('checked', allChecked);
+            AIPS.updateDeleteSchedulesButton();
+        },
+
+        updateDeleteSchedulesButton: function() {
+            var count = $('.aips-schedule-checkbox:checked').length;
+            $('#aips-delete-selected-schedules-btn').prop('disabled', count === 0);
+        },
+
+        deleteSelectedSchedules: function(e) {
+            e.preventDefault();
+            var ids = [];
+            $('.aips-schedule-checkbox:checked').each(function() {
+                ids.push($(this).val());
+            });
+
+            if (ids.length === 0) return;
+
+            if (!confirm('Are you sure you want to delete ' + ids.length + ' schedule(s)?')) {
+                return;
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Deleting...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_delete_schedules',
+                    nonce: aipsAjax.nonce,
+                    ids: ids
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                        $btn.prop('disabled', false).text('Delete Selected');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    $btn.prop('disabled', false).text('Delete Selected');
+                }
+            });
+        },
+
         toggleSchedule: function() {
             var id = $(this).data('id');
             var isActive = $(this).is(':checked') ? 1 : 0;
@@ -1238,6 +1306,9 @@
                 $table.show();
                 $noResults.hide();
             }
+
+            // Re-evaluate "Select All" checkbox state based on new visibility
+            AIPS.toggleScheduleSelection();
         },
 
         clearTemplateSearch: function(e) {
