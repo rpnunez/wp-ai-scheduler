@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [hunter-fix-import-vulnerability] - 2026-02-03
+### Security
+- Fixed a critical SQL injection and arbitrary command execution vulnerability in the MySQL import feature (`AIPS_Data_Management_Import_MySQL`).
+- Implemented strict whitelist validation for SQL commands (INSERT, CREATE TABLE, DROP TABLE, etc.) and regex-based table name validation.
+- Improved SQL splitting logic to correctly handle semicolons within string literals and comments.
+
+### Added
+- Added "Run Now" button to the "Upcoming Scheduled Posts" table in the Dashboard, allowing immediate execution of scheduled tasks.
+
 ## [wizard-run-schedule-now] - 2025-01-05
 ### Added
 - Added "Run Schedule Now" capability to `AIPS_Scheduler` and `AIPS_Schedule_Controller`, allowing immediate execution of schedules regardless of their timing or active status.

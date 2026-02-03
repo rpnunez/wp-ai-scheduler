@@ -115,34 +115,56 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 			return new WP_Error('no_queries', __('No valid SQL queries found in file.', 'ai-post-scheduler'));
 		}
 		
-		// Validate queries only affect plugin tables
+		// Validate queries
 		$plugin_tables = AIPS_DB_Manager::get_full_table_names();
 		$plugin_table_names = array_values($plugin_tables);
 		
+		// Create regex for allowed table names (exact matches only)
+		$tables_regex_parts = array();
+		foreach ($plugin_table_names as $name) {
+			$quoted = preg_quote($name, '/');
+			$tables_regex_parts[] = $quoted;
+			$tables_regex_parts[] = '`' . $quoted . '`';
+		}
+		$allowed_tables_regex = implode('|', $tables_regex_parts);
+
 		foreach ($queries as $query) {
-			$query_upper = strtoupper(trim($query));
+			$query = trim($query);
 			
-			// Skip if query is empty
-			if (empty($query_upper)) {
+			if (empty($query)) {
 				continue;
 			}
 			
-			// Extract table name from query
-			$has_valid_table = false;
-			foreach ($plugin_table_names as $table_name) {
-				if (stripos($query, $table_name) !== false) {
-					$has_valid_table = true;
-					break;
-				}
+			$is_valid = false;
+
+			// SET command (mostly safe, used for timezone/encoding)
+			if (preg_match('/^SET\s+/i', $query)) {
+				$is_valid = true;
+			}
+			// UNLOCK TABLES
+			elseif (preg_match('/^UNLOCK\s+TABLES/i', $query)) {
+				$is_valid = true;
+			}
+			// DROP TABLE
+			// Ensure strict match: DROP TABLE [IF EXISTS] table_name;
+			elseif (preg_match('/^DROP\s+TABLE\s+(IF\s+EXISTS\s+)?(' . $allowed_tables_regex . ')\s*;?$/i', $query)) {
+				$is_valid = true;
+			}
+			// CREATE TABLE
+			// Must be followed by (
+			elseif (preg_match('/^CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(' . $allowed_tables_regex . ')\s*\(/i', $query)) {
+				$is_valid = true;
+			}
+			// INSERT INTO
+			// Must use VALUES syntax
+			elseif (preg_match('/^INSERT\s+INTO\s+(' . $allowed_tables_regex . ')\s+.*VALUES\s*\(/is', $query)) {
+				$is_valid = true;
 			}
 			
-			// If query references a table, ensure it's one of ours
-			if (!$has_valid_table && 
-				(strpos($query_upper, 'TABLE') !== false || 
-				 strpos($query_upper, 'INSERT') !== false)) {
+			if (!$is_valid) {
 				return new WP_Error(
-					'invalid_table',
-					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
+					'invalid_query',
+					sprintf(__('Invalid query or unauthorized table access: %s', 'ai-post-scheduler'), substr($query, 0, 100))
 				);
 			}
 		}
@@ -197,17 +219,82 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 	 * @return array
 	 */
 	private function split_sql_file($sql_content) {
-		// Remove comments
-		$sql_content = preg_replace('/--[^\n]*\n/', "\n", $sql_content);
-		$sql_content = preg_replace('/\/\*.*?\*\//s', '', $sql_content);
+		$queries = array();
+		$buffer = '';
+		$in_string = false;
+		$string_char = '';
+		$in_comment_line = false;
+		$in_comment_block = false;
+		$len = strlen($sql_content);
 		
-		// Split by semicolon
-		$queries = explode(';', $sql_content);
+		for ($i = 0; $i < $len; $i++) {
+			$char = $sql_content[$i];
+			$next_char = ($i + 1 < $len) ? $sql_content[$i + 1] : '';
+
+			// Handle comments
+			if (!$in_string && !$in_comment_block && !$in_comment_line) {
+				if ($char === '-' && $next_char === '-') {
+					$in_comment_line = true;
+					$i++; // Skip next char
+					continue;
+				}
+				if ($char === '/' && $next_char === '*') {
+					$in_comment_block = true;
+					$i++; // Skip next char
+					continue;
+				}
+			}
+
+			if ($in_comment_line) {
+				if ($char === "\n") {
+					$in_comment_line = false;
+					// Don't add newline to buffer to keep queries clean
+				}
+				continue;
+			}
+
+			if ($in_comment_block) {
+				if ($char === '*' && $next_char === '/') {
+					$in_comment_block = false;
+					$i++;
+				}
+				continue;
+			}
+
+			// Handle strings
+			if ($in_string) {
+				// Handle escaping with backslash (standard for WP/MySQL dump)
+				if ($char === '\\') {
+					$buffer .= $char;
+					$i++;
+					if ($i < $len) {
+						$buffer .= $sql_content[$i];
+					}
+					continue;
+				}
+
+				if ($char === $string_char) {
+					$in_string = false;
+				}
+			} elseif ($char === "'" || $char === '"' || $char === '`') {
+				$in_string = true;
+				$string_char = $char;
+			}
+
+			// Handle statement end
+			if ($char === ';' && !$in_string) {
+				if (trim($buffer) !== '') {
+					$queries[] = trim($buffer);
+				}
+				$buffer = '';
+			} else {
+				$buffer .= $char;
+			}
+		}
 		
-		// Filter out empty queries
-		$queries = array_filter($queries, function($query) {
-			return !empty(trim($query));
-		});
+		if (trim($buffer) !== '') {
+			$queries[] = trim($buffer);
+		}
 		
 		return $queries;
 	}
