@@ -147,7 +147,7 @@ class AIPS_Schedule_Repository {
         $insert_data = array(
             'template_id' => absint($data['template_id']),
             'frequency' => sanitize_text_field($data['frequency']),
-            'next_run' => sanitize_text_field($data['next_run']),
+            'next_run' => $this->ensure_valid_date(sanitize_text_field($data['next_run'])),
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
@@ -196,7 +196,7 @@ class AIPS_Schedule_Repository {
         }
         
         if (isset($data['next_run'])) {
-            $update_data['next_run'] = sanitize_text_field($data['next_run']);
+            $update_data['next_run'] = $this->ensure_valid_date(sanitize_text_field($data['next_run']));
             $format[] = '%s';
         }
         
@@ -377,5 +377,19 @@ class AIPS_Schedule_Repository {
             'total' => (int) $results->total,
             'active' => (int) $results->active,
         );
+    }
+
+    /**
+     * Ensure date is in Y-m-d H:i:s format.
+     *
+     * @param string $date Date string.
+     * @return string Formatted date string.
+     */
+    private function ensure_valid_date($date) {
+        $d = DateTime::createFromFormat('Y-m-d H:i:s', $date);
+        if ($d && $d->format('Y-m-d H:i:s') === $date) {
+            return $date;
+        }
+        return date('Y-m-d H:i:s', strtotime($date));
     }
 }
