@@ -108,42 +108,27 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 			);
 		}
 		
-		// Split the SQL file into individual queries
+		// Split the SQL file into individual queries using a safe parser
 		$queries = $this->split_sql_file($sql_content);
 		
 		if (empty($queries)) {
 			return new WP_Error('no_queries', __('No valid SQL queries found in file.', 'ai-post-scheduler'));
 		}
 		
-		// Validate queries only affect plugin tables
+		// Get allowed tables
 		$plugin_tables = AIPS_DB_Manager::get_full_table_names();
-		$plugin_table_names = array_values($plugin_tables);
+		// Also allow without prefix for robustness if prefix matches
+		$allowed_tables = array_values($plugin_tables);
 		
 		foreach ($queries as $query) {
-			$query_upper = strtoupper(trim($query));
-			
-			// Skip if query is empty
-			if (empty($query_upper)) {
+			$query = trim($query);
+			if (empty($query)) {
 				continue;
 			}
 			
-			// Extract table name from query
-			$has_valid_table = false;
-			foreach ($plugin_table_names as $table_name) {
-				if (stripos($query, $table_name) !== false) {
-					$has_valid_table = true;
-					break;
-				}
-			}
-			
-			// If query references a table, ensure it's one of ours
-			if (!$has_valid_table && 
-				(strpos($query_upper, 'TABLE') !== false || 
-				 strpos($query_upper, 'INSERT') !== false)) {
-				return new WP_Error(
-					'invalid_table',
-					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
-				);
+			$validation = $this->validate_sql_query($query, $allowed_tables);
+			if (is_wp_error($validation)) {
+				return $validation;
 			}
 		}
 		
@@ -191,23 +176,187 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 	}
 	
 	/**
-	 * Split SQL file into individual queries
+	 * Validate a single SQL query
 	 * 
-	 * @param string $sql_content
+	 * @param string $query
+	 * @param array $allowed_tables
+	 * @return bool|WP_Error
+	 */
+	private function validate_sql_query($query, $allowed_tables) {
+		$query = trim($query);
+
+		// Allow comments (though they should be stripped by split_sql_file)
+		if (strpos($query, '--') === 0 || strpos($query, '#') === 0 || strpos($query, '/*') === 0) {
+			return true;
+		}
+
+		// Normalize spaces
+		$normalized = preg_replace('/\s+/', ' ', $query);
+
+		// Identify command
+		if (preg_match('/^(INSERT(?:\s+IGNORE)?\s+INTO|UPDATE|DELETE\s+FROM|CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?)\s+`?([a-zA-Z0-9_$]+)`?/i', $normalized, $matches)) {
+			$table_name = $matches[2];
+
+			// Check if table is allowed
+			if (!in_array($table_name, $allowed_tables)) {
+				// Also check if table name has quotes that need stripping
+				$table_clean = trim($table_name, '`');
+				if (!in_array($table_clean, $allowed_tables)) {
+                     // Check for prefix issue? The allowed_tables contains full names like wp_aips_history.
+                     // The query usually contains `wp_aips_history`.
+					return new WP_Error(
+						'invalid_table',
+						sprintf(__('Query targets non-plugin table: %s', 'ai-post-scheduler'), $table_name)
+					);
+				}
+			}
+			return true;
+		}
+
+		// Allow LOCK/UNLOCK
+		if (preg_match('/^(LOCK\s+TABLES|UNLOCK\s+TABLES)/i', $normalized)) {
+			// For LOCK TABLES, we should strictly check tables too, but for simplicity:
+            // Since LOCK TABLES format is `LOCK TABLES tbl_name READ/WRITE`, we can extract it.
+            if (preg_match('/^LOCK\s+TABLES\s+`?([a-zA-Z0-9_$]+)`?/i', $normalized, $matches)) {
+                $table_name = trim($matches[1], '`');
+                if (!in_array($table_name, $allowed_tables)) {
+                     return new WP_Error(
+						'invalid_table',
+						sprintf(__('Query locks non-plugin table: %s', 'ai-post-scheduler'), $table_name)
+					);
+                }
+            }
+			return true;
+		}
+
+		// Allow SET
+		if (preg_match('/^SET\s+/i', $normalized)) {
+			return true;
+		}
+
+		return new WP_Error(
+			'invalid_query',
+			__('Query type not allowed.', 'ai-post-scheduler')
+		);
+	}
+
+	/**
+	 * Split SQL file into individual queries using a safe character-based parser
+	 *
+	 * @param string $sql
 	 * @return array
 	 */
-	private function split_sql_file($sql_content) {
-		// Remove comments
-		$sql_content = preg_replace('/--[^\n]*\n/', "\n", $sql_content);
-		$sql_content = preg_replace('/\/\*.*?\*\//s', '', $sql_content);
+	private function split_sql_file($sql) {
+		$queries = [];
+		$current_query = '';
+		$len = strlen($sql);
+		$state = 'NORMAL'; // NORMAL, SINGLE_QUOTE, DOUBLE_QUOTE, BACKTICK, COMMENT_LINE, COMMENT_BLOCK
 		
-		// Split by semicolon
-		$queries = explode(';', $sql_content);
+		for ($i = 0; $i < $len; $i++) {
+			$char = $sql[$i];
+			$next_char = ($i + 1 < $len) ? $sql[$i + 1] : '';
+
+			switch ($state) {
+				case 'NORMAL':
+					if ($char === "'") {
+						$state = 'SINGLE_QUOTE';
+						$current_query .= $char;
+					} elseif ($char === '"') {
+						$state = 'DOUBLE_QUOTE';
+						$current_query .= $char;
+					} elseif ($char === '`') {
+						$state = 'BACKTICK';
+						$current_query .= $char;
+					} elseif ($char === '#' || ($char === '-' && $next_char === '-')) {
+						$state = 'COMMENT_LINE';
+                        // If --, assume next char is part of comment marker, so we don't consume it as part of query?
+                        // Actually, comments should generally be ignored/stripped or kept?
+                        // If we strip them, we just don't append to current_query.
+                        // But let's keep them if they are part of the file structure, or strip them to be clean.
+                        // The original code stripped them. Let's strip them.
+                        if ($char === '-') $i++; // Skip next -
+					} elseif ($char === '/' && $next_char === '*') {
+						$state = 'COMMENT_BLOCK';
+						$i++; // Skip next *
+					} elseif ($char === ';') {
+						// End of query
+						if (!empty(trim($current_query))) {
+							$queries[] = trim($current_query);
+						}
+						$current_query = '';
+					} else {
+						$current_query .= $char;
+					}
+					break;
+
+				case 'SINGLE_QUOTE':
+					$current_query .= $char;
+					if ($char === '\\') {
+						// Escape next char
+						if ($next_char !== '') {
+							$current_query .= $next_char;
+							$i++;
+						}
+					} elseif ($char === "'") {
+                        // Check if it is '' (escaped quote in SQL standard) - wait, standard SQL escapes ' by doubling it ''
+                        // But usually backslash is also supported in MySQL unless NO_BACKSLASH_ESCAPES mode.
+                        // Let's assume standard backslash escape + doubling.
+                        // If next char is ', it might be an escaped quote?
+                        // If we see ' and it is not escaped by backslash, we exit state.
+                        // Doubling ' is handled by: ' -> exit state. Next char is '. Enter state.
+                        // So 'hello''world' ->
+                        // ' -> enter
+                        // h, e, l, l, o add
+                        // ' -> exit
+                        // ' -> enter
+                        // w, o, r, l, d add
+                        // ' -> exit
+                        // This works correctly for doubling if we handle it as exit-enter.
+						$state = 'NORMAL';
+					}
+					break;
+
+				case 'DOUBLE_QUOTE':
+					$current_query .= $char;
+					if ($char === '\\') {
+						if ($next_char !== '') {
+							$current_query .= $next_char;
+							$i++;
+						}
+					} elseif ($char === '"') {
+						$state = 'NORMAL';
+					}
+					break;
+
+				case 'BACKTICK':
+					$current_query .= $char;
+					if ($char === '`') {
+						$state = 'NORMAL';
+					}
+					break;
+
+				case 'COMMENT_LINE':
+					// Consume until newline
+					if ($char === "\n") {
+						$state = 'NORMAL';
+                        // We stripped the comment, so just continue
+					}
+					break;
+
+				case 'COMMENT_BLOCK':
+					// Consume until */
+					if ($char === '*' && $next_char === '/') {
+						$state = 'NORMAL';
+						$i++; // Skip /
+					}
+					break;
+			}
+		}
 		
-		// Filter out empty queries
-		$queries = array_filter($queries, function($query) {
-			return !empty(trim($query));
-		});
+		// Add remaining query if any
+		if (!empty(trim($current_query))) {
+			$queries[] = trim($current_query);
+		}
 		
 		return $queries;
 	}

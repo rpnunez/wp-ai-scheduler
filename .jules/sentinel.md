@@ -22,3 +22,8 @@
 **Vulnerability:** Unescaped insertion of database content (`generated_title`, `error_message`, `template.name`) into the DOM via string concatenation in `admin.js`.
 **Learning:** Admin interfaces are often treated as "trusted zones," but data originating from complex flows (like AI generation or indirect inputs) can be compromised (e.g., via Prompt Injection or Stored XSS). Concatenating HTML strings in JS without explicit escaping is a persistent vulnerability pattern.
 **Prevention:** Use a dedicated escaping utility (like `AIPS.escapeHtml()`) for ALL dynamic data inserted into the DOM, regardless of its source (database, API, or user input).
+
+## 2025-05-27 - [SQL Injection via Import Parser Bypass]
+**Vulnerability:** A flawed SQL splitter using `explode(';', ...)` and a naive regex table validator allowed arbitrary SQL execution by hiding malicious queries inside strings or comments.
+**Learning:** Regex-based validation of SQL is extremely difficult to get right. Standard string splitting functions (`explode`) are insufficient for parsing structured languages like SQL where delimiters can appear inside literals.
+**Prevention:** Use a proper state-machine parser (tokenizer) to respect syntax boundaries (quotes, comments) when splitting or analyzing code. Validate the *semantic target* of a command, not just the presence of a keyword.
