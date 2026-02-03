@@ -96,6 +96,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $text;
         }
     }
+
+    if (!function_exists('dbDelta')) {
+        function dbDelta($sql) {
+            return array();
+        }
+    }
     
     if (!function_exists('plugin_dir_path')) {
         function plugin_dir_path($file) {
@@ -353,6 +359,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('esc_sql')) {
+        function esc_sql($string) {
+            return addslashes($string);
+        }
+    }
+
     if (!function_exists('absint')) {
         function absint($maybeint) {
             return abs(intval($maybeint));
@@ -599,6 +611,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public $insert_id = 0;
             private $data = array();
             
+            public function get_charset_collate() {
+                return 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+            }
+
             public function prepare($query, ...$args) {
                 // Simple mock prepare - just return the query with args
                 // In real implementation, this would properly escape and format
@@ -613,14 +629,33 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_results($query, $output = OBJECT) {
+                if (stripos($query, 'SELECT * FROM') !== false) {
+                    return array(); // Empty data for export test
+                }
                 return array();
             }
             
             public function get_row($query, $output = OBJECT, $y = 0) {
+                if (stripos($query, 'SHOW CREATE TABLE') !== false) {
+                    // Extract table name
+                    if (preg_match("/SHOW CREATE TABLE `([^`]+)`/", $query, $matches)) {
+                        $table = $matches[1];
+                        $create = "CREATE TABLE `$table` ( `id` bigint(20) NOT NULL AUTO_INCREMENT, PRIMARY KEY (`id`) )";
+                        if ($output == ARRAY_N) {
+                            return array($table, $create);
+                        }
+                        return (object) array('Table' => $table, 'Create Table' => $create);
+                    }
+                }
                 return null;
             }
             
             public function get_var($query, $x = 0, $y = 0) {
+                if (stripos($query, 'SHOW TABLES LIKE') !== false) {
+                     if (preg_match("/SHOW TABLES LIKE '([^']+)'/", $query, $matches)) {
+                         return $matches[1];
+                     }
+                }
                 return null;
             }
             
@@ -686,6 +721,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
+        'class-aips-data-management-import.php',
+        'class-aips-data-management-import-mysql.php',
+        'class-aips-data-management-import-json.php',
+        'class-aips-data-management-export.php',
+        'class-aips-data-management-export-mysql.php',
+        'class-aips-data-management-export-json.php',
+        'class-aips-data-management.php',
     ];
     
     foreach ($files as $file) {
