@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [hunter-fix-test-environment-mocks] - 2026-02-03
+### Fixed
+- Fixed critical test environment crashes by updating `tests/bootstrap.php` to include missing `$wpdb` mocks (`get_charset_collate`, `esc_like`, `get_col`) and helper functions (`wp_parse_args`, `dbDelta`).
+- Wrapped `require_once` calls for `upgrade.php` in `test-trending-topics-repository.php` and `class-aips-db-manager.php` to prevent fatal errors when running tests in limited environments.
+
 ## [wizard-run-schedule-now] - 2025-01-05
 ### Added
 - Added "Run Schedule Now" capability to `AIPS_Scheduler` and `AIPS_Schedule_Controller`, allowing immediate execution of schedules regardless of their timing or active status.

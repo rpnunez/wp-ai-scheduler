@@ -271,6 +271,17 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = array()) {
+            if (is_object($args)) {
+                $args = get_object_vars($args);
+            } elseif (!is_array($args)) {
+                 $args = array();
+            }
+            return array_merge($defaults, $args);
+        }
+    }
+
     if (!function_exists('wp_json_encode')) {
         function wp_json_encode($data, $options = 0, $depth = 512) {
             return json_encode($data, $options, $depth);
@@ -605,6 +616,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 if (empty($args)) {
                     return $query;
                 }
+
+                // Handle the case where the first argument is an array of values
+                if (count($args) === 1 && is_array($args[0])) {
+                    $args = $args[0];
+                }
+
                 // Replace placeholders in order
                 foreach ($args as $arg) {
                     $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
@@ -622,6 +639,14 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             
             public function get_var($query, $x = 0, $y = 0) {
                 return null;
+            }
+
+            public function get_col($query, $x = 0) {
+                return array();
+            }
+
+            public function esc_like($text) {
+                return addcslashes($text, '_%\\');
             }
             
             public function query($query) {
@@ -641,7 +666,18 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public function delete($table, $where, $where_format = null) {
                 return true;
             }
+
+            public function get_charset_collate() {
+                return 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+            }
         };
+    }
+
+    // Mock dbDelta if not available
+    if (!function_exists('dbDelta')) {
+        function dbDelta($queries, $execute = true) {
+            return array();
+        }
     }
     
     // Mock global $wp_filter for action/filter hooks
@@ -686,6 +722,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
+        'class-aips-trending-topics-repository.php',
     ];
     
     foreach ($files as $file) {
