@@ -22,6 +22,7 @@
             $(document).on('click', '.aips-save-draft-template', this.saveDraftTemplate);
             $(document).on('click', '.aips-test-template', this.testTemplate);
             $(document).on('click', '.aips-run-now', this.runNow);
+            $(document).on('click', '.aips-run-schedule-btn', this.runScheduleNow);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
             $(document).on('click', '#featured_image_media_select', this.openMediaLibrary);
@@ -378,6 +379,45 @@
                 complete: function() {
                     $btn.prop('disabled', false);
                     $spinner.removeClass('is-active');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+
+            if (!confirm('Are you sure you want to run this schedule immediately?')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none; margin:0 5px 0 0;"></span> Running...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-controls-play" style="line-height: 1.3;"></span> Run Now');
                 }
             });
         },
