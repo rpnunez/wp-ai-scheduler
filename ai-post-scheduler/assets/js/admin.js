@@ -48,6 +48,7 @@
             $(document).on('click', '.aips-save-voice', this.saveVoice);
 
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
+            $(document).on('click', '.aips-run-schedule-btn', this.runScheduleNow);
             $(document).on('click', '.aips-clone-schedule', this.cloneSchedule);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
@@ -378,6 +379,45 @@
                 complete: function() {
                     $btn.prop('disabled', false);
                     $spinner.removeClass('is-active');
+                }
+            });
+        },
+
+        runScheduleNow: function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var $btn = $(this);
+
+            if (!confirm(aipsAdminL10n.runScheduleConfirm || 'Run this schedule immediately? This will generate 1 post.')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).text('Running...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        if (response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Run Now');
                 }
             });
         },

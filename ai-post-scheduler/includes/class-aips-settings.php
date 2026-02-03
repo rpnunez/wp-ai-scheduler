@@ -340,6 +340,7 @@ class AIPS_Settings {
             'deleteSectionFailed' => __('Failed to delete prompt section.', 'ai-post-scheduler'),
             'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
             'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+            'runScheduleConfirm' => __('Run this schedule immediately? This will generate 1 post.', 'ai-post-scheduler'),
             // Template Wizard strings
             'templateNameRequired' => __('Template Name is required.', 'ai-post-scheduler'),
             'contentPromptRequired' => __('Content Prompt is required.', 'ai-post-scheduler'),
