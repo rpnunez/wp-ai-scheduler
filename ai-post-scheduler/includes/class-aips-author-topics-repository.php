@@ -96,19 +96,43 @@ class AIPS_Author_Topics_Repository {
 			return false;
 		}
 
-		// Ensure all inserts either succeed or fail together.
-		$this->wpdb->query('START TRANSACTION');
+		$values = array();
+		$placeholders = array();
 
 		foreach ($topics as $topic) {
-			$result = $this->create($topic);
-			if (!$result) {
-				$this->wpdb->query('ROLLBACK');
-				return false;
-			}
+			array_push($values,
+				$topic['author_id'],
+				$topic['topic_title'],
+				isset($topic['topic_prompt']) ? $topic['topic_prompt'] : '',
+				isset($topic['status']) ? $topic['status'] : 'pending',
+				isset($topic['score']) ? $topic['score'] : 50,
+				isset($topic['metadata']) ? $topic['metadata'] : '',
+				isset($topic['generated_at']) ? $topic['generated_at'] : current_time('mysql')
+			);
+			$placeholders[] = "(%d, %s, %s, %s, %d, %s, %s)";
 		}
 
-		$this->wpdb->query('COMMIT');
-		return true;
+		$sql = "INSERT INTO {$this->table_name} (author_id, topic_title, topic_prompt, status, score, metadata, generated_at) VALUES ";
+		$sql .= implode(', ', $placeholders);
+
+		$query = $this->wpdb->prepare($sql, $values);
+
+		return $this->wpdb->query($query) !== false;
+	}
+
+	/**
+	 * Get latest topics for an author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $limit Number of topics to retrieve.
+	 * @return array Array of topic objects.
+	 */
+	public function get_latest_by_author($author_id, $limit) {
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT * FROM {$this->table_name} WHERE author_id = %d ORDER BY id DESC LIMIT %d",
+			$author_id,
+			$limit
+		));
 	}
 	
 	/**
