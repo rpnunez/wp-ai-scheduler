@@ -177,6 +177,7 @@ class AIPS_History {
             'page' => 1,
             'status' => $status_filter,
             'search' => $search_query,
+            'fields' => 'list',
         ));
 
         $stats = $this->get_stats();
@@ -256,6 +257,7 @@ class AIPS_History {
             'page' => $current_page,
             'status' => $status_filter,
             'search' => $search_query,
+            'fields' => 'list',
         ));
         
         $stats = $this->get_stats();
