@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [palette-a11y-post-review-modal] - 2026-02-04
+### Fixed
+- Added missing `aria-label` to the modal close button in the Post Review admin page for better accessibility.
+
 ## [wizard-run-schedule-now] - 2025-01-05
 ### Added
 - Added "Run Schedule Now" capability to `AIPS_Scheduler` and `AIPS_Schedule_Controller`, allowing immediate execution of schedules regardless of their timing or active status.

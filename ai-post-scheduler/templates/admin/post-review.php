@@ -229,7 +229,7 @@ $templates = $template_repository->get_all();
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
 			<h2><?php esc_html_e('Generation Logs', 'ai-post-scheduler'); ?></h2>
-			<button type="button" class="aips-modal-close">&times;</button>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body" id="aips-log-viewer-content">
 			<p><?php esc_html_e('Loading...', 'ai-post-scheduler'); ?></p>
