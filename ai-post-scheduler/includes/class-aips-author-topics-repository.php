@@ -96,19 +96,28 @@ class AIPS_Author_Topics_Repository {
 			return false;
 		}
 
-		// Ensure all inserts either succeed or fail together.
-		$this->wpdb->query('START TRANSACTION');
+		$values = array();
+		$placeholders = array();
+		$query = "INSERT INTO {$this->table_name} (author_id, topic_title, topic_prompt, status, score, metadata) VALUES ";
 
 		foreach ($topics as $topic) {
-			$result = $this->create($topic);
-			if (!$result) {
-				$this->wpdb->query('ROLLBACK');
-				return false;
-			}
+			array_push($values,
+				absint($topic['author_id']),
+				sanitize_text_field($topic['topic_title']),
+				isset($topic['topic_prompt']) ? wp_kses_post($topic['topic_prompt']) : '',
+				isset($topic['status']) ? sanitize_text_field($topic['status']) : 'pending',
+				isset($topic['score']) ? absint($topic['score']) : 50,
+				isset($topic['metadata']) ? $topic['metadata'] : ''
+			);
+			$placeholders[] = "(%d, %s, %s, %s, %d, %s)";
 		}
 
-		$this->wpdb->query('COMMIT');
-		return true;
+		$query .= implode(', ', $placeholders);
+
+		// Bolt: Optimized single query insert
+		$result = $this->wpdb->query($this->wpdb->prepare($query, $values));
+
+		return $result !== false;
 	}
 	
 	/**

@@ -94,16 +94,20 @@ class AIPS_Author_Topics_Generator {
 		}
 		
 		// Save topics to database
-		$saved_topics = array();
-		foreach ($topics as $topic_data) {
-			$topic_id = $this->topics_repository->create($topic_data);
-			if ($topic_id) {
-				$saved_topics[] = array_merge($topic_data, array('id' => $topic_id));
-				$this->logger->log("Created topic: {$topic_data['topic_title']}", 'info', array(
-					'topic_id' => $topic_id,
-					'author_id' => $author->id
-				));
-			}
+		// Bolt: Use optimized bulk creation
+		if ($this->topics_repository->create_bulk($topics)) {
+			// Since create_bulk doesn't return IDs and we don't need them immediately for the UI here,
+			// we can just consider them saved.
+			// Re-fetch latest topics if we needed IDs, but for now we just return the data structure.
+			$saved_topics = $topics;
+			$this->logger->log("Bulk created " . count($topics) . " topics", 'info', array(
+				'author_id' => $author->id
+			));
+		} else {
+			$saved_topics = array();
+			$this->logger->log("Failed to bulk create topics", 'error', array(
+				'author_id' => $author->id
+			));
 		}
 		
 		$count = count($saved_topics);

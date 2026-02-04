@@ -144,10 +144,16 @@ class AIPS_Schedule_Repository {
      * @return int|false The inserted ID on success, false on failure.
      */
     public function create($data) {
+        $next_run = sanitize_text_field($data['next_run']);
+        // Hunter: Validate date format
+        if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $next_run)) {
+            return false;
+        }
+
         $insert_data = array(
             'template_id' => absint($data['template_id']),
             'frequency' => sanitize_text_field($data['frequency']),
-            'next_run' => sanitize_text_field($data['next_run']),
+            'next_run' => $next_run,
             'is_active' => isset($data['is_active']) ? 1 : 0,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
@@ -196,7 +202,12 @@ class AIPS_Schedule_Repository {
         }
         
         if (isset($data['next_run'])) {
-            $update_data['next_run'] = sanitize_text_field($data['next_run']);
+            $next_run = sanitize_text_field($data['next_run']);
+            // Hunter: Validate date format
+            if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $next_run)) {
+                return false;
+            }
+            $update_data['next_run'] = $next_run;
             $format[] = '%s';
         }
         

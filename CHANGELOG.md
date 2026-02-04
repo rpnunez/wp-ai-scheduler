@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 - [2026-01-17 08:24:50] Added Developer Mode and Dev Tools page for generating template scaffolds (Voices, Structures, Templates) using AI.
 - [2026-01-20 10:00:00] Added client-side search functionality to the Planner topic list, allowing users to filter brainstormed topics before scheduling.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.
+- [2026-01-21 12:00:00] Added "Copy System Report" button to the System Status page for easier troubleshooting.
+
+### Fixed
+- [2026-01-21 12:00:00] Enforced strict date format validation for schedule `next_run` timestamp to prevent scheduling errors.
+- [2026-01-21 12:00:00] Reduced the hard limit for immediate "Run Now" post generation from 5 to 2 to prevent PHP timeouts.
+
+### Performance
+- [2026-01-21 12:00:00] Optimized bulk topic generation for Authors to use a single SQL `INSERT` statement, improving performance for large batches.
 
 ### Fixed
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.

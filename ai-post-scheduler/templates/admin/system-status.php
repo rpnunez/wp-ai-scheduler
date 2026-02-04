@@ -5,7 +5,28 @@ if (!defined('ABSPATH')) {
 ?>
 <div class="wrap">
     <h1 class="wp-heading-inline"><?php esc_html_e('System Status', 'ai-post-scheduler'); ?></h1>
+    <button class="button button-secondary aips-copy-btn" data-clipboard-target="#aips-system-report-raw" style="margin-left: 10px;">
+        <span class="dashicons dashicons-clipboard" style="line-height: 1.5;"></span>
+        <?php esc_html_e('Copy System Report', 'ai-post-scheduler'); ?>
+    </button>
     <hr class="wp-header-end">
+
+    <?php
+    // Wizard: Generate plain text report
+    $report = "### AI Post Scheduler System Report ###\n\n";
+    $report .= "Generated at: " . current_time('mysql') . "\n";
+    $report .= "URL: " . get_site_url() . "\n\n";
+
+    foreach ($system_info as $section => $checks) {
+        if (empty($checks)) continue;
+        $report .= "## " . ucfirst($section) . " ##\n";
+        foreach ($checks as $key => $check) {
+            $report .= $check['label'] . ": " . $check['value'] . " (" . $check['status'] . ")\n";
+        }
+        $report .= "\n";
+    }
+    ?>
+    <textarea id="aips-system-report-raw" style="position: absolute; left: -9999px;"><?php echo esc_textarea($report); ?></textarea>
 
     <div class="aips-status-page">
         <?php foreach ($system_info as $section => $checks) : ?>
