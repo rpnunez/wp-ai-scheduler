@@ -191,23 +191,119 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 	}
 	
 	/**
-	 * Split SQL file into individual queries
+	 * Split SQL file into individual queries using a character-based tokenizer.
+	 * Safely handles quotes, backslashes, and strips comments.
 	 * 
 	 * @param string $sql_content
 	 * @return array
 	 */
 	private function split_sql_file($sql_content) {
-		// Remove comments
-		$sql_content = preg_replace('/--[^\n]*\n/', "\n", $sql_content);
-		$sql_content = preg_replace('/\/\*.*?\*\//s', '', $sql_content);
+		$queries = array();
+		$buffer = '';
+		$len = strlen($sql_content);
+		$i = 0;
 		
-		// Split by semicolon
-		$queries = explode(';', $sql_content);
+		$in_string = false; // false, or the quote char (', ", `)
 		
-		// Filter out empty queries
-		$queries = array_filter($queries, function($query) {
-			return !empty(trim($query));
-		});
+		while ($i < $len) {
+			$char = $sql_content[$i];
+			$next_char = ($i + 1 < $len) ? $sql_content[$i + 1] : '';
+
+			// Handle strings
+			if ($in_string) {
+				if ($char === $in_string) {
+					// Possible end of string
+					// Check for escaped quote (e.g. 'It''s') in SQL standard
+					if ($next_char === $in_string) {
+						$buffer .= $char . $next_char;
+						$i += 2;
+						continue;
+					}
+					// End of string
+					$in_string = false;
+				} elseif ($char === '\\') {
+					// Backslash escape (standard MySQL behavior)
+					// Append backslash and next char
+					$buffer .= $char;
+					if ($i + 1 < $len) {
+						$buffer .= $next_char;
+						$i++;
+					}
+					$i++;
+					continue;
+				}
+
+				$buffer .= $char;
+				$i++;
+				continue;
+			}
+
+			// Not in string
+
+			// Start of string?
+			if ($char === "'" || $char === '"' || $char === '`') {
+				$in_string = $char;
+				$buffer .= $char;
+				$i++;
+				continue;
+			}
+
+			// Comments? (Strip them)
+
+			// Hash comment #
+			if ($char === '#') {
+				// Skip until newline
+				$i++;
+				while ($i < $len && $sql_content[$i] !== "\n") {
+					$i++;
+				}
+				$buffer .= "\n";
+				continue;
+			}
+
+			// Dash comment -- followed by whitespace/control
+			if ($char === '-' && $next_char === '-') {
+				$third_char = ($i + 2 < $len) ? $sql_content[$i + 2] : '';
+				// MySQL requires whitespace/control after -- (or EOF)
+				if (ctype_space($third_char) || $third_char === '') {
+					$i += 2;
+					while ($i < $len && $sql_content[$i] !== "\n") {
+						$i++;
+					}
+					$buffer .= "\n";
+					continue;
+				}
+			}
+
+			// Multi-line comment /* ... */
+			if ($char === '/' && $next_char === '*') {
+				$i += 2;
+				while ($i < $len && !($sql_content[$i] === '*' && ($i + 1 < $len && $sql_content[$i + 1] === '/'))) {
+					$i++;
+				}
+				$i += 2; // skip */
+				$buffer .= " ";
+				continue;
+			}
+
+			// Semicolon: Split query
+			if ($char === ';') {
+				if (trim($buffer) !== '') {
+					$queries[] = trim($buffer);
+				}
+				$buffer = '';
+				$i++;
+				continue;
+			}
+
+			// Regular char
+			$buffer .= $char;
+			$i++;
+		}
+
+		if (trim($buffer) !== '') {
+			$queries[] = trim($buffer);
+		}
 		
 		return $queries;
 	}
