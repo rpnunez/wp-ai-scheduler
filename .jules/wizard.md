@@ -31,3 +31,7 @@
 ## 2026-01-21 - Generated Posts Empty State
 **Learning:** `generated-posts.php` was missing the standard Empty State pattern (`.aips-empty-state`) and a direct "View" action, causing inconsistency with `history.php`.
 **Action:** Implemented the standard Empty State and added a "View" button with accessibility attributes (`aria-label`, `rel="noopener"`) to match the "Feature Wizard" polish standards.
+
+## 2026-02-04 - Voice Cloning
+**Learning:** Users frequently need slightly modified versions of prompts (e.g. "Professional" vs "Professional - French"), but the UI forced them to copy-paste manually.
+**Action:** Implemented "Clone" action for Voices, following the pattern used for Templates and Schedules.

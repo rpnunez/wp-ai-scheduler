@@ -14,6 +14,7 @@ class AIPS_Voices {
         add_action('wp_ajax_aips_save_voice', array($this, 'ajax_save_voice'));
         add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
         add_action('wp_ajax_aips_get_voice', array($this, 'ajax_get_voice'));
+        add_action('wp_ajax_aips_clone_voice', array($this, 'ajax_clone_voice'));
         add_action('wp_ajax_aips_search_voices', array($this, 'ajax_search_voices'));
     }
     
@@ -135,6 +136,47 @@ class AIPS_Voices {
             wp_send_json_success(array('voice' => $voice));
         } else {
             wp_send_json_error(array('message' => __('Voice not found.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_clone_voice() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
+        }
+
+        $voice = $this->get($id);
+
+        if (!$voice) {
+            wp_send_json_error(array('message' => __('Voice not found.', 'ai-post-scheduler')));
+        }
+
+        // Prepare data for cloning
+        $data = array(
+            'name' => $voice->name . ' (Copy)',
+            'title_prompt' => $voice->title_prompt,
+            'content_instructions' => $voice->content_instructions,
+            'excerpt_instructions' => $voice->excerpt_instructions,
+            'is_active' => $voice->is_active,
+        );
+
+        // Save as new voice (no ID passed)
+        $new_id = $this->save($data);
+
+        if ($new_id) {
+            wp_send_json_success(array(
+                'message' => __('Voice cloned successfully.', 'ai-post-scheduler'),
+                'voice_id' => $new_id
+            ));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to clone voice.', 'ai-post-scheduler')));
         }
     }
     
