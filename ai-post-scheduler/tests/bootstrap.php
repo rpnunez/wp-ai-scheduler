@@ -266,14 +266,57 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 return date('Y-m-d H:i:s');
             }
 
-            // Fallback: return a Unix timestamp for unknown types.
-            return time();
+            // Return current time formatted with the format string
+            return date($type);
         }
     }
     
     if (!function_exists('wp_json_encode')) {
         function wp_json_encode($data, $options = 0, $depth = 512) {
             return json_encode($data, $options, $depth);
+        }
+    }
+
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = '') {
+            if (is_object($args)) {
+                $r = get_object_vars($args);
+            } elseif (is_array($args)) {
+                $r = $args;
+            } else {
+                wp_parse_str($args, $r);
+            }
+
+            if (is_array($defaults)) {
+                return array_merge($defaults, $r);
+            }
+            return $r;
+        }
+    }
+
+    if (!function_exists('wp_parse_str')) {
+        function wp_parse_str($string, &$array) {
+            parse_str($string, $array);
+        }
+    }
+
+    if (!function_exists('add_query_arg')) {
+        function add_query_arg() {
+            $args = func_get_args();
+            if (is_array($args[0])) {
+                if (count($args) < 2 || false === $args[1]) {
+                    $uri = '';
+                } else {
+                    $uri = $args[1];
+                }
+            } else {
+                if (count($args) < 3 || false === $args[2]) {
+                    $uri = '';
+                } else {
+                    $uri = $args[2];
+                }
+            }
+            return $uri;
         }
     }
     
@@ -287,6 +330,18 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 'baseurl' => 'http://example.com/wp-content/uploads',
                 'error' => false,
             ];
+        }
+    }
+
+    if (!function_exists('wp_mkdir_p')) {
+        function wp_mkdir_p($target) {
+            return is_dir($target) || mkdir($target, 0777, true);
+        }
+    }
+
+    if (!function_exists('dbDelta')) {
+        function dbDelta($sql) {
+            return array();
         }
     }
     
@@ -600,6 +655,11 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             private $data = array();
             
             public function prepare($query, ...$args) {
+                // Handle case where args are passed as an array
+                if (isset($args[0]) && is_array($args[0])) {
+                    $args = $args[0];
+                }
+
                 // Simple mock prepare - just return the query with args
                 // In real implementation, this would properly escape and format
                 if (empty($args)) {
@@ -607,9 +667,14 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 }
                 // Replace placeholders in order
                 foreach ($args as $arg) {
-                    $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                    $val = is_numeric($arg) ? $arg : "'" . (is_string($arg) ? $arg : '') . "'";
+                    $query = preg_replace('/%[sd]/', $val, $query, 1);
                 }
                 return $query;
+            }
+
+            public function esc_like($text) {
+                return addcslashes($text, '_%\\');
             }
             
             public function get_results($query, $output = OBJECT) {
@@ -618,6 +683,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             
             public function get_row($query, $output = OBJECT, $y = 0) {
                 return null;
+            }
+
+            public function get_col($query, $x = 0) {
+                return array();
             }
             
             public function get_var($query, $x = 0, $y = 0) {
@@ -640,6 +709,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             
             public function delete($table, $where, $where_format = null) {
                 return true;
+            }
+
+            public function get_charset_collate() {
+                return "DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci";
             }
         };
     }

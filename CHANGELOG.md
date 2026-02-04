@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.
 
 ### Fixed
+- 2026-02-04: Fixed sorting logic in Research Service to correctly prioritize topics with more keywords when scores are tied, and fixed test environment mocks (`$wpdb`, `current_time`).
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
 
 ### Added

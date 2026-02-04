@@ -233,10 +233,10 @@ class Test_Research_Service extends WP_UnitTestCase {
         
         $result = $this->research_service->compare_topics($topic1, $topic2);
         
-        // When scores are equal, the comparator treats topics with fewer keywords as higher priority
-        // (e.g., considering them more focused). Since Topic1 has more keywords than Topic2, it is
-        // considered "greater" and the comparison is expected to return a positive value.
-        $this->assertEquals(1, $result);
+        // When scores are equal, the comparator treats topics with MORE keywords as higher priority
+        // (e.g., considering them richer). Since Topic1 has more keywords than Topic2, it is
+        // considered "smaller" (comes first) and the comparison is expected to return a negative value.
+        $this->assertEquals(-1, $result);
     }
     
     /**
