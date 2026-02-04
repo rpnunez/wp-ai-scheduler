@@ -110,8 +110,9 @@ class AIPS_History_Repository {
         $query_args[] = $args['per_page'];
         $query_args[] = $offset;
 
+        // Bolt: Select specific columns to optimize performance
         $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.*, t.name as template_name 
+            SELECT h.id, h.status, h.generated_title, h.created_at, h.completed_at, h.template_id, h.post_id, h.error_message, t.name as template_name
             FROM {$this->table_name} h 
             LEFT JOIN {$templates_table} t ON h.template_id = t.id 
             WHERE $where_sql

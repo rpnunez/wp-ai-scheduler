@@ -234,25 +234,21 @@ class AIPS_Generated_Posts_Controller {
 				wp_send_json_error(array('message' => __('Export file not found.', 'ai-post-scheduler')));
 			}
 			
-			$json_string = file_get_contents($filepath);
-			if ($json_string === false) {
-				wp_send_json_error(array('message' => __('Failed to read export file.', 'ai-post-scheduler')));
-			}
-			
-			// Send download headers and the JSON payload
-			if (!headers_sent()) {
-				header('Content-Description: File Transfer');
-				header('Content-Type: application/json; charset=utf-8');
-				header('Content-Disposition: attachment; filename="' . $filename . '"');
-				header('Content-Transfer-Encoding: binary');
-				header('Expires: 0');
-				header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-				header('Pragma: public');
-				header('Content-Length: ' . strlen($json_string));
-			}
-			
-			echo $json_string;
-			exit;
+            // Send download headers and the JSON payload
+            if (!headers_sent()) {
+                header('Content-Description: File Transfer');
+                header('Content-Type: application/json; charset=utf-8');
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('Content-Transfer-Encoding: binary');
+                header('Expires: 0');
+                header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+                header('Pragma: public');
+                header('Content-Length: ' . filesize($filepath));
+            }
+
+            // Read file and send to output buffer without loading into memory
+            readfile($filepath);
+            exit;
 		}
 		
 		// Small session: generate string and send directly

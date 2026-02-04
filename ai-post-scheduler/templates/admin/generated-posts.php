@@ -25,6 +25,9 @@ if (!defined('ABSPATH')) {
 			<label class="screen-reader-text" for="post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 			<input type="search" id="post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
 			<input type="submit" id="search-submit" class="button" value="<?php esc_attr_e('Search Posts', 'ai-post-scheduler'); ?>">
+            <?php if ( ! empty( $search_query ) ) : ?>
+                <a href="<?php echo esc_url( remove_query_arg( 's' ) ); ?>" class="button button-link-delete"><?php esc_html_e( 'Clear', 'ai-post-scheduler' ); ?></a>
+            <?php endif; ?>
 		</p>
 	</form>
 	

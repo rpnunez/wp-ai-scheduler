@@ -191,23 +191,108 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 	}
 	
 	/**
-	 * Split SQL file into individual queries
+	 * Split SQL file into individual queries using a character-based tokenizer.
 	 * 
 	 * @param string $sql_content
 	 * @return array
 	 */
 	private function split_sql_file($sql_content) {
-		// Remove comments
-		$sql_content = preg_replace('/--[^\n]*\n/', "\n", $sql_content);
-		$sql_content = preg_replace('/\/\*.*?\*\//s', '', $sql_content);
+		$queries = array();
+		$buffer = '';
+		$in_string = false;
+		$string_char = ''; // ' or " or `
+		$in_comment = false; // -- style
+		$in_block_comment = false; // /* style */
+		$escaped = false;
 		
-		// Split by semicolon
-		$queries = explode(';', $sql_content);
+		$len = strlen($sql_content);
 		
-		// Filter out empty queries
-		$queries = array_filter($queries, function($query) {
-			return !empty(trim($query));
-		});
+		for ($i = 0; $i < $len; $i++) {
+			$char = $sql_content[$i];
+			$next_char = ($i + 1 < $len) ? $sql_content[$i + 1] : '';
+
+			// Handle escapes in strings
+			if ($in_string) {
+				if ($escaped) {
+					$escaped = false;
+				} elseif ($char === '\\') {
+					$escaped = true;
+				} elseif ($char === $string_char) {
+					// Check for double escape (e.g. 'Don''t') - mostly for single quotes
+					// MySQL dumps usually use backslash escapes, but handling double quotes is safer
+					if ($char === "'" && $next_char === "'") {
+						$buffer .= $char; // consume first quote
+						$i++; // skip next quote
+						// effectively we consumed one quote and we are still in string, but $buffer logic below adds current char
+						// wait, if I consume here, I should continue loop
+						$buffer .= $next_char;
+						continue;
+					}
+					$in_string = false;
+				}
+				$buffer .= $char;
+				continue;
+			}
+
+			// Handle block comments
+			if ($in_block_comment) {
+				if ($char === '*' && $next_char === '/') {
+					$in_block_comment = false;
+					$i++; // Skip /
+					// We don't append comments to buffer
+				}
+				continue;
+			}
+
+			// Handle line comments
+			if ($in_comment) {
+				if ($char === "\n") {
+					$in_comment = false;
+				}
+				continue;
+			}
+
+			// Check for start of string or identifier
+			if ($char === "'" || $char === '"' || $char === '`') {
+				$in_string = true;
+				$string_char = $char;
+				$buffer .= $char;
+				continue;
+			}
+
+			// Check for start of comments
+			if ($char === '-' && $next_char === '-') {
+				$in_comment = true;
+				$i++; // Skip next -
+				continue;
+			}
+
+			if ($char === '#' ) {
+				$in_comment = true;
+				continue;
+			}
+
+			if ($char === '/' && $next_char === '*') {
+				$in_block_comment = true;
+				$i++; // Skip *
+				continue;
+			}
+
+			// Check for statement terminator
+			if ($char === ';') {
+				if (!empty(trim($buffer))) {
+					$queries[] = trim($buffer);
+				}
+				$buffer = '';
+				continue;
+			}
+
+			$buffer .= $char;
+		}
+
+		if (!empty(trim($buffer))) {
+			$queries[] = trim($buffer);
+		}
 		
 		return $queries;
 	}
