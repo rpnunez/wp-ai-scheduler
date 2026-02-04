@@ -660,6 +660,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-template-repository.php',
         'class-aips-article-structure-repository.php',
         'class-aips-prompt-section-repository.php',
+        'class-aips-voices-repository.php',
         'class-aips-template-processor.php',
         'class-aips-prompt-builder.php',
         'class-aips-article-structure-manager.php',

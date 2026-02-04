@@ -5,11 +5,10 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Voices {
     
-    private $table_name;
+    private $repository;
     
     public function __construct() {
-        global $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_voices';
+        $this->repository = new AIPS_Voices_Repository();
         
         add_action('wp_ajax_aips_save_voice', array($this, 'ajax_save_voice'));
         add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
@@ -18,50 +17,19 @@ class AIPS_Voices {
     }
     
     public function get_all($active_only = false) {
-        global $wpdb;
-        
-        $where = $active_only ? "WHERE is_active = 1" : "";
-        return $wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
+        return $this->repository->get_all($active_only);
     }
     
     public function get($id) {
-        global $wpdb;
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $id));
+        return $this->repository->get($id);
     }
     
     public function save($data) {
-        global $wpdb;
-        
-        $voice_data = array(
-            'name' => sanitize_text_field($data['name']),
-            'title_prompt' => wp_kses_post($data['title_prompt']),
-            'content_instructions' => wp_kses_post($data['content_instructions']),
-            'excerpt_instructions' => isset($data['excerpt_instructions']) ? wp_kses_post($data['excerpt_instructions']) : '',
-            'is_active' => isset($data['is_active']) ? 1 : 0,
-        );
-        
-        if (!empty($data['id'])) {
-            $wpdb->update(
-                $this->table_name,
-                $voice_data,
-                array('id' => absint($data['id'])),
-                array('%s', '%s', '%s', '%s', '%d'),
-                array('%d')
-            );
-            return absint($data['id']);
-        } else {
-            $wpdb->insert(
-                $this->table_name,
-                $voice_data,
-                array('%s', '%s', '%s', '%s', '%d')
-            );
-            return $wpdb->insert_id;
-        }
+        return $this->repository->save($data);
     }
     
     public function delete($id) {
-        global $wpdb;
-        return $wpdb->delete($this->table_name, array('id' => $id), array('%d'));
+        return $this->repository->delete($id);
     }
     
     public function ajax_save_voice() {
@@ -145,12 +113,9 @@ class AIPS_Voices {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
         
-        global $wpdb;
-        
         $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
-        $where = $search ? $wpdb->prepare("WHERE is_active = 1 AND name LIKE %s", '%' . $wpdb->esc_like($search) . '%') : "WHERE is_active = 1";
         
-        $voices = $wpdb->get_results("SELECT id, name FROM {$this->table_name} $where ORDER BY name ASC LIMIT 20");
+        $voices = $this->repository->search($search);
         
         wp_send_json_success(array('voices' => $voices));
     }

@@ -20,3 +20,8 @@
 **Context:** Creating hundreds of schedule items via a loop of INSERT statements was inefficient.
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
+
+## 2026-02-04 - Extract Voices Repository
+**Context:** The `AIPS_Voices` class was violating the Single Responsibility Principle by mixing database access logic with Controller/AJAX handling logic.
+**Decision:** Extracted database operations into a new `AIPS_Voices_Repository` class. Refactored `AIPS_Voices` to delegate data access to this repository.
+**Consequence:** Improved separation of concerns and testability. `AIPS_Voices` now acts as a proper controller/facade. Increased file count by 1.
