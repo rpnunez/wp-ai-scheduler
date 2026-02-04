@@ -72,6 +72,7 @@ class AIPS_History_Repository {
             'template_id' => 0,
             'orderby' => 'created_at',
             'order' => 'DESC',
+            'fields' => 'all',
         );
         
         $args = wp_parse_args($args, $defaults);
@@ -104,6 +105,20 @@ class AIPS_History_Repository {
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
         
         $templates_table = $this->wpdb->prefix . 'aips_templates';
+
+        // Determine columns to select
+        $select_columns = "h.*";
+        if ($args['fields'] === 'list') {
+            $select_columns = "h.id, h.post_id, h.generated_title, h.error_message, h.template_id, h.status, h.created_at, h.completed_at";
+        } elseif ($args['fields'] === 'dashboard') {
+            $select_columns = "h.id, h.post_id, h.generated_title, h.status, h.created_at";
+        } elseif (is_array($args['fields'])) {
+            $allowed_columns = array('id', 'template_id', 'status', 'prompt', 'generated_title', 'generated_content', 'generation_log', 'error_message', 'post_id', 'created_at', 'completed_at');
+            $valid_fields = array_intersect($args['fields'], $allowed_columns);
+            if (!empty($valid_fields)) {
+                $select_columns = implode(', ', array_map(function($f) { return "h.$f"; }, $valid_fields));
+            }
+        }
         
         // Query for items
         $query_args = $where_args;
@@ -111,7 +126,7 @@ class AIPS_History_Repository {
         $query_args[] = $offset;
 
         $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.*, t.name as template_name 
+            SELECT $select_columns, t.name as template_name
             FROM {$this->table_name} h 
             LEFT JOIN {$templates_table} t ON h.template_id = t.id 
             WHERE $where_sql

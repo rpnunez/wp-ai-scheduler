@@ -15,3 +15,7 @@
 ## 2024-05-25 - N+1 Query Fix in Templates List
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
+
+## 2026-02-04 - [History List Optimization]
+**Learning:** The History list and Dashboard widget were selecting `*` from the history table, including large `generated_content` and `generation_log` columns.
+**Action:** Implemented `fields` parameter in `get_history` to select only necessary columns for list views, significantly reducing memory footprint.

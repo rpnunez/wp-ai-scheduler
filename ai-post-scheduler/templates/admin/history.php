@@ -30,6 +30,7 @@ if (isset($history_handler)) {
         'page'   => $current_page,
         'status' => $status_filter,
         'search' => $search_query,
+        'fields' => 'list',
     ));
 
     if (!isset($stats)) {

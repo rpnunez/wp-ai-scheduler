@@ -203,7 +203,8 @@ class AIPS_Templates_Controller {
             'template_id' => $template_id,
             'page' => $page,
             'per_page' => 10,
-            'status' => 'completed'
+            'status' => 'completed',
+            'fields' => 'dashboard'
         ));
 
         ob_start();
