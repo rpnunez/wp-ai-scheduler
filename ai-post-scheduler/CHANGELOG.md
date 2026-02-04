@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [sentinel-fix-sql-import-bypass] - 2025-12-28
+### Security
+- [2025-12-28] Fixed a critical SQL import vulnerability where hash comments (`#`) could be used to bypass table name validation. Implemented a robust character-based tokenizer in `AIPS_Data_Management_Import_MySQL` to safely parse SQL and strip comments before validation.
+
 ## [wizard-run-schedule-now] - 2025-01-05
 ### Added
 - Added "Run Schedule Now" capability to `AIPS_Scheduler` and `AIPS_Schedule_Controller`, allowing immediate execution of schedules regardless of their timing or active status.
