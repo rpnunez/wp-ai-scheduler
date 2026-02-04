@@ -203,10 +203,8 @@ class AIPS_Research_Service {
             return new WP_Error('no_valid_topics', __('No valid topics found in AI response.', 'ai-post-scheduler'));
         }
 
-        // Sort by score (highest first)
-        usort($validated_topics, function($a, $b) {
-            return $b['score'] - $a['score'];
-        });
+        // Sort by score (highest first), then keyword count (more keywords first)
+        usort($validated_topics, array($this, 'compare_topics'));
 
         // Limit to requested count
         $validated_topics = array_slice($validated_topics, 0, $count);
@@ -414,6 +412,6 @@ class AIPS_Research_Service {
         $keywords1 = isset($topic1['keywords']) ? count($topic1['keywords']) : 0;
         $keywords2 = isset($topic2['keywords']) ? count($topic2['keywords']) : 0;
 
-        return $keywords1 <=> $keywords2;
+        return $keywords2 <=> $keywords1;
     }
 }
