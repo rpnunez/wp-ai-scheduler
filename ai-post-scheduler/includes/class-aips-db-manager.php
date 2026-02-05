@@ -282,7 +282,9 @@ class AIPS_DB_Manager {
     }
 
     public static function install_tables() {
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        if (!function_exists('dbDelta')) {
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        }
         $instance = new self();
         $schema = $instance->get_schema();
         foreach ($schema as $sql) {
@@ -518,7 +520,11 @@ class AIPS_DB_Manager {
             ));
             
             if (!$exists) {
-                $wpdb->insert($table_sections, $section);
+                $result = $wpdb->insert($table_sections, $section);
+                if ($result === false && class_exists('AIPS_Logger')) {
+                    $logger = new AIPS_Logger();
+                    $logger->log("Failed to seed prompt section: " . $section['name'] . ". Error: " . $wpdb->last_error, 'error');
+                }
             }
         }
         
@@ -582,7 +588,11 @@ class AIPS_DB_Manager {
             ));
             
             if (!$exists) {
-                $wpdb->insert($table_structures, $structure);
+                $result = $wpdb->insert($table_structures, $structure);
+                if ($result === false && class_exists('AIPS_Logger')) {
+                    $logger = new AIPS_Logger();
+                    $logger->log("Failed to seed article structure: " . $structure['name'] . ". Error: " . $wpdb->last_error, 'error');
+                }
             }
         }
     }

@@ -2,9 +2,32 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// Build report string
+$report = "### AI Post Scheduler System Report ###\n\n";
+foreach ($system_info as $section => $checks) {
+    if (empty($checks)) continue;
+    $report .= "## " . ucfirst($section) . " ##\n";
+    foreach ($checks as $key => $check) {
+        $report .= $check['label'] . ": " . $check['value'] . " (" . $check['status'] . ")\n";
+        if (!empty($check['details'])) {
+            if (is_array($check['details'])) {
+                $report .= "Details:\n" . implode("\n", $check['details']) . "\n";
+            } else {
+                 $report .= "Details: " . $check['details'] . "\n";
+            }
+        }
+    }
+    $report .= "\n";
+}
+$report .= "### End Report ###";
 ?>
 <div class="wrap">
     <h1 class="wp-heading-inline"><?php esc_html_e('System Status', 'ai-post-scheduler'); ?></h1>
+    <button type="button" class="button button-secondary aips-copy-report" style="margin-left: 10px;">
+        <?php esc_html_e('Copy System Report', 'ai-post-scheduler'); ?>
+    </button>
+    <textarea id="aips-system-report" style="display:none;"><?php echo esc_textarea($report); ?></textarea>
     <hr class="wp-header-end">
 
     <div class="aips-status-page">
@@ -131,6 +154,40 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         var target = $(this).data('target');
         $('#' + target).toggle();
+    });
+
+    $('.aips-copy-report').on('click', function(e) {
+        e.preventDefault();
+        var reportText = $('#aips-system-report').val();
+
+        // Use clipboard API if available
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(reportText).then(function() {
+                var $btn = $('.aips-copy-report');
+                var originalText = $btn.text();
+                $btn.text('<?php echo esc_js(__('Copied!', 'ai-post-scheduler')); ?>');
+                setTimeout(function() {
+                    $btn.text(originalText);
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Failed to copy: ', err);
+                alert('<?php echo esc_js(__('Failed to copy report to clipboard.', 'ai-post-scheduler')); ?>');
+            });
+        } else {
+            // Fallback for older browsers or non-secure contexts
+            var $temp = $("<textarea>");
+            $("body").append($temp);
+            $temp.val(reportText).select();
+            document.execCommand("copy");
+            $temp.remove();
+
+            var $btn = $('.aips-copy-report');
+            var originalText = $btn.text();
+            $btn.text('<?php echo esc_js(__('Copied!', 'ai-post-scheduler')); ?>');
+            setTimeout(function() {
+                $btn.text(originalText);
+            }, 2000);
+        }
     });
 });
 </script>
