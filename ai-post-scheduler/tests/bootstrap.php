@@ -599,12 +599,22 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public $insert_id = 0;
             private $data = array();
             
+            public function esc_like($text) {
+                return addcslashes($text, '_%\\');
+            }
+
             public function prepare($query, ...$args) {
                 // Simple mock prepare - just return the query with args
                 // In real implementation, this would properly escape and format
                 if (empty($args)) {
                     return $query;
                 }
+
+                // Handle single array argument (vs variadic)
+                if (count($args) === 1 && is_array($args[0])) {
+                    $args = $args[0];
+                }
+
                 // Replace placeholders in order
                 foreach ($args as $arg) {
                     $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
@@ -682,6 +692,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-system-status.php',
         'class-aips-templates.php',
         'class-aips-upgrades.php',
+        'class-aips-voices-repository.php',
         'class-aips-voices.php',
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
