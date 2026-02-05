@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+/* Minimal CSS to make it look like WP Admin */
+.wrap { margin: 20px; font-family: sans-serif; }
+.wp-list-table { border-collapse: collapse; width: 100%; }
+.wp-list-table th, .wp-list-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+.button { padding: 5px 10px; cursor: pointer; }
+.aips-clone-voice { background: #eee; }
+</style>
+</head>
+<body>
+<div class="wrap aips-wrap">
+    <h1>
+        Voices        <button class="page-title-action aips-add-voice-btn">Add New</button>
+    </h1>
+
+    <div class="aips-voices-container">
+                <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
+            <label class="screen-reader-text" for="aips-voice-search">Search Voices:</label>
+            <input type="search" id="aips-voice-search" class="regular-text" placeholder="Search voices...">
+            <button type="button" id="aips-voice-search-clear" class="button" style="display: none;">Clear</button>
+        </div>
+
+        <table class="wp-list-table widefat fixed striped aips-voices-list">
+            <thead>
+                <tr>
+                    <th class="column-name">Name</th>
+                    <th class="column-title-prompt">Title Prompt</th>
+                    <th class="column-active">Active</th>
+                    <th class="column-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                                <tr data-voice-id="1">
+                    <td class="column-name">
+                        <strong>Test Voice</strong>
+                    </td>
+                    <td class="column-title-prompt">
+                        <small>Make it pop</small>
+                    </td>
+                    <td class="column-active">
+                        <span class="aips-status aips-status-active">
+                            Yes                        </span>
+                    </td>
+                    <td class="column-actions">
+                        <button class="button aips-edit-voice" data-id="1">
+                            Edit                        </button>
+                        <button class="button aips-clone-voice" data-id="1">
+                            Clone                        </button>
+                        <button class="button button-link-delete aips-delete-voice" data-id="1">
+                            Delete                        </button>
+                    </td>
+                </tr>
+                            </tbody>
+        </table>
+
+        <div id="aips-voice-search-no-results" class="aips-empty-state" style="display: none;">
+            <span class="dashicons dashicons-search" aria-hidden="true"></span>
+            <h3>No Voices Found</h3>
+            <p>No voices match your search criteria.</p>
+            <button type="button" class="button button-primary aips-clear-voice-search-btn">
+                Clear Search            </button>
+        </div>
+
+            </div>
+
+    <div id="aips-voice-modal" class="aips-modal" style="display: none;">
+        <div class="aips-modal-content">
+            <div class="aips-modal-header">
+                <h2 id="aips-voice-modal-title">Add New Voice</h2>
+                <button class="aips-modal-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <form id="aips-voice-form">
+                    <input type="hidden" name="voice_id" id="voice_id" value="">
+
+                    <div class="aips-form-row">
+                        <label for="voice_name">Voice Name <span class="required">*</span></label>
+                        <input type="text" id="voice_name" name="name" required class="regular-text" placeholder="e.g., Professional, Casual, Humorous">
+                    </div>
+
+                    <div class="aips-form-row">
+                        <label for="voice_title_prompt">Title Prompt <span class="required">*</span></label>
+                        <textarea id="voice_title_prompt" name="title_prompt" rows="3" required class="large-text" placeholder="e.g., Generate a compelling blog post title for the following topic. The title should be engaging and SEO-optimized. Return only the title, nothing else."></textarea>
+                        <p class="description">Instructions for generating the post title.</p>
+                    </div>
+
+                    <div class="aips-form-row">
+                        <label for="voice_content_instructions">Content Instructions <span class="required">*</span></label>
+                        <textarea id="voice_content_instructions" name="content_instructions" rows="4" required class="large-text" placeholder="e.g., Write in a professional tone. Include practical examples. Use short paragraphs. Add a compelling conclusion."></textarea>
+                        <p class="description">These instructions will be prepended to the template prompt when generating content.</p>
+                    </div>
+
+                    <div class="aips-form-row">
+                        <label for="voice_excerpt_instructions">Excerpt Instructions (Optional)</label>
+                        <textarea id="voice_excerpt_instructions" name="excerpt_instructions" rows="3" class="large-text" placeholder="e.g., Write a compelling summary. Use an engaging tone. Keep the excerpt concise."></textarea>
+                        <p class="description">Optional. These instructions will influence excerpt generation for posts using this voice.</p>
+                    </div>
+
+                    <div class="aips-form-row">
+                        <label class="aips-checkbox-label">
+                            <input type="checkbox" id="voice_is_active" name="is_active" value="1" checked>
+                            Voice is active                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="aips-modal-footer">
+                <button type="button" class="button aips-modal-close">Cancel</button>
+                <button type="button" class="button button-primary aips-save-voice">Save Voice</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

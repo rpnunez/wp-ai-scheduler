@@ -682,6 +682,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-system-status.php',
         'class-aips-templates.php',
         'class-aips-upgrades.php',
+        'class-aips-voices-repository.php',
         'class-aips-voices.php',
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',

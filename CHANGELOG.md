@@ -5,11 +5,14 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- [2026-01-21 12:00:00] Added "Clone" button to Voices admin page, enabling easy duplication of voice configurations.
 - [2026-01-17 08:24:50] Added Developer Mode and Dev Tools page for generating template scaffolds (Voices, Structures, Templates) using AI.
 - [2026-01-20 10:00:00] Added client-side search functionality to the Planner topic list, allowing users to filter brainstormed topics before scheduling.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.
 
 ### Fixed
+- [2026-01-21 12:00:00] Fixed `ajax_run_now` execution limit (hard limit set to 2) and removed redundant check in Schedule Controller.
+- [2026-01-21 12:00:00] Added date format validation for `next_run` field in `AIPS_Schedule_Repository` to prevent invalid schedule dates.
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
 
 ### Added
@@ -20,11 +23,15 @@ All notable changes to this project will be documented in this file.
 - 2024-05-24: Fixed PHPUnit test compatibility issues by adding `: void` return type to `setUp()` and `tearDown()` methods in test classes, ensuring tests run correctly in limited mode without the WordPress test library.
 
 ### Performance
+- [2026-01-21 12:00:00] Optimized `AIPS_History_Repository::get_history` query by adding support for a `fields` argument to select only necessary columns.
 - 2024-05-24: Implemented transient caching for History statistics (`AIPS_History_Repository::get_stats`) to reduce database load on dashboard and history pages.
 
 ### Fixed
 - 2024-05-23: Improved log reading performance by replacing O(N) `SplFileObject` seek with O(1) `fseek` tail reading, preventing potential crashes on large log files.
 - 2024-05-22: Removed redundant HTTP response code check in `AIPS_Generator::generate_and_upload_featured_image` to improve code quality and maintainability.
+### Architecture
+- [2026-01-21 12:00:00] Refactored Voices architecture by introducing `AIPS_Voices_Repository` to encapsulate database operations, decoupling them from the Controller.
+
 ### Added
 - [2025-12-21 01:48:42] Added search functionality to the Generation History page to filter posts by title.
 - [2024-05-22 10:00:00] Refactored Scheduler: Extracted AJAX handlers to `AIPS_Schedule_Controller`, enhanced `AIPS_Scheduler` with better topic and next_run support, and updated `AIPS_Planner` to use the Scheduler service instead of direct SQL.
