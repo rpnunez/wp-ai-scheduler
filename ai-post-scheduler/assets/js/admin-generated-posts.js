@@ -383,7 +383,10 @@
 			if (navigator.clipboard && navigator.clipboard.writeText) {
 				navigator.clipboard.writeText(text).then(function() {
 					self.showNotification('Session JSON copied to clipboard!', 'success');
-					$button.prop('disabled', false).text('Copy Session JSON');
+					$button.text('Copied!');
+					setTimeout(function() {
+						$button.prop('disabled', false).text('Copy Session JSON');
+					}, 2000);
 				}).catch(function(err) {
 					console.error('Failed to copy:', err);
 					self.fallbackCopyToClipboard(text, $button);
@@ -407,16 +410,21 @@
 				var successful = document.execCommand('copy');
 				if (successful) {
 					self.showNotification('Session JSON copied to clipboard!', 'success');
+					$button.text('Copied!');
+					setTimeout(function() {
+						$button.prop('disabled', false).text('Copy Session JSON');
+					}, 2000);
 				} else {
 					self.showNotification('Failed to copy to clipboard.', 'error');
+					$button.prop('disabled', false).text('Copy Session JSON');
 				}
 			} catch (err) {
 				console.error('Fallback copy failed:', err);
 				self.showNotification('Failed to copy to clipboard.', 'error');
+				$button.prop('disabled', false).text('Copy Session JSON');
 			}
 			
 			$temp.remove();
-			$button.prop('disabled', false).text('Copy Session JSON');
 		},
 		
 		/**
