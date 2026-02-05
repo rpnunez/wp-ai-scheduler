@@ -771,7 +771,7 @@ class AIPS_Settings {
         $failed_count = $history_stats['failed'];
         
         // Get recent history
-        $recent_posts_data = $history_repo->get_history(array('per_page' => 5));
+        $recent_posts_data = $history_repo->get_history(array('per_page' => 5, 'fields' => 'list'));
         $recent_posts = $recent_posts_data['items'];
         
         // Get upcoming schedules

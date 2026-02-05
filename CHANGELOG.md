@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
 - [2026-01-20 10:00:00] Added client-side search functionality to the Planner topic list, allowing users to filter brainstormed topics before scheduling.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.
 
+### Performance
+- [2026-02-05 14:34:27] Optimized `AIPS_History_Repository::get_history` to allow fetching only necessary columns, reducing memory usage and query size for list views.
+
 ### Fixed
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
 

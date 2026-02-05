@@ -57,6 +57,7 @@ class AIPS_Generated_Posts_Controller {
 			'per_page' => 20,
 			'status' => 'completed',
 			'search' => $search_query,
+			'fields' => 'list',
 		));
 		
 		// Get schedule data for each post
