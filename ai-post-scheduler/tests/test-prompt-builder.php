@@ -22,9 +22,10 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		);
 
 		$result = $builder->build_content_prompt($template, 'AI Technology', null);
+		$context = $builder->build_content_context($template, 'AI Technology', null);
 
 		$this->assertStringContainsString('Write about AI Technology', $result);
-		$this->assertStringContainsString('Output the response for use as a WordPress post', $result);
+		$this->assertStringContainsString('Output the response for use as a WordPress post', $context);
 	}
 
 	/**
@@ -127,7 +128,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$result = $builder->build_excerpt_prompt($title, $content, null, null);
 
 		$this->assertStringContainsString('Write an excerpt for an article', $result);
-		$this->assertStringContainsString('between 40 and 60 characters', $result);
+		$this->assertStringContainsString('between 40 and 60 words', $result);
 		$this->assertStringContainsString('ARTICLE TITLE:', $result);
 		$this->assertStringContainsString('Understanding AI Technology', $result);
 		$this->assertStringContainsString('ARTICLE BODY:', $result);

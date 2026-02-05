@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- [2026-01-20 12:00:00] Fixed PHPUnit test environment by mocking `$wpdb->get_charset_collate()` and corrected outdated assertions in `Test_AIPS_Prompt_Builder` to match current code behavior.
+
 ### Added
 - [2026-01-17 08:24:50] Added Developer Mode and Dev Tools page for generating template scaffolds (Voices, Structures, Templates) using AI.
 - [2026-01-20 10:00:00] Added client-side search functionality to the Planner topic list, allowing users to filter brainstormed topics before scheduling.

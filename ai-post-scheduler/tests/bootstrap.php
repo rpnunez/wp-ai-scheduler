@@ -611,6 +611,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 }
                 return $query;
             }
+
+            public function get_charset_collate() {
+                return 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+            }
             
             public function get_results($query, $output = OBJECT) {
                 return array();
