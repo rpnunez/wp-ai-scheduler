@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [sentinel-fix-import-sql-injection] - 2025-10-26
+### Security
+- [2025-10-26] Fixed a Critical SQL Injection vulnerability in `AIPS_Data_Management_Import_MySQL::import` that allowed arbitrary SQL execution (e.g., `DELETE`) by enforcing a strict whitelist of allowed SQL commands (`INSERT`, `DROP`, `CREATE`, `SET`, `LOCK`, `UNLOCK`) and validating target tables.
+
 ## [wizard-run-schedule-now] - 2025-01-05
 ### Added
 - Added "Run Schedule Now" capability to `AIPS_Scheduler` and `AIPS_Schedule_Controller`, allowing immediate execution of schedules regardless of their timing or active status.

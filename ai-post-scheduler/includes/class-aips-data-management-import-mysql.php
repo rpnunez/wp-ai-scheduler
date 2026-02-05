@@ -120,30 +120,48 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 		$plugin_table_names = array_values($plugin_tables);
 		
 		foreach ($queries as $query) {
-			$query_upper = strtoupper(trim($query));
+			$query = trim($query);
+			$query_upper = strtoupper($query);
 			
 			// Skip if query is empty
 			if (empty($query_upper)) {
 				continue;
 			}
 			
-			// Extract table name from query
-			$has_valid_table = false;
-			foreach ($plugin_table_names as $table_name) {
-				if (stripos($query, $table_name) !== false) {
-					$has_valid_table = true;
+			// Whitelist allowed commands
+			$allowed_commands = array('INSERT', 'DROP', 'CREATE', 'SET', 'LOCK', 'UNLOCK');
+			$is_allowed = false;
+			foreach ($allowed_commands as $cmd) {
+				if (strpos($query_upper, $cmd) === 0) {
+					$is_allowed = true;
 					break;
 				}
 			}
 			
-			// If query references a table, ensure it's one of ours
-			if (!$has_valid_table && 
-				(strpos($query_upper, 'TABLE') !== false || 
-				 strpos($query_upper, 'INSERT') !== false)) {
+			if (!$is_allowed) {
 				return new WP_Error(
-					'invalid_table',
-					__('SQL file contains queries for non-plugin tables. For security, only plugin tables can be imported.', 'ai-post-scheduler')
+					'invalid_query',
+					sprintf(__('SQL file contains disallowed query type: %s', 'ai-post-scheduler'), esc_html(substr($query, 0, 20)))
 				);
+			}
+
+			// For commands that target tables (not SET/UNLOCK), verify table name
+			if (strpos($query_upper, 'SET') !== 0 && strpos($query_upper, 'UNLOCK') !== 0) {
+				// Escape table names for regex
+				$escaped_table_names = array_map(function($t) { return preg_quote($t, '/'); }, $plugin_table_names);
+				$table_pattern = implode('|', $escaped_table_names);
+
+				// Strict validation: Ensure the command TARGETS a plugin table
+				// Matches: INSERT INTO `table`, DROP TABLE `table`, CREATE TABLE `table`, LOCK TABLES `table`
+				// Allows optional quotes and IF EXISTS
+				$regex = '/^(?:INSERT(?:\s+INTO)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|CREATE\s+TABLE|LOCK\s+TABLES)\s+[`\']?(' . $table_pattern . ')[`\']?/i';
+
+				if (!preg_match($regex, $query)) {
+					return new WP_Error(
+						'invalid_table',
+						__('SQL file contains queries for non-plugin tables or invalid format.', 'ai-post-scheduler')
+					);
+				}
 			}
 		}
 		
