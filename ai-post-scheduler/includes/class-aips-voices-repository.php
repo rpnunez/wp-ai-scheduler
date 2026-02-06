@@ -150,7 +150,22 @@ class AIPS_Voices_Repository {
      * @return array Array of voice objects (id, name).
      */
     public function search($term, $limit = 20) {
-        $where = $term ? $this->wpdb->prepare("WHERE is_active = 1 AND name LIKE %s", '%' . $this->wpdb->esc_like($term) . '%') : "WHERE is_active = 1";
-        return $this->wpdb->get_results("SELECT id, name FROM {$this->table_name} $where ORDER BY name ASC LIMIT " . absint($limit));
+        $limit = absint($limit);
+
+        if ($term) {
+            $like = '%' . $this->wpdb->esc_like($term) . '%';
+            $sql  = $this->wpdb->prepare(
+                "SELECT id, name FROM {$this->table_name} WHERE is_active = 1 AND name LIKE %s ORDER BY name ASC LIMIT %d",
+                $like,
+                $limit
+            );
+        } else {
+            $sql = $this->wpdb->prepare(
+                "SELECT id, name FROM {$this->table_name} WHERE is_active = 1 ORDER BY name ASC LIMIT %d",
+                $limit
+            );
+        }
+
+        return $this->wpdb->get_results($sql);
     }
 }
