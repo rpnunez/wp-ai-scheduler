@@ -106,15 +106,33 @@ class AIPS_Interval_Calculator {
         // If start time is in the past, add intervals until future (Catch-up logic)
         // This prevents schedule drift by preserving the phase of the schedule
         if ($base_time < $now) {
-            // Safety limit to prevent infinite loops if interval is 0 or very small/broken
-            $limit = 50000;
-            while ($base_time <= $now && $limit > 0) {
-                $base_time = $this->calculate_next_timestamp($frequency, $base_time);
-                $limit--;
-            }
-            // If we hit the limit, just set to now + interval to ensure we don't stall
-            if ($limit === 0) {
-                 $base_time = $this->calculate_next_timestamp($frequency, $now);
+            $interval_duration = $this->get_interval_duration($frequency);
+            
+            // For fixed intervals (with known duration), use mathematical calculation
+            if ($interval_duration > 0) {
+                $time_diff = $now - $base_time;
+                $intervals_needed = ceil($time_diff / $interval_duration);
+                
+                // Safety check: if more than 1000 intervals are needed, something is likely wrong
+                if ($intervals_needed > 1000) {
+                    // Log warning or handle error - for now, just jump to now + interval
+                    $base_time = $this->calculate_next_timestamp($frequency, $now);
+                } else {
+                    // Add the calculated number of intervals
+                    $base_time += ($intervals_needed * $interval_duration);
+                }
+            } else {
+                // For day-specific intervals (e.g., every_monday), iterate with safety limit
+                $limit = 1000; // Reduced from 50000 - if we need more than 1000 iterations, something is wrong
+                while ($base_time <= $now && $limit > 0) {
+                    $base_time = $this->calculate_next_timestamp($frequency, $base_time);
+                    $limit--;
+                }
+                
+                // If we hit the limit, log error and fall back to now + interval
+                if ($limit === 0) {
+                    $base_time = $this->calculate_next_timestamp($frequency, $now);
+                }
             }
             return date('Y-m-d H:i:s', $base_time);
         }

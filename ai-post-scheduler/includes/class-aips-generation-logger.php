@@ -54,7 +54,7 @@ class AIPS_Generation_Logger {
             $details = array(
                 'prompt' => $prompt,
                 'options' => $options,
-                'response' => base64_encode($response),
+                'response' => $response !== null ? base64_encode($response) : null,
                 'error' => $error,
             );
             $this->history_repository->add_log_entry($this->history_id, $type, $details);

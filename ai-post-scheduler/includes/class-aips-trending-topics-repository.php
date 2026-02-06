@@ -204,7 +204,7 @@ class AIPS_Trending_Topics_Repository {
      *
      * @param array $topics Array of topic data to save.
      * @param string $niche Niche these topics belong to.
-     * @return int|false Number of topics saved, or false on failure.
+     * @return int|false Number of topics inserted (may be less than input count if some are skipped due to validation or duplicates), or false on database error or empty input.
      */
     public function save_research_batch($topics, $niche) {
         if (empty($topics) || !is_array($topics)) {
@@ -226,14 +226,21 @@ class AIPS_Trending_Topics_Repository {
         }
 
         // Use bulk insert
-        return $this->create_bulk($batch_data);
+        $result = $this->create_bulk($batch_data);
+        
+        // Check for database errors
+        if ($result === false && !empty($this->wpdb->last_error)) {
+            return false;
+        }
+        
+        return $result;
     }
 
     /**
      * Create multiple trending topic records.
      *
      * @param array $topics Array of topic data arrays.
-     * @return int|false Number of inserted rows or false on failure.
+     * @return int|false Number of rows inserted (may be less than input count if records are skipped due to validation or duplicates), 0 if no valid records, or false on database error.
      */
     public function create_bulk($topics) {
         if (empty($topics)) {
@@ -268,7 +275,7 @@ class AIPS_Trending_Topics_Repository {
             array_push($values,
                 $data['niche'],
                 $data['topic'],
-                $data['score'],
+                (int) $data['score'],
                 $data['reason'],
                 $keywords_json,
                 $data['researched_at']
@@ -279,7 +286,16 @@ class AIPS_Trending_Topics_Repository {
             return 0;
         }
 
-        $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES " . implode(', ', $placeholders);
+        // Each placeholder group "(%s, %s, %d, %s, %s, %s)" expects 6 values (niche, topic, score, reason, keywords, researched_at).
+        $fields_per_record = 6;
+        $expected_values = count($placeholders) * $fields_per_record;
+        if (count($values) !== $expected_values) {
+            // Safety check: avoid calling prepare() with mismatched placeholders/values.
+            return 0;
+        }
+
+        // Use INSERT IGNORE to skip duplicate topics (requires unique constraint on niche + topic columns)
+        $query = "INSERT IGNORE INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES " . implode(', ', $placeholders);
 
         return $this->wpdb->query($this->wpdb->prepare($query, $values));
     }
