@@ -17,11 +17,8 @@ class Test_Bulk_Schedule_Delete extends WP_UnitTestCase {
 
         $repo = new AIPS_Schedule_Repository();
 
-        // This method does not exist yet
-        if (!method_exists($repo, 'delete_bulk')) {
-            $this->markTestSkipped('delete_bulk not implemented yet');
-            return;
-        }
+        // Assert the method exists
+        $this->assertTrue(method_exists($repo, 'delete_bulk'), 'delete_bulk method should exist in AIPS_Schedule_Repository');
 
         $ids = array(1, 2, 3);
         $result = $repo->delete_bulk($ids);
@@ -48,10 +45,8 @@ class Test_Bulk_Schedule_Delete extends WP_UnitTestCase {
         $property->setAccessible(true);
         $property->setValue($scheduler, $mock_repo);
 
-        if (!method_exists($scheduler, 'delete_schedule_bulk')) {
-            $this->markTestSkipped('delete_schedule_bulk not implemented yet');
-            return;
-        }
+        // Assert the method exists
+        $this->assertTrue(method_exists($scheduler, 'delete_schedule_bulk'), 'delete_schedule_bulk method should exist in AIPS_Scheduler');
 
         $count = $scheduler->delete_schedule_bulk(array(1, 2));
         $this->assertEquals(2, $count);

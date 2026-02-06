@@ -261,6 +261,12 @@ class AIPS_Schedule_Repository {
         }
 
         $ids = array_map('absint', $ids);
+        $ids = array_filter($ids);
+
+        if (empty($ids)) {
+            return 0;
+        }
+
         $ids_string = implode(',', $ids);
 
         $result = $this->wpdb->query("DELETE FROM {$this->schedule_table} WHERE id IN ($ids_string)");
