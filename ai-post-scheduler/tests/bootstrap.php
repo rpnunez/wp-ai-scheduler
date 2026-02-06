@@ -894,6 +894,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-planner.php',
         'class-aips-history.php',
         'class-aips-settings.php',
+        'class-aips-admin-assets.php',
         'class-aips-system-status.php',
         'class-aips-templates.php',
         'class-aips-upgrades.php',
