@@ -1542,6 +1542,19 @@
                 summaryHtml += '<tr><th>Error:</th><td class="aips-error-text">' + AIPS.escapeHtml(data.error_message) + '</td></tr>';
             }
             summaryHtml += '</table>';
+
+            if (data.prompt) {
+                summaryHtml += '<div class="aips-details-subsection"><h4>Generated Prompt</h4>';
+                summaryHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(data.prompt) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                summaryHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(data.prompt) + '</pre></div>';
+            }
+
+            if (data.generated_content) {
+                summaryHtml += '<div class="aips-details-subsection"><h4>Generated Content</h4>';
+                summaryHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(data.generated_content) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                summaryHtml += '<pre class="aips-prompt-text" style="max-height: 300px; overflow-y: auto;">' + AIPS.escapeHtml(data.generated_content) + '</pre></div>';
+            }
+
             $('#aips-details-summary').html(summaryHtml);
             
             if (log.template) {
