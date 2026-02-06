@@ -230,8 +230,7 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 	 */
 	public function test_autoloader_file_paths() {
 		$class_name = 'AIPS_Test_Class';
-		$base_name = strtolower(str_replace('_', '-', $class_name));
-		$class_file = 'class-' . $base_name . '.php';
+		$class_file = AIPS_Autoloader::convert_class_name_to_filename($class_name);
 		$expected_path = AIPS_PLUGIN_DIR . 'includes/' . $class_file;
 		
 		// Verify path structure
