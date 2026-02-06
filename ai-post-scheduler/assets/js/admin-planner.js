@@ -135,10 +135,38 @@
 
         filterTopics: function() {
             var term = $(this).val().toLowerCase();
+            var $clearBtn = $('#planner-topic-search-clear');
+            
+            // Show/hide clear button based on search term
+            if (term) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+            
             $('.topic-item').each(function() {
                 var text = $(this).find('.topic-text-input').val().toLowerCase();
                 $(this).toggle(text.indexOf(term) > -1);
             });
+            
+            // Show an empty state message when no topics match the filter
+            var $topicsList = $('#topics-list');
+            var visibleCount = $topicsList.find('.topic-item:visible').length;
+            var $emptyState = $topicsList.find('.topics-empty-state');
+
+            if (term && visibleCount === 0) {
+                if ($emptyState.length === 0) {
+                    $topicsList.append('<div class="topics-empty-state" style="padding: 20px; text-align: center; color: #666;">No topics match your search.</div>');
+                }
+            } else {
+                if ($emptyState.length) {
+                    $emptyState.remove();
+                }
+            }
+        },
+
+        clearTopicSearch: function() {
+            $('#planner-topic-search').val('').trigger('keyup');
         },
 
         copySelectedTopics: function() {
@@ -279,6 +307,7 @@
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
+        $(document).on('click', '#planner-topic-search-clear', window.AIPS.clearTopicSearch);
     });
 
 })(jQuery);
