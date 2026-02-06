@@ -3,6 +3,7 @@
  * Voices Repository
  *
  * Database abstraction layer for voices operations.
+ * Provides a clean interface for CRUD operations on the voices table.
  *
  * @package AI_Post_Scheduler
  * @since 1.9.0
@@ -15,12 +16,13 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_Voices_Repository
  *
- * Handles all database interactions for the Voices feature.
+ * Repository pattern implementation for voice data access.
+ * Encapsulates all database operations related to voices.
  */
 class AIPS_Voices_Repository {
 
     /**
-     * @var string Table name
+     * @var string Table name (with prefix)
      */
     private $table_name;
 
