@@ -9,13 +9,25 @@ class AIPS_Autoloader {
         spl_autoload_register(array(__CLASS__, 'load'));
     }
 
+    /**
+     * Convert class name to file name
+     * 
+     * @param string $class_name The class name to convert
+     * @return string The converted file name
+     */
+    public static function convert_class_name_to_filename($class_name) {
+        // Convert AIPS_ClassName to aips-class-name
+        $base_name = strtolower(str_replace('_', '-', $class_name));
+        return 'class-' . $base_name . '.php';
+    }
+
     public static function load($class_name) {
         // Check if class starts with AIPS_
         if (strpos($class_name, 'AIPS_') !== 0) {
             return;
         }
 
-        // Convert AIPS_ClassName to aips-class-name
+        // Convert class name to file name
         $base_name = strtolower(str_replace('_', '-', $class_name));
 
         // Construct potential filenames

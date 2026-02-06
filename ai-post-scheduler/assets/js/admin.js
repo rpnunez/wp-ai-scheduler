@@ -1666,15 +1666,21 @@
 
         escapeAttribute: function(text) {
             if (!text) return '';
-            return text
-                .replace(/&/g, '&amp;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\r/g, '&#13;')
-                .replace(/\n/g, '&#10;')
-                .replace(/\t/g, '&#9;');
+            // Use a single pass to avoid double-encoding
+            // Replace all special characters with their HTML entity equivalents
+            var entityMap = {
+                '&': '&amp;',
+                '"': '&quot;',
+                "'": '&#39;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '\r': '&#13;',
+                '\n': '&#10;',
+                '\t': '&#9;'
+            };
+            return text.replace(/[&"'<>\r\n\t]/g, function(match) {
+                return entityMap[match];
+            });
         },
 
         closeModal: function() {

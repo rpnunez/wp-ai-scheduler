@@ -84,13 +84,12 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 		);
 		
 		foreach ($test_cases as $class_name => $expected_file) {
-			// Convert using the same logic as the autoloader
-			$base_name = strtolower(str_replace('_', '-', $class_name));
-			$class_file = 'class-' . $base_name . '.php';
+			// Use the autoloader's helper method
+			$actual_file = AIPS_Autoloader::convert_class_name_to_filename($class_name);
 			
 			$this->assertEquals(
 				$expected_file,
-				$class_file,
+				$actual_file,
 				"Class {$class_name} should convert to {$expected_file}"
 			);
 			
@@ -100,6 +99,26 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 				"File {$expected_file} should exist for class {$class_name}"
 			);
 		}
+	}
+
+	/**
+	 * Test the convert_class_name_to_filename helper method
+	 */
+	public function test_convert_class_name_to_filename_helper() {
+		$this->assertEquals(
+			'class-aips-test-class.php',
+			AIPS_Autoloader::convert_class_name_to_filename('AIPS_Test_Class')
+		);
+		
+		$this->assertEquals(
+			'class-aips-my-long-class-name.php',
+			AIPS_Autoloader::convert_class_name_to_filename('AIPS_My_Long_Class_Name')
+		);
+		
+		$this->assertEquals(
+			'class-aips-simple.php',
+			AIPS_Autoloader::convert_class_name_to_filename('AIPS_Simple')
+		);
 	}
 
 	/**
@@ -162,9 +181,8 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 				"Repository class {$class_name} should be loaded"
 			);
 			
-			// Verify the file exists
-			$base_name = strtolower(str_replace('_', '-', $class_name));
-			$expected_file = 'class-' . $base_name . '.php';
+			// Verify the file exists using the autoloader's helper method
+			$expected_file = AIPS_Autoloader::convert_class_name_to_filename($class_name);
 			
 			$this->assertTrue(
 				file_exists($this->includes_dir . $expected_file),
