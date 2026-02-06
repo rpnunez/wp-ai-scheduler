@@ -10,14 +10,23 @@ class AIPS_Autoloader {
     }
 
     /**
-     * Convert class name to file name
+     * Convert class name to base name (lowercase with hyphens)
      * 
      * @param string $class_name The class name to convert
-     * @return string The converted file name
+     * @return string The base name (e.g., "aips-history-repository")
+     */
+    public static function convert_class_name_to_base($class_name) {
+        return strtolower(str_replace('_', '-', $class_name));
+    }
+
+    /**
+     * Convert class name to class file name
+     * 
+     * @param string $class_name The class name to convert
+     * @return string The converted file name (e.g., "class-aips-history-repository.php")
      */
     public static function convert_class_name_to_filename($class_name) {
-        // Convert AIPS_ClassName to aips-class-name
-        $base_name = strtolower(str_replace('_', '-', $class_name));
+        $base_name = self::convert_class_name_to_base($class_name);
         return 'class-' . $base_name . '.php';
     }
 
@@ -27,11 +36,9 @@ class AIPS_Autoloader {
             return;
         }
 
-        // Convert class name to file name using the helper method
+        // Convert class name to file names using helper methods
         $class_file = self::convert_class_name_to_filename($class_name);
-        
-        // Also construct interface filename
-        $base_name = strtolower(str_replace('_', '-', $class_name));
+        $base_name = self::convert_class_name_to_base($class_name);
         $interface_file = 'interface-' . $base_name . '.php';
 
         $path = AIPS_PLUGIN_DIR . 'includes/';
