@@ -520,6 +520,13 @@ class AIPS_Settings {
                 AIPS_VERSION,
                 true
             );
+
+            // Pass client-side threshold from config to JS
+            $config = AIPS_Config::get_instance();
+            $client_threshold = (int) $config->get_option('generated_posts_log_threshold_client', 20);
+            wp_localize_script('aips-admin-generated-posts', 'aipsGeneratedPostsConfig', array(
+                'clientLogThreshold' => $client_threshold,
+            ));
         }
 
         // Post Review Page Scripts
@@ -771,7 +778,6 @@ class AIPS_Settings {
         // Note: AIPS_Schedule_Repository doesn't have a direct "get upcoming limit 5" method that returns joined data like the original query exactly,
         // but get_due_schedules returns based on current time.
         // We need a method to get upcoming active schedules.
-        // Let's check if get_due_schedules works or if we need to add a method.
         // The original query was: WHERE s.is_active = 1 ORDER BY s.next_run ASC LIMIT 5.
         // get_due_schedules has WHERE s.next_run <= %s. We want future ones too.
         // Let's use get_all and array_slice for now, or add a method to repo.
