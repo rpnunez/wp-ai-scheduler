@@ -141,19 +141,21 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         function add_query_arg() {
             $args = func_get_args();
             if (is_array($args[0])) {
+                $params = $args[0];
                 if (count($args) < 2 || false === $args[1]) {
                     $uri = $_SERVER['REQUEST_URI'];
                 } else {
                     $uri = $args[1];
                 }
             } else {
+                $params = array($args[0] => $args[1]);
                 if (count($args) < 3 || false === $args[2]) {
                     $uri = $_SERVER['REQUEST_URI'];
                 } else {
                     $uri = $args[2];
                 }
             }
-            return $uri . '?' . http_build_query($args[0]);
+            return $uri . '?' . http_build_query($params);
         }
     }
 
