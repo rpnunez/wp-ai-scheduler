@@ -204,7 +204,7 @@ class AIPS_Trending_Topics_Repository {
      *
      * @param array $topics Array of topic data to save.
      * @param string $niche Niche these topics belong to.
-     * @return int|false Number of topics saved, or false on failure.
+     * @return int|false Number of topics inserted (may be less than input count if some are skipped due to validation or duplicates), or false on database error or empty input.
      */
     public function save_research_batch($topics, $niche) {
         if (empty($topics) || !is_array($topics)) {
