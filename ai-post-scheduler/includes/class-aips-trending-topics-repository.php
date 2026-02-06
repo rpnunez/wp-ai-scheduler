@@ -204,7 +204,7 @@ class AIPS_Trending_Topics_Repository {
      *
      * @param array $topics Array of topic data to save.
      * @param string $niche Niche these topics belong to.
-     * @return int|false Number of topics saved, or false on failure.
+     * @return int|false Number of topics inserted (may be less than input count if some are skipped due to validation or duplicates), or false on database error or empty input.
      */
     public function save_research_batch($topics, $niche) {
         if (empty($topics) || !is_array($topics)) {
@@ -226,14 +226,21 @@ class AIPS_Trending_Topics_Repository {
         }
 
         // Use bulk insert
-        return $this->create_bulk($batch_data);
+        $result = $this->create_bulk($batch_data);
+        
+        // Check for database errors
+        if ($result === false && !empty($this->wpdb->last_error)) {
+            return false;
+        }
+        
+        return $result;
     }
 
     /**
      * Create multiple trending topic records.
      *
      * @param array $topics Array of topic data arrays.
-     * @return int|false Number of inserted rows or false on failure.
+     * @return int|false Number of rows inserted (may be less than input count if records are skipped due to validation or duplicates), 0 if no valid records, or false on database error.
      */
     public function create_bulk($topics) {
         if (empty($topics)) {
@@ -286,7 +293,8 @@ class AIPS_Trending_Topics_Repository {
             return 0;
         }
 
-        $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES " . implode(', ', $placeholders);
+        // Use INSERT IGNORE to skip duplicate topics (based on unique constraint if exists, or manually filter)
+        $query = "INSERT IGNORE INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES " . implode(', ', $placeholders);
 
         return $this->wpdb->query($this->wpdb->prepare($query, $values));
     }
