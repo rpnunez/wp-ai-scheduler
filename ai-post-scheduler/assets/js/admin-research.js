@@ -156,9 +156,11 @@
             html += '</tbody></table>';
 
             // Empty state for search
-            html += '<div id="topics-search-empty" style="display:none; padding: 30px; text-align: center; color: #646970; background: #fff; border-top: 1px solid #eee;">';
-            html += '<span class="dashicons dashicons-search" style="font-size: 24px; width: 24px; height: 24px; vertical-align: middle; margin-right: 5px;"></span>';
-            html += aipsResearchL10n.noTopicsFound;
+            html += '<div id="topics-search-empty" class="aips-empty-state" style="display:none;">';
+            html += '<span class="dashicons dashicons-search" aria-hidden="true"></span>';
+            html += '<h3>' + aipsResearchL10n.noTopicsFoundTitle + '</h3>';
+            html += '<p>' + aipsResearchL10n.noTopicsFound + '</p>';
+            html += '<button type="button" class="button button-primary" id="clear-topics-search">' + aipsResearchL10n.clearSearch + '</button>';
             html += '</div>';
 
             $('#topics-container').html(html);
@@ -210,6 +212,12 @@
         });
 
         $(document).on('click', '#filter-search-clear', function() {
+            $('#filter-search').val('').trigger('search');
+            $('#filter-search').focus();
+        });
+
+        // Clear search from empty state button
+        $(document).on('click', '#clear-topics-search', function() {
             $('#filter-search').val('').trigger('search');
             $('#filter-search').focus();
         });
