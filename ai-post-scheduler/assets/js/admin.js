@@ -1664,6 +1664,17 @@
             return div.innerHTML;
         },
 
+        /**
+         * Escape text for safe use in HTML attributes.
+         * 
+         * This function expects raw text input and will escape special characters
+         * to prevent XSS attacks. It uses a single-pass approach to avoid 
+         * double-encoding. Do not use this function on text that already contains
+         * HTML entities, as they will be double-encoded.
+         * 
+         * @param {string} text - Raw text to escape
+         * @return {string} Escaped text safe for HTML attributes
+         */
         escapeAttribute: function(text) {
             if (!text) return '';
             // Use a single pass to avoid double-encoding

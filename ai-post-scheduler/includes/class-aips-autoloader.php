@@ -27,11 +27,11 @@ class AIPS_Autoloader {
             return;
         }
 
-        // Convert class name to file name
+        // Convert class name to file name using the helper method
+        $class_file = self::convert_class_name_to_filename($class_name);
+        
+        // Also construct interface filename
         $base_name = strtolower(str_replace('_', '-', $class_name));
-
-        // Construct potential filenames
-        $class_file = 'class-' . $base_name . '.php';
         $interface_file = 'interface-' . $base_name . '.php';
 
         $path = AIPS_PLUGIN_DIR . 'includes/';
