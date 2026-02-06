@@ -194,7 +194,9 @@ class AIPS_Admin_Assets {
         wp_localize_script('aips-admin-research', 'aipsResearchL10n', array(
             'topicsSaved' => __('topics saved for', 'ai-post-scheduler'),
             'topTopics' => __('Top 5 Topics:', 'ai-post-scheduler'),
-            'noTopicsFound' => __('No topics found matching your filters.', 'ai-post-scheduler'),
+            'noTopicsFound' => __('No topics match your search criteria.', 'ai-post-scheduler'),
+            'noTopicsFoundTitle' => __('No Topics Found', 'ai-post-scheduler'),
+            'clearSearch' => __('Clear Search', 'ai-post-scheduler'),
             'deleteTopicConfirm' => __('Delete this topic?', 'ai-post-scheduler'),
             'selectTopicSchedule' => __('Please select at least one topic to schedule.', 'ai-post-scheduler'),
             'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
