@@ -670,20 +670,65 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('add_query_arg')) {
         function add_query_arg() {
             $args = func_get_args();
+
+            // Determine URI and new parameters based on arguments.
             if (is_array($args[0])) {
+                // Signature: add_query_arg( array $params, $uri = $_SERVER['REQUEST_URI'] )
+                $new_params = $args[0];
                 if (count($args) < 2 || false === $args[1]) {
                     $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
                 } else {
                     $uri = $args[1];
                 }
             } else {
+                // Signature: add_query_arg( $key, $value, $uri = $_SERVER['REQUEST_URI'] )
+                $key   = $args[0];
+                $value = isset($args[1]) ? $args[1] : null;
+                $new_params = array( $key => $value );
+
                 if (count($args) < 3 || false === $args[2]) {
                     $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
                 } else {
                     $uri = $args[2];
                 }
             }
-            return $uri;
+
+            // Separate fragment from URI, if any.
+            $fragment = '';
+            if (false !== ($hash_pos = strpos($uri, '#'))) {
+                $fragment = substr($uri, $hash_pos);
+                $uri      = substr($uri, 0, $hash_pos);
+            }
+
+            // Separate base and existing query string.
+            $base  = $uri;
+            $query = '';
+            if (false !== ($q_pos = strpos($uri, '?'))) {
+                $base  = substr($uri, 0, $q_pos);
+                $query = substr($uri, $q_pos + 1);
+            }
+
+            // Parse existing query parameters.
+            $existing_params = array();
+            if ('' !== $query) {
+                parse_str($query, $existing_params);
+            }
+
+            // Merge existing and new parameters (new ones override existing).
+            $merged_params = array_merge($existing_params, $new_params);
+
+            // Rebuild query string.
+            $query_string = http_build_query($merged_params);
+
+            $result = $base;
+            if ('' !== $query_string) {
+                $result .= '?' . $query_string;
+            }
+
+            // Reattach fragment, if any.
+            $result .= $fragment;
+
+            return $result;
         }
     }
     
