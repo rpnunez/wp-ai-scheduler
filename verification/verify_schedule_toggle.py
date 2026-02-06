@@ -47,13 +47,13 @@ def test_schedule_toggle():
         is_checked_after = page.is_checked('#toggle-123')
 
         if is_checked_after:
-             print("Error: Checkbox remained checked despite server error (Bug Present)")
-             page.screenshot(path="verification/verification_failed.png")
-             sys.exit(1)
+            print("Error: Checkbox remained checked despite server error (Bug Present)")
+            page.screenshot(path="verification/verification_failed.png")
+            sys.exit(1)
         else:
-             print("Success: Checkbox reverted to unchecked state")
-             page.screenshot(path="verification/verification_passed.png")
-             sys.exit(0)
+            print("Success: Checkbox reverted to unchecked state")
+            page.screenshot(path="verification/verification_passed.png")
+            sys.exit(0)
 
         browser.close()
 
