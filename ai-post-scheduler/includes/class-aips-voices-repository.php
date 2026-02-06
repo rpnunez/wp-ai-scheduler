@@ -156,7 +156,7 @@ class AIPS_Voices_Repository {
 
         if ($term) {
             $like = '%' . $this->wpdb->esc_like($term) . '%';
-            $sql = $this->wpdb->prepare(
+            $sql  = $this->wpdb->prepare(
                 "SELECT id, name FROM {$this->table_name} WHERE is_active = 1 AND name LIKE %s ORDER BY name ASC LIMIT %d",
                 $like,
                 $limit
