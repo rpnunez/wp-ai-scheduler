@@ -81,6 +81,7 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
             <button class="button" id="aips-delete-selected-btn" disabled><?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?></button>
         </div>
         <div class="alignright">
+            <button class="button" id="aips-export-history-btn"><?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?></button>
             <button class="button" id="aips-reload-history-btn"><?php esc_html_e('Reload', 'ai-post-scheduler'); ?></button>
             <button class="button aips-clear-history" data-status=""><?php esc_html_e('Clear All History', 'ai-post-scheduler'); ?></button>
             <button class="button aips-clear-history" data-status="failed"><?php esc_html_e('Clear Failed Only', 'ai-post-scheduler'); ?></button>
