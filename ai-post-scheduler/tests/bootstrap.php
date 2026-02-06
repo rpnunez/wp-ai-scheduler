@@ -503,6 +503,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('wp_die')) {
+        function wp_die($message = '', $title = '', $args = array()) {
+            throw new WPAjaxDieStopException($message);
+        }
+    }
+    
     if (!function_exists('wp_create_nonce')) {
         function wp_create_nonce($action = -1) {
             return 'test_nonce_' . $action;
@@ -558,6 +564,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('sanitize_file_name')) {
+        function sanitize_file_name($filename) {
+            $filename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename);
+            return $filename;
+        }
+    }
+    
     if (!function_exists('sanitize_textarea_field')) {
         function sanitize_textarea_field($str) {
             return strip_tags($str);
@@ -580,6 +593,23 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('__')) {
         function __($text, $domain = 'default') {
             return $text;
+        }
+    }
+    
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = array()) {
+            if (is_object($args)) {
+                $parsed_args = get_object_vars($args);
+            } elseif (is_array($args)) {
+                $parsed_args = &$args;
+            } else {
+                parse_str($args, $parsed_args);
+            }
+            
+            if (is_array($defaults)) {
+                return array_merge($defaults, $parsed_args);
+            }
+            return $parsed_args;
         }
     }
     
@@ -607,7 +637,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 }
                 // Replace placeholders in order
                 foreach ($args as $arg) {
-                    $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                    if (is_array($arg)) {
+                        // Handle array args (e.g., for IN clauses)
+                        $arg = "'" . implode("','", $arg) . "'";
+                        $query = preg_replace('/%[sd]/', $arg, $query, 1);
+                    } else {
+                        $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                    }
                 }
                 return $query;
             }
@@ -640,6 +676,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             
             public function delete($table, $where, $where_format = null) {
                 return true;
+            }
+            
+            public function esc_like($text) {
+                return addcslashes($text, '_%\\');
             }
         };
     }
