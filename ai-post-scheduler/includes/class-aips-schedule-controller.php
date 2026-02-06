@@ -157,11 +157,6 @@ class AIPS_Schedule_Controller {
         $generator = new AIPS_Generator();
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
-        // Enforce hard limit of 2 to prevent timeouts (Bolt)
-        if ($quantity > 2) {
-            $quantity = 2;
-        }
-
         for ($i = 0; $i < $quantity; $i++) {
             $result = $generator->generate_post($template, $voice, $topic);
 
