@@ -268,7 +268,7 @@ class AIPS_Trending_Topics_Repository {
             array_push($values,
                 $data['niche'],
                 $data['topic'],
-                $data['score'],
+                (int) $data['score'],
                 $data['reason'],
                 $keywords_json,
                 $data['researched_at']
@@ -276,6 +276,13 @@ class AIPS_Trending_Topics_Repository {
         }
         
         if (empty($placeholders)) {
+            return 0;
+        }
+
+        // Each placeholder group "(%s, %s, %d, %s, %s, %s)" expects 6 values.
+        $expected_values = count($placeholders) * 6;
+        if (count($values) !== $expected_values) {
+            // Safety check: avoid calling prepare() with mismatched placeholders/values.
             return 0;
         }
 
