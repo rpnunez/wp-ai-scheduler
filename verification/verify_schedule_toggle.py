@@ -55,7 +55,5 @@ def test_schedule_toggle():
             page.screenshot(path="verification/verification_passed.png")
             sys.exit(0)
 
-        browser.close()
-
 if __name__ == "__main__":
     test_schedule_toggle()
