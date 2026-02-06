@@ -20,12 +20,12 @@ if (isset($stats) && $stats instanceof AIPS_History) {
     $stats = null; // Will be set below
 }
 
-if (isset($history_handler)) {
-    // Derive filters similarly to AIPS_History::render_page().
-    $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
-    $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
-    $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '');
+// Ensure default variables are set
+$current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
+$status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
+$search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '');
 
+if (isset($history_handler)) {
     $history = $history_handler->get_history(array(
         'page'   => $current_page,
         'status' => $status_filter,
@@ -81,6 +81,7 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
             <button class="button" id="aips-delete-selected-btn" disabled><?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?></button>
         </div>
         <div class="alignright">
+            <button class="button" id="aips-export-history-btn"><?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?></button>
             <button class="button" id="aips-reload-history-btn"><?php esc_html_e('Reload', 'ai-post-scheduler'); ?></button>
             <button class="button aips-clear-history" data-status=""><?php esc_html_e('Clear All History', 'ai-post-scheduler'); ?></button>
             <button class="button aips-clear-history" data-status="failed"><?php esc_html_e('Clear Failed Only', 'ai-post-scheduler'); ?></button>

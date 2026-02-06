@@ -32,6 +32,10 @@
             $(document).on('click', '.aips-wizard-next', this.wizardNext);
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
 
+            // Preview drawer
+            $(document).on('click', '.aips-preview-prompts', this.previewPrompts);
+            $(document).on('click', '.aips-preview-drawer-handle', this.togglePreviewDrawer);
+
             // AI Variables scanning
             $(document).on('input', '.aips-ai-var-input', function() {
                 AIPS.scanAllAIVariables();
@@ -52,6 +56,7 @@
             $(document).on('click', '.aips-clear-history', this.clearHistory);
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
+            $(document).on('click', '#aips-export-history-btn', this.exportHistory);
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
             $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
             $(document).on('keypress', '#aips-history-search-input', function(e) {
@@ -1072,6 +1077,50 @@
             window.location.href = url.toString();
         },
 
+        exportHistory: function(e) {
+            e.preventDefault();
+            var status = $('#aips-filter-status').val();
+            var search = $('#aips-history-search-input').val();
+            
+            // Create a form and submit it with POST
+            var form = $('<form>', {
+                'method': 'POST',
+                'action': aipsAjax.ajaxUrl,
+                'target': '_self'
+            });
+            
+            form.append($('<input>', {
+                'type': 'hidden',
+                'name': 'action',
+                'value': 'aips_export_history'
+            }));
+            
+            form.append($('<input>', {
+                'type': 'hidden',
+                'name': 'nonce',
+                'value': aipsAjax.nonce
+            }));
+            
+            if (status) {
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'status',
+                    'value': status
+                }));
+            }
+            
+            if (search) {
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'search',
+                    'value': search
+                }));
+            }
+            
+            // Append form to body, submit, and remove
+            form.appendTo('body').submit().remove();
+        },
+
         reloadHistory: function(e) {
             e.preventDefault();
 
@@ -1905,6 +1954,107 @@
 
             $list.html(html);
             $panel.show();
+        },
+
+        previewPrompts: function(e) {
+            e.preventDefault();
+            
+            var $drawer = $('#aips-preview-drawer');
+            var $content = $drawer.find('.aips-preview-drawer-content');
+            var $loading = $drawer.find('.aips-preview-loading');
+            var $error = $drawer.find('.aips-preview-error');
+            var $sections = $drawer.find('.aips-preview-sections');
+            
+            // Expand drawer if collapsed
+            if (!$drawer.hasClass('expanded')) {
+                AIPS.togglePreviewDrawer.call($drawer.find('.aips-preview-drawer-handle'));
+            }
+            
+            // Show loading state
+            $content.show();
+            $loading.show();
+            $error.hide();
+            $sections.hide();
+            
+            // Gather form data
+            var formData = {
+                action: 'aips_preview_template_prompts',
+                nonce: aipsAjax.nonce,
+                prompt_template: $('#prompt_template').val(),
+                title_prompt: $('#title_prompt').val(),
+                voice_id: parseInt($('#voice_id').val()) || 0,
+                article_structure_id: parseInt($('#article_structure_id').val()) || 0,
+                image_prompt: $('#image_prompt').val(),
+                generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
+                featured_image_source: $('#featured_image_source').val()
+            };
+            
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    $loading.hide();
+                    
+                    if (response.success) {
+                        var prompts = response.data.prompts;
+                        var metadata = response.data.metadata;
+                        
+                        // Update metadata section
+                        if (metadata.voice) {
+                            $('#aips-preview-voice').show().find('.aips-preview-voice-name').text(metadata.voice);
+                        } else {
+                            $('#aips-preview-voice').hide();
+                        }
+                        
+                        if (metadata.article_structure) {
+                            $('#aips-preview-structure').show().find('.aips-preview-structure-name').text(metadata.article_structure);
+                        } else {
+                            $('#aips-preview-structure').hide();
+                        }
+                        
+                        $('.aips-preview-sample-topic').text(metadata.sample_topic || 'Example Topic');
+                        
+                        // Update prompt sections
+                        $('#aips-preview-content-prompt').text(prompts.content || '-');
+                        $('#aips-preview-title-prompt').text(prompts.title || '-');
+                        $('#aips-preview-excerpt-prompt').text(prompts.excerpt || '-');
+                        
+                        if (prompts.image) {
+                            $('#aips-preview-image-section').show();
+                            $('#aips-preview-image-prompt').text(prompts.image);
+                        } else {
+                            $('#aips-preview-image-section').hide();
+                        }
+                        
+                        $sections.show();
+                    } else {
+                        var errorMsg = response.data.message || 'Failed to generate preview. Please check that all required fields are filled.';
+                        $error.text(errorMsg).show();
+                    }
+                },
+                error: function() {
+                    $loading.hide();
+                    $error.text('An error occurred while generating the preview. Please check your network connection and try again.').show();
+                }
+            });
+        },
+
+        togglePreviewDrawer: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+            
+            var $drawer = $('#aips-preview-drawer');
+            var $content = $drawer.find('.aips-preview-drawer-content');
+            
+            if ($drawer.hasClass('expanded')) {
+                $drawer.removeClass('expanded');
+                $content.slideUp(300);
+            } else {
+                $drawer.addClass('expanded');
+                $content.slideDown(300);
+            }
         },
 
         copyAIVariable: function(e) {

@@ -55,19 +55,22 @@ final class AI_Post_Scheduler {
     private function includes() {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-config.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-type.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-admin-assets.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
         
         // Repository layer
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-repository.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-container.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-template-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-article-structure-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-prompt-section-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-trending-topics-repository.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-authors-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topic-logs-repository.php';
@@ -105,9 +108,11 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generator.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-scheduler.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-schedule-controller.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-activity-controller.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-session-to-json.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-generated-posts-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-research-controller.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-planner.php';
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-service.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-review.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-review-notifications.php';
@@ -160,7 +165,8 @@ final class AI_Post_Scheduler {
             'aips_generate_author_topics' => 'hourly',
             'aips_generate_author_posts' => 'hourly',
             'aips_scheduled_research' => 'daily',
-            'aips_send_review_notifications' => 'daily'
+            'aips_send_review_notifications' => 'daily',
+            'aips_cleanup_export_files' => 'daily'
         );
 
         foreach ($crons as $hook => $schedule) {
@@ -198,6 +204,7 @@ final class AI_Post_Scheduler {
         wp_clear_scheduled_hook('aips_generate_author_posts');
         wp_clear_scheduled_hook('aips_scheduled_research');
         wp_clear_scheduled_hook('aips_send_review_notifications');
+        wp_clear_scheduled_hook('aips_cleanup_export_files');
         flush_rewrite_rules();
     }
     
@@ -228,6 +235,7 @@ final class AI_Post_Scheduler {
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Settings();
+            new AIPS_Admin_Assets();
             new AIPS_Voices();
             new AIPS_Templates();
             new AIPS_Templates_Controller();
@@ -239,7 +247,7 @@ final class AI_Post_Scheduler {
             
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
-            new AIPS_Activity_Controller();
+            new AIPS_Generated_Posts_Controller();
             new AIPS_Research_Controller();
             new AIPS_Seeder_Admin();
             new AIPS_Data_Management();
@@ -271,6 +279,35 @@ function aips_init() {
 }
 
 add_action('plugins_loaded', 'aips_init', 5);
+
+// Register cleanup cron handler
+add_action('aips_cleanup_export_files', 'aips_cleanup_export_files_handler');
+
+/**
+ * Cron handler to clean up old export files
+ * 
+ * Runs daily to remove session export files older than 24 hours.
+ */
+function aips_cleanup_export_files_handler() {
+	// Clean up files older than 24 hours (86400 seconds)
+	$result = AIPS_Session_To_JSON::cleanup_old_exports(86400);
+	
+	// Log the cleanup results
+	if (class_exists('AIPS_Logger')) {
+		$logger = new AIPS_Logger();
+		$logger->log(sprintf(
+			'Export files cleanup completed. Deleted: %d files. Errors: %d',
+			$result['deleted'],
+			count($result['errors'])
+		));
+		
+		if (!empty($result['errors'])) {
+			foreach ($result['errors'] as $error) {
+				$logger->log('Export cleanup error: ' . $error);
+			}
+		}
+	}
+}
 
 function aips_activate_callback() {
     AI_Post_Scheduler::get_instance()->activate();

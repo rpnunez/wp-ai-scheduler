@@ -211,10 +211,36 @@ class AIPS_Trending_Topics_Repository {
             return false;
         }
         
-        // Prepare data for bulk insert
+        // Extract topic titles for duplicate checking
+        $topic_titles = array_column($topics, 'topic');
+        if (empty($topic_titles)) {
+            return 0;
+        }
+
+        // Check for existing topics in this niche within last 7 days to prevent duplicates
+        $placeholders = implode(',', array_fill(0, count($topic_titles), '%s'));
+        $query = $this->wpdb->prepare(
+            "SELECT topic FROM {$this->table_name}
+            WHERE niche = %s
+            AND researched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            AND topic IN ($placeholders)",
+            array_merge(array($niche), $topic_titles)
+        );
+
+        $existing_topics = $this->wpdb->get_col($query);
+        $existing_topics = $existing_topics ? array_map('strtolower', $existing_topics) : array();
+
         $batch_data = array();
         
         foreach ($topics as $topic) {
+            // Skip duplicates
+            if (in_array(strtolower($topic['topic']), $existing_topics)) {
+                continue;
+            }
+
+            // Add to existing list to prevent duplicates within the batch itself
+            $existing_topics[] = strtolower($topic['topic']);
+
             $batch_data[] = array(
                 'niche' => $niche,
                 'topic' => $topic['topic'],
@@ -224,23 +250,21 @@ class AIPS_Trending_Topics_Repository {
                 'researched_at' => isset($topic['researched_at']) ? $topic['researched_at'] : current_time('mysql'),
             );
         }
-
-        // Use bulk insert
-        $result = $this->create_bulk($batch_data);
         
-        // Check for database errors
-        if ($result === false && !empty($this->wpdb->last_error)) {
-            return false;
+        if (empty($batch_data)) {
+            return 0;
         }
-        
-        return $result;
+
+        $result = $this->create_bulk($batch_data);
+
+        return $result ? count($batch_data) : false;
     }
 
     /**
-     * Create multiple trending topic records.
+     * Create multiple trending topic records in a single query.
      *
      * @param array $topics Array of topic data arrays.
-     * @return int|false Number of rows inserted (may be less than input count if records are skipped due to validation or duplicates), 0 if no valid records, or false on database error.
+     * @return bool True on success, false on failure.
      */
     public function create_bulk($topics) {
         if (empty($topics)) {
@@ -249,55 +273,53 @@ class AIPS_Trending_Topics_Repository {
 
         $values = array();
         $placeholders = array();
+        $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES ";
 
-        $defaults = array(
-            'niche' => '',
-            'topic' => '',
-            'score' => 50,
-            'reason' => '',
-            'keywords' => array(),
-            'researched_at' => current_time('mysql'),
-        );
+        foreach ($topics as $data) {
+            // Validate required fields.
+            $niche = isset($data['niche']) ? sanitize_text_field($data['niche']) : '';
+            $topic = isset($data['topic']) ? sanitize_text_field($data['topic']) : '';
 
-        foreach ($topics as $topic_data) {
-            $data = wp_parse_args($topic_data, $defaults);
-            
-            // Validate
-            if (empty($data['topic']) || empty($data['niche'])) {
+            if ($niche === '' || $topic === '') {
+                // Skip entries without a valid niche or topic.
                 continue;
             }
 
-            $keywords_json = is_array($data['keywords'])
-                ? wp_json_encode($data['keywords'])
-                : '[]';
+            $score = isset($data['score']) ? absint($data['score']) : 0;
+            $reason = isset($data['reason']) ? sanitize_text_field($data['reason']) : '';
 
-            $placeholders[] = "(%s, %s, %d, %s, %s, %s)";
-            array_push($values,
-                $data['niche'],
-                $data['topic'],
-                (int) $data['score'],
-                $data['reason'],
+            if (isset($data['keywords'])) {
+                $keywords_value = $data['keywords'];
+                $keywords_json = is_array($keywords_value)
+                    ? wp_json_encode($keywords_value)
+                    : $keywords_value;
+            } else {
+                $keywords_json = '[]';
+            }
+
+            $researched_at = isset($data['researched_at']) ? $data['researched_at'] : current_time('mysql');
+
+            array_push(
+                $values,
+                $niche,
+                $topic,
+                $score,
+                $reason,
                 $keywords_json,
-                $data['researched_at']
+                $researched_at
             );
+            $placeholders[] = "(%s, %s, %d, %s, %s, %s)";
         }
-        
+
         if (empty($placeholders)) {
-            return 0;
+            // No valid rows to insert.
+            return false;
         }
+        $query .= implode(', ', $placeholders);
 
-        // Each placeholder group "(%s, %s, %d, %s, %s, %s)" expects 6 values (niche, topic, score, reason, keywords, researched_at).
-        $fields_per_record = 6;
-        $expected_values = count($placeholders) * $fields_per_record;
-        if (count($values) !== $expected_values) {
-            // Safety check: avoid calling prepare() with mismatched placeholders/values.
-            return 0;
-        }
+        $result = $this->wpdb->query($this->wpdb->prepare($query, $values));
 
-        // Use INSERT IGNORE to skip duplicate topics (requires unique constraint on niche + topic columns)
-        $query = "INSERT IGNORE INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES " . implode(', ', $placeholders);
-
-        return $this->wpdb->query($this->wpdb->prepare($query, $values));
+        return $result !== false;
     }
     
     /**
@@ -433,6 +455,37 @@ class AIPS_Trending_Topics_Repository {
         return $result;
     }
     
+    /**
+     * Delete multiple trending topics by ID.
+     *
+     * @param array $ids Array of topic IDs.
+     * @return int|false Number of deleted records, or false on failure.
+     */
+    public function delete_bulk($ids) {
+        if (empty($ids)) {
+            return 0;
+        }
+
+        // Sanitize IDs and remove any invalid (zero) values
+        $ids = array_map('absint', $ids);
+        $ids = array_filter($ids, function ($id) {
+            return $id > 0;
+        });
+
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+
+        $query = $this->wpdb->prepare(
+            "DELETE FROM {$this->table_name} WHERE id IN ($placeholders)",
+            $ids
+        );
+
+        return $this->wpdb->query($query);
+    }
+
     /**
      * Delete old research data.
      *

@@ -85,9 +85,22 @@
             window.AIPS.updateSelectionCount();
         },
 
+        filterTopics: function() {
+            var filter = $('#planner-topic-search').val().toLowerCase();
+            $('.topic-item').each(function() {
+                var text = $(this).find('.topic-text-input').val().toLowerCase();
+                if (text.indexOf(filter) > -1) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+            window.AIPS.updateSelectionCount();
+        },
+
         toggleAllTopics: function() {
             var isChecked = $(this).is(':checked');
-            $('.topic-checkbox').prop('checked', isChecked);
+            $('.topic-checkbox:visible').prop('checked', isChecked);
             window.AIPS.updateSelectionCount();
         },
 
@@ -304,6 +317,7 @@
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
         $(document).on('click', '#btn-clear-topics', window.AIPS.clearTopics);
         $(document).on('click', '#btn-copy-topics', window.AIPS.copySelectedTopics);
+        $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
