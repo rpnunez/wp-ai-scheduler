@@ -211,16 +211,13 @@
             filterTopics();
         });
 
-        $(document).on('click', '#filter-search-clear', function() {
+        // Helper function to clear search
+        function clearSearch() {
             $('#filter-search').val('').trigger('search');
             $('#filter-search').focus();
-        });
+        }
 
-        // Clear search from empty state button
-        $(document).on('click', '#clear-topics-search', function() {
-            $('#filter-search').val('').trigger('search');
-            $('#filter-search').focus();
-        });
+        $(document).on('click', '#filter-search-clear, #clear-topics-search', clearSearch);
 
         // Select all topics
         $(document).on('change', '#select-all-topics', function() {
