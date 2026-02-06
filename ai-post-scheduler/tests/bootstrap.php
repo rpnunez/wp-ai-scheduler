@@ -89,11 +89,45 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!defined('ARRAY_N')) {
         define('ARRAY_N', 'ARRAY_N');
     }
+
+    if (!defined('HOUR_IN_SECONDS')) {
+        define('HOUR_IN_SECONDS', 3600);
+    }
     
     // Mock WordPress functions if not available
     if (!function_exists('esc_html__')) {
         function esc_html__($text, $domain = 'default') {
             return $text;
+        }
+    }
+
+    if (!function_exists('esc_html')) {
+        function esc_html($text) {
+            return $text;
+        }
+    }
+
+    if (!function_exists('esc_html_e')) {
+        function esc_html_e($text, $domain = 'default') {
+            echo $text;
+        }
+    }
+
+    if (!function_exists('esc_attr')) {
+        function esc_attr($text) {
+            return $text;
+        }
+    }
+
+    if (!function_exists('esc_attr_e')) {
+        function esc_attr_e($text, $domain = 'default') {
+            echo $text;
+        }
+    }
+
+    if (!function_exists('esc_url')) {
+        function esc_url($url) {
+            return $url;
         }
     }
     
@@ -254,20 +288,18 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     if (!function_exists('current_time')) {
         function current_time($type = 'mysql', $gmt = 0) {
+            $timestamp = $gmt ? time() : time(); // Simplified time handling
+
             if ($type === 'timestamp') {
-                return time();
+                return $timestamp;
             }
 
             if ($type === 'mysql') {
-                if ($gmt) {
-                    return gmdate('Y-m-d H:i:s');
-                }
-
-                return date('Y-m-d H:i:s');
+                return date('Y-m-d H:i:s', $timestamp);
             }
 
-            // Fallback: return a Unix timestamp for unknown types.
-            return time();
+            // Assume $type is a format string if not mysql/timestamp
+            return date($type, $timestamp);
         }
     }
     
@@ -412,6 +444,35 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('get_permalink')) {
+        function get_permalink($post = 0, $leavename = false) {
+            return 'http://example.com/?p=' . $post;
+        }
+    }
+
+    if (!function_exists('admin_url')) {
+        function admin_url($path = '', $scheme = 'admin') {
+            return 'http://example.com/wp-admin/' . $path;
+        }
+    }
+
+    if (!function_exists('date_i18n')) {
+        function date_i18n($format, $timestamp_with_offset = false, $gmt = false) {
+            $timestamp = $timestamp_with_offset === false ? time() : $timestamp_with_offset;
+            return date($format, $timestamp);
+        }
+    }
+
+    if (!function_exists('selected')) {
+        function selected($selected, $current = true, $echo = true) {
+            $result = (string) $selected === (string) $current ? " selected='selected'" : '';
+            if ($echo) {
+                echo $result;
+            }
+            return $result;
+        }
+    }
+
     if (!function_exists('wp_set_post_tags')) {
         function wp_set_post_tags($post_id, $tags) {
             return true;
@@ -503,6 +564,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('wp_die')) {
+        function wp_die($message = '', $title = '', $args = array()) {
+            throw new WPAjaxDieStopException($message);
+        }
+    }
+    
     if (!function_exists('wp_create_nonce')) {
         function wp_create_nonce($action = -1) {
             return 'test_nonce_' . $action;
@@ -558,6 +625,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('sanitize_file_name')) {
+        function sanitize_file_name($filename) {
+            $filename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename);
+            return $filename;
+        }
+    }
+    
     if (!function_exists('sanitize_textarea_field')) {
         function sanitize_textarea_field($str) {
             return strip_tags($str);
@@ -580,6 +654,111 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('__')) {
         function __($text, $domain = 'default') {
             return $text;
+        }
+    }
+
+    if (!function_exists('wp_parse_str')) {
+        function wp_parse_str($string, &$array) {
+            parse_str($string, $array);
+        }
+    }
+
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = array()) {
+            if (is_object($args)) {
+                $r = get_object_vars($args);
+            } elseif (is_array($args)) {
+                $r = &$args;
+            } else {
+                wp_parse_str($args, $r);
+            }
+
+            if (is_array($defaults)) {
+                return array_merge($defaults, $r);
+            }
+            return $r;
+        }
+    }
+
+    if (!function_exists('add_query_arg')) {
+        function add_query_arg() {
+            $args = func_get_args();
+
+            // Determine URI and new parameters based on arguments.
+            if (is_array($args[0])) {
+                // Signature: add_query_arg( array $params, $uri = $_SERVER['REQUEST_URI'] )
+                $new_params = $args[0];
+                if (count($args) < 2 || false === $args[1]) {
+                    $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+                } else {
+                    $uri = $args[1];
+                }
+            } else {
+                // Signature: add_query_arg( $key, $value, $uri = $_SERVER['REQUEST_URI'] )
+                $key   = $args[0];
+                $value = isset($args[1]) ? $args[1] : null;
+                $new_params = array( $key => $value );
+
+                if (count($args) < 3 || false === $args[2]) {
+                    $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+                } else {
+                    $uri = $args[2];
+                }
+            }
+
+            // Separate fragment from URI, if any.
+            $fragment = '';
+            if (false !== ($hash_pos = strpos($uri, '#'))) {
+                $fragment = substr($uri, $hash_pos);
+                $uri      = substr($uri, 0, $hash_pos);
+            }
+
+            // Separate base and existing query string.
+            $base  = $uri;
+            $query = '';
+            if (false !== ($q_pos = strpos($uri, '?'))) {
+                $base  = substr($uri, 0, $q_pos);
+                $query = substr($uri, $q_pos + 1);
+            }
+
+            // Parse existing query parameters.
+            $existing_params = array();
+            if ('' !== $query) {
+                parse_str($query, $existing_params);
+            }
+
+            // Merge existing and new parameters (new ones override existing).
+            $merged_params = array_merge($existing_params, $new_params);
+
+            // Rebuild query string.
+            $query_string = http_build_query($merged_params);
+
+            $result = $base;
+            if ('' !== $query_string) {
+                $result .= '?' . $query_string;
+            }
+
+            // Reattach fragment, if any.
+            $result .= $fragment;
+
+            return $result;
+        }
+    }
+    
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = array()) {
+            if (is_object($args)) {
+                $parsed_args = get_object_vars($args);
+            } elseif (is_array($args)) {
+                $parsed_args = &$args;
+            } else {
+                parse_str($args, $parsed_args);
+            }
+            
+            if (is_array($defaults)) {
+                return array_merge($defaults, $parsed_args);
+            }
+            return $parsed_args;
         }
     }
     
@@ -605,9 +784,21 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 if (empty($args)) {
                     return $query;
                 }
+
+                // Handle array argument (WP 3.5+)
+                if (count($args) === 1 && is_array($args[0])) {
+                    $args = $args[0];
+                }
+
                 // Replace placeholders in order
                 foreach ($args as $arg) {
-                    $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                    if (is_array($arg)) {
+                        // Handle array args (e.g., for IN clauses)
+                        $arg = "'" . implode("','", $arg) . "'";
+                        $query = preg_replace('/%[sd]/', $arg, $query, 1);
+                    } else {
+                        $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                    }
                 }
                 return $query;
             }
@@ -617,7 +808,19 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_row($query, $output = OBJECT, $y = 0) {
-                return null;
+                // Return a default object with common properties to prevent null reference errors
+                $obj = new stdClass();
+                $obj->total = 0;
+                $obj->completed = 0;
+                $obj->failed = 0;
+                $obj->processing = 0;
+                $obj->count = 0;
+
+                if ($output == ARRAY_A) {
+                    return (array) $obj;
+                }
+
+                return $obj;
             }
             
             public function get_var($query, $x = 0, $y = 0) {
@@ -640,6 +843,18 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             
             public function delete($table, $where, $where_format = null) {
                 return true;
+            }
+
+            public function get_charset_collate() {
+                return "DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci";
+            }
+
+            public function esc_like($text) {
+                return addcslashes($text, '_%\\');
+            }
+
+            public function get_col($query = null, $x = 0) {
+                return array();
             }
         };
     }
