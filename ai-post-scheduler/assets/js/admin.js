@@ -1081,16 +1081,44 @@
             e.preventDefault();
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
-            var url = aipsAjax.ajaxUrl + '?action=aips_export_history&nonce=' + aipsAjax.nonce;
-
+            
+            // Create a form and submit it with POST
+            var form = $('<form>', {
+                'method': 'POST',
+                'action': aipsAjax.ajaxUrl,
+                'target': '_self'
+            });
+            
+            form.append($('<input>', {
+                'type': 'hidden',
+                'name': 'action',
+                'value': 'aips_export_history'
+            }));
+            
+            form.append($('<input>', {
+                'type': 'hidden',
+                'name': 'nonce',
+                'value': aipsAjax.nonce
+            }));
+            
             if (status) {
-                url += '&status=' + encodeURIComponent(status);
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'status',
+                    'value': status
+                }));
             }
+            
             if (search) {
-                url += '&search=' + encodeURIComponent(search);
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'search',
+                    'value': search
+                }));
             }
-
-            window.location.href = url;
+            
+            // Append form to body, submit, and remove
+            form.appendTo('body').submit().remove();
         },
 
         reloadHistory: function(e) {

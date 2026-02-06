@@ -248,6 +248,33 @@ class AIPS_History {
         ));
     }
     
+    /**
+     * Sanitize a CSV cell value to prevent formula injection.
+     * 
+     * Prevents CSV injection by prefixing cells that start with special characters
+     * that could be interpreted as formulas (=, +, -, @, tab, carriage return).
+     * 
+     * @param string $value The value to sanitize.
+     * @return string The sanitized value.
+     */
+    private function sanitize_csv_cell($value) {
+        if (empty($value)) {
+            return $value;
+        }
+        
+        // Convert to string if not already
+        $value = (string) $value;
+        
+        // Check if value starts with dangerous characters
+        $first_char = substr($value, 0, 1);
+        if (in_array($first_char, array('=', '+', '-', '@', "\t", "\r"), true)) {
+            // Prefix with a single quote to neutralize the formula
+            return "'" . $value;
+        }
+        
+        return $value;
+    }
+
     public function ajax_export_history() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -255,21 +282,28 @@ class AIPS_History {
             wp_die(__('Permission denied.', 'ai-post-scheduler'));
         }
 
-        $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
-        $search_query = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
+        $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+        $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+
+        // Get max records limit from configuration
+        $config = AIPS_Config::get_instance();
+        $max_records = (int) $config->get_option('history_export_max_records', 10000);
 
         // Fetch all matching records
         $history = $this->get_history(array(
             'page' => 1,
-            'per_page' => 999999, // Large number to export all
+            'per_page' => $max_records,
             'status' => $status_filter,
             'search' => $search_query,
         ));
 
         $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
+        $filename = sanitize_file_name($filename);
 
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename=' . $filename);
+        if (!headers_sent()) {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+        }
 
         $output = fopen('php://output', 'w');
 
@@ -292,11 +326,11 @@ class AIPS_History {
                 fputcsv($output, array(
                     $item->id,
                     $item->created_at,
-                    $item->generated_title,
+                    $this->sanitize_csv_cell($item->generated_title),
                     $item->status,
-                    $item->template_name,
+                    $this->sanitize_csv_cell($item->template_name),
                     $item->post_id,
-                    $item->error_message
+                    $this->sanitize_csv_cell($item->error_message)
                 ));
             }
         }

@@ -564,6 +564,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('wp_die')) {
+        function wp_die($message = '', $title = '', $args = array()) {
+            throw new WPAjaxDieStopException($message);
+        }
+    }
+    
     if (!function_exists('wp_create_nonce')) {
         function wp_create_nonce($action = -1) {
             return 'test_nonce_' . $action;
@@ -616,6 +622,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('sanitize_text_field')) {
         function sanitize_text_field($str) {
             return strip_tags($str);
+        }
+    }
+    
+    if (!function_exists('sanitize_file_name')) {
+        function sanitize_file_name($filename) {
+            $filename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename);
+            return $filename;
         }
     }
     
@@ -732,6 +745,23 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
     
+    if (!function_exists('wp_parse_args')) {
+        function wp_parse_args($args, $defaults = array()) {
+            if (is_object($args)) {
+                $parsed_args = get_object_vars($args);
+            } elseif (is_array($args)) {
+                $parsed_args = &$args;
+            } else {
+                parse_str($args, $parsed_args);
+            }
+            
+            if (is_array($defaults)) {
+                return array_merge($defaults, $parsed_args);
+            }
+            return $parsed_args;
+        }
+    }
+    
     // AJAX exception classes for testing
     if (!class_exists('WPAjaxDieContinueException')) {
         class WPAjaxDieContinueException extends Exception {}
@@ -762,7 +792,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
                 // Replace placeholders in order
                 foreach ($args as $arg) {
-                    $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                    if (is_array($arg)) {
+                        // Handle array args (e.g., for IN clauses)
+                        $arg = "'" . implode("','", $arg) . "'";
+                        $query = preg_replace('/%[sd]/', $arg, $query, 1);
+                    } else {
+                        $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
+                    }
                 }
                 return $query;
             }
