@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- [2026-01-21] Added "Copy System Report" button to System Status page for easier support and debugging.
+
+### Fixed
+- [2026-01-21] Added error logging to database seeding process to detect failures during installation.
+
+### Performance
+- [2026-01-21] Optimized Dashboard history queries to select only necessary fields, reducing memory usage.
+
+### Changed
+- [2026-01-21] Refactored Scheduler to decouple it from Template structure implementation details, improving maintainability.
+
+### Added
 - [2026-01-17 08:24:50] Added Developer Mode and Dev Tools page for generating template scaffolds (Voices, Structures, Templates) using AI.
 - [2026-01-20 10:00:00] Added client-side search functionality to the Planner topic list, allowing users to filter brainstormed topics before scheduling.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.

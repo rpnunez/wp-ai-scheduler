@@ -72,6 +72,7 @@ class AIPS_History_Repository {
             'template_id' => 0,
             'orderby' => 'created_at',
             'order' => 'DESC',
+            'fields' => 'all',
         );
         
         $args = wp_parse_args($args, $defaults);
@@ -105,13 +106,19 @@ class AIPS_History_Repository {
         
         $templates_table = $this->wpdb->prefix . 'aips_templates';
         
+        // Select specific fields if requested
+        $fields_sql = "h.*, t.name as template_name";
+        if ($args['fields'] === 'dashboard') {
+            $fields_sql = "h.id, h.status, h.generated_title, h.created_at, h.post_id, t.name as template_name";
+        }
+
         // Query for items
         $query_args = $where_args;
         $query_args[] = $args['per_page'];
         $query_args[] = $offset;
 
         $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.*, t.name as template_name 
+            SELECT $fields_sql
             FROM {$this->table_name} h 
             LEFT JOIN {$templates_table} t ON h.template_id = t.id 
             WHERE $where_sql
