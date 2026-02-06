@@ -1666,7 +1666,15 @@
 
         escapeAttribute: function(text) {
             if (!text) return '';
-            return text.replace(/"/g, '&quot;');
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\r/g, '&#13;')
+                .replace(/\n/g, '&#10;')
+                .replace(/\t/g, '&#9;');
         },
 
         closeModal: function() {
