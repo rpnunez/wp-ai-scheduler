@@ -88,7 +88,7 @@ class Mock_WPDB_Stateful_Voices {
         }
 
         if (preg_match("/name LIKE '([^']+)'/", $query, $matches)) {
-             $term = trim($matches[1], "%"); // remove wildcard
+             $term = trim($matches[1], "%"); // Remove wildcard
              $results = array_filter($results, function($row) use ($term) {
                 return stripos($row->name, $term) !== false;
             });

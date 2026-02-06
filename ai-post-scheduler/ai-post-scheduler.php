@@ -59,7 +59,6 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-db-manager.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-upgrades.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-settings.php';
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
         
         // Repository layer
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-history-repository.php';
@@ -76,6 +75,8 @@ final class AI_Post_Scheduler {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-feedback-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-post-review-repository.php';
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices-repository.php';
+        
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-voices.php';
         
         // Services
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-embeddings-service.php';

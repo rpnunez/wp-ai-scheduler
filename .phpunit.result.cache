@@ -1,1 +1,0 @@
-{"version":1,"defects":[],"times":{"AIPS_Voices_Repository_Test::test_create_voice":0.003,"AIPS_Voices_Repository_Test::test_update_voice":0,"AIPS_Voices_Repository_Test::test_delete_voice":0,"AIPS_Voices_Repository_Test::test_get_all_voices":0,"AIPS_Voices_Repository_Test::test_search_voices":0.001}}
