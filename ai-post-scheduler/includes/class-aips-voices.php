@@ -14,6 +14,7 @@ class AIPS_Voices {
         add_action('wp_ajax_aips_save_voice', array($this, 'ajax_save_voice'));
         add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
         add_action('wp_ajax_aips_get_voice', array($this, 'ajax_get_voice'));
+        add_action('wp_ajax_aips_clone_voice', array($this, 'ajax_clone_voice'));
         add_action('wp_ajax_aips_search_voices', array($this, 'ajax_search_voices'));
     }
     
@@ -62,6 +63,25 @@ class AIPS_Voices {
     public function delete($id) {
         global $wpdb;
         return $wpdb->delete($this->table_name, array('id' => $id), array('%d'));
+    }
+
+    public function clone($id) {
+        $voice = $this->get($id);
+        if (!$voice) {
+            return false;
+        }
+
+        $data = (array) $voice;
+        unset($data['id']);
+        $data['name'] .= ' (Clone)';
+
+        // Ensure all required fields are present and safe
+        $data['title_prompt'] = isset($data['title_prompt']) ? $data['title_prompt'] : '';
+        $data['content_instructions'] = isset($data['content_instructions']) ? $data['content_instructions'] : '';
+        $data['excerpt_instructions'] = isset($data['excerpt_instructions']) ? $data['excerpt_instructions'] : '';
+        $data['is_active'] = 1; // Default to active on clone
+
+        return $this->save($data);
     }
     
     public function ajax_save_voice() {
@@ -135,6 +155,26 @@ class AIPS_Voices {
             wp_send_json_success(array('voice' => $voice));
         } else {
             wp_send_json_error(array('message' => __('Voice not found.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_clone_voice() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
+        }
+
+        if ($this->clone($id)) {
+            wp_send_json_success(array('message' => __('Voice cloned successfully.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to clone voice.', 'ai-post-scheduler')));
         }
     }
     

@@ -31,3 +31,7 @@
 ## 2026-01-21 - Generated Posts Empty State
 **Learning:** `generated-posts.php` was missing the standard Empty State pattern (`.aips-empty-state`) and a direct "View" action, causing inconsistency with `history.php`.
 **Action:** Implemented the standard Empty State and added a "View" button with accessibility attributes (`aria-label`, `rel="noopener"`) to match the "Feature Wizard" polish standards.
+
+## 2026-01-22 - Voice Cloning Parity
+**Learning:** Users could clone Templates but not Voices, creating a feature gap and inconsistency in managing configuration entities. Users expect similar actions for similar entity types.
+**Action:** Implemented "Clone" button and logic for Voices, mirroring the Template cloning workflow to restore feature parity and reduce friction when creating variations.
