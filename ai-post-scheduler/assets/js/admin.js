@@ -56,6 +56,7 @@
             $(document).on('click', '.aips-clear-history', this.clearHistory);
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
+            $(document).on('click', '#aips-export-history-btn', this.exportHistory);
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
             $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
             $(document).on('keypress', '#aips-history-search-input', function(e) {
@@ -1142,6 +1143,50 @@
             url.searchParams.set('tab', 'history');
             
             window.location.href = url.toString();
+        },
+
+        exportHistory: function(e) {
+            e.preventDefault();
+            var status = $('#aips-filter-status').val();
+            var search = $('#aips-history-search-input').val();
+            
+            // Create a form and submit it with POST
+            var form = $('<form>', {
+                'method': 'POST',
+                'action': aipsAjax.ajaxUrl,
+                'target': '_self'
+            });
+            
+            form.append($('<input>', {
+                'type': 'hidden',
+                'name': 'action',
+                'value': 'aips_export_history'
+            }));
+            
+            form.append($('<input>', {
+                'type': 'hidden',
+                'name': 'nonce',
+                'value': aipsAjax.nonce
+            }));
+            
+            if (status) {
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'status',
+                    'value': status
+                }));
+            }
+            
+            if (search) {
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'search',
+                    'value': search
+                }));
+            }
+            
+            // Append form to body, submit, and remove
+            form.appendTo('body').submit().remove();
         },
 
         reloadHistory: function(e) {
