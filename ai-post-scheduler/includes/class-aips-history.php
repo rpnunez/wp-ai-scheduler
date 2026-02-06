@@ -22,6 +22,7 @@ class AIPS_History {
         add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
         add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
         add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
+        add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
     }
     
     public function get_history($args = array()) {
@@ -247,6 +248,97 @@ class AIPS_History {
         ));
     }
     
+    /**
+     * Sanitize a CSV cell value to prevent formula injection.
+     * 
+     * Prevents CSV injection by prefixing cells that start with special characters
+     * that could be interpreted as formulas (=, +, -, @, tab, carriage return).
+     * 
+     * @param string $value The value to sanitize.
+     * @return string The sanitized value.
+     */
+    private function sanitize_csv_cell($value) {
+        if (empty($value)) {
+            return $value;
+        }
+        
+        // Convert to string if not already
+        $value = (string) $value;
+        
+        // Check if value starts with dangerous characters
+        $first_char = substr($value, 0, 1);
+        if (in_array($first_char, array('=', '+', '-', '@', "\t", "\r"), true)) {
+            // Prefix with a single quote to neutralize the formula
+            return "'" . $value;
+        }
+        
+        return $value;
+    }
+
+    public function ajax_export_history() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Permission denied.', 'ai-post-scheduler'));
+        }
+
+        $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+        $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+
+        // Get max records limit from configuration
+        $config = AIPS_Config::get_instance();
+        $max_records = (int) $config->get_option('history_export_max_records', 10000);
+
+        // Fetch all matching records
+        $history = $this->get_history(array(
+            'page' => 1,
+            'per_page' => $max_records,
+            'status' => $status_filter,
+            'search' => $search_query,
+        ));
+
+        $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
+        $filename = sanitize_file_name($filename);
+
+        if (!headers_sent()) {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+        }
+
+        $output = fopen('php://output', 'w');
+
+        // Add BOM for Excel compatibility
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+        // Headers
+        fputcsv($output, array(
+            'ID',
+            'Date',
+            'Title',
+            'Status',
+            'Template',
+            'Post ID',
+            'Error Message'
+        ));
+
+        if (!empty($history['items'])) {
+            foreach ($history['items'] as $item) {
+                fputcsv($output, array(
+                    $item->id,
+                    $item->created_at,
+                    $this->sanitize_csv_cell($item->generated_title),
+                    $item->status,
+                    $this->sanitize_csv_cell($item->template_name),
+                    $item->post_id,
+                    $this->sanitize_csv_cell($item->error_message)
+                ));
+            }
+        }
+
+        fclose($output);
+        exit;
+    }
+
     public function render_page() {
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
