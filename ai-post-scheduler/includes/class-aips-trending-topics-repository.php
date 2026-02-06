@@ -286,14 +286,15 @@ class AIPS_Trending_Topics_Repository {
             return 0;
         }
 
-        // Each placeholder group "(%s, %s, %d, %s, %s, %s)" expects 6 values.
-        $expected_values = count($placeholders) * 6;
+        // Each placeholder group "(%s, %s, %d, %s, %s, %s)" expects 6 values (niche, topic, score, reason, keywords, researched_at).
+        $fields_per_record = 6;
+        $expected_values = count($placeholders) * $fields_per_record;
         if (count($values) !== $expected_values) {
             // Safety check: avoid calling prepare() with mismatched placeholders/values.
             return 0;
         }
 
-        // Use INSERT IGNORE to skip duplicate topics (based on unique constraint if exists, or manually filter)
+        // Use INSERT IGNORE to skip duplicate topics (requires unique constraint on niche + topic columns)
         $query = "INSERT IGNORE INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES " . implode(', ', $placeholders);
 
         return $this->wpdb->query($this->wpdb->prepare($query, $values));
