@@ -30,13 +30,10 @@ function _e($text, $domain) { echo htmlspecialchars($text); }
 function __($text, $domain) { return $text; }
 function date_i18n($format, $timestamp) { return date($format, $timestamp); }
 function get_option($option) { return 'Y-m-d H:i:s'; }
-function add_query_arg($args, $url = '') {
-    if (empty($url)) $url = '/mock_history_render.php';
-    return $url . (strpos($url, '?') === false ? '?' : '&') . http_build_query($args);
-}
-function admin_url($path = '') { return '/wp-admin/' . $path; }
-function sanitize_text_field($str) { return htmlspecialchars($str); }
-function absint($int) { return (int)$int; }
+function add_query_arg($args, $url) { return $url; }
+function admin_url($path) { return 'http://example.com/wp-admin/' . $path; }
+function absint($n) { return (int)$n; }
+function sanitize_text_field($s) { return htmlspecialchars($s); }
 
 define('ABSPATH', true);
 ?>
