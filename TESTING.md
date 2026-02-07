@@ -103,7 +103,7 @@ For full integration testing with WordPress:
 
 1. Install the WordPress test library:
 ```bash
-bash bin/install-wp-tests.sh wordpress_test root '' localhost latest
+bash ../scripts/install-wp-tests.sh wordpress_test root '' localhost latest
 ```
 
 2. Set the `WP_TESTS_DIR` environment variable:
