@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var aipsAjax = { ajaxUrl: '/mock-ajax', nonce: 'mock-nonce' };
+        var aipsAdminL10n = {};
+    </script>
+    <script src="../ai-post-scheduler/assets/js/admin.js"></script>
+    <style>
+        .aips-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .aips-modal-content { background: white; margin: 50px auto; padding: 20px; width: 80%; max-width: 800px; }
+        .aips-details-subsection { margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px; }
+        .aips-prompt-text { background: #f0f0f0; padding: 10px; white-space: pre-wrap; }
+        .button { padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Verification Page</h1>
+    <button class="aips-view-details" data-id="123">View Details</button>
+
+    <!-- Modal Markup (simplified from history.php) -->
+    <div id="aips-details-modal" class="aips-modal">
+        <div class="aips-modal-content aips-modal-large">
+            <div class="aips-modal-header">
+                <h2 id="aips-details-title">Generation Details</h2>
+                <button class="aips-modal-close">&times;</button>
+            </div>
+            <div class="aips-modal-body">
+                <div id="aips-details-loading" class="aips-loading" style="display:none;">
+                    <span class="spinner is-active"></span>
+                    Loading details...
+                </div>
+                <div id="aips-details-content" style="display: none;">
+                    <div class="aips-details-section">
+                        <h3>Summary</h3>
+                        <div id="aips-details-summary"></div>
+                    </div>
+
+                    <div class="aips-details-section">
+                        <h3>Template Configuration</h3>
+                        <div id="aips-details-template"></div>
+                    </div>
+
+                    <div class="aips-details-section" id="aips-details-voice-section" style="display: none;">
+                        <h3>Voice Configuration</h3>
+                        <div id="aips-details-voice"></div>
+                    </div>
+
+                    <div class="aips-details-section">
+                        <h3>AI Calls</h3>
+                        <div id="aips-details-ai-calls"></div>
+                    </div>
+
+                    <div class="aips-details-section" id="aips-details-errors-section" style="display: none;">
+                        <h3>Errors</h3>
+                        <div id="aips-details-errors"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock AJAX
+        $.ajax = function(options) {
+            console.log('AJAX call:', options);
+            if (options.data.action === 'aips_get_history_details') {
+                setTimeout(function() {
+                    if (options.success) {
+                        options.success({
+                            success: true,
+                            data: {
+                                status: 'completed',
+                                generated_title: 'Test Title',
+                                generated_content: '<p>This is the <strong>generated content</strong>.</p>',
+                                prompt: 'Write a post about testing.',
+                                generation_log: {}
+                            }
+                        });
+                    }
+                    if (options.complete) options.complete();
+                }, 100);
+            }
+        };
+    </script>
+</body>
+</html>

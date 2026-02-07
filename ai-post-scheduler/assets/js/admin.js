@@ -1587,6 +1587,19 @@
                 summaryHtml += '<tr><th>Error:</th><td class="aips-error-text">' + AIPS.escapeHtml(data.error_message) + '</td></tr>';
             }
             summaryHtml += '</table>';
+
+            if (data.prompt) {
+                summaryHtml += '<div class="aips-details-subsection"><h4>Generated Prompt</h4>';
+                summaryHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(data.prompt) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                summaryHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(data.prompt) + '</pre></div>';
+            }
+
+            if (data.generated_content) {
+                summaryHtml += '<div class="aips-details-subsection"><h4>Generated Content</h4>';
+                summaryHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(data.generated_content) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                summaryHtml += '<pre class="aips-prompt-text" style="max-height: 300px; overflow-y: auto;">' + AIPS.escapeHtml(data.generated_content) + '</pre></div>';
+            }
+
             $('#aips-details-summary').html(summaryHtml);
             
             if (log.template) {
@@ -1696,9 +1709,35 @@
             return div.innerHTML;
         },
 
+        /**
+         * Escape text for safe use in HTML attributes.
+         * 
+         * This function expects raw text input and will escape special characters
+         * to prevent XSS attacks. It uses a two-pass approach: first replacing 
+         * ampersands, then other characters, to avoid double-encoding. 
+         * Do not use this function on text that already contains HTML entities, 
+         * as they will be double-encoded.
+         * 
+         * @param {string} text - Raw text to escape
+         * @return {string} Escaped text safe for HTML attributes
+         */
         escapeAttribute: function(text) {
             if (!text) return '';
-            return text.replace(/"/g, '&quot;');
+            // First pass: replace ampersands to avoid double-encoding
+            text = text.replace(/&/g, '&amp;');
+            // Second pass: replace other special characters
+            var entityMap = {
+                '"': '&quot;',
+                "'": '&#39;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '\r': '&#13;',
+                '\n': '&#10;',
+                '\t': '&#9;'
+            };
+            return text.replace(/["'<>\r\n\t]/g, function(match) {
+                return entityMap[match];
+            });
         },
 
         closeModal: function() {

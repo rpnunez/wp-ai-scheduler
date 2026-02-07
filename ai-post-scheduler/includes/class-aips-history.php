@@ -150,6 +150,8 @@ class AIPS_History {
             'created_at' => $history_item->created_at,
             'completed_at' => $history_item->completed_at,
             'generated_title' => $history_item->generated_title,
+            'generated_content' => $history_item->generated_content,
+            'prompt' => $history_item->prompt,
             'post_id' => $history_item->post_id,
             'error_message' => $history_item->error_message,
             'generation_log' => $generation_log,
@@ -178,6 +180,7 @@ class AIPS_History {
             'page' => 1,
             'status' => $status_filter,
             'search' => $search_query,
+            'fields' => 'list',
         ));
 
         $stats = $this->get_stats();
@@ -348,6 +351,7 @@ class AIPS_History {
             'page' => $current_page,
             'status' => $status_filter,
             'search' => $search_query,
+            'fields' => 'list',
         ));
         
         $stats = $this->get_stats();
