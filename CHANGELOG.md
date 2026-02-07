@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
 - [2026-01-20 10:00:00] Added client-side search functionality to the Planner topic list, allowing users to filter brainstormed topics before scheduling.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.
 
+### Performance
+- 2024-05-30: Optimized author topic generation by replacing iterative database inserts with a single bulk INSERT query, reducing database round-trips from N to 1.
+
 ### Fixed
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
 
