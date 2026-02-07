@@ -8,12 +8,8 @@
  * @since 2.0.0
  */
 (function($) {
-'use strict';
-
-// Initialize on document ready
-$(document).ready(function() {
-// View Session functionality is automatically initialized by admin-view-session.js
-// No additional page-specific initialization needed
-});
-
+  // Initialize on document ready
+  $(document).ready(function() {
+      // View Session functionality is automatically initialized by admin-view-session.js
+  });
 })(jQuery);
