@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactor
+- [2026-05-27] Refactored `AIPS_Scheduler` to extract execution logic into `AIPS_Schedule_Processor`. `AIPS_Scheduler` now orchestrates while `AIPS_Schedule_Processor` handles the business logic of running schedules (locking, generation, logging).
+- [2026-05-27] Updated `AIPS_Schedule_Repository` to support `LIMIT` and better joining in `get_due_schedules`.
+
 ### Added
 - [2026-01-17 08:24:50] Added Developer Mode and Dev Tools page for generating template scaffolds (Voices, Structures, Templates) using AI.
 - [2026-01-20 10:00:00] Added client-side search functionality to the Planner topic list, allowing users to filter brainstormed topics before scheduling.

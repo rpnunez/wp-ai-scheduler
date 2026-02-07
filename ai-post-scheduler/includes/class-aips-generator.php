@@ -21,6 +21,11 @@ class AIPS_Generator {
      * @var AIPS_History_Service History service for unified logging
      */
     private $history_service;
+
+    /**
+     * @var AIPS_History_Repository History repository for logger
+     */
+    private $history_repository;
     
     /**
      * @var AIPS_History_Container|null Current history container
@@ -70,6 +75,7 @@ class AIPS_Generator {
         $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
         $this->history_service = $history_service ?: new AIPS_History_Service();
+        $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 
         // Initialize session tracker
