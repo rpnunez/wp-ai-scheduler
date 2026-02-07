@@ -72,11 +72,18 @@ class AIPS_History_Repository {
             'template_id' => 0,
             'orderby' => 'created_at',
             'order' => 'DESC',
+            'fields' => 'all',
         );
         
         $args = wp_parse_args($args, $defaults);
         
         $offset = ($args['page'] - 1) * $args['per_page'];
+
+        // Build select fields
+        $fields_sql = "h.*, t.name as template_name";
+        if ($args['fields'] === 'list') {
+            $fields_sql = "h.id, h.uuid, h.post_id, h.template_id, h.status, h.generated_title, h.created_at, h.error_message, h.created_at, h.completed_at, t.name as template_name";
+        }
 
         // Build where clauses
         $where_clauses = array("1=1");
@@ -111,7 +118,7 @@ class AIPS_History_Repository {
         $query_args[] = $offset;
 
         $results = $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT h.id, h.uuid, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, t.name as template_name
+            SELECT $fields_sql
             FROM {$this->table_name} h 
             LEFT JOIN {$templates_table} t ON h.template_id = t.id 
             WHERE $where_sql
