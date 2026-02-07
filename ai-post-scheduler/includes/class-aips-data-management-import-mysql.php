@@ -147,19 +147,75 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 
 			// For commands that target tables (not SET/UNLOCK), verify table name
 			if (strpos($query_upper, 'SET') !== 0 && strpos($query_upper, 'UNLOCK') !== 0) {
-				// Escape table names for regex
-				$escaped_table_names = array_map(function($t) { return preg_quote($t, '/'); }, $plugin_table_names);
-				$table_pattern = implode('|', $escaped_table_names);
+				// Escape table names for regex (used for INSERT/DROP/CREATE)
+				$escaped_table_names = array_map(function( $t ) { return preg_quote( $t, '/' ); }, $plugin_table_names);
+				$table_pattern = implode( '|', $escaped_table_names );
 
-				// Strict validation: Ensure the command TARGETS a plugin table
-				// Matches: INSERT INTO `table`, DROP TABLE `table`, CREATE TABLE `table`, LOCK TABLES `table`
-				// Allows quoted or unquoted table names and IF EXISTS, and requires table name to end at whitespace or end of string
-				$regex = '/^(?:INSERT(?:\s+INTO)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|CREATE\s+TABLE|LOCK\s+TABLES)\s+(?:[`"](' . $table_pattern . ')[`"]|(' . $table_pattern . '))(?:\s|$)/i';
+				// Special handling for LOCK TABLES, which can specify multiple tables with different lock types.
+				if (strpos( $query_upper, 'LOCK' ) === 0) {
+					// Extract the part after "LOCK TABLES"
+					$tables_part = preg_replace( '/^LOCK\s+TABLES\s+/i', '', $query );
 
-				if (!preg_match($regex, $query)) {
+					if ( $tables_part === $query ) {
+						// Pattern did not match as expected
+						return new WP_Error(
+							'invalid_table',
+							__( 'SQL file contains queries for non-plugin tables or invalid format.', 'ai-post-scheduler' )
+						);
+					}
+
+					// Split on commas to handle multiple table locks: table1 WRITE, table2 READ, ...
+					$table_specs = explode( ',', $tables_part );
+
+					foreach ( $table_specs as $spec ) {
+						$spec = trim( $spec );
+
+						if ( $spec === '' ) {
+							return new WP_Error(
+								'invalid_table',
+								__( 'SQL file contains queries for non-plugin tables or invalid format.', 'ai-post-scheduler' )
+							);
+						}
+
+						// Extract the table name at the beginning of the spec (with optional backticks or quotes).
+						if ( ! preg_match( '/^\s*[`\'"]?([A-Za-z0-9_]+)[`\'"]?/i', $spec, $matches ) ) {
+							return new WP_Error(
+								'invalid_table',
+								__( 'SQL file contains queries for non-plugin tables or invalid format.', 'ai-post-scheduler' )
+							);
+						}
+
+						$table_name = $matches[1];
+
+						// Ensure the table is one of the plugin tables.
+						if ( ! in_array( $table_name, $plugin_table_names, true ) ) {
+							return new WP_Error(
+								'invalid_table',
+								__( 'SQL file contains queries for non-plugin tables or invalid format.', 'ai-post-scheduler' )
+							);
+						}
+					}
+				} else {
+					// Strict validation: Ensure the command TARGETS a plugin table
+					// Matches: INSERT INTO `table`, DROP TABLE `table`, CREATE TABLE `table`
+					// Allows optional quotes and IF EXISTS
+					$regex = '/^(?:INSERT(?:\s+INTO)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|CREATE\s+TABLE)\s+[`\'"]?(' . $table_pattern . ')[`\'"]?/i';
+
+					if ( ! preg_match( $regex, $query ) ) {
+						return new WP_Error(
+							'invalid_table',
+							__( 'SQL file contains queries for non-plugin tables or invalid format.', 'ai-post-scheduler' )
+						);
+					}
+				}
+			}
+
+			// Validate UNLOCK TABLES format explicitly
+			if (strpos( $query_upper, 'UNLOCK' ) === 0) {
+				if ( ! preg_match( '/^UNLOCK\s+TABLES\s*$/i', $query_upper ) ) {
 					return new WP_Error(
 						'invalid_table',
-						__('SQL file contains queries for non-plugin tables or invalid format.', 'ai-post-scheduler')
+						__( 'SQL file contains queries for non-plugin tables or invalid format.', 'ai-post-scheduler' )
 					);
 				}
 			}
