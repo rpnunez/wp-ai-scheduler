@@ -139,64 +139,57 @@
             });
         });
         
-        // View logs
-        $(document).on('click', '.aips-view-logs', function(e) {
+        // View Session - same as Generated Posts functionality
+        $(document).on('click', '.aips-view-session', function(e) {
             e.preventDefault();
             var historyId = $(this).data('history-id');
             
-            // Show modal
-            $('#aips-log-viewer-modal').fadeIn();
-            $('#aips-log-viewer-content').html('<p>' + (aipsPostReviewL10n.loading || 'Loading...') + '</p>');
+            if (!historyId) {
+                console.error('No history ID provided');
+                return;
+            }
             
-            // Fetch log details
-            $.ajax({
-                url: aipsPostReviewL10n.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_get_history_details',
-                    history_id: historyId,
-                    nonce: aipsPostReviewL10n.nonce
-                },
-                success: function(response) {
-                    if (response.success && response.data) {
-                        var html = '<div class="aips-log-details">';
-                        
-                        if (response.data.prompt) {
-                            html += '<h3>' + (aipsPostReviewL10n.prompt || 'Prompt') + '</h3>';
-                            html += '<pre>' + escapeHtml(response.data.prompt) + '</pre>';
-                        }
-                        
-                        if (response.data.generation_log) {
-                            html += '<h3>' + (aipsPostReviewL10n.generationLog || 'Generation Log') + '</h3>';
-                            html += '<pre>' + escapeHtml(response.data.generation_log) + '</pre>';
-                        }
-                        
-                        if (response.data.error_message) {
-                            html += '<h3>' + (aipsPostReviewL10n.errorMessage || 'Error Message') + '</h3>';
-                            html += '<div class="notice notice-error"><p>' + escapeHtml(response.data.error_message) + '</p></div>';
-                        }
-                        
-                        html += '</div>';
-                        $('#aips-log-viewer-content').html(html);
-                    } else {
-                        $('#aips-log-viewer-content').html('<p>' + (aipsPostReviewL10n.loadingError || 'Failed to load logs.') + '</p>');
-                    }
-                },
-                error: function() {
-                    $('#aips-log-viewer-content').html('<p>' + (aipsPostReviewL10n.loadingError || 'Failed to load logs.') + '</p>');
-                }
-            });
+            loadSessionData(historyId);
         });
         
-        // Close modal
-        $('.aips-modal-close').on('click', function() {
-            $('#aips-log-viewer-modal').fadeOut();
+        // Copy Session JSON button handler
+        $(document).on('click', '.aips-copy-session-json', function(e) {
+            e.preventDefault();
+            handleCopySessionJSON($(this));
         });
         
-        // Close modal on outside click
-        $(document).on('click', function(e) {
-            if ($(e.target).is('#aips-log-viewer-modal')) {
-                $('#aips-log-viewer-modal').fadeOut();
+        // Download Session JSON button handler
+        $(document).on('click', '.aips-download-session-json', function(e) {
+            e.preventDefault();
+            handleDownloadSessionJSON($(this));
+        });
+        
+        // Close modal handlers
+        $(document).on('click', '.aips-modal-close, .aips-modal-overlay', function() {
+            closeModal();
+        });
+        
+        // Tab navigation
+        $(document).on('click', '.aips-tab-nav a', function(e) {
+            e.preventDefault();
+            var target = $(this).attr('href');
+            
+            $('.aips-tab-nav a').removeClass('active');
+            $(this).addClass('active');
+            
+            $('.aips-tab-content').hide();
+            $(target).show();
+        });
+        
+        // Toggle AI component details
+        $(document).on('click', '.aips-ai-component:not(.expanded)', function() {
+            $(this).addClass('expanded');
+        });
+        
+        // ESC key to close modal
+        $(document).on('keydown', function(e) {
+            if (e.key === 'Escape' && $('#aips-session-modal').is(':visible')) {
+                closeModal();
             }
         });
         
@@ -374,12 +367,355 @@
         // Escape HTML
         function escapeHtml(text) {
             if (!text) return '';
-            return text
+            if (text === null || text === undefined) {
+                return '';
+            }
+            return String(text)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        }
+        
+        // Session modal functions
+        var currentHistoryId = null;
+        var currentLogCount = 0;
+        
+        /**
+         * Load session data via AJAX
+         */
+        function loadSessionData(historyId) {
+            // Show loading state
+            showLoadingModal();
+            
+            $.ajax({
+                url: aipsPostReviewL10n.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_post_session',
+                    nonce: window.aipsAjaxNonce || aipsPostReviewL10n.nonce,
+                    history_id: historyId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        displaySessionModal(response.data);
+                    } else {
+                        showError(response.data.message || 'Failed to load session data.');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error:', status, error);
+                    showError('Failed to load session data. Please try again.');
+                }
+            });
+        }
+        
+        /**
+         * Show loading state in modal
+         */
+        function showLoadingModal() {
+            $('#aips-session-modal').show();
+            $('#aips-session-title').text('Loading...');
+            $('#aips-session-created').text('');
+            $('#aips-session-completed').text('');
+            $('#aips-logs-list').html('<p>Loading logs...</p>');
+            $('#aips-ai-list').html('<p>Loading AI calls...</p>');
+        }
+        
+        /**
+         * Display session data in modal
+         */
+        function displaySessionModal(data) {
+            // Store current history ID for JSON export
+            currentHistoryId = data.history.id;
+            currentLogCount = Array.isArray(data.logs) ? data.logs.length : 0;
+
+            // Update session info
+            $('#aips-session-title').text(data.history.generated_title || 'N/A');
+            $('#aips-session-created').text(data.history.created_at || 'N/A');
+            $('#aips-session-completed').text(data.history.completed_at || 'N/A');
+            
+            // Display logs
+            renderLogs(data.logs);
+            
+            // Display AI calls
+            renderAICalls(data.ai_calls);
+            
+            // Show modal
+            $('#aips-session-modal').show();
+        }
+        
+        /**
+         * Render logs tab content
+         */
+        function renderLogs(logs) {
+            var logsHtml = '';
+            
+            if (logs.length > 0) {
+                logs.forEach(function(log) {
+                    var cssClass = '';
+                    if (window.AIPS_History_Type && log.type_id === window.AIPS_History_Type.ERROR) {
+                        cssClass = 'error';
+                    } else if (window.AIPS_History_Type && log.type_id === window.AIPS_History_Type.WARNING) {
+                        cssClass = 'warning';
+                    }
+                    
+                    logsHtml += '<div class="aips-log-entry ' + escapeHtml(cssClass) + '">';
+                    logsHtml += '<h4>' + escapeHtml(log.type) + ' - ' + escapeHtml(log.log_type) + '</h4>';
+                    logsHtml += '<div class="aips-log-timestamp">' + escapeHtml(log.timestamp) + '</div>';
+                    logsHtml += '<div class="aips-json-viewer"><pre>' + escapeHtml(JSON.stringify(log.details, null, 2)) + '</pre></div>';
+                    logsHtml += '</div>';
+                });
+            } else {
+                logsHtml = '<p class="aips-no-data">No log entries found.</p>';
+            }
+            
+            $('#aips-logs-list').html(logsHtml);
+        }
+        
+        /**
+         * Render AI calls tab content
+         */
+        function renderAICalls(ai_calls) {
+            var aiHtml = '';
+            
+            if (ai_calls.length > 0) {
+                ai_calls.forEach(function(call) {
+                    aiHtml += '<div class="aips-ai-component" data-component="' + escapeHtml(call.type) + '">';
+                    aiHtml += '<h4>' + escapeHtml(call.label) + '</h4>';
+                    aiHtml += '<p class="aips-ai-hint">Click to view request and response details</p>';
+                    aiHtml += '<div class="aips-ai-details">';
+                    
+                    if (call.request) {
+                        aiHtml += '<div class="aips-ai-section">';
+                        aiHtml += '<h5>Request</h5>';
+                        aiHtml += '<div class="aips-json-viewer"><pre>' + escapeHtml(JSON.stringify(call.request, null, 2)) + '</pre></div>';
+                        aiHtml += '</div>';
+                    }
+                    
+                    if (call.response) {
+                        aiHtml += '<div class="aips-ai-section">';
+                        aiHtml += '<h5>Response</h5>';
+                        aiHtml += '<div class="aips-json-viewer"><pre>' + escapeHtml(JSON.stringify(call.response, null, 2)) + '</pre></div>';
+                        aiHtml += '</div>';
+                    }
+                    
+                    aiHtml += '</div></div>';
+                });
+            } else {
+                aiHtml = '<p class="aips-no-data">No AI calls found.</p>';
+            }
+            
+            $('#aips-ai-list').html(aiHtml);
+        }
+        
+        /**
+         * Handle Copy Session JSON button click
+         */
+        function handleCopySessionJSON($button) {
+            // Check if we have a history ID stored
+            if (!currentHistoryId) {
+                showModalNotification('No session data available.', 'error');
+                return;
+            }
+            
+            // Disable button and show loading state
+            $button.prop('disabled', true).text('Loading...');
+            
+            // Fetch the JSON data
+            $.ajax({
+                url: aipsPostReviewL10n.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_session_json',
+                    nonce: window.aipsAjaxNonce || aipsPostReviewL10n.nonce,
+                    history_id: currentHistoryId
+                },
+                success: function(response) {
+                    if (response.success && response.data.json) {
+                        // Copy to clipboard
+                        copyToClipboard(response.data.json, $button);
+                    } else {
+                        showModalNotification(response.data.message || 'Failed to generate JSON.', 'error');
+                        $button.prop('disabled', false).text('Copy Session JSON');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error:', status, error);
+                    showModalNotification('Failed to load session JSON. Please try again.', 'error');
+                    $button.prop('disabled', false).text('Copy Session JSON');
+                }
+            });
+        }
+        
+        /**
+         * Handle Download Session JSON button click
+         */
+        function handleDownloadSessionJSON($button) {
+            // Check if we have a history ID stored
+            if (!currentHistoryId) {
+                showModalNotification('No session data available for download.', 'error');
+                return;
+            }
+
+            var CLIENT_LOG_THRESHOLD = 20;
+
+            if (typeof currentLogCount === 'number' && currentLogCount <= CLIENT_LOG_THRESHOLD) {
+                // Small session: fetch the JSON via AJAX and trigger client-side download
+                $button.prop('disabled', true).text('Preparing download...');
+                $.ajax({
+                    url: aipsPostReviewL10n.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'aips_get_session_json',
+                        nonce: window.aipsAjaxNonce || aipsPostReviewL10n.nonce,
+                        history_id: currentHistoryId
+                    },
+                    success: function(response) {
+                        if (response.success && response.data.json) {
+                            var filename = 'aips-session-' + currentHistoryId + '.json';
+                            downloadJSON(response.data.json, filename);
+                            $button.prop('disabled', false).text('Download Session JSON');
+                            showNotice('Session JSON download started. Check your browser downloads.', 'success');
+                        } else {
+                            showModalNotification(response.data.message || 'Failed to generate JSON for download.', 'error');
+                            $button.prop('disabled', false).text('Download Session JSON');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX error:', status, error);
+                        showModalNotification('Failed to load session JSON for download. Please try again.', 'error');
+                        $button.prop('disabled', false).text('Download Session JSON');
+                    }
+                });
+                return;
+            }
+
+            // Large session: use a form POST to the download endpoint
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = aipsPostReviewL10n.ajaxUrl;
+            form.target = '_blank';
+
+            var inputAction = document.createElement('input');
+            inputAction.type = 'hidden';
+            inputAction.name = 'action';
+            inputAction.value = 'aips_download_session_json';
+            form.appendChild(inputAction);
+
+            var inputNonce = document.createElement('input');
+            inputNonce.type = 'hidden';
+            inputNonce.name = 'nonce';
+            inputNonce.value = window.aipsAjaxNonce || aipsPostReviewL10n.nonce;
+            form.appendChild(inputNonce);
+
+            var inputHistory = document.createElement('input');
+            inputHistory.type = 'hidden';
+            inputHistory.name = 'history_id';
+            inputHistory.value = currentHistoryId;
+            form.appendChild(inputHistory);
+
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+
+            $button.prop('disabled', false).text('Download Session JSON');
+            showNotice('Session JSON download started. Check your browser downloads.', 'success');
+        }
+        
+        /**
+         * Download JSON data as a file
+         */
+        function downloadJSON(jsonData, fileName) {
+            var blob = new Blob([jsonData], { type: 'application/json' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        /**
+         * Copy text to clipboard
+         */
+        function copyToClipboard(text, $button) {
+            // Try modern clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showModalNotification('Session JSON copied to clipboard!', 'success');
+                    $button.prop('disabled', false).text('Copy Session JSON');
+                }).catch(function(err) {
+                    console.error('Failed to copy:', err);
+                    fallbackCopyToClipboard(text, $button);
+                });
+            } else {
+                // Fallback for older browsers
+                fallbackCopyToClipboard(text, $button);
+            }
+        }
+        
+        /**
+         * Fallback clipboard copy method for older browsers
+         */
+        function fallbackCopyToClipboard(text, $button) {
+            var $temp = $('<textarea>');
+            $('body').append($temp);
+            $temp.val(text).select();
+            
+            try {
+                var successful = document.execCommand('copy');
+                if (successful) {
+                    showModalNotification('Session JSON copied to clipboard!', 'success');
+                } else {
+                    showModalNotification('Failed to copy to clipboard.', 'error');
+                }
+            } catch (err) {
+                console.error('Fallback copy failed:', err);
+                showModalNotification('Failed to copy to clipboard.', 'error');
+            }
+            
+            $temp.remove();
+            $button.prop('disabled', false).text('Copy Session JSON');
+        }
+        
+        /**
+         * Show notification message in modal
+         */
+        function showModalNotification(message, type) {
+            // Remove existing notifications
+            $('.aips-notification').remove();
+            
+            // Create notification element
+            var $notification = $('<div class="aips-notification aips-notification-' + type + '">')
+                .text(message)
+                .appendTo('.aips-modal-body');
+            
+            // Auto-hide after 3 seconds
+            setTimeout(function() {
+                $notification.fadeOut(function() {
+                    $(this).remove();
+                });
+            }, 3000);
+        }
+        
+        /**
+         * Close the modal
+         */
+        function closeModal() {
+            $('#aips-session-modal').hide();
+            currentHistoryId = null;
+        }
+        
+        /**
+         * Show error message
+         */
+        function showError(message) {
+            alert(message);
+            closeModal();
         }
     });
 
