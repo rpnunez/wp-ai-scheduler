@@ -75,13 +75,6 @@ window.AIPS_History_Type = {
 // Note: The nonce should always be available from localization
 // This fallback is only for edge cases where localization fails
 if (typeof window.aipsAjaxNonce === 'undefined') {
-	<?php
-	// Try to get nonce from different possible sources
-	$nonce = '';
-	if (wp_script_is('aips-admin-post-review', 'enqueued')) {
-		$nonce = 'window.aipsPostReviewL10n && window.aipsPostReviewL10n.nonce ? window.aipsPostReviewL10n.nonce : ';
-	}
-	?>
-	window.aipsAjaxNonce = <?php echo $nonce; ?>'<?php echo esc_js(wp_create_nonce('aips_ajax_nonce')); ?>';
+	window.aipsAjaxNonce = '<?php echo esc_js(wp_create_nonce('aips_ajax_nonce')); ?>';
 }
 </script>

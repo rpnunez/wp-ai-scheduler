@@ -14,7 +14,9 @@
 	window.AIPS = window.AIPS || {};
 	
 	// Configuration constants
-	var CLIENT_LOG_THRESHOLD = 20; // Threshold for using client-side vs server-side JSON download
+	// CLIENT_LOG_THRESHOLD determines when to use client-side (small) vs server-side (large) JSON download
+	// Threshold of 20 matches the default server-side configuration
+	var CLIENT_LOG_THRESHOLD = 20;
 	
 	// Session state
 	var currentHistoryId = null;
@@ -511,10 +513,15 @@
 	
 	/**
 	 * Show error message
+	 * Uses modal notification instead of alert for better UX
 	 */
 	function showError(message) {
-		alert(message);
-		closeModal();
+		showModalNotification(message, 'error');
+		
+		// Close modal after showing error
+		setTimeout(function() {
+			closeModal();
+		}, 3000);
 	}
 	
 	// Initialize on document ready
