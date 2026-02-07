@@ -50,7 +50,7 @@ class AIPS_Generation_Logger {
             $this->session->add_error();
         }
 
-        if ($this->history_id) {
+        if ($this->history_id && $this->history_repository) {
             $details = array(
                 'prompt' => $prompt,
                 'options' => $options,
