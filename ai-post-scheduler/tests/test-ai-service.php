@@ -354,4 +354,54 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }
     }
+
+    /**
+     * Test generate_json with mocked simpleJsonQuery success path
+     */
+    public function test_generate_json_with_simpleJsonQuery_success() {
+        // This test validates the simpleJsonQuery success path by mocking $mwai
+        global $mwai;
+        
+        // Save original state
+        $original_mwai = $mwai;
+        
+        // Mock $mwai with simpleJsonQuery method
+        $mwai = new class {
+            public function simpleJsonQuery($prompt, $options) {
+                // Return mock JSON data
+                return array(
+                    array('title' => 'Topic 1', 'score' => 85, 'keywords' => array('key1', 'key2')),
+                    array('title' => 'Topic 2', 'score' => 90, 'keywords' => array('key3', 'key4')),
+                );
+            }
+        };
+        
+        // Also need to mock AI Engine availability
+        global $mwai_core;
+        $original_core = $mwai_core;
+        if (!$mwai_core) {
+            $mwai_core = new stdClass();
+        }
+        
+        try {
+            $service = new AIPS_AI_Service();
+            $result = $service->generate_json('Test prompt');
+            
+            // Should succeed with array result
+            $this->assertIsArray($result);
+            $this->assertCount(2, $result);
+            $this->assertEquals('Topic 1', $result[0]['title']);
+            $this->assertEquals(85, $result[0]['score']);
+            
+            // Should be logged as 'json' type
+            $log = $service->get_call_log();
+            $this->assertCount(1, $log);
+            $this->assertEquals('json', $log[0]['type']);
+            
+        } finally {
+            // Restore original state
+            $mwai = $original_mwai;
+            $mwai_core = $original_core;
+        }
+    }
 }

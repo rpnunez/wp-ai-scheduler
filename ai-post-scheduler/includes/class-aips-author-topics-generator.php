@@ -74,8 +74,8 @@ class AIPS_Author_Topics_Generator {
 		// Build the prompt with feedback loop context
 		$prompt = $this->build_topic_generation_prompt($author);
 		
-		// Call AI to generate topics
-		$response = $this->ai_service->generate_text($prompt, array(
+		// Use generate_json for structured topic data
+		$response = $this->ai_service->generate_json($prompt, array(
 			'max_tokens' => 2000,
 			'temperature' => 0.7
 		));
@@ -85,8 +85,8 @@ class AIPS_Author_Topics_Generator {
 			return $response;
 		}
 		
-		// Parse the response into individual topics
-		$topics = $this->parse_topics_from_response($response, $author);
+		// Parse the JSON response into database-ready topics
+		$topics = $this->parse_json_topics($response, $author);
 		
 		if (empty($topics)) {
 			$this->logger->log("No topics parsed from AI response for author {$author->id}", 'warning');
@@ -180,15 +180,87 @@ class AIPS_Author_Topics_Generator {
 		$prompt .= "- Each topic should be specific and actionable\n";
 		$prompt .= "- Topics should be diverse and cover different aspects of {$author->field_niche}\n";
 		$prompt .= "- Avoid duplicating previously approved or rejected topics\n";
-		$prompt .= "- Format each topic as a clear, engaging blog post title\n";
-		$prompt .= "- Return exactly {$quantity} topics, one per line\n";
-		$prompt .= "- Do not number the topics, just provide the titles\n";
+		$prompt .= "- Format each topic as a clear, engaging blog post title\n\n";
+		
+		$prompt .= "Return a JSON array of objects. Each object must have:\n";
+		$prompt .= "- \"title\": The blog post topic/title (string)\n";
+		$prompt .= "- \"score\": Estimated engagement score 1-100 (integer)\n";
+		$prompt .= "- \"keywords\": 3-5 relevant keywords (array of strings)\n\n";
+		
+		$prompt .= "Example format:\n";
+		$prompt .= "[\n";
+		$prompt .= "  {\n";
+		$prompt .= "    \"title\": \"10 Best Practices for WordPress SEO in 2025\",\n";
+		$prompt .= "    \"score\": 85,\n";
+		$prompt .= "    \"keywords\": [\"WordPress\", \"SEO\", \"best practices\", \"2025\", \"optimization\"]\n";
+		$prompt .= "  }\n";
+		$prompt .= "]";
 		
 		return $prompt;
 	}
 	
 	/**
-	 * Parse topics from AI response.
+	 * Parse topics from JSON response.
+	 *
+	 * Converts structured JSON data into database-ready topic arrays.
+	 *
+	 * @param array  $json_data Parsed JSON data from AI.
+	 * @param object $author    Author object.
+	 * @return array Array of topic data arrays ready for database insertion.
+	 */
+	private function parse_json_topics($json_data, $author) {
+		$topics = array();
+		
+		if (!is_array($json_data)) {
+			$this->logger->log("JSON data is not an array for author {$author->id}", 'warning');
+			return array();
+		}
+		
+		foreach ($json_data as $item) {
+			// Validate required fields
+			if (!isset($item['title']) || empty($item['title'])) {
+				continue;
+			}
+			
+			// Extract and sanitize data
+			$title = sanitize_text_field($item['title']);
+			$score = isset($item['score']) ? absint($item['score']) : 50;
+			$keywords = isset($item['keywords']) && is_array($item['keywords']) 
+				? array_map('sanitize_text_field', $item['keywords']) 
+				: array();
+			
+			// Skip if title is too short
+			if (strlen($title) < 10) {
+				continue;
+			}
+			
+			// Create topic data
+			$topics[] = array(
+				'author_id' => $author->id,
+				'topic_title' => $title,
+				'topic_prompt' => '', // Will be built when generating post
+				'status' => 'pending',
+				'score' => $score,
+				'metadata' => wp_json_encode(array(
+					'generated_via' => 'ai_json',
+					'generation_date' => current_time('mysql'),
+					'keywords' => $keywords
+				))
+			);
+			
+			// Stop if we have enough topics
+			if (count($topics) >= $author->topic_generation_quantity) {
+				break;
+			}
+		}
+		
+		return $topics;
+	}
+	
+	/**
+	 * Parse topics from AI response (legacy text-based method).
+	 *
+	 * This method is kept for backward compatibility and as fallback.
 	 *
 	 * @param string $response AI response text.
 	 * @param object $author Author object.
