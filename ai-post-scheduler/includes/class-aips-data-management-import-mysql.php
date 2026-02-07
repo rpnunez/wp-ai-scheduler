@@ -153,8 +153,8 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 
 				// Strict validation: Ensure the command TARGETS a plugin table
 				// Matches: INSERT INTO `table`, DROP TABLE `table`, CREATE TABLE `table`, LOCK TABLES `table`
-				// Allows optional quotes and IF EXISTS
-				$regex = '/^(?:INSERT(?:\s+INTO)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|CREATE\s+TABLE|LOCK\s+TABLES)\s+[`\']?(' . $table_pattern . ')[`\']?/i';
+				// Allows quoted or unquoted table names and IF EXISTS, and requires table name to end at whitespace or end of string
+				$regex = '/^(?:INSERT(?:\s+INTO)?|DROP\s+TABLE(?:\s+IF\s+EXISTS)?|CREATE\s+TABLE|LOCK\s+TABLES)\s+(?:[`"](' . $table_pattern . ')[`"]|(' . $table_pattern . '))(?:\s|$)/i';
 
 				if (!preg_match($regex, $query)) {
 					return new WP_Error(
