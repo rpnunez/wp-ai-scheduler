@@ -192,7 +192,7 @@
 						aiHtml += '<div class="aips-ai-section">';
 						aiHtml += '<div class="aips-ai-section-header">';
 						aiHtml += '<h5>Request</h5>';
-						aiHtml += '<button class="button button-small aips-copy-ai-content" data-content-type="request" data-component-index="' + index + '" data-content="' + window.AIPS.escapeHtmlAttr(requestJson) + '">';
+						aiHtml += '<button class="button button-small aips-copy-ai-content" data-content-type="request" data-component-index="' + index + '" data-content="' + window.AIPS.escapeHtml(requestJson) + '">';
 						aiHtml += '<span class="dashicons dashicons-clipboard"></span> Copy';
 						aiHtml += '</button>';
 						aiHtml += '</div>';
@@ -205,7 +205,7 @@
 						aiHtml += '<div class="aips-ai-section">';
 						aiHtml += '<div class="aips-ai-section-header">';
 						aiHtml += '<h5>Response</h5>';
-						aiHtml += '<button class="button button-small aips-copy-ai-content" data-content-type="response" data-component-index="' + index + '" data-content="' + window.AIPS.escapeHtmlAttr(responseJson) + '">';
+						aiHtml += '<button class="button button-small aips-copy-ai-content" data-content-type="response" data-component-index="' + index + '" data-content="' + window.AIPS.escapeHtml(responseJson) + '">';
 						aiHtml += '<span class="dashicons dashicons-clipboard"></span> Copy';
 						aiHtml += '</button>';
 						aiHtml += '</div>';
@@ -579,28 +579,6 @@
 		 * Escape HTML to prevent XSS
 		 */
 		escapeHtml: function(text) {
-			if (text === null || text === undefined) {
-				return '';
-			}
-			
-			var map = {
-				'&': '&amp;',
-				'<': '&lt;',
-				'>': '&gt;',
-				'"': '&quot;',
-				"'": '&#039;'
-			};
-			
-			return String(text).replace(/[&<>"']/g, function(m) { 
-				return map[m]; 
-			});
-		},
-		
-		/**
-		 * Escape HTML for use in HTML attributes
-		 * Single-pass approach to prevent double-encoding
-		 */
-		escapeHtmlAttr: function(text) {
 			if (text === null || text === undefined) {
 				return '';
 			}
