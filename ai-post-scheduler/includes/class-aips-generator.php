@@ -21,12 +21,22 @@ class AIPS_Generator {
      * @var AIPS_History_Service History service for unified logging
      */
     private $history_service;
+
+    /**
+     * @var AIPS_History_Repository History repository for logger
+     */
+    private $history_repository;
     
     /**
      * @var AIPS_History_Container|null Current history container
      */
     private $current_history;
     
+    /**
+     * @var AIPS_Generation_Logger Handles logging logic.
+     */
+    private $generation_logger;
+
     private $template_processor;
     private $image_service;
     private $structure_manager;
@@ -65,7 +75,11 @@ class AIPS_Generator {
         $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
         $this->history_service = $history_service ?: new AIPS_History_Service();
+        $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
+
+        // Initialize logger wrapper
+        $this->generation_logger = new AIPS_Generation_Logger($this->logger, $this->history_service, new AIPS_Generation_Session());
     }
     
     /**
@@ -206,7 +220,7 @@ class AIPS_Generator {
         $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
         
         if (is_wp_error($result)) {
-            $this->logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
+            $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
             return array();
         }
         
@@ -216,12 +230,12 @@ class AIPS_Generator {
         if (empty($resolved_values)) {
             // AI call succeeded but we could not extract any variable values.
             // This usually indicates invalid JSON or an unexpected response format.
-            $this->logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
+            $this->generation_logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
                 'variables' => $ai_variables,
                 'raw_response' => $result,
             ));
         } else {
-            $this->logger->log('Resolved AI variables', 'info', array(
+            $this->generation_logger->log('Resolved AI variables', 'info', array(
                 'variables' => $ai_variables,
                 'resolved'   => $resolved_values,
             ));
@@ -440,6 +454,7 @@ class AIPS_Generator {
         
         // Create new history container using new API
         $template_id = $context->get_type() === 'template' ? $context->get_id() : null;
+        
         $this->current_history = $this->history_service->create('post_generation', array(
             'template_id' => $template_id,
         ))->with_session($context);
@@ -452,9 +467,20 @@ class AIPS_Generator {
         // Build the full content prompt from context
         $content_prompt = $this->prompt_builder->build_content_prompt($context);
 
+        if ($this->current_history) {
+            $this->current_history->record(
+                'log',
+                "Built content prompt",
+                array('prompt' => isset($content_prompt) ? $content_prompt : ''),
+                null,
+                array('component' => 'content')
+            );
+        }
+
         // Build contextual instructions to pass through AI Engine context channel.
         $content_context = $this->prompt_builder->build_content_context($context);
         $content_options = array();
+
         if (!empty($content_context)) {
             $content_options['context'] = $content_context;
         }
@@ -463,7 +489,11 @@ class AIPS_Generator {
         $content = $this->generate_content($content_prompt, $content_options, 'content');
         
         if (is_wp_error($content)) {
-            // Use new history API to complete with failure
+            $this->current_history->record_error($content->get_error_message(), array(
+                'component' => 'content',
+                'prompt' => $content_prompt,
+            ));
+
             $this->current_history->complete_failure($content->get_error_message(), array(
                 'component' => 'content',
                 'prompt' => $content_prompt,
@@ -481,23 +511,33 @@ class AIPS_Generator {
         // Generate the title using the context and content.
         $title = $this->generate_title_from_context($context, $content, $ai_variables);
 
+        // Log post title
+        if ($this->current_history) {
+            $this->current_history->record(
+                'info',
+                "Post title generated",
+                array(),
+                null,
+                array('component' => 'title')
+            );
+        }
+
         // Detect unresolved template placeholders in the generated title.
         $has_unresolved_placeholders = false;
+
         if (!is_wp_error($title) && is_string($title)) {
             if (strpos($title, '{{') !== false && strpos($title, '}}') !== false) {
                 $has_unresolved_placeholders = true;
 
                 // Log a warning for observability when AI variables were not resolved correctly.
-                if (!empty($this->logger)) {
-                    $this->logger->warning(
-                        'Generated title contains unresolved AI variables; falling back to safe default title.',
-                        array(
-                            'context_type' => $context->get_type(),
-                            'context_id' => $context->get_id(),
-                            'topic'       => $context->get_topic(),
-                        )
-                    );
-                }
+                $this->generation_logger->warning(
+                    'Generated title contains unresolved AI variables; falling back to safe default title.',
+                    array(
+                        'context_type' => $context->get_type(),
+                        'context_id' => $context->get_id(),
+                        'topic'       => $context->get_topic(),
+                    )
+                );
             }
         }
         
@@ -505,10 +545,12 @@ class AIPS_Generator {
             // Fall back to a safe default title when AI fails or leaves unresolved variables.
             $base_title = __('AI Generated Post', 'ai-post-scheduler');
             $topic_str = $context->get_topic();
+
             if (!empty($topic_str)) {
                 // Include topic in fallback title for context, truncated for safety
                 $base_title .= ': ' . mb_substr($topic_str, 0, 50) . (mb_strlen($topic_str) > 50 ? '...' : '');
             }
+            
             $title = $base_title . ' - ' . date('Y-m-d H:i:s');
         }
         
@@ -567,7 +609,7 @@ class AIPS_Generator {
             )
         );
         
-        $this->logger->log('Post generated successfully', 'info', array(
+        $this->generation_logger->log('Post generated successfully', 'info', array(
             'post_id' => $post_id,
             'context_type' => $context->get_type(),
             'context_id' => $context->get_id(),
@@ -583,28 +625,12 @@ class AIPS_Generator {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id());
         }
         
+        $this->history_id = null;
+        $this->generation_logger->set_history_id(null);
+      
         return $post_id;
     }
 
-    /**
-     * Generate or select and set the featured image for a post.
-     *
-     * Uses the template configuration to decide the source (AI prompt,
-     * Unsplash, or media library). Logs any errors into the current
-     * generation session.
-     *
-     * @param object $template Template object containing image settings.
-     * @param int    $post_id  ID of the post to attach the image to.
-     * @param string $title    Title of the generated post, used as image alt text/context.
-     * @param string|null $topic Optional topic used when processing prompts.
-     * @return int|null ID of the featured image attachment or null on failure/disabled.
-     */
-    private function set_featured_image($template, $post_id, $title, $topic = null) {
-        // For backward compatibility, convert to context and delegate
-        $context = new AIPS_Template_Context($template, null, $topic);
-        return $this->set_featured_image_from_context($context, $post_id, $title);
-    }
-    
     /**
      * Generate or select and set the featured image for a post from a context.
      *
@@ -696,7 +722,7 @@ class AIPS_Generator {
         }
 
         if (is_wp_error($featured_image_result)) {
-            $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
+            $this->generation_logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
 
             // Log featured image generation error
             if ($this->current_history) {

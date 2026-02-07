@@ -45,6 +45,9 @@ class AIPS_Generated_Posts_Controller {
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
+		add_action('wp_ajax_aips_get_session_json', array($this, 'ajax_get_session_json'));
+		// AJAX endpoint to download the session JSON as a file
+		add_action('wp_ajax_aips_download_session_json', array($this, 'ajax_download_session_json'));
 	}
 	
 	/**
@@ -201,6 +204,133 @@ class AIPS_Generated_Posts_Controller {
 			),
 			'logs' => $logs,
 			'ai_calls' => $ai_calls,
+		));
+	}
+	
+	/**
+	 * AJAX handler that returns a downloadable JSON file for a session
+	 *
+	 * This keeps the existing AJAX endpoint that returns the JSON string for JS consumption,
+	 * while providing a dedicated endpoint that sends proper download headers so the browser
+	 * will prompt the user to save the JSON to disk.
+	 */
+	public function ajax_download_session_json() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+		
+		if (!$history_id) {
+			wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
+		}
+		
+		// Get history item to inspect size/complexity
+		$history_item = $this->history_repository->get_by_id($history_id);
+		if (!$history_item) {
+			wp_send_json_error(array('message' => __('History item not found.', 'ai-post-scheduler')));
+		}
+		
+		// Heuristic: if there are many log entries, write to tempfile instead of echoing directly
+		$log_count = isset($history_item->log) && is_array($history_item->log) ? count($history_item->log) : 0;
+		// Read thresholds from configuration
+		$config = AIPS_Config::get_instance();
+		$TEMPFILE_LOG_THRESHOLD = (int) $config->get_option('generated_posts_log_threshold_tmpfile', 200);
+		
+		$converter = new AIPS_Session_To_JSON();
+		
+		if ($log_count >= $TEMPFILE_LOG_THRESHOLD) {
+			$temp = $converter->generate_json_to_tempfile($history_id, true);
+			if (is_wp_error($temp)) {
+				wp_send_json_error(array('message' => $temp->get_error_message()));
+			}
+			
+			// Read the file and send it directly instead of redirecting
+			// This prevents double downloads when form is submitted with target="_blank"
+			$filepath = $temp['path'];
+			$filename = basename($filepath);
+			
+			if (!file_exists($filepath)) {
+				wp_send_json_error(array('message' => __('Export file not found.', 'ai-post-scheduler')));
+			}
+			
+			$json_string = file_get_contents($filepath);
+			if ($json_string === false) {
+				wp_send_json_error(array('message' => __('Failed to read export file.', 'ai-post-scheduler')));
+			}
+			
+			// Send download headers and the JSON payload
+			if (!headers_sent()) {
+				header('Content-Description: File Transfer');
+				header('Content-Type: application/json; charset=utf-8');
+				header('Content-Disposition: attachment; filename="' . $filename . '"');
+				header('Content-Transfer-Encoding: binary');
+				header('Expires: 0');
+				header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+				header('Pragma: public');
+				header('Content-Length: ' . strlen($json_string));
+			}
+			
+			echo $json_string;
+			exit;
+		}
+		
+		// Small session: generate string and send directly
+		$json_string = $converter->generate_json_string($history_id, true);
+		
+		if (is_wp_error($json_string)) {
+			wp_send_json_error(array('message' => $json_string->get_error_message()));
+		}
+		
+		// Build a safe filename including history id and timestamp
+		$timestamp = current_time('Ymd-His');
+		$filename = sprintf('aips-session-%d-%s.json', $history_id, $timestamp);
+		
+		// Send download headers and the JSON payload
+		if (!headers_sent()) {
+			header('Content-Description: File Transfer');
+			header('Content-Type: application/json; charset=utf-8');
+			header('Content-Disposition: attachment; filename="' . $filename . '"');
+			header('Content-Transfer-Encoding: binary');
+			header('Expires: 0');
+			header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+			header('Pragma: public');
+			header('Content-Length: ' . strlen($json_string));
+		}
+		
+		echo $json_string;
+		// Terminate immediately to avoid extra output
+		exit;
+	}
+
+	/**
+	 * AJAX handler to get complete session JSON for debugging/BI purposes
+	 */
+	public function ajax_get_session_json() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+		
+		if (!$history_id) {
+			wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
+		}
+		
+		// Use the Session To JSON converter
+		$converter = new AIPS_Session_To_JSON();
+		$json_string = $converter->generate_json_string($history_id, true);
+		
+		if (is_wp_error($json_string)) {
+			wp_send_json_error(array('message' => $json_string->get_error_message()));
+		}
+		
+		wp_send_json_success(array(
+			'json' => $json_string,
 		));
 	}
 }

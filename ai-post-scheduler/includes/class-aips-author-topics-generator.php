@@ -95,15 +95,27 @@ class AIPS_Author_Topics_Generator {
 		
 		// Save topics to database
 		$saved_topics = array();
-		foreach ($topics as $topic_data) {
-			$topic_id = $this->topics_repository->create($topic_data);
-			if ($topic_id) {
-				$saved_topics[] = array_merge($topic_data, array('id' => $topic_id));
-				$this->logger->log("Created topic: {$topic_data['topic_title']}", 'info', array(
-					'topic_id' => $topic_id,
+
+		// Bolt Optimization: Use bulk insert to reduce database round-trips
+		if ($this->topics_repository->create_bulk($topics)) {
+			// Retrieve created topics to get IDs (fetch latest N topics for author)
+			$created_topics = $this->topics_repository->get_latest_by_author($author->id, count($topics));
+
+			// Reverse to match original order (oldest to newest ID)
+			$created_topics = array_reverse($created_topics);
+
+			foreach ($created_topics as $topic_obj) {
+				$topic_arr = (array) $topic_obj;
+				$saved_topics[] = $topic_arr;
+
+				$this->logger->log("Created topic: {$topic_arr['topic_title']}", 'info', array(
+					'topic_id' => $topic_arr['id'],
 					'author_id' => $author->id
 				));
 			}
+		} else {
+			$this->logger->log("Failed to bulk create topics for author {$author->id}", 'error');
+			return new WP_Error('db_insert_error', 'Failed to save generated topics to database');
 		}
 		
 		$count = count($saved_topics);

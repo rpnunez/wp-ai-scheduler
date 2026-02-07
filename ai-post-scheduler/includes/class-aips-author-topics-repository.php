@@ -96,19 +96,85 @@ class AIPS_Author_Topics_Repository {
 			return false;
 		}
 
-		// Ensure all inserts either succeed or fail together.
-		$this->wpdb->query('START TRANSACTION');
+		$values = array();
+		$placeholders = array();
 
 		foreach ($topics as $topic) {
-			$result = $this->create($topic);
-			if (!$result) {
-				$this->wpdb->query('ROLLBACK');
-				return false;
+			// Validate required fields before including in bulk insert.
+			if (
+				!isset($topic['author_id']) ||
+				!isset($topic['topic_title']) ||
+				!$topic['author_id'] ||
+				$topic['author_id'] <= 0 ||
+				'' === trim((string) $topic['topic_title'])
+			) {
+				// Skip topics that are missing required fields.
+				continue;
 			}
+
+			array_push(
+				$values,
+				(int) $topic['author_id'],
+				$topic['topic_title'],
+				isset($topic['topic_prompt']) ? $topic['topic_prompt'] : '',
+				isset($topic['status']) ? $topic['status'] : 'pending',
+				isset($topic['score']) ? (int) $topic['score'] : 50,
+				isset($topic['metadata']) ? $topic['metadata'] : '',
+				isset($topic['generated_at']) ? $topic['generated_at'] : current_time('mysql')
+			);
+			$placeholders[] = "(%d, %s, %s, %s, %d, %s, %s)";
 		}
 
-		$this->wpdb->query('COMMIT');
-		return true;
+		// If no valid topics remain after validation, do not attempt the insert.
+		if (empty($placeholders)) {
+			return false;
+		}
+		$sql = "INSERT INTO {$this->table_name} (author_id, topic_title, topic_prompt, status, score, metadata, generated_at) VALUES ";
+		$sql .= implode(', ', $placeholders);
+
+		$query = $this->wpdb->prepare($sql, $values);
+
+		return $this->wpdb->query($query) !== false;
+	}
+
+	/**
+	 * Get latest topics for an author.
+	 *
+	 * This method can optionally be constrained to topics generated after a
+	 * specific timestamp or to a specific set of topic titles. This allows
+	 * callers (e.g. bulk insert operations) to reliably retrieve only the
+	 * topics created in a particular batch, even in concurrent environments.
+	 *
+	 * @param int        $author_id        Author ID.
+	 * @param int        $limit            Number of topics to retrieve.
+	 * @param string|nil $generated_after  Optional. ISO datetime or MySQL datetime
+	 *                                     string to filter topics generated on or
+	 *                                     after this timestamp. Default null.
+	 * @param array|null $titles           Optional. Array of topic_title strings
+	 *                                     to limit results to. If provided and not
+	 *                                     empty, this takes precedence over
+	 *                                     $generated_after. Default null.
+	 * @return array Array of topic objects.
+	 */
+	public function get_latest_by_author( $author_id, $limit, $generated_after = null, $titles = null ) {
+		$query   = "SELECT * FROM {$this->table_name} WHERE author_id = %d";
+		$params  = array( $author_id );
+
+		// If specific titles are provided, restrict results to those titles.
+		if ( is_array( $titles ) && ! empty( $titles ) ) {
+			$placeholders = implode( ',', array_fill( 0, count( $titles ), '%s' ) );
+			$query       .= " AND topic_title IN ($placeholders)";
+			$params       = array_merge( $params, $titles );
+		} elseif ( null !== $generated_after ) {
+			// Otherwise, if a lower-bound timestamp is provided, use it.
+			$query   .= " AND generated_at >= %s";
+			$params[] = $generated_after;
+		}
+
+		$query   .= " ORDER BY id DESC LIMIT %d";
+		$params[] = (int) $limit;
+
+		return $this->wpdb->get_results( $this->wpdb->prepare( $query, $params ) );
 	}
 	
 	/**
