@@ -56,6 +56,7 @@
             $(document).on('click', '.aips-clear-history', this.clearHistory);
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
+            $(document).on('click', '#aips-export-history-btn', this.exportHistory);
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
             $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
             $(document).on('keypress', '#aips-history-search-input', function(e) {
@@ -721,11 +722,14 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
+                        // Show success modal instead of alert
                         if (response.data.edit_url) {
-                            window.open(response.data.edit_url, '_blank');
+                            $('#aips-post-link').attr('href', response.data.edit_url);
+                            $('#aips-post-link-container').show();
+                        } else {
+                            $('#aips-post-link-container').hide();
                         }
-                        location.reload();
+                        $('#aips-post-success-modal').show();
                     } else {
                         alert(response.data.message);
                     }
@@ -1074,6 +1078,50 @@
             url.searchParams.set('tab', 'history');
             
             window.location.href = url.toString();
+        },
+
+        exportHistory: function(e) {
+            e.preventDefault();
+            var status = $('#aips-filter-status').val();
+            var search = $('#aips-history-search-input').val();
+            
+            // Create a form and submit it with POST
+            var form = $('<form>', {
+                'method': 'POST',
+                'action': aipsAjax.ajaxUrl,
+                'target': '_self'
+            });
+            
+            form.append($('<input>', {
+                'type': 'hidden',
+                'name': 'action',
+                'value': 'aips_export_history'
+            }));
+            
+            form.append($('<input>', {
+                'type': 'hidden',
+                'name': 'nonce',
+                'value': aipsAjax.nonce
+            }));
+            
+            if (status) {
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'status',
+                    'value': status
+                }));
+            }
+            
+            if (search) {
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'search',
+                    'value': search
+                }));
+            }
+            
+            // Append form to body, submit, and remove
+            form.appendTo('body').submit().remove();
         },
 
         reloadHistory: function(e) {
@@ -1542,6 +1590,19 @@
                 summaryHtml += '<tr><th>Error:</th><td class="aips-error-text">' + AIPS.escapeHtml(data.error_message) + '</td></tr>';
             }
             summaryHtml += '</table>';
+
+            if (data.prompt) {
+                summaryHtml += '<div class="aips-details-subsection"><h4>Generated Prompt</h4>';
+                summaryHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(data.prompt) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                summaryHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(data.prompt) + '</pre></div>';
+            }
+
+            if (data.generated_content) {
+                summaryHtml += '<div class="aips-details-subsection"><h4>Generated Content</h4>';
+                summaryHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(data.generated_content) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                summaryHtml += '<pre class="aips-prompt-text" style="max-height: 300px; overflow-y: auto;">' + AIPS.escapeHtml(data.generated_content) + '</pre></div>';
+            }
+
             $('#aips-details-summary').html(summaryHtml);
             
             if (log.template) {
@@ -1651,9 +1712,35 @@
             return div.innerHTML;
         },
 
+        /**
+         * Escape text for safe use in HTML attributes.
+         * 
+         * This function expects raw text input and will escape special characters
+         * to prevent XSS attacks. It uses a two-pass approach: first replacing 
+         * ampersands, then other characters, to avoid double-encoding. 
+         * Do not use this function on text that already contains HTML entities, 
+         * as they will be double-encoded.
+         * 
+         * @param {string} text - Raw text to escape
+         * @return {string} Escaped text safe for HTML attributes
+         */
         escapeAttribute: function(text) {
             if (!text) return '';
-            return text.replace(/"/g, '&quot;');
+            // First pass: replace ampersands to avoid double-encoding
+            text = text.replace(/&/g, '&amp;');
+            // Second pass: replace other special characters
+            var entityMap = {
+                '"': '&quot;',
+                "'": '&#39;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '\r': '&#13;',
+                '\n': '&#10;',
+                '\t': '&#9;'
+            };
+            return text.replace(/["'<>\r\n\t]/g, function(match) {
+                return entityMap[match];
+            });
         },
 
         closeModal: function() {

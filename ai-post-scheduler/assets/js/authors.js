@@ -98,6 +98,7 @@
 
 			// Bulk actions
 			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
+			$(document).on('click', '.aips-select-all-feedback', this.toggleSelectAllFeedback.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
 			
 			// View topic posts
@@ -272,6 +273,14 @@
 			this.currentAuthorId = authorId;
 
 			$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.loadingTopics + '</p>');
+			
+			// Reset tabs to pending
+			$('.aips-tab-link').removeClass('active');
+			$('.aips-tab-link[data-tab="pending"]').addClass('active');
+			
+			// Update bulk action dropdown for pending tab
+			this.updateBulkActionDropdown('pending');
+			
 			$('#aips-topics-modal').fadeIn();
 
 			this.loadTopics('pending');
@@ -343,8 +352,7 @@
 					html += '<button class="button aips-generate-post-now" data-id="' + topic.id + '">' + aipsAuthorsL10n.generatePostNow + '</button> ';
 				}
 
-				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.edit + '</button> ';
-				html += '<button class="button aips-delete-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.delete + '</button>';
+				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.edit + '</button>';
 				html += '</td></tr>';
 				
 				// Add collapsible detail row
@@ -381,11 +389,46 @@
 			$('.aips-tab-link').removeClass('active');
 			$tab.addClass('active');
 
-			if (status === 'feedback') {
-				this.loadFeedback();
-			} else {
-				this.loadTopics(status);
-			}
+			// Add fade transition
+			$('#aips-topics-content').fadeOut(200, () => {
+				if (status === 'feedback') {
+					this.loadFeedback();
+				} else {
+					this.loadTopics(status);
+				}
+				$('#aips-topics-content').fadeIn(200);
+			});
+
+			// Update bulk action dropdown options based on tab
+			this.updateBulkActionDropdown(status);
+		},
+
+		updateBulkActionDropdown: function (status) {
+			const $dropdowns = $('.aips-bulk-action-select');
+			
+			// Clear existing options except the default one
+			$dropdowns.each(function() {
+				const $dropdown = $(this);
+				$dropdown.find('option:not(:first)').remove();
+				
+				// Add options based on the active tab
+				if (status === 'pending') {
+					// Pending Review tab: Approve, Reject, Delete
+					$dropdown.append('<option value="approve">' + (aipsAuthorsL10n.approve || 'Approve') + '</option>');
+					$dropdown.append('<option value="reject">' + (aipsAuthorsL10n.reject || 'Reject') + '</option>');
+					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
+				} else if (status === 'approved') {
+					// Approved tab: Generate Now, Delete (no Approve)
+					$dropdown.append('<option value="generate_now">' + (aipsAuthorsL10n.generateNow || 'Generate Now') + '</option>');
+					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
+				} else if (status === 'rejected') {
+					// Rejected tab: Delete only (no Reject, no Generate Now)
+					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
+				} else if (status === 'feedback') {
+					// Feedback tab: Delete only (no Approve, Generate Now, or Reject)
+					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
+				}
+			});
 		},
 
 		toggleTopicDetail: function (e) {
@@ -509,6 +552,7 @@
 			}
 
 			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
+			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>';
 			html += '<th>' + aipsAuthorsL10n.topic + '</th>';
 			html += '<th>' + aipsAuthorsL10n.action + '</th>';
 			html += '<th>' + aipsAuthorsL10n.reason + '</th>';
@@ -518,6 +562,7 @@
 
 			feedback.forEach(item => {
 				html += '<tr>';
+				html += '<th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="' + item.id + '"></th>';
 				html += '<td>' + this.escapeHtml(item.topic_title || 'N/A') + '</td>';
 				html += '<td><span class="aips-status aips-status-' + item.action + '">' + item.action + '</span></td>';
 				html += '<td>' + this.escapeHtml(item.reason || '-') + '</td>';
@@ -801,6 +846,11 @@
 			$('.aips-topic-checkbox').prop('checked', isChecked);
 		},
 
+		toggleSelectAllFeedback: function (e) {
+			const isChecked = $(e.currentTarget).prop('checked');
+			$('.aips-feedback-checkbox').prop('checked', isChecked);
+		},
+
 		executeBulkAction: function (e) {
 			e.preventDefault();
 
@@ -808,25 +858,35 @@
 			const $button = $(e.currentTarget);
 			const $dropdown = $button.siblings('.aips-bulk-action-select');
 			const action = $dropdown.val();
+			const activeTab = $('.aips-tab-link.active').data('tab');
 
 			if (!action) {
 				showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
 				return;
 			}
 
-			// Get all checked topic IDs
-			const topicIds = [];
-			$('.aips-topic-checkbox:checked').each(function () {
-				topicIds.push($(this).val());
-			});
+			// Get checked IDs based on current tab
+			const ids = [];
+			if (activeTab === 'feedback') {
+				$('.aips-feedback-checkbox:checked').each(function () {
+					ids.push($(this).val());
+				});
+			} else {
+				$('.aips-topic-checkbox:checked').each(function () {
+					ids.push($(this).val());
+				});
+			}
 
-			if (topicIds.length === 0) {
-				showToast(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.', 'warning');
+			if (ids.length === 0) {
+				const message = activeTab === 'feedback' 
+					? (aipsAuthorsL10n.noFeedbackSelected || 'Please select at least one feedback item.')
+					: (aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
+				showToast(message, 'warning');
 				return;
 			}
 
 			// Confirm action
-			const confirmMessage = this.getBulkConfirmMessage(action, topicIds.length);
+			const confirmMessage = this.getBulkConfirmMessage(action, ids.length, activeTab);
 			if (!confirm(confirmMessage)) {
 				return;
 			}
@@ -834,39 +894,61 @@
 			// Disable button while processing
 			$button.prop('disabled', true).text(aipsAuthorsL10n.processing || 'Processing...');
 
-			// Determine the AJAX action
-			let ajaxAction;
-			switch (action) {
-				case 'approve':
-					ajaxAction = 'aips_bulk_approve_topics';
-					break;
-				case 'reject':
-					ajaxAction = 'aips_bulk_reject_topics';
-					break;
-				case 'delete':
-					ajaxAction = 'aips_bulk_delete_topics';
-					break;
-				default:
-					showToast('Invalid bulk action.', 'error');
+			// Determine the AJAX action and data
+			let ajaxAction, data;
+			if (activeTab === 'feedback') {
+				if (action === 'delete') {
+					ajaxAction = 'aips_bulk_delete_feedback';
+					data = {
+						action: ajaxAction,
+						nonce: aipsAuthorsL10n.nonce,
+						feedback_ids: ids
+					};
+				} else {
+					showToast('Invalid bulk action for feedback.', 'error');
 					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
 					return;
+				}
+			} else {
+				switch (action) {
+					case 'approve':
+						ajaxAction = 'aips_bulk_approve_topics';
+						break;
+					case 'reject':
+						ajaxAction = 'aips_bulk_reject_topics';
+						break;
+					case 'delete':
+						ajaxAction = 'aips_bulk_delete_topics';
+						break;
+					case 'generate_now':
+						ajaxAction = 'aips_bulk_generate_topics';
+						break;
+					default:
+						showToast('Invalid bulk action.', 'error');
+						$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+						return;
+				}
+				data = {
+					action: ajaxAction,
+					nonce: aipsAuthorsL10n.nonce,
+					topic_ids: ids
+				};
 			}
 
 			// Execute bulk action
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
-				data: {
-					action: ajaxAction,
-					nonce: aipsAuthorsL10n.nonce,
-					topic_ids: topicIds
-				},
+				data: data,
 				success: (response) => {
 					if (response.success) {
 						showToast(response.data.message, 'success');
-						// Reload topics for current tab
-						const activeTab = $('.aips-tab-link.active').data('tab');
-						this.loadTopics(activeTab);
+						// Reload content for current tab
+						if (activeTab === 'feedback') {
+							this.loadFeedback();
+						} else {
+							this.loadTopics(activeTab);
+						}
 					} else {
 						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 					}
@@ -881,17 +963,22 @@
 					// Uncheck all checkboxes
 					$('.aips-select-all-topics').prop('checked', false);
 					$('.aips-topic-checkbox').prop('checked', false);
+					$('.aips-select-all-feedback').prop('checked', false);
+					$('.aips-feedback-checkbox').prop('checked', false);
 				}
 			});
 		},
 
-		getBulkConfirmMessage: function (action, count) {
+		getBulkConfirmMessage: function (action, count, activeTab) {
 			const messages = {
 				approve: aipsAuthorsL10n.confirmBulkApprove || 'Are you sure you want to approve %d topics?',
 				reject: aipsAuthorsL10n.confirmBulkReject || 'Are you sure you want to reject %d topics?',
-				delete: aipsAuthorsL10n.confirmBulkDelete || 'Are you sure you want to delete %d topics? This action cannot be undone.'
+				delete: activeTab === 'feedback' 
+					? (aipsAuthorsL10n.confirmBulkDeleteFeedback || 'Are you sure you want to delete %d feedback items? This action cannot be undone.')
+					: (aipsAuthorsL10n.confirmBulkDelete || 'Are you sure you want to delete %d topics? This action cannot be undone.'),
+				generate_now: aipsAuthorsL10n.confirmBulkGenerate || 'Are you sure you want to generate posts for %d topics?'
 			};
-			const template = messages[action] || 'Are you sure you want to %s %d topics?';
+			const template = messages[action] || 'Are you sure you want to %s %d items?';
 			return template.replace('%d', count).replace('%s', action);
 		},
 

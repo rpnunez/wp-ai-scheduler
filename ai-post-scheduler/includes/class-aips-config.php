@@ -61,6 +61,10 @@ class AIPS_Config {
      */
     public function get_default_options() {
         return array(
+			// Generated posts / export thresholds
+			'generated_posts_log_threshold_tmpfile' => 200,
+			'generated_posts_log_threshold_client' => 20,
+			'history_export_max_records' => 10000,
             'aips_ai_model' => '',
             'aips_max_tokens' => 2000,
             'aips_temperature' => 0.7,
