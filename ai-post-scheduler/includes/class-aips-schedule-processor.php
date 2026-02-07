@@ -351,7 +351,7 @@ class AIPS_Schedule_Processor {
         $history->record(
             'activity',
             sprintf(
-                $is_manual ? __('Manual execution of schedule "%s" failed: %s', 'ai-post-scheduler') : __('Schedule "%s" failed to generate post', 'ai-post-scheduler'),
+                $is_manual ? __('Manual execution of schedule "%s" failed: %s', 'ai-post-scheduler') : __('Schedule "%s" failed to generate post: %s', 'ai-post-scheduler'),
                 $schedule->name,
                 $error_msg
             ),
