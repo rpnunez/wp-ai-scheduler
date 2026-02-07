@@ -78,11 +78,8 @@ class AIPS_Generator {
         $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 
-        // Initialize session tracker
-        $this->current_session = new AIPS_Generation_Session();
-
         // Initialize logger wrapper
-        $this->generation_logger = new AIPS_Generation_Logger($this->logger, $this->history_repository, $this->current_session);
+        $this->generation_logger = new AIPS_Generation_Logger($this->logger, $this->history_service, new AIPS_Generation_Session());
     }
     
     /**
@@ -457,6 +454,7 @@ class AIPS_Generator {
         
         // Create new history container using new API
         $template_id = $context->get_type() === 'template' ? $context->get_id() : null;
+        
         $this->current_history = $this->history_service->create('post_generation', array(
             'template_id' => $template_id,
         ))->with_session($context);
@@ -469,9 +467,20 @@ class AIPS_Generator {
         // Build the full content prompt from context
         $content_prompt = $this->prompt_builder->build_content_prompt($context);
 
+        if ($this->current_history) {
+            $this->current_history->record(
+                'log',
+                "Built content prompt",
+                array('prompt' => isset($content_prompt) ? $content_prompt : ''),
+                null,
+                array('component' => 'content')
+            );
+        }
+
         // Build contextual instructions to pass through AI Engine context channel.
         $content_context = $this->prompt_builder->build_content_context($context);
         $content_options = array();
+
         if (!empty($content_context)) {
             $content_options['context'] = $content_context;
         }
@@ -480,7 +489,11 @@ class AIPS_Generator {
         $content = $this->generate_content($content_prompt, $content_options, 'content');
         
         if (is_wp_error($content)) {
-            // Use new history API to complete with failure
+            $this->current_history->record_error($content->get_error_message(), array(
+                'component' => 'content',
+                'prompt' => $content_prompt,
+            ));
+
             $this->current_history->complete_failure($content->get_error_message(), array(
                 'component' => 'content',
                 'prompt' => $content_prompt,
@@ -498,8 +511,20 @@ class AIPS_Generator {
         // Generate the title using the context and content.
         $title = $this->generate_title_from_context($context, $content, $ai_variables);
 
+        // Log post title
+        if ($this->current_history) {
+            $this->current_history->record(
+                'info',
+                "Post title generated",
+                array(),
+                null,
+                array('component' => 'title')
+            );
+        }
+
         // Detect unresolved template placeholders in the generated title.
         $has_unresolved_placeholders = false;
+
         if (!is_wp_error($title) && is_string($title)) {
             if (strpos($title, '{{') !== false && strpos($title, '}}') !== false) {
                 $has_unresolved_placeholders = true;
@@ -520,10 +545,12 @@ class AIPS_Generator {
             // Fall back to a safe default title when AI fails or leaves unresolved variables.
             $base_title = __('AI Generated Post', 'ai-post-scheduler');
             $topic_str = $context->get_topic();
+
             if (!empty($topic_str)) {
                 // Include topic in fallback title for context, truncated for safety
                 $base_title .= ': ' . mb_substr($topic_str, 0, 50) . (mb_strlen($topic_str) > 50 ? '...' : '');
             }
+            
             $title = $base_title . ' - ' . date('Y-m-d H:i:s');
         }
         

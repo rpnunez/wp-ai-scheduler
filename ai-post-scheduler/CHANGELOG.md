@@ -2,9 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+<<<<<<< HEAD
+## [refactor-post-generation-flow] - 2026-02-07
+### Changed
+- **MAJOR**: Refactored post generation to use AI Engine's Chatbot feature for conversational context
+  - Content, title, and excerpt now generated in a single conversation with shared context
+  - AI "remembers" previously generated components, resulting in better coherence
+  - All components closely linked through conversational memory (chatId)
+
+### Added
+- Added `generate_with_chatbot()` method to `AIPS_AI_Service` for chatbot-based text generation
+- Added `generate_post_components_with_chatbot()` method to `AIPS_Generator` for coordinated generation
+- Added `aips_chatbot_id` setting in admin interface (Settings → Chatbot ID)
+- Added comprehensive history logging for each chatbot interaction step
+- Added chatbot-specific tests to validate conversation continuity
+- Added `CHATBOT_GENERATION.md` documentation
+
+### Fixed
+- Fixed `AIPS_Generator` constructor to properly initialize `generation_logger` without undefined property
+- Updated generator hooks test for compatibility with new chatbot-based architecture
+
+### Technical Details
+- Uses `$mwai_core->simpleChatbotQuery()` with chatId for conversation continuity
+- Three-step generation: content → title (with content context) → excerpt (with full context)
+- Full backward compatibility: template key still provided in hooks for template contexts
+- Resilience features maintained (circuit breaker, rate limiting, retries)
+=======
 ## [sentinel-fix-import-sql-injection] - 2025-01-06
 ### Security
 - [2025-01-06] Fixed a Critical SQL Injection vulnerability in `AIPS_Data_Management_Import_MySQL::import` that allowed arbitrary SQL execution (e.g., `DELETE`) by enforcing a strict whitelist of allowed SQL commands (`INSERT`, `DROP`, `CREATE`, `SET`, `LOCK`, `UNLOCK`) and validating target tables.
+>>>>>>> main
 
 ## [wizard-run-schedule-now] - 2025-01-05
 ### Added

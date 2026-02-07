@@ -722,11 +722,14 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
+                        // Show success modal instead of alert
                         if (response.data.edit_url) {
-                            window.open(response.data.edit_url, '_blank');
+                            $('#aips-post-link').attr('href', response.data.edit_url);
+                            $('#aips-post-link-container').show();
+                        } else {
+                            $('#aips-post-link-container').hide();
                         }
-                        location.reload();
+                        $('#aips-post-success-modal').show();
                     } else {
                         alert(response.data.message);
                     }
