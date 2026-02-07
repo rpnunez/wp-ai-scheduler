@@ -236,7 +236,7 @@ class AIPS_Admin_Assets {
 
         wp_localize_script('aips-admin-activity', 'aipsActivityL10n', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('aips_activity_nonce'),
+            'nonce' => wp_create_nonce('aips_ajax_nonce'),
             'confirmPublish' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
             'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
             'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
