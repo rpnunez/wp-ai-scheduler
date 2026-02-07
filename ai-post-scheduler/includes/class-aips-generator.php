@@ -549,17 +549,12 @@ class AIPS_Generator {
         
         // Step 2: Generate the title using the same chatbot session (maintains content context)
         // Pass content to the prompt builder so it can construct the proper prompt
-        $title_prompt = $this->prompt_builder->build_title_prompt($context, null, null, $content);
+        // Pass use_conversation_context flag to avoid duplicate prompts
+        $has_conversation_context = (null !== $chat_id);
+        $title_prompt = $this->prompt_builder->build_title_prompt($context, null, null, $content, $has_conversation_context);
         
-        // Only reference the article if we have a chatId (conversation continuity)
-        if (null !== $chat_id) {
-            // Modify title prompt to reference the content just generated
-            $title_message = "Based on the article content you just generated, please create a compelling title. ";
-            $title_message .= $title_prompt;
-        } else {
-            // No chatId, use the full prompt with content embedded
-            $title_message = $title_prompt;
-        }
+        // Use the prompt as-is from the builder (no additional prepending)
+        $title_message = $title_prompt;
         
         // Log AI request for title
         if ($this->current_history) {
@@ -630,17 +625,12 @@ class AIPS_Generator {
             $excerpt_source_content = mb_substr(wp_strip_all_tags($content), 0, 1000);
         }
         
-        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $excerpt_source_content, $voice_obj, $topic_str);
+        // Pass use_conversation_context flag to avoid duplicate prompts
+        $has_conversation_context = (null !== $chat_id);
+        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $excerpt_source_content, $voice_obj, $topic_str, $has_conversation_context);
         
-        // Only reference the article if we have a chatId (conversation continuity)
-        // Align length instruction with the excerpt prompt builder (40-60 words).
-        if (null !== $chat_id) {
-            $excerpt_message = "Based on the article content and title you just created, please write a short excerpt between 40 and 60 words. ";
-            $excerpt_message .= $excerpt_prompt;
-        } else {
-            // No chatId, use the full prompt with content embedded
-            $excerpt_message = $excerpt_prompt;
-        }
+        // Use the prompt as-is from the builder (no additional prepending)
+        $excerpt_message = $excerpt_prompt;
         
         // Log AI request for excerpt
         if ($this->current_history) {

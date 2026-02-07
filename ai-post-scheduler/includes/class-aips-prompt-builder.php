@@ -195,9 +195,10 @@ class AIPS_Prompt_Builder {
      * @param string|null $topic    Optional topic to be injected into prompts (legacy).
      * @param object|null $voice    Optional voice object with overrides (legacy).
      * @param string      $content  Generated article content used as context.
+     * @param bool        $use_conversation_context Whether chatbot conversation context is available (chatId exists).
      * @return string The complete title generation prompt.
      */
-    public function build_title_prompt($template_or_context, $topic = null, $voice = null, $content = '') {
+    public function build_title_prompt($template_or_context, $topic = null, $voice = null, $content = '', $use_conversation_context = false) {
         // Build title instructions based on voice or template configuration.
         // Voice title prompt takes precedence over template title prompt.
         $title_instructions = '';
@@ -223,14 +224,23 @@ class AIPS_Prompt_Builder {
                 }
             }
             
-            // Build the title generation prompt using the generated content as context.
-            $prompt = "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else. Here are your instructions:\n\n";
-
-            if (!empty($title_instructions)) {
-                $prompt .= $title_instructions . "\n\n";
+            // Build the title generation prompt
+            // If using conversation context (chatId), reference the article just generated
+            // Otherwise, include the full content in the prompt
+            if ($use_conversation_context) {
+                $prompt = "Based on the article content you just generated, please create a compelling title. Respond with ONLY the most relevant title, nothing else.";
+            } else {
+                $prompt = "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.";
             }
-
-            $prompt .= "Here is the content:\n\n" . $content;
+            
+            if (!empty($title_instructions)) {
+                $prompt .= " Here are your instructions:\n\n" . $title_instructions;
+            }
+            
+            // Only include content if not using conversation context
+            if (!$use_conversation_context && !empty($content)) {
+                $prompt .= "\n\nHere is the content:\n\n" . $content;
+            }
 
             // Allow filtering of title prompt
             $prompt = apply_filters('aips_title_prompt', $prompt, $context, $topic_str, null, $content);
@@ -247,14 +257,23 @@ class AIPS_Prompt_Builder {
             $title_instructions = $this->template_processor->process($template->title_prompt, $topic);
         }
 
-        // Build the title generation prompt using the generated content as context.
-        $prompt = "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else. Here are your instructions:\n\n";
-
-        if (!empty($title_instructions)) {
-            $prompt .= $title_instructions . "\n\n";
+        // Build the title generation prompt
+        // If using conversation context (chatId), reference the article just generated
+        // Otherwise, include the full content in the prompt
+        if ($use_conversation_context) {
+            $prompt = "Based on the article content you just generated, please create a compelling title. Respond with ONLY the most relevant title, nothing else.";
+        } else {
+            $prompt = "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.";
         }
 
-        $prompt .= "Here is the content:\n\n" . $content;
+        if (!empty($title_instructions)) {
+            $prompt .= " Here are your instructions:\n\n" . $title_instructions;
+        }
+
+        // Only include content if not using conversation context
+        if (!$use_conversation_context && !empty($content)) {
+            $prompt .= "\n\nHere is the content:\n\n" . $content;
+        }
 
         // Allow filtering of title prompt
         $prompt = apply_filters('aips_title_prompt', $prompt, $template, $topic, $voice, $content);
@@ -274,10 +293,18 @@ class AIPS_Prompt_Builder {
      * @param string      $content The article content to summarize.
      * @param object|null $voice   Optional voice object with excerpt instructions (legacy).
      * @param string|null $topic   Optional topic to be injected into prompts (legacy).
+     * @param bool        $use_conversation_context Whether chatbot conversation context is available (chatId exists).
      * @return string The complete excerpt generation prompt.
      */
-    public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
-        $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
+    public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
+        // Build the excerpt prompt
+        // If using conversation context (chatId), reference the article just created
+        // Otherwise, include the full title and content in the prompt
+        if ($use_conversation_context) {
+            $excerpt_prompt = "Based on the article content and title you just created, please write a short excerpt between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
+        } else {
+            $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
+        }
         
         // Add voice-specific excerpt instructions if provided
         if ($voice && !empty($voice->excerpt_instructions)) {
@@ -285,9 +312,12 @@ class AIPS_Prompt_Builder {
             $excerpt_prompt .= $voice_instructions . "\n\n";
         }
         
-        $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
-        $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
-        $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
+        // Only include title and body if not using conversation context
+        if (!$use_conversation_context) {
+            $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
+            $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
+            $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
+        }
         
         // Allow filtering of excerpt prompt
         $excerpt_prompt = apply_filters('aips_excerpt_prompt', $excerpt_prompt, $title, $content, $voice, $topic);

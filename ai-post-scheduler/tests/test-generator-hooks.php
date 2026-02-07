@@ -88,11 +88,11 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 				return 'Content context';
 			}
 			
-			public function build_title_prompt($context, $x = null, $y = null, $content = '') {
+			public function build_title_prompt($context, $x = null, $y = null, $content = '', $use_conversation_context = false) {
 				return 'Title prompt for ' . $context->get_topic();
 			}
 			
-			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
+			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
 				return 'Excerpt prompt for ' . $title;
 			}
 		};
@@ -304,11 +304,11 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 				return 'Content context';
 			}
 			
-			public function build_title_prompt($context, $x = null, $y = null, $content = '') {
+			public function build_title_prompt($context, $x = null, $y = null, $content = '', $use_conversation_context = false) {
 				return 'Title prompt for ' . $context->get_topic() . ' with content: ' . mb_substr($content, 0, 20);
 			}
 			
-			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
+			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
 				return 'Excerpt prompt for ' . $title . ' with content: ' . mb_substr($content, 0, 20);
 			}
 		};
@@ -486,11 +486,11 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 				return 'Content context';
 			}
 			
-			public function build_title_prompt($context, $x = null, $y = null, $content = '') {
+			public function build_title_prompt($context, $x = null, $y = null, $content = '', $use_conversation_context = false) {
 				return 'Title prompt with content: ' . mb_substr($content, 0, 20);
 			}
 			
-			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
+			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
 				return 'Excerpt prompt for ' . $title;
 			}
 		};
