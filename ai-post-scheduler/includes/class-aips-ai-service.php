@@ -304,11 +304,22 @@ class AIPS_AI_Service {
                 $response = $ai->simpleChatbotQuery($chatbot_id, $message, $chatbot_options);
                 
                 // Validate response structure
+                // Note: AI Engine's chatbot should return both 'reply' and 'chatId', but we validate
+                // to ensure we have at least a reply. The chatId might be absent on first message
+                // in some edge cases, but is critical for continuing conversations.
                 if (!is_array($response) || !isset($response['reply'])) {
-                    $error = new WP_Error('invalid_chatbot_response', __('AI Engine returned an invalid chatbot response.', 'ai-post-scheduler'));
+                    $error = new WP_Error('invalid_chatbot_response', __('AI Engine returned an invalid chatbot response (missing reply).', 'ai-post-scheduler'));
                     $this->log_call($log_type, $message, null, $options, $error->get_error_message());
                     $this->resilience_service->record_failure();
                     return $error;
+                }
+                
+                // Validate chatId is present for conversation continuity
+                if (!isset($response['chatId'])) {
+                    $this->logger->log('Warning: Chatbot response missing chatId - conversation continuity may be broken', 'warning', array(
+                        'message' => $message,
+                        'chatbot_id' => $chatbot_id
+                    ));
                 }
                 
                 // Log successful chatbot interaction
