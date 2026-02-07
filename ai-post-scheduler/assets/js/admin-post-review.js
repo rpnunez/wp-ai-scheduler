@@ -382,6 +382,9 @@
         var currentHistoryId = null;
         var currentLogCount = 0;
         
+        // Configuration constants
+        var CLIENT_LOG_THRESHOLD = 20; // Threshold for using client-side vs server-side JSON download
+        
         /**
          * Load session data via AJAX
          */
@@ -461,7 +464,7 @@
                         cssClass = 'warning';
                     }
                     
-                    logsHtml += '<div class="aips-log-entry ' + escapeHtml(cssClass) + '">';
+                    logsHtml += '<div class="aips-log-entry ' + cssClass + '">';
                     logsHtml += '<h4>' + escapeHtml(log.type) + ' - ' + escapeHtml(log.log_type) + '</h4>';
                     logsHtml += '<div class="aips-log-timestamp">' + escapeHtml(log.timestamp) + '</div>';
                     logsHtml += '<div class="aips-json-viewer"><pre>' + escapeHtml(JSON.stringify(log.details, null, 2)) + '</pre></div>';
@@ -482,7 +485,9 @@
             
             if (ai_calls.length > 0) {
                 ai_calls.forEach(function(call) {
-                    aiHtml += '<div class="aips-ai-component" data-component="' + escapeHtml(call.type) + '">';
+                    // Escape component type for use in HTML attribute with proper attribute escaping
+                    var escapedType = escapeHtml(call.type).replace(/"/g, '&quot;');
+                    aiHtml += '<div class="aips-ai-component" data-component="' + escapedType + '">';
                     aiHtml += '<h4>' + escapeHtml(call.label) + '</h4>';
                     aiHtml += '<p class="aips-ai-hint">Click to view request and response details</p>';
                     aiHtml += '<div class="aips-ai-details">';
@@ -558,8 +563,6 @@
                 showModalNotification('No session data available for download.', 'error');
                 return;
             }
-
-            var CLIENT_LOG_THRESHOLD = 20;
 
             if (typeof currentLogCount === 'number' && currentLogCount <= CLIENT_LOG_THRESHOLD) {
                 // Small session: fetch the JSON via AJAX and trigger client-side download
