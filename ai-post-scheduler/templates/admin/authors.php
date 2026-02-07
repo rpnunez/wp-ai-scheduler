@@ -261,7 +261,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                     <button class="aips-tab-link active" data-tab="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?> (<span id="pending-count">0</span>)</button>
                     <button class="aips-tab-link" data-tab="approved"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?> (<span id="approved-count">0</span>)</button>
                     <button class="aips-tab-link" data-tab="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?> (<span id="rejected-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="feedback"><?php esc_html_e('Feedback History', 'ai-post-scheduler'); ?></button>
+                    <button class="aips-tab-link" data-tab="feedback"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></button>
                 </div>
         
                 <div class="aips-topics-list-container">
