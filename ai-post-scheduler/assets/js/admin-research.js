@@ -344,10 +344,18 @@
 
         // Start research handler
         $(document).on('click', '#aips-start-research', function() {
-            $('html, body').animate({
-                scrollTop: $('#aips-research-form').offset().top - 50
-            }, 500);
-            $('#research-niche').focus();
+            var $form = $('#aips-research-form');
+
+            if ($form.length > 0) {
+                $('html, body').animate({
+                    scrollTop: $form.offset().top - 50
+                }, 500);
+
+                var $nicheField = $('#research-niche');
+                if ($nicheField.length > 0) {
+                    $nicheField.focus();
+                }
+            }
         });
 
         // Auto-load topics on page load if elements exist
