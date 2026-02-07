@@ -457,6 +457,7 @@
             
             if (logs.length > 0) {
                 logs.forEach(function(log) {
+                    // Determine CSS class based on log type (safe known values)
                     var cssClass = '';
                     if (window.AIPS_History_Type && log.type_id === window.AIPS_History_Type.ERROR) {
                         cssClass = 'error';
@@ -464,11 +465,19 @@
                         cssClass = 'warning';
                     }
                     
-                    logsHtml += '<div class="aips-log-entry ' + cssClass + '">';
-                    logsHtml += '<h4>' + escapeHtml(log.type) + ' - ' + escapeHtml(log.log_type) + '</h4>';
-                    logsHtml += '<div class="aips-log-timestamp">' + escapeHtml(log.timestamp) + '</div>';
-                    logsHtml += '<div class="aips-json-viewer"><pre>' + escapeHtml(JSON.stringify(log.details, null, 2)) + '</pre></div>';
-                    logsHtml += '</div>';
+                    // Create log entry element safely
+                    var $logEntry = $('<div class="aips-log-entry"></div>');
+                    if (cssClass) {
+                        $logEntry.addClass(cssClass);
+                    }
+                    
+                    $logEntry.append(
+                        $('<h4></h4>').text(log.type + ' - ' + log.log_type),
+                        $('<div class="aips-log-timestamp"></div>').text(log.timestamp),
+                        $('<div class="aips-json-viewer"><pre></pre></div>').find('pre').text(JSON.stringify(log.details, null, 2)).end()
+                    );
+                    
+                    logsHtml += $logEntry[0].outerHTML;
                 });
             } else {
                 logsHtml = '<p class="aips-no-data">No log entries found.</p>';
@@ -693,8 +702,14 @@
             // Remove existing notifications
             $('.aips-notification').remove();
             
-            // Create notification element
-            var $notification = $('<div class="aips-notification aips-notification-' + type + '">')
+            // Validate type to prevent XSS (only allow known values)
+            var validTypes = ['success', 'error', 'warning', 'info'];
+            var safeType = validTypes.indexOf(type) !== -1 ? type : 'info';
+            
+            // Create notification element safely
+            var $notification = $('<div></div>')
+                .addClass('aips-notification')
+                .addClass('aips-notification-' + safeType)
                 .text(message)
                 .appendTo('.aips-modal-body');
             
