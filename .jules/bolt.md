@@ -16,6 +16,10 @@
 **Learning:** The Templates list view was executing a stats query for each row.
 **Action:** Implemented methods to pre-fetch all necessary data in two queries before the loop.
 
+## 2024-05-25 - [History List Optimization]
+**Learning:** `get_history` was selecting `*` which includes `longtext` columns like `generated_content` and `generation_log`. These were unused in list views.
+**Action:** Always check if `SELECT *` is fetching heavy unused columns, especially for list views.
+
 ## 2024-05-25 - [Missing Indexes on Sort Columns]
 **Learning:** The History view defaults to sorting by `created_at DESC`, but the `aips_history` table lacked an index on `created_at`, causing filesorts on every load.
 **Action:** When auditing `AIPS_DB_Manager`, ensure all columns used in default `ORDER BY` clauses are indexed.
