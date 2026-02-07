@@ -135,6 +135,9 @@
 
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
+            
+            // Preserve tab hash on form submissions
+            $(document).on('submit', '.aips-post-review-filters, form[action*="aips-generated-posts"]', this.preserveTabOnSubmit);
 
             // Copy to Clipboard
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
@@ -403,13 +406,41 @@
             // Update the URL hash instead of query parameter
             window.location.hash = '#' + tabId;
 
-            // Update nav-tab states
-            $('.nav-tab').removeClass('nav-tab-active').attr('aria-selected', 'false');
-            $(this).addClass('nav-tab-active').attr('aria-selected', 'true');
+            // Update nav-tab states and accessibility
+            $('.nav-tab')
+                .removeClass('nav-tab-active')
+                .attr('aria-selected', 'false')
+                .attr('tabindex', '-1');
+            $(this)
+                .addClass('nav-tab-active')
+                .attr('aria-selected', 'true')
+                .attr('tabindex', '0')
+                .focus();
 
-            // Update tab content visibility
-            $('.aips-tab-content').hide();
-            $('#' + tabId + '-tab').show();
+            // Update tab content visibility and ARIA attributes
+            $('.aips-tab-content')
+                .hide()
+                .attr('hidden', 'hidden')
+                .attr('aria-hidden', 'true');
+            $('#' + tabId + '-tab')
+                .show()
+                .removeAttr('hidden')
+                .attr('aria-hidden', 'false');
+        },
+        
+        preserveTabOnSubmit: function(e) {
+            // Append current hash to form action to preserve active tab
+            var hash = window.location.hash;
+            if (hash) {
+                var $form = $(this);
+                var action = $form.attr('action') || window.location.pathname + window.location.search;
+                
+                // Remove existing hash if present
+                action = action.split('#')[0];
+                
+                // Add the hash to the action
+                $form.attr('action', action + hash);
+            }
         },
 
         openTemplateModal: function(e) {

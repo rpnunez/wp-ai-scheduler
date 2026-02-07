@@ -54,12 +54,14 @@ class AIPS_Generated_Posts_Controller {
 	 * Render the Generated Posts admin page
 	 */
 	public function render_page() {
-		$current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+		// Use separate pagination parameters for each tab
+		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
+		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;
 		$search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
 		
 		// Get completed history entries with post IDs (for Generated Posts tab)
 		$history = $this->history_repository->get_history(array(
-			'page' => $current_page,
+			'page' => $generated_page,
 			'per_page' => 20,
 			'status' => 'completed',
 			'search' => $search_query,
@@ -99,10 +101,14 @@ class AIPS_Generated_Posts_Controller {
 		// Get draft posts for Post Review tab
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
 		$draft_posts = $this->post_review_repository->get_draft_posts(array(
-			'page' => $current_page,
+			'page' => $review_page,
 			'search' => $search_query,
 			'template_id' => $template_id,
 		));
+		
+		// Pass separate page variables for each tab
+		$current_page = $generated_page; // For Generated Posts tab
+		$review_current_page = $review_page; // For Pending Review tab
 		
 		// Get templates for filter dropdown
 		$template_repository = new AIPS_Template_Repository();
