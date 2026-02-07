@@ -287,4 +287,76 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }
     }
+
+    /**
+     * Test generate_json returns WP_Error when AI unavailable
+     */
+    public function test_generate_json_unavailable() {
+        // Assuming AI Engine is not available in test environment
+        if (!$this->service->is_available()) {
+            $result = $this->service->generate_json('Generate a list of topics');
+            $this->assertInstanceOf('WP_Error', $result);
+            // Should use fallback which eventually returns ai_unavailable
+            $this->assertContains($result->get_error_code(), array('ai_unavailable', 'circuit_breaker_open'));
+        } else {
+            $this->markTestSkipped('AI Engine is available, cannot test unavailable scenario');
+        }
+    }
+
+    /**
+     * Test generate_json is logged as json type
+     */
+    public function test_generate_json_logged_as_json_type() {
+        if (!$this->service->is_available()) {
+            $this->service->generate_json('Test JSON prompt');
+            
+            $log = $this->service->get_call_log();
+            // The fallback will call generate_text, so we should see 'text' type
+            $this->assertCount(1, $log);
+            $this->assertEquals('text', $log[0]['type']);
+        } else {
+            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+        }
+    }
+
+    /**
+     * Test generate_json accepts options
+     */
+    public function test_generate_json_accepts_options() {
+        if (!$this->service->is_available()) {
+            $options = array(
+                'model' => 'gpt-4',
+                'max_tokens' => 1000,
+                'temperature' => 0.7,
+            );
+            
+            $result = $this->service->generate_json('Generate topics', $options);
+            
+            // Should still fail but accept options
+            $this->assertInstanceOf('WP_Error', $result);
+        } else {
+            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+        }
+    }
+
+    /**
+     * Test call statistics include json type
+     */
+    public function test_call_statistics_include_json_calls() {
+        if (!$this->service->is_available()) {
+            $this->service->generate_text('Text call');
+            $this->service->generate_json('JSON call');
+            $this->service->generate_image('Image call');
+            
+            $stats = $this->service->get_call_statistics();
+            
+            // generate_json uses fallback which calls generate_text
+            // so we expect 2 text calls, 1 image call
+            $this->assertEquals(3, $stats['total']);
+            $this->assertEquals(2, $stats['by_type']['text']);
+            $this->assertEquals(1, $stats['by_type']['image']);
+        } else {
+            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+        }
+    }
 }

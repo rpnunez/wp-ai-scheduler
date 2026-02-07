@@ -80,7 +80,8 @@ class AIPS_Research_Service {
             'keywords' => $keywords,
         ));
 
-        $result = $this->ai_service->generate_text($prompt, array(
+        // Use generate_json for structured data response
+        $result = $this->ai_service->generate_json($prompt, array(
             'temperature' => 0.7,
             'max_tokens' => 2000,
         ));
@@ -90,8 +91,8 @@ class AIPS_Research_Service {
             return $result;
         }
 
-        // Parse AI response into structured data
-        $topics = $this->parse_research_response($result, $count);
+        // Validate and normalize the JSON response
+        $topics = $this->validate_and_normalize_topics($result, $count);
 
         if (is_wp_error($topics)) {
             return $topics;
@@ -135,7 +136,7 @@ class AIPS_Research_Service {
         $prompt .= "4. Evergreen value combined with timeliness\n";
         $prompt .= "5. Content gap opportunities\n\n";
 
-        $prompt .= "Return ONLY a valid JSON array of objects. Each object must have:\n";
+        $prompt .= "Return a valid JSON array of objects. Each object must have:\n";
         $prompt .= "- \"topic\": The topic/title (string)\n";
         $prompt .= "- \"score\": Relevance score 1-100 (integer)\n";
         $prompt .= "- \"reason\": Why it's trending (max 100 chars, string)\n";
@@ -149,11 +150,47 @@ class AIPS_Research_Service {
         $prompt .= "    \"reason\": \"High search volume, current AI adoption surge\",\n";
         $prompt .= "    \"keywords\": [\"AI content\", \"automation\", \"GPT-4\", \"content marketing\", \"2025 trends\"]\n";
         $prompt .= "  }\n";
-        $prompt .= "]\n\n";
-
-        $prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
+        $prompt .= "]";
 
         return $prompt;
+    }
+
+    /**
+     * Validate and normalize topics from JSON response.
+     *
+     * Validates topic structure and normalizes data from JSON response.
+     * This is used when generate_json returns structured data directly.
+     *
+     * @param array $topics  The JSON array of topics.
+     * @param int   $count   Expected number of topics.
+     * @return array|WP_Error Validated topics array or WP_Error.
+     */
+    private function validate_and_normalize_topics($topics, $count) {
+        if (!is_array($topics)) {
+            return new WP_Error('invalid_format', __('AI response is not in expected array format.', 'ai-post-scheduler'));
+        }
+
+        // Validate and normalize topics
+        $validated_topics = array();
+        foreach ($topics as $topic) {
+            if ($this->validate_topic_structure($topic)) {
+                $validated_topics[] = $this->normalize_topic($topic);
+            }
+        }
+
+        if (empty($validated_topics)) {
+            return new WP_Error('no_valid_topics', __('No valid topics found in AI response.', 'ai-post-scheduler'));
+        }
+
+        // Sort by score (highest first)
+        usort($validated_topics, function($a, $b) {
+            return $b['score'] - $a['score'];
+        });
+
+        // Limit to requested count
+        $validated_topics = array_slice($validated_topics, 0, $count);
+
+        return $validated_topics;
     }
 
     /**
