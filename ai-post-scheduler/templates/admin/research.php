@@ -152,6 +152,12 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <button type="button" class="button" id="load-topics">
                     <?php echo esc_html__('Load Topics', 'ai-post-scheduler'); ?>
                 </button>
+
+                <div class="aips-search-wrapper">
+                    <label class="screen-reader-text" for="filter-search"><?php esc_html_e('Search topics...', 'ai-post-scheduler'); ?></label>
+                    <input type="search" id="filter-search" class="regular-text" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>" style="max-width: 200px;">
+                    <button type="button" id="filter-search-clear" class="button" style="display: none;" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                </div>
             </div>
             
             <!-- Topics Table -->

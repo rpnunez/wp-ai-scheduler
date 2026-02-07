@@ -105,6 +105,22 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        // If schedule_id is provided, use the scheduler to run the schedule logic
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
+        if ($schedule_id) {
+            $result = $this->scheduler->run_schedule_now($schedule_id);
+            if (is_wp_error($result)) {
+                wp_send_json_error(array('message' => $result->get_error_message()));
+            } else {
+                 wp_send_json_success(array(
+                    'message' => __('Schedule executed successfully!', 'ai-post-scheduler'),
+                    'post_ids' => array($result),
+                    'edit_url' => get_edit_post_link($result, 'raw')
+                ));
+            }
+            return;
+        }
+
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
         if (!$template_id) {
@@ -128,7 +144,7 @@ class AIPS_Schedule_Controller {
 
         // SECURITY: Enforce a hard limit for immediate execution to prevent PHP timeouts
         // and potential API rate limiting issues.
-        $max_run_now = 5;
+        $max_run_now = 2;
         $capped = false;
         if ($quantity > $max_run_now) {
             $quantity = $max_run_now;
@@ -140,11 +156,6 @@ class AIPS_Schedule_Controller {
 
         $generator = new AIPS_Generator();
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
-
-        // Enforce hard limit of 5 to prevent timeouts (Bolt)
-        if ($quantity > 5) {
-            $quantity = 5;
-        }
 
         for ($i = 0; $i < $quantity; $i++) {
             $result = $generator->generate_post($template, $voice, $topic);
