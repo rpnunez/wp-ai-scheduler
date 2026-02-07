@@ -249,6 +249,84 @@ class AIPS_AI_Service {
     }
     
     /**
+     * Generate text using chatbot for conversational context.
+     *
+     * Uses the AI Engine's chatbot feature to maintain conversational context
+     * between multiple AI requests. This allows subsequent requests to reference
+     * previous responses, creating more coherent and contextually aware content.
+     *
+     * @param string      $chatbot_id The chatbot ID/environment to use (e.g., 'default').
+     * @param string      $message    The message/prompt to send to the chatbot.
+     * @param array       $options    Optional. Chatbot options including chatId for continuing a conversation.
+     * @param string|null $log_type   Optional type label for logging (defaults to 'chatbot').
+     * @return array|WP_Error Array with 'reply' and 'chatId' keys on success, or WP_Error on failure.
+     */
+    public function generate_with_chatbot($chatbot_id, $message, $options = array(), $log_type = 'chatbot') {
+        $ai = $this->get_ai_engine();
+        
+        if (!$ai) {
+            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        // Check if simpleChatbotQuery method exists
+        if (!method_exists($ai, 'simpleChatbotQuery')) {
+            $error = new WP_Error('chatbot_unavailable', __('AI Engine chatbot feature is not available. Please update AI Engine plugin.', 'ai-post-scheduler'));
+            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        // Check circuit breaker
+        if (!$this->resilience_service->check_circuit_breaker()) {
+            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
+            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        // Check rate limiting
+        if (!$this->resilience_service->check_rate_limit()) {
+            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        // Try with retry logic
+        return $this->resilience_service->execute_with_retry(function() use ($ai, $chatbot_id, $message, $options, $log_type) {
+            try {
+                // Extract chatId if provided for continuing a conversation
+                $chatbot_options = array();
+                if (!empty($options['chatId'])) {
+                    $chatbot_options['chatId'] = $options['chatId'];
+                }
+                
+                // Call the chatbot
+                $response = $ai->simpleChatbotQuery($chatbot_id, $message, $chatbot_options);
+                
+                // Validate response structure
+                if (!is_array($response) || !isset($response['reply'])) {
+                    $error = new WP_Error('invalid_chatbot_response', __('AI Engine returned an invalid chatbot response.', 'ai-post-scheduler'));
+                    $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+                    $this->resilience_service->record_failure();
+                    return $error;
+                }
+                
+                // Log successful chatbot interaction
+                $this->log_call($log_type, $message, $response['reply'], array_merge($options, array('chatId' => $response['chatId'] ?? null)));
+                $this->resilience_service->record_success();
+                
+                return $response;
+                
+            } catch (Exception $e) {
+                $error = new WP_Error('chatbot_failed', $e->getMessage());
+                $this->log_call($log_type, $message, null, $options, $e->getMessage());
+                $this->resilience_service->record_failure();
+                return $error;
+            }
+        }, $log_type, $message, $options);
+    }
+    
+    /**
      * Prepare and normalize AI generation options.
      *
      * Merges user-provided options with defaults from plugin settings.

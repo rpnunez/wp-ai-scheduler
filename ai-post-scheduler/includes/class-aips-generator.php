@@ -438,6 +438,196 @@ class AIPS_Generator {
     }
     
     /**
+     * Generate post components (content, title, excerpt) using chatbot for better coherence.
+     *
+     * Uses the AI Engine's chatbot feature to maintain conversational context across
+     * all component generation. This ensures that the title and excerpt are closely
+     * linked to the content, as the AI "remembers" what it generated previously.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return array|WP_Error Array with 'content', 'title', 'excerpt', 'chatId' keys on success, or WP_Error on failure.
+     */
+    private function generate_post_components_with_chatbot($context) {
+        // Get the chatbot ID from settings, default to 'default'
+        $chatbot_id = get_option('aips_chatbot_id', 'default');
+        
+        // Step 1: Generate the content using the chatbot (first message)
+        $content_prompt = $this->prompt_builder->build_content_prompt($context);
+        $content_context = $this->prompt_builder->build_content_context($context);
+        
+        // Log AI request for content
+        if ($this->current_history) {
+            $this->current_history->record(
+                'ai_request',
+                "Requesting AI generation for content (chatbot)",
+                array(
+                    'prompt' => $content_prompt,
+                    'chatbot_id' => $chatbot_id,
+                ),
+                null,
+                array('component' => 'content', 'method' => 'chatbot')
+            );
+        }
+        
+        // Prepare chatbot options for content generation
+        $chatbot_options = array();
+        if (!empty($content_context)) {
+            // Context/instructions can be passed as system message or context
+            $chatbot_options['context'] = $content_context;
+        }
+        
+        $content_response = $this->ai_service->generate_with_chatbot($chatbot_id, $content_prompt, $chatbot_options, 'content');
+        
+        if (is_wp_error($content_response)) {
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'error',
+                    "Content generation failed (chatbot): " . $content_response->get_error_message(),
+                    array('prompt' => $content_prompt),
+                    null,
+                    array('component' => 'content', 'method' => 'chatbot')
+                );
+            }
+            return $content_response;
+        }
+        
+        $content = $content_response['reply'];
+        $chat_id = $content_response['chatId'];
+        
+        // Log successful content generation
+        if ($this->current_history) {
+            $this->current_history->record(
+                'ai_response',
+                "Content generated successfully (chatbot)",
+                null,
+                $content,
+                array('component' => 'content', 'method' => 'chatbot', 'chatId' => $chat_id)
+            );
+        }
+        
+        $this->generation_logger->log('Content generated successfully using chatbot', 'info', array(
+            'chatId' => $chat_id,
+            'content_length' => strlen($content)
+        ));
+        
+        // Step 2: Generate the title using the same chatbot session (maintains content context)
+        $title_prompt = $this->prompt_builder->build_title_prompt($context, null, null, '');
+        
+        // Modify title prompt to reference the content just generated
+        $title_message = "Based on the article content you just generated, please create a compelling title. ";
+        $title_message .= $title_prompt;
+        
+        // Log AI request for title
+        if ($this->current_history) {
+            $this->current_history->record(
+                'ai_request',
+                "Requesting AI generation for title (chatbot with context)",
+                array(
+                    'prompt' => $title_message,
+                    'chatId' => $chat_id,
+                ),
+                null,
+                array('component' => 'title', 'method' => 'chatbot')
+            );
+        }
+        
+        $title_response = $this->ai_service->generate_with_chatbot($chatbot_id, $title_message, array('chatId' => $chat_id), 'title');
+        
+        if (is_wp_error($title_response)) {
+            // If title generation fails, fall back to a safe default
+            $this->generation_logger->log('Title generation failed, using fallback: ' . $title_response->get_error_message(), 'warning');
+            
+            $base_title = __('AI Generated Post', 'ai-post-scheduler');
+            $topic_str = $context->get_topic();
+            if (!empty($topic_str)) {
+                $base_title .= ': ' . mb_substr($topic_str, 0, 50) . (mb_strlen($topic_str) > 50 ? '...' : '');
+            }
+            $title = $base_title . ' - ' . date('Y-m-d H:i:s');
+        } else {
+            $title = trim($title_response['reply']);
+            $title = preg_replace('/^["\']|["\']$/', '', $title);
+            
+            // Log successful title generation
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'ai_response',
+                    "Title generated successfully (chatbot)",
+                    null,
+                    $title,
+                    array('component' => 'title', 'method' => 'chatbot')
+                );
+            }
+            
+            $this->generation_logger->log('Title generated successfully using chatbot', 'info', array(
+                'chatId' => $chat_id,
+                'title' => $title
+            ));
+        }
+        
+        // Step 3: Generate the excerpt using the same chatbot session (maintains content + title context)
+        $voice_obj = null;
+        if ($context->get_type() === 'template' && $context->get_voice_id()) {
+            $voice_obj = $context->get_voice();
+        }
+        
+        $topic_str = $context->get_topic();
+        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, '', $voice_obj, $topic_str);
+        
+        // Modify excerpt prompt to reference the content and title
+        $excerpt_message = "Based on the article content and title you just created, please write a short excerpt (max 160 characters). ";
+        $excerpt_message .= $excerpt_prompt;
+        
+        // Log AI request for excerpt
+        if ($this->current_history) {
+            $this->current_history->record(
+                'ai_request',
+                "Requesting AI generation for excerpt (chatbot with context)",
+                array(
+                    'prompt' => $excerpt_message,
+                    'chatId' => $chat_id,
+                ),
+                null,
+                array('component' => 'excerpt', 'method' => 'chatbot')
+            );
+        }
+        
+        $excerpt_response = $this->ai_service->generate_with_chatbot($chatbot_id, $excerpt_message, array('chatId' => $chat_id), 'excerpt');
+        
+        if (is_wp_error($excerpt_response)) {
+            // If excerpt generation fails, return empty string
+            $this->generation_logger->log('Excerpt generation failed, using empty excerpt: ' . $excerpt_response->get_error_message(), 'warning');
+            $excerpt = '';
+        } else {
+            $excerpt = trim($excerpt_response['reply']);
+            $excerpt = preg_replace('/^["\']|["\']$/', '', $excerpt);
+            $excerpt = substr($excerpt, 0, 160);
+            
+            // Log successful excerpt generation
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'ai_response',
+                    "Excerpt generated successfully (chatbot)",
+                    null,
+                    $excerpt,
+                    array('component' => 'excerpt', 'method' => 'chatbot')
+                );
+            }
+            
+            $this->generation_logger->log('Excerpt generated successfully using chatbot', 'info', array(
+                'chatId' => $chat_id,
+                'excerpt' => $excerpt
+            ));
+        }
+        
+        return array(
+            'content' => $content,
+            'title' => $title,
+            'excerpt' => $excerpt,
+            'chatId' => $chat_id,
+        );
+    }
+    
+    /**
      * Generate a post from a Generation Context.
      *
      * This is the core implementation that works with any context type.
@@ -460,70 +650,25 @@ class AIPS_Generator {
             $this->logger->log('Failed to create history record', 'error');
         }
         
-        // Build the full content prompt from context
-        $content_prompt = $this->prompt_builder->build_content_prompt($context);
-
-        // Build contextual instructions to pass through AI Engine context channel.
-        $content_context = $this->prompt_builder->build_content_context($context);
-        $content_options = array();
-        if (!empty($content_context)) {
-            $content_options['context'] = $content_context;
-        }
-
-        // Ask AI to generate the article body
-        $content = $this->generate_content($content_prompt, $content_options, 'content');
+        // Use chatbot-based generation for better coherence between components
+        $generation_result = $this->generate_post_components_with_chatbot($context);
         
-        if (is_wp_error($content)) {
+        if (is_wp_error($generation_result)) {
             // Use new history API to complete with failure
-            $this->current_history->complete_failure($content->get_error_message(), array(
-                'component' => 'content',
-                'prompt' => $content_prompt,
+            $this->current_history->complete_failure($generation_result->get_error_message(), array(
+                'component' => 'chatbot_generation',
             ));
             
             // Dispatch post generation failed event
-            do_action('aips_post_generation_failed', $context->get_id(), $content->get_error_message(), $context->get_topic());
+            do_action('aips_post_generation_failed', $context->get_id(), $generation_result->get_error_message(), $context->get_topic());
             
-            return $content;
-        }
-
-        // Resolve AI variables from the title prompt using the generated content
-        $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
-
-        // Generate the title using the context and content.
-        $title = $this->generate_title_from_context($context, $content, $ai_variables);
-
-        // Detect unresolved template placeholders in the generated title.
-        $has_unresolved_placeholders = false;
-        if (!is_wp_error($title) && is_string($title)) {
-            if (strpos($title, '{{') !== false && strpos($title, '}}') !== false) {
-                $has_unresolved_placeholders = true;
-
-                // Log a warning for observability when AI variables were not resolved correctly.
-                $this->generation_logger->warning(
-                    'Generated title contains unresolved AI variables; falling back to safe default title.',
-                    array(
-                        'context_type' => $context->get_type(),
-                        'context_id' => $context->get_id(),
-                        'topic'       => $context->get_topic(),
-                    )
-                );
-            }
+            return $generation_result;
         }
         
-        if (is_wp_error($title) || $has_unresolved_placeholders) {
-            // Fall back to a safe default title when AI fails or leaves unresolved variables.
-            $base_title = __('AI Generated Post', 'ai-post-scheduler');
-            $topic_str = $context->get_topic();
-            if (!empty($topic_str)) {
-                // Include topic in fallback title for context, truncated for safety
-                $base_title .= ': ' . mb_substr($topic_str, 0, 50) . (mb_strlen($topic_str) > 50 ? '...' : '');
-            }
-            $title = $base_title . ' - ' . date('Y-m-d H:i:s');
-        }
-        
-        // Use actual generated content for excerpt, truncated to prevent token limits
-        $excerpt_content = mb_substr($content, 0, 6000);
-        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context);
+        // Extract generated components
+        $content = $generation_result['content'];
+        $title = $generation_result['title'];
+        $excerpt = $generation_result['excerpt'];
         
         // Use Post Creator Service to save the generated post in WP
         $post_creation_data = array(
