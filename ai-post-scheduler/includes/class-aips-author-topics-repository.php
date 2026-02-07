@@ -100,18 +100,35 @@ class AIPS_Author_Topics_Repository {
 		$placeholders = array();
 
 		foreach ($topics as $topic) {
-			array_push($values,
-				$topic['author_id'],
+			// Validate required fields before including in bulk insert.
+			if (
+				!isset($topic['author_id']) ||
+				!isset($topic['topic_title']) ||
+				!$topic['author_id'] ||
+				$topic['author_id'] <= 0 ||
+				'' === trim((string) $topic['topic_title'])
+			) {
+				// Skip topics that are missing required fields.
+				continue;
+			}
+
+			array_push(
+				$values,
+				(int) $topic['author_id'],
 				$topic['topic_title'],
 				isset($topic['topic_prompt']) ? $topic['topic_prompt'] : '',
 				isset($topic['status']) ? $topic['status'] : 'pending',
-				isset($topic['score']) ? $topic['score'] : 50,
+				isset($topic['score']) ? (int) $topic['score'] : 50,
 				isset($topic['metadata']) ? $topic['metadata'] : '',
 				isset($topic['generated_at']) ? $topic['generated_at'] : current_time('mysql')
 			);
 			$placeholders[] = "(%d, %s, %s, %s, %d, %s, %s)";
 		}
 
+		// If no valid topics remain after validation, do not attempt the insert.
+		if (empty($placeholders)) {
+			return false;
+		}
 		$sql = "INSERT INTO {$this->table_name} (author_id, topic_title, topic_prompt, status, score, metadata, generated_at) VALUES ";
 		$sql .= implode(', ', $placeholders);
 
