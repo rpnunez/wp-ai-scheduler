@@ -321,6 +321,15 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             ];
         }
     }
+
+    if (!function_exists('wp_mkdir_p')) {
+        function wp_mkdir_p($target) {
+            if (!file_exists($target)) {
+                return mkdir($target, 0755, true);
+            }
+            return true;
+        }
+    }
     
     if (!class_exists('WP_Error')) {
         class WP_Error {
@@ -814,6 +823,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public function get_row($query, $output = OBJECT, $y = 0) {
                 // Return a default object with common properties to prevent null reference errors
                 $obj = new stdClass();
+                $obj->id = 1; // Default ID
                 $obj->total = 0;
                 $obj->completed = 0;
                 $obj->failed = 0;
@@ -851,10 +861,6 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
             public function get_charset_collate() {
                 return "DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci";
-            }
-
-            public function esc_like($text) {
-                return addcslashes($text, '_%\\');
             }
 
             public function get_col($query = null, $x = 0) {
