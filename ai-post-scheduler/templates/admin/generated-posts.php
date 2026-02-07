@@ -170,7 +170,7 @@ if (!defined('ABSPATH')) {
 			<div class="aips-tabs">
 				<ul class="aips-tab-nav">
 					<li><a href="#aips-tab-logs" class="active"><?php esc_html_e('Logs', 'ai-post-scheduler'); ?></a></li>
-					<li><a href="#aips-tab-ai"><?php esc_html_e('AI', 'ai-post-scheduler'); ?></a></li>
+					<li><a href="#aips-tab-ai"><?php esc_html_e('Remote', 'ai-post-scheduler'); ?></a></li>
 				</ul>
 				
 				<div id="aips-tab-logs" class="aips-tab-content active">

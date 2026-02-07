@@ -43,6 +43,9 @@
 			
 			// Download Session JSON button handler
 			$(document).on('click', '.aips-download-session-json', this.handleDownloadSessionJSON.bind(this));
+			
+			// Copy AI Request/Response content button handler
+			$(document).on('click', '.aips-copy-ai-content', this.handleCopyAIContent.bind(this));
 
 			// Close modal handlers
 			$(document).on('click', '.aips-modal-close, .aips-modal-overlay', this.closeModal.bind(this));
@@ -178,23 +181,35 @@
 			var aiHtml = '';
 			
 			if (ai_calls.length > 0) {
-				ai_calls.forEach(function(call) {
+				ai_calls.forEach(function(call, index) {
 					aiHtml += '<div class="aips-ai-component" data-component="' + window.AIPS.escapeHtml(call.type) + '">';
 					aiHtml += '<h4>' + window.AIPS.escapeHtml(call.label) + '</h4>';
 					aiHtml += '<p class="aips-ai-hint">Click to view request and response details</p>';
 					aiHtml += '<div class="aips-ai-details">';
 					
 					if (call.request) {
+						var requestJson = JSON.stringify(call.request, null, 2);
 						aiHtml += '<div class="aips-ai-section">';
+						aiHtml += '<div class="aips-ai-section-header">';
 						aiHtml += '<h5>Request</h5>';
-						aiHtml += '<div class="aips-json-viewer"><pre>' + window.AIPS.escapeHtml(JSON.stringify(call.request, null, 2)) + '</pre></div>';
+						aiHtml += '<button class="button button-small aips-copy-ai-content" data-content-type="request" data-component-index="' + index + '" data-content="' + window.AIPS.escapeHtmlAttr(requestJson) + '">';
+						aiHtml += '<span class="dashicons dashicons-clipboard"></span> Copy';
+						aiHtml += '</button>';
+						aiHtml += '</div>';
+						aiHtml += '<div class="aips-json-viewer"><pre>' + window.AIPS.escapeHtml(requestJson) + '</pre></div>';
 						aiHtml += '</div>';
 					}
 					
 					if (call.response) {
+						var responseJson = JSON.stringify(call.response, null, 2);
 						aiHtml += '<div class="aips-ai-section">';
+						aiHtml += '<div class="aips-ai-section-header">';
 						aiHtml += '<h5>Response</h5>';
-						aiHtml += '<div class="aips-json-viewer"><pre>' + window.AIPS.escapeHtml(JSON.stringify(call.response, null, 2)) + '</pre></div>';
+						aiHtml += '<button class="button button-small aips-copy-ai-content" data-content-type="response" data-component-index="' + index + '" data-content="' + window.AIPS.escapeHtmlAttr(responseJson) + '">';
+						aiHtml += '<span class="dashicons dashicons-clipboard"></span> Copy';
+						aiHtml += '</button>';
+						aiHtml += '</div>';
+						aiHtml += '<div class="aips-json-viewer"><pre>' + window.AIPS.escapeHtml(responseJson) + '</pre></div>';
 						aiHtml += '</div>';
 					}
 					
@@ -226,6 +241,86 @@
 		 */
 		handleAIComponentClick: function(e) {
 			$(e.currentTarget).addClass('expanded');
+		},
+		
+		/**
+		 * Handle Copy AI Content button click
+		 */
+		handleCopyAIContent: function(e) {
+			e.preventDefault();
+			e.stopPropagation(); // Prevent triggering component expansion
+			
+			var $button = $(e.currentTarget);
+			var content = $button.data('content');
+			var contentType = $button.data('content-type');
+			
+			if (!content) {
+				this.showNotification('No content to copy.', 'error');
+				return;
+			}
+			
+			// Decode HTML entities back to original text
+			var decodedContent = this.decodeHtmlEntities(content);
+			
+			// Copy to clipboard
+			var self = this;
+			var originalText = $button.html();
+			
+			$button.prop('disabled', true);
+			
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(decodedContent).then(function() {
+					$button.html('<span class="dashicons dashicons-yes"></span> Copied!');
+					setTimeout(function() {
+						$button.html(originalText).prop('disabled', false);
+					}, 2000);
+					self.showNotification(contentType.charAt(0).toUpperCase() + contentType.slice(1) + ' copied to clipboard!', 'success');
+				}).catch(function(err) {
+					console.error('Failed to copy:', err);
+					self.fallbackCopyText(decodedContent, $button, originalText, contentType);
+				});
+			} else {
+				self.fallbackCopyText(decodedContent, $button, originalText, contentType);
+			}
+		},
+		
+		/**
+		 * Fallback text copy method for older browsers
+		 */
+		fallbackCopyText: function(text, $button, originalText, contentType) {
+			var self = this;
+			var $temp = $('<textarea>');
+			$('body').append($temp);
+			$temp.val(text).select();
+			
+			try {
+				var successful = document.execCommand('copy');
+				if (successful) {
+					$button.html('<span class="dashicons dashicons-yes"></span> Copied!');
+					setTimeout(function() {
+						$button.html(originalText).prop('disabled', false);
+					}, 2000);
+					self.showNotification(contentType.charAt(0).toUpperCase() + contentType.slice(1) + ' copied to clipboard!', 'success');
+				} else {
+					$button.prop('disabled', false);
+					self.showNotification('Failed to copy to clipboard.', 'error');
+				}
+			} catch (err) {
+				console.error('Fallback copy failed:', err);
+				$button.prop('disabled', false);
+				self.showNotification('Failed to copy to clipboard.', 'error');
+			}
+			
+			$temp.remove();
+		},
+		
+		/**
+		 * Decode HTML entities
+		 */
+		decodeHtmlEntities: function(text) {
+			var textArea = document.createElement('textarea');
+			textArea.innerHTML = text;
+			return textArea.value;
 		},
 		
 		/**
@@ -495,6 +590,33 @@
 			return String(text).replace(/[&<>"']/g, function(m) { 
 				return map[m]; 
 			});
+		},
+		
+		/**
+		 * Escape HTML for use in HTML attributes
+		 * Uses two-pass approach: first replace ampersands, then other characters
+		 */
+		escapeHtmlAttr: function(text) {
+			if (text === null || text === undefined) {
+				return '';
+			}
+			
+			// First pass: replace ampersands
+			var result = String(text).replace(/&/g, '&amp;');
+			
+			// Second pass: replace other special characters
+			var map = {
+				'<': '&lt;',
+				'>': '&gt;',
+				'"': '&quot;',
+				"'": '&#039;'
+			};
+			
+			result = result.replace(/[<>"']/g, function(m) { 
+				return map[m]; 
+			});
+			
+			return result;
 		}
 		
 	});
