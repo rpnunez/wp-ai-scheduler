@@ -208,7 +208,7 @@ class AIPS_Schedule_Processor {
         }
 
         // Apply schedule overrides to template logic
-        $post_quantity = $is_manual ? 1 : 1; // Always 1 for schedule executions
+        $post_quantity = 1; // Always 1 for schedule executions
 
         // Select article structure for this execution
         $article_structure_id = $this->template_type_selector->select_structure($schedule);
