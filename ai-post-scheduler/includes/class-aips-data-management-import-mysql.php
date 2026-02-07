@@ -129,7 +129,7 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 			}
 			
 			// Whitelist allowed commands
-			$allowed_commands = array('INSERT', 'DROP', 'CREATE', 'SET', 'LOCK', 'UNLOCK');
+			$allowed_commands = array('INSERT', 'DROP', 'CREATE', 'SET', 'LOCK', 'UNLOCK', 'TRUNCATE');
 			$is_allowed = false;
 			foreach ($allowed_commands as $cmd) {
 				if (strpos($query_upper, $cmd) === 0) {
