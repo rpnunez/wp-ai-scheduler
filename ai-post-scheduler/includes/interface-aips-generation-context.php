@@ -131,6 +131,13 @@ interface AIPS_Generation_Context {
 	public function get_voice_id();
 
 	/**
+	 * Get the voice object (if applicable).
+	 *
+	 * @return object|null Voice object or null if not applicable.
+	 */
+	public function get_voice();
+
+	/**
 	 * Get the topic string for this context (if applicable).
 	 *
 	 * @return string|null Topic string or null if not applicable.

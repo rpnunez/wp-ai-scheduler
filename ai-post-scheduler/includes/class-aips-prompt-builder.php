@@ -374,11 +374,11 @@ class AIPS_Prompt_Builder {
 
         // Build title prompt
         $sample_content = '[Generated article content would appear here]';
-        $title_prompt = $this->build_title_prompt($template_data, $sample_topic, $voice, $sample_content);
+        $title_prompt = $this->build_title_prompt($template_data, $sample_topic, $voice, $sample_content, true);
 
         // Build excerpt prompt (requires title and content)
         $sample_title = '[Generated title would appear here]';
-        $excerpt_prompt = $this->build_excerpt_prompt($sample_title, $sample_content, $voice, $sample_topic);
+        $excerpt_prompt = $this->build_excerpt_prompt($sample_title, $sample_content, $voice, $sample_topic, true);
 
         // Build image prompt if enabled
         $image_prompt_processed = '';
