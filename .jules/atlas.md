@@ -30,3 +30,9 @@
 **Context:** `AIPS_Settings` was a 'God Object' (700+ lines) handling menu registration, settings, rendering, and asset management. The `enqueue_admin_assets` method was bloated with localization logic.
 **Decision:** Extracted asset management into a new `AIPS_Admin_Assets` class.
 **Consequence:** `AIPS_Settings` is now more focused on configuration; asset management is centralized; cleaner separation of concerns.
+## 2026-05-27 - Extract Schedule Processor
+**Context:** `AIPS_Scheduler` was violating the Single Responsibility Principle by handling CRUD operations, Cron hooks, and the complex business logic of executing schedules (locking, logging, generation).
+**Decision:** Extracted the execution logic into a new `AIPS_Schedule_Processor` class. `AIPS_Scheduler` remains as the high-level orchestrator and entry point for hooks.
+**Consequence:**
+- **Positive:** clearer separation of concerns; `AIPS_Scheduler` is now a thin coordinator; `AIPS_Schedule_Processor` encapsulates the "how" of execution; improved testability of execution logic.
+- **Negative:** Increased file count (1 new file).

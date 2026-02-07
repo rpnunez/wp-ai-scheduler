@@ -1625,13 +1625,35 @@
     margin-bottom: 0;
 }
 
+.aips-ai-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
 .aips-ai-section h5 {
-    margin: 0 0 10px;
+    margin: 0;
     font-size: 13px;
     color: #555;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 600;
+}
+
+.aips-copy-ai-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.aips-copy-ai-content .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
 }
 
 /* JSON Viewer Styles */

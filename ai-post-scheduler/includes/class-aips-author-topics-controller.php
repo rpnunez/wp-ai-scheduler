@@ -71,6 +71,8 @@ class AIPS_Author_Topics_Controller {
 		add_action('wp_ajax_aips_bulk_approve_topics', array($this, 'ajax_bulk_approve_topics'));
 		add_action('wp_ajax_aips_bulk_reject_topics', array($this, 'ajax_bulk_reject_topics'));
 		add_action('wp_ajax_aips_bulk_delete_topics', array($this, 'ajax_bulk_delete_topics'));
+		add_action('wp_ajax_aips_bulk_generate_topics', array($this, 'ajax_bulk_generate_topics'));
+		add_action('wp_ajax_aips_bulk_delete_feedback', array($this, 'ajax_bulk_delete_feedback'));
 		add_action('wp_ajax_aips_regenerate_post', array($this, 'ajax_regenerate_post'));
 		add_action('wp_ajax_aips_delete_generated_post', array($this, 'ajax_delete_generated_post'));
 		add_action('wp_ajax_aips_get_similar_topics', array($this, 'ajax_get_similar_topics'));
@@ -771,6 +773,132 @@ class AIPS_Author_Topics_Controller {
 			'success_count' => $success_count,
 			'failed_count' => $failed_count,
 			'errors' => $errors
+		));
+	}
+	
+	/**
+	 * AJAX handler for bulk generating posts from topics.
+	 */
+	public function ajax_bulk_generate_topics() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$topic_ids = isset($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		
+		if (empty($topic_ids)) {
+			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
+		}
+		
+		// Create history container for bulk generation
+		$history = $this->history_service->create('bulk_generate', array(
+			'user_id' => get_current_user_id(),
+			'source' => 'manual_ui',
+			'trigger' => 'ajax_bulk_generate_topics',
+			'entity_type' => 'topics',
+			'entity_count' => count($topic_ids)
+		));
+		
+		$history->record_user_action(
+			'bulk_generate_topics',
+			sprintf(__('User initiated bulk generation for %d topics', 'ai-post-scheduler'), count($topic_ids)),
+			array('topic_ids' => $topic_ids, 'topic_count' => count($topic_ids))
+		);
+		
+		$success_count = 0;
+		$failed_count = 0;
+		$errors = array();
+		
+		foreach ($topic_ids as $topic_id) {
+			$result = $this->post_generator->generate_now($topic_id);
+			
+			if (is_wp_error($result)) {
+				$failed_count++;
+				$errors[] = sprintf(__('Topic ID %d: %s', 'ai-post-scheduler'), $topic_id, $result->get_error_message());
+				$history->record_error(
+					sprintf(__('Failed to generate post for topic ID %d', 'ai-post-scheduler'), $topic_id),
+					array('topic_id' => $topic_id, 'error_code' => 'GENERATION_FAILED'),
+					$result
+				);
+			} else {
+				$success_count++;
+				$history->record('activity', sprintf(__('Post generated for topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array(
+					'topic_id' => $topic_id,
+					'post_id' => $result
+				));
+			}
+		}
+		
+		$message = sprintf(__('%d post(s) generated successfully.', 'ai-post-scheduler'), $success_count);
+		if ($failed_count > 0) {
+			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
+			$history->complete_failure(
+				sprintf(__('Bulk generation completed with %d failures', 'ai-post-scheduler'), $failed_count),
+				array('success_count' => $success_count, 'failed_count' => $failed_count, 'errors' => $errors)
+			);
+		} else {
+			$history->complete_success(array('success_count' => $success_count, 'failed_count' => 0));
+		}
+		
+		wp_send_json_success(array(
+			'message' => $message,
+			'success_count' => $success_count,
+			'failed_count' => $failed_count,
+			'errors' => $errors
+		));
+	}
+	
+	/**
+	 * AJAX handler for bulk deleting feedback items.
+	 */
+	public function ajax_bulk_delete_feedback() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$feedback_ids = isset($_POST['feedback_ids']) ? array_map('absint', $_POST['feedback_ids']) : array();
+		
+		if (empty($feedback_ids)) {
+			wp_send_json_error(array('message' => __('No feedback items selected.', 'ai-post-scheduler')));
+		}
+		
+		// Create history container for bulk delete operation
+		$history = $this->history_service->create('bulk_delete_feedback', array(
+			'user_id' => get_current_user_id(),
+			'source' => 'manual_ui',
+			'trigger' => 'ajax_bulk_delete_feedback',
+			'entity_type' => 'feedback',
+			'entity_count' => count($feedback_ids)
+		));
+		
+		$history->record_user_action(
+			'bulk_delete_feedback',
+			sprintf(__('User initiated bulk delete for %d feedback items', 'ai-post-scheduler'), count($feedback_ids)),
+			array('feedback_ids' => $feedback_ids, 'feedback_count' => count($feedback_ids))
+		);
+		
+		$success_count = 0;
+		foreach ($feedback_ids as $feedback_id) {
+			$result = $this->feedback_repository->delete($feedback_id);
+			if ($result) {
+				$success_count++;
+			} else {
+				$history->record('warning', sprintf(__('Failed to delete feedback ID %d', 'ai-post-scheduler'), $feedback_id), null, null, array('feedback_id' => $feedback_id));
+			}
+		}
+		
+		$history->record('activity', sprintf(__('Deleted %d feedback items', 'ai-post-scheduler'), $success_count), null, null, array(
+			'deleted_count' => $success_count,
+			'requested_count' => count($feedback_ids)
+		));
+		$history->complete_success(array('deleted_count' => $success_count));
+		
+		wp_send_json_success(array(
+			'message' => sprintf(__('%d feedback item(s) deleted successfully.', 'ai-post-scheduler'), $success_count)
 		));
 	}
 }

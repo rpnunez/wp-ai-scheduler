@@ -287,81 +287,69 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }
     }
-
+    
     /**
-     * Test generate_json returns WP_Error when AI unavailable
+     * Test chatbot method returns WP_Error when AI unavailable
      */
-    public function test_generate_json_unavailable() {
-        // Assuming AI Engine is not available in test environment
+    public function test_generate_with_chatbot_unavailable() {
         if (!$this->service->is_available()) {
-            $result = $this->service->generate_json('Generate a list of topics');
+            $result = $this->service->generate_with_chatbot('default', 'Test message');
             $this->assertInstanceOf('WP_Error', $result);
-            // Should use fallback which eventually returns ai_unavailable
-            $this->assertContains($result->get_error_code(), array('ai_unavailable', 'circuit_breaker_open'));
+            $this->assertEquals('ai_unavailable', $result->get_error_code());
         } else {
             $this->markTestSkipped('AI Engine is available, cannot test unavailable scenario');
         }
     }
-
+    
     /**
-     * Test generate_json fallback logs as json type
+     * Test chatbot method accepts chatId for continuing conversation
      */
-    public function test_generate_json_fallback_logs_as_json_type() {
+    public function test_generate_with_chatbot_accepts_chat_id() {
         if (!$this->service->is_available()) {
-            $this->service->generate_json('Test JSON prompt');
+            $options = array('chatId' => 'test-chat-123');
+            $result = $this->service->generate_with_chatbot('default', 'Test message', $options);
+            
+            // Should still fail but options should be captured
+            $this->assertInstanceOf('WP_Error', $result);
             
             $log = $this->service->get_call_log();
-            // With the fix, fallback should log as 'json' type even when using text underneath
-            $this->assertGreaterThanOrEqual(1, count($log));
-            
-            // Find the json log entry (there may be a text entry too from the underlying call)
-            $json_logs = array_filter($log, function($entry) {
-                return $entry['type'] === 'json';
-            });
-            
-            $this->assertNotEmpty($json_logs, 'Should have at least one json type log entry');
+            $this->assertNotEmpty($log);
+            $last_log = end($log);
+            $this->assertArrayHasKey('chatId', $last_log['request']['options']);
+            $this->assertEquals('test-chat-123', $last_log['request']['options']['chatId']);
         } else {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }
     }
-
+    
     /**
-     * Test generate_json accepts options
+     * Test chatbot logs type correctly
      */
-    public function test_generate_json_accepts_options() {
+    public function test_generate_with_chatbot_logs_type() {
         if (!$this->service->is_available()) {
-            $options = array(
-                'model' => 'gpt-4',
-                'max_tokens' => 1000,
-                'temperature' => 0.7,
-            );
+            $this->service->generate_with_chatbot('default', 'Test', array(), 'content');
             
-            $result = $this->service->generate_json('Generate topics', $options);
-            
-            // Should still fail but accept options
-            $this->assertInstanceOf('WP_Error', $result);
+            $log = $this->service->get_call_log();
+            $this->assertNotEmpty($log);
+            $last_log = end($log);
+            $this->assertEquals('content', $last_log['type']);
         } else {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }
     }
-
+    
     /**
-     * Test call statistics include json type
+     * Test chatbot increments call statistics
      */
-    public function test_call_statistics_include_json_calls() {
+    public function test_generate_with_chatbot_increments_statistics() {
         if (!$this->service->is_available()) {
-            $this->service->generate_text('Text call');
-            $this->service->generate_json('JSON call');
-            $this->service->generate_image('Image call');
+            $this->service->clear_call_log();
+            $this->service->generate_with_chatbot('default', 'First message');
+            $this->service->generate_with_chatbot('default', 'Second message');
             
             $stats = $this->service->get_call_statistics();
-            
-            // With the fix, generate_json logs as 'json' type (plus underlying text call)
-            // so we expect: 2 text calls (1 direct + 1 from json fallback), 1 json call, 1 image call
-            $this->assertEquals(4, $stats['total']);
-            $this->assertEquals(2, $stats['by_type']['text']);
-            $this->assertEquals(1, $stats['by_type']['json']);
-            $this->assertEquals(1, $stats['by_type']['image']);
+            $this->assertEquals(2, $stats['total']);
+            $this->assertEquals(2, $stats['failures']);
         } else {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }

@@ -79,10 +79,12 @@ class AIPS_AI_Service {
      */
     private function get_ai_engine() {
         if ($this->ai_engine === null) {
-            if (class_exists('Meow_MWAI_Core')) {
-                global $mwai_core;
-                $this->ai_engine = $mwai_core;
-            }
+            global $mwai;
+            $this->ai_engine = $mwai;
+            //if (class_exists('Meow_MWAI_Core')) {
+                //global $mwai_core;
+                //$this->ai_engine = $mwai_core;
+            //}
         }
         return $this->ai_engine;
     }
@@ -134,32 +136,38 @@ class AIPS_AI_Service {
         // Try with retry logic
         return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
             try {
-                $query = new Meow_MWAI_Query_Text($prompt);
+                // Build params array for simpleTextQuery
+                $params = array();
                 
                 // Set model if specified
                 if (!empty($options['model'])) {
-                    $query->set_model($options['model']);
+                    $params['model'] = $options['model'];
                 }
                 
                 // Set max tokens
                 if (isset($options['max_tokens'])) {
-                    $query->set_max_tokens($options['max_tokens']);
+                    $params['maxTokens'] = $options['max_tokens'];
                 }
                 
                 // Set temperature
                 if (isset($options['temperature'])) {
-                    $query->set_temperature($options['temperature']);
+                    $params['temperature'] = $options['temperature'];
                 }
 
-                // Optional advanced parameters supported by AI Engine.
-                $this->apply_optional_query_settings($query, $options);
+                // Optional advanced parameters supported by AI Engine
+                foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
+                    if (isset($options[$key])) {
+                        $params[$key] = $options[$key];
+                    }
+                }
                 
-                $response = $ai->run_query($query);
+                // Use simpleTextQuery API method
+                $result = $ai->simpleTextQuery($prompt, $params);
                 
-                if ($response && !empty($response->result)) {
-                    $this->log_call('text', $prompt, $response->result, $options);
+                if ($result && !empty($result)) {
+                    $this->log_call('text', $prompt, $result, $options);
                     $this->resilience_service->record_success();
-                    return $response->result;
+                    return $result;
                 }
                 
                 $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
@@ -351,17 +359,23 @@ class AIPS_AI_Service {
 
         return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
             try {
-                $query = new Meow_MWAI_Query_Image($prompt);
-                $response = $ai->run_query($query);
+                // Build params array for simpleImageQuery
+                $params = array();
+                
+                // Pass through any options as params
+                if (!empty($options)) {
+                    $params = $options;
+                }
+                
+                // Use simpleImageQuery API method
+                $image_url = $ai->simpleImageQuery($prompt, $params);
 
-                if (!$response || empty($response->result)) {
+                if (!$image_url || empty($image_url)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
                     $this->log_call('image', $prompt, null, $options, $error->get_error_message());
                     $this->resilience_service->record_failure();
                     return $error;
                 }
-
-                $image_url = $response->result;
 
                 // Handle array response (some AI engines return arrays)
                 if (is_array($image_url) && !empty($image_url[0])) {
@@ -386,6 +400,138 @@ class AIPS_AI_Service {
                 return $error;
             }
         }, 'image', $prompt, $options);
+    }
+    
+    /**
+     * Generate text using chatbot for conversational context.
+     *
+     * Uses the AI Engine's chatbot feature to maintain conversational context
+     * between multiple AI requests. This allows subsequent requests to reference
+     * previous responses, creating more coherent and contextually aware content.
+     *
+     * @param string      $chatbot_id The chatbot ID/environment to use (e.g., 'default').
+     * @param string      $message    The message/prompt to send to the chatbot.
+     * @param array       $options    Optional. Chatbot options including chatId for continuing a conversation.
+     * @param string|null $log_type   Optional type label for logging (defaults to 'chatbot').
+     * @return array|WP_Error Array with 'reply' and 'chatId' keys on success, or WP_Error on failure.
+     */
+    public function generate_with_chatbot($chatbot_id, $message, $options = array(), $log_type = 'chatbot') {
+        $ai = $this->get_ai_engine();
+        
+        if (!$ai) {
+            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        // Check if simpleChatbotQuery method exists with better diagnostics
+        if (!method_exists($ai, 'simpleChatbotQuery')) {
+            // Log detailed diagnostics
+            $this->logger->log('Chatbot method unavailable', 'error', array(
+                'ai_engine_class' => get_class($ai),
+                'available_methods' => get_class_methods($ai),
+                'chatbot_id' => $chatbot_id
+            ));
+            
+            $error = new WP_Error('chatbot_unavailable', sprintf(__('%s', 'ai-post-scheduler'), 'AI Engine chatbot feature is not available.'));
+
+            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+
+            return $error;
+        }
+        
+        // Check circuit breaker
+        if (!$this->resilience_service->check_circuit_breaker()) {
+            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
+            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        // Check rate limiting
+        if (!$this->resilience_service->check_rate_limit()) {
+            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        // Try with retry logic
+        return $this->resilience_service->execute_with_retry(function() use ($ai, $chatbot_id, $message, $options, $log_type) {
+            try {
+                // Extract supported options for the chatbot call
+                // AI Engine's simpleChatbotQuery supports: chatId, context, instructions
+                $chatbot_options = array();
+                $supported_option_keys = array('chatId', 'context', 'instructions');
+                
+                foreach ($supported_option_keys as $key) {
+                    if (isset($options[$key])) {
+                        $chatbot_options[$key] = $options[$key];
+                    }
+                }
+                
+                // Log any unsupported options that were provided and ignored
+                $unsupported_keys = array_diff(array_keys($options), $supported_option_keys);
+
+                if (!empty($unsupported_keys)) {
+                    $this->logger->log(
+                        'Unsupported chatbot options were provided and ignored.',
+                        'warning',
+                        array(
+                            'unsupported_keys' => $unsupported_keys,
+                            'chatbot_id'       => $chatbot_id,
+                        )
+                    );
+                }
+                
+                // Call the chatbot
+                $response = $ai->simpleChatbotQuery($chatbot_id, $message, $chatbot_options);
+                
+                // Log the raw response for debugging
+                $this->logger->log('Chatbot raw response received', 'debug', array(
+                    'response_type' => gettype($response),
+                    'is_string' => is_string($response),
+                    'chatbot_id' => $chatbot_id,
+                    'response_length' => is_string($response) ? strlen($response) : 0,
+                    'response' => var_export($response, true)
+                ));
+                
+                // Validate response structure
+                if (!is_string($response)) {
+                    $error = new WP_Error('invalid_chatbot_response', 
+                        sprintf(__('AI Engine returned an unexpected response type: %s', 'ai-post-scheduler'), gettype($response))
+                    );
+
+                    $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+
+                    $this->resilience_service->record_failure();
+
+                    return $error;
+                }
+                
+                // Return the expected format with reply and chatId
+                $result = array(
+                    'reply' => $response,
+                    'chatId' => $chatbot_options['chatId'] ?? null,
+                );
+                
+                // Log successful chatbot interaction
+                $this->log_call($log_type, $message, $result['reply'], array_merge($options, array('chatId' => $result['chatId'])));
+
+                $this->logger->log('Chatbot interaction successful', 'info', array(
+                    'chatbot_id' => $chatbot_id,
+                    'response' => var_export($response, true)
+                ));
+                
+                $this->resilience_service->record_success();
+                
+                return $result;
+                
+            } catch (Exception $e) {
+                $error = new WP_Error('chatbot_failed', $e->getMessage());
+                $this->log_call($log_type, $message, null, $options, $e->getMessage());
+                $this->resilience_service->record_failure();
+                return $error;
+            }
+        }, $log_type, $message, $options);
     }
     
     /**

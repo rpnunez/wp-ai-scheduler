@@ -140,10 +140,10 @@ $templates = $template_repository->get_all();
 								<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
 							</a>
 							<button type="button" 
-									class="button button-small aips-view-logs" 
+									class="button button-small aips-view-session" 
 									data-history-id="<?php echo esc_attr($item->id); ?>"
-									title="<?php esc_attr_e('View generation logs', 'ai-post-scheduler'); ?>">
-								<?php esc_html_e('View Logs', 'ai-post-scheduler'); ?>
+									title="<?php esc_attr_e('View generation session', 'ai-post-scheduler'); ?>">
+								<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
 							</button>
 							<button type="button" 
 									class="button button-primary button-small aips-publish-post" 
@@ -227,18 +227,7 @@ $templates = $template_repository->get_all();
 	<?php endif; ?>
 </div>
 
-<!-- Log Viewer Modal -->
-<div id="aips-log-viewer-modal" class="aips-modal" style="display: none;">
-	<div class="aips-modal-content">
-		<div class="aips-modal-header">
-			<h2><?php esc_html_e('Generation Logs', 'ai-post-scheduler'); ?></h2>
-			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-		</div>
-		<div class="aips-modal-body" id="aips-log-viewer-content">
-			<p><?php esc_html_e('Loading...', 'ai-post-scheduler'); ?></p>
-		</div>
-		<div class="aips-modal-footer">
-			<button type="button" class="button aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
-		</div>
-	</div>
-</div>
+<?php
+// Include the View Session modal partial
+include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
+?>

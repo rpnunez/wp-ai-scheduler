@@ -236,7 +236,7 @@ class AIPS_Admin_Assets {
 
         wp_localize_script('aips-admin-activity', 'aipsActivityL10n', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('aips_activity_nonce'),
+            'nonce' => wp_create_nonce('aips_ajax_nonce'),
             'confirmPublish' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
             'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
             'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
@@ -245,10 +245,19 @@ class AIPS_Admin_Assets {
 
         // Generated Posts Page Scripts
         if (strpos($hook, 'aips-generated-posts') !== false) {
+            // Enqueue View Session module (shared functionality)
+            wp_enqueue_script(
+                'aips-admin-view-session',
+                AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+            
             wp_enqueue_script(
                 'aips-admin-generated-posts',
                 AIPS_PLUGIN_URL . 'assets/js/admin-generated-posts.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-admin-view-session'),
                 AIPS_VERSION,
                 true
             );
@@ -263,10 +272,19 @@ class AIPS_Admin_Assets {
 
         // Post Review Page Scripts
         if (strpos($hook, 'aips-post-review') !== false) {
+            // Enqueue View Session module (shared functionality)
+            wp_enqueue_script(
+                'aips-admin-view-session',
+                AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+            
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-admin-view-session'),
                 AIPS_VERSION,
                 true
             );
