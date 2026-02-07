@@ -81,21 +81,27 @@ class AIPS_Schedule_Repository {
      * Get schedules that are due to run.
      *
      * @param string $current_time Optional. Current time in MySQL format. Default current time.
+     * @param int    $limit        Optional. Maximum number of schedules to retrieve. Default 5.
      * @return array Array of schedule objects that should run now.
      */
-    public function get_due_schedules($current_time = null) {
+    public function get_due_schedules($current_time = null, $limit = 5) {
         if ($current_time === null) {
             $current_time = current_time('mysql');
         }
         
+        // Use INNER JOIN to ensure we only get schedules with valid active templates.
+        // Select t.* first, then s.* to let schedule fields override template fields where they overlap,
+        // but alias s.id as schedule_id to avoid confusion with template id.
         return $this->wpdb->get_results($this->wpdb->prepare("
-            SELECT s.*, t.name as template_name 
+            SELECT t.*, s.*, s.id AS schedule_id
             FROM {$this->schedule_table} s 
-            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id 
+            INNER JOIN {$this->templates_table} t ON s.template_id = t.id
             WHERE s.is_active = 1 
             AND s.next_run <= %s
+            AND t.is_active = 1
             ORDER BY s.next_run ASC
-        ", $current_time));
+            LIMIT %d
+        ", $current_time, $limit));
     }
 
     /**

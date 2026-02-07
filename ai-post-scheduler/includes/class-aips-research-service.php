@@ -80,7 +80,8 @@ class AIPS_Research_Service {
             'keywords' => $keywords,
         ));
 
-        $result = $this->ai_service->generate_text($prompt, array(
+        // Use generate_json for structured data response
+        $result = $this->ai_service->generate_json($prompt, array(
             'temperature' => 0.7,
             'max_tokens' => 2000,
         ));
@@ -90,8 +91,25 @@ class AIPS_Research_Service {
             return $result;
         }
 
-        // Parse AI response into structured data
-        $topics = $this->parse_research_response($result, $count);
+        // Validate and normalize the JSON response
+        $topics = $this->validate_and_normalize_topics($result, $count);
+
+        // If validation failed, try falling back to text-based parsing
+        if (is_wp_error($topics) && $topics->get_error_code() === 'invalid_format') {
+            $this->logger->log('JSON validation failed, attempting text-based fallback parsing', 'warning');
+            
+            // Try to convert result back to string for legacy parser
+            $text_response = is_string($result) ? $result : wp_json_encode($result);
+            
+            if (!empty($text_response) && method_exists($this, 'parse_research_response')) {
+                $fallback_topics = $this->parse_research_response($text_response, $count);
+                
+                if (!is_wp_error($fallback_topics) && is_array($fallback_topics) && !empty($fallback_topics)) {
+                    $this->logger->log('Fallback text parsing succeeded', 'info');
+                    $topics = $fallback_topics;
+                }
+            }
+        }
 
         if (is_wp_error($topics)) {
             return $topics;
@@ -154,6 +172,44 @@ class AIPS_Research_Service {
         $prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
 
         return $prompt;
+    }
+
+    /**
+     * Validate and normalize topics from JSON response.
+     *
+     * Validates topic structure and normalizes data from JSON response.
+     * This is used when generate_json returns structured data directly.
+     *
+     * @param array $topics  The JSON array of topics.
+     * @param int   $count   Expected number of topics.
+     * @return array|WP_Error Validated topics array or WP_Error.
+     */
+    private function validate_and_normalize_topics($topics, $count) {
+        if (!is_array($topics)) {
+            return new WP_Error('invalid_format', __('AI response is not in expected array format.', 'ai-post-scheduler'));
+        }
+
+        // Validate and normalize topics
+        $validated_topics = array();
+        foreach ($topics as $topic) {
+            if ($this->validate_topic_structure($topic)) {
+                $validated_topics[] = $this->normalize_topic($topic);
+            }
+        }
+
+        if (empty($validated_topics)) {
+            return new WP_Error('no_valid_topics', __('No valid topics found in AI response.', 'ai-post-scheduler'));
+        }
+
+        // Sort by score (highest first)
+        usort($validated_topics, function($a, $b) {
+            return $b['score'] - $a['score'];
+        });
+
+        // Limit to requested count
+        $validated_topics = array_slice($validated_topics, 0, $count);
+
+        return $validated_topics;
     }
 
     /**

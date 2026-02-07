@@ -27,3 +27,11 @@
 ## 2026-01-20 - Planner Filter & Bulk Select
 **Learning:** When implementing client-side filtering on a list with bulk actions (like "Select All"), users expect the bulk action to apply only to the *visible* (filtered) items, not the hidden ones.
 **Action:** Updated `toggleAllTopics` in `admin-planner.js` to target `.topic-checkbox:visible`, ensuring that "Select All" respects the current search filter.
+
+## 2026-01-21 - Generated Posts Empty State
+**Learning:** `generated-posts.php` was missing the standard Empty State pattern (`.aips-empty-state`) and a direct "View" action, causing inconsistency with `history.php`.
+**Action:** Implemented the standard Empty State and added a "View" button with accessibility attributes (`aria-label`, `rel="noopener"`) to match the "Feature Wizard" polish standards.
+
+## 2026-01-22 - Research Search Consistency
+**Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
+**Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.

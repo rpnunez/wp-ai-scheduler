@@ -287,4 +287,121 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }
     }
+    
+    /**
+     * Test chatbot method returns WP_Error when AI unavailable
+     */
+    public function test_generate_with_chatbot_unavailable() {
+        if (!$this->service->is_available()) {
+            $result = $this->service->generate_with_chatbot('default', 'Test message');
+            $this->assertInstanceOf('WP_Error', $result);
+            $this->assertEquals('ai_unavailable', $result->get_error_code());
+        } else {
+            $this->markTestSkipped('AI Engine is available, cannot test unavailable scenario');
+        }
+    }
+    
+    /**
+     * Test chatbot method accepts chatId for continuing conversation
+     */
+    public function test_generate_with_chatbot_accepts_chat_id() {
+        if (!$this->service->is_available()) {
+            $options = array('chatId' => 'test-chat-123');
+            $result = $this->service->generate_with_chatbot('default', 'Test message', $options);
+            
+            // Should still fail but options should be captured
+            $this->assertInstanceOf('WP_Error', $result);
+            
+            $log = $this->service->get_call_log();
+            $this->assertNotEmpty($log);
+            $last_log = end($log);
+            $this->assertArrayHasKey('chatId', $last_log['request']['options']);
+            $this->assertEquals('test-chat-123', $last_log['request']['options']['chatId']);
+        } else {
+            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+        }
+    }
+    
+    /**
+     * Test chatbot logs type correctly
+     */
+    public function test_generate_with_chatbot_logs_type() {
+        if (!$this->service->is_available()) {
+            $this->service->generate_with_chatbot('default', 'Test', array(), 'content');
+            
+            $log = $this->service->get_call_log();
+            $this->assertNotEmpty($log);
+            $last_log = end($log);
+            $this->assertEquals('content', $last_log['type']);
+        } else {
+            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+        }
+    }
+    
+    /**
+     * Test chatbot increments call statistics
+     */
+    public function test_generate_with_chatbot_increments_statistics() {
+        if (!$this->service->is_available()) {
+            $this->service->clear_call_log();
+            $this->service->generate_with_chatbot('default', 'First message');
+            $this->service->generate_with_chatbot('default', 'Second message');
+            
+            $stats = $this->service->get_call_statistics();
+            $this->assertEquals(2, $stats['total']);
+            $this->assertEquals(2, $stats['failures']);
+        } else {
+            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+        }
+    }
+
+    /**
+     * Test generate_json with mocked simpleJsonQuery success path
+     */
+    public function test_generate_json_with_simpleJsonQuery_success() {
+        // This test validates the simpleJsonQuery success path by mocking $mwai
+        global $mwai;
+        
+        // Save original state
+        $original_mwai = $mwai;
+        
+        // Mock $mwai with simpleJsonQuery method
+        $mwai = new class {
+            public function simpleJsonQuery($prompt, $options) {
+                // Return mock JSON data
+                return array(
+                    array('title' => 'Topic 1', 'score' => 85, 'keywords' => array('key1', 'key2')),
+                    array('title' => 'Topic 2', 'score' => 90, 'keywords' => array('key3', 'key4')),
+                );
+            }
+        };
+        
+        // Also need to mock AI Engine availability
+        global $mwai_core;
+        $original_core = $mwai_core;
+        if (!$mwai_core) {
+            $mwai_core = new stdClass();
+        }
+        
+        try {
+            $service = new AIPS_AI_Service();
+            $result = $service->generate_json('Test prompt');
+            
+            // Should succeed with array result
+            $this->assertIsArray($result);
+            $this->assertCount(2, $result);
+            $this->assertEquals('Topic 1', $result[0]['title']);
+            $this->assertEquals(85, $result[0]['score']);
+            
+            // Should be logged as 'json' type
+            $log = $service->get_call_log();
+            $this->assertCount(1, $log);
+            $this->assertEquals('json', $log[0]['type']);
+            
+        } finally {
+            // Restore original state
+            $mwai = $original_mwai;
+            $mwai_core = $original_core;
+        }
+    }
 }

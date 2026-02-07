@@ -4,10 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactor
+- [2026-05-27] Refactored `AIPS_Scheduler` to extract execution logic into `AIPS_Schedule_Processor`. `AIPS_Scheduler` now orchestrates while `AIPS_Schedule_Processor` handles the business logic of running schedules (locking, generation, logging).
+- [2026-05-27] Updated `AIPS_Schedule_Repository` to support `LIMIT` and better joining in `get_due_schedules`.
+
 ### Added
 - [2026-01-17 08:24:50] Added Developer Mode and Dev Tools page for generating template scaffolds (Voices, Structures, Templates) using AI.
 - [2026-01-20 10:00:00] Added client-side search functionality to the Planner topic list, allowing users to filter brainstormed topics before scheduling.
 - 2025-12-25: Added client-side search functionality to the Prompt Sections admin page and "Copy to Clipboard" button for section keys.
+
+### Performance
+- 2024-05-30: Optimized author topic generation by replacing iterative database inserts with a single bulk INSERT query, reducing database round-trips from N to 1.
 
 ### Fixed
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
@@ -20,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - 2024-05-24: Fixed PHPUnit test compatibility issues by adding `: void` return type to `setUp()` and `tearDown()` methods in test classes, ensuring tests run correctly in limited mode without the WordPress test library.
 
 ### Performance
+- 2024-05-25: Optimized `AIPS_History_Repository::get_history` to select only necessary columns instead of `SELECT *`, reducing memory usage and database load for large history tables.
 - 2024-05-24: Implemented transient caching for History statistics (`AIPS_History_Repository::get_stats`) to reduce database load on dashboard and history pages.
 
 ### Fixed

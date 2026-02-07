@@ -177,15 +177,75 @@
             });
 
             html += '</tbody></table>';
+
+            // Empty state for search
+            html += '<div id="topics-search-empty" class="aips-empty-state" style="display:none;">';
+            html += '<span class="dashicons dashicons-search" aria-hidden="true"></span>';
+            html += '<h3>' + aipsResearchL10n.noTopicsFoundTitle + '</h3>';
+            html += '<p>' + aipsResearchL10n.noTopicsFound + '</p>';
+            html += '<button type="button" class="button button-primary" id="clear-topics-search">' + aipsResearchL10n.clearSearch + '</button>';
+            html += '</div>';
+
             $('#topics-container').html(html);
 
             // Show bulk schedule section
             $('#bulk-schedule-section').show();
+
+            // Re-apply filter if search box has value
+            if ($('#filter-search').val()) {
+                filterTopics();
+            }
         }
+
+        // Search Filter Logic
+        function filterTopics() {
+            const query = $('#filter-search').val().toLowerCase();
+            const $rows = $('.aips-topics-table tbody tr');
+            let visibleCount = 0;
+
+            if (query.length > 0) {
+                $('#filter-search-clear').show();
+            } else {
+                $('#filter-search-clear').hide();
+            }
+
+            $rows.each(function() {
+                const topicText = $(this).find('td:nth-child(2)').text().toLowerCase();
+                if (topicText.indexOf(query) > -1) {
+                    $(this).show();
+                    visibleCount++;
+                } else {
+                    $(this).hide();
+                }
+            });
+
+            // Show/hide empty state
+            if (visibleCount === 0 && $rows.length > 0) {
+                $('.aips-topics-table').hide();
+                $('#topics-search-empty').show();
+            } else {
+                $('.aips-topics-table').show();
+                $('#topics-search-empty').hide();
+            }
+        }
+
+        // Search Listeners
+        $(document).on('keyup search', '#filter-search', function() {
+            filterTopics();
+        });
+
+        // Helper function to clear search
+        function clearSearch() {
+            $('#filter-search').val('').trigger('search');
+            $('#filter-search').focus();
+        }
+
+        $(document).on('click', '#filter-search-clear, #clear-topics-search', clearSearch);
 
         // Select all topics
         $(document).on('change', '#select-all-topics', function() {
-            $('.topic-checkbox').prop('checked', $(this).is(':checked'));
+            // Only select visible checkboxes
+            $('.topic-checkbox:visible').prop('checked', $(this).is(':checked'));
             updateSelectedTopics();
         });
 

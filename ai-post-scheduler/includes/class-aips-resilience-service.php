@@ -139,7 +139,9 @@ class AIPS_Resilience_Service {
             $delay += $jitter;
         }
 
-        return (int) $delay;
+        //@TODO: Intentionally returning a low number during development
+        return 2;
+        //return (int) $delay;
     }
 
     // ========================================

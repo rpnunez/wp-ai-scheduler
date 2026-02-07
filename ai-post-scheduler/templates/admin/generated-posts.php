@@ -28,6 +28,7 @@ if (!defined('ABSPATH')) {
 		</p>
 	</form>
 	
+	<?php if (!empty($posts_data)): ?>
 	<table class="wp-list-table widefat fixed striped">
 		<thead>
 			<tr>
@@ -39,43 +40,64 @@ if (!defined('ABSPATH')) {
 			</tr>
 		</thead>
 		<tbody>
-			<?php if (!empty($posts_data)): ?>
-				<?php foreach ($posts_data as $post_data): ?>
-				<tr>
-					<td>
-						<strong>
-							<a href="<?php echo esc_url($post_data['edit_link']); ?>">
-								<?php echo esc_html($post_data['title']); ?>
-							</a>
-						</strong>
-					</td>
-					<td>
-						<?php 
-						if ($post_data['date_scheduled']) {
-							echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_scheduled'])));
-						} else {
-							echo '—';
-						}
-						?>
-					</td>
-					<td>
-						<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_published']))); ?>
-					</td>
-					<td>
-						<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_generated']))); ?>
-					</td>
-					<td>
-						<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="button button-small">
-							<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-						</a>
-						<button class="button button-small aips-view-session" data-history-id="<?php echo esc_attr($post_data['history_id']); ?>">
-							<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
-						</button>
-					</td>
-				</tr>
-				<?php endforeach; ?>
-			<?php else: ?>
-				<tr>
+      <?php if (!empty($posts_data)): ?>
+        <?php foreach ($posts_data as $post_data): ?>
+        <tr>
+          <td>
+            <strong>
+              <a href="<?php echo esc_url($post_data['edit_link']); ?>">
+                <?php echo esc_html($post_data['title']); ?>
+              </a>
+            </strong>
+          </td>
+          <td>
+            <?php
+            if ($post_data['date_scheduled']) {
+              echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_scheduled'])));
+            } else {
+              echo '—';
+            }
+            ?>
+          </td>
+          <td>
+            <?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_published']))); ?>
+          </td>
+          <td>
+            <?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_generated']))); ?>
+          </td>
+          <td>
+            <?php
+            $post_status = get_post_status( $post_data['post_id'] );
+            if ( 'publish' === $post_status ) {
+              $view_url   = get_permalink( $post_data['post_id'] );
+              $view_label = __( 'View', 'ai-post-scheduler' );
+              $aria_label = sprintf(
+                __( 'View "%s" (opens in a new tab)', 'ai-post-scheduler' ),
+                $post_data['title']
+              );
+            } else {
+              $view_url   = get_preview_post_link( $post_data['post_id'] );
+              $view_label = __( 'Preview', 'ai-post-scheduler' );
+              $aria_label = sprintf(
+                __( 'Preview "%s" (opens in a new tab)', 'ai-post-scheduler' ),
+                $post_data['title']
+              );
+            }
+            ?>
+            <a href="<?php echo esc_url( $view_url ); ?>" class="button button-small" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr( $aria_label ); ?>">
+              <?php echo esc_html( $view_label ); ?>
+            </a>
+            <a href="<?php echo esc_url($post_data['edit_link']); ?>" class="button button-small" aria-label="<?php echo esc_attr(sprintf(__('Edit "%s"', 'ai-post-scheduler'), $post_data['title'])); ?>">
+              <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+            </a>
+            <button class="button button-small aips-view-session" data-history-id="<?php echo esc_attr($post_data['history_id']); ?>">
+              <?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
+            </button>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+      <?php else: ?>
+      <tr>
 					<td colspan="5">
 						<div class="aips-empty-state">
 							<span class="dashicons dashicons-admin-post" aria-hidden="true"></span>
@@ -87,7 +109,7 @@ if (!defined('ABSPATH')) {
 						</div>
 					</td>
 				</tr>
-			<?php endif; ?>
+      <?php endif; ?>
 		</tbody>
 		<tfoot>
 			<tr>
@@ -127,55 +149,7 @@ if (!defined('ABSPATH')) {
 	<?php endif; ?>
 </div>
 
-<!-- Session View Modal -->
-<div id="aips-session-modal" class="aips-modal" style="display: none;">
-	<div class="aips-modal-overlay"></div>
-	<div class="aips-modal-content">
-		<div class="aips-modal-header">
-			<h2><?php esc_html_e('View Session', 'ai-post-scheduler'); ?></h2>
-			<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
-				<span class="dashicons dashicons-no"></span>
-			</button>
-		</div>
-		<div class="aips-modal-body">
-			<div class="aips-session-info">
-				<p><strong><?php esc_html_e('Post:', 'ai-post-scheduler'); ?></strong> <span id="aips-session-title"></span></p>
-				<p><strong><?php esc_html_e('Generated:', 'ai-post-scheduler'); ?></strong> <span id="aips-session-created"></span></p>
-				<p><strong><?php esc_html_e('Completed:', 'ai-post-scheduler'); ?></strong> <span id="aips-session-completed"></span></p>
-			</div>
-			
-			<div class="aips-tabs">
-				<ul class="aips-tab-nav">
-					<li><a href="#aips-tab-logs" class="active"><?php esc_html_e('Logs', 'ai-post-scheduler'); ?></a></li>
-					<li><a href="#aips-tab-ai"><?php esc_html_e('AI', 'ai-post-scheduler'); ?></a></li>
-				</ul>
-				
-				<div id="aips-tab-logs" class="aips-tab-content active">
-					<div id="aips-logs-list"></div>
-				</div>
-				
-				<div id="aips-tab-ai" class="aips-tab-content" style="display: none;">
-					<div id="aips-ai-list"></div>
-				</div>
-			</div>
-		</div>
-	</div>
-</div>
-
-<script>
-// Make history type constants available to the JS file
-window.AIPS_History_Type = {
-	LOG: <?php echo AIPS_History_Type::LOG; ?>,
-	ERROR: <?php echo AIPS_History_Type::ERROR; ?>,
-	WARNING: <?php echo AIPS_History_Type::WARNING; ?>,
-	INFO: <?php echo AIPS_History_Type::INFO; ?>,
-	AI_REQUEST: <?php echo AIPS_History_Type::AI_REQUEST; ?>,
-	AI_RESPONSE: <?php echo AIPS_History_Type::AI_RESPONSE; ?>,
-	DEBUG: <?php echo AIPS_History_Type::DEBUG; ?>,
-	ACTIVITY: <?php echo AIPS_History_Type::ACTIVITY; ?>,
-	SESSION_METADATA: <?php echo AIPS_History_Type::SESSION_METADATA; ?>
-};
-
-// Make AJAX nonce available to the JS file
-window.aipsAjaxNonce = '<?php echo wp_create_nonce('aips_ajax_nonce'); ?>';
-</script>
+<?php
+// Include the View Session modal partial
+include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
+?>
