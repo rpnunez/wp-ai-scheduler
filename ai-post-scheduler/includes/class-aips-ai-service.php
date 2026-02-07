@@ -185,6 +185,146 @@ class AIPS_AI_Service {
     }
     
     /**
+     * Generate structured JSON data using AI.
+     *
+     * Uses AI Engine's simpleJsonQuery method for structured data generation.
+     * This is particularly useful for generating lists, topics, or any structured data
+     * that needs to be reliably parsed as JSON.
+     *
+     * @param string $prompt  The prompt to send to the AI.
+     * @param array  $options Optional. AI generation options (model, max_tokens, temperature).
+     * @return array|WP_Error The parsed JSON data as an array, or WP_Error on failure.
+     */
+    public function generate_json($prompt, $options = array()) {
+        // Check if AI Engine is available using consistent availability check
+        $ai = $this->get_ai_engine();
+        
+        if (!$ai) {
+            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        // Try to use global $mwai for simpleJsonQuery if available
+        global $mwai;
+        
+        // If $mwai is not available or doesn't have simpleJsonQuery, fall back to text-based JSON
+        if (!$mwai || !method_exists($mwai, 'simpleJsonQuery')) {
+            return $this->fallback_json_generation($prompt, $options);
+        }
+        
+        // Check circuit breaker
+        if (!$this->resilience_service->check_circuit_breaker()) {
+            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
+            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        // Check rate limiting
+        if (!$this->resilience_service->check_rate_limit()) {
+            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        $options = $this->prepare_options($options);
+        
+        // Try with retry logic
+        return $this->resilience_service->execute_with_retry(function() use ($mwai, $prompt, $options) {
+            try {
+                // Use simpleJsonQuery which returns structured JSON data
+                $result = $mwai->simpleJsonQuery($prompt, $options);
+                
+                if (empty($result)) {
+                    $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
+                    $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+                    $this->resilience_service->record_failure();
+                    return $error;
+                }
+                
+                // Validate that we got valid JSON data
+                if (!is_array($result)) {
+                    $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
+                    $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+                    $this->resilience_service->record_failure();
+                    return $error;
+                }
+                
+                $this->log_call('json', $prompt, wp_json_encode($result), $options);
+                $this->resilience_service->record_success();
+                return $result;
+                
+            } catch (Exception $e) {
+                $error = new WP_Error('generation_failed', $e->getMessage());
+                $this->log_call('json', $prompt, null, $options, $e->getMessage());
+                $this->resilience_service->record_failure();
+                return $error;
+            }
+        }, 'json', $prompt, $options);
+    }
+    
+    /**
+     * Fallback JSON generation using text query with JSON parsing.
+     *
+     * Used when simpleJsonQuery is not available. Generates text and parses as JSON.
+     *
+     * @param string $prompt  The prompt to send to the AI.
+     * @param array  $options Optional. AI generation options.
+     * @return array|WP_Error The parsed JSON data or WP_Error on failure.
+     */
+    private function fallback_json_generation($prompt, $options = array()) {
+        $this->logger->log('Using fallback JSON generation (simpleJsonQuery not available)', 'info');
+        
+        // Log the JSON generation attempt in fallback mode for accurate statistics
+        $start_time = microtime(true);
+        
+        // Generate text response
+        $text_response = $this->generate_text($prompt, $options);
+        
+        if (is_wp_error($text_response)) {
+            // Re-log as json type for accurate statistics
+            $this->log_call('json', $prompt, null, $options, $text_response->get_error_message());
+            return $text_response;
+        }
+        
+        // Clean and parse JSON
+        $json_str = trim($text_response);
+        
+        // Remove potential markdown code blocks
+        $json_str = preg_replace('/^```json\s*/m', '', $json_str);
+        $json_str = preg_replace('/^```\s*/m', '', $json_str);
+        $json_str = preg_replace('/```$/m', '', $json_str);
+        $json_str = trim($json_str);
+        
+        // Decode JSON
+        $data = json_decode($json_str, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $error = new WP_Error('json_parse_error', sprintf(
+                __('Failed to parse JSON: %s', 'ai-post-scheduler'),
+                json_last_error_msg()
+            ));
+            $this->logger->log('JSON parse error: ' . json_last_error_msg(), 'error', array(
+                'response_preview' => substr($json_str, 0, 200),
+            ));
+            // Log as json type with error
+            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        if (!is_array($data)) {
+            $error = new WP_Error('invalid_json_format', __('Parsed JSON is not in expected array format.', 'ai-post-scheduler'));
+            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+            return $error;
+        }
+        
+        // Log successful JSON generation in fallback mode
+        $this->log_call('json', $prompt, wp_json_encode($data), $options);
+        
+        return $data;
+    }
+    
+    /**
      * Generate an image using AI.
      *
      * Sends an image prompt to the AI Engine and returns the generated image URL.
