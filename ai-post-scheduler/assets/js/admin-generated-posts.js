@@ -315,12 +315,16 @@
 		},
 		
 		/**
-		 * Decode HTML entities
+		 * Decode HTML entities safely using DOMParser
 		 */
 		decodeHtmlEntities: function(text) {
-			var textArea = document.createElement('textarea');
-			textArea.innerHTML = text;
-			return textArea.value;
+			if (!text) {
+				return '';
+			}
+			// Use DOMParser for safe HTML entity decoding
+			var parser = new DOMParser();
+			var doc = parser.parseFromString(text, 'text/html');
+			return doc.documentElement.textContent;
 		},
 		
 		/**
@@ -594,29 +598,24 @@
 		
 		/**
 		 * Escape HTML for use in HTML attributes
-		 * Uses two-pass approach: first replace ampersands, then other characters
+		 * Single-pass approach to prevent double-encoding
 		 */
 		escapeHtmlAttr: function(text) {
 			if (text === null || text === undefined) {
 				return '';
 			}
 			
-			// First pass: replace ampersands
-			var result = String(text).replace(/&/g, '&amp;');
-			
-			// Second pass: replace other special characters
 			var map = {
+				'&': '&amp;',
 				'<': '&lt;',
 				'>': '&gt;',
 				'"': '&quot;',
 				"'": '&#039;'
 			};
 			
-			result = result.replace(/[<>"']/g, function(m) { 
+			return String(text).replace(/[&<>"']/g, function(m) { 
 				return map[m]; 
 			});
-			
-			return result;
 		}
 		
 	});
