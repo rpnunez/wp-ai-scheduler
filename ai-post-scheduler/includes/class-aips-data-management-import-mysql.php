@@ -141,7 +141,7 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 			if (!$is_allowed) {
 				return new WP_Error(
 					'invalid_query',
-					sprintf(__('SQL file contains disallowed query type: %s', 'ai-post-scheduler'), esc_html(substr($query, 0, 20)))
+					__('SQL file contains disallowed query type.', 'ai-post-scheduler')
 				);
 			}
 
