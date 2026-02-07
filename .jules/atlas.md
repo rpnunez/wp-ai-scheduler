@@ -21,4 +21,12 @@
 **Decision:** Implemented create_bulk to accept an array of schedules and generate a single SQL INSERT statement.
 **Consequence:** Reduced database round-trips from O(N) to O(1) for bulk scheduling operations.
 
-## 2024-05-26 - [Extract Admin Assets Manager] **Context:** `AIPS_Settings` was a 'God Object' (700+ lines) handling menu registration, settings, rendering, and asset management. The `enqueue_admin_assets` method was bloated with localization logic. **Decision:** Extracted asset management into a new `AIPS_Admin_Assets` class. **Consequence:** `AIPS_Settings` is now more focused on configuration; asset management is centralized; cleaner separation of concerns.
+## 2024-05-26 - Extract Voices Repository
+**Context:** `AIPS_Voices` was violating Separation of Concerns by mixing database queries, AJAX handling, and view logic, unlike other components which use Repositories.
+**Decision:** Extracted `AIPS_Voices_Repository` to handle database operations. Refactored `AIPS_Voices` to use the repository.
+**Consequence:** Improved consistency with the rest of the application and enabled proper unit testing for Voices data access.
+
+## 2024-05-26 - [Extract Admin Assets Manager]
+**Context:** `AIPS_Settings` was a 'God Object' (700+ lines) handling menu registration, settings, rendering, and asset management. The `enqueue_admin_assets` method was bloated with localization logic.
+**Decision:** Extracted asset management into a new `AIPS_Admin_Assets` class.
+**Consequence:** `AIPS_Settings` is now more focused on configuration; asset management is centralized; cleaner separation of concerns.
