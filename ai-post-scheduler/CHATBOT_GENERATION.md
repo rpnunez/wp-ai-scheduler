@@ -2,7 +2,7 @@
 
 ## Overview
 
-As of version 2.0, AI Post Scheduler uses the Meow Apps AI Engine's **Chatbot feature** for post generation. This provides superior coherence between post components (content, title, and excerpt) by maintaining conversational context throughout the generation process.
+AI Post Scheduler uses the Meow Apps AI Engine's **Chatbot feature** for post generation. This provides superior coherence between post components (content, title, and excerpt) by maintaining conversational context throughout the generation process.
 
 ## How It Works
 

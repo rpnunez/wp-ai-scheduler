@@ -492,30 +492,74 @@ class AIPS_Generator {
         }
         
         $content = $content_response['reply'];
-        $chat_id = $content_response['chatId'];
+        $chat_id = isset($content_response['chatId']) ? $content_response['chatId'] : null;
+        
+        if (null === $chat_id) {
+            // Chatbot did not return a chatId; log a warning but continue without conversation tracking
+            if ($this->current_history) {
+                $this->current_history->record(
+                    'warning',
+                    "Content generated via chatbot without chatId; conversation continuity may be limited.",
+                    array('prompt' => $content_prompt),
+                    $content,
+                    array('component' => 'content', 'method' => 'chatbot')
+                );
+            }
+            
+            $this->generation_logger->log(
+                'Content generated via chatbot but no chatId was returned; proceeding without conversation tracking.',
+                'warning',
+                array(
+                    'content_length' => strlen($content)
+                )
+            );
+        }
         
         // Log successful content generation
         if ($this->current_history) {
+            $extra_metadata = array(
+                'component' => 'content',
+                'method'    => 'chatbot',
+            );
+            if (null !== $chat_id) {
+                $extra_metadata['chatId'] = $chat_id;
+            }
+            
             $this->current_history->record(
                 'ai_response',
                 "Content generated successfully (chatbot)",
                 null,
                 $content,
-                array('component' => 'content', 'method' => 'chatbot', 'chatId' => $chat_id)
+                $extra_metadata
             );
         }
         
-        $this->generation_logger->log('Content generated successfully using chatbot', 'info', array(
-            'chatId' => $chat_id,
-            'content_length' => strlen($content)
-        ));
+        $generation_log_context = array(
+            'content_length' => strlen($content),
+        );
+        if (null !== $chat_id) {
+            $generation_log_context['chatId'] = $chat_id;
+        }
+        
+        $this->generation_logger->log(
+            'Content generated successfully using chatbot',
+            'info',
+            $generation_log_context
+        );
         
         // Step 2: Generate the title using the same chatbot session (maintains content context)
-        $title_prompt = $this->prompt_builder->build_title_prompt($context, null, null, '');
+        // Pass content to the prompt builder so it can construct the proper prompt
+        $title_prompt = $this->prompt_builder->build_title_prompt($context, null, null, $content);
         
-        // Modify title prompt to reference the content just generated
-        $title_message = "Based on the article content you just generated, please create a compelling title. ";
-        $title_message .= $title_prompt;
+        // Only reference the article if we have a chatId (conversation continuity)
+        if (null !== $chat_id) {
+            // Modify title prompt to reference the content just generated
+            $title_message = "Based on the article content you just generated, please create a compelling title. ";
+            $title_message .= $title_prompt;
+        } else {
+            // No chatId, use the full prompt with content embedded
+            $title_message = $title_prompt;
+        }
         
         // Log AI request for title
         if ($this->current_history) {
@@ -531,7 +575,13 @@ class AIPS_Generator {
             );
         }
         
-        $title_response = $this->ai_service->generate_with_chatbot($chatbot_id, $title_message, array('chatId' => $chat_id), 'title');
+        // Only pass chatId if it exists
+        $title_options = array();
+        if (null !== $chat_id) {
+            $title_options['chatId'] = $chat_id;
+        }
+        
+        $title_response = $this->ai_service->generate_with_chatbot($chatbot_id, $title_message, $title_options, 'title');
         
         if (is_wp_error($title_response)) {
             // If title generation fails, fall back to a safe default
@@ -571,11 +621,26 @@ class AIPS_Generator {
         }
         
         $topic_str = $context->get_topic();
-        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, '', $voice_obj, $topic_str);
         
-        // Modify excerpt prompt to reference the content and title
-        $excerpt_message = "Based on the article content and title you just created, please write a short excerpt (max 160 characters). ";
-        $excerpt_message .= $excerpt_prompt;
+        // Use a truncated version of the generated content as a backstop
+        // This ensures the prompt builder has content even if conversation context is lost
+        $excerpt_source_content = '';
+        if (isset($content) && is_string($content)) {
+            // Strip HTML and limit length to keep prompts efficient
+            $excerpt_source_content = mb_substr(wp_strip_all_tags($content), 0, 1000);
+        }
+        
+        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $excerpt_source_content, $voice_obj, $topic_str);
+        
+        // Only reference the article if we have a chatId (conversation continuity)
+        // Align length instruction with the excerpt prompt builder (40-60 words).
+        if (null !== $chat_id) {
+            $excerpt_message = "Based on the article content and title you just created, please write a short excerpt between 40 and 60 words. ";
+            $excerpt_message .= $excerpt_prompt;
+        } else {
+            // No chatId, use the full prompt with content embedded
+            $excerpt_message = $excerpt_prompt;
+        }
         
         // Log AI request for excerpt
         if ($this->current_history) {
@@ -591,7 +656,13 @@ class AIPS_Generator {
             );
         }
         
-        $excerpt_response = $this->ai_service->generate_with_chatbot($chatbot_id, $excerpt_message, array('chatId' => $chat_id), 'excerpt');
+        // Only pass chatId if it exists
+        $excerpt_options = array();
+        if (null !== $chat_id) {
+            $excerpt_options['chatId'] = $chat_id;
+        }
+        
+        $excerpt_response = $this->ai_service->generate_with_chatbot($chatbot_id, $excerpt_message, $excerpt_options, 'excerpt');
         
         if (is_wp_error($excerpt_response)) {
             // If excerpt generation fails, return empty string

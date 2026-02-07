@@ -294,10 +294,28 @@ class AIPS_AI_Service {
         // Try with retry logic
         return $this->resilience_service->execute_with_retry(function() use ($ai, $chatbot_id, $message, $options, $log_type) {
             try {
-                // Extract chatId if provided for continuing a conversation
+                // Extract supported options for the chatbot call
+                // AI Engine's simpleChatbotQuery supports: chatId, context, instructions
                 $chatbot_options = array();
-                if (!empty($options['chatId'])) {
-                    $chatbot_options['chatId'] = $options['chatId'];
+                $supported_option_keys = array('chatId', 'context', 'instructions');
+                
+                foreach ($supported_option_keys as $key) {
+                    if (isset($options[$key])) {
+                        $chatbot_options[$key] = $options[$key];
+                    }
+                }
+                
+                // Log any unsupported options that were provided and ignored
+                $unsupported_keys = array_diff(array_keys($options), $supported_option_keys);
+                if (!empty($unsupported_keys)) {
+                    $this->logger->log(
+                        'Unsupported chatbot options were provided and ignored.',
+                        'warning',
+                        array(
+                            'unsupported_keys' => $unsupported_keys,
+                            'chatbot_id'       => $chatbot_id,
+                        )
+                    );
                 }
                 
                 // Call the chatbot
