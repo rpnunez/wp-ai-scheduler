@@ -72,11 +72,9 @@ class AIPS_Generator {
         $this->history_service = $history_service ?: new AIPS_History_Service();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 
-        // Initialize session tracker
-        $this->current_session = new AIPS_Generation_Session();
+        // Initialize logger wrapper
+        $this->generation_logger = new AIPS_Generation_Logger($this->logger, $this->history_service, new AIPS_Generation_Session());  
 
-        // Initialize logger wrapper (no longer using history_repository directly)
-        $this->generation_logger = new AIPS_Generation_Logger($this->logger, null, $this->current_session);
     }
     
     /**

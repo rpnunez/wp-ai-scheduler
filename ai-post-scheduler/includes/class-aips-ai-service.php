@@ -79,10 +79,12 @@ class AIPS_AI_Service {
      */
     private function get_ai_engine() {
         if ($this->ai_engine === null) {
-            if (class_exists('Meow_MWAI_Core')) {
-                global $mwai_core;
-                $this->ai_engine = $mwai_core;
-            }
+            global $mwai;
+            $this->ai_engine = $mwai;
+            //if (class_exists('Meow_MWAI_Core')) {
+                //global $mwai_core;
+                //$this->ai_engine = $mwai_core;
+            //}
         }
         return $this->ai_engine;
     }
@@ -270,10 +272,19 @@ class AIPS_AI_Service {
             return $error;
         }
         
-        // Check if simpleChatbotQuery method exists
+        // Check if simpleChatbotQuery method exists with better diagnostics
         if (!method_exists($ai, 'simpleChatbotQuery')) {
-            $error = new WP_Error('chatbot_unavailable', __('AI Engine chatbot feature is not available. Please update AI Engine plugin.', 'ai-post-scheduler'));
+            // Log detailed diagnostics
+            $this->logger->log('Chatbot method unavailable', 'error', array(
+                'ai_engine_class' => get_class($ai),
+                'available_methods' => get_class_methods($ai),
+                'chatbot_id' => $chatbot_id
+            ));
+            
+            $error = new WP_Error('chatbot_unavailable', sprintf(__('%s', 'ai-post-scheduler'), 'AI Engine chatbot feature is not available.'));
+
             $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+
             return $error;
         }
         
@@ -307,6 +318,7 @@ class AIPS_AI_Service {
                 
                 // Log any unsupported options that were provided and ignored
                 $unsupported_keys = array_diff(array_keys($options), $supported_option_keys);
+
                 if (!empty($unsupported_keys)) {
                     $this->logger->log(
                         'Unsupported chatbot options were provided and ignored.',
@@ -321,30 +333,45 @@ class AIPS_AI_Service {
                 // Call the chatbot
                 $response = $ai->simpleChatbotQuery($chatbot_id, $message, $chatbot_options);
                 
+                // Log the raw response for debugging
+                $this->logger->log('Chatbot raw response received', 'debug', array(
+                    'response_type' => gettype($response),
+                    'is_string' => is_string($response),
+                    'chatbot_id' => $chatbot_id,
+                    'response_length' => is_string($response) ? strlen($response) : 0,
+                    'response' => var_export($response, true)
+                ));
+                
                 // Validate response structure
-                // Note: AI Engine's chatbot should return both 'reply' and 'chatId', but we validate
-                // to ensure we have at least a reply. The chatId might be absent on first message
-                // in some edge cases, but is critical for continuing conversations.
-                if (!is_array($response) || !isset($response['reply'])) {
-                    $error = new WP_Error('invalid_chatbot_response', __('AI Engine returned an invalid chatbot response (missing reply).', 'ai-post-scheduler'));
+                if (!is_string($response)) {
+                    $error = new WP_Error('invalid_chatbot_response', 
+                        sprintf(__('AI Engine returned an unexpected response type: %s', 'ai-post-scheduler'), gettype($response))
+                    );
+
                     $this->log_call($log_type, $message, null, $options, $error->get_error_message());
+
                     $this->resilience_service->record_failure();
+
                     return $error;
                 }
                 
-                // Validate chatId is present for conversation continuity
-                if (!isset($response['chatId'])) {
-                    $this->logger->log('Warning: Chatbot response missing chatId - conversation continuity may be broken', 'warning', array(
-                        'message' => $message,
-                        'chatbot_id' => $chatbot_id
-                    ));
-                }
+                // Return the expected format with reply and chatId
+                $result = array(
+                    'reply' => $response,
+                    'chatId' => $chatbot_options['chatId'] ?? null,
+                );
                 
                 // Log successful chatbot interaction
-                $this->log_call($log_type, $message, $response['reply'], array_merge($options, array('chatId' => $response['chatId'] ?? null)));
+                $this->log_call($log_type, $message, $result['reply'], array_merge($options, array('chatId' => $result['chatId'])));
+
+                $this->logger->log('Chatbot interaction successful', 'info', array(
+                    'chatbot_id' => $chatbot_id,
+                    'response' => var_export($response, true)
+                ));
+                
                 $this->resilience_service->record_success();
                 
-                return $response;
+                return $result;
                 
             } catch (Exception $e) {
                 $error = new WP_Error('chatbot_failed', $e->getMessage());
