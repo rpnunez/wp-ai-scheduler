@@ -32,6 +32,9 @@ class AIPS_Generator {
      */
     private $generation_logger;
 
+    private $current_session;
+    private $history_repository;
+
     private $template_processor;
     private $image_service;
     private $structure_manager;
@@ -70,6 +73,7 @@ class AIPS_Generator {
         $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
         $this->history_service = $history_service ?: new AIPS_History_Service();
+        $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 
         // Initialize session tracker
