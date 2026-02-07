@@ -285,6 +285,6 @@ window.AIPS_History_Type = {
 };
 
 // Make AJAX nonce available to the JS file (reuse from localization if available)
-window.aipsAjaxNonce = window.aipsPostReviewL10n && window.aipsPostReviewL10n.nonce ? window.aipsPostReviewL10n.nonce : '<?php echo wp_create_nonce('aips_ajax_nonce'); ?>';
+window.aipsAjaxNonce = window.aipsPostReviewL10n && window.aipsPostReviewL10n.nonce ? window.aipsPostReviewL10n.nonce : '<?php echo esc_js(wp_create_nonce('aips_ajax_nonce')); ?>';
 
 </script>

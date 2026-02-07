@@ -485,8 +485,9 @@
             
             if (ai_calls.length > 0) {
                 ai_calls.forEach(function(call) {
-                    // Escape component type for use in HTML attribute with proper attribute escaping
-                    var escapedType = escapeHtml(call.type).replace(/"/g, '&quot;');
+                    // Escape component type for use in HTML attribute
+                    // Note: escapeHtml() already converts quotes to &quot; which is safe for attributes
+                    var escapedType = escapeHtml(call.type);
                     aiHtml += '<div class="aips-ai-component" data-component="' + escapedType + '">';
                     aiHtml += '<h4>' + escapeHtml(call.label) + '</h4>';
                     aiHtml += '<p class="aips-ai-hint">Click to view request and response details</p>';
@@ -564,7 +565,7 @@
                 return;
             }
 
-            if (typeof currentLogCount === 'number' && currentLogCount <= CLIENT_LOG_THRESHOLD) {
+            if (currentLogCount <= CLIENT_LOG_THRESHOLD) {
                 // Small session: fetch the JSON via AJAX and trigger client-side download
                 $button.prop('disabled', true).text('Preparing download...');
                 $.ajax({
