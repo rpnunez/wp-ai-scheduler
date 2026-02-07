@@ -153,6 +153,7 @@ final class AI_Post_Scheduler {
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Settings();
+            new AIPS_Admin_Assets();
             new AIPS_Voices();
             new AIPS_Templates();
             new AIPS_Templates_Controller();
