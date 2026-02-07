@@ -67,6 +67,9 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
         <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
         <input type="search" id="aips-history-search-input" name="s" value="<?php echo isset($_GET['s']) ? esc_attr($_GET['s']) : ''; ?>">
         <input type="submit" id="aips-history-search-btn" class="button" value="<?php esc_attr_e('Search History', 'ai-post-scheduler'); ?>">
+        <?php if (!empty($_GET['s'])): ?>
+            <a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="button"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+        <?php endif; ?>
     </p>
 
     <div class="tablenav top">
