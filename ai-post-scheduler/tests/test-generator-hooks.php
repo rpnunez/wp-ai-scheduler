@@ -21,12 +21,44 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 		};
 
 		$ai_service = new class {
+			private $chat_counter = 0;
+			
 			public function is_available() {
 				return true;
 			}
 
 			public function generate_text($prompt, $options = array()) {
 				return 'Generated content';
+			}
+			
+			public function generate_with_chatbot($chatbot_id, $message, $options = array(), $log_type = 'chatbot') {
+				$this->chat_counter++;
+				
+				// Return different responses for different steps
+				if ($this->chat_counter === 1) {
+					// Content generation
+					return array(
+						'reply' => 'Generated content',
+						'chatId' => 'test-chat-id-123'
+					);
+				} elseif ($this->chat_counter === 2) {
+					// Title generation
+					return array(
+						'reply' => 'Generated Title',
+						'chatId' => 'test-chat-id-123'
+					);
+				} elseif ($this->chat_counter === 3) {
+					// Excerpt generation
+					return array(
+						'reply' => 'Generated excerpt',
+						'chatId' => 'test-chat-id-123'
+					);
+				}
+				
+				return array(
+					'reply' => 'Generic response',
+					'chatId' => 'test-chat-id-123'
+				);
 			}
 		};
 
@@ -47,15 +79,52 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			public function build_excerpt_instructions($voice, $topic) {
 				return 'Excerpt instructions';
 			}
+			
+			public function build_content_prompt($context) {
+				return 'Content prompt for ' . $context->get_topic();
+			}
+			
+			public function build_content_context($context) {
+				return 'Content context';
+			}
+			
+			public function build_title_prompt($context, $x = null, $y = null, $content = '') {
+				return 'Title prompt for ' . $context->get_topic();
+			}
+			
+			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
+				return 'Excerpt prompt for ' . $title;
+			}
 		};
 
-		$history_repository = new class {
-			public function create($data) {
-				return 99;
-			}
-
-			public function update($id, $data) {
-				return true;
+		// Mock history service that returns a history container mock
+		$history_service = new class {
+			public function create($type, $data = array()) {
+				$container = new class {
+					private $id = 99;
+					
+					public function get_id() {
+						return $this->id;
+					}
+					
+					public function with_session($context) {
+						return $this;
+					}
+					
+					public function record($type, $message, $data = null, $result = null, $metadata = array()) {
+						// No-op for tests
+					}
+					
+					public function complete_failure($error, $metadata = array()) {
+						// No-op for tests
+					}
+					
+					public function complete_success($data = array()) {
+						// No-op for tests
+					}
+				};
+				
+				return $container;
 			}
 		};
 
@@ -106,7 +175,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			new class {
 			},
 			$post_creator,
-			$history_repository,
+			$history_service,
 			$prompt_builder
 		);
 

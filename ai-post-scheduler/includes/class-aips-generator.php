@@ -75,8 +75,8 @@ class AIPS_Generator {
         // Initialize session tracker
         $this->current_session = new AIPS_Generation_Session();
 
-        // Initialize logger wrapper
-        $this->generation_logger = new AIPS_Generation_Logger($this->logger, $this->history_repository, $this->current_session);
+        // Initialize logger wrapper (no longer using history_repository directly)
+        $this->generation_logger = new AIPS_Generation_Logger($this->logger, null, $this->current_session);
     }
     
     /**
@@ -681,6 +681,11 @@ class AIPS_Generator {
             'meta_description' => $excerpt,
             'seo_title' => $title,
         );
+        
+        // For backward compatibility, include template if this is a template context
+        if ($context->get_type() === 'template') {
+            $post_creation_data['template'] = $context->get_template();
+        }
 
         // Allow integrations to hook before the post is created.
         do_action('aips_post_generation_before_post_create', $post_creation_data);
