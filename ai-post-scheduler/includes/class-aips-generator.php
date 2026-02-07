@@ -37,6 +37,9 @@ class AIPS_Generator {
      */
     private $generation_logger;
 
+    private $current_session;
+    private $history_repository;
+
     private $template_processor;
     private $image_service;
     private $structure_manager;

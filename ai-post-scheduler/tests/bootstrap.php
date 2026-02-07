@@ -785,7 +785,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         $GLOBALS['wpdb'] = new class {
             public $prefix = 'wp_';
             public $insert_id = 0;
-            private $data = array();
+            public $data = array();
             
             public function esc_like($text) {
                 return addcslashes($text, '_%\\');
@@ -807,7 +807,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 foreach ($args as $arg) {
                     if (is_array($arg)) {
                         // Handle array args (e.g., for IN clauses)
-                        $arg = "'" . implode("','", $arg) . "'";
+                        $escaped_args = array_map(function($a) { return is_numeric($a) ? $a : "'$a'"; }, $arg);
+                        $arg = implode(",", $escaped_args);
                         $query = preg_replace('/%[sd]/', $arg, $query, 1);
                     } else {
                         $query = preg_replace('/%[sd]/', is_numeric($arg) ? $arg : "'$arg'", $query, 1);
@@ -817,11 +818,89 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_results($query, $output = OBJECT) {
+                // Extract table name
+                if (preg_match('/FROM\s+([^\s]+)/i', $query, $matches)) {
+                    $table = $matches[1];
+                    // Strip alias if present
+                    if (preg_match('/^([^\s]+)\s+/', $table, $alias_matches)) {
+                        // This is naive, assuming "table alias".
+                    }
+
+                    // Simple table extraction: take the first word after FROM
+                    $table = preg_replace('/`/', '', $table);
+
+                    if (isset($this->data[$table])) {
+                        $results = $this->data[$table];
+
+                        // Basic filtering (WHERE id = 1, WHERE status = 'active', etc.)
+                        // This is a very simplified SQL parser for mock purposes
+                        if (preg_match_all('/(?:WHERE|AND)\s+(?:`?(\w+)`?\.?`?(\w+)`?|`?(\w+)`?)\s*(=|LIKE|IN)\s*([^\s]+|(?:\([^\)]+\)))/i', $query, $where_matches, PREG_SET_ORDER)) {
+                            foreach ($where_matches as $match) {
+                                // $match[1/2/3] is column, $match[4] is operator, $match[5] is value
+                                $column = !empty($match[3]) ? $match[3] : $match[2];
+                                $operator = strtoupper($match[4]);
+                                $value = trim($match[5], "'\"");
+
+                                $results = array_filter($results, function($row) use ($column, $operator, $value) {
+                                    $row_val = is_object($row) ? ($row->$column ?? null) : ($row[$column] ?? null);
+
+                                    if ($operator === '=') {
+                                        return (string)$row_val === (string)$value;
+                                    } elseif ($operator === 'LIKE') {
+                                        $pattern = '/^' . str_replace('%', '.*', preg_quote($value, '/')) . '$/i';
+                                        return (bool)preg_match($pattern, (string)$row_val);
+                                    } elseif ($operator === 'IN') {
+                                        $values = explode(',', str_replace(array('(', ')', "'"), '', $value));
+                                        return in_array((string)$row_val, $values);
+                                    }
+                                    return true;
+                                });
+                            }
+                        }
+
+                        // Handle COUNT(*)
+                        if (preg_match('/SELECT\s+COUNT\(\*\)/i', $query)) {
+                            $count = count($results);
+                            $obj = new stdClass();
+                            $obj->total = $count; // Just in case
+                            // But usually get_var is used for count
+                            return array($obj);
+                        }
+
+                        // Convert to objects if needed
+                        if ($output == OBJECT) {
+                            $results = array_map(function($item) {
+                                return (object) $item;
+                            }, $results);
+                        }
+
+                        return array_values($results);
+                    }
+                }
+
                 return array();
             }
             
             public function get_row($query, $output = OBJECT, $y = 0) {
+                // Try to use get_results logic first
+                $results = $this->get_results($query, $output);
+
+                if (!empty($results)) {
+                     $row = $results[0];
+                     if ($output == ARRAY_A) {
+                         return (array) $row;
+                     }
+                     return $row;
+                }
+
+                // Special case for COUNT queries handled by get_var logic simulated here?
+                if (preg_match('/SELECT\s+COUNT\(\*\)\s+as\s+(\w+)/i', $query, $matches)) {
+                     $alias = $matches[1];
+                     // ...
+                }
+
                 // Return a default object with common properties to prevent null reference errors
+                // This preserves the old behavior for queries we can't parse or find data for
                 $obj = new stdClass();
                 $obj->id = 1; // Default ID
                 $obj->total = 0;
@@ -829,6 +908,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 $obj->failed = 0;
                 $obj->processing = 0;
                 $obj->count = 0;
+
+                // Add score for AIPS_Topic_Penalty_Service_Test
+                $obj->score = 0;
 
                 if ($output == ARRAY_A) {
                     return (array) $obj;
@@ -838,25 +920,118 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_var($query, $x = 0, $y = 0) {
+                // Extract table name
+                if (preg_match('/FROM\s+([^\s]+)/i', $query, $matches)) {
+                    $table = $matches[1];
+                    $table = preg_replace('/`/', '', $table);
+
+                    if (isset($this->data[$table])) {
+                        $results = $this->data[$table];
+                         // Apply filters (same logic as get_results, duplicated for brevity or refactor)
+                        if (preg_match_all('/(?:WHERE|AND)\s+(?:`?(\w+)`?\.?`?(\w+)`?|`?(\w+)`?)\s*(=|LIKE|IN)\s*([^\s]+|(?:\([^\)]+\)))/i', $query, $where_matches, PREG_SET_ORDER)) {
+                            foreach ($where_matches as $match) {
+                                $column = !empty($match[3]) ? $match[3] : $match[2];
+                                $operator = strtoupper($match[4]);
+                                $value = trim($match[5], "'\"");
+
+                                $results = array_filter($results, function($row) use ($column, $operator, $value) {
+                                    $row_val = is_object($row) ? ($row->$column ?? null) : ($row[$column] ?? null);
+                                    if ($operator === '=') return (string)$row_val === (string)$value;
+                                    if ($operator === 'LIKE') {
+                                         $pattern = '/^' . str_replace('%', '.*', preg_quote($value, '/')) . '$/i';
+                                         return (bool)preg_match($pattern, (string)$row_val);
+                                    }
+                                    if ($operator === 'IN') {
+                                        $values = explode(',', str_replace(array('(', ')', "'"), '', $value));
+                                        return in_array((string)$row_val, $values);
+                                    }
+                                    return true;
+                                });
+                            }
+                        }
+
+                        if (preg_match('/SELECT\s+COUNT\(\*\)/i', $query)) {
+                            return count($results);
+                        }
+                    }
+                }
                 return null;
             }
             
             public function query($query) {
+                // Handle TRUNCATE/DELETE ALL
+                if (preg_match('/^(?:TRUNCATE TABLE|DELETE FROM)\s+([^\s]+)/i', $query, $matches)) {
+                    $table = $matches[1];
+                    $table = preg_replace('/`/', '', $table);
+                    // Check for WHERE clause
+                    if (!stripos($query, 'WHERE')) {
+                        $this->data[$table] = array();
+                        return true;
+                    } else {
+                         // DELETE FROM table WHERE ...
+                         // Reuse delete logic if simple
+                    }
+                }
                 return true;
             }
             
             public function insert($table, $data, $format = null) {
                 static $next_insert_id = 1;
                 $this->insert_id = $next_insert_id++;
+
+                if (!isset($this->data[$table])) {
+                    $this->data[$table] = array();
+                }
+
+                $data['id'] = $this->insert_id;
+                $this->data[$table][$this->insert_id] = (object) $data;
+
                 return true;
             }
             
             public function update($table, $data, $where, $format = null, $where_format = null) {
-                return true;
+                if (!isset($this->data[$table])) {
+                    return false;
+                }
+
+                $count = 0;
+                foreach ($this->data[$table] as $key => $row) {
+                    $match = true;
+                    foreach ($where as $col => $val) {
+                        if ((string)$row->$col !== (string)$val) {
+                            $match = false;
+                            break;
+                        }
+                    }
+
+                    if ($match) {
+                        foreach ($data as $col => $val) {
+                            $this->data[$table][$key]->$col = $val;
+                        }
+                        $count++;
+                    }
+                }
+
+                return $count > 0; // Return true if matched? WP returns false if no rows updated? No, returns int or false. Mock returning true is fine for boolean checks.
             }
             
             public function delete($table, $where, $where_format = null) {
-                return true;
+                if (!isset($this->data[$table])) {
+                    return false;
+                }
+
+                $initial_count = count($this->data[$table]);
+
+                $this->data[$table] = array_filter($this->data[$table], function($row) use ($where) {
+                    foreach ($where as $col => $val) {
+                        if ((string)$row->$col !== (string)$val) {
+                            return true; // Keep row if it doesn't match
+                        }
+                    }
+                    return false; // Remove row if it matches
+                });
+
+                return $initial_count > count($this->data[$table]);
             }
 
             public function get_charset_collate() {
