@@ -136,32 +136,38 @@ class AIPS_AI_Service {
         // Try with retry logic
         return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
             try {
-                $query = new Meow_MWAI_Query_Text($prompt);
+                // Build params array for simpleTextQuery
+                $params = array();
                 
                 // Set model if specified
                 if (!empty($options['model'])) {
-                    $query->set_model($options['model']);
+                    $params['model'] = $options['model'];
                 }
                 
                 // Set max tokens
                 if (isset($options['max_tokens'])) {
-                    $query->set_max_tokens($options['max_tokens']);
+                    $params['maxTokens'] = $options['max_tokens'];
                 }
                 
                 // Set temperature
                 if (isset($options['temperature'])) {
-                    $query->set_temperature($options['temperature']);
+                    $params['temperature'] = $options['temperature'];
                 }
 
-                // Optional advanced parameters supported by AI Engine.
-                $this->apply_optional_query_settings($query, $options);
+                // Optional advanced parameters supported by AI Engine
+                foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
+                    if (isset($options[$key])) {
+                        $params[$key] = $options[$key];
+                    }
+                }
                 
-                $response = $ai->run_query($query);
+                // Use simpleTextQuery API method
+                $result = $ai->simpleTextQuery($prompt, $params);
                 
-                if ($response && !empty($response->result)) {
-                    $this->log_call('text', $prompt, $response->result, $options);
+                if ($result && !empty($result)) {
+                    $this->log_call('text', $prompt, $result, $options);
                     $this->resilience_service->record_success();
-                    return $response->result;
+                    return $result;
                 }
                 
                 $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
@@ -213,17 +219,23 @@ class AIPS_AI_Service {
 
         return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
             try {
-                $query = new Meow_MWAI_Query_Image($prompt);
-                $response = $ai->run_query($query);
+                // Build params array for simpleImageQuery
+                $params = array();
+                
+                // Pass through any options as params
+                if (!empty($options)) {
+                    $params = $options;
+                }
+                
+                // Use simpleImageQuery API method
+                $image_url = $ai->simpleImageQuery($prompt, $params);
 
-                if (!$response || empty($response->result)) {
+                if (!$image_url || empty($image_url)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
                     $this->log_call('image', $prompt, null, $options, $error->get_error_message());
                     $this->resilience_service->record_failure();
                     return $error;
                 }
-
-                $image_url = $response->result;
 
                 // Handle array response (some AI engines return arrays)
                 if (is_array($image_url) && !empty($image_url[0])) {
