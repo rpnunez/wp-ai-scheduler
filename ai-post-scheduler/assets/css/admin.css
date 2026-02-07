@@ -508,6 +508,13 @@
     margin-bottom: 20px;
 }
 
+.aips-search-wrapper {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
 .aips-toggle {
     position: relative;
     display: inline-block;
