@@ -188,12 +188,16 @@ class AIPS_AI_Service {
      * @return array|WP_Error The parsed JSON data as an array, or WP_Error on failure.
      */
     public function generate_json($prompt, $options = array()) {
-        // Check if we have access to global $mwai for simpleJsonQuery
-        if (!function_exists('wp_get_current_user')) {
-            // We're in a context where WordPress functions might not be loaded
-            return $this->fallback_json_generation($prompt, $options);
+        // Check if AI Engine is available using consistent availability check
+        $ai = $this->get_ai_engine();
+        
+        if (!$ai) {
+            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+            return $error;
         }
         
+        // Try to use global $mwai for simpleJsonQuery if available
         global $mwai;
         
         // If $mwai is not available or doesn't have simpleJsonQuery, fall back to text-based JSON
@@ -263,10 +267,15 @@ class AIPS_AI_Service {
     private function fallback_json_generation($prompt, $options = array()) {
         $this->logger->log('Using fallback JSON generation (simpleJsonQuery not available)', 'info');
         
+        // Log the JSON generation attempt in fallback mode for accurate statistics
+        $start_time = microtime(true);
+        
         // Generate text response
         $text_response = $this->generate_text($prompt, $options);
         
         if (is_wp_error($text_response)) {
+            // Re-log as json type for accurate statistics
+            $this->log_call('json', $prompt, null, $options, $text_response->get_error_message());
             return $text_response;
         }
         
@@ -290,12 +299,19 @@ class AIPS_AI_Service {
             $this->logger->log('JSON parse error: ' . json_last_error_msg(), 'error', array(
                 'response_preview' => substr($json_str, 0, 200),
             ));
+            // Log as json type with error
+            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
         
         if (!is_array($data)) {
-            return new WP_Error('invalid_json_format', __('Parsed JSON is not in expected array format.', 'ai-post-scheduler'));
+            $error = new WP_Error('invalid_json_format', __('Parsed JSON is not in expected array format.', 'ai-post-scheduler'));
+            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+            return $error;
         }
+        
+        // Log successful JSON generation in fallback mode
+        $this->log_call('json', $prompt, wp_json_encode($data), $options);
         
         return $data;
     }

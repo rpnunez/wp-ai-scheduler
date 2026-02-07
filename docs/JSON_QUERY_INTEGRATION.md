@@ -197,17 +197,20 @@ The implementation includes comprehensive tests:
 // Test unavailability handling
 test_generate_json_unavailable()
 
+// Test fallback logs as json type for accurate statistics
+test_generate_json_fallback_logs_as_json_type()
+
 // Test options passing
 test_generate_json_accepts_options()
 
-// Test call statistics
+// Test call statistics include json type properly
 test_call_statistics_include_json_calls()
 
-// Test logging
-test_generate_json_logged_as_json_type()
+// Test simpleJsonQuery success path with mocked $mwai
+test_generate_json_with_simpleJsonQuery_success()
 ```
 
-All tests pass with fallback mechanism when AI Engine is not available.
+All tests validate both the `simpleJsonQuery` success path and fallback behavior when AI Engine is not available.
 
 ## Migration Guide
 

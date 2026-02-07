@@ -94,6 +94,23 @@ class AIPS_Research_Service {
         // Validate and normalize the JSON response
         $topics = $this->validate_and_normalize_topics($result, $count);
 
+        // If validation failed, try falling back to text-based parsing
+        if (is_wp_error($topics) && $topics->get_error_code() === 'invalid_format') {
+            $this->logger->log('JSON validation failed, attempting text-based fallback parsing', 'warning');
+            
+            // Try to convert result back to string for legacy parser
+            $text_response = is_string($result) ? $result : wp_json_encode($result);
+            
+            if (!empty($text_response) && method_exists($this, 'parse_research_response')) {
+                $fallback_topics = $this->parse_research_response($text_response, $count);
+                
+                if (!is_wp_error($fallback_topics) && is_array($fallback_topics) && !empty($fallback_topics)) {
+                    $this->logger->log('Fallback text parsing succeeded', 'info');
+                    $topics = $fallback_topics;
+                }
+            }
+        }
+
         if (is_wp_error($topics)) {
             return $topics;
         }
@@ -136,7 +153,7 @@ class AIPS_Research_Service {
         $prompt .= "4. Evergreen value combined with timeliness\n";
         $prompt .= "5. Content gap opportunities\n\n";
 
-        $prompt .= "Return a valid JSON array of objects. Each object must have:\n";
+        $prompt .= "Return ONLY a valid JSON array of objects. Each object must have:\n";
         $prompt .= "- \"topic\": The topic/title (string)\n";
         $prompt .= "- \"score\": Relevance score 1-100 (integer)\n";
         $prompt .= "- \"reason\": Why it's trending (max 100 chars, string)\n";
@@ -150,7 +167,9 @@ class AIPS_Research_Service {
         $prompt .= "    \"reason\": \"High search volume, current AI adoption surge\",\n";
         $prompt .= "    \"keywords\": [\"AI content\", \"automation\", \"GPT-4\", \"content marketing\", \"2025 trends\"]\n";
         $prompt .= "  }\n";
-        $prompt .= "]";
+        $prompt .= "]\n\n";
+
+        $prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
 
         return $prompt;
     }

@@ -304,16 +304,22 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     }
 
     /**
-     * Test generate_json is logged as json type
+     * Test generate_json fallback logs as json type
      */
-    public function test_generate_json_logged_as_json_type() {
+    public function test_generate_json_fallback_logs_as_json_type() {
         if (!$this->service->is_available()) {
             $this->service->generate_json('Test JSON prompt');
             
             $log = $this->service->get_call_log();
-            // The fallback will call generate_text, so we should see 'text' type
-            $this->assertCount(1, $log);
-            $this->assertEquals('text', $log[0]['type']);
+            // With the fix, fallback should log as 'json' type even when using text underneath
+            $this->assertGreaterThanOrEqual(1, count($log));
+            
+            // Find the json log entry (there may be a text entry too from the underlying call)
+            $json_logs = array_filter($log, function($entry) {
+                return $entry['type'] === 'json';
+            });
+            
+            $this->assertNotEmpty($json_logs, 'Should have at least one json type log entry');
         } else {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
         }
@@ -350,13 +356,64 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             
             $stats = $this->service->get_call_statistics();
             
-            // generate_json uses fallback which calls generate_text
-            // so we expect 2 text calls, 1 image call
-            $this->assertEquals(3, $stats['total']);
+            // With the fix, generate_json logs as 'json' type (plus underlying text call)
+            // so we expect: 2 text calls (1 direct + 1 from json fallback), 1 json call, 1 image call
+            $this->assertEquals(4, $stats['total']);
             $this->assertEquals(2, $stats['by_type']['text']);
+            $this->assertEquals(1, $stats['by_type']['json']);
             $this->assertEquals(1, $stats['by_type']['image']);
         } else {
             $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+        }
+    }
+
+    /**
+     * Test generate_json with mocked simpleJsonQuery success path
+     */
+    public function test_generate_json_with_simpleJsonQuery_success() {
+        // This test validates the simpleJsonQuery success path by mocking $mwai
+        global $mwai;
+        
+        // Save original state
+        $original_mwai = $mwai;
+        
+        // Mock $mwai with simpleJsonQuery method
+        $mwai = new class {
+            public function simpleJsonQuery($prompt, $options) {
+                // Return mock JSON data
+                return array(
+                    array('title' => 'Topic 1', 'score' => 85, 'keywords' => array('key1', 'key2')),
+                    array('title' => 'Topic 2', 'score' => 90, 'keywords' => array('key3', 'key4')),
+                );
+            }
+        };
+        
+        // Also need to mock AI Engine availability
+        global $mwai_core;
+        $original_core = $mwai_core;
+        if (!$mwai_core) {
+            $mwai_core = new stdClass();
+        }
+        
+        try {
+            $service = new AIPS_AI_Service();
+            $result = $service->generate_json('Test prompt');
+            
+            // Should succeed with array result
+            $this->assertIsArray($result);
+            $this->assertCount(2, $result);
+            $this->assertEquals('Topic 1', $result[0]['title']);
+            $this->assertEquals(85, $result[0]['score']);
+            
+            // Should be logged as 'json' type
+            $log = $service->get_call_log();
+            $this->assertCount(1, $log);
+            $this->assertEquals('json', $log[0]['type']);
+            
+        } finally {
+            // Restore original state
+            $mwai = $original_mwai;
+            $mwai_core = $original_core;
         }
     }
 }
