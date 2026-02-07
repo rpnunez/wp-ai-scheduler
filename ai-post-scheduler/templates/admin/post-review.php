@@ -55,6 +55,9 @@ $templates = $template_repository->get_all();
 			<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 			<input type="search" id="aips-post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
 			<input type="submit" id="aips-post-search-btn" class="button" value="<?php esc_attr_e('Search', 'ai-post-scheduler'); ?>">
+			<?php if (!empty($search_query)): ?>
+				<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="button"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+			<?php endif; ?>
 		</p>
 		
 		<?php if (!empty($templates)): ?>
@@ -229,7 +232,7 @@ $templates = $template_repository->get_all();
 	<div class="aips-modal-content">
 		<div class="aips-modal-header">
 			<h2><?php esc_html_e('Generation Logs', 'ai-post-scheduler'); ?></h2>
-			<button type="button" class="aips-modal-close">&times;</button>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body" id="aips-log-viewer-content">
 			<p><?php esc_html_e('Loading...', 'ai-post-scheduler'); ?></p>
