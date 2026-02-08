@@ -227,6 +227,15 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get the voice object if available. Not implemented for topic context.
+	 *
+	 * @return object|null Voice object or null.
+	 */
+	public function get_voice() {
+		return null;
+	}
+
+	/**
 	 * Get all context data as an array.
 	 *
 	 * @return array Context data.

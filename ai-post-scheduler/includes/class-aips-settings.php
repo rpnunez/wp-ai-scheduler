@@ -304,8 +304,7 @@ class AIPS_Settings {
             'aips_general_section'
         );
     }
-    
-    
+        
     /**
      * Render the description for the general settings section.
      *
