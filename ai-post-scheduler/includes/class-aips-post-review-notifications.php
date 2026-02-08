@@ -112,7 +112,7 @@ class AIPS_Post_Review_Notifications {
 	 */
 	private function build_email_message($draft_posts, $total_count) {
 		$site_url = get_site_url();
-		$review_url = admin_url('admin.php?page=aips-post-review');
+		$review_url = admin_url('admin.php?page=aips-generated-posts#aips-pending-review');
 		
 		ob_start();
 		?>
