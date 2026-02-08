@@ -26,3 +26,5 @@ Thumbs.db
 /vendor/
 node_modules/
 scripts/__pycache__/
+coverage/
+.phpunit.result.cache

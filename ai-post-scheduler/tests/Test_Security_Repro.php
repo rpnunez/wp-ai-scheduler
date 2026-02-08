@@ -66,6 +66,9 @@ class Test_Security_Repro extends WP_UnitTestCase {
         // This query does NOT contain a valid plugin table name.
         // So validation should fail, and the query should NOT be executed.
         $this->assertFalse($executed, 'SECURITY FIX FAILED: Malicious DROP TABLE query was executed! It should have been blocked.');
+        
+        // Verify that the import returns an error (WP_Error) when malicious SQL is detected
+        $this->assertInstanceOf('WP_Error', $result, 'Import should return WP_Error for malicious SQL');
     }
 
     public function test_fragility_semicolon_in_string() {
@@ -84,6 +87,9 @@ class Test_Security_Repro extends WP_UnitTestCase {
             echo "\nQueries executed:\n";
             print_r($this->mock_wpdb->queries);
         }
+        
+        // Verify that exactly 3 queries were executed (2 FOREIGN_KEY_CHECKS + 1 INSERT)
+        $this->assertEquals(3, count($this->mock_wpdb->queries), 'Expected exactly 3 queries: 2 FOREIGN_KEY_CHECKS + 1 INSERT');
 
         // Find the INSERT query
         $insert_query = '';
