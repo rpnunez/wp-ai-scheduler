@@ -36,3 +36,10 @@
 **Consequence:**
 - **Positive:** clearer separation of concerns; `AIPS_Scheduler` is now a thin coordinator; `AIPS_Schedule_Processor` encapsulates the "how" of execution; improved testability of execution logic.
 - **Negative:** Increased file count (1 new file).
+
+## 2026-02-08 - Extract Activity Controller
+**Context:** `AIPS_Settings` was a 'God Object' violating SRP by handling menu registration, settings API, and the entire logic for the Activity page (AJAX handlers, data fetching, view rendering). This made the class large and difficult to maintain or test.
+**Decision:** Extracted the Activity page logic into a new `AIPS_Activity_Controller` class. Refactored `AIPS_Settings` to delegate rendering to this controller and removed the Activity-related AJAX handlers from `AIPS_Settings`.
+**Consequence:**
+- **Positive:** Reduced `AIPS_Settings` complexity; encapsulated Activity logic in a dedicated controller; improved testability of Activity features.
+- **Negative:** Increased file count (1 new file).

@@ -913,6 +913,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
+        'class-aips-activity-controller.php',
     ];
     
     foreach ($files as $file) {
