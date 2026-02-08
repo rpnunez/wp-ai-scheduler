@@ -219,7 +219,7 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 						$i += 2;
 						continue;
 					}
-					// End of string - closing quote will be appended below at line 237
+					// End of string - closing quote will be appended below after this state change
 					$in_string = false;
 				} elseif ($char === '\\') {
 					// Backslash escape (standard MySQL behavior)
