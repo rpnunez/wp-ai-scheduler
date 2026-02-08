@@ -219,7 +219,7 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 						$i += 2;
 						continue;
 					}
-					// End of string
+					// End of string - closing quote will be appended below at line 237
 					$in_string = false;
 				} elseif ($char === '\\') {
 					// Backslash escape (standard MySQL behavior)
@@ -229,6 +229,7 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 						$buffer .= $next_char;
 						$i++;
 					}
+					// Note: If backslash is at EOF (no next char), it's treated as a literal backslash
 					$i++;
 					continue;
 				}
@@ -257,6 +258,10 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 				while ($i < $len && $sql_content[$i] !== "\n") {
 					$i++;
 				}
+				// If we found a newline, skip past it to avoid processing it again
+				if ($i < $len && $sql_content[$i] === "\n") {
+					$i++;
+				}
 				$buffer .= "\n";
 				continue;
 			}
@@ -270,6 +275,10 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 					while ($i < $len && $sql_content[$i] !== "\n") {
 						$i++;
 					}
+					// If we found a newline, skip past it to avoid processing it again
+					if ($i < $len && $sql_content[$i] === "\n") {
+						$i++;
+					}
 					$buffer .= "\n";
 					continue;
 				}
@@ -281,7 +290,10 @@ class AIPS_Data_Management_Import_MySQL extends AIPS_Data_Management_Import {
 				while ($i < $len && !($sql_content[$i] === '*' && ($i + 1 < $len && $sql_content[$i + 1] === '/'))) {
 					$i++;
 				}
-				$i += 2; // skip */
+				// Skip closing */ if it exists (bounds check for unterminated comments)
+				if ($i + 1 < $len) {
+					$i += 2; // skip */
+				}
 				$buffer .= " ";
 				continue;
 			}
