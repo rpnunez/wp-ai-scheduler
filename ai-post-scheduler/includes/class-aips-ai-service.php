@@ -232,8 +232,39 @@ class AIPS_AI_Service {
         // Try with retry logic
         return $this->resilience_service->execute_with_retry(function() use ($mwai, $prompt, $options) {
             try {
+                // Filter options for simpleJsonQuery - it only supports specific parameters
+                // According to AI Engine docs, simpleJsonQuery has a very limited parameter set
+                $json_query_params = array();
+                
+                // Only pass model if specified
+                if (!empty($options['model'])) {
+                    $json_query_params['model'] = $options['model'];
+                }
+                
+                // Only pass temperature if specified
+                if (isset($options['temperature'])) {
+                    //$json_query_params['temperature'] = $options['temperature'];
+                }
+                
+                // Convert max_tokens to maxTokens for AI Engine
+                if (isset($options['max_tokens'])) {
+                    //$json_query_params['maxTokens'] = $options['max_tokens'];
+                }
+                
+                // Only pass env_id if specified  
+                if (isset($options['env_id'])) {
+                    $json_query_params['env_id'] = $options['env_id'];
+                }
+                
+                // Log what we're sending to help debug
+                $this->logger->log('Calling simpleJsonQuery with params: ' . wp_json_encode(array_keys($json_query_params)), 'debug');
+                
                 // Use simpleJsonQuery which returns structured JSON data
-                $result = $mwai->simpleJsonQuery($prompt, $options);
+                // $result = $mwai->simpleJsonQuery($prompt, $json_query_params);
+                $result = $mwai->simpleJsonQuery($prompt);
+
+                error_log('Result type: ' . gettype($result));
+                error_log('Result content: ' . var_export($result, true));
                 
                 if (empty($result)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));

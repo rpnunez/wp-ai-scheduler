@@ -73,6 +73,8 @@ class AIPS_Research_Service {
         // Build research prompt
         $prompt = $this->build_research_prompt($niche, $count, $keywords);
 
+        $this->logger->log("Research [research_trending_topics] prompt: " . $prompt, 'error');
+
         // Execute AI research
         $this->logger->log("Starting trending topics research for niche: {$niche}", 'info', array(
             'niche' => $niche,
@@ -81,10 +83,16 @@ class AIPS_Research_Service {
         ));
 
         // Use generate_json for structured data response
-        $result = $this->ai_service->generate_json($prompt, array(
+        // $result = $this->ai_service->generate_json($prompt, array(
+        //     'temperature' => 0.7,
+        //     'max_tokens' => 2000,
+        // ));
+        $result = $this->ai_service->generate_text($prompt, array(
             'temperature' => 0.7,
             'max_tokens' => 2000,
         ));
+
+        $this->logger->log("Research response: " . print_r($result, true), 'info');
 
         if (is_wp_error($result)) {
             $this->logger->log("Research failed: " . $result->get_error_message(), 'error');
@@ -101,11 +109,12 @@ class AIPS_Research_Service {
             // Try to convert result back to string for legacy parser
             $text_response = is_string($result) ? $result : wp_json_encode($result);
             
-            if (!empty($text_response) && method_exists($this, 'parse_research_response')) {
+            if (!empty($text_response)) {
                 $fallback_topics = $this->parse_research_response($text_response, $count);
                 
                 if (!is_wp_error($fallback_topics) && is_array($fallback_topics) && !empty($fallback_topics)) {
                     $this->logger->log('Fallback text parsing succeeded', 'info');
+
                     $topics = $fallback_topics;
                 }
             }
