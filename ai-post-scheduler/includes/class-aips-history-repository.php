@@ -294,6 +294,9 @@ class AIPS_History_Repository {
      *     History data.
      *
      *     @type int    $template_id        Template ID.
+     *     @type int    $author_id          Author ID (for topic-based generation).
+     *     @type int    $topic_id           Topic ID (for topic-based generation).
+     *     @type string $creation_method    Creation method (manual or scheduled).
      *     @type string $status             Status (pending, processing, completed, failed).
      *     @type string $prompt             AI prompt used.
      *     @type string $generated_title    Generated post title.
@@ -306,7 +309,11 @@ class AIPS_History_Repository {
      */
     public function create($data) {
         $insert_data = array(
+            'uuid' => isset($data['uuid']) ? $data['uuid'] : null,
             'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
+            'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
+            'topic_id' => isset($data['topic_id']) ? absint($data['topic_id']) : null,
+            'creation_method' => isset($data['creation_method']) ? sanitize_text_field($data['creation_method']) : null,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'pending',
             'prompt' => isset($data['prompt']) ? wp_kses_post($data['prompt']) : '',
             'generated_title' => isset($data['generated_title']) ? sanitize_text_field($data['generated_title']) : '',
@@ -315,7 +322,7 @@ class AIPS_History_Repository {
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
         );
         
-        $format = array('%d', '%s', '%s', '%s', '%s', '%s', '%d');
+        $format = array('%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -359,6 +366,21 @@ class AIPS_History_Repository {
         
         if (isset($data['error_message'])) {
             $update_data['error_message'] = sanitize_text_field($data['error_message']);
+            $format[] = '%s';
+        }
+        
+        if (isset($data['author_id'])) {
+            $update_data['author_id'] = absint($data['author_id']);
+            $format[] = '%d';
+        }
+        
+        if (isset($data['topic_id'])) {
+            $update_data['topic_id'] = absint($data['topic_id']);
+            $format[] = '%d';
+        }
+        
+        if (isset($data['creation_method'])) {
+            $update_data['creation_method'] = sanitize_text_field($data['creation_method']);
             $format[] = '%s';
         }
         

@@ -264,7 +264,11 @@ class AIPS_Schedule_Processor {
         // The only override is 'topic'
 
         $topic = isset($schedule->topic) ? $schedule->topic : null;
-        $result = $this->generator->generate_post($template, null, $topic);
+        $creation_method = $is_manual ? 'manual' : 'scheduled';
+        
+        // Create context with creation_method
+        $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
+        $result = $this->generator->generate_post($context);
 
         // Handle Post-Execution Logic (Cleanup/Updates)
         if (!$is_manual) {

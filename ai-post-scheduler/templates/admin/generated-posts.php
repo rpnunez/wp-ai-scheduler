@@ -41,6 +41,7 @@ if (!defined('ABSPATH')) {
 			<thead>
 				<tr>
 					<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
+					<th scope="col"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
 					<th scope="col"><?php esc_html_e('Date Scheduled', 'ai-post-scheduler'); ?></th>
 					<th scope="col"><?php esc_html_e('Date Published', 'ai-post-scheduler'); ?></th>
 					<th scope="col"><?php esc_html_e('Date Generated', 'ai-post-scheduler'); ?></th>
@@ -57,6 +58,9 @@ if (!defined('ABSPATH')) {
 									<?php echo esc_html($post_data['title']); ?>
 								</a>
 							</strong>
+						</td>
+						<td>
+							<?php echo esc_html($post_data['source']); ?>
 						</td>
 						<td>
 							<?php 
@@ -85,7 +89,7 @@ if (!defined('ABSPATH')) {
 					<?php endforeach; ?>
 				<?php else: ?>
 					<tr>
-						<td colspan="5" class="no-items">
+						<td colspan="6" class="no-items">
 							<?php esc_html_e('No generated posts found.', 'ai-post-scheduler'); ?>
 						</td>
 					</tr>
@@ -94,6 +98,7 @@ if (!defined('ABSPATH')) {
 			<tfoot>
 				<tr>
 					<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
+					<th scope="col"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
 					<th scope="col"><?php esc_html_e('Date Scheduled', 'ai-post-scheduler'); ?></th>
 					<th scope="col"><?php esc_html_e('Date Published', 'ai-post-scheduler'); ?></th>
 					<th scope="col"><?php esc_html_e('Date Generated', 'ai-post-scheduler'); ?></th>
@@ -191,7 +196,7 @@ if (!defined('ABSPATH')) {
 						</th>
 						<th class="column-title"><?php esc_html_e('Post', 'ai-post-scheduler'); ?></th>
 						<th class="column-preview" style="width: 60px; text-align: center;"><?php esc_html_e('Preview', 'ai-post-scheduler'); ?></th>
-						<th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
+						<th class="column-source"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
 						<th class="column-date"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
 						<th class="column-modified"><?php esc_html_e('Modified', 'ai-post-scheduler'); ?></th>
 						<th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
@@ -221,8 +226,8 @@ if (!defined('ABSPATH')) {
 								  style="cursor: pointer; font-size: 20px; color: #2271b1;">
 							</span>
 						</td>
-						<td class="column-template">
-							<?php echo esc_html($item->template_name ?: '-'); ?>
+						<td class="column-source">
+							<?php echo esc_html( $controller->format_source( $item ) ); ?>
 						</td>
 						<td class="column-date">
 							<?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item->created_at))); ?>

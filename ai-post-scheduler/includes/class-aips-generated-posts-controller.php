@@ -36,6 +36,21 @@ class AIPS_Generated_Posts_Controller {
 	private $post_review_repository;
 	
 	/**
+	 * @var array Cache for template names to avoid N+1 queries
+	 */
+	private $template_cache = array();
+	
+	/**
+	 * @var array Cache for author names to avoid N+1 queries
+	 */
+	private $author_cache = array();
+	
+	/**
+	 * @var array Cache for topic titles to avoid N+1 queries
+	 */
+	private $topic_cache = array();
+	
+	/**
 	 * Initialize the controller
 	 */
 	public function __construct() {
@@ -87,6 +102,9 @@ class AIPS_Generated_Posts_Controller {
 				$schedule = !empty($schedules) ? $schedules[0] : null;
 			}
 			
+			// Format source information
+			$source = $this->format_source($item);
+			
 			$posts_data[] = array(
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
@@ -95,6 +113,7 @@ class AIPS_Generated_Posts_Controller {
 				'date_published' => $post->post_date,
 				'date_scheduled' => $schedule ? $schedule->next_run : null,
 				'edit_link' => get_edit_post_link($item->post_id),
+				'source' => $source,
 			);
 		}
 		
@@ -117,6 +136,9 @@ class AIPS_Generated_Posts_Controller {
 		// Get globally-initialized Post Review handler
 		global $aips_post_review_handler;
 		$post_review_handler = isset($aips_post_review_handler) ? $aips_post_review_handler : $this->post_review_repository;
+		
+		// Make controller available to template for formatting
+		$controller = $this;
 		
 		include AIPS_PLUGIN_DIR . 'templates/admin/generated-posts.php';
 	}
@@ -338,5 +360,69 @@ class AIPS_Generated_Posts_Controller {
 		wp_send_json_success(array(
 			'json' => $json_string,
 		));
+	}
+	
+	/**
+	 * Format source information for display
+	 *
+	 * @param object $history_item History item from database
+	 * @return string Formatted source string (unescaped - caller must escape)
+	 */
+	public function format_source($history_item) {
+		$source = '';
+		
+		// Determine the source type
+		if (!empty($history_item->template_id)) {
+			// Template-based generation with caching
+			$template_id = $history_item->template_id;
+			
+			if (!isset($this->template_cache[$template_id])) {
+				$template_repository = new AIPS_Template_Repository();
+				$this->template_cache[$template_id] = $template_repository->get_by_id($template_id);
+			}
+			
+			$template = $this->template_cache[$template_id];
+			$source = __('Template', 'ai-post-scheduler');
+			if ($template && isset($template->name)) {
+				$source .= ': ' . $template->name;
+			}
+		} elseif (!empty($history_item->author_id) && !empty($history_item->topic_id)) {
+			// Author Topic-based generation with caching
+			$author_id = $history_item->author_id;
+			$topic_id = $history_item->topic_id;
+			
+			if (!isset($this->author_cache[$author_id])) {
+				$authors_repository = new AIPS_Authors_Repository();
+				$this->author_cache[$author_id] = $authors_repository->get_by_id($author_id);
+			}
+			
+			if (!isset($this->topic_cache[$topic_id])) {
+				$topics_repository = new AIPS_Author_Topics_Repository();
+				$this->topic_cache[$topic_id] = $topics_repository->get_by_id($topic_id);
+			}
+			
+			$author = $this->author_cache[$author_id];
+			$topic = $this->topic_cache[$topic_id];
+			
+			$source = __('Author Topic', 'ai-post-scheduler');
+			if ($author && isset($author->name)) {
+				$source .= ': ' . $author->name;
+			}
+			if ($topic && isset($topic->topic_title)) {
+				$source .= ' - ' . $topic->topic_title;
+			}
+		} else {
+			$source = __('Unknown', 'ai-post-scheduler');
+		}
+		
+		// Add creation method if available
+		if (!empty($history_item->creation_method)) {
+			$method = $history_item->creation_method === 'manual' 
+				? __('Manual', 'ai-post-scheduler') 
+				: __('Scheduled', 'ai-post-scheduler');
+			$source .= ' (' . $method . ')';
+		}
+		
+		return $source;
 	}
 }

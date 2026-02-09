@@ -30,16 +30,23 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	private $expanded_context;
 
 	/**
+	 * @var string|null Optional creation method (manual or scheduled).
+	 */
+	private $creation_method;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param object $author            Author object.
 	 * @param object $topic             Topic object.
 	 * @param string $expanded_context  Optional expanded context from similar topics.
+	 * @param string|null $creation_method Optional creation method.
 	 */
-	public function __construct($author, $topic, $expanded_context = '') {
+	public function __construct($author, $topic, $expanded_context = '', $creation_method = null) {
 		$this->author = $author;
 		$this->topic = $topic;
 		$this->expanded_context = $expanded_context;
+		$this->creation_method = $creation_method;
 	}
 
 	/**
@@ -233,6 +240,15 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 */
 	public function get_voice() {
 		return null;
+	}
+
+	/**
+	 * Get the creation method if set.
+	 *
+	 * @return string|null Creation method ('manual' or 'scheduled') or null.
+	 */
+	public function get_creation_method() {
+		return $this->creation_method;
 	}
 
 	/**

@@ -127,8 +127,8 @@ class AIPS_Author_Post_Generator {
 		
 		$topic = $topics[0];
 		
-		// Generate the post using the topic
-		$result = $this->generate_post_from_topic($topic, $author);
+		// Generate the post using the topic (scheduled generation)
+		$result = $this->generate_post_from_topic($topic, $author, 'scheduled');
 		
 		// Update the author's next run time
 		$this->update_author_schedule($author);
@@ -141,9 +141,10 @@ class AIPS_Author_Post_Generator {
 	 *
 	 * @param object $topic Topic object from database.
 	 * @param object $author Author object from database.
+	 * @param string $creation_method Optional creation method ('manual' or 'scheduled'). Defaults to 'manual'.
 	 * @return int|WP_Error Post ID on success, WP_Error on failure.
 	 */
-	public function generate_post_from_topic($topic, $author) {
+	public function generate_post_from_topic($topic, $author, $creation_method = 'manual') {
 		$this->logger->log("Generating post from topic: {$topic->topic_title} (ID: {$topic->id})", 'info');
 		
 		// Get expanded context from similar approved topics
@@ -153,8 +154,8 @@ class AIPS_Author_Post_Generator {
 			$this->logger->log("Added expanded context to prompt for topic {$topic->id}", 'debug');
 		}
 		
-		// Build a context object for the generator (no more template mocking!)
-		$context = new AIPS_Topic_Context($author, $topic, $expanded_context);
+		// Build a context object for the generator with the creation method
+		$context = new AIPS_Topic_Context($author, $topic, $expanded_context, $creation_method);
 		
 		// Generate the post using the context
 		// Note: The Generator internally creates its own history container
@@ -307,7 +308,8 @@ class AIPS_Author_Post_Generator {
 			return new WP_Error('invalid_author', 'Author not found');
 		}
 		
-		return $this->generate_post_from_topic($topic, $author);
+		// Manual generation
+		return $this->generate_post_from_topic($topic, $author, 'manual');
 	}
 	
 	/**
