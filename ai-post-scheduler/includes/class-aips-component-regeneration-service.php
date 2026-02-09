@@ -208,9 +208,18 @@ class AIPS_Component_Regeneration_Service {
 		
 		$generation_context = $context['generation_context'];
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
+		$content = isset($context['current_content']) ? $context['current_content'] : '';
 		
-		// Build excerpt prompt using the generation context
-		$prompt = $this->prompt_builder->build_excerpt_prompt($generation_context, null, null, $title);
+		// Build excerpt prompt with title and content
+		// For Topic contexts, we can get voice from the template if it has one
+		$voice = null;
+		$topic_str = $generation_context->get_topic();
+		
+		if ($generation_context->get_type() === 'template') {
+			$voice = $generation_context->get_voice();
+		}
+		
+		$prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice, $topic_str);
 		
 		$result = $this->generator->generate($prompt);
 		
