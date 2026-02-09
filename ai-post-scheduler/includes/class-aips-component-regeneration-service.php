@@ -274,23 +274,27 @@ class AIPS_Component_Regeneration_Service {
 		$generation_context = $context['generation_context'];
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		
-		// Build image prompt using the generation context
-		$image_prompt = $this->prompt_builder->build_image_prompt($generation_context);
+		// Get the image prompt from the generation context
+		$image_prompt = $generation_context->get_image_prompt();
+		if (empty($image_prompt)) {
+			return new WP_Error('no_image_prompt', __('No image prompt available for this context.', 'ai-post-scheduler'));
+		}
 		
-		// Generate image
-		$image_result = $this->image_service->generate_and_attach_image($image_prompt, array(
-			'post_id' => $context['post_id'],
-			'title' => $title,
-		));
+		// Process the image prompt with topic if available
+		$topic_str = $generation_context->get_topic();
+		$processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
 		
-		if (is_wp_error($image_result)) {
-			return $image_result;
+		// Generate and upload the featured image
+		$attachment_id = $this->image_service->generate_and_upload_featured_image($processed_image_prompt, $title);
+		
+		if (is_wp_error($attachment_id)) {
+			return $attachment_id;
 		}
 		
 		// Return attachment ID and URL
 		return array(
-			'attachment_id' => $image_result['attachment_id'],
-			'url' => wp_get_attachment_url($image_result['attachment_id']),
+			'attachment_id' => $attachment_id,
+			'url' => wp_get_attachment_url($attachment_id),
 		);
 	}
 }
