@@ -36,6 +36,21 @@ class AIPS_Generated_Posts_Controller {
 	private $post_review_repository;
 	
 	/**
+	 * @var array Cache for template names to avoid N+1 queries
+	 */
+	private $template_cache = array();
+	
+	/**
+	 * @var array Cache for author names to avoid N+1 queries
+	 */
+	private $author_cache = array();
+	
+	/**
+	 * @var array Cache for topic titles to avoid N+1 queries
+	 */
+	private $topic_cache = array();
+	
+	/**
 	 * Initialize the controller
 	 */
 	public function __construct() {
@@ -351,35 +366,50 @@ class AIPS_Generated_Posts_Controller {
 	 * Format source information for display
 	 *
 	 * @param object $history_item History item from database
-	 * @return string Formatted source string (already escaped)
+	 * @return string Formatted source string (unescaped - caller must escape)
 	 */
 	public function format_source($history_item) {
 		$source = '';
 		
 		// Determine the source type
 		if (!empty($history_item->template_id)) {
-			// Template-based generation
-			$template_repository = new AIPS_Template_Repository();
-			$template = $template_repository->get_by_id($history_item->template_id);
+			// Template-based generation with caching
+			$template_id = $history_item->template_id;
 			
+			if (!isset($this->template_cache[$template_id])) {
+				$template_repository = new AIPS_Template_Repository();
+				$this->template_cache[$template_id] = $template_repository->get_by_id($template_id);
+			}
+			
+			$template = $this->template_cache[$template_id];
 			$source = __('Template', 'ai-post-scheduler');
 			if ($template && isset($template->name)) {
-				$source .= ': ' . esc_html($template->name);
+				$source .= ': ' . $template->name;
 			}
 		} elseif (!empty($history_item->author_id) && !empty($history_item->topic_id)) {
-			// Author Topic-based generation
-			$authors_repository = new AIPS_Authors_Repository();
-			$topics_repository = new AIPS_Author_Topics_Repository();
+			// Author Topic-based generation with caching
+			$author_id = $history_item->author_id;
+			$topic_id = $history_item->topic_id;
 			
-			$author = $authors_repository->get_by_id($history_item->author_id);
-			$topic = $topics_repository->get_by_id($history_item->topic_id);
+			if (!isset($this->author_cache[$author_id])) {
+				$authors_repository = new AIPS_Authors_Repository();
+				$this->author_cache[$author_id] = $authors_repository->get_by_id($author_id);
+			}
+			
+			if (!isset($this->topic_cache[$topic_id])) {
+				$topics_repository = new AIPS_Author_Topics_Repository();
+				$this->topic_cache[$topic_id] = $topics_repository->get_by_id($topic_id);
+			}
+			
+			$author = $this->author_cache[$author_id];
+			$topic = $this->topic_cache[$topic_id];
 			
 			$source = __('Author Topic', 'ai-post-scheduler');
 			if ($author && isset($author->name)) {
-				$source .= ': ' . esc_html($author->name);
+				$source .= ': ' . $author->name;
 			}
 			if ($topic && isset($topic->topic_title)) {
-				$source .= ' - ' . esc_html($topic->topic_title);
+				$source .= ' - ' . $topic->topic_title;
 			}
 		} else {
 			$source = __('Unknown', 'ai-post-scheduler');
@@ -390,7 +420,7 @@ class AIPS_Generated_Posts_Controller {
 			$method = $history_item->creation_method === 'manual' 
 				? __('Manual', 'ai-post-scheduler') 
 				: __('Scheduled', 'ai-post-scheduler');
-			$source .= ' (' . esc_html($method) . ')';
+			$source .= ' (' . $method . ')';
 		}
 		
 		return $source;

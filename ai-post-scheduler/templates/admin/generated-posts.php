@@ -227,7 +227,7 @@ if (!defined('ABSPATH')) {
 							</span>
 						</td>
 						<td class="column-source">
-							<?php echo $controller->format_source($item); // Already escaped in method ?>
+							<?php echo esc_html( $controller->format_source( $item ) ); ?>
 						</td>
 						<td class="column-date">
 							<?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item->created_at))); ?>

@@ -309,6 +309,7 @@ class AIPS_History_Repository {
      */
     public function create($data) {
         $insert_data = array(
+            'uuid' => isset($data['uuid']) ? sanitize_text_field($data['uuid']) : null,
             'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
             'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
             'topic_id' => isset($data['topic_id']) ? absint($data['topic_id']) : null,
@@ -321,7 +322,7 @@ class AIPS_History_Repository {
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
         );
         
-        $format = array('%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
+        $format = array('%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
