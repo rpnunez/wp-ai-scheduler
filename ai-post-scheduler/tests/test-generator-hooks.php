@@ -111,7 +111,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 						return $this;
 					}
 					
-					public function record($type, $message, $data = null, $result = null, $metadata = array()) {
+					public function record($type, $message, $context = array()) {
 						// No-op for tests
 					}
 					
@@ -327,7 +327,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 						return $this;
 					}
 					
-					public function record($type, $message, $data = null, $result = null, $metadata = array()) {
+					public function record($type, $message, $context = array()) {
 						// No-op for tests
 					}
 					
@@ -500,7 +500,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 				return new class {
 					public function get_id() { return 99; }
 					public function with_session($context) { return $this; }
-					public function record($type, $message, $data = null, $result = null, $metadata = array()) {}
+					public function record($type, $message, $context = array()) {}
 					public function complete_failure($error, $metadata = array()) {}
 					public function complete_success($data = array()) {}
 				};
