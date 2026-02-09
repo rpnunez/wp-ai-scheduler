@@ -210,14 +210,15 @@ class AIPS_History_Container {
 		}
 		
 		// Write to PHP error log if WP_DEBUG is enabled
+		// Note: Input/output are moved to details array, so error_log shows remaining context only
 		if (defined('WP_DEBUG') && WP_DEBUG) {
 			$log_entry = sprintf(
 				'[AIPS History] [%s] %s',
 				strtoupper($log_type),
 				$message
 			);
-			if (!empty($context)) {
-				$log_entry .= ' | Context: ' . wp_json_encode($context);
+			if (!empty($details['context'])) {
+				$log_entry .= ' | Context: ' . wp_json_encode($details['context']);
 			}
 			error_log($log_entry);
 		}
@@ -256,6 +257,7 @@ class AIPS_History_Container {
 	 * 
 	 * Standardized error logging that captures all relevant context for debugging.
 	 * Automatically includes PHP error state, memory usage, and performance metrics.
+	 * Note: Automatic context keys (timestamp, php_error, etc.) cannot be overridden by caller.
 	 *
 	 * @param string $message Human-readable error message
 	 * @param array $context Error context (e.g., component, error_code, attempt, input, output)
@@ -263,16 +265,17 @@ class AIPS_History_Container {
 	 * @return int|false Log entry ID on success, false on failure
 	 */
 	public function record_error($message, $context = array(), $wp_error = null) {
-		// Add automatic error tracking context
-		$context = array_merge(
-			array(
-				'timestamp' => microtime(true),
-				'php_error' => error_get_last(),
-				'memory_usage' => memory_get_usage(true),
-				'memory_peak' => memory_get_peak_usage(true),
-			),
-			$context
+		// Build automatic error tracking context first, then merge caller's context
+		// This ensures automatic values cannot be overridden accidentally
+		$auto_context = array(
+			'timestamp' => microtime(true),
+			'php_error' => error_get_last(),
+			'memory_usage' => memory_get_usage(true),
+			'memory_peak' => memory_get_peak_usage(true),
 		);
+		
+		// Merge with caller context (caller's values preserved, auto values protected)
+		$context = array_merge($context, $auto_context);
 		
 		// Add WP_Error details if provided
 		if ($wp_error && is_wp_error($wp_error)) {
@@ -288,7 +291,8 @@ class AIPS_History_Container {
 	 * Log a user-initiated action
 	 * 
 	 * Tracks manual operations triggered by users (vs automated/scheduled operations).
-	 * Includes user context automatically.
+	 * Automatically includes user context.
+	 * Note: Automatic context keys (user_id, user_login, etc.) cannot be overridden by caller.
 	 *
 	 * @param string $action Action type (e.g., 'manual_generation', 'bulk_delete', 'manual_publish')
 	 * @param string $message Human-readable description
@@ -296,16 +300,18 @@ class AIPS_History_Container {
 	 * @return int|false Log entry ID on success, false on failure
 	 */
 	public function record_user_action($action, $message, $context = array()) {
-		$context = array_merge(
-			array(
-				'action_type' => $action,
-				'user_id' => get_current_user_id(),
-				'user_login' => wp_get_current_user()->user_login,
-				'timestamp' => microtime(true),
-				'source' => 'manual_ui',
-			),
-			$context
+		// Build automatic user action context first, then merge caller's context
+		// This ensures automatic values cannot be overridden accidentally
+		$auto_context = array(
+			'action_type' => $action,
+			'user_id' => get_current_user_id(),
+			'user_login' => wp_get_current_user()->user_login,
+			'timestamp' => microtime(true),
+			'source' => 'manual_ui',
 		);
+		
+		// Merge with caller context (caller's values preserved, auto values protected)
+		$context = array_merge($context, $auto_context);
 		
 		return $this->record('activity', $message, $context);
 	}
