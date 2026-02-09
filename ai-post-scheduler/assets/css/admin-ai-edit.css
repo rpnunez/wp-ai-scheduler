@@ -1,0 +1,299 @@
+/**
+ * AI Edit Modal Styles
+ *
+ * Styles for the AI Edit modal that allows regenerating individual post components.
+ *
+ * @package AI_Post_Scheduler
+ * @since 2.0.0
+ */
+
+/* AI Edit Modal Specific Styles */
+.aips-ai-edit-content {
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+.aips-ai-edit-context {
+	background: #f0f0f1;
+	padding: 15px;
+	border-radius: 4px;
+	margin-bottom: 20px;
+}
+
+.aips-ai-edit-context h3 {
+	margin-top: 0;
+	margin-bottom: 10px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.aips-ai-edit-context-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 10px;
+}
+
+.aips-ai-edit-context-item {
+	display: flex;
+	flex-direction: column;
+}
+
+.aips-ai-edit-context-label {
+	font-size: 12px;
+	color: #646970;
+	margin-bottom: 3px;
+}
+
+.aips-ai-edit-context-value {
+	font-size: 13px;
+	font-weight: 500;
+	color: #1d2327;
+}
+
+/* Component Sections */
+.aips-component-section {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 15px;
+	margin-bottom: 15px;
+}
+
+.aips-component-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 10px;
+	border-bottom: 1px solid #dcdcde;
+	padding-bottom: 10px;
+}
+
+.aips-component-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+	margin: 0;
+}
+
+.aips-component-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.aips-regenerate-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 4px 10px;
+	font-size: 13px;
+	line-height: 1.5;
+	border-radius: 3px;
+	background: #2271b1;
+	color: #fff;
+	border: 1px solid #2271b1;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.aips-regenerate-btn:hover {
+	background: #135e96;
+	border-color: #135e96;
+	color: #fff;
+}
+
+.aips-regenerate-btn:disabled {
+	background: #dcdcde;
+	border-color: #dcdcde;
+	color: #646970;
+	cursor: not-allowed;
+}
+
+.aips-regenerate-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.aips-regenerate-btn.regenerating .dashicons {
+	animation: aips-spin 1s linear infinite;
+}
+
+@keyframes aips-spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+.aips-component-status {
+	font-size: 12px;
+	padding: 4px 8px;
+	border-radius: 3px;
+	display: none;
+}
+
+.aips-component-status.success {
+	background: #d1e7dd;
+	color: #0a3622;
+	border: 1px solid #badbcc;
+}
+
+.aips-component-status.error {
+	background: #f8d7da;
+	color: #58151c;
+	border: 1px solid #f1aeb5;
+}
+
+/* Component Body */
+.aips-component-body {
+	margin-top: 10px;
+}
+
+.aips-component-input,
+.aips-component-textarea {
+	width: 100%;
+	padding: 8px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	font-size: 13px;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	background: #fff;
+	color: #1d2327;
+	box-sizing: border-box;
+}
+
+.aips-component-input:focus,
+.aips-component-textarea:focus {
+	outline: none;
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+}
+
+.aips-component-textarea {
+	min-height: 200px;
+	resize: vertical;
+}
+
+.aips-component-textarea.large {
+	min-height: 300px;
+}
+
+/* Featured Image Preview */
+.aips-featured-image-preview {
+	max-width: 400px;
+	margin-top: 10px;
+}
+
+.aips-featured-image-preview img {
+	max-width: 100%;
+	height: auto;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	display: block;
+}
+
+.aips-featured-image-none {
+	padding: 20px;
+	text-align: center;
+	background: #f0f0f1;
+	border: 1px dashed #c3c4c7;
+	border-radius: 4px;
+	color: #646970;
+	font-size: 13px;
+}
+
+/* Loading State */
+.aips-ai-edit-loading {
+	text-align: center;
+	padding: 40px 20px;
+}
+
+.aips-ai-edit-loading .spinner {
+	float: none;
+	margin: 0 auto 10px;
+	visibility: visible;
+}
+
+/* Modal Footer Actions */
+.aips-modal-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 15px 20px;
+	border-top: 1px solid #dcdcde;
+	background: #f0f0f1;
+}
+
+.aips-modal-footer-left {
+	color: #646970;
+	font-size: 12px;
+}
+
+.aips-modal-footer-right {
+	display: flex;
+	gap: 10px;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 782px) {
+	.aips-ai-edit-content {
+		max-height: 60vh;
+	}
+	
+	.aips-component-header {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 10px;
+	}
+	
+	.aips-component-actions {
+		width: 100%;
+	}
+	
+	.aips-regenerate-btn {
+		flex: 1;
+		justify-content: center;
+	}
+	
+	.aips-modal-footer {
+		flex-direction: column;
+		gap: 10px;
+	}
+	
+	.aips-modal-footer-left,
+	.aips-modal-footer-right {
+		width: 100%;
+	}
+	
+	.aips-modal-footer-right {
+		flex-direction: column;
+	}
+	
+	.aips-modal-footer-right .button {
+		width: 100%;
+	}
+}
+
+/* Character Count Helper */
+.aips-component-meta {
+	margin-top: 5px;
+	font-size: 12px;
+	color: #646970;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.aips-char-count {
+	font-size: 11px;
+}
+
+/* Changed Indicator */
+.aips-component-section.changed {
+	border-left: 3px solid #2271b1;
+}
+
+.aips-component-section.changed .aips-component-title::after {
+	content: " *";
+	color: #2271b1;
+}
