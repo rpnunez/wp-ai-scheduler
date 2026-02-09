@@ -25,6 +25,7 @@ class AIPS_Activity_Controller {
     public function __construct() {
         add_action('wp_ajax_aips_get_activity', array($this, 'ajax_get_activity'));
         add_action('wp_ajax_aips_get_activity_detail', array($this, 'ajax_get_activity_detail'));
+        add_action('wp_ajax_aips_publish_draft', array($this, 'ajax_publish_draft'));
     }
 
     /**
@@ -155,5 +156,50 @@ class AIPS_Activity_Controller {
         }
 
         wp_send_json_success(array('post' => $detail));
+    }
+
+    /**
+     * AJAX handler to publish a draft post.
+     */
+    public function ajax_publish_draft() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+        }
+
+        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+
+        if (!$post_id) {
+            wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
+        }
+
+        $post = get_post($post_id);
+        if (!$post || $post->post_status !== 'draft') {
+            wp_send_json_error(array('message' => __('Post not found or not a draft.', 'ai-post-scheduler')));
+        }
+
+        // Publish the post
+        $result = wp_update_post(array(
+            'ID' => $post_id,
+            'post_status' => 'publish'
+        ), true);
+
+        if (is_wp_error($result)) {
+            wp_send_json_error(array('message' => $result->get_error_message()));
+        }
+
+        // Log the activity
+        $history_service = new AIPS_History_Service();
+        $history = $history_service->create('post_published', array('post_id' => $post_id));
+        $history->record(
+            'activity',
+            sprintf(__('Post published: %s', 'ai-post-scheduler'), $post->post_title),
+            array('event_type' => 'post_published', 'event_status' => 'success'),
+            $post_id,
+            array()
+        );
+
+        wp_send_json_success(array('message' => __('Post published successfully.', 'ai-post-scheduler')));
     }
 }
