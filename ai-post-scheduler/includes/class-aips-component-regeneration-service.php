@@ -52,6 +52,16 @@ class AIPS_Component_Regeneration_Service {
 	private $author_topics_repository;
 	
 	/**
+	 * @var AIPS_Authors_Repository Authors repository
+	 */
+	private $authors_repository;
+	
+	/**
+	 * @var AIPS_Voices_Repository Voices repository
+	 */
+	private $voices_repository;
+	
+	/**
 	 * @var AIPS_Template_Processor Template processor
 	 */
 	private $template_processor;
@@ -68,6 +78,8 @@ class AIPS_Component_Regeneration_Service {
 		$this->history_repository = new AIPS_History_Repository();
 		$this->template_repository = new AIPS_Template_Repository();
 		$this->author_topics_repository = new AIPS_Author_Topics_Repository();
+		$this->authors_repository = new AIPS_Authors_Repository();
+		$this->voices_repository = new AIPS_Voices_Repository();
 		$this->template_processor = new AIPS_Template_Processor();
 		$this->structure_manager = new AIPS_Article_Structure_Manager();
 		
@@ -81,11 +93,11 @@ class AIPS_Component_Regeneration_Service {
 	/**
 	 * Get the generation context for a history record
 	 *
-	 * Retrieves the original template, author, and topic data used to generate
+	 * Retrieves the original generation context (Template or Topic) used to generate
 	 * a post so that components can be regenerated with the same context.
 	 *
 	 * @param int $history_id History record ID
-	 * @return array|WP_Error Context array or error on failure
+	 * @return array|WP_Error Context array with 'generation_context' key containing AIPS_Generation_Context object, or error on failure
 	 */
 	public function get_generation_context($history_id) {
 		// Fetch history record
@@ -98,29 +110,58 @@ class AIPS_Component_Regeneration_Service {
 		$context = array(
 			'history_id' => $history_id,
 			'post_id' => $history->post_id,
-			'template_id' => $history->template_id,
-			'template_data' => null,
-			'author_id' => $history->author_id,
-			'author_data' => null,
-			'topic_id' => $history->topic_id,
-			'topic_data' => null,
-			'structure_id' => $history->structure_id,
+			'generation_context' => null,
+			'context_type' => null,
+			'context_name' => null,
 		);
 		
-		// Fetch template data
+		// Determine the generation context type and reconstruct the context object
 		if ($history->template_id) {
+			// This is a Template-based post
 			$template = $this->template_repository->get_by_id($history->template_id);
-			if ($template) {
-				$context['template_data'] = $template;
+			if (!$template) {
+				return new WP_Error('missing_template', __('Template data not found.', 'ai-post-scheduler'));
 			}
-		}
-		
-		// Fetch topic data (author-topic relationship)
-		if ($history->topic_id) {
+			
+			// Fetch voice if available
+			$voice = null;
+			if (!empty($template->voice_id)) {
+				$voice = $this->voices_repository->get_by_id($template->voice_id);
+			}
+			
+			// Get topic string if available from topic_id
+			$topic_string = null;
+			if ($history->topic_id) {
+				$topic_data = $this->author_topics_repository->get_by_id($history->topic_id);
+				if ($topic_data) {
+					$topic_string = $topic_data->title;
+				}
+			}
+			
+			// Create Template Context
+			$context['generation_context'] = new AIPS_Template_Context($template, $voice, $topic_string);
+			$context['context_type'] = 'template';
+			$context['context_name'] = $template->name;
+			
+		} elseif ($history->author_id && $history->topic_id) {
+			// This is a Topic-based post (Author + Topic)
+			$author = $this->authors_repository->get_by_id($history->author_id);
+			if (!$author) {
+				return new WP_Error('missing_author', __('Author data not found.', 'ai-post-scheduler'));
+			}
+			
 			$topic = $this->author_topics_repository->get_by_id($history->topic_id);
-			if ($topic) {
-				$context['topic_data'] = $topic;
+			if (!$topic) {
+				return new WP_Error('missing_topic', __('Topic data not found.', 'ai-post-scheduler'));
 			}
+			
+			// Create Topic Context
+			$context['generation_context'] = new AIPS_Topic_Context($author, $topic);
+			$context['context_type'] = 'topic';
+			$context['context_name'] = $author->name . ': ' . $topic->title;
+			
+		} else {
+			return new WP_Error('invalid_context', __('Unable to determine generation context type.', 'ai-post-scheduler'));
 		}
 		
 		return $context;
@@ -129,19 +170,19 @@ class AIPS_Component_Regeneration_Service {
 	/**
 	 * Regenerate post title
 	 *
-	 * @param array $context Generation context
+	 * @param array $context Generation context with 'generation_context' key
 	 * @return string|WP_Error Generated title or error
 	 */
 	public function regenerate_title($context) {
-		if (!isset($context['template_data'])) {
-			return new WP_Error('missing_template', __('Template data is required.', 'ai-post-scheduler'));
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
+			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
 		
-		$template = $context['template_data'];
-		$topic = isset($context['topic_data']) ? $context['topic_data']->title : '';
+		$generation_context = $context['generation_context'];
 		
-		// Build title prompt using the prompt builder
-		$prompt = $this->prompt_builder->build_title_prompt($template, $topic);
+		// Build title prompt using the generation context
+		// We pass empty content since we're regenerating just the title
+		$prompt = $this->prompt_builder->build_title_prompt($generation_context, null, null, '');
 		
 		// Call AI service
 		$result = $this->generator->generate($prompt);
@@ -157,20 +198,19 @@ class AIPS_Component_Regeneration_Service {
 	/**
 	 * Regenerate post excerpt
 	 *
-	 * @param array $context Generation context
+	 * @param array $context Generation context with 'generation_context' key
 	 * @return string|WP_Error Generated excerpt or error
 	 */
 	public function regenerate_excerpt($context) {
-		if (!isset($context['template_data'])) {
-			return new WP_Error('missing_template', __('Template data is required.', 'ai-post-scheduler'));
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
+			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
 		
-		$template = $context['template_data'];
-		$topic = isset($context['topic_data']) ? $context['topic_data']->title : '';
+		$generation_context = $context['generation_context'];
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		
-		// Build excerpt prompt
-		$prompt = $this->prompt_builder->build_excerpt_prompt($template, $topic, $title);
+		// Build excerpt prompt using the generation context
+		$prompt = $this->prompt_builder->build_excerpt_prompt($generation_context, null, null, $title);
 		
 		$result = $this->generator->generate($prompt);
 		
@@ -184,26 +224,28 @@ class AIPS_Component_Regeneration_Service {
 	/**
 	 * Regenerate post content
 	 *
-	 * @param array $context Generation context
+	 * @param array $context Generation context with 'generation_context' key
 	 * @return string|WP_Error Generated content or error
 	 */
 	public function regenerate_content($context) {
-		if (!isset($context['template_data'])) {
-			return new WP_Error('missing_template', __('Template data is required.', 'ai-post-scheduler'));
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
+			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
 		
-		$template = $context['template_data'];
-		$topic = isset($context['topic_data']) ? $context['topic_data']->title : '';
+		$generation_context = $context['generation_context'];
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
-		$structure_id = isset($context['structure_id']) ? $context['structure_id'] : null;
+		
+		// Get article structure ID from the generation context
+		$structure_id = $generation_context->get_article_structure_id();
 		
 		// Check if article structure is used
 		if ($structure_id) {
 			// Use structured content generation
-			$result = $this->generator->generate_structured_content($title, $template, $topic, $structure_id);
+			$topic_string = $generation_context->get_topic();
+			$result = $this->generator->generate_structured_content($title, $generation_context, $topic_string, $structure_id);
 		} else {
-			// Use regular content generation
-			$prompt = $this->prompt_builder->build_content_prompt($template, $topic, $title);
+			// Use regular content generation with the generation context
+			$prompt = $this->prompt_builder->build_content_prompt($generation_context);
 			$result = $this->generator->generate($prompt);
 		}
 		
@@ -217,24 +259,23 @@ class AIPS_Component_Regeneration_Service {
 	/**
 	 * Regenerate featured image
 	 *
-	 * @param array $context Generation context
+	 * @param array $context Generation context with 'generation_context' key
 	 * @return array|WP_Error Array with attachment_id and url, or error
 	 */
 	public function regenerate_featured_image($context) {
-		if (!isset($context['template_data'])) {
-			return new WP_Error('missing_template', __('Template data is required.', 'ai-post-scheduler'));
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
+			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
 		
 		if (!isset($context['post_id'])) {
 			return new WP_Error('missing_post_id', __('Post ID is required.', 'ai-post-scheduler'));
 		}
 		
-		$template = $context['template_data'];
-		$topic = isset($context['topic_data']) ? $context['topic_data']->title : '';
+		$generation_context = $context['generation_context'];
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		
-		// Build image prompt
-		$image_prompt = $this->prompt_builder->build_image_prompt($template, $topic, $title);
+		// Build image prompt using the generation context
+		$image_prompt = $this->prompt_builder->build_image_prompt($generation_context);
 		
 		// Generate image
 		$image_result = $this->image_service->generate_and_attach_image($image_prompt, array(

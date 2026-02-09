@@ -90,13 +90,30 @@ class AIPS_AI_Edit_Controller {
 		$featured_image_id = get_post_thumbnail_id($post_id);
 		$featured_image_url = $featured_image_id ? wp_get_attachment_url($featured_image_id) : '';
 		
+		// Build context display based on context type
+		$context_display = array(
+			'type' => $context['context_type'],
+			'name' => $context['context_name'],
+		);
+		
+		// Add specific details based on context type
+		if ($context['context_type'] === 'template') {
+			$generation_context = $context['generation_context'];
+			$context_display['template_name'] = $generation_context->get_name();
+			$context_display['author_name'] = __('N/A', 'ai-post-scheduler'); // Templates don't have authors
+			$context_display['topic_title'] = $generation_context->get_topic() ? $generation_context->get_topic() : __('N/A', 'ai-post-scheduler');
+		} elseif ($context['context_type'] === 'topic') {
+			$generation_context = $context['generation_context'];
+			$author = $generation_context->get_author();
+			$topic = $generation_context->get_topic_object();
+			$context_display['template_name'] = __('N/A', 'ai-post-scheduler'); // Topic contexts don't use templates
+			$context_display['author_name'] = $author->name;
+			$context_display['topic_title'] = $topic->title;
+		}
+		
 		// Build response
 		$response = array(
-			'context' => array(
-				'template_name' => isset($context['template_data']->name) ? $context['template_data']->name : __('N/A', 'ai-post-scheduler'),
-				'author_name' => isset($context['author_data']->name) ? $context['author_data']->name : __('N/A', 'ai-post-scheduler'),
-				'topic_title' => isset($context['topic_data']->title) ? $context['topic_data']->title : __('N/A', 'ai-post-scheduler'),
-			),
+			'context' => $context_display,
 			'components' => array(
 				'title' => array(
 					'value' => $post->post_title,
