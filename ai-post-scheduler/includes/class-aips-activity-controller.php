@@ -182,12 +182,17 @@ class AIPS_Activity_Controller {
         // Publish the post
         $result = wp_update_post(array(
             'ID' => $post_id,
-            'post_status' => 'publish'
+            'post_status' => 'publish',
+            'post_date' => current_time('mysql'),
+            'post_date_gmt' => current_time('mysql', 1)
         ), true);
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));
         }
+
+        // Refresh post data after update
+        $post = get_post($post_id);
 
         // Log the activity
         $history_service = new AIPS_History_Service();
