@@ -112,11 +112,10 @@ class AIPS_Author_Topics_Scheduler {
 					$result->get_error_message()
 				),
 				array(
-					'event_type' => 'author_topic_generation',
-					'event_status' => 'failed',
-				),
-				null,
-				array(
+					'input' => array(
+						'event_type' => 'author_topic_generation',
+						'event_status' => 'failed',
+					),
 					'author_id' => $author->id,
 					'author_name' => $author->name,
 					'field_niche' => $author->field_niche,
@@ -147,11 +146,10 @@ class AIPS_Author_Topics_Scheduler {
 				$author->name
 			),
 			array(
-				'event_type' => 'author_topic_generation',
-				'event_status' => 'success',
-			),
-			null,
-			array(
+				'input' => array(
+					'event_type' => 'author_topic_generation',
+					'event_status' => 'success',
+				),
 				'author_id' => $author->id,
 				'author_name' => $author->name,
 				'field_niche' => $author->field_niche,

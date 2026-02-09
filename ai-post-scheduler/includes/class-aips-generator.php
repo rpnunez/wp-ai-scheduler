@@ -109,11 +109,12 @@ class AIPS_Generator {
                 'ai_request',
                 "Requesting AI generation for {$log_type}",
                 array(
-                    'prompt' => $prompt,
-                    'options' => $options,
-                ),
-                null,
-                array('component' => $log_type)
+                    'input' => array(
+                        'prompt' => $prompt,
+                        'options' => $options,
+                    ),
+                    'component' => $log_type,
+                )
             );
         }
         
@@ -126,11 +127,13 @@ class AIPS_Generator {
                     'error',
                     "AI generation failed for {$log_type}: " . $result->get_error_message(),
                     array(
-                        'prompt' => $prompt,
-                        'options' => $options,
-                    ),
-                    null,
-                    array('component' => $log_type, 'error' => $result->get_error_message())
+                        'input' => array(
+                            'prompt' => $prompt,
+                            'options' => $options,
+                        ),
+                        'component' => $log_type,
+                        'error' => $result->get_error_message(),
+                    )
                 );
             }
             
@@ -144,9 +147,10 @@ class AIPS_Generator {
                 $this->current_history->record(
                     'ai_response',
                     "AI generation successful for {$log_type}",
-                    null,
-                    $result,
-                    array('component' => $log_type)
+                    array(
+                        'output' => $result,
+                        'component' => $log_type,
+                    )
                 );
             }
             
@@ -487,9 +491,10 @@ class AIPS_Generator {
             $this->current_history->record(
                 'log',
                 "Built content prompt",
-                array('prompt' => isset($content_prompt) ? $content_prompt : ''),
-                null,
-                array('component' => 'content')
+                array(
+                    'input' => array('prompt' => isset($content_prompt) ? $content_prompt : ''),
+                    'component' => 'content',
+                )
             );
         }
 
@@ -532,8 +537,6 @@ class AIPS_Generator {
             $this->current_history->record(
                 'info',
                 "Post title generated",
-                array(),
-                null,
                 array('component' => 'title')
             );
         }
@@ -616,8 +619,6 @@ class AIPS_Generator {
         $this->current_history->record(
             'activity',
             sprintf('Post "%s" generated successfully', $title),
-            null,
-            null,
             array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
@@ -707,11 +708,12 @@ class AIPS_Generator {
                     'ai_request',
                     "Requesting AI generation for featured image",
                     array(
-                        'prompt' => $processed_image_prompt,
-                        'title' => $title,
-                    ),
-                    null,
-                    array('component' => 'featured_image')
+                        'input' => array(
+                            'prompt' => $processed_image_prompt,
+                            'title' => $title,
+                        ),
+                        'component' => 'featured_image',
+                    )
                 );
             }
             
@@ -727,9 +729,10 @@ class AIPS_Generator {
                     $this->current_history->record(
                         'ai_response',
                         "Featured image generated successfully",
-                        null,
-                        array('featured_image_id' => $featured_image_id),
-                        array('component' => 'featured_image')
+                        array(
+                            'output' => array('featured_image_id' => $featured_image_id),
+                            'component' => 'featured_image',
+                        )
                     );
                 }
             }
@@ -745,9 +748,11 @@ class AIPS_Generator {
                 $this->current_history->record(
                     'error',
                     "Featured image generation failed: " . $featured_image_result->get_error_message(),
-                    array('prompt' => isset($processed_image_prompt) ? $processed_image_prompt : ''),
-                    null,
-                    array('component' => 'featured_image', 'error' => $featured_image_result->get_error_message())
+                    array(
+                        'input' => array('prompt' => isset($processed_image_prompt) ? $processed_image_prompt : ''),
+                        'component' => 'featured_image',
+                        'error' => $featured_image_result->get_error_message(),
+                    )
                 );
             }
         }
