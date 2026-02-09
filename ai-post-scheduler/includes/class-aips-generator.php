@@ -469,15 +469,10 @@ class AIPS_Generator {
             }
         }
         
-        // Check if creation_method is set in the context
-        // Default to 'manual' if not specified
-        $creation_method = 'manual';
-        if (method_exists($context, 'get_creation_method')) {
-            $context_creation_method = $context->get_creation_method();
-            if (!empty($context_creation_method)) {
-                $creation_method = $context_creation_method;
-            }
-        }
+        // Check if creation_method is set in the context, default to 'manual' if not specified
+        $creation_method = (method_exists($context, 'get_creation_method') && !empty($context->get_creation_method()))
+            ? $context->get_creation_method()
+            : 'manual';
         $history_metadata['creation_method'] = $creation_method;
         
         $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
