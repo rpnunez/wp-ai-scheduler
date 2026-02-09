@@ -37,7 +37,7 @@
 		 */
 		bindAIEditEvents: function() {
 			$(document).on('click', '.aips-ai-edit-btn', window.AIPS.openAIEditModal);
-			$(document).on('click', '#aips-ai-edit-cancel', window.AIPS.closeAIEditModal);
+			$(document).on('click', '#aips-ai-edit-cancel, #aips-ai-edit-close', window.AIPS.closeAIEditModal);
 			$(document).on('click', '.aips-regenerate-btn', window.AIPS.regenerateComponent);
 			$(document).on('click', '#aips-ai-edit-save', window.AIPS.saveAIEditChanges);
 			$(document).on('click', '.aips-modal-overlay', window.AIPS.closeAIEditModal);
@@ -372,9 +372,15 @@
 		 * Close the modal
 		 */
 		closeAIEditModal: function(e) {
-			// If clicking on close button or overlay
-			if (e && e.target !== e.currentTarget && !$(e.currentTarget).is('#aips-ai-edit-cancel')) {
-				return;
+			// Allow closing via overlay, cancel button, or close button
+			if (e) {
+				var $target = $(e.target);
+				var isOverlay = $target.hasClass('aips-modal-overlay');
+				var isCloseButton = $target.is('#aips-ai-edit-cancel, #aips-ai-edit-close') || $target.closest('#aips-ai-edit-close').length > 0;
+				
+				if (!isOverlay && !isCloseButton) {
+					return;
+				}
 			}
 			
 			if (aiEditState.changedComponents.size > 0) {

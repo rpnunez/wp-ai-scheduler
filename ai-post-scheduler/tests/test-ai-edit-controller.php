@@ -54,15 +54,20 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		);
 		
 		// Should fail without nonce
+		$exception_thrown = false;
 		ob_start();
 		try {
 			$this->controller->ajax_get_post_components();
-		} catch (WPDieException $e) {
-			// Expected - nonce check failed
+		} catch (WPAjaxDieStopException $e) {
+			// Expected - nonce check failed with wp_die
+			$exception_thrown = true;
+		} catch (WPAjaxDieContinueException $e) {
+			// Also acceptable - nonce check failed with wp_send_json_error
+			$exception_thrown = true;
 		}
 		ob_end_clean();
 		
-		$this->assertTrue(true); // If we got here, nonce check worked
+		$this->assertTrue($exception_thrown, 'Nonce validation should have thrown an exception');
 	}
 	
 	/**
@@ -103,6 +108,8 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		ob_start();
 		try {
 			$this->controller->ajax_get_post_components();
+		} catch (WPAjaxDieContinueException $e) {
+			// wp_send_json_success throws this
 			$output = ob_get_clean();
 			$response = json_decode($output, true);
 			
@@ -112,10 +119,13 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			$this->assertArrayHasKey('excerpt', $response['data']['components']);
 			$this->assertArrayHasKey('content', $response['data']['components']);
 			$this->assertArrayHasKey('featured_image', $response['data']['components']);
+			return;
 		} catch (Exception $e) {
 			ob_end_clean();
 			$this->fail('Should not throw exception: ' . $e->getMessage());
 		}
+		ob_end_clean();
+		$this->fail('Should have thrown WPAjaxDieContinueException');
 	}
 	
 	/**

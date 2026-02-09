@@ -27,22 +27,10 @@ class AIPS_AI_Edit_Controller {
 	private $service;
 	
 	/**
-	 * @var AIPS_History_Repository History repository
-	 */
-	private $history_repository;
-	
-	/**
-	 * @var AIPS_Post_Review_Repository Post review repository
-	 */
-	private $post_review_repository;
-	
-	/**
 	 * Constructor
 	 */
 	public function __construct() {
 		$this->service = new AIPS_Component_Regeneration_Service();
-		$this->history_repository = new AIPS_History_Repository();
-		$this->post_review_repository = new AIPS_Post_Review_Repository();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));
@@ -108,7 +96,7 @@ class AIPS_AI_Edit_Controller {
 			$topic = $generation_context->get_topic_object();
 			$context_display['template_name'] = __('N/A', 'ai-post-scheduler'); // Topic contexts don't use templates
 			$context_display['author_name'] = $author->name;
-			$context_display['topic_title'] = $topic->title;
+			$context_display['topic_title'] = $topic->topic_title;
 		}
 		
 		// Build response
@@ -169,6 +157,11 @@ class AIPS_AI_Edit_Controller {
 		$context = $this->service->get_generation_context($history_id);
 		if (is_wp_error($context)) {
 			wp_send_json_error(array('message' => $context->get_error_message()));
+		}
+		
+		// Ensure the history context belongs to the requested post
+		if (isset($context['post_id']) && absint($context['post_id']) !== $post_id) {
+			wp_send_json_error(array('message' => __('Invalid history context for this post.', 'ai-post-scheduler')));
 		}
 		
 		// Get current post data for context

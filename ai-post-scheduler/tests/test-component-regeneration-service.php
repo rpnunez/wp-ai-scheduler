@@ -95,8 +95,8 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		// Create an author-topic
 		$topic_id = $this->author_topics_repository->create(array(
 			'author_id' => 1,
-			'title' => 'Test Topic',
-			'description' => 'Test description',
+			'topic_title' => 'Test Topic',
+			'topic_prompt' => 'Test description',
 			'status' => 'approved',
 		));
 		

@@ -134,7 +134,7 @@ class AIPS_Component_Regeneration_Service {
 			if ($history->topic_id) {
 				$topic_data = $this->author_topics_repository->get_by_id($history->topic_id);
 				if ($topic_data) {
-					$topic_string = $topic_data->title;
+					$topic_string = $topic_data->topic_title;
 				}
 			}
 			
@@ -158,7 +158,7 @@ class AIPS_Component_Regeneration_Service {
 			// Create Topic Context
 			$context['generation_context'] = new AIPS_Topic_Context($author, $topic);
 			$context['context_type'] = 'topic';
-			$context['context_name'] = $author->name . ': ' . $topic->title;
+			$context['context_name'] = $author->name . ': ' . $topic->topic_title;
 			
 		} else {
 			return new WP_Error('invalid_context', __('Unable to determine generation context type.', 'ai-post-scheduler'));
@@ -180,12 +180,19 @@ class AIPS_Component_Regeneration_Service {
 		
 		$generation_context = $context['generation_context'];
 		
-		// Build title prompt using the generation context
-		// We pass empty content since we're regenerating just the title
-		$prompt = $this->prompt_builder->build_title_prompt($generation_context, null, null, '');
-		
-		// Call AI service
-		$result = $this->generator->generate($prompt);
+		// Get template, voice, and topic for generator
+		if ($generation_context->get_type() === 'template') {
+			$template = $generation_context->get_template();
+			$voice = $generation_context->get_voice();
+			$topic = $generation_context->get_topic();
+			
+			// Use generator's generate_title method
+			$result = $this->generator->generate_title($template, $voice, $topic);
+		} else {
+			// For topic context, build the prompt manually
+			$prompt = $this->prompt_builder->build_title_prompt($generation_context, null, null, '');
+			$result = $this->generator->generate_content($prompt);
+		}
 		
 		if (is_wp_error($result)) {
 			return $result;
@@ -210,8 +217,7 @@ class AIPS_Component_Regeneration_Service {
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		$content = isset($context['current_content']) ? $context['current_content'] : '';
 		
-		// Build excerpt prompt with title and content
-		// For Topic contexts, we can get voice from the template if it has one
+		// Get voice and topic for generator
 		$voice = null;
 		$topic_str = $generation_context->get_topic();
 		
@@ -219,9 +225,8 @@ class AIPS_Component_Regeneration_Service {
 			$voice = $generation_context->get_voice();
 		}
 		
-		$prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice, $topic_str);
-		
-		$result = $this->generator->generate($prompt);
+		// Use generator's generate_excerpt method
+		$result = $this->generator->generate_excerpt($title, $content, $voice, $topic_str);
 		
 		if (is_wp_error($result)) {
 			return $result;
@@ -242,21 +247,12 @@ class AIPS_Component_Regeneration_Service {
 		}
 		
 		$generation_context = $context['generation_context'];
-		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		
-		// Get article structure ID from the generation context
-		$structure_id = $generation_context->get_article_structure_id();
+		// Build the content prompt using the generation context
+		$prompt = $this->prompt_builder->build_content_prompt($generation_context);
 		
-		// Check if article structure is used
-		if ($structure_id) {
-			// Use structured content generation
-			$topic_string = $generation_context->get_topic();
-			$result = $this->generator->generate_structured_content($title, $generation_context, $topic_string, $structure_id);
-		} else {
-			// Use regular content generation with the generation context
-			$prompt = $this->prompt_builder->build_content_prompt($generation_context);
-			$result = $this->generator->generate($prompt);
-		}
+		// Generate content using the prompt
+		$result = $this->generator->generate_content($prompt);
 		
 		if (is_wp_error($result)) {
 			return $result;

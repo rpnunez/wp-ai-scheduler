@@ -129,16 +129,12 @@ Actual times may vary based on:
 
 ## Developer Hooks
 
-### Actions
-- `before_aips_regenerate_component` - Fired before component regeneration
-- `after_aips_regenerate_component` - Fired after component regeneration  
-- `aips_save_post_components_before` - Fired before saving components
-- `aips_save_post_components_after` - Fired after saving components
-
-### Filters
-- `aips_ai_edit_context` - Filter the generation context
-- `aips_regenerated_component` - Filter regenerated component value
-- `aips_save_components_data` - Filter data before saving
+The AI Edit feature currently leverages the plugin's global `aips_*` events
+(such as post generation and schedule execution actions) documented in the
+main plugin developer documentation. At this time, there are no additional
+AI-Edit-specific WordPress actions or filters. Future versions may introduce
+dedicated hooks for this feature, and they will be documented here when
+available.
 
 ## Support
 
