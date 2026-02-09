@@ -203,39 +203,7 @@ if (!defined('ABSPATH')) {
 					</tr>
 				</thead>
 				<tbody>
-					<?php foreach ($draft_posts['items'] as $item): 
-						// Format source for this item
-						$source = '';
-						if (!empty($item->template_id)) {
-							$source = __('Template', 'ai-post-scheduler');
-							if (!empty($item->template_name)) {
-								$source .= ': ' . esc_html($item->template_name);
-							}
-						} elseif (!empty($item->author_id) && !empty($item->topic_id)) {
-							$authors_repository = new AIPS_Authors_Repository();
-							$topics_repository = new AIPS_Author_Topics_Repository();
-							$author = $authors_repository->get_by_id($item->author_id);
-							$topic = $topics_repository->get_by_id($item->topic_id);
-							
-							$source = __('Author Topic', 'ai-post-scheduler');
-							if ($author && isset($author->name)) {
-								$source .= ': ' . esc_html($author->name);
-							}
-							if ($topic && isset($topic->topic_title)) {
-								$source .= ' - ' . esc_html($topic->topic_title);
-							}
-						} else {
-							$source = __('Unknown', 'ai-post-scheduler');
-						}
-						
-						// Add creation method
-						if (!empty($item->creation_method)) {
-							$method = $item->creation_method === 'manual' 
-								? __('Manual', 'ai-post-scheduler') 
-								: __('Scheduled', 'ai-post-scheduler');
-							$source .= ' (' . $method . ')';
-						}
-					?>
+					<?php foreach ($draft_posts['items'] as $item): ?>
 					<tr data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>">
 						<th scope="row" class="check-column">
 							<label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->post_id); ?>"><?php esc_html_e('Select Post', 'ai-post-scheduler'); ?></label>
@@ -259,7 +227,7 @@ if (!defined('ABSPATH')) {
 							</span>
 						</td>
 						<td class="column-source">
-							<?php echo $source; ?>
+							<?php echo $controller->format_source($item); // Already escaped in method ?>
 						</td>
 						<td class="column-date">
 							<?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item->created_at))); ?>

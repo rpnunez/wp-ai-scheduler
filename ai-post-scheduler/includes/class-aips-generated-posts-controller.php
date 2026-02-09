@@ -122,6 +122,9 @@ class AIPS_Generated_Posts_Controller {
 		global $aips_post_review_handler;
 		$post_review_handler = isset($aips_post_review_handler) ? $aips_post_review_handler : $this->post_review_repository;
 		
+		// Make controller available to template for formatting
+		$controller = $this;
+		
 		include AIPS_PLUGIN_DIR . 'templates/admin/generated-posts.php';
 	}
 	
@@ -348,10 +351,10 @@ class AIPS_Generated_Posts_Controller {
 	 * Format source information for display
 	 *
 	 * @param object $history_item History item from database
-	 * @return string Formatted source string
+	 * @return string Formatted source string (already escaped)
 	 */
-	private function format_source($history_item) {
-		$parts = array();
+	public function format_source($history_item) {
+		$source = '';
 		
 		// Determine the source type
 		if (!empty($history_item->template_id)) {
@@ -359,9 +362,9 @@ class AIPS_Generated_Posts_Controller {
 			$template_repository = new AIPS_Template_Repository();
 			$template = $template_repository->get_by_id($history_item->template_id);
 			
-			$parts[] = __('Template', 'ai-post-scheduler');
+			$source = __('Template', 'ai-post-scheduler');
 			if ($template && isset($template->name)) {
-				$parts[] = ': ' . esc_html($template->name);
+				$source .= ': ' . esc_html($template->name);
 			}
 		} elseif (!empty($history_item->author_id) && !empty($history_item->topic_id)) {
 			// Author Topic-based generation
@@ -371,15 +374,15 @@ class AIPS_Generated_Posts_Controller {
 			$author = $authors_repository->get_by_id($history_item->author_id);
 			$topic = $topics_repository->get_by_id($history_item->topic_id);
 			
-			$parts[] = __('Author Topic', 'ai-post-scheduler');
+			$source = __('Author Topic', 'ai-post-scheduler');
 			if ($author && isset($author->name)) {
-				$parts[] = ': ' . esc_html($author->name);
+				$source .= ': ' . esc_html($author->name);
 			}
 			if ($topic && isset($topic->topic_title)) {
-				$parts[] = ' - ' . esc_html($topic->topic_title);
+				$source .= ' - ' . esc_html($topic->topic_title);
 			}
 		} else {
-			$parts[] = __('Unknown', 'ai-post-scheduler');
+			$source = __('Unknown', 'ai-post-scheduler');
 		}
 		
 		// Add creation method if available
@@ -387,9 +390,9 @@ class AIPS_Generated_Posts_Controller {
 			$method = $history_item->creation_method === 'manual' 
 				? __('Manual', 'ai-post-scheduler') 
 				: __('Scheduled', 'ai-post-scheduler');
-			$parts[] = ' (' . $method . ')';
+			$source .= ' (' . esc_html($method) . ')';
 		}
 		
-		return implode('', $parts);
+		return $source;
 	}
 }
