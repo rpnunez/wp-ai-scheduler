@@ -31,11 +31,17 @@ class AIPS_Generated_Posts_Controller {
 	private $schedule_repository;
 	
 	/**
+	 * @var AIPS_Post_Review_Repository Repository for post review data
+	 */
+	private $post_review_repository;
+	
+	/**
 	 * Initialize the controller
 	 */
 	public function __construct() {
 		$this->history_repository = new AIPS_History_Repository();
 		$this->schedule_repository = new AIPS_Schedule_Repository();
+		$this->post_review_repository = new AIPS_Post_Review_Repository();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
@@ -48,12 +54,14 @@ class AIPS_Generated_Posts_Controller {
 	 * Render the Generated Posts admin page
 	 */
 	public function render_page() {
-		$current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+		// Use separate pagination parameters for each tab
+		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
+		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;
 		$search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
 		
-		// Get completed history entries with post IDs
+		// Get completed history entries with post IDs (for Generated Posts tab)
 		$history = $this->history_repository->get_history(array(
-			'page' => $current_page,
+			'page' => $generated_page,
 			'per_page' => 20,
 			'status' => 'completed',
 			'search' => $search_query,
@@ -89,6 +97,26 @@ class AIPS_Generated_Posts_Controller {
 				'edit_link' => get_edit_post_link($item->post_id),
 			);
 		}
+		
+		// Get draft posts for Post Review tab
+		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
+		$draft_posts = $this->post_review_repository->get_draft_posts(array(
+			'page' => $review_page,
+			'search' => $search_query,
+			'template_id' => $template_id,
+		));
+		
+		// Pass separate page variables for each tab
+		$current_page = $generated_page; // For Generated Posts tab
+		$review_current_page = $review_page; // For Pending Review tab
+		
+		// Get templates for filter dropdown
+		$template_repository = new AIPS_Template_Repository();
+		$templates = $template_repository->get_all();
+		
+		// Get globally-initialized Post Review handler
+		global $aips_post_review_handler;
+		$post_review_handler = isset($aips_post_review_handler) ? $aips_post_review_handler : $this->post_review_repository;
 		
 		include AIPS_PLUGIN_DIR . 'templates/admin/generated-posts.php';
 	}
