@@ -87,6 +87,9 @@ class AIPS_Generated_Posts_Controller {
 				$schedule = !empty($schedules) ? $schedules[0] : null;
 			}
 			
+			// Format source information
+			$source = $this->format_source($item);
+			
 			$posts_data[] = array(
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
@@ -95,6 +98,7 @@ class AIPS_Generated_Posts_Controller {
 				'date_published' => $post->post_date,
 				'date_scheduled' => $schedule ? $schedule->next_run : null,
 				'edit_link' => get_edit_post_link($item->post_id),
+				'source' => $source,
 			);
 		}
 		
@@ -338,5 +342,54 @@ class AIPS_Generated_Posts_Controller {
 		wp_send_json_success(array(
 			'json' => $json_string,
 		));
+	}
+	
+	/**
+	 * Format source information for display
+	 *
+	 * @param object $history_item History item from database
+	 * @return string Formatted source string
+	 */
+	private function format_source($history_item) {
+		$parts = array();
+		
+		// Determine the source type
+		if (!empty($history_item->template_id)) {
+			// Template-based generation
+			$template_repository = new AIPS_Template_Repository();
+			$template = $template_repository->get_by_id($history_item->template_id);
+			
+			$parts[] = __('Template', 'ai-post-scheduler');
+			if ($template && isset($template->name)) {
+				$parts[] = ': ' . esc_html($template->name);
+			}
+		} elseif (!empty($history_item->author_id) && !empty($history_item->topic_id)) {
+			// Author Topic-based generation
+			$authors_repository = new AIPS_Authors_Repository();
+			$topics_repository = new AIPS_Author_Topics_Repository();
+			
+			$author = $authors_repository->get_by_id($history_item->author_id);
+			$topic = $topics_repository->get_by_id($history_item->topic_id);
+			
+			$parts[] = __('Author Topic', 'ai-post-scheduler');
+			if ($author && isset($author->name)) {
+				$parts[] = ': ' . esc_html($author->name);
+			}
+			if ($topic && isset($topic->topic_title)) {
+				$parts[] = ' - ' . esc_html($topic->topic_title);
+			}
+		} else {
+			$parts[] = __('Unknown', 'ai-post-scheduler');
+		}
+		
+		// Add creation method if available
+		if (!empty($history_item->creation_method)) {
+			$method = $history_item->creation_method === 'manual' 
+				? __('Manual', 'ai-post-scheduler') 
+				: __('Scheduled', 'ai-post-scheduler');
+			$parts[] = ' (' . $method . ')';
+		}
+		
+		return implode('', $parts);
 	}
 }
