@@ -145,6 +145,13 @@ interface AIPS_Generation_Context {
 	public function get_topic();
 
 	/**
+	 * Get the creation method for this context.
+	 *
+	 * @return string|null Creation method ('manual' or 'scheduled') or null if not specified.
+	 */
+	public function get_creation_method();
+
+	/**
 	 * Get all context data as an array for serialization/storage.
 	 *
 	 * @return array Context data array.
