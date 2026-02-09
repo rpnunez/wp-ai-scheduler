@@ -254,10 +254,19 @@ class AIPS_Admin_Assets {
                 true
             );
             
+            // Enqueue Post Review module (for Pending Review tab)
+            wp_enqueue_script(
+                'aips-admin-post-review',
+                AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
+                array('aips-admin-script', 'aips-admin-view-session'),
+                AIPS_VERSION,
+                true
+            );
+            
             wp_enqueue_script(
                 'aips-admin-generated-posts',
                 AIPS_PLUGIN_URL . 'assets/js/admin-generated-posts.js',
-                array('aips-admin-script', 'aips-admin-view-session'),
+                array('aips-admin-script', 'aips-admin-view-session', 'aips-admin-post-review'),
                 AIPS_VERSION,
                 true
             );
@@ -267,28 +276,10 @@ class AIPS_Admin_Assets {
             $client_threshold = (int) $config->get_option('generated_posts_log_threshold_client', 20);
             wp_localize_script('aips-admin-generated-posts', 'aipsGeneratedPostsConfig', array(
                 'clientLogThreshold' => $client_threshold,
+                'siteUrl' => home_url(),
             ));
-        }
-
-        // Post Review Page Scripts
-        if (strpos($hook, 'aips-post-review') !== false) {
-            // Enqueue View Session module (shared functionality)
-            wp_enqueue_script(
-                'aips-admin-view-session',
-                AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
-                array('aips-admin-script'),
-                AIPS_VERSION,
-                true
-            );
             
-            wp_enqueue_script(
-                'aips-admin-post-review',
-                AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
-                array('aips-admin-script', 'aips-admin-view-session'),
-                AIPS_VERSION,
-                true
-            );
-
+            // Localize Post Review script for Pending Review tab
             wp_localize_script('aips-admin-post-review', 'aipsPostReviewL10n', array(
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('aips_ajax_nonce'),
@@ -306,7 +297,15 @@ class AIPS_Admin_Assets {
                 'deleteError' => __('Failed to delete post.', 'ai-post-scheduler'),
                 'regenerateError' => __('Failed to regenerate post.', 'ai-post-scheduler'),
                 'loadingError' => __('Failed to load draft posts.', 'ai-post-scheduler'),
+                'loading' => __('Loading...', 'ai-post-scheduler'),
+                'publish' => __('Publish', 'ai-post-scheduler'),
+                'deleting' => __('Deleting...', 'ai-post-scheduler'),
+                'delete' => __('Delete', 'ai-post-scheduler'),
+                'regenerating' => __('Regenerating...', 'ai-post-scheduler'),
+                'regenerate' => __('Re-generate', 'ai-post-scheduler'),
                 'noPostsSelected' => __('Please select at least one post.', 'ai-post-scheduler'),
+                'noDraftPosts' => __('No Draft Posts', 'ai-post-scheduler'),
+                'noDraftPostsDesc' => __('There are no draft posts waiting for review.', 'ai-post-scheduler'),
             ));
         }
 

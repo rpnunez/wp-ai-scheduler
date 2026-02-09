@@ -190,6 +190,7 @@ if (!defined('ABSPATH')) {
 							<input id="cb-select-all-1" type="checkbox">
 						</th>
 						<th class="column-title"><?php esc_html_e('Post', 'ai-post-scheduler'); ?></th>
+						<th class="column-preview" style="width: 60px; text-align: center;"><?php esc_html_e('Preview', 'ai-post-scheduler'); ?></th>
 						<th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
 						<th class="column-date"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
 						<th class="column-modified"><?php esc_html_e('Modified', 'ai-post-scheduler'); ?></th>
@@ -211,14 +212,14 @@ if (!defined('ABSPATH')) {
 								<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" target="_blank">
 									<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
 								</a>
-								<button type="button" 
-										class="button button-small aips-preview-post" 
-										data-post-id="<?php echo esc_attr($item->post_id); ?>"
-										title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>"
-										style="margin-left: 8px; vertical-align: middle;">
-									<span class="dashicons dashicons-visibility" style="font-size: 16px; width: 16px; height: 16px;"></span>
-								</button>
 							</strong>
+						</td>
+						<td class="column-preview" style="text-align: center;">
+							<span class="aips-preview-trigger dashicons dashicons-visibility" 
+								  data-post-id="<?php echo esc_attr($item->post_id); ?>"
+								  title="<?php esc_attr_e('Hover to preview this post', 'ai-post-scheduler'); ?>"
+								  style="cursor: pointer; font-size: 20px; color: #2271b1;">
+							</span>
 						</td>
 						<td class="column-template">
 							<?php echo esc_html($item->template_name ?: '-'); ?>
@@ -238,10 +239,10 @@ if (!defined('ABSPATH')) {
 									<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
 								</a>
 								<button type="button" 
-										class="button button-small aips-view-logs" 
+										class="button button-small aips-view-session" 
 										data-history-id="<?php echo esc_attr($item->id); ?>"
-										title="<?php esc_attr_e('View generation logs', 'ai-post-scheduler'); ?>">
-									<?php esc_html_e('View Logs', 'ai-post-scheduler'); ?>
+										title="<?php esc_attr_e('View generation session', 'ai-post-scheduler'); ?>">
+									<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
 								</button>
 								<button type="button" 
 										class="button button-primary button-small aips-publish-post" 
