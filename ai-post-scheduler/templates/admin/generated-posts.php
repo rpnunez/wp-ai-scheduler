@@ -189,7 +189,7 @@ if (!defined('ABSPATH')) {
 							<label class="screen-reader-text" for="cb-select-all-1"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
 							<input id="cb-select-all-1" type="checkbox">
 						</th>
-						<th class="column-title"><?php esc_html_e('Post Title', 'ai-post-scheduler'); ?></th>
+						<th class="column-title"><?php esc_html_e('Post', 'ai-post-scheduler'); ?></th>
 						<th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
 						<th class="column-date"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
 						<th class="column-modified"><?php esc_html_e('Modified', 'ai-post-scheduler'); ?></th>
@@ -211,6 +211,13 @@ if (!defined('ABSPATH')) {
 								<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" target="_blank">
 									<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
 								</a>
+								<button type="button" 
+										class="button button-small aips-preview-post" 
+										data-post-id="<?php echo esc_attr($item->post_id); ?>"
+										title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>"
+										style="margin-left: 8px; vertical-align: middle;">
+									<span class="dashicons dashicons-visibility" style="font-size: 16px; width: 16px; height: 16px;"></span>
+								</button>
 							</strong>
 						</td>
 						<td class="column-template">
@@ -316,6 +323,22 @@ if (!defined('ABSPATH')) {
         <p><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
       </div>
       <?php endif; ?>
+	</div>
+</div>
+
+<!-- Post Preview Modal -->
+<div id="aips-post-preview-modal" class="aips-modal" style="display: none;">
+	<div class="aips-modal-overlay"></div>
+	<div class="aips-modal-content" style="width: 90%; max-width: 1200px; height: 90vh;">
+		<div class="aips-modal-header">
+			<h2><?php esc_html_e('Post Preview', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-no-alt"></span>
+			</button>
+		</div>
+		<div class="aips-modal-body" style="height: calc(100% - 60px); padding: 0;">
+			<iframe id="aips-post-preview-iframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+		</div>
 	</div>
 </div>
 
