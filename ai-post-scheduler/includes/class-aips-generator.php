@@ -31,11 +31,6 @@ class AIPS_Generator {
      * @var AIPS_History_Container|null Current history container
      */
     private $current_history;
-    
-    /**
-     * @var AIPS_Generation_Logger Handles logging logic.
-     */
-    private $generation_logger;
 
     private $template_processor;
     private $image_service;
@@ -77,9 +72,6 @@ class AIPS_Generator {
         $this->history_service = $history_service ?: new AIPS_History_Service();
         $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
-
-        // Initialize logger wrapper
-        $this->generation_logger = new AIPS_Generation_Logger($this->logger, $this->history_service, new AIPS_Generation_Session());
     }
     
     /**
@@ -224,7 +216,7 @@ class AIPS_Generator {
         $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
         
         if (is_wp_error($result)) {
-            $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
+            $this->logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
             return array();
         }
         
@@ -234,12 +226,12 @@ class AIPS_Generator {
         if (empty($resolved_values)) {
             // AI call succeeded but we could not extract any variable values.
             // This usually indicates invalid JSON or an unexpected response format.
-            $this->generation_logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
+            $this->logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
                 'variables' => $ai_variables,
                 'raw_response' => $result,
             ));
         } else {
-            $this->generation_logger->log('Resolved AI variables', 'info', array(
+            $this->logger->log('Resolved AI variables', 'info', array(
                 'variables' => $ai_variables,
                 'resolved'   => $resolved_values,
             ));
@@ -549,8 +541,9 @@ class AIPS_Generator {
                 $has_unresolved_placeholders = true;
 
                 // Log a warning for observability when AI variables were not resolved correctly.
-                $this->generation_logger->warning(
+                $this->logger->log(
                     'Generated title contains unresolved AI variables; falling back to safe default title.',
+                    'warning',
                     array(
                         'context_type' => $context->get_type(),
                         'context_id' => $context->get_id(),
@@ -626,7 +619,7 @@ class AIPS_Generator {
             )
         );
         
-        $this->generation_logger->log('Post generated successfully', 'info', array(
+        $this->logger->log('Post generated successfully', 'info', array(
             'post_id' => $post_id,
             'context_type' => $context->get_type(),
             'context_id' => $context->get_id(),
@@ -643,7 +636,6 @@ class AIPS_Generator {
         }
         
         $this->history_id = null;
-        $this->generation_logger->set_history_id(null);
       
         return $post_id;
     }
@@ -741,7 +733,7 @@ class AIPS_Generator {
         }
 
         if (is_wp_error($featured_image_result)) {
-            $this->generation_logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
+            $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
 
             // Log featured image generation error
             if ($this->current_history) {

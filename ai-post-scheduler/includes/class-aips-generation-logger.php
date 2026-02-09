@@ -6,8 +6,12 @@ if (!defined('ABSPATH')) {
 /**
  * AIPS_Generation_Logger
  *
- * Handles logging and monitoring for AI generation sessions.
- * Encapsulates AIPS_Logger, AIPS_Generation_Session, and AIPS_History_Repository interactions.
+ * @deprecated 2.1.0 Use AIPS_History_Container directly via AIPS_History_Service
+ * 
+ * This class has been deprecated in favor of using AIPS_History_Container directly.
+ * The functionality is now built into History Container with the simplified record() method.
+ * 
+ * Maintained for backward compatibility only.
  *
  * @package AI_Post_Scheduler
  * @since 1.8.0
