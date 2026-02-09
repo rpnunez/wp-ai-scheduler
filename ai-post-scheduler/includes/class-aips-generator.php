@@ -453,11 +453,29 @@ class AIPS_Generator {
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
         
         // Create new history container using new API
-        $template_id = $context->get_type() === 'template' ? $context->get_id() : null;
+        // Extract source information from context
+        $history_metadata = array();
         
-        $this->current_history = $this->history_service->create('post_generation', array(
-            'template_id' => $template_id,
-        ))->with_session($context);
+        if ($context->get_type() === 'template') {
+            $history_metadata['template_id'] = $context->get_id();
+        } elseif ($context->get_type() === 'topic') {
+            // For topic context, store author_id and topic_id
+            $history_metadata['topic_id'] = $context->get_id();
+            if (method_exists($context, 'get_author')) {
+                $author = $context->get_author();
+                if ($author && isset($author->id)) {
+                    $history_metadata['author_id'] = $author->id;
+                }
+            }
+        }
+        
+        // Check if creation_method is set in the context (will be added later)
+        // Default to 'manual' if not specified
+        if (method_exists($context, 'get_creation_method')) {
+            $history_metadata['creation_method'] = $context->get_creation_method();
+        }
+        
+        $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
         
         if (!$this->current_history->get_id()) {
             // Fallback if history creation fails (though unlikely)

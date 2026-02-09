@@ -30,16 +30,23 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	private $topic;
 
 	/**
+	 * @var string|null Optional creation method (manual or scheduled).
+	 */
+	private $creation_method;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param object      $template Template object.
 	 * @param object|null $voice    Optional voice object.
 	 * @param string|null $topic    Optional topic string.
+	 * @param string|null $creation_method Optional creation method.
 	 */
-	public function __construct($template, $voice = null, $topic = null) {
+	public function __construct($template, $voice = null, $topic = null, $creation_method = null) {
 		$this->template = $template;
 		$this->voice = $voice;
 		$this->topic = $topic;
+		$this->creation_method = $creation_method;
 	}
 
 	/**
@@ -214,6 +221,15 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	 */
 	public function get_voice() {
 		return $this->voice;
+	}
+
+	/**
+	 * Get the creation method if set.
+	 *
+	 * @return string|null Creation method ('manual' or 'scheduled') or null.
+	 */
+	public function get_creation_method() {
+		return $this->creation_method;
 	}
 
 	/**

@@ -154,7 +154,10 @@ class AIPS_Author_Post_Generator {
 		}
 		
 		// Build a context object for the generator (no more template mocking!)
-		$context = new AIPS_Topic_Context($author, $topic, $expanded_context);
+		// For author topic generation, determine if it's manual or scheduled
+		// This is called from process_post_generation (scheduled) and generate_now (manual)
+		$creation_method = did_action('aips_generate_author_posts') ? 'scheduled' : 'manual';
+		$context = new AIPS_Topic_Context($author, $topic, $expanded_context, $creation_method);
 		
 		// Generate the post using the context
 		// Note: The Generator internally creates its own history container
