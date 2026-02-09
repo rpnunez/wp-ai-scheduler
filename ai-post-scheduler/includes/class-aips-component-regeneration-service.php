@@ -189,9 +189,10 @@ class AIPS_Component_Regeneration_Service {
 			// Use generator's generate_title method
 			$result = $this->generator->generate_title($template, $voice, $topic);
 		} else {
-			// For topic context, build the prompt manually
+			// For topic context, build the prompt and generate using generic method
 			$prompt = $this->prompt_builder->build_title_prompt($generation_context, null, null, '');
-			$result = $this->generator->generate_content($prompt);
+			// Use generate_content with log_type 'title' for proper logging
+			$result = $this->generator->generate_content($prompt, array(), 'title');
 		}
 		
 		if (is_wp_error($result)) {

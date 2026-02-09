@@ -376,7 +376,9 @@
 			if (e) {
 				var $target = $(e.target);
 				var isOverlay = $target.hasClass('aips-modal-overlay');
-				var isCloseButton = $target.is('#aips-ai-edit-cancel, #aips-ai-edit-close') || $target.closest('#aips-ai-edit-close').length > 0;
+				// Check for both cancel and close buttons, including child elements
+				var isCloseButton = $target.is('#aips-ai-edit-cancel, #aips-ai-edit-close') || 
+				                   $target.closest('#aips-ai-edit-close, #aips-ai-edit-cancel').length > 0;
 				
 				if (!isOverlay && !isCloseButton) {
 					return;
