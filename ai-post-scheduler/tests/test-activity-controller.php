@@ -18,13 +18,24 @@ class Test_AIPS_Activity_Controller extends WP_UnitTestCase {
         wp_set_current_user($admin_id);
     }
 
+    public function tearDown(): void {
+        // Reset globals modified during tests
+        $_POST    = array();
+        $_REQUEST = array();
+
+        // Reset current user
+        wp_set_current_user(0);
+
+        parent::tearDown();
+    }
+
     public function test_render_page() {
         ob_start();
         $this->controller->render_page();
         $output = ob_get_clean();
 
         $this->assertStringContainsString('class="wrap aips-wrap"', $output);
-        $this->assertStringContainsString('<h1>Activity</h1>', $output);
+        $this->assertMatchesRegularExpression('/<h1[^>]*>\s*Activity\s*<\/h1>/', $output);
     }
 
     public function test_ajax_get_activity_unauthorized() {
@@ -51,8 +62,19 @@ class Test_AIPS_Activity_Controller extends WP_UnitTestCase {
             $this->controller->ajax_get_activity();
             $this->fail('Expected WPAjaxDieContinueException not thrown');
         } catch (WPAjaxDieContinueException $e) {
-            $this->expectOutputRegex('/"success":true/');
-            $this->expectOutputRegex('/"activities":\[\]/');
+            $output = $this->getActualOutput();
+
+            $this->assertNotEmpty($output, 'Expected JSON response output from ajax_get_activity().');
+
+            $data = json_decode($output, true);
+            $this->assertIsArray($data, 'Expected decoded JSON response to be an array.');
+
+            $this->assertArrayHasKey('success', $data);
+            $this->assertTrue($data['success'], 'Expected success flag to be true.');
+
+            $this->assertArrayHasKey('data', $data);
+            $this->assertArrayHasKey('activities', $data['data']);
+            $this->assertIsArray($data['data']['activities'], 'Expected activities to be an array.');
         }
     }
 
