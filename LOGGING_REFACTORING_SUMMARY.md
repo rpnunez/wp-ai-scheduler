@@ -90,7 +90,13 @@ $this->current_history->record(
 
 ## Breaking Changes
 
-**None** - The refactoring is fully backward compatible. The new signature uses default parameters, so existing code passing 5 parameters will continue to work (though it's deprecated).
+**This is a breaking change.** The `record()` method signature has been changed from 5 parameters to 3 parameters: `record($log_type, $message, $context = array())`.
+
+All code that calls `record()` with 5 arguments must be updated to use the new signature with data passed via the `$context` array as shown in the examples above.
+
+On PHP 8.2 and newer (which this plugin requires), passing extra arguments to `record()` will result in an `ArgumentCountError`.
+
+All internal plugin code has been updated. External code or extensions must update their calls.
 
 ## Files Changed
 
@@ -168,11 +174,11 @@ The logging refactoring is **complete and ready for production**. All code has b
 
 ### Success Metrics
 - ✅ 100% of logging calls updated
-- ✅ 0 breaking changes introduced
+- ✅ Breaking change clearly documented
 - ✅ Comprehensive test coverage added
 - ✅ Full documentation provided
 - ✅ All code review feedback addressed
-- ✅ Backward compatibility maintained
+- ✅ PHP 8.2+ requirement enforced
 
 ## Related Documentation
 

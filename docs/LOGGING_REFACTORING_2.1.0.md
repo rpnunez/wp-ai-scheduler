@@ -4,6 +4,8 @@
 
 The logging system has been completely refactored to use the History Container-based system as the primary logging mechanism. This change simplifies the API, reduces code duplication, and provides a unified approach to logging throughout the plugin.
 
+**Requirements**: PHP 8.2 or higher
+
 ## What Changed
 
 ### Simplified `record()` Signature
@@ -24,9 +26,11 @@ record($log_type, $message, $context = array())
 2. **Flexible Context**: All data now passed via a single `$context` array
 3. **Built-in error_log**: PHP error_log integration when `WP_DEBUG` is enabled
 4. **Cleaner Code**: No more `null, null` when you only need context
-5. **Backward Compatible**: Existing helper methods still work
+5. **Breaking Change**: Old 5-parameter calls must be updated
 
 ## Migration Guide
+
+All code using the old 5-parameter signature must be updated to use the new 3-parameter signature with the `$context` array.
 
 ### Before & After Examples
 
@@ -370,7 +374,11 @@ Comprehensive tests have been added in `tests/test-history-container-simplified.
 
 ## Breaking Changes
 
-None. The new signature is backward compatible - existing code passing 5 parameters will continue to work (though it's deprecated).
+**This is a breaking change.** The `record()` method signature has been changed from 5 parameters to 3 parameters. All code that calls `record()` with 5 arguments must be updated to use the new signature with the `$context` array.
+
+On PHP 8.2 and newer (which this plugin requires), passing extra arguments to `record()` will result in an `ArgumentCountError`.
+
+All internal plugin code has been updated to use the new signature. External code or extensions that call `record()` directly must be updated.
 
 ## Performance Impact
 
