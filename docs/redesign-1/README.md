@@ -1,7 +1,7 @@
 # UI Redesign Project - AI Post Scheduler
 
 **Goal:** Transform the plugin UI to match the clean, modern Meow Apps style (WP Media Cleaner)  
-**Status:** Phase 2 In Progress - 30% Complete (3/18 pages)  
+**Status:** Phase 2 In Progress - 50% Complete (6/18 pages)  
 **Branch:** `copilot/redesign-plugin-ui`
 
 ---
@@ -66,25 +66,43 @@ This redesign transforms the AI Post Scheduler plugin's interface to match profe
 - Helpful description
 - Primary CTA button
 
-### Pages Redesigned (3/18)
+### Pages Redesigned (6/18)
 
 1. ✨ **Dashboard**
-   - Status summary cards (4 metrics)
+   - Status summary cards (4 metrics with icons)
    - Two-column layout (schedules + activity)
    - Quick actions panel
    - Professional empty states
 
 2. ✨ **Templates**
-   - Modern table with search
-   - Inline statistics
-   - Compact action buttons
-   - Status badges with icons
+   - Modern table with search filter bar
+   - Inline statistics (generated + pending counts)
+   - Status badges with icons (Active/Inactive)
+   - Compact action buttons (Edit, Run Now, Clone, Delete)
 
 3. ✨ **Schedule**
-   - Filter bar with search
-   - Frequency badges
-   - Toggle switches for enable/disable
-   - Icon-only actions (Clone, Delete)
+   - Frequency badges (info style)
+   - Status badges + toggle switches for enable/disable
+   - Icon-only compact actions (Clone, Delete)
+   - Warning state when no templates exist
+
+4. ✨ **Generated Posts**
+   - Tabbed interface preserved (Generated/Pending Review)
+   - Modern table with icon-enhanced buttons
+   - Source badges for post origin
+   - Empty states for both tabs
+
+5. ✨ **Authors**
+   - Topic statistics with inline breakdown
+   - Status badges (Active/Inactive)
+   - Tab system (Authors List / Generation Queue)
+   - Compact action buttons
+
+6. ✨ **Activity**
+   - Filter bar with activity type buttons
+   - Search functionality
+   - Activity feed area
+   - Modern empty states
 
 ---
 
