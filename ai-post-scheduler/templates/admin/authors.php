@@ -122,13 +122,13 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                                 <span class="dashicons dashicons-visibility"></span>
                                                 <?php esc_html_e('View Topics', 'ai-post-scheduler'); ?>
                                             </button>
-                                            <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+                                            <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit author', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-edit"></span>
                                             </button>
-                                            <button class="aips-btn aips-btn-sm aips-btn-ghost aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>">
+                                            <button class="aips-btn aips-btn-sm aips-btn-ghost aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate topics', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-update"></span>
                                             </button>
-                                            <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                            <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete author', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-trash"></span>
                                             </button>
                                         </div>
