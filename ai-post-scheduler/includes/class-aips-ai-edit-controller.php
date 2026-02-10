@@ -73,6 +73,11 @@ class AIPS_AI_Edit_Controller {
 		if (is_wp_error($context)) {
 			wp_send_json_error(array('message' => $context->get_error_message()));
 		}
+
+		// Ensure the history context belongs to the requested post
+		if (isset($context['post_id']) && absint($context['post_id']) !== $post_id) {
+			wp_send_json_error(array('message' => __('Invalid history context for this post.', 'ai-post-scheduler')));
+		}
 		
 		// Get featured image
 		$featured_image_id = get_post_thumbnail_id($post_id);
