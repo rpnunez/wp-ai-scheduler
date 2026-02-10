@@ -25,10 +25,6 @@ if (!defined('ABSPATH')) {
         <!-- Content Panel with Filter Bar -->
         <div class="aips-content-panel">
             <!-- Filter Bar -->
-        <?php if (!empty($templates)): ?>
-        <!-- Content Panel with Filter Bar -->
-        <div class="aips-content-panel">
-            <!-- Filter Bar -->
             <div class="aips-filter-bar">
                 <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
                 <input type="search" id="aips-template-search" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
