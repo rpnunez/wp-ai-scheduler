@@ -181,10 +181,6 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                 <div id="aips-schedule-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
                     <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
-                <!-- No Search Results State -->
-                <div id="aips-schedule-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
-                    <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
-                    <h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('No schedules match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
                         <button type="button" class="aips-btn aips-btn-primary aips-clear-schedule-search-btn">
