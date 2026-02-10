@@ -326,9 +326,11 @@ class AIPS_AI_Service {
             $json_str = trim($matches[1]);
         }
         // 2. If no json-tagged block, try all fenced code blocks and find one that decodes
-        elseif (preg_match_all('/```[a-z]*\s*([\s\S]*?)\s*```/', $json_str, $all_matches)) {
+        elseif (preg_match_all('/```[a-zA-Z0-9+_-]*\s*([\s\S]*?)\s*```/', $json_str, $all_matches)) {
             $json_found = false;
-            foreach ($all_matches[1] as $block_content) {
+            // Limit to first 5 code blocks to prevent excessive processing
+            $blocks_to_check = array_slice($all_matches[1], 0, 5);
+            foreach ($blocks_to_check as $block_content) {
                 $test_json = trim($block_content);
                 $test_decode = json_decode($test_json, true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($test_decode)) {
