@@ -35,6 +35,7 @@ class AIPS_Settings {
      * @return void
      */
     public function add_menu_pages() {
+        // Main menu page
         add_menu_page(
             __('AI Post Scheduler', 'ai-post-scheduler'),
             __('AI Post Scheduler', 'ai-post-scheduler'),
@@ -45,6 +46,7 @@ class AIPS_Settings {
             30
         );
         
+        // Dashboard
         add_submenu_page(
             'ai-post-scheduler',
             __('Dashboard', 'ai-post-scheduler'),
@@ -54,46 +56,66 @@ class AIPS_Settings {
             array($this, 'render_dashboard_page')
         );
 
+        // === CONTENT SECTION ===
         add_submenu_page(
             'ai-post-scheduler',
-            __('Activity', 'ai-post-scheduler'),
-            __('Activity', 'ai-post-scheduler'),
+            '',
+            '<span style="color:#72aee6;">📄 ' . __('Content', 'ai-post-scheduler') . '</span>',
             'manage_options',
-            'aips-activity',
-            array($this, 'render_activity_page')
+            '#',
+            null
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Templates', 'ai-post-scheduler'),
+            '— ' . __('Templates', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-templates',
+            array($this, 'render_templates_page')
+        );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Voices', 'ai-post-scheduler'),
+            '— ' . __('Voices', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-voices',
+            array($this, 'render_voices_page')
+        );
+        
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Article Structures', 'ai-post-scheduler'),
+            '— ' . __('Article Structures', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-structures',
+            array($this, 'render_structures_page')
         );
         
         add_submenu_page(
             'ai-post-scheduler',
             __('Generated Posts', 'ai-post-scheduler'),
-            __('Generated Posts', 'ai-post-scheduler'),
+            '— ' . __('Generated Posts', 'ai-post-scheduler'),
             'manage_options',
             'aips-generated-posts',
             array($this, 'render_generated_posts_page')
         );
 
+        // === PLANNING SECTION ===
         add_submenu_page(
             'ai-post-scheduler',
-            __('Schedule', 'ai-post-scheduler'),
-            __('Schedule', 'ai-post-scheduler'),
+            '',
+            '<span style="color:#72aee6;">🎯 ' . __('Planning', 'ai-post-scheduler') . '</span>',
             'manage_options',
-            'aips-schedule',
-            array($this, 'render_schedule_page')
-        );
-
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Templates', 'ai-post-scheduler'),
-            __('Templates', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-templates',
-            array($this, 'render_templates_page')
+            '#',
+            null
         );
 
         add_submenu_page(
             'ai-post-scheduler',
             __('Authors', 'ai-post-scheduler'),
-            __('Authors', 'ai-post-scheduler'),
+            '— ' . __('Authors', 'ai-post-scheduler'),
             'manage_options',
             'aips-authors',
             array($this, 'render_authors_page')
@@ -101,71 +123,101 @@ class AIPS_Settings {
         
         add_submenu_page(
             'ai-post-scheduler',
-            __('Voices', 'ai-post-scheduler'),
-            __('Voices', 'ai-post-scheduler'),
+            __('Research', 'ai-post-scheduler'),
+            '— ' . __('Research', 'ai-post-scheduler'),
             'manage_options',
-            'aips-voices',
-            array($this, 'render_voices_page')
-        );
-        
-         add_submenu_page(
-             'ai-post-scheduler',
-             __('Research', 'ai-post-scheduler'),
-             __('Research', 'ai-post-scheduler'),
-             'manage_options',
-             'aips-research',
-             array($this, 'render_research_page')
-         );
-        
-        
-      
-        add_submenu_page(
-            'ai-post-scheduler',
-            __('Article Structures', 'ai-post-scheduler'),
-            __('Article Structures', 'ai-post-scheduler'),
-            'manage_options',
-            'aips-structures',
-            array($this, 'render_structures_page')
+            'aips-research',
+            array($this, 'render_research_page')
         );
 
         add_submenu_page(
             'ai-post-scheduler',
             __('Seeder', 'ai-post-scheduler'),
-            __('Seeder', 'ai-post-scheduler'),
+            '— ' . __('Seeder', 'ai-post-scheduler'),
             'manage_options',
             'aips-seeder',
             array($this, 'render_seeder_page')
         );
 
+        // === AUTOMATION SECTION ===
         add_submenu_page(
             'ai-post-scheduler',
-            __('System Status', 'ai-post-scheduler'),
-            __('System Status', 'ai-post-scheduler'),
+            '',
+            '<span style="color:#72aee6;">⚡ ' . __('Automation', 'ai-post-scheduler') . '</span>',
             'manage_options',
-            'aips-status',
-            array($this, 'render_status_page')
+            '#',
+            null
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Schedules', 'ai-post-scheduler'),
+            '— ' . __('Schedules', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-schedule',
+            array($this, 'render_schedule_page')
+        );
+
+        // === MONITORING SECTION ===
+        add_submenu_page(
+            'ai-post-scheduler',
+            '',
+            '<span style="color:#72aee6;">📊 ' . __('Monitoring', 'ai-post-scheduler') . '</span>',
+            'manage_options',
+            '#',
+            null
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Activity', 'ai-post-scheduler'),
+            '— ' . __('Activity', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-activity',
+            array($this, 'render_activity_page')
+        );
+
+        // === SETTINGS SECTION ===
+        add_submenu_page(
+            'ai-post-scheduler',
+            '',
+            '<span style="color:#72aee6;">⚙️ ' . __('Settings', 'ai-post-scheduler') . '</span>',
+            'manage_options',
+            '#',
+            null
         );
         
         add_submenu_page(
             'ai-post-scheduler',
-            __('Settings', 'ai-post-scheduler'),
-            __('Settings', 'ai-post-scheduler'),
+            __('General Settings', 'ai-post-scheduler'),
+            '— ' . __('General Settings', 'ai-post-scheduler'),
             'manage_options',
             'aips-settings',
             array($this, 'render_settings_page')
         );
 
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('System Status', 'ai-post-scheduler'),
+            '— ' . __('System Status', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-status',
+            array($this, 'render_status_page')
+        );
+
+        // Dev Tools - only show if developer mode is enabled
         if (get_option('aips_developer_mode')) {
             add_submenu_page(
                 'ai-post-scheduler',
                 __('Dev Tools', 'ai-post-scheduler'),
-                __('Dev Tools', 'ai-post-scheduler'),
+                '— ' . __('Dev Tools', 'ai-post-scheduler'),
                 'manage_options',
                 'aips-dev-tools',
                 array($this, 'render_dev_tools_page')
             );
         }
     }
+
     
     /**
      * Register plugin settings and fields.
