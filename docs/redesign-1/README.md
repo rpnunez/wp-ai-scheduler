@@ -40,7 +40,7 @@ This redesign transforms the AI Post Scheduler plugin's interface to match profe
 - **50+ design tokens** (colors, typography, spacing, shadows)
 - **10+ component patterns** (badges, buttons, cards, tables, forms)
 - **18KB CSS file** (`admin-redesign.css`)
-- **Progressive enhancement** approach (opt-in via CSS class)
+- **Progressive enhancement** approach (redesign styles load by default; no wrapper CSS class required)
 
 ### Component Highlights
 
