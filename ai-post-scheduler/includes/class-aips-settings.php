@@ -24,6 +24,9 @@ class AIPS_Settings {
         add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
         add_action('wp_ajax_aips_get_activity', array($this, 'ajax_get_activity'));
         add_action('wp_ajax_aips_get_activity_detail', array($this, 'ajax_get_activity_detail'));
+        
+        // Add CSS for section headers (once, not per header)
+        add_action('admin_head', array($this, 'add_section_header_styles'));
     }
     
     /**
@@ -197,8 +200,6 @@ class AIPS_Settings {
      * @return void
      */
     private function add_section_header($id, $title) {
-        global $submenu;
-        
         // Add a submenu item with null callback to create a header
         add_submenu_page(
             'ai-post-scheduler',
@@ -208,24 +209,35 @@ class AIPS_Settings {
             'aips-section-' . $id,
             '__return_null'
         );
-        
-        // Mark this as a section header for styling via CSS class
-        if (isset($submenu['ai-post-scheduler'])) {
-            $last_item = end($submenu['ai-post-scheduler']);
-            if ($last_item && $last_item[2] === 'aips-section-' . $id) {
-                // We'll add a CSS class via admin_head hook
-                add_action('admin_head', function() use ($id) {
-                    echo '<style>.wp-submenu a[href="admin.php?page=aips-section-' . esc_attr($id) . '"] { 
-                        pointer-events: none; 
-                        font-weight: 600; 
-                        color: #a7aaad !important; 
-                        cursor: default;
-                        padding-top: 10px;
-                        padding-bottom: 5px;
-                    }</style>';
-                });
-            }
+    }
+    
+    /**
+     * Output CSS styles for section headers.
+     * 
+     * Called once via admin_head hook to style all section headers.
+     *
+     * @return void
+     */
+    public function add_section_header_styles() {
+        // Only add styles on our admin pages
+        $screen = get_current_screen();
+        if (!$screen || strpos($screen->id, 'ai-post-scheduler') === false) {
+            return;
         }
+        
+        ?>
+        <style>
+        /* Section header styles for Proposal B navigation */
+        .wp-submenu a[href*="page=aips-section-"] {
+            pointer-events: none;
+            font-weight: 600;
+            color: #a7aaad !important;
+            cursor: default;
+            padding-top: 10px;
+            padding-bottom: 5px;
+        }
+        </style>
+        <?php
     }
     
     /**
@@ -721,12 +733,23 @@ class AIPS_Settings {
      * @return void
      */
     public function render_history_page() {
+        // View type constants for consistency
+        $VIEW_ALL = 'all';
+        $VIEW_GENERATION = 'generation';
+        $VIEW_ACTIVITY = 'activity';
+        
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $per_page = 50;
         $offset = ($current_page - 1) * $per_page;
         
         // Get filter parameters
-        $view_type = isset($_GET['view_type']) ? sanitize_text_field($_GET['view_type']) : 'all';
+        $view_type = isset($_GET['view_type']) ? sanitize_text_field($_GET['view_type']) : $VIEW_ALL;
+        
+        // Validate view type against allowed values
+        if (!in_array($view_type, array($VIEW_ALL, $VIEW_GENERATION, $VIEW_ACTIVITY), true)) {
+            $view_type = $VIEW_ALL;
+        }
+        
         $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
         $event_type = isset($_GET['event_type']) ? sanitize_text_field($_GET['event_type']) : '';
         $event_status = isset($_GET['event_status']) ? sanitize_text_field($_GET['event_status']) : '';
@@ -737,7 +760,7 @@ class AIPS_Settings {
         $history_service = new AIPS_History_Service();
         
         // Get data based on view type
-        if ($view_type === 'generation' || $view_type === 'all') {
+        if ($view_type === $VIEW_GENERATION || $view_type === $VIEW_ALL) {
             // Get generation history
             $history = $history_handler->get_history(array(
                 'page' => $current_page,
@@ -748,7 +771,7 @@ class AIPS_Settings {
             $stats = $history_handler->get_stats();
         }
         
-        if ($view_type === 'activity' || $view_type === 'all') {
+        if ($view_type === $VIEW_ACTIVITY || $view_type === $VIEW_ALL) {
             // Get activity feed
             $filters = array();
             if ($search_query) {
