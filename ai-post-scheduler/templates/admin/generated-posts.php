@@ -15,162 +15,179 @@ if (!defined('ABSPATH')) {
 }
 ?>
 
-<div class="wrap aips-wrap">
-	<!-- Page title -->
-	<h1><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></h1>
-
-	<!-- Tabs navigation -->
-	<div class="nav-tab-wrapper" role="tablist">
-		<a href="#aips-generated-posts" id="aips-generated-posts" class="nav-tab nav-tab-active" data-tab="aips-generated-posts" role="tab" aria-selected="true" aria-controls="aips-generated-posts-tab"><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></a>
-		<a href="#aips-pending-review" id="aips-pending-review" class="nav-tab" data-tab="aips-pending-review" role="tab" aria-selected="false" aria-controls="aips-pending-review-tab"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></a>
-	</div>
-
-	<!-- Tab 1 panel -->
-	<div id="aips-generated-posts-tab" class="aips-tab-content active" role="tabpanel" aria-labelledby="aips-generated-posts" aria-hidden="false">
-		<!-- Search form -->
-		<form method="get" class="search-form">
-			<input type="hidden" name="page" value="aips-generated-posts">
-			<p class="search-box">
-				<label class="screen-reader-text" for="post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
-				<input type="search" id="post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
-				<input type="submit" id="search-submit" class="button" value="<?php esc_attr_e('Search Posts', 'ai-post-scheduler'); ?>">
-			</p>
-		</form>
-
-		<!-- Generated posts table -->
-		<table class="wp-list-table widefat fixed striped">
-			<thead>
-				<tr>
-					<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
-					<th scope="col"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
-					<th scope="col"><?php esc_html_e('Date Scheduled', 'ai-post-scheduler'); ?></th>
-					<th scope="col"><?php esc_html_e('Date Published', 'ai-post-scheduler'); ?></th>
-					<th scope="col"><?php esc_html_e('Date Generated', 'ai-post-scheduler'); ?></th>
-					<th scope="col"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-				</tr>
-			</thead>
-			<tbody>
-				<?php if (!empty($posts_data)): ?>
-					<?php foreach ($posts_data as $post_data): ?>
-					<tr>
-						<td>
-							<strong>
-								<a href="<?php echo esc_url($post_data['edit_link']); ?>">
-									<?php echo esc_html($post_data['title']); ?>
-								</a>
-							</strong>
-						</td>
-						<td>
-							<?php echo esc_html($post_data['source']); ?>
-						</td>
-						<td>
-							<?php 
-							if ($post_data['date_scheduled']) {
-								echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_scheduled'])));
-							} else {
-								echo '—';
-							}
-							?>
-						</td>
-						<td>
-							<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_published']))); ?>
-						</td>
-						<td>
-							<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_generated']))); ?>
-						</td>
-						<td>
-							<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="button button-small">
-								<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-							</a>
-							<button class="button button-small aips-ai-edit-btn" 
-							        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
-							        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>">
-								<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
-							</button>
-							<button class="button button-small aips-view-session" data-history-id="<?php echo esc_attr($post_data['history_id']); ?>">
-								<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
-							</button>
-						</td>
-					</tr>
-					<?php endforeach; ?>
-				<?php else: ?>
-					<tr>
-						<td colspan="6" class="no-items">
-							<?php esc_html_e('No generated posts found.', 'ai-post-scheduler'); ?>
-						</td>
-					</tr>
-				<?php endif; ?>
-			</tbody>
-			<tfoot>
-				<tr>
-					<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
-					<th scope="col"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
-					<th scope="col"><?php esc_html_e('Date Scheduled', 'ai-post-scheduler'); ?></th>
-					<th scope="col"><?php esc_html_e('Date Published', 'ai-post-scheduler'); ?></th>
-					<th scope="col"><?php esc_html_e('Date Generated', 'ai-post-scheduler'); ?></th>
-					<th scope="col"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-				</tr>
-			</tfoot>
-		</table>
-
-		<!-- Pagination controls -->
-		<?php if ($history['pages'] > 1): ?>
-			<div class="tablenav">
-				<div class="tablenav-pages">
-					<?php
-					$page_links = paginate_links(array(
-						'base' => add_query_arg('generated_paged', '%#%'),
-						'format' => '',
-						'prev_text' => '&laquo;',
-						'next_text' => '&raquo;',
-						'total' => $history['pages'],
-						'current' => $current_page,
-					));
-					if ($page_links) {
-						echo '<span class="displaying-num">' . sprintf(
-							/* translators: %s: total number of items */
-							_n('%s item', '%s items', $history['total'], 'ai-post-scheduler'),
-							number_format_i18n($history['total'])
-						) . '</span>';
-						echo wp_kses_post( $page_links );
-					}
-					?>
+<div class="wrap aips-wrap aips-redesign">
+	<div class="aips-page-container">
+		<!-- Page Header -->
+		<div class="aips-page-header">
+			<div class="aips-page-header-top">
+				<div>
+					<h1 class="aips-page-title"><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></h1>
+					<p class="aips-page-description"><?php esc_html_e('View and manage all AI-generated posts including published articles and drafts pending review.', 'ai-post-scheduler'); ?></p>
 				</div>
 			</div>
-		<?php endif; ?>
-	</div>
+		</div>
 
-	<!-- Tab 2 panel -->
-	<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-labelledby="aips-pending-review" aria-hidden="true" hidden>
-		<!-- Review and manage draft posts -->
-		<p class="description">
-			<?php esc_html_e('Review and manage draft posts generated by AI Post Scheduler before publishing them.', 'ai-post-scheduler'); ?>
-		</p>
-		
-		<div class="aips-post-review-stats">
-			<div class="aips-stat-inline">
-				<span class="aips-stat-label"><?php esc_html_e('Draft Posts:', 'ai-post-scheduler'); ?></span>
-				<span class="aips-stat-value" id="aips-draft-count"><?php echo esc_html($draft_posts['total']); ?></span>
+		<!-- Tabs navigation -->
+		<div class="nav-tab-wrapper" role="tablist" style="margin-bottom: 20px;">
+			<a href="#aips-generated-posts" id="aips-generated-posts" class="nav-tab nav-tab-active" data-tab="aips-generated-posts" role="tab" aria-selected="true" aria-controls="aips-generated-posts-tab"><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></a>
+			<a href="#aips-pending-review" id="aips-pending-review" class="nav-tab" data-tab="aips-pending-review" role="tab" aria-selected="false" aria-controls="aips-pending-review-tab"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></a>
+		</div>
+
+		<!-- Tab 1 panel -->
+		<div id="aips-generated-posts-tab" class="aips-tab-content active" role="tabpanel" aria-labelledby="aips-generated-posts" aria-hidden="false">
+			<div class="aips-content-panel">
+				<!-- Filter Bar -->
+				<div class="aips-filter-bar">
+					<form method="get" class="search-form" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+						<input type="hidden" name="page" value="aips-generated-posts">
+						<label class="screen-reader-text" for="post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
+						<input type="search" id="post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
+						<input type="submit" id="search-submit" class="aips-btn aips-btn-secondary" value="<?php esc_attr_e('Search Posts', 'ai-post-scheduler'); ?>">
+					</form>
+				</div>
+
+				<!-- Generated posts table -->
+				<div class="aips-panel-body no-padding">
+					<?php if (!empty($posts_data)): ?>
+					<table class="aips-table">
+						<thead>
+							<tr>
+								<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
+								<th scope="col"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
+								<th scope="col"><?php esc_html_e('Scheduled', 'ai-post-scheduler'); ?></th>
+								<th scope="col"><?php esc_html_e('Published', 'ai-post-scheduler'); ?></th>
+								<th scope="col"><?php esc_html_e('Generated', 'ai-post-scheduler'); ?></th>
+								<th scope="col"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ($posts_data as $post_data): ?>
+							<tr>
+								<td>
+									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
+										<?php echo esc_html($post_data['title']); ?>
+									</a>
+								</td>
+								<td>
+									<span class="aips-badge aips-badge-neutral">
+										<?php echo esc_html($post_data['source']); ?>
+									</span>
+								</td>
+								<td>
+									<div class="cell-meta">
+										<?php 
+										if ($post_data['date_scheduled']) {
+											echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_scheduled'])));
+										} else {
+											echo '—';
+										}
+										?>
+									</div>
+								</td>
+								<td>
+									<div class="cell-meta">
+										<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_published']))); ?>
+									</div>
+								</td>
+								<td>
+									<div class="cell-meta">
+										<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_generated']))); ?>
+									</div>
+								</td>
+								<td>
+									<div class="cell-actions">
+										<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+											<span class="dashicons dashicons-edit"></span>
+											<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
+										</a>
+										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn" 
+										        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
+										        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+										        title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-admin-customizer"></span>
+											<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
+										</button>
+										<button class="aips-btn aips-btn-sm aips-btn-ghost aips-view-session" 
+										        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+										        title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-visibility"></span>
+										</button>
+									</div>
+								</td>
+							</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+					<?php else: ?>
+					<div class="aips-empty-state">
+						<div class="dashicons dashicons-admin-post aips-empty-state-icon" aria-hidden="true"></div>
+						<h3 class="aips-empty-state-title"><?php esc_html_e('No Generated Posts', 'ai-post-scheduler'); ?></h3>
+						<p class="aips-empty-state-description"><?php esc_html_e('No generated posts found. Start creating content by setting up templates and schedules.', 'ai-post-scheduler'); ?></p>
+					</div>
+					<?php endif; ?>
+				</div>
+
+				<!-- Pagination controls -->
+				<?php if ($history['pages'] > 1): ?>
+					<div class="tablenav">
+						<div class="tablenav-pages">
+							<?php
+							$page_links = paginate_links(array(
+								'base' => add_query_arg('generated_paged', '%#%'),
+								'format' => '',
+								'prev_text' => '&laquo;',
+								'next_text' => '&raquo;',
+								'total' => $history['pages'],
+								'current' => $current_page,
+							));
+							if ($page_links) {
+								echo '<span class="displaying-num">' . sprintf(
+									/* translators: %s: total number of items */
+									_n('%s item', '%s items', $history['total'], 'ai-post-scheduler'),
+									number_format_i18n($history['total'])
+								) . '</span>';
+								echo wp_kses_post( $page_links );
+							}
+							?>
+						</div>
+					</div>
+				<?php endif; ?>
 			</div>
 		</div>
-		
-		<form method="get" class="aips-post-review-filters">
-			<input type="hidden" name="page" value="aips-generated-posts">
-			
-			<p class="search-box">
-				<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
-				<input type="search" id="aips-post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
-				<input type="submit" id="aips-post-search-btn" class="button" value="<?php esc_attr_e('Search', 'ai-post-scheduler'); ?>">
-			</p>
-			
-			<?php if (!empty($templates)): ?>
-			<div class="alignleft actions">
-				<select name="template_id" id="aips-filter-template">
-					<option value=""><?php esc_html_e('All Templates', 'ai-post-scheduler'); ?></option>
-					<?php foreach ($templates as $template): ?>
-					<option value="<?php echo esc_attr($template->id); ?>" <?php selected($template_id, $template->id); ?>>
-						<?php echo esc_html($template->name); ?>
-					</option>
+
+		<!-- Tab 2 panel -->
+		<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-labelledby="aips-pending-review" aria-hidden="true" hidden>
+			<div class="aips-content-panel">
+				<div class="aips-panel-body">
+					<!-- Review and manage draft posts -->
+					<p class="description" style="margin-bottom: 20px;">
+						<?php esc_html_e('Review and manage draft posts generated by AI Post Scheduler before publishing them.', 'ai-post-scheduler'); ?>
+					</p>
+					
+					<div class="aips-post-review-stats" style="margin-bottom: 20px;">
+						<div class="aips-stat-inline">
+							<span class="aips-stat-label"><?php esc_html_e('Draft Posts:', 'ai-post-scheduler'); ?></span>
+							<span class="aips-stat-value" id="aips-draft-count"><?php echo esc_html($draft_posts['total']); ?></span>
+						</div>
+					</div>
+					
+					<form method="get" class="aips-post-review-filters" style="margin-bottom: 20px;">
+						<input type="hidden" name="page" value="aips-generated-posts">
+						
+						<p class="search-box">
+							<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
+							<input type="search" id="aips-post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
+							<input type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-secondary" value="<?php esc_attr_e('Search', 'ai-post-scheduler'); ?>">
+						</p>
+						
+						<?php if (!empty($templates)): ?>
+						<div class="alignleft actions">
+							<select name="template_id" id="aips-filter-template" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Templates', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($templates as $template): ?>
+								<option value="<?php echo esc_attr($template->id); ?>" <?php selected($template_id, $template->id); ?>>
+									<?php echo esc_html($template->name); ?>
+								</option>
 					<?php endforeach; ?>
 				</select>
 				<input type="submit" class="button" value="<?php esc_attr_e('Filter', 'ai-post-scheduler'); ?>">
@@ -343,6 +360,9 @@ if (!defined('ABSPATH')) {
         <p><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
       </div>
       <?php endif; ?>
+				</div>
+			</div>
+		</div>
 	</div>
 </div>
 
