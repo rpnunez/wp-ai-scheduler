@@ -601,24 +601,7 @@ class AIPS_Settings {
         $controller->render_page();
     }
 
-    /**
-     * Render the Post Review page.
-     *
-     * Includes the post review template file.
-     *
-     * @return void
-     */
-    public function render_post_review_page() {
-        // Get the globally-initialized Post Review handler to avoid duplicate AJAX registration
-        global $aips_post_review_handler;
-        if (!isset($aips_post_review_handler)) {
-            // Fallback: repository only (AJAX handlers already registered in main init)
-            $post_review_handler = null;
-        } else {
-            $post_review_handler = $aips_post_review_handler;
-        }
-        include AIPS_PLUGIN_DIR . 'templates/admin/post-review.php';
-    }
+
 
     /*
      * Render the Article Structures page.
