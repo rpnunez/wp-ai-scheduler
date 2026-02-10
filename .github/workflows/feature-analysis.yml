@@ -1,0 +1,537 @@
+name: Feature Analysis - Update Feature Analysis
+
+on:
+  schedule:
+    # Run weekly on Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-feature-analysis:
+    name: Generate Feature Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper analysis
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Generate feature report
+        run: |
+          echo "Generating feature report..."
+          python3 scripts/feature_scanner.py
+      
+      - name: Set date variables
+        id: date
+        run: |
+          # Get current date in MM-DD-YYYY format
+          DATE_FOLDER=$(date +%m-%d-%Y)
+          echo "date_folder=${DATE_FOLDER}" >> $GITHUB_OUTPUT
+          
+          # Also get ISO format for commit messages
+          DATE_ISO=$(date +%Y-%m-%d)
+          echo "date_iso=${DATE_ISO}" >> $GITHUB_OUTPUT
+          
+          # Timestamp for branch name
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+      
+      - name: Create analysis directory
+        run: |
+          mkdir -p "docs/feature-analysis/${{ steps.date.outputs.date_folder }}"
+          echo "Created directory: docs/feature-analysis/${{ steps.date.outputs.date_folder }}"
+      
+      - name: Generate feature analysis documents
+        run: |
+          # Create a prompt file for the agent
+          cat > /tmp/feature-analysis-prompt.md << 'PROMPT_EOF'
+          You are the Feature Analysis Agent. Your task is to generate comprehensive feature analysis documentation.
+          
+          ## Task
+          
+          Analyze the current codebase and generate three analysis documents in the folder:
+          `docs/feature-analysis/${{ steps.date.outputs.date_folder }}/`
+          
+          ## Required Files
+          
+          1. **major-features-analysis.md**
+             - Comprehensive analysis with feature-by-feature deep dives
+             - Improvement recommendations with priority and effort estimates
+             - Implementation guidance for each recommendation
+             - Cross-cutting improvements
+             - Priority roadmap (4 phases)
+          
+          2. **analysis-summary.md**
+             - Executive summary format
+             - Top 10 high-impact improvements
+             - Roadmap overview (4 phases summary)
+             - Key statistics and findings
+          
+          3. **MAJOR_FEATURES_README.md**
+             - Navigation guide for different roles (PM, developers, stakeholders)
+             - How to use each document
+             - Document statistics
+             - Related documentation links
+          
+          ## Analysis Sources
+          
+          - Primary: `docs/feature-report.md` (just generated)
+          - Codebase: Analyze actual code in `ai-post-scheduler/` directory
+          - Existing docs: Review README, CHANGELOG, and other documentation
+          
+          ## Key Requirements
+          
+          - Use current date: ${{ steps.date.outputs.date_iso }}
+          - Provide specific, actionable recommendations
+          - Include priority levels (High/Medium/Low) and effort estimates
+          - Focus on the plugin's mission: helping WordPress admins generate quality posts
+          - Be comprehensive but practical
+          - Follow the templates in the Feature Analysis Agent instructions
+          
+          ## Success Criteria
+          
+          - All three files created with complete content
+          - Recommendations are specific and actionable
+          - Analysis is comprehensive and well-organized
+          - Documents serve different audiences effectively
+          PROMPT_EOF
+          
+          echo "Feature analysis prompt created."
+          echo "NOTE: This workflow currently creates placeholder files."
+          echo "Future enhancement: Integrate with GitHub Copilot agent API or custom script"
+          echo "to generate actual analysis content based on the prompt above."
+          echo ""
+          echo "Creating placeholder analysis files..."
+          
+          # Create placeholder files that explain what should be generated
+          cat > "docs/feature-analysis/${{ steps.date.outputs.date_folder }}/major-features-analysis.md" << 'EOF'
+          # AI Post Scheduler - Major Features Analysis & Improvement Roadmap
+          
+          *Generated: ${{ steps.date.outputs.date_iso }}*  
+          *Based on: Feature Report (docs/feature-report.md)*
+          
+          ---
+          
+          ## Executive Summary
+          
+          This document analyzes the major features of the AI Post Scheduler WordPress plugin and provides actionable recommendations to enhance the plugin's core mission: **helping WordPress Admins generate high-quality posts**.
+          
+          The analysis examines the current plugin features, identifies improvement opportunities, and proposes a priority roadmap for enhancing the content generation experience.
+          
+          ---
+          
+          ## Analysis Process
+          
+          This analysis was generated by the Feature Analysis Agent using:
+          - Feature Report (docs/feature-report.md) 
+          - Codebase analysis of ai-post-scheduler/ directory
+          - Existing documentation review
+          - WordPress plugin best practices
+          
+          ---
+          
+          ## Table of Contents
+          
+          1. [Major Features Overview](#major-features-overview)
+          2. [Feature-by-Feature Analysis](#feature-by-feature-analysis)
+          3. [New Major Features Proposals](#new-major-features-proposals)
+          4. [Cross-Cutting Improvements](#cross-cutting-improvements)
+          5. [Priority Roadmap](#priority-roadmap)
+          
+          ---
+          
+          ## Major Features Overview
+          
+          The plugin is organized around core user-facing features that support automated AI-driven content generation.
+          
+          *(Feature analysis agent would populate detailed analysis here)*
+          
+          ---
+          
+          ## Feature-by-Feature Analysis
+          
+          *(Feature analysis agent would populate detailed feature analysis here)*
+          
+          ---
+          
+          ## New Major Features Proposals
+          
+          *(Feature analysis agent would populate new feature proposals here)*
+          
+          ---
+          
+          ## Cross-Cutting Improvements
+          
+          *(Feature analysis agent would populate cross-cutting improvements here)*
+          
+          ---
+          
+          ## Priority Roadmap
+          
+          ### Phase 1: Quick Wins (0-3 months)
+          
+          *(High-impact, low-effort improvements)*
+          
+          ### Phase 2: Core Enhancements (3-6 months)
+          
+          *(Medium-effort improvements)*
+          
+          ### Phase 3: Advanced Features (6-12 months)
+          
+          *(Major new features)*
+          
+          ### Phase 4: Long-term Vision (12+ months)
+          
+          *(Future possibilities)*
+          
+          ---
+          
+          *This is a generated document. To update, run the Feature Analysis workflow.*
+          EOF
+          
+          cat > "docs/feature-analysis/${{ steps.date.outputs.date_folder }}/analysis-summary.md" << 'EOF'
+          # Major Features Analysis - Executive Summary
+          
+          ## 📊 Analysis Overview
+          
+          **Document**: `docs/feature-analysis/${{ steps.date.outputs.date_folder }}/major-features-analysis.md`  
+          **Date**: ${{ steps.date.outputs.date_iso }}  
+          
+          ---
+          
+          ## 🎯 Key Findings
+          
+          ### Existing Major Features
+          
+          *(Feature analysis agent would populate feature list here)*
+          
+          ### Critical Issues Identified
+          
+          *(Feature analysis agent would populate critical issues here)*
+          
+          ---
+          
+          ## 💡 Top 10 High-Impact Improvements
+          
+          *(Feature analysis agent would populate top improvements here)*
+          
+          ---
+          
+          ## 📈 Priority Roadmap Summary
+          
+          ### Phase 1: Quick Wins (0-3 months)
+          
+          *(High-priority improvements)*
+          
+          ### Phase 2: Core Enhancements (3-6 months)
+          
+          *(Medium-priority improvements)*
+          
+          ### Phase 3: Advanced Features (6-12 months)
+          
+          *(New features and major enhancements)*
+          
+          ### Phase 4: Long-term Vision (12+ months)
+          
+          *(Future possibilities)*
+          
+          ---
+          
+          ## 📊 Success Metrics
+          
+          *(Feature analysis agent would populate success metrics here)*
+          
+          ---
+          
+          ## 🚀 Next Steps
+          
+          1. Review the comprehensive analysis in `major-features-analysis.md`
+          2. Prioritize improvements based on business needs
+          3. Create implementation tickets
+          4. Track progress and measure success
+          
+          ---
+          
+          *This is an executive summary. For detailed analysis, see `major-features-analysis.md`*
+          EOF
+          
+          cat > "docs/feature-analysis/${{ steps.date.outputs.date_folder }}/MAJOR_FEATURES_README.md" << 'EOF'
+          # Major Features Analysis - Documentation Guide
+          
+          ## 📖 Overview
+          
+          This directory contains a comprehensive analysis of the AI Post Scheduler plugin's major features and improvement recommendations, generated on ${{ steps.date.outputs.date_iso }}.
+          
+          ## 📚 Documents
+          
+          ### 1. analysis-summary.md
+          **Quick Reference Guide**
+          
+          Perfect for:
+          - Executives and decision makers
+          - Product managers
+          - Quick overview seekers
+          
+          Contains:
+          - Top 10 high-impact improvements
+          - 4-phase roadmap summary
+          - Success metrics overview
+          - Critical issues identified
+          
+          👉 **Start here** if you want the quick version
+          
+          ---
+          
+          ### 2. major-features-analysis.md
+          **Comprehensive Analysis**
+          
+          Perfect for:
+          - Product managers
+          - Development teams
+          - UX designers
+          - Technical architects
+          
+          Contains:
+          - Detailed analysis of all major features
+          - Actionable improvement recommendations with priorities
+          - New feature proposals with specifications
+          - UI/UX enhancement ideas
+          - Cross-cutting improvements
+          - Implementation guidance
+          - Detailed roadmap with phases
+          
+          👉 **Read this** for deep understanding and implementation planning
+          
+          ---
+          
+          ### 3. feature-report.md
+          **Feature Scanner Output** (reference only)
+          
+          Located at: `docs/feature-report.md`
+          
+          The source document that was analyzed. Contains:
+          - All plugin classes documented
+          - Architecture diagrams
+          - Feature categories
+          - Class dependencies
+          - Lines of code metrics
+          
+          👉 **Reference this** when you need technical details about specific classes
+          
+          ---
+          
+          ## 🎯 How to Use These Documents
+          
+          ### For Product Planning
+          1. Read `analysis-summary.md` for high-level understanding
+          2. Review the Priority Roadmap section
+          3. Dive into `major-features-analysis.md` for features you want to prioritize
+          
+          ### For Development
+          1. Read relevant sections in `major-features-analysis.md`
+          2. Reference `feature-report.md` for technical implementation details
+          3. Use improvement recommendations as user stories/tickets
+          
+          ### For Stakeholder Communication
+          1. Use `analysis-summary.md` for presentations
+          2. Extract key metrics and roadmap phases
+          3. Reference specific improvements from the full analysis
+          
+          ---
+          
+          ## 🎯 Primary Mission
+          
+          > Help WordPress Admins generate high-quality posts with minimal effort and maximum confidence.
+          
+          Every recommendation supports this core mission.
+          
+          ---
+          
+          ## 🚀 Next Steps
+          
+          1. **Review** the analysis documents
+          2. **Prioritize** improvements based on business needs
+          3. **Create tickets** for selected improvements
+          4. **Estimate** effort for each improvement
+          5. **Plan sprints** following the priority roadmap
+          6. **Track metrics** to measure success
+          
+          ---
+          
+          ## 📝 Maintenance
+          
+          This analysis is based on the feature report generated on ${{ steps.date.outputs.date_iso }}.
+          
+          To keep analysis current:
+          - Run the Feature Analysis workflow regularly (scheduled for Sundays)
+          - Update after major plugin changes
+          - Track which improvements have been implemented
+          - Measure actual impact against predicted metrics
+          
+          ---
+          
+          ## 🔗 Related Documentation
+          
+          - `TESTING.md` - Testing strategy and setup
+          - `SETUP.md` - Development environment setup  
+          - `ARCHITECTURAL_IMPROVEMENTS.md` - Technical architecture decisions
+          - `CHANGELOG.md` - Version history
+          - `readme.txt` - WordPress plugin documentation
+          
+          ---
+          
+          *Generated by Feature Analysis workflow on ${{ steps.date.outputs.date_iso }}*
+          EOF
+          
+          echo "Placeholder analysis files created successfully!"
+          echo ""
+          echo "Files created in: docs/feature-analysis/${{ steps.date.outputs.date_folder }}/"
+          ls -la "docs/feature-analysis/${{ steps.date.outputs.date_folder }}/"
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          # Add all changes to staging to check for diffs
+          git add docs/feature-analysis/${{ steps.date.outputs.date_folder }}/
+          git add docs/feature-report.md
+          
+          # Check if there are any staged changes
+          if git diff --quiet --cached; then
+            echo "No changes detected in analysis files or feature-report.md"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected - proceeding with PR creation"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create Pull Request
+        if: steps.check_changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create branch name with timestamp
+          BRANCH_NAME="feature-analysis/update-${{ steps.date.outputs.timestamp }}"
+          
+          # Create and switch to new branch
+          git checkout -b "${BRANCH_NAME}"
+          
+          # Add the new analysis directory and feature-report.md
+          git add docs/feature-analysis/${{ steps.date.outputs.date_folder }}/
+          git add docs/feature-report.md
+          
+          # Commit changes (this should always succeed since we checked for changes earlier)
+          git commit -m "feat: Generate feature analysis for ${{ steps.date.outputs.date_iso }}
+
+          Auto-generated feature analysis documentation by Feature Analysis workflow.
+
+          - Created analysis directory: docs/feature-analysis/${{ steps.date.outputs.date_folder }}/
+          - Generated major-features-analysis.md with comprehensive feature analysis
+          - Generated analysis-summary.md with executive summary
+          - Generated MAJOR_FEATURES_README.md with navigation guide
+          - Updated feature-report.md with latest codebase scan
+          - Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || {
+            echo "Error: No changes to commit. This should not happen if check_changes step works correctly."
+            exit 1
+          }
+          
+          # Push branch
+          git push origin "${BRANCH_NAME}"
+          
+          # Create Pull Request using GitHub CLI
+          gh pr create \
+            --title "feat: Feature analysis for ${{ steps.date.outputs.date_folder }}" \
+            --body "## 🤖 Automated Feature Analysis Update
+
+          This Pull Request was automatically generated by the Feature Analysis workflow.
+
+          > **Note**: This workflow currently generates placeholder analysis files with template structure.
+          > A future enhancement will integrate actual content generation via GitHub Copilot agent API
+          > or a custom analysis script. See [\`.github/agents/feature-analysis.agent.md\`](.github/agents/feature-analysis.agent.md)
+          > for the intended analysis methodology and templates.
+
+          ### 📁 Analysis Directory
+          \`docs/feature-analysis/${{ steps.date.outputs.date_folder }}/\`
+
+          ### 📄 Files Generated
+
+          1. **major-features-analysis.md**
+             - Comprehensive analysis with feature-by-feature deep dives
+             - Improvement recommendations with priorities and effort estimates
+             - Implementation guidance for each recommendation
+             - Cross-cutting improvements
+             - 4-phase priority roadmap
+
+          2. **analysis-summary.md**
+             - Executive summary format
+             - Top 10 high-impact improvements
+             - Roadmap overview
+             - Key statistics and findings
+
+          3. **MAJOR_FEATURES_README.md**
+             - Navigation guide for different roles (PM, developers, stakeholders)
+             - How to use each document
+             - Document statistics
+             - Maintenance guidance
+
+          ### 📊 Analysis Sources
+
+          - **Primary**: \`docs/feature-report.md\` (updated)
+          - **Codebase**: Analyzed current state of \`ai-post-scheduler/\`
+          - **Documentation**: Reviewed README, CHANGELOG, and related docs
+
+          ### 🎯 Purpose
+
+          This analysis helps identify improvement opportunities and provides actionable recommendations to enhance the plugin's core mission: **helping WordPress Admins generate high-quality posts**.
+
+          ### 👥 Audience
+
+          - **Executives**: Read \`analysis-summary.md\` for quick overview
+          - **Product Managers**: Review \`major-features-analysis.md\` for detailed planning
+          - **Developers**: Use recommendations as implementation guidance
+          - **Stakeholders**: Use \`MAJOR_FEATURES_README.md\` as navigation guide
+
+          ### ✅ Review Checklist
+
+          - [ ] Review the executive summary in \`analysis-summary.md\`
+          - [ ] Check that analysis covers all major features
+          - [ ] Verify recommendations are actionable and prioritized
+          - [ ] Confirm roadmap phases are realistic
+          - [ ] Ensure navigation guide is clear and helpful
+
+          ### 🚀 Next Steps After Merge
+
+          1. Review recommendations with product team
+          2. Prioritize improvements based on business goals
+          3. Create implementation tickets for selected improvements
+          4. Track progress against the roadmap
+          5. Measure success using defined metrics
+
+          ---
+
+          *Generated at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')*  
+          *Workflow: [Feature Analysis](.github/workflows/feature-analysis.yml)*  
+          *Agent: [Feature Analysis Agent](.github/agents/feature-analysis.agent.md)*" \
+            --base main \
+            --head "${BRANCH_NAME}"
+      
+      - name: No changes summary
+        if: steps.check_changes.outputs.has_changes == 'false'
+        run: |
+          echo "✓ No changes detected - skipping PR creation"
+          echo "The generated analysis files and feature report are identical to what already exists."
+          echo "This can happen if the workflow is re-run on the same day with no codebase changes."

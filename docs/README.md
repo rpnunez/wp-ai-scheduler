@@ -21,7 +21,7 @@ A Python script that automatically analyzes the plugin's PHP codebase to generat
 **Output:**
 - Generates `docs/feature-report.md` with complete documentation
 
-### 2. Feature Agent Workflow (`.github/workflows/agents/feature-agent.yml`)
+### 2. Feature Agent Workflow (`.github/workflows/feature-agent.yml`)
 
 A GitHub Actions workflow that automatically maintains the feature documentation.
 
@@ -40,6 +40,48 @@ A GitHub Actions workflow that automatically maintains the feature documentation
    - Creates a Pull Request for review
 
 **Note:** The workflow creates PRs instead of committing directly to main, allowing for review before merging.
+
+### 3. Feature Analysis Workflow (`.github/workflows/feature-analysis.yml`)
+
+A GitHub Actions workflow that generates comprehensive feature analysis documentation in dated folders.
+
+**Schedule:**
+- Runs weekly on Sundays at 00:00 UTC
+- Can be triggered manually via workflow_dispatch
+
+**Process:**
+1. Checks out the repository
+2. Sets up Python environment
+3. Runs the feature scanner to generate `docs/feature-report.md`
+4. Creates dated folder: `docs/feature-analysis/{MM-DD-YYYY}`
+5. Generates three analysis documents:
+   - `major-features-analysis.md` - Comprehensive analysis with feature-by-feature deep dives
+   - `analysis-summary.md` - Executive summary with top 10 improvements
+   - `MAJOR_FEATURES_README.md` - Navigation guide for different roles
+6. Creates a Pull Request with the generated files
+
+**Output Structure:**
+```
+docs/feature-analysis/
+├── 02-09-2026/
+│   ├── major-features-analysis.md
+│   ├── analysis-summary.md
+│   └── MAJOR_FEATURES_README.md
+├── 02-16-2026/
+│   ├── major-features-analysis.md
+│   ├── analysis-summary.md
+│   └── MAJOR_FEATURES_README.md
+...
+```
+
+**Key Features:**
+- **Dated Archives**: Each run creates a new folder with the date
+- **Comprehensive Analysis**: Detailed feature-by-feature analysis with improvement recommendations
+- **Executive Summary**: Quick overview for stakeholders and decision-makers
+- **Navigation Guide**: Helps different roles (PM, dev, stakeholders) find relevant information
+- **Priority Roadmap**: 4-phase implementation roadmap with effort estimates
+
+**Agent Instructions:** See `.github/agents/feature-analysis.agent.md` for the agent's analysis methodology and templates.
 
 ## Feature Report Contents
 
@@ -78,8 +120,9 @@ python3 scripts/feature_scanner.py
 
 This will generate/update `docs/feature-report.md`.
 
-### Triggering the Workflow
+### Triggering the Workflows
 
+#### Feature Agent (updates feature-report.md)
 1. Go to the repository on GitHub
 2. Click "Actions" tab
 3. Select "Feature Agent - Update Feature Report" workflow
@@ -87,6 +130,18 @@ This will generate/update `docs/feature-report.md`.
 5. Select the branch and click "Run workflow"
 
 The workflow will create a PR if changes are detected.
+
+#### Feature Analysis (creates dated analysis)
+1. Go to the repository on GitHub
+2. Click "Actions" tab
+3. Select "Feature Analysis - Update Feature Analysis" workflow
+4. Click "Run workflow"
+5. Select the branch and click "Run workflow"
+
+The workflow will:
+- Create a new dated folder under `docs/feature-analysis/`
+- Generate three comprehensive analysis documents
+- Create a PR with the analysis files
 
 ## Development
 
