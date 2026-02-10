@@ -40,16 +40,16 @@
     //   });
       
       // Keep modal open when hovering over it
-      previewModal.on('mouseenter', function() {
-          clearTimeout(hoverTimeout);
-      });
+    //   previewModal.on('mouseenter', function() {
+    //       clearTimeout(hoverTimeout);
+    //   });
       
-      // Close when leaving modal
-      previewModal.on('mouseleave', function() {
-          hoverTimeout = setTimeout(function() {
-              closePreviewModal();
-          }, 200);
-      });
+    //   // Close when leaving modal
+    //   previewModal.on('mouseleave', function() {
+    //       hoverTimeout = setTimeout(function() {
+    //           closePreviewModal();
+    //       }, 200);
+    //   });
       
       // Close preview modal
       function closePreviewModal() {
@@ -59,7 +59,7 @@
       }
       
       // Close button handler
-      $(document).on('click', '#aips-post-preview-modal .aips-modal-close, #aips-post-preview-modal .aips-modal-overlay', function(e) {
+      $(document).on('click', '#aips-post-preview-modal .aips-modal-close', function(e) {
           e.preventDefault();
           closePreviewModal();
       });

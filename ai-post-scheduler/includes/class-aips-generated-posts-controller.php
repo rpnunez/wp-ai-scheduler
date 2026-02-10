@@ -221,6 +221,20 @@ class AIPS_Generated_Posts_Controller {
 		// Convert ai_calls to indexed array for easier JS iteration
 		$ai_calls = array_values($ai_calls);
 		
+		// Collect regenerations / revisions per component
+		$component_revisions = array();
+		if ($history_item->post_id) {
+			$regeneration_service = new AIPS_Component_Regeneration_Service();
+			$components = array('title', 'excerpt', 'content', 'featured_image');
+			foreach ($components as $component) {
+				$component_revisions[$component] = $regeneration_service->get_component_revisions(
+					absint($history_item->post_id),
+					$component,
+					20
+				);
+			}
+		}
+		
 		wp_send_json_success(array(
 			'history' => array(
 				'id' => $history_item->id,
@@ -232,6 +246,7 @@ class AIPS_Generated_Posts_Controller {
 			),
 			'logs' => $logs,
 			'ai_calls' => $ai_calls,
+			'component_revisions' => $component_revisions,
 		));
 	}
 	

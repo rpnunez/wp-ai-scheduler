@@ -353,7 +353,7 @@ class AIPS_Generator {
         $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice, $topic);
         
         // Set token limit for excerpt generation
-        $options['max_tokens'] = 150;
+        //$options['max_tokens'] = 150;
         
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
@@ -366,7 +366,8 @@ class AIPS_Generator {
         $excerpt = trim($result);
         $excerpt = preg_replace('/^["\']|["\']$/', '', $excerpt);
 
-        return substr($excerpt, 0, 160);
+        return $excerpt;
+        //return substr($excerpt, 0, 160);
     }
     
     /**
@@ -750,5 +751,17 @@ class AIPS_Generator {
         }
 
         return $featured_image_id;
+    }
+    
+    /**
+     * Set the history container for logging
+     *
+     * Allows external code to set a specific history container for logging.
+     * Useful for component regeneration where we want to log to a specific container.
+     *
+     * @param AIPS_History_Container $history_container History container instance
+     */
+    public function set_history_container($history_container) {
+        $this->current_history = $history_container;
     }
 }
