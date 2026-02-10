@@ -167,7 +167,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                                     <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-admin-page"></span>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-trash"></span>
                                     </button>
                                 </div>
@@ -177,10 +177,6 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     </tbody>
                 </table>
                 
-                <!-- No Search Results State -->
-                <div id="aips-schedule-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
-                    <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
-                    <h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
                 <!-- No Search Results State -->
                 <div id="aips-schedule-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
                     <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>

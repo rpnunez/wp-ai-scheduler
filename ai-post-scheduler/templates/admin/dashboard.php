@@ -29,8 +29,6 @@ if (!defined('ABSPATH')) {
         
         <!-- Status Summary -->
         <div class="aips-status-summary">
-        <!-- Status Summary -->
-        <div class="aips-status-summary">
             <div class="aips-summary-card highlight">
                 <div class="dashicons dashicons-edit aips-summary-icon" aria-hidden="true"></div>
                 <div class="aips-summary-content">
