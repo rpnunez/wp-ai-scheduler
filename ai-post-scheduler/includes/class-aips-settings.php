@@ -83,6 +83,15 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Schedule Calendar', 'ai-post-scheduler'),
+            __('Schedule Calendar', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-schedule-calendar',
+            array($this, 'render_schedule_calendar_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Templates', 'ai-post-scheduler'),
             __('Templates', 'ai-post-scheduler'),
             'manage_options',
@@ -541,6 +550,17 @@ class AIPS_Settings {
      */
     public function render_schedule_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
+    }
+    
+    /**
+     * Render the Schedule Calendar page.
+     *
+     * Includes the schedule calendar template file.
+     *
+     * @return void
+     */
+    public function render_schedule_calendar_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/calendar.php';
     }
     
     /**
