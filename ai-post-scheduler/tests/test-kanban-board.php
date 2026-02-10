@@ -142,7 +142,7 @@ class AIPS_Kanban_Board_Test extends WP_UnitTestCase {
 	}
 	
 	/**
-	 * Test permission check - non-admin cannot update
+	 * Test permission check - non-admin users cannot update topics
 	 */
 	public function test_kanban_update_requires_admin_permission() {
 		$subscriber_id = $this->factory->user->create(array('role' => 'subscriber'));
@@ -171,7 +171,7 @@ class AIPS_Kanban_Board_Test extends WP_UnitTestCase {
 	}
 	
 	/**
-	 * Test invalid status value
+	 * Test that invalid status values are properly rejected
 	 */
 	public function test_kanban_invalid_status() {
 		wp_set_current_user($this->admin_user_id);
@@ -199,7 +199,7 @@ class AIPS_Kanban_Board_Test extends WP_UnitTestCase {
 	}
 	
 	/**
-	 * Test invalid topic ID
+	 * Test that invalid or non-existent topic IDs are properly rejected
 	 */
 	public function test_kanban_invalid_topic_id() {
 		wp_set_current_user($this->admin_user_id);
@@ -227,8 +227,11 @@ class AIPS_Kanban_Board_Test extends WP_UnitTestCase {
 	}
 	
 	/**
-	 * Test generate status (note: this will fail if post generator is not properly mocked)
-	 * This test is intentionally simple to avoid needing full WordPress environment
+	 * Test that 'generate' status is accepted as a valid status value
+	 * 
+	 * Note: Full generation workflow testing requires a complete WordPress environment
+	 * with AI Engine plugin active. This test verifies that 'generate' is recognized
+	 * as a valid status value by the endpoint.
 	 */
 	public function test_kanban_generate_status_sets_approved_first() {
 		wp_set_current_user($this->admin_user_id);
@@ -251,7 +254,7 @@ class AIPS_Kanban_Board_Test extends WP_UnitTestCase {
 	}
 	
 	/**
-	 * Test nonce verification
+	 * Test that AJAX requests require valid nonce for security
 	 */
 	public function test_kanban_requires_valid_nonce() {
 		wp_set_current_user($this->admin_user_id);

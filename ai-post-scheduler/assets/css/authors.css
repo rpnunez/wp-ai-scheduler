@@ -593,12 +593,12 @@
 
 /* Kanban Header with View Toggle */
 .aips-topics-header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 20px;
-flex-wrap: wrap;
-gap: 15px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+	flex-wrap: wrap;
+	gap: 15px;
 }
 
 .aips-view-toggle {
