@@ -53,7 +53,13 @@ class Test_AIPS_MCP_Bridge extends WP_UnitTestCase {
 			'get_plugin_info',
 			'generate_post',
 			'list_templates',
-			'get_generation_history'
+			'get_generation_history',
+			'get_history',
+			'list_authors',
+			'get_author',
+			'list_author_topics',
+			'get_author_topic',
+			'regenerate_post_component'
 		);
 		
 		foreach ($expected_tools as $tool) {
@@ -599,6 +605,237 @@ class Test_AIPS_MCP_Bridge extends WP_UnitTestCase {
 		$this->assertArrayHasKey('generate_post', $result['tools']);
 		$this->assertArrayHasKey('list_templates', $result['tools']);
 		$this->assertArrayHasKey('get_generation_history', $result['tools']);
+		$this->assertArrayHasKey('get_history', $result['tools']);
+		$this->assertArrayHasKey('list_authors', $result['tools']);
+		$this->assertArrayHasKey('regenerate_post_component', $result['tools']);
+	}
+
+	/**
+	 * Test get_history requires parameter
+	 */
+	public function test_get_history_requires_parameter() {
+		$result = $this->bridge->execute_tool('get_history', array());
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('missing_parameter', $result->get_error_code());
+	}
+
+	/**
+	 * Test get_history with invalid history_id
+	 */
+	public function test_get_history_invalid_id() {
+		$result = $this->bridge->execute_tool('get_history', array(
+			'history_id' => 999999
+		));
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('history_not_found', $result->get_error_code());
+	}
+
+	/**
+	 * Test list_authors returns expected structure
+	 */
+	public function test_list_authors() {
+		$result = $this->bridge->execute_tool('list_authors', array());
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('authors', $result);
+		$this->assertArrayHasKey('count', $result);
+		$this->assertIsArray($result['authors']);
+	}
+
+	/**
+	 * Test list_authors with active_only filter
+	 */
+	public function test_list_authors_active_only() {
+		$result = $this->bridge->execute_tool('list_authors', array(
+			'active_only' => true
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertIsArray($result['authors']);
+	}
+
+	/**
+	 * Test get_author requires author_id
+	 */
+	public function test_get_author_requires_parameter() {
+		$result = $this->bridge->execute_tool('get_author', array());
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('missing_parameter', $result->get_error_code());
+	}
+
+	/**
+	 * Test get_author with invalid ID
+	 */
+	public function test_get_author_invalid_id() {
+		$result = $this->bridge->execute_tool('get_author', array(
+			'author_id' => 999999
+		));
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('author_not_found', $result->get_error_code());
+	}
+
+	/**
+	 * Test list_author_topics requires author_id
+	 */
+	public function test_list_author_topics_requires_parameter() {
+		$result = $this->bridge->execute_tool('list_author_topics', array());
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('missing_parameter', $result->get_error_code());
+	}
+
+	/**
+	 * Test list_author_topics returns expected structure
+	 */
+	public function test_list_author_topics_structure() {
+		// Use a non-existent author ID - should still return valid structure with empty array
+		$result = $this->bridge->execute_tool('list_author_topics', array(
+			'author_id' => 999999
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('topics', $result);
+		$this->assertArrayHasKey('count', $result);
+		$this->assertArrayHasKey('total_available', $result);
+		$this->assertIsArray($result['topics']);
+	}
+
+	/**
+	 * Test list_author_topics with status filter
+	 */
+	public function test_list_author_topics_with_status() {
+		$result = $this->bridge->execute_tool('list_author_topics', array(
+			'author_id' => 1,
+			'status' => 'approved'
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+	}
+
+	/**
+	 * Test list_author_topics with limit
+	 */
+	public function test_list_author_topics_with_limit() {
+		$result = $this->bridge->execute_tool('list_author_topics', array(
+			'author_id' => 1,
+			'limit' => 10
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertLessThanOrEqual(10, $result['count']);
+	}
+
+	/**
+	 * Test get_author_topic requires topic_id
+	 */
+	public function test_get_author_topic_requires_parameter() {
+		$result = $this->bridge->execute_tool('get_author_topic', array());
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('missing_parameter', $result->get_error_code());
+	}
+
+	/**
+	 * Test get_author_topic with invalid ID
+	 */
+	public function test_get_author_topic_invalid_id() {
+		$result = $this->bridge->execute_tool('get_author_topic', array(
+			'topic_id' => 999999
+		));
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('topic_not_found', $result->get_error_code());
+	}
+
+	/**
+	 * Test regenerate_post_component requires post_id
+	 */
+	public function test_regenerate_component_requires_post_id() {
+		$result = $this->bridge->execute_tool('regenerate_post_component', array(
+			'history_id' => 1,
+			'component' => 'title'
+		));
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('missing_parameter', $result->get_error_code());
+	}
+
+	/**
+	 * Test regenerate_post_component requires history_id
+	 */
+	public function test_regenerate_component_requires_history_id() {
+		$result = $this->bridge->execute_tool('regenerate_post_component', array(
+			'post_id' => 1,
+			'component' => 'title'
+		));
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('missing_parameter', $result->get_error_code());
+	}
+
+	/**
+	 * Test regenerate_post_component requires component
+	 */
+	public function test_regenerate_component_requires_component() {
+		$result = $this->bridge->execute_tool('regenerate_post_component', array(
+			'post_id' => 1,
+			'history_id' => 1
+		));
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('missing_parameter', $result->get_error_code());
+	}
+
+	/**
+	 * Test regenerate_post_component validates component type
+	 */
+	public function test_regenerate_component_validates_component() {
+		$result = $this->bridge->execute_tool('regenerate_post_component', array(
+			'post_id' => 1,
+			'history_id' => 1,
+			'component' => 'invalid_component'
+		));
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('invalid_component', $result->get_error_code());
+	}
+
+	/**
+	 * Test regenerate_post_component with non-existent post
+	 */
+	public function test_regenerate_component_invalid_post() {
+		$result = $this->bridge->execute_tool('regenerate_post_component', array(
+			'post_id' => 999999,
+			'history_id' => 1,
+			'component' => 'title'
+		));
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('post_not_found', $result->get_error_code());
+	}
+
+	/**
+	 * Test that all Phase 2 tools are registered
+	 */
+	public function test_phase_2_tools_registered() {
+		$result = $this->bridge->execute_tool('list_tools', array());
+		
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('get_history', $result['tools']);
+		$this->assertArrayHasKey('list_authors', $result['tools']);
+		$this->assertArrayHasKey('get_author', $result['tools']);
+		$this->assertArrayHasKey('list_author_topics', $result['tools']);
+		$this->assertArrayHasKey('get_author_topic', $result['tools']);
+		$this->assertArrayHasKey('regenerate_post_component', $result['tools']);
 	}
 }
 

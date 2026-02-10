@@ -428,6 +428,255 @@
           }
         }
       }
+    },
+    {
+      "name": "get_history",
+      "description": "Get detailed history record by history ID or post ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "history_id": {
+            "type": "integer",
+            "description": "History record ID"
+          },
+          "post_id": {
+            "type": "integer",
+            "description": "WordPress post ID to find history for"
+          },
+          "include_logs": {
+            "type": "boolean",
+            "description": "Include detailed log entries",
+            "default": true
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "history": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "uuid": { "type": "string" },
+              "post_id": { "type": "integer" },
+              "template_id": { "type": "integer" },
+              "author_id": { "type": "integer" },
+              "topic_id": { "type": "integer" },
+              "status": { "type": "string" },
+              "generated_title": { "type": "string" },
+              "generated_content": { "type": "string" },
+              "error_message": { "type": "string" },
+              "creation_method": { "type": "string" },
+              "created_at": { "type": "string" },
+              "completed_at": { "type": "string" },
+              "post_url": { "type": "string" },
+              "edit_url": { "type": "string" },
+              "logs": { "type": "array" },
+              "log_count": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "list_authors",
+      "description": "Get all authors with optional filtering",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "active_only": {
+            "type": "boolean",
+            "description": "Return only active authors",
+            "default": false
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "bio": { "type": "string" },
+                "expertise": { "type": "string" },
+                "tone": { "type": "string" },
+                "is_active": { "type": "boolean" },
+                "created_at": { "type": "string" }
+              }
+            }
+          },
+          "count": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "name": "get_author",
+      "description": "Get author details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "integer",
+            "description": "Author ID"
+          }
+        },
+        "required": ["author_id"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "author": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string" },
+              "bio": { "type": "string" },
+              "expertise": { "type": "string" },
+              "tone": { "type": "string" },
+              "is_active": { "type": "boolean" },
+              "created_at": { "type": "string" },
+              "updated_at": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "list_author_topics",
+      "description": "Get topics for an author with filtering",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "integer",
+            "description": "Author ID"
+          },
+          "status": {
+            "type": "string",
+            "description": "Filter by status",
+            "enum": ["pending", "approved", "rejected"]
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of topics to return",
+            "default": 50,
+            "minimum": 1,
+            "maximum": 500
+          }
+        },
+        "required": ["author_id"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "author_id": { "type": "integer" },
+                "topic_title": { "type": "string" },
+                "topic_prompt": { "type": "string" },
+                "status": { "type": "string" },
+                "score": { "type": "integer" },
+                "keywords": { "type": "string" },
+                "metadata": { "type": "string" },
+                "generated_at": { "type": "string" },
+                "approved_at": { "type": "string" }
+              }
+            }
+          },
+          "count": { "type": "integer" },
+          "total_available": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "name": "get_author_topic",
+      "description": "Get specific topic details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic_id": {
+            "type": "integer",
+            "description": "Topic ID"
+          }
+        },
+        "required": ["topic_id"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "topic": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "author_id": { "type": "integer" },
+              "topic_title": { "type": "string" },
+              "topic_prompt": { "type": "string" },
+              "status": { "type": "string" },
+              "score": { "type": "integer" },
+              "keywords": { "type": "string" },
+              "metadata": { "type": "string" },
+              "generated_at": { "type": "string" },
+              "approved_at": { "type": "string" },
+              "feedback": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "regenerate_post_component",
+      "description": "Regenerate individual post component (title, excerpt, content, or featured_image)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "integer",
+            "description": "WordPress post ID"
+          },
+          "history_id": {
+            "type": "integer",
+            "description": "History record ID for context"
+          },
+          "component": {
+            "type": "string",
+            "description": "Component to regenerate",
+            "enum": ["title", "excerpt", "content", "featured_image"]
+          },
+          "save": {
+            "type": "boolean",
+            "description": "Automatically save to post (false returns preview only)",
+            "default": false
+          }
+        },
+        "required": ["post_id", "history_id", "component"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "component": { "type": "string" },
+          "post_id": { "type": "integer" },
+          "history_id": { "type": "integer" },
+          "saved": { "type": "boolean" },
+          "new_value": { "type": ["string", "object"] },
+          "message": { "type": "string" }
+        }
+      }
     }
   ],
   "authentication": {
