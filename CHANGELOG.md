@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- [2026-02-10] **MCP Bridge**: New Model Context Protocol bridge (`mcp-bridge.php`) that exposes plugin functionality to AI tools and GitHub Copilot via JSON-RPC 2.0 API. Includes 11 tools for cache management, database operations, system diagnostics, data export, cron management, and more. Complete with comprehensive documentation, JSON schema, example clients (Python, Shell), unit tests, and validation script. See `MCP_BRIDGE_README.md` for details.
+- [2026-02-10] **MCP Bridge - Content Generation Tools (v1.1.0)**: Extended MCP Bridge with 3 new tools for AI content generation and management. Phase 1 (MVP) implementation complete.
+  - New Tools: `generate_post` (generate single post with overrides), `list_templates` (get all templates with filtering), `get_generation_history` (retrieve past generations with pagination)
+  - Features: Generate posts from templates, author topics, or schedules; Apply custom overrides (title, categories, tags, status); Filter and search templates; Paginated history with status/template filtering
+  - Testing: 19 new unit test cases (39+ total)
+  - Documentation: `MCP_BRIDGE_CONTENT_TOOLS.md` with 15+ code examples and 4 workflow demonstrations
+  - Total MCP tools: 14 (was 11)
+
+- [2026-02-10] **MCP Bridge**: New Model Context Protocol bridge (`mcp-bridge.php`) that exposes plugin functionality to AI tools and GitHub Copilot via JSON-RPC 2.0 API. Includes 11 core tools for cache management, database operations, system diagnostics, data export, cron management, and more. Complete with comprehensive documentation, JSON schema, example clients (Python, Shell), unit tests, and validation script. See `MCP_BRIDGE_README.md` for details.
   - Tools: `list_tools`, `clear_cache`, `check_database`, `repair_database`, `check_upgrades`, `system_status`, `clear_history`, `export_data`, `get_cron_status`, `trigger_cron`, `get_plugin_info`
   - Security: WordPress capability-based authentication (`manage_options`)
   - Documentation: Complete API reference with request/response examples
