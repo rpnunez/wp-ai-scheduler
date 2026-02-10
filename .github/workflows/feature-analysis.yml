@@ -526,7 +526,7 @@ jobs:
           *Generated at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')*  
           *Workflow: [Feature Analysis](.github/workflows/feature-analysis.yml)*  
           *Agent: [Feature Analysis Agent](.github/agents/feature-analysis.agent.md)*" \
-            --base main \
+            --base dev \
             --head "${BRANCH_NAME}"
       
       - name: No changes summary

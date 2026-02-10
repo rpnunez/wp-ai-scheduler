@@ -102,8 +102,8 @@ jobs:
           ---
 
           *Generated at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')*  
-          *Workflow: [Feature Agent](.github/workflows/agents/feature-agent.yml)*" \
-                      --base main \
+          *Workflow: [Feature Agent](.github/workflows/feature-agent.yml)*" \
+                      --base dev \
                       --head "${BRANCH_NAME}"
       
       - name: No changes summary

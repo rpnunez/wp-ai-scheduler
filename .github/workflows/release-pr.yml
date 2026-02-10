@@ -1,0 +1,172 @@
+name: Create Release PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.8.0)'
+        required: true
+        type: string
+      release_notes:
+        description: 'Brief release notes'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    name: Create Release PR from dev to main
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: dev
+      
+      - name: Verify version format
+        run: |
+          VERSION="${{ inputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format. Use semantic versioning (e.g., 1.8.0)"
+            exit 1
+          fi
+          echo "Version format valid: $VERSION"
+      
+      - name: Check if version already exists
+        run: |
+          VERSION="${{ inputs.version }}"
+          if git tag | grep -q "^v${VERSION}$"; then
+            echo "::error::Version v${VERSION} already exists as a git tag"
+            exit 1
+          fi
+          echo "Version v${VERSION} is available"
+      
+      - name: Generate changelog excerpt
+        id: changelog
+        run: |
+          # Extract relevant section from CHANGELOG.md if it exists
+          if [ -f "CHANGELOG.md" ]; then
+            echo "Extracting changelog for version ${{ inputs.version }}"
+            # This is a simple extraction - could be enhanced
+            CHANGELOG=$(grep -A 20 "## \[${{ inputs.version }}\]" CHANGELOG.md || echo "See CHANGELOG.md")
+          else
+            CHANGELOG="See commit history"
+          fi
+          
+          # Save changelog to file for multi-line handling
+          echo "$CHANGELOG" > /tmp/changelog.txt
+          echo "changelog_file=/tmp/changelog.txt" >> $GITHUB_OUTPUT
+      
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          RELEASE_NOTES="${{ inputs.release_notes }}"
+          
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Fetch latest main
+          git fetch origin main
+          
+          # Get commit comparison
+          COMMITS_AHEAD=$(git rev-list --count origin/main..dev)
+          echo "Dev is $COMMITS_AHEAD commits ahead of main"
+          
+          # Create PR body
+          cat > /tmp/pr-body.md << 'EOFBODY'
+## 🚀 Release v$VERSION
+
+This PR merges the `dev` branch into `main` for release **v$VERSION**.
+
+### 📊 Changes Summary
+
+- **Commits**: $COMMITS_AHEAD new commits since last release
+- **Branch**: `dev` → `main`
+
+### 📝 Release Notes
+
+$RELEASE_NOTES
+
+### 📋 Pre-Merge Checklist
+
+Before merging this release PR, ensure:
+
+- [ ] All CI/CD checks pass
+- [ ] Manual testing completed on staging environment
+- [ ] Documentation is up-to-date
+- [ ] CHANGELOG.md is updated with version $VERSION
+- [ ] Version numbers updated in plugin files
+- [ ] Breaking changes are documented (if any)
+- [ ] Migration guide provided (if needed)
+- [ ] Security review completed (if applicable)
+
+### 🔍 Testing
+
+**Required Testing**:
+1. Install plugin from this branch
+2. Test new features added since last release
+3. Run regression tests on existing features
+4. Verify upgrade path from previous version
+5. Check for PHP warnings/errors
+6. Test on fresh WordPress installation
+
+### 📦 Post-Merge Actions
+
+After merging:
+1. Tag the release: `git tag v$VERSION`
+2. Push the tag: `git push origin v$VERSION`
+3. Create GitHub release with release notes
+4. Deploy to WordPress.org (if applicable)
+5. Announce release (blog, social media, etc.)
+6. Update documentation site
+
+### 🔗 Related Information
+
+- **Version**: $VERSION
+- **Base Branch**: `main`
+- **Source Branch**: `dev`
+- **Commits Ahead**: $COMMITS_AHEAD
+
+### ⚠️ Important Notes
+
+- This is a **release PR** - extra scrutiny required
+- Merging this PR will update the production branch
+- Ensure all team members have reviewed and approved
+- Consider deployment timing and communication plan
+
+---
+
+*This release PR was created via the [Create Release PR workflow](.github/workflows/release-pr.yml)*
+EOFBODY
+          
+          # Replace variables in PR body
+          sed -i "s/\$VERSION/$VERSION/g" /tmp/pr-body.md
+          sed -i "s/\$COMMITS_AHEAD/$COMMITS_AHEAD/g" /tmp/pr-body.md
+          sed -i "s/\$RELEASE_NOTES/${RELEASE_NOTES:-No release notes provided}/g" /tmp/pr-body.md
+          
+          # Create the PR
+          gh pr create \
+            --title "release: Version $VERSION" \
+            --body-file /tmp/pr-body.md \
+            --base main \
+            --head dev \
+            --label "release" \
+            --label "do-not-merge-yet"
+          
+          echo "✅ Release PR created successfully!"
+          echo "Review the PR, complete the checklist, and merge when ready."
+      
+      - name: Summary
+        if: success()
+        run: |
+          echo "::notice::Release PR created for version ${{ inputs.version }}"
+          echo "::notice::Review the PR and complete the pre-merge checklist"
+          echo "::notice::After merge, remember to tag the release and deploy"
