@@ -42,11 +42,12 @@
 			e.preventDefault();
 			
 			if (calendarState.currentView === 'month') {
-				calendarState.currentMonth--;
-				if (calendarState.currentMonth < 1) {
-					calendarState.currentMonth = 12;
-					calendarState.currentYear--;
-				}
+				// Move back one month based on the currently displayed month
+				var newDate = new Date(calendarState.currentYear, calendarState.currentMonth - 1, 1);
+				newDate.setMonth(newDate.getMonth() - 1);
+				calendarState.currentYear = newDate.getFullYear();
+				calendarState.currentMonth = newDate.getMonth() + 1;
+				calendarState.selectedDate = newDate;
 			} else if (calendarState.currentView === 'week') {
 				// Move back one week
 				var newDate = new Date(calendarState.selectedDate);
@@ -70,11 +71,12 @@
 			e.preventDefault();
 			
 			if (calendarState.currentView === 'month') {
-				calendarState.currentMonth++;
-				if (calendarState.currentMonth > 12) {
-					calendarState.currentMonth = 1;
-					calendarState.currentYear++;
-				}
+				// Move forward one month based on the currently displayed month
+				var newDate = new Date(calendarState.currentYear, calendarState.currentMonth - 1, 1);
+				newDate.setMonth(newDate.getMonth() + 1);
+				calendarState.currentYear = newDate.getFullYear();
+				calendarState.currentMonth = newDate.getMonth() + 1;
+				calendarState.selectedDate = newDate;
 			} else if (calendarState.currentView === 'week') {
 				// Move forward one week
 				var newDate = new Date(calendarState.selectedDate);
@@ -382,10 +384,13 @@
 			var shortTime = time ? time.substring(0, 5) : '';
 			
 			// Determine color based on template ID
+			// Only assign specific colors to the first 3 templates; others get default color
 			var colorClass = 'color-default';
 			if (event.template_id) {
-				var colorIndex = (event.template_id - 1) % templateColors.length;
-				colorClass = templateColors[colorIndex];
+				var templateId = parseInt(event.template_id, 10);
+				if (!isNaN(templateId) && templateId >= 1 && templateId <= templateColors.length) {
+					colorClass = templateColors[templateId - 1];
+				}
 			}
 			
 			var $event = $('<div>')

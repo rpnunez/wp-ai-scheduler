@@ -20,15 +20,16 @@ class AIPS_Calendar_Controller {
 	private $schedule_repo;
 	
 	/**
-	 * @var AIPS_Template_Repository Template repository instance
+	 * @var AIPS_Interval_Calculator Interval calculator instance
 	 */
-	private $template_repo;
+	private $interval_calculator;
 	
 	/**
 	 * Initialize the controller.
 	 */
 	public function __construct() {
 		$this->schedule_repo = new AIPS_Schedule_Repository();
+		$this->interval_calculator = new AIPS_Interval_Calculator();
 		add_action('wp_ajax_aips_get_calendar_events', array($this, 'ajax_get_calendar_events'));
 	}
 	
@@ -49,24 +50,13 @@ class AIPS_Calendar_Controller {
 	 * @return array Array of calendar events
 	 */
 	public function get_month_events($year, $month) {
-		global $wpdb;
-		
 		// Calculate the start and end dates for the month
 		$start_date = sprintf('%04d-%02d-01 00:00:00', $year, $month);
 		$days_in_month = date('t', strtotime($start_date)); // Number of days in month
 		$end_date = sprintf('%04d-%02d-%02d 23:59:59', $year, $month, $days_in_month);
 		
-		$schedule_table = $wpdb->prefix . 'aips_schedule';
-		$templates_table = $wpdb->prefix . 'aips_templates';
-		
-		// Get all schedules that have runs in this month
-		$schedules = $wpdb->get_results($wpdb->prepare("
-			SELECT s.*, t.name as template_name, t.id as template_id
-			FROM {$schedule_table} s
-			LEFT JOIN {$templates_table} t ON s.template_id = t.id
-			WHERE s.is_active = 1
-			ORDER BY s.next_run ASC
-		"));
+		// Use repository to get active schedules
+		$schedules = $this->schedule_repo->get_all(true);
 		
 		$events = array();
 		
@@ -79,7 +69,7 @@ class AIPS_Calendar_Controller {
 					'id' => $schedule->id,
 					'title' => $schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler'),
 					'start' => $occurrence,
-					'template_id' => $schedule->template_id,
+					'template_id' => property_exists($schedule, 'template_id') ? $schedule->template_id : null,
 					'template_name' => $schedule->template_name,
 					'frequency' => $schedule->frequency,
 					'topic' => $schedule->topic,
@@ -112,8 +102,9 @@ class AIPS_Calendar_Controller {
 			$current = $this->calculate_next_occurrence($schedule, $start_date);
 		}
 		
-		// Generate occurrences until we exceed the end date
-		$max_occurrences = 100; // Safety limit
+		// Calculate max occurrences based on frequency to avoid truncation
+		// For hourly schedules in a 31-day month: 31 * 24 = 744 occurrences
+		$max_occurrences = 1000; // Increased from 100 to handle hourly schedules
 		$count = 0;
 		
 		while ($current && $current <= $end && $count < $max_occurrences) {
@@ -121,38 +112,21 @@ class AIPS_Calendar_Controller {
 				$occurrences[] = date('Y-m-d H:i:s', $current);
 			}
 			
-			// Calculate next occurrence based on frequency
-			$current = $this->calculate_next_run_timestamp($current, $schedule->frequency);
+			// Calculate next occurrence using interval calculator
+			$next_run_str = $this->interval_calculator->calculate_next_run(
+				$schedule->frequency,
+				date('Y-m-d H:i:s', $current)
+			);
+			
+			if (!$next_run_str) {
+				break;
+			}
+			
+			$current = strtotime($next_run_str);
 			$count++;
 		}
 		
 		return $occurrences;
-	}
-	
-	/**
-	 * Calculate the next occurrence timestamp based on frequency.
-	 *
-	 * @param int    $current_timestamp Current timestamp
-	 * @param string $frequency         Frequency (daily, weekly, monthly, etc.)
-	 * @return int|false Next timestamp or false if unable to calculate
-	 */
-	private function calculate_next_run_timestamp($current_timestamp, $frequency) {
-		switch ($frequency) {
-			case 'hourly':
-				return strtotime('+1 hour', $current_timestamp);
-			case 'twice_daily':
-				return strtotime('+12 hours', $current_timestamp);
-			case 'daily':
-				return strtotime('+1 day', $current_timestamp);
-			case 'twice_weekly':
-				return strtotime('+3.5 days', $current_timestamp);
-			case 'weekly':
-				return strtotime('+1 week', $current_timestamp);
-			case 'monthly':
-				return strtotime('+1 month', $current_timestamp);
-			default:
-				return false;
-		}
 	}
 	
 	/**
@@ -166,12 +140,23 @@ class AIPS_Calendar_Controller {
 		$next_run = strtotime($schedule->next_run);
 		$target = strtotime($start_date);
 		
-		// Fast-forward to the target date
-		while ($next_run < $target) {
-			$next_run = $this->calculate_next_run_timestamp($next_run, $schedule->frequency);
-			if (!$next_run) {
+		// Use interval calculator to fast-forward to the target date
+		$current_date_str = date('Y-m-d H:i:s', $next_run);
+		
+		// Fast-forward using interval calculator with safety limit
+		$limit = 1000;
+		while ($next_run < $target && $limit > 0) {
+			$current_date_str = $this->interval_calculator->calculate_next_run(
+				$schedule->frequency,
+				$current_date_str
+			);
+			
+			if (!$current_date_str) {
 				return $target;
 			}
+			
+			$next_run = strtotime($current_date_str);
+			$limit--;
 		}
 		
 		return $next_run;
@@ -184,8 +169,8 @@ class AIPS_Calendar_Controller {
 	 * @return string Category name
 	 */
 	private function get_schedule_category($schedule) {
-		// For now, return a default category
-		// In the future, this could be extended to get actual category from template or schedule
+		// TODO: Implement category resolution from template metadata
+		// Placeholder returns generic category until category support is added
 		return __('General', 'ai-post-scheduler');
 	}
 	
@@ -196,8 +181,8 @@ class AIPS_Calendar_Controller {
 	 * @return string Author name
 	 */
 	private function get_schedule_author($schedule) {
-		// For now, return a default author
-		// In the future, this could be extended to get actual author from schedule
+		// TODO: Implement author resolution from template metadata
+		// Placeholder returns generic author until author support is added
 		return __('AI Generated', 'ai-post-scheduler');
 	}
 	

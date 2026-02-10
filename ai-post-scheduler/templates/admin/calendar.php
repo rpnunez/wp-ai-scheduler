@@ -2,14 +2,6 @@
 if (!defined('ABSPATH')) {
 	exit;
 }
-
-$current_month = isset($_GET['month']) ? absint($_GET['month']) : date('n');
-$current_year = isset($_GET['year']) ? absint($_GET['year']) : date('Y');
-
-// Validate month
-if ($current_month < 1 || $current_month > 12) {
-	$current_month = date('n');
-}
 ?>
 <div class="wrap aips-wrap">
 	<h1><?php esc_html_e('Schedule Calendar', 'ai-post-scheduler'); ?></h1>
@@ -106,12 +98,12 @@ if ($current_month < 1 || $current_month > 12) {
 	</div>
 	
 	<!-- Event Details Modal -->
-	<div id="aips-calendar-event-modal" class="aips-calendar-modal" style="display: none;">
+	<div id="aips-calendar-event-modal" class="aips-calendar-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-calendar-event-modal-title">
 		<div class="aips-calendar-modal-overlay"></div>
 		<div class="aips-calendar-modal-content">
 			<div class="aips-calendar-modal-header">
-				<h2><?php esc_html_e('Schedule Details', 'ai-post-scheduler'); ?></h2>
-				<button class="aips-calendar-modal-close">
+				<h2 id="aips-calendar-event-modal-title"><?php esc_html_e('Schedule Details', 'ai-post-scheduler'); ?></h2>
+				<button type="button" class="aips-calendar-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">
 					<span class="dashicons dashicons-no-alt"></span>
 				</button>
 			</div>
@@ -129,7 +121,7 @@ if ($current_month < 1 || $current_month > 12) {
 				<a href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule')); ?>" class="button button-primary">
 					<?php esc_html_e('View All Schedules', 'ai-post-scheduler'); ?>
 				</a>
-				<button class="button aips-calendar-modal-close">
+				<button type="button" class="button aips-calendar-modal-close">
 					<?php esc_html_e('Close', 'ai-post-scheduler'); ?>
 				</button>
 			</div>

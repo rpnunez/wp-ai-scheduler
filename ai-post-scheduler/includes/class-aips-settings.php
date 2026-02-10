@@ -555,13 +555,12 @@ class AIPS_Settings {
     /**
      * Render the Schedule Calendar page.
      *
-     * Delegates rendering to the AIPS_Calendar_Controller class.
+     * Includes the schedule calendar template file.
      *
      * @return void
      */
     public function render_schedule_calendar_page() {
-        $calendar_controller = new AIPS_Calendar_Controller();
-        $calendar_controller->render_page();
+        include AIPS_PLUGIN_DIR . 'templates/admin/calendar.php';
     }
     
     /**
