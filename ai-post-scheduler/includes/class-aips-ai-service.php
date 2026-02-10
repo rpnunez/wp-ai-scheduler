@@ -329,7 +329,8 @@ class AIPS_AI_Service {
             $json_extracted = true;
         }
         // 2. If no json-tagged block, try other fenced code blocks (with language tags)
-        // and find one that decodes successfully
+        // and find one that decodes successfully. Generic code blocks without tags
+        // are intentionally skipped here and handled by the universal fallback below.
         elseif (preg_match_all('/```[a-zA-Z0-9+_-]+\s*([\s\S]*?)\s*```/', $json_str, $all_matches)) {
             // Limit to first 5 code blocks to prevent excessive processing
             $blocks_to_check = array_slice($all_matches[1], 0, 5);

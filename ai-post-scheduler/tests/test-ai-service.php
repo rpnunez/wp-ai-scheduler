@@ -432,7 +432,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     }
 
     /**
-     * Test fallback_json_generation extracts JSON from generic code blocks
+     * Test fallback_json_extraction extracts JSON from generic code blocks (via universal fallback)
      */
     public function test_fallback_json_extraction_from_generic_code_block() {
         $reflection = new ReflectionClass($this->service);
@@ -568,7 +568,8 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             ->onlyMethods(array('generate_text'))
             ->getMock();
         
-        // Valid JSON but not an array
+        // Valid JSON but not an array - will be decoded successfully as a string
+        // but then rejected by the is_array check
         $response = '"just a string"';
         
         $mock_service->method('generate_text')->willReturn($response);
