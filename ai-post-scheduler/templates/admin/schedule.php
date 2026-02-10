@@ -167,7 +167,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                                     <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-admin-page"></span>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-trash"></span>
                                     </button>
                                 </div>
