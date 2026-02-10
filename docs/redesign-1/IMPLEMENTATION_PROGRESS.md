@@ -317,22 +317,22 @@ Before moving to next page:
 
 ## Current Status
 
-### ✅ Completed (30%)
+### ✅ Completed (40%)
 
 - **Phase 0:** Visual audit complete
 - **Phase 1:** Design system defined and implemented
-- **Phase 2:** CSS framework ready, Dashboard redesigned
+- **Phase 2:** CSS framework ready, Dashboard, Templates, and Schedule redesigned
 - **Phase 3:** CSS ready for tables
 - **Phase 4:** CSS ready for forms
 - **Phase 5:** Empty states and quick actions on Dashboard
 
-### 🔄 In Progress (0%)
+### 🔄 In Progress (5%)
 
-- Applying redesign to Templates page
+- Applying redesign to remaining admin pages
 
-### ⏳ Pending (70%)
+### ⏳ Pending (55%)
 
-- 18 pages remaining
+- 16 pages remaining
 - JavaScript integration testing
 - Full QA cycle
 - Documentation and screenshots
