@@ -142,11 +142,11 @@ $is_history_tab = isset($is_history_tab) ? $is_history_tab : false;
                     <button class="aips-btn aips-btn-sm" id="aips-filter-btn"><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
                 </div>
                 <div class="aips-filter-right">
-                    <input type="search" id="aips-history-search-input" name="s" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo isset($_GET['s']) ? esc_attr($_GET['s']) : ''; ?>">
+                    <input type="search" id="aips-history-search-input" name="s" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
                     <button type="submit" id="aips-history-search-btn" class="aips-btn aips-btn-sm">
                         <span class="dashicons dashicons-search"></span>
                     </button>
-                    <?php if (!empty($_GET['s'])): ?>
+                    <?php if (!empty($search_query)): ?>
                         <a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
                     <?php endif; ?>
                 </div>
@@ -350,9 +350,8 @@ $is_history_tab = isset($is_history_tab) ? $is_history_tab : false;
             </div><!-- .aips-panel-body -->
         </div><!-- .aips-content-panel -->
     </div><!-- .aips-page-container -->
+</div><!-- .wrap -->
 <?php endif; ?>
-</div><!-- .aips-history-tab --></div>
-</div>
 
 <div id="aips-details-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">

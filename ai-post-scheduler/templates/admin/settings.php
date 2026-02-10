@@ -111,27 +111,3 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 </div>
-
-<style>
-.aips-status-message {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 0;
-    padding: 0;
-}
-.aips-checkbox-group {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.aips-checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-}
-.aips-checkbox-label input[type="checkbox"] {
-    margin: 0;
-}
-</style>

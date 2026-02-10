@@ -126,7 +126,6 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                                 <span class="dashicons dashicons-edit"></span>
                                             </button>
                                             <button class="aips-btn aips-btn-sm aips-btn-ghost aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>">
-                                            <button class="aips-btn aips-btn-sm aips-btn-ghost aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-update"></span>
                                             </button>
                                             <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
@@ -158,7 +157,6 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                 <div class="aips-panel-body">
                     <div class="aips-empty-state">
                         <div class="dashicons dashicons-admin-users aips-empty-state-icon" aria-hidden="true"></div>
-                        <h3 class="aips-empty-state-title"><?php esc_html_e('No Authors Yet', 'ai-post-scheduler'); ?></h3>
                         <h3 class="aips-empty-state-title"><?php esc_html_e('No Authors Yet', 'ai-post-scheduler'); ?></h3>
                         <p class="aips-empty-state-description"><?php esc_html_e('Create your first author to start generating topically diverse blog posts.', 'ai-post-scheduler'); ?></p>
                         <div class="aips-empty-state-actions">

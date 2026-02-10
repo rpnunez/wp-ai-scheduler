@@ -1,3 +1,8 @@
+<?php
+if (!defined('ABSPATH')) {
+    exit;
+}
+?>
 <div class="wrap aips-wrap aips-redesign">
 <div class="aips-page-container">
 <!-- Page Header -->

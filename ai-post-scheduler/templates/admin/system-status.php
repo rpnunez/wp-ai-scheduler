@@ -83,3 +83,16 @@ if (!defined('ABSPATH')) {
         </div>
     </div>
 </div>
+
+<script>
+// Toggle log details
+jQuery(document).ready(function($) {
+    $('.aips-toggle-log-details').on('click', function(e) {
+        e.preventDefault();
+        var target = $(this).data('target');
+        $('#' + target).slideToggle();
+        var text = $('#' + target).is(':visible') ? '<?php esc_html_e('Hide Details', 'ai-post-scheduler'); ?>' : '<?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>';
+        $(this).text(text);
+    });
+});
+</script>

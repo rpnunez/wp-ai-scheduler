@@ -201,15 +201,42 @@ class AIPS_Settings {
         global $submenu;
         
         if (isset($submenu[$parent_slug])) {
-            // Add a dummy menu item that will be styled as a header
-            $submenu[$parent_slug][] = array(
+            // Create a unique slug for this section header
+            $section_slug = 'aips-section-' . sanitize_title($title);
+            
+            // Register a submenu page with a redirect callback
+            add_submenu_page(
+                $parent_slug,
+                $title,
                 $title,
                 'manage_options',
-                '#aips-section-' . sanitize_title($title),
-                $title,
-                'aips-menu-section-header'
+                $section_slug,
+                array($this, 'redirect_section_header')
             );
+            
+            // Find and update the menu class
+            if (isset($submenu[$parent_slug])) {
+                foreach ($submenu[$parent_slug] as $key => $item) {
+                    if ($item[2] === $section_slug) {
+                        $submenu[$parent_slug][$key][4] = 'aips-menu-section-header';
+                        break;
+                    }
+                }
+            }
         }
+    }
+    
+    /**
+     * Redirect section header access to dashboard.
+     *
+     * If someone tries to access a section header URL directly, redirect them
+     * to the dashboard to prevent permission errors.
+     *
+     * @return void
+     */
+    public function redirect_section_header() {
+        wp_safe_redirect(admin_url('admin.php?page=ai-post-scheduler'));
+        exit;
     }
     
     /**
