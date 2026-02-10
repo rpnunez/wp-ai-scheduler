@@ -200,15 +200,32 @@ class AIPS_Settings {
      * @return void
      */
     private function add_section_header($id, $title) {
-        // Add a submenu item with null callback to create a header
+        // Add a submenu item that acts as a visual header.
+        // If accessed directly, it will safely redirect to the main plugin page.
         add_submenu_page(
             'ai-post-scheduler',
-            '',
+            $title,
             $title,
             'manage_options',
             'aips-section-' . $id,
-            '__return_null'
+            array($this, 'render_section_header_redirect')
         );
+    }
+    
+    /**
+     * Callback for section header submenu pages.
+     *
+     * Section headers are intended to be non-interactive. If a user reaches
+     * the URL for a section header (e.g., via keyboard navigation or a direct
+     * link), redirect them to the main AI Post Scheduler dashboard to avoid
+     * rendering an empty or confusing admin screen.
+     *
+     * @return void
+     */
+    public function render_section_header_redirect() {
+        $redirect_url = admin_url('admin.php?page=ai-post-scheduler');
+        wp_safe_redirect($redirect_url);
+        exit;
     }
     
     /**
@@ -727,68 +744,19 @@ class AIPS_Settings {
     /**
      * Render the History page.
      *
-     * Combines generation history and activity logs into a unified view.
-     * This replaces the old separate Activity and History pages (Proposal B).
+     * Displays generation history. This replaces the old separate Activity 
+     * and History pages (Proposal B).
      *
      * @return void
      */
     public function render_history_page() {
-        // View type constants for consistency
-        $VIEW_ALL = 'all';
-        $VIEW_GENERATION = 'generation';
-        $VIEW_ACTIVITY = 'activity';
+        // Note: Generation history and stats are fetched within the template
+        // to ensure a single, consistent query path (including pagination args).
+        // The template handles backward compatibility with both direct inclusion
+        // and AIPS_History::render_page() calls.
         
-        $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
-        $per_page = 50;
-        $offset = ($current_page - 1) * $per_page;
-        
-        // Get filter parameters
-        $view_type = isset($_GET['view_type']) ? sanitize_text_field($_GET['view_type']) : $VIEW_ALL;
-        
-        // Validate view type against allowed values
-        if (!in_array($view_type, array($VIEW_ALL, $VIEW_GENERATION, $VIEW_ACTIVITY), true)) {
-            $view_type = $VIEW_ALL;
-        }
-        
-        $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
-        $event_type = isset($_GET['event_type']) ? sanitize_text_field($_GET['event_type']) : '';
-        $event_status = isset($_GET['event_status']) ? sanitize_text_field($_GET['event_status']) : '';
-        $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        
-        // Initialize handlers
         $history_handler = new AIPS_History();
-        $history_service = new AIPS_History_Service();
-        
-        // Get data based on view type
-        if ($view_type === $VIEW_GENERATION || $view_type === $VIEW_ALL) {
-            // Get generation history
-            $history = $history_handler->get_history(array(
-                'page' => $current_page,
-                'status' => $status_filter,
-                'search' => $search_query,
-                'fields' => 'list',
-            ));
-            $stats = $history_handler->get_stats();
-        }
-        
-        if ($view_type === $VIEW_ACTIVITY || $view_type === $VIEW_ALL) {
-            // Get activity feed
-            $filters = array();
-            if ($search_query) {
-                $filters['search'] = $search_query;
-            }
-            if ($event_type) {
-                $filters['event_type'] = $event_type;
-            }
-            if ($event_status) {
-                $filters['event_status'] = $event_status;
-            }
-            
-            $activities = $history_service->get_activity_feed($per_page, $offset, $filters);
-        }
-        
-        // For 'all' view, we'll show both sections in the template
-        include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
+        $history_handler->render_page();
     }
     
     /**

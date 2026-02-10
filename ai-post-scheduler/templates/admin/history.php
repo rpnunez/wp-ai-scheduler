@@ -256,3 +256,4 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
         </div>
     </div>
 </div>
+</div><!-- .wrap -->
