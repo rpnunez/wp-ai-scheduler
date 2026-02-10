@@ -29,3 +29,7 @@ Thumbs.db
 node_modules/
 scripts/__pycache__/
 .phpunit.result.cache
+
+# Build artifacts
+ai-post-scheduler/build/
+ai-post-scheduler/src/**/*.asset.php

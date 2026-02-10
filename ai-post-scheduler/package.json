@@ -1,0 +1,27 @@
+{
+  "name": "ai-post-scheduler",
+  "version": "2.1.0",
+  "description": "WordPress plugin for scheduling AI-generated posts",
+  "scripts": {
+    "build": "wp-scripts build",
+    "start": "wp-scripts start",
+    "lint:js": "wp-scripts lint-js",
+    "format": "wp-scripts format"
+  },
+  "keywords": [
+    "wordpress",
+    "ai",
+    "scheduler"
+  ],
+  "author": "AI Post Scheduler",
+  "license": "GPL-2.0-or-later",
+  "devDependencies": {
+    "@wordpress/scripts": "^27.0.0"
+  },
+  "dependencies": {
+    "@wordpress/api-fetch": "^7.0.0",
+    "@wordpress/components": "^27.0.0",
+    "@wordpress/element": "^6.0.0",
+    "@wordpress/i18n": "^5.0.0"
+  }
+}

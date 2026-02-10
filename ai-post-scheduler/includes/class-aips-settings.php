@@ -74,6 +74,15 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Generated Posts (React)', 'ai-post-scheduler'),
+            __('Generated Posts (React)', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-generated-posts-react',
+            array($this, 'render_generated_posts_react_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Schedule', 'ai-post-scheduler'),
             __('Schedule', 'ai-post-scheduler'),
             'manage_options',
@@ -598,6 +607,18 @@ class AIPS_Settings {
      */
     public function render_generated_posts_page() {
         $controller = new AIPS_Generated_Posts_Controller();
+        $controller->render_page();
+    }
+
+    /**
+     * Render the Generated Posts React page.
+     *
+     * Renders the shell for the React-based Generated Posts page.
+     *
+     * @return void
+     */
+    public function render_generated_posts_react_page() {
+        $controller = new AIPS_Generated_Posts_React();
         $controller->render_page();
     }
 

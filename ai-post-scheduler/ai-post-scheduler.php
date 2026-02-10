@@ -150,6 +150,9 @@ final class AI_Post_Scheduler {
     public function init() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
         
+        // Initialize REST API
+        new AIPS_Generated_Posts_API();
+        
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Settings();
@@ -166,6 +169,7 @@ final class AI_Post_Scheduler {
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
             new AIPS_Generated_Posts_Controller();
+            new AIPS_Generated_Posts_React();
             new AIPS_Research_Controller();
             new AIPS_Seeder_Admin();
             new AIPS_Data_Management();
