@@ -146,8 +146,8 @@
 		// Display logs
 		renderLogs(data.logs);
 		
-		// Display AI calls
-		renderAICalls(data.ai_calls);
+		// Display AI calls (including regenerations)
+		renderAICalls(data.ai_calls, data.component_revisions || {});
 		
 		// Show modal
 		$('#aips-session-modal').show();
@@ -193,46 +193,94 @@
 	/**
 	 * Render AI calls tab content
 	 */
-	function renderAICalls(ai_calls) {
+	function renderAICalls(ai_calls, componentRevisions) {
 		var aiHtml = '';
+		var componentOrder = ['title', 'excerpt', 'content', 'featured_image'];
+		var componentLabels = {
+			title: 'Title',
+			excerpt: 'Excerpt',
+			content: 'Content',
+			featured_image: 'Featured Image'
+		};
+		var callMap = {};
 		
-		if (ai_calls.length > 0) {
+		if (Array.isArray(ai_calls)) {
 			ai_calls.forEach(function(call) {
-				// Create AI component element safely using jQuery
-				var $aiComponent = $('<div class="aips-ai-component"></div>')
-					.attr('data-component', call.type);
-				
-				$aiComponent.append($('<h4></h4>').text(call.label));
-				$aiComponent.append($('<p class="aips-ai-hint"></p>').text('Click to view request and response details'));
-				
-				var $aiDetails = $('<div class="aips-ai-details"></div>');
-				
-				if (call.request) {
-					var $requestSection = $('<div class="aips-ai-section"></div>');
-					$requestSection.append($('<h5></h5>').text('Request'));
-					$requestSection.append(
-						$('<div class="aips-json-viewer"><pre></pre></div>')
-							.find('pre').text(JSON.stringify(call.request, null, 2)).end()
-					);
-					$aiDetails.append($requestSection);
-				}
-				
-				if (call.response) {
-					var $responseSection = $('<div class="aips-ai-section"></div>');
-					$responseSection.append($('<h5></h5>').text('Response'));
-					$responseSection.append(
-						$('<div class="aips-json-viewer"><pre></pre></div>')
-							.find('pre').text(JSON.stringify(call.response, null, 2)).end()
-					);
-					$aiDetails.append($responseSection);
-				}
-				
-				$aiComponent.append($aiDetails);
-				aiHtml += $aiComponent[0].outerHTML;
+				callMap[call.type] = call;
 			});
-		} else {
-			aiHtml = '<p class="aips-no-data">No AI calls found.</p>';
 		}
+		
+		componentOrder.forEach(function(componentType) {
+			var call = callMap[componentType] || { type: componentType, label: componentLabels[componentType] };
+			var revisions = (componentRevisions && componentRevisions[componentType]) ? componentRevisions[componentType] : [];
+			
+			// Create AI component element safely using jQuery
+			var $aiComponent = $('<div class="aips-ai-component"></div>')
+				.attr('data-component', componentType);
+			
+			$aiComponent.append($('<h4></h4>').text(call.label || componentLabels[componentType]));
+			$aiComponent.append($('<p class="aips-ai-hint"></p>').text('Click to view request and response details'));
+			
+			var $aiDetails = $('<div class="aips-ai-details"></div>');
+			
+			if (call.request) {
+				var $requestSection = $('<div class="aips-ai-section"></div>');
+				$requestSection.append($('<h5></h5>').text('Request'));
+				$requestSection.append(
+					$('<div class="aips-json-viewer"><pre></pre></div>')
+						.find('pre').text(JSON.stringify(call.request, null, 2)).end()
+				);
+				$aiDetails.append($requestSection);
+			}
+			
+			if (call.response) {
+				var $responseSection = $('<div class="aips-ai-section"></div>');
+				$responseSection.append($('<h5></h5>').text('Response'));
+				$responseSection.append(
+					$('<div class="aips-json-viewer"><pre></pre></div>')
+						.find('pre').text(JSON.stringify(call.response, null, 2)).end()
+				);
+				$aiDetails.append($responseSection);
+			}
+			
+			// Add regenerations / revisions
+			var $revisionsSection = $('<div class="aips-ai-section"></div>');
+			$revisionsSection.append($('<h5></h5>').text('Regenerations / Revisions'));
+			
+			if (Array.isArray(revisions) && revisions.length > 0) {
+				var $list = $('<div class="aips-ai-revisions"></div>');
+				revisions.forEach(function(revision) {
+					var $item = $('<div class="aips-ai-revision-item"></div>');
+					$item.append($('<div class="aips-ai-revision-meta"></div>').text(revision.timestamp || ''));
+					
+					if (componentType === 'featured_image' && revision.value && revision.value.url) {
+						$item.append(
+							$('<div class="aips-ai-revision-value"></div>').append(
+								$('<img class="aips-ai-revision-image" />').attr('src', revision.value.url).attr('alt', 'Revision')
+							)
+						);
+					} else {
+						var textValue = revision.value;
+						if (typeof textValue !== 'string') {
+							textValue = JSON.stringify(textValue || '');
+						}
+						if (textValue && textValue.length > 300) {
+							textValue = textValue.substring(0, 300) + '...';
+						}
+						$item.append($('<div class="aips-ai-revision-value"></div>').text(textValue || '(empty)'));
+					}
+					
+					$list.append($item);
+				});
+				$revisionsSection.append($list);
+			} else {
+				$revisionsSection.append($('<p class="aips-no-data"></p>').text('No regenerations found.'));
+			}
+			
+			$aiDetails.append($revisionsSection);
+			$aiComponent.append($aiDetails);
+			aiHtml += $aiComponent[0].outerHTML;
+		});
 		
 		$('#aips-ai-list').html(aiHtml);
 	}
@@ -243,12 +291,13 @@
 	function handleTabSwitch(e) {
 		e.preventDefault();
 		var target = $(e.currentTarget).attr('href');
+		var $tabs = $(e.currentTarget).closest('.aips-tabs');
 		
-		$('.aips-tab-nav a').removeClass('active');
+		$tabs.find('.aips-tab-nav a').removeClass('active');
 		$(e.currentTarget).addClass('active');
 		
-		$('.aips-tab-content').hide();
-		$(target).show();
+		$tabs.find('.aips-tab-content').hide();
+		$tabs.find(target).show();
 	}
 	
 	/**

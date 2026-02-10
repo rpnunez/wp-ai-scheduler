@@ -181,6 +181,9 @@ final class AI_Post_Scheduler {
             // Authors feature controllers
             new AIPS_Authors_Controller();
             new AIPS_Author_Topics_Controller();
+            
+            // AI Edit controller (for component-level regeneration)
+            new AIPS_AI_Edit_Controller();
 
             // Dev Tools
             if (get_option('aips_developer_mode')) {
