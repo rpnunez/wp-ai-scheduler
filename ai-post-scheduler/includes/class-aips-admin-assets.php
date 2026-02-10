@@ -43,6 +43,14 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
         );
 
+        // Redesigned Admin Styles (Meow Apps style)
+        wp_enqueue_style(
+            'aips-admin-redesign-style',
+            AIPS_PLUGIN_URL . 'assets/css/admin-redesign.css',
+            array('aips-admin-style'),
+            AIPS_VERSION
+        );
+
         wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
