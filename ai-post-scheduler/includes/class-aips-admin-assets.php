@@ -318,6 +318,38 @@ class AIPS_Admin_Assets {
                 'noDraftPosts' => __('No Draft Posts', 'ai-post-scheduler'),
                 'noDraftPostsDesc' => __('There are no draft posts waiting for review.', 'ai-post-scheduler'),
             ));
+            
+            // AI Edit Modal (for Generated Posts page)
+            wp_enqueue_script(
+                'aips-admin-ai-edit',
+                AIPS_PLUGIN_URL . 'assets/js/admin-ai-edit.js',
+                array('jquery', 'aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+            
+            wp_enqueue_style(
+                'aips-admin-ai-edit',
+                AIPS_PLUGIN_URL . 'assets/css/admin-ai-edit.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+            
+            wp_localize_script('aips-admin-ai-edit', 'aipsAIEditL10n', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('aips_ajax_nonce'),
+                'regenerate' => __('Re-generate', 'ai-post-scheduler'),
+                'regenerating' => __('Regenerating...', 'ai-post-scheduler'),
+                'regenerateSuccess' => __('Component regenerated successfully!', 'ai-post-scheduler'),
+                'regenerateError' => __('Failed to regenerate component.', 'ai-post-scheduler'),
+                'save' => __('Save Changes', 'ai-post-scheduler'),
+                'saving' => __('Saving...', 'ai-post-scheduler'),
+                'saveSuccess' => __('Post updated successfully!', 'ai-post-scheduler'),
+                'saveError' => __('Failed to update post.', 'ai-post-scheduler'),
+                'loadError' => __('Failed to load post components.', 'ai-post-scheduler'),
+                'confirmClose' => __('You have unsaved changes. Are you sure you want to close?', 'ai-post-scheduler'),
+                'noChanges' => __('No changes to save.', 'ai-post-scheduler'),
+            ));
         }
 
         if (strpos($hook, 'aips-dev-tools') !== false) {
