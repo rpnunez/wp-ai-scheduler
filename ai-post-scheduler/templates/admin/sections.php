@@ -72,10 +72,10 @@ if (!isset($sections) || !is_array($sections)) {
 								<?php endif; ?>
 							</td>
 							<td class="column-actions">
-								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-section" data-id="<?php echo esc_attr($section->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-edit"></span>
 								</button>
-								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-section" data-id="<?php echo esc_attr($section->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-trash"></span>
 								</button>
 							</td>
