@@ -192,7 +192,6 @@ class AIPS_Component_Regeneration_Service {
 		$history_container = $this->history_service->create('component_regeneration', array(
 			'post_id' => $post_id,
 			'parent_history_id' => $history_id,
-			'component_type' => 'title',
 		));
 		
 		// Set the history container on the generator so it logs properly
@@ -242,7 +241,6 @@ class AIPS_Component_Regeneration_Service {
 		$history_container = $this->history_service->create('component_regeneration', array(
 			'post_id' => $post_id,
 			'parent_history_id' => $history_id,
-			'component_type' => 'excerpt',
 		));
 		
 		// Set the history container on the generator so it logs properly
@@ -285,7 +283,6 @@ class AIPS_Component_Regeneration_Service {
 		$history_container = $this->history_service->create('component_regeneration', array(
 			'post_id' => $post_id,
 			'parent_history_id' => $history_id,
-			'component_type' => 'content',
 		));
 		
 		// Set the history container on the generator so it logs properly
@@ -338,7 +335,6 @@ class AIPS_Component_Regeneration_Service {
 		$history_container = $this->history_service->create('component_regeneration', array(
 			'post_id' => $post_id,
 			'parent_history_id' => $history_id,
-			'component_type' => 'featured_image',
 		));
 		
 		// Log the AI request for image generation
@@ -382,58 +378,6 @@ class AIPS_Component_Regeneration_Service {
 			'attachment_id' => $attachment_id,
 			'url' => wp_get_attachment_url($attachment_id),
 		);
-	}
-	
-	/**
-	 * Log a component regeneration event
-	 *
-	 * Creates a History Container to log the regeneration request and response
-	 * with component-specific metadata for revision tracking.
-	 *
-	 * @param int $post_id Post ID
-	 * @param int $history_id Original generation history ID
-	 * @param string $component_type Component type (title, excerpt, content, featured_image)
-	 * @param mixed $previous_value Previous value before regeneration
-	 * @param mixed $new_value New value after regeneration
-	 * @param string $prompt Prompt used for regeneration
-	 * @return int|false History container ID or false on failure
-	 */
-	public function log_component_regeneration($post_id, $history_id, $component_type, $previous_value, $new_value, $prompt = '') {
-		// Create a history container for this regeneration
-		$container = $this->history_service->create('component_regeneration', array(
-			'post_id' => $post_id,
-			'parent_history_id' => $history_id,
-			'component_type' => $component_type,
-		));
-		
-		// Log the AI request with previous value in context
-		$container->record(
-			'ai_request',
-			sprintf(__('Regenerating %s for post %d', 'ai-post-scheduler'), $component_type, $post_id),
-			$prompt,
-			null,
-			array(
-				'component_type' => $component_type,
-				'post_id' => $post_id,
-				'history_id' => $history_id,
-				'previous_value' => $previous_value,
-			)
-		);
-		
-		// Log the AI response with new value
-		$container->record(
-			'ai_response',
-			sprintf(__('%s regenerated successfully', 'ai-post-scheduler'), ucfirst($component_type)),
-			null,
-			$new_value,
-			array(
-				'component_type' => $component_type,
-				'post_id' => $post_id,
-				'history_id' => $history_id,
-			)
-		);
-		
-		return $container->get_id();
 	}
 	
 	/**
