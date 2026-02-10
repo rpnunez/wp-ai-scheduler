@@ -26,36 +26,68 @@ if (!in_array($active_tab, $valid_tabs, true)) {
 }
 ?>
 
-<div class="wrap aips-research">
-    <h1><?php echo esc_html__('Research', 'ai-post-scheduler'); ?></h1>
+<div class="wrap aips-wrap aips-redesign">
+    <div class="aips-page-container">
+        <!-- Page Header -->
+        <div class="aips-page-header">
+            <div class="aips-page-header-top">
+                <div>
+                    <h1 class="aips-page-title"><?php echo esc_html__('Research', 'ai-post-scheduler'); ?></h1>
+                    <p class="aips-page-description"><?php echo esc_html__('Discover trending topics in your niche using AI-powered research and automatically schedule content creation.', 'ai-post-scheduler'); ?></p>
+                </div>
+            </div>
+        </div>
 
-    <div class="nav-tab-wrapper">
-        <a href="#trending" class="nav-tab<?php echo $active_tab === 'trending' ? ' nav-tab-active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
-        <a href="#planner" class="nav-tab<?php echo $active_tab === 'planner' ? ' nav-tab-active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
-    </div>
+        <!-- Tab Navigation -->
+        <div class="aips-tab-nav">
+            <a href="#trending" class="aips-tab-link<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
+            <a href="#planner" class="aips-tab-link<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
+        </div>
+
+        <!-- Old nav-tab-wrapper for JS compatibility -->
+        <div class="nav-tab-wrapper" style="display: none;">
+            <a href="#trending" class="nav-tab<?php echo $active_tab === 'trending' ? ' nav-tab-active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
+            <a href="#planner" class="nav-tab<?php echo $active_tab === 'planner' ? ' nav-tab-active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
+        </div>
 
     <div id="trending-tab" class="aips-tab-content<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'trending' ? '' : 'display:none;'; ?>">
-        <p class="description">
-            <?php echo esc_html__('Use AI to discover trending topics in your niche and automatically schedule content creation. This feature helps you stay current with what your audience is searching for.', 'ai-post-scheduler'); ?>
-        </p>
-        
         <!-- Research Stats -->
-        <div class="aips-stats-cards">
+        <div class="aips-stats-grid aips-grid-4">
             <div class="aips-stat-card">
-                <h3><?php echo esc_html(number_format($stats['total_topics'])); ?></h3>
-                <p><?php echo esc_html__('Total Topics', 'ai-post-scheduler'); ?></p>
+                <div class="aips-stat-icon">
+                    <span class="dashicons dashicons-lightbulb"></span>
+                </div>
+                <div class="aips-stat-content">
+                    <div class="aips-stat-value"><?php echo esc_html(number_format($stats['total_topics'])); ?></div>
+                    <div class="aips-stat-label"><?php echo esc_html__('Total Topics', 'ai-post-scheduler'); ?></div>
+                </div>
             </div>
             <div class="aips-stat-card">
-                <h3><?php echo esc_html(number_format($stats['niches_count'])); ?></h3>
-                <p><?php echo esc_html__('Niches', 'ai-post-scheduler'); ?></p>
+                <div class="aips-stat-icon">
+                    <span class="dashicons dashicons-category"></span>
+                </div>
+                <div class="aips-stat-content">
+                    <div class="aips-stat-value"><?php echo esc_html(number_format($stats['niches_count'])); ?></div>
+                    <div class="aips-stat-label"><?php echo esc_html__('Niches', 'ai-post-scheduler'); ?></div>
+                </div>
             </div>
             <div class="aips-stat-card">
-                <h3><?php echo esc_html($stats['avg_score']); ?></h3>
-                <p><?php echo esc_html__('Avg Score', 'ai-post-scheduler'); ?></p>
+                <div class="aips-stat-icon aips-stat-icon-info">
+                    <span class="dashicons dashicons-star-filled"></span>
+                </div>
+                <div class="aips-stat-content">
+                    <div class="aips-stat-value"><?php echo esc_html($stats['avg_score']); ?></div>
+                    <div class="aips-stat-label"><?php echo esc_html__('Avg Score', 'ai-post-scheduler'); ?></div>
+                </div>
             </div>
             <div class="aips-stat-card">
-                <h3><?php echo esc_html(number_format($stats['recent_research_count'])); ?></h3>
-                <p><?php echo esc_html__('Last 7 Days', 'ai-post-scheduler'); ?></p>
+                <div class="aips-stat-icon aips-stat-icon-success">
+                    <span class="dashicons dashicons-calendar-alt"></span>
+                </div>
+                <div class="aips-stat-content">
+                    <div class="aips-stat-value"><?php echo esc_html(number_format($stats['recent_research_count'])); ?></div>
+                    <div class="aips-stat-label"><?php echo esc_html__('Last 7 Days', 'ai-post-scheduler'); ?></div>
+                </div>
             </div>
         </div>
         
@@ -223,7 +255,8 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     <div id="planner-tab" class="aips-tab-content<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'planner' ? '' : 'display:none;'; ?>">
         <?php include AIPS_PLUGIN_DIR . 'templates/admin/planner.php'; ?>
     </div>
-</div>
+    </div><!-- .aips-page-container -->
+</div><!-- .wrap -->
 
 <style>
 .aips-research {

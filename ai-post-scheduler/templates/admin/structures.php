@@ -13,19 +13,39 @@ if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
 ?>
-<div class="wrap aips-wrap">
-	<h1><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></h1>
+<div class="wrap aips-wrap aips-redesign">
+	<div class="aips-page-container">
+		<!-- Page Header -->
+		<div class="aips-page-header">
+			<div class="aips-page-header-top">
+				<div>
+					<h1 class="aips-page-title"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></h1>
+					<p class="aips-page-description"><?php esc_html_e('Define how your AI-generated content is organized with customizable article structures and sections.', 'ai-post-scheduler'); ?></p>
+				</div>
+			</div>
+		</div>
 
-	<div class="nav-tab-wrapper">
-		<a href="#aips-structures" class="nav-tab nav-tab-active" data-tab="aips-structures"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
-		<a href="#aips-structure-sections" class="nav-tab" data-tab="aips-structure-sections"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
-	</div>
+		<!-- Tab Navigation -->
+		<div class="aips-tab-nav">
+			<a href="#aips-structures" class="aips-tab-link active" data-tab="aips-structures"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
+			<a href="#aips-structure-sections" class="aips-tab-link" data-tab="aips-structure-sections"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
+		</div>
+
+		<!-- Old nav-tab-wrapper for JS compatibility -->
+		<div class="nav-tab-wrapper" style="display: none;">
+			<a href="#aips-structures" class="nav-tab nav-tab-active" data-tab="aips-structures"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
+			<a href="#aips-structure-sections" class="nav-tab" data-tab="aips-structure-sections"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
+		</div>
 
 	<div id="aips-structures-tab" class="aips-tab-content active">
-		<h2>
-			<?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?>
-			<button class="page-title-action aips-add-structure-btn"><?php esc_html_e('Add New', 'ai-post-scheduler'); ?></button>
-		</h2>
+		<div class="aips-content-panel">
+			<div class="aips-panel-header">
+				<h2 class="aips-panel-title"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></h2>
+				<button class="aips-btn aips-btn-primary aips-add-structure-btn">
+					<span class="dashicons dashicons-plus-alt2"></span>
+					<?php esc_html_e('Add New', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
 
 		<div class="aips-structures-container">
 			<?php if (!empty($structures)): ?>
@@ -228,5 +248,6 @@ if (!isset($sections) || !is_array($sections)) {
 			</div>
 		</div>
 	</div>
-</div>
+	</div><!-- .aips-page-container -->
+</div><!-- .wrap -->
 
