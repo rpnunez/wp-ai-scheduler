@@ -6,6 +6,8 @@ if (!defined('ABSPATH')) {
 // Allow this template to be included either via AIPS_History::render_page()
 // (where $history is already an array) or directly with an AIPS_History
 // instance (e.g. $history or $History).
+// This template now serves as the unified History page (Proposal B) 
+// combining both Generation History and Activity logs.
 if (isset($history) && $history instanceof AIPS_History) {
     $history_handler = $history;
 } elseif (isset($History) && $History instanceof AIPS_History) {
@@ -41,7 +43,14 @@ $history_base_page = isset($history_base_page) ? $history_base_page : 'aips-hist
 $history_base_args = isset($history_base_args) && is_array($history_base_args) ? $history_base_args : array();
 $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=' . $history_base_page));
 ?>
-<div class="aips-history-tab">
+<div class="wrap aips-wrap">
+    <h1><?php esc_html_e('History', 'ai-post-scheduler'); ?></h1>
+    
+    <p class="description">
+        <?php esc_html_e('View post generation history, activity logs, errors, and system events in one place.', 'ai-post-scheduler'); ?>
+    </p>
+    
+    <div class="aips-history-tab">
     <h2><?php esc_html_e('Generation History', 'ai-post-scheduler'); ?></h2>
     
     <div class="aips-history-stats">
