@@ -48,7 +48,7 @@ This document provides a comprehensive list of all implemented features in the A
 - Clone templates
 - View posts generated from template
 
-**UI Location:** AI Post Scheduler → Templates  
+**UI Location:** AI Post Scheduler → Content Studio → Templates  
 **Database:** `wp_aips_templates`
 
 ---
@@ -85,7 +85,7 @@ This document provides a comprehensive list of all implemented features in the A
 - Assign to templates
 - Reusable across multiple templates
 
-**UI Location:** AI Post Scheduler → Voices  
+**UI Location:** AI Post Scheduler → Content Studio → Voices  
 **Database:** `wp_aips_voices`
 
 ---
@@ -104,7 +104,7 @@ This document provides a comprehensive list of all implemented features in the A
 - Rotation patterns (sequential, random, weighted, alternating)
 - Assigned to schedules for variety
 
-**UI Location:** AI Post Scheduler → Article Structures & Prompt Sections  
+**UI Location:** AI Post Scheduler → Content Studio → Article Structures  
 **Database:** `wp_aips_article_structures`, `wp_aips_prompt_sections`
 
 ---
@@ -126,7 +126,7 @@ This document provides a comprehensive list of all implemented features in the A
 - Article structure selection
 - Structure rotation patterns
 
-**UI Location:** AI Post Scheduler → Schedule  
+**UI Location:** AI Post Scheduler → Publishing → Schedule  
 **Database:** `wp_aips_schedule`  
 **Cron:** `aips_generate_scheduled_posts` (hourly)
 
@@ -160,7 +160,7 @@ This document provides a comprehensive list of all implemented features in the A
 **Workflow:**
 1. Create Author → 2. System generates topics → 3. Admin approves/rejects → 4. System generates posts from approved topics
 
-**UI Location:** AI Post Scheduler → Authors  
+**UI Location:** AI Post Scheduler → Planning → Authors  
 **Database:** `wp_aips_authors`, `wp_aips_author_topics`, `wp_aips_author_topic_logs`, `wp_aips_topic_feedback`  
 **Cron:** `aips_generate_author_topics`, `aips_generate_author_posts` (both hourly)
 
@@ -210,7 +210,7 @@ This document provides a comprehensive list of all implemented features in the A
 - Content gaps (high demand, low competition)
 - Evergreen value
 
-**UI Location:** AI Post Scheduler → Trending Topics  
+**UI Location:** AI Post Scheduler → Planning → Research  
 **Database:** `wp_aips_trending_topics`  
 **Cron:** `aips_scheduled_research` (daily)
 
@@ -244,7 +244,7 @@ This document provides a comprehensive list of all implemented features in the A
 ### 4.2 Activity Tracking
 **Status:** ✅ 100% Complete
 
-**What it does:** Audit trail of all plugin actions
+**What it does:** Audit trail of all plugin actions (merged into History page)
 
 **Features:**
 - Track all user actions
@@ -254,8 +254,10 @@ This document provides a comprehensive list of all implemented features in the A
 - Activity details view
 - Publish drafts from activity
 
-**UI Location:** AI Post Scheduler → Activity  
-**Database:** `wp_aips_activity`
+**UI Location:** AI Post Scheduler → History (Monitoring section)  
+**Database:** `wp_aips_activity`, `wp_aips_history`
+
+**Note:** As of Proposal B implementation, Activity and History have been merged into a single unified History page under the Monitoring section.
 
 ---
 
@@ -313,7 +315,7 @@ This document provides a comprehensive list of all implemented features in the A
 - System recommendations
 - Health score
 
-**UI Location:** AI Post Scheduler → System Status
+**UI Location:** AI Post Scheduler → System → System Status
 
 ---
 
@@ -329,7 +331,7 @@ This document provides a comprehensive list of all implemented features in the A
 - Connection testing (AI Engine)
 - Settings persistence
 
-**UI Location:** AI Post Scheduler → Settings
+**UI Location:** AI Post Scheduler → System → Settings
 
 ---
 
@@ -346,7 +348,7 @@ This document provides a comprehensive list of all implemented features in the A
 - One-click seeding
 - Useful for demos
 
-**UI Location:** AI Post Scheduler → Seeder
+**UI Location:** AI Post Scheduler → System → Seeder
 
 ---
 
@@ -361,7 +363,7 @@ This document provides a comprehensive list of all implemented features in the A
 - Similar/related topic suggestions
 - Topic/template context utilities
 
-**UI Location:** AI Post Scheduler → Dev Tools (when enabled)
+**UI Location:** AI Post Scheduler → System → Dev Tools (when enabled)
 
 ---
 
