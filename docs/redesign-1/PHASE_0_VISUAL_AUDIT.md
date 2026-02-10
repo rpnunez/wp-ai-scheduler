@@ -12,7 +12,7 @@ This document provides a comprehensive audit of the AI Post Scheduler plugin's c
 
 ## Admin Pages Inventory
 
-### Core Pages (19 Total)
+### Core Pages (18 Total)
 
 | # | Page Name | Slug | Template File | Primary Purpose |
 |---|-----------|------|---------------|-----------------|
@@ -23,7 +23,7 @@ This document provides a comprehensive audit of the AI Post Scheduler plugin's c
 | 5 | Authors | `aips-authors` | `authors.php` | Manage author profiles & topics |
 | 6 | Voices | `aips-voices` | `voices.php` | Configure AI writing styles |
 | 7 | Activity | `aips-activity` | `activity.php` | Recent activities log |
-| 8 | History | (in main.php) | `history.php` | Generation history |
+| 8 | History | `aips-history` | `history.php` | Generation history |
 | 9 | Research | `aips-research` | `research.php` | Research topics |
 | 10 | Planner | `aips-planner` | `planner.php` | Content planning |
 | 11 | Post Review | (embedded) | `post-review.php` | Review workflow |
@@ -32,7 +32,7 @@ This document provides a comprehensive audit of the AI Post Scheduler plugin's c
 | 14 | Seeder | `aips-seeder` | `seeder.php` | Bulk generation |
 | 15 | System Status | `aips-status` | `system-status.php` | Plugin health monitoring |
 | 16 | Dev Tools | `aips-dev-tools` | `dev-tools.php` | Development utilities |
-| 17 | Settings | (tab in main) | `settings.php` | Plugin configuration |
+| 17 | Settings | (settings page) | `settings.php` | Plugin configuration |
 | 18 | Main | `ai-post-scheduler` | `main.php` | Tab navigation wrapper |
 
 ---
