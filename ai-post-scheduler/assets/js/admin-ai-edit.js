@@ -42,6 +42,10 @@
 			$(document).on('click', '#aips-ai-edit-save', window.AIPS.saveAIEditChanges);
 			$(document).on('click', '.aips-modal-overlay', window.AIPS.closeAIEditModal);
 			
+			// Revision viewer events
+			$(document).on('click', '.aips-view-revisions-btn', window.AIPS.toggleRevisionViewer);
+			$(document).on('click', '.aips-restore-revision-btn', window.AIPS.restoreRevision);
+			
 			// Track changes in input fields
 			$(document).on('input', '.aips-component-input, .aips-component-textarea', window.AIPS.onAIEditComponentChange);
 			
@@ -460,6 +464,237 @@
 				e.preventDefault();
 				window.AIPS.saveAIEditChanges(e);
 			}
+		},
+		
+		/**
+		 * Toggle revision viewer
+		 */
+		toggleRevisionViewer: function(e) {
+			e.preventDefault();
+			var $button = $(e.currentTarget);
+			var componentType = $button.data('component');
+			var $section = $button.closest('.aips-component-section');
+			var $revisions = $section.find('.aips-component-revisions');
+			
+			// Toggle visibility
+			if ($revisions.is(':visible')) {
+				$revisions.slideUp(200);
+				$button.removeClass('active');
+			} else {
+				$revisions.slideDown(200);
+				$button.addClass('active');
+				
+				// Load revisions if not loaded yet
+				if (!$revisions.data('loaded')) {
+					window.AIPS.loadComponentRevisions(componentType, $section);
+				}
+			}
+		},
+		
+		/**
+		 * Load component revisions via AJAX
+		 */
+		loadComponentRevisions: function(componentType, $section) {
+			var $revisions = $section.find('.aips-component-revisions');
+			var $loading = $revisions.find('.aips-revisions-loading');
+			var $list = $revisions.find('.aips-revisions-list');
+			var $empty = $revisions.find('.aips-revisions-empty');
+			var $button = $section.find('.aips-view-revisions-btn');
+			
+			// Show loading
+			$loading.show();
+			$list.empty().hide();
+			$empty.hide();
+			
+			// Make AJAX request
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_component_revisions',
+					nonce: aipsAIEditL10n.nonce,
+					post_id: aiEditState.postId,
+					component_type: componentType,
+					history_id: aiEditState.historyId
+				},
+				success: function(response) {
+					$loading.hide();
+					$revisions.data('loaded', true);
+					
+					if (response.success && response.data.revisions && response.data.revisions.length > 0) {
+						var revisions = response.data.revisions;
+						
+						// Update count badge
+						var $count = $button.find('.revision-count');
+						if ($count.length === 0) {
+							$count = $('<span class="revision-count"></span>');
+							$button.find('.button-text').after($count);
+						}
+						$count.text('(' + revisions.length + ')');
+						
+						// Render revisions
+						revisions.forEach(function(revision) {
+							var $item = window.AIPS.renderRevisionItem(revision, componentType);
+							$list.append($item);
+						});
+						
+						$list.show();
+					} else {
+						$empty.show();
+					}
+				},
+				error: function(xhr, status, error) {
+					$loading.hide();
+					console.error('Failed to load revisions:', error);
+					$list.html('<div class="notice notice-error inline"><p>Failed to load revisions. Please try again.</p></div>').show();
+				}
+			});
+		},
+		
+		/**
+		 * Render a revision item
+		 */
+		renderRevisionItem: function(revision, componentType) {
+			var $item = $('<div class="aips-revision-item"></div>');
+			$item.data('revision-id', revision.id);
+			
+			// Content section
+			var $content = $('<div class="aips-revision-content"></div>');
+			
+			// Meta information
+			var $meta = $('<div class="aips-revision-meta"></div>');
+			$meta.append('<span class="dashicons dashicons-backup"></span>');
+			$meta.append('<span class="aips-revision-timestamp">' + window.AIPS.escapeHtml(revision.created_at) + '</span>');
+			$content.append($meta);
+			
+			// Value preview
+			var $value = $('<div class="aips-revision-value aips-revision-value-' + componentType + '"></div>');
+			
+			if (componentType === 'featured_image') {
+				if (revision.value && revision.value.url) {
+					$value.html('<img src="' + window.AIPS.escapeHtml(revision.value.url) + '" alt="Revision" class="aips-revision-value-image" />');
+				} else {
+					$value.text('No image');
+				}
+			} else {
+				$value.text(revision.value || '(empty)');
+			}
+			
+			$content.append($value);
+			$item.append($content);
+			
+			// Actions section
+			var $actions = $('<div class="aips-revision-actions"></div>');
+			var $restoreBtn = $('<button type="button" class="aips-restore-revision-btn" data-revision-id="' + revision.id + '" data-component="' + componentType + '"></button>');
+			$restoreBtn.append('<span class="dashicons dashicons-undo"></span>');
+			$restoreBtn.append('<span>Restore</span>');
+			$actions.append($restoreBtn);
+			$item.append($actions);
+			
+			return $item;
+		},
+		
+		/**
+		 * Restore a revision
+		 */
+		restoreRevision: function(e) {
+			e.preventDefault();
+			var $button = $(e.currentTarget);
+			var revisionId = $button.data('revision-id');
+			var componentType = $button.data('component');
+			var $item = $button.closest('.aips-revision-item');
+			
+			// Disable button and show loading
+			$button.prop('disabled', true);
+			$item.addClass('restoring');
+			
+			// Make AJAX request
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_restore_component_revision',
+					nonce: aipsAIEditL10n.nonce,
+					post_id: aiEditState.postId,
+					revision_id: revisionId,
+					component_type: componentType
+				},
+				success: function(response) {
+					$button.prop('disabled', false);
+					$item.removeClass('restoring');
+					
+					if (response.success && response.data.value) {
+						// Update the component input with restored value
+						window.AIPS.updateComponentValue(componentType, response.data.value);
+						
+						// Mark as changed
+						window.AIPS.markComponentChanged(componentType);
+						
+						// Show success message
+						window.AIPS.showAIEditStatus('Revision restored successfully!', 'success');
+						
+						// Close revision panel
+						var $section = $item.closest('.aips-component-section');
+						$section.find('.aips-view-revisions-btn').click();
+					} else {
+						window.AIPS.showAIEditStatus(response.data && response.data.message ? response.data.message : 'Failed to restore revision', 'error');
+					}
+				},
+				error: function(xhr, status, error) {
+					$button.prop('disabled', false);
+					$item.removeClass('restoring');
+					console.error('Failed to restore revision:', error);
+					window.AIPS.showAIEditStatus('Failed to restore revision. Please try again.', 'error');
+				}
+			});
+		},
+		
+		/**
+		 * Update component value after restore
+		 */
+		updateComponentValue: function(componentType, value) {
+			var $input;
+			
+			switch (componentType) {
+				case 'title':
+					$input = $('#aips-component-title');
+					$input.val(value);
+					break;
+				case 'excerpt':
+					$input = $('#aips-component-excerpt');
+					$input.val(value);
+					break;
+				case 'content':
+					$input = $('#aips-component-content');
+					$input.val(value);
+					break;
+				case 'featured_image':
+					if (value && value.url) {
+						$('#aips-component-image').attr('src', value.url).show();
+						$('#aips-component-image-none').hide();
+						aiEditState.components.featured_image = value.id;
+					}
+					break;
+			}
+			
+			// Trigger input event to update character count
+			if ($input && $input.length) {
+				$input.trigger('input');
+			}
+		},
+		
+		/**
+		 * Escape HTML for safe rendering
+		 */
+		escapeHtml: function(text) {
+			var map = {
+				'&': '&amp;',
+				'<': '&lt;',
+				'>': '&gt;',
+				'"': '&quot;',
+				"'": '&#039;'
+			};
+			return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
 		}
 		
 	});

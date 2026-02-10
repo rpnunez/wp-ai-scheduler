@@ -254,6 +254,232 @@
 		flex: 1;
 		justify-content: center;
 	}
+}
+
+/* Component Revisions Viewer */
+.aips-component-revisions-wrapper {
+	margin-top: 15px;
+	border-top: 1px solid #dcdcde;
+	padding-top: 15px;
+}
+
+.aips-view-revisions-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	padding: 5px 12px;
+	border-radius: 3px;
+	cursor: pointer;
+	font-size: 13px;
+	color: #2c3338;
+	transition: all 0.2s ease;
+}
+
+.aips-view-revisions-btn:hover {
+	background: #f0f0f1;
+	border-color: #8c8f94;
+}
+
+.aips-view-revisions-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.aips-view-revisions-btn .revision-count {
+	background: #2271b1;
+	color: white;
+	padding: 2px 6px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	min-width: 18px;
+	text-align: center;
+}
+
+.aips-view-revisions-btn.active {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: white;
+}
+
+.aips-view-revisions-btn.active .revision-count {
+	background: white;
+	color: #2271b1;
+}
+
+.aips-component-revisions {
+	margin-top: 15px;
+	background: #f9f9f9;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 15px;
+}
+
+.aips-revisions-loading {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 20px;
+	justify-content: center;
+	color: #646970;
+}
+
+.aips-revisions-loading .spinner {
+	float: none;
+	margin: 0;
+}
+
+.aips-revisions-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.aips-revision-item {
+	display: flex;
+	gap: 15px;
+	padding: 12px;
+	background: white;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+}
+
+.aips-revision-item:hover {
+	border-color: #8c8f94;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.aips-revision-content {
+	flex: 1;
+	min-width: 0;
+}
+
+.aips-revision-meta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	color: #646970;
+	font-size: 12px;
+}
+
+.aips-revision-meta .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	color: #8c8f94;
+}
+
+.aips-revision-timestamp {
+	font-weight: 500;
+}
+
+.aips-revision-value {
+	color: #2c3338;
+	font-size: 13px;
+	line-height: 1.5;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+}
+
+.aips-revision-value-title {
+	font-weight: 500;
+}
+
+.aips-revision-value-excerpt,
+.aips-revision-value-content {
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-height: 4.5em;
+}
+
+.aips-revision-value-image {
+	max-width: 200px;
+	height: auto;
+	border-radius: 3px;
+}
+
+.aips-revision-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	align-items: flex-end;
+	justify-content: center;
+}
+
+.aips-restore-revision-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 6px 12px;
+	background: #2271b1;
+	color: white;
+	border: none;
+	border-radius: 3px;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+	transition: all 0.2s ease;
+}
+
+.aips-restore-revision-btn:hover {
+	background: #135e96;
+}
+
+.aips-restore-revision-btn:disabled {
+	background: #dcdcde;
+	color: #a7aaad;
+	cursor: not-allowed;
+}
+
+.aips-restore-revision-btn .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+.aips-revisions-empty {
+	padding: 30px;
+	text-align: center;
+	color: #646970;
+	font-size: 13px;
+}
+
+/* Revision item loading state */
+.aips-revision-item.restoring {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.aips-revision-item.restoring .aips-restore-revision-btn {
+	position: relative;
+}
+
+.aips-revision-item.restoring .aips-restore-revision-btn::after {
+	content: '';
+	position: absolute;
+	width: 12px;
+	height: 12px;
+	border: 2px solid white;
+	border-top-color: transparent;
+	border-radius: 50%;
+	animation: spin 0.6s linear infinite;
+	right: 8px;
+	top: 50%;
+	margin-top: -6px;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
 	
 	.aips-modal-footer {
 		flex-direction: column;

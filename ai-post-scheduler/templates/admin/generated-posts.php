@@ -405,7 +405,7 @@ include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 				</div>
 				
 				<!-- Title Component -->
-				<div class="aips-component-section">
+				<div class="aips-component-section" data-component="title">
 					<div class="aips-component-header">
 						<h4 class="aips-component-title"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></h4>
 						<div class="aips-component-actions">
@@ -422,10 +422,27 @@ include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 							<span class="aips-char-count"></span>
 						</div>
 					</div>
+					<div class="aips-component-revisions-wrapper">
+						<button type="button" class="aips-view-revisions-btn" data-component="title">
+							<span class="dashicons dashicons-backup"></span>
+							<span class="button-text"><?php esc_html_e('View Revisions', 'ai-post-scheduler'); ?></span>
+							<span class="revision-count"></span>
+						</button>
+						<div class="aips-component-revisions" style="display: none;">
+							<div class="aips-revisions-loading">
+								<span class="spinner is-active"></span>
+								<span><?php esc_html_e('Loading revisions...', 'ai-post-scheduler'); ?></span>
+							</div>
+							<div class="aips-revisions-list"></div>
+							<div class="aips-revisions-empty" style="display: none;">
+								<?php esc_html_e('No previous revisions found.', 'ai-post-scheduler'); ?>
+							</div>
+						</div>
+					</div>
 				</div>
 				
 				<!-- Excerpt Component -->
-				<div class="aips-component-section">
+				<div class="aips-component-section" data-component="excerpt">
 					<div class="aips-component-header">
 						<h4 class="aips-component-title"><?php esc_html_e('Excerpt', 'ai-post-scheduler'); ?></h4>
 						<div class="aips-component-actions">
@@ -442,10 +459,27 @@ include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 							<span class="aips-char-count"></span>
 						</div>
 					</div>
+					<div class="aips-component-revisions-wrapper">
+						<button type="button" class="aips-view-revisions-btn" data-component="excerpt">
+							<span class="dashicons dashicons-backup"></span>
+							<span class="button-text"><?php esc_html_e('View Revisions', 'ai-post-scheduler'); ?></span>
+							<span class="revision-count"></span>
+						</button>
+						<div class="aips-component-revisions" style="display: none;">
+							<div class="aips-revisions-loading">
+								<span class="spinner is-active"></span>
+								<span><?php esc_html_e('Loading revisions...', 'ai-post-scheduler'); ?></span>
+							</div>
+							<div class="aips-revisions-list"></div>
+							<div class="aips-revisions-empty" style="display: none;">
+								<?php esc_html_e('No previous revisions found.', 'ai-post-scheduler'); ?>
+							</div>
+						</div>
+					</div>
 				</div>
 				
 				<!-- Content Component -->
-				<div class="aips-component-section">
+				<div class="aips-component-section" data-component="content">
 					<div class="aips-component-header">
 						<h4 class="aips-component-title"><?php esc_html_e('Content', 'ai-post-scheduler'); ?></h4>
 						<div class="aips-component-actions">
@@ -462,10 +496,27 @@ include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 							<span class="aips-char-count"></span>
 						</div>
 					</div>
+					<div class="aips-component-revisions-wrapper">
+						<button type="button" class="aips-view-revisions-btn" data-component="content">
+							<span class="dashicons dashicons-backup"></span>
+							<span class="button-text"><?php esc_html_e('View Revisions', 'ai-post-scheduler'); ?></span>
+							<span class="revision-count"></span>
+						</button>
+						<div class="aips-component-revisions" style="display: none;">
+							<div class="aips-revisions-loading">
+								<span class="spinner is-active"></span>
+								<span><?php esc_html_e('Loading revisions...', 'ai-post-scheduler'); ?></span>
+							</div>
+							<div class="aips-revisions-list"></div>
+							<div class="aips-revisions-empty" style="display: none;">
+								<?php esc_html_e('No previous revisions found.', 'ai-post-scheduler'); ?>
+							</div>
+						</div>
+					</div>
 				</div>
 				
 				<!-- Featured Image Component -->
-				<div class="aips-component-section">
+				<div class="aips-component-section" data-component="featured_image">
 					<div class="aips-component-header">
 						<h4 class="aips-component-title"><?php esc_html_e('Featured Image', 'ai-post-scheduler'); ?></h4>
 						<div class="aips-component-actions">
@@ -481,6 +532,23 @@ include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 							<img id="aips-component-image" src="" alt="<?php esc_attr_e('Featured Image', 'ai-post-scheduler'); ?>" style="display: none;" />
 							<div id="aips-component-image-none" class="aips-featured-image-none">
 								<?php esc_html_e('No featured image', 'ai-post-scheduler'); ?>
+							</div>
+						</div>
+					</div>
+					<div class="aips-component-revisions-wrapper">
+						<button type="button" class="aips-view-revisions-btn" data-component="featured_image">
+							<span class="dashicons dashicons-backup"></span>
+							<span class="button-text"><?php esc_html_e('View Revisions', 'ai-post-scheduler'); ?></span>
+							<span class="revision-count"></span>
+						</button>
+						<div class="aips-component-revisions" style="display: none;">
+							<div class="aips-revisions-loading">
+								<span class="spinner is-active"></span>
+								<span><?php esc_html_e('Loading revisions...', 'ai-post-scheduler'); ?></span>
+							</div>
+							<div class="aips-revisions-list"></div>
+							<div class="aips-revisions-empty" style="display: none;">
+								<?php esc_html_e('No previous revisions found for this image.', 'ai-post-scheduler'); ?>
 							</div>
 						</div>
 					</div>
