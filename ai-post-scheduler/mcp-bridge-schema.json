@@ -1,0 +1,282 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AI Post Scheduler MCP Bridge API",
+  "description": "Model Context Protocol bridge for AI Post Scheduler WordPress plugin",
+  "version": "1.0.0",
+  "protocol": "jsonrpc-2.0",
+  "tools": [
+    {
+      "name": "list_tools",
+      "description": "List all available MCP tools with their descriptions and parameters",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "version": { "type": "string" },
+          "tools": { "type": "object" }
+        }
+      }
+    },
+    {
+      "name": "clear_cache",
+      "description": "Clear all plugin caches (transients)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cache_type": {
+            "type": "string",
+            "description": "Type of cache to clear: all, history_stats, schedule_stats, or specific transient name",
+            "default": "all",
+            "enum": ["all", "history_stats", "schedule_stats"]
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "cleared": { "type": "array", "items": { "type": "string" } },
+          "count": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "name": "check_database",
+      "description": "Check database health and verify all tables/columns exist",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "database": { "type": "object" }
+        }
+      }
+    },
+    {
+      "name": "repair_database",
+      "description": "Repair database tables using WordPress dbDelta",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "check_upgrades",
+      "description": "Check if database upgrades are needed and optionally run them",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "type": "boolean",
+            "description": "If true, run upgrades. If false, just check.",
+            "default": false
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "current_version": { "type": "string" },
+          "plugin_version": { "type": "string" },
+          "needs_upgrade": { "type": "boolean" },
+          "upgraded": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "name": "system_status",
+      "description": "Get comprehensive system status including environment, plugin, database, filesystem, cron, and logs",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section": {
+            "type": "string",
+            "description": "Specific section: all, environment, plugin, database, filesystem, cron, logs",
+            "default": "all",
+            "enum": ["all", "environment", "plugin", "database", "filesystem", "cron", "logs"]
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "system_info": { "type": "object" }
+        }
+      }
+    },
+    {
+      "name": "clear_history",
+      "description": "Clear generation history records",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "older_than_days": {
+            "type": "integer",
+            "description": "Clear records older than N days. If 0, clear all.",
+            "default": 0,
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "description": "Clear only records with specific status: all, completed, failed, pending",
+            "default": "all",
+            "enum": ["all", "completed", "failed", "pending"]
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "deleted": { "type": "integer" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "export_data",
+      "description": "Export plugin data in JSON or MySQL format",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "description": "Export format: json or mysql",
+            "enum": ["json", "mysql"]
+          },
+          "tables": {
+            "type": "array",
+            "description": "List of tables to export (empty for all)",
+            "items": { "type": "string" },
+            "default": []
+          }
+        },
+        "required": ["format"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "format": { "type": "string" },
+          "file": { "type": "string" },
+          "url": { "type": "string" },
+          "size": { "type": "integer" },
+          "tables": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    {
+      "name": "get_cron_status",
+      "description": "Get status of all scheduled cron jobs",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "crons": { "type": "object" }
+        }
+      }
+    },
+    {
+      "name": "trigger_cron",
+      "description": "Manually trigger a specific cron job",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hook": {
+            "type": "string",
+            "description": "Cron hook name",
+            "enum": [
+              "aips_generate_scheduled_posts",
+              "aips_generate_author_topics",
+              "aips_generate_author_posts",
+              "aips_scheduled_research",
+              "aips_send_review_notifications",
+              "aips_cleanup_export_files"
+            ]
+          }
+        },
+        "required": ["hook"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "hook": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "get_plugin_info",
+      "description": "Get plugin version, settings, and configuration",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "plugin": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "version": { "type": "string" },
+              "db_version": { "type": "string" },
+              "php_version": { "type": "string" },
+              "wp_version": { "type": "string" },
+              "ai_engine_active": { "type": "boolean" },
+              "settings": { "type": "object" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "authentication": {
+    "type": "wordpress",
+    "required": true,
+    "capability": "manage_options",
+    "methods": [
+      "session_cookie",
+      "application_password",
+      "custom_token"
+    ]
+  },
+  "errors": {
+    "-32700": "Parse error - Invalid JSON",
+    "-32600": "Invalid Request - Missing method",
+    "-32601": "Method not found",
+    "-32001": "Insufficient permissions",
+    "-32000": "Tool execution error"
+  }
+}

@@ -75,6 +75,20 @@ Use these variables in your prompts:
 
 Developers can extend variables via the `aips_template_variables` filter.
 
+= MCP Bridge =
+
+The plugin includes a Model Context Protocol (MCP) bridge that exposes plugin functionality to AI tools and Copilot:
+
+* **Tool Discovery**: List all available MCP tools programmatically
+* **Cache Management**: Clear plugin caches and transients
+* **Database Operations**: Check health, repair tables, run migrations
+* **System Diagnostics**: Get comprehensive status information
+* **Data Export**: Export data in JSON or MySQL format
+* **Cron Management**: Check status and trigger scheduled jobs
+* **History Management**: Clear old generation records
+
+See `MCP_BRIDGE_README.md` for complete API documentation and usage examples.
+
 == Installation ==
 
 1. Upload the `ai-post-scheduler` folder to `/wp-content/plugins/`
