@@ -53,7 +53,7 @@ class AIPS_Calendar_Controller {
 		
 		// Calculate the start and end dates for the month
 		$start_date = sprintf('%04d-%02d-01 00:00:00', $year, $month);
-		$days_in_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+		$days_in_month = date('t', strtotime($start_date)); // Number of days in month
 		$end_date = sprintf('%04d-%02d-%02d 23:59:59', $year, $month, $days_in_month);
 		
 		$schedule_table = $wpdb->prefix . 'aips_schedule';
