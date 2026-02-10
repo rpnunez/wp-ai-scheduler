@@ -253,4 +253,53 @@ class Test_AIPS_Calendar_Controller extends WP_UnitTestCase {
 		$this->assertIsArray($events);
 		$this->assertEmpty($events, 'Inactive schedules should not generate events');
 	}
+
+	/**
+	 * Test that author and category are resolved from template metadata
+	 */
+	public function test_get_month_events_resolves_author_and_category() {
+		global $wpdb;
+		
+		// Create a test user
+		$user_id = $this->factory->user->create(array(
+			'display_name' => 'Test Author',
+			'user_login' => 'testauthor',
+		));
+		
+		// Create a test category
+		$category_id = $this->factory->category->create(array(
+			'name' => 'Test Category',
+			'slug' => 'test-category',
+		));
+		
+		// Create a template with author and category
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_templates',
+			array(
+				'name' => 'Template with Metadata',
+				'content_prompt' => 'Test prompt',
+				'post_author' => $user_id,
+				'post_category' => $category_id,
+				'is_active' => 1,
+			)
+		);
+		$template_id = $wpdb->insert_id;
+
+		// Create a daily schedule
+		$this->schedule_repo->create(array(
+			'template_id' => $template_id,
+			'frequency' => 'daily',
+			'next_run' => '2026-02-01 10:00:00',
+			'is_active' => 1,
+		));
+
+		$events = $this->controller->get_month_events(2026, 2);
+
+		$this->assertNotEmpty($events);
+		$first_event = $events[0];
+		
+		// Verify author and category are resolved
+		$this->assertEquals('Test Author', $first_event['author']);
+		$this->assertEquals('Test Category', $first_event['category']);
+	}
 }

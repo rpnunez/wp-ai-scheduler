@@ -25,11 +25,17 @@ class AIPS_Calendar_Controller {
 	private $interval_calculator;
 	
 	/**
+	 * @var AIPS_Template_Repository Template repository instance
+	 */
+	private $template_repo;
+	
+	/**
 	 * Initialize the controller.
 	 */
 	public function __construct() {
 		$this->schedule_repo = new AIPS_Schedule_Repository();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
+		$this->template_repo = new AIPS_Template_Repository();
 		add_action('wp_ajax_aips_get_calendar_events', array($this, 'ajax_get_calendar_events'));
 	}
 	
@@ -169,8 +175,18 @@ class AIPS_Calendar_Controller {
 	 * @return string Category name
 	 */
 	private function get_schedule_category($schedule) {
-		// TODO: Implement category resolution from template metadata
-		// Placeholder returns generic category until category support is added
+		// Get category from linked template if available
+		if (!empty($schedule->template_id)) {
+			$template = $this->template_repo->get_by_id($schedule->template_id);
+			if ($template && !empty($template->post_category)) {
+				$category = get_category($template->post_category);
+				if ($category && !is_wp_error($category)) {
+					return $category->name;
+				}
+			}
+		}
+		
+		// Fallback to generic category
 		return __('General', 'ai-post-scheduler');
 	}
 	
@@ -181,8 +197,18 @@ class AIPS_Calendar_Controller {
 	 * @return string Author name
 	 */
 	private function get_schedule_author($schedule) {
-		// TODO: Implement author resolution from template metadata
-		// Placeholder returns generic author until author support is added
+		// Get author from linked template if available
+		if (!empty($schedule->template_id)) {
+			$template = $this->template_repo->get_by_id($schedule->template_id);
+			if ($template && !empty($template->post_author)) {
+				$user = get_userdata($template->post_author);
+				if ($user) {
+					return $user->display_name;
+				}
+			}
+		}
+		
+		// Fallback to generic author
 		return __('AI Generated', 'ai-post-scheduler');
 	}
 	
