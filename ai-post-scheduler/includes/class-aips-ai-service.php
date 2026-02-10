@@ -321,12 +321,28 @@ class AIPS_AI_Service {
         // Clean and parse JSON
         $json_str = trim($text_response);
         
-        // 1. Try to extract from markdown code blocks first
-        if (preg_match('/```(?:json)?\s*([\s\S]*?)\s*```/', $json_str, $matches)) {
+        // 1. First, try to extract from explicitly tagged ```json code blocks
+        if (preg_match('/```json\s*([\s\S]*?)\s*```/', $json_str, $matches)) {
             $json_str = trim($matches[1]);
         }
-        // 2. If no code blocks, look for JSON object or array structure
-        // This is a simple heuristic: find the first { or [ and the last } or ]
+        // 2. If no json-tagged block, try all fenced code blocks and find one that decodes
+        elseif (preg_match_all('/```[a-z]*\s*([\s\S]*?)\s*```/', $json_str, $all_matches)) {
+            $json_found = false;
+            foreach ($all_matches[1] as $block_content) {
+                $test_json = trim($block_content);
+                $test_decode = json_decode($test_json, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($test_decode)) {
+                    $json_str = $test_json;
+                    $json_found = true;
+                    break;
+                }
+            }
+            // 3. If no valid JSON in code blocks, look for JSON object or array structure
+            if (!$json_found && preg_match('/(\{[\s\S]*\}|\[[\s\S]*\])/', $json_str, $matches)) {
+                $json_str = trim($matches[1]);
+            }
+        }
+        // 4. If no code blocks at all, look for JSON object or array structure
         elseif (preg_match('/(\{[\s\S]*\}|\[[\s\S]*\])/', $json_str, $matches)) {
             $json_str = trim($matches[1]);
         }
