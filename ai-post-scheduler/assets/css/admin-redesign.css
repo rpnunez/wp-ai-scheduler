@@ -222,6 +222,17 @@
 	box-shadow: var(--aips-shadow-sm);
 }
 
+/**
+ * Implements a responsive Grid system for the redesign by using CSS Grid with
+ * consistent spacing and utility column presets.
+ *
+ * - `.aips-grid` enables `display: grid` and applies a shared gap via `--aips-space-5`.
+ * - `.aips-grid-cols-2`, `.aips-grid-cols-3`, `.aips-grid-cols-4` define adaptive
+ *   column layouts using `repeat(auto-fit, minmax(..., 1fr))`, which creates as
+ *   many columns as fit while maintaining a minimum card width.
+ * - The min widths (300px/250px/200px) progressively allow more columns on wider
+ *   screens and gracefully collapse on narrower viewports.
+ */
 /* Grid System */
 .aips-redesign .aips-grid {
 	display: grid;
