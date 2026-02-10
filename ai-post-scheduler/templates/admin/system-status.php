@@ -91,7 +91,9 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         var target = $(this).data('target');
         $('#' + target).slideToggle();
-        var text = $('#' + target).is(':visible') ? '<?php esc_html_e('Hide Details', 'ai-post-scheduler'); ?>' : '<?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>';
+        var text = $('#' + target).is(':visible')
+            ? <?php echo wp_json_encode( __( 'Hide Details', 'ai-post-scheduler' ) ); ?>
+            : <?php echo wp_json_encode( __( 'Show Details', 'ai-post-scheduler' ) ); ?>;
         $(this).text(text);
     });
 });
