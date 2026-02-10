@@ -367,7 +367,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
         
         // Mock $mwai with simpleJsonQuery method
         $mwai = new class {
-            public function simpleJsonQuery($prompt, $options) {
+            public function simpleJsonQuery($prompt, $options = array()) {
                 // Return mock JSON data
                 return array(
                     array('title' => 'Topic 1', 'score' => 85, 'keywords' => array('key1', 'key2')),
@@ -403,5 +403,181 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $mwai = $original_mwai;
             $mwai_core = $original_core;
         }
+    }
+
+    /**
+     * Test fallback_json_generation extracts JSON from ```json code blocks
+     */
+    public function test_fallback_json_extraction_from_json_fenced_block() {
+        // Use reflection to test the private method
+        $reflection = new ReflectionClass($this->service);
+        $method = $reflection->getMethod('fallback_json_generation');
+        $method->setAccessible(true);
+        
+        // Mock generate_text to return JSON in a ```json fence
+        $mock_service = $this->getMockBuilder('AIPS_AI_Service')
+            ->onlyMethods(array('generate_text'))
+            ->getMock();
+        
+        $json_data = array('title' => 'Test', 'content' => 'Data');
+        $response = "Here's the JSON you requested:\n\n```json\n" . json_encode($json_data) . "\n```\n\nHope that helps!";
+        
+        $mock_service->method('generate_text')->willReturn($response);
+        
+        $result = $method->invoke($mock_service, 'Test prompt');
+        
+        $this->assertIsArray($result);
+        $this->assertEquals('Test', $result['title']);
+        $this->assertEquals('Data', $result['content']);
+    }
+
+    /**
+     * Test fallback_json_extraction extracts JSON from generic code blocks (via universal fallback)
+     */
+    public function test_fallback_json_extraction_from_generic_code_block() {
+        $reflection = new ReflectionClass($this->service);
+        $method = $reflection->getMethod('fallback_json_generation');
+        $method->setAccessible(true);
+        
+        $mock_service = $this->getMockBuilder('AIPS_AI_Service')
+            ->onlyMethods(array('generate_text'))
+            ->getMock();
+        
+        $json_data = array('status' => 'ok', 'value' => 42);
+        $response = "Here's your data:\n```\n" . json_encode($json_data) . "\n```";
+        
+        $mock_service->method('generate_text')->willReturn($response);
+        
+        $result = $method->invoke($mock_service, 'Test prompt');
+        
+        $this->assertIsArray($result);
+        $this->assertEquals('ok', $result['status']);
+        $this->assertEquals(42, $result['value']);
+    }
+
+    /**
+     * Test fallback_json_generation extracts JSON surrounded by text
+     */
+    public function test_fallback_json_extraction_from_plain_text() {
+        $reflection = new ReflectionClass($this->service);
+        $method = $reflection->getMethod('fallback_json_generation');
+        $method->setAccessible(true);
+        
+        $mock_service = $this->getMockBuilder('AIPS_AI_Service')
+            ->onlyMethods(array('generate_text'))
+            ->getMock();
+        
+        $json_data = array('name' => 'Test User', 'email' => 'test@example.com');
+        $response = "Sure! Here is the JSON data: " . json_encode($json_data) . " - let me know if you need anything else.";
+        
+        $mock_service->method('generate_text')->willReturn($response);
+        
+        $result = $method->invoke($mock_service, 'Test prompt');
+        
+        $this->assertIsArray($result);
+        $this->assertEquals('Test User', $result['name']);
+        $this->assertEquals('test@example.com', $result['email']);
+    }
+
+    /**
+     * Test fallback_json_generation prefers json-tagged blocks over non-json blocks
+     */
+    public function test_fallback_json_extraction_prefers_json_tagged_blocks() {
+        $reflection = new ReflectionClass($this->service);
+        $method = $reflection->getMethod('fallback_json_generation');
+        $method->setAccessible(true);
+        
+        $mock_service = $this->getMockBuilder('AIPS_AI_Service')
+            ->onlyMethods(array('generate_text'))
+            ->getMock();
+        
+        // Response contains a bash code block first, then a json block
+        $bash_code = 'curl -X POST http://example.com';
+        $json_data = array('api' => 'v1', 'endpoint' => '/data');
+        $response = "First, run this command:\n```bash\n{$bash_code}\n```\n\nThen use this JSON:\n```json\n" . json_encode($json_data) . "\n```";
+        
+        $mock_service->method('generate_text')->willReturn($response);
+        
+        $result = $method->invoke($mock_service, 'Test prompt');
+        
+        // Should extract the JSON block, not the bash block
+        $this->assertIsArray($result);
+        $this->assertEquals('v1', $result['api']);
+        $this->assertEquals('/data', $result['endpoint']);
+    }
+
+    /**
+     * Test fallback_json_generation tries multiple non-json code blocks
+     */
+    public function test_fallback_json_extraction_tries_multiple_code_blocks() {
+        $reflection = new ReflectionClass($this->service);
+        $method = $reflection->getMethod('fallback_json_generation');
+        $method->setAccessible(true);
+        
+        $mock_service = $this->getMockBuilder('AIPS_AI_Service')
+            ->onlyMethods(array('generate_text'))
+            ->getMock();
+        
+        // Response has a bash block, then a generic block with valid JSON
+        $bash_code = 'npm install package';
+        $json_data = array('package' => 'test', 'version' => '1.0.0');
+        $response = "Install it:\n```bash\n{$bash_code}\n```\n\nConfig:\n```\n" . json_encode($json_data) . "\n```";
+        
+        $mock_service->method('generate_text')->willReturn($response);
+        
+        $result = $method->invoke($mock_service, 'Test prompt');
+        
+        // Should find the valid JSON in the second block
+        $this->assertIsArray($result);
+        $this->assertEquals('test', $result['package']);
+        $this->assertEquals('1.0.0', $result['version']);
+    }
+
+    /**
+     * Test fallback_json_generation handles invalid JSON gracefully
+     */
+    public function test_fallback_json_extraction_handles_invalid_json() {
+        $reflection = new ReflectionClass($this->service);
+        $method = $reflection->getMethod('fallback_json_generation');
+        $method->setAccessible(true);
+        
+        $mock_service = $this->getMockBuilder('AIPS_AI_Service')
+            ->onlyMethods(array('generate_text'))
+            ->getMock();
+        
+        $response = "Here's some invalid JSON: {invalid json data}";
+        
+        $mock_service->method('generate_text')->willReturn($response);
+        
+        $result = $method->invoke($mock_service, 'Test prompt');
+        
+        // Should return WP_Error
+        $this->assertInstanceOf('WP_Error', $result);
+        $this->assertEquals('json_parse_error', $result->get_error_code());
+    }
+
+    /**
+     * Test fallback_json_generation handles non-array JSON
+     */
+    public function test_fallback_json_extraction_rejects_non_array() {
+        $reflection = new ReflectionClass($this->service);
+        $method = $reflection->getMethod('fallback_json_generation');
+        $method->setAccessible(true);
+        
+        $mock_service = $this->getMockBuilder('AIPS_AI_Service')
+            ->onlyMethods(array('generate_text'))
+            ->getMock();
+        
+        // Valid JSON but not an array - will be decoded successfully as a string
+        // but then rejected by the is_array check
+        $response = '"just a string"';
+        
+        $mock_service->method('generate_text')->willReturn($response);
+        
+        $result = $method->invoke($mock_service, 'Test prompt');
+        
+        // Should return WP_Error for invalid format
+        $this->assertInstanceOf('WP_Error', $result);
+        $this->assertEquals('invalid_json_format', $result->get_error_code());
     }
 }
