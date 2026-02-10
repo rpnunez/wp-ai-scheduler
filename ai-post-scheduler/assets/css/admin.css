@@ -1858,3 +1858,38 @@
         max-height: 200px;
     }
 }
+/* ========================================
+   Proposal B Navigation - Section Headers
+   ======================================== */
+
+/* Style for non-clickable section headers in the admin menu */
+#adminmenu .aips-menu-section-header {
+    color: #a7aaad !important;
+    font-weight: 600 !important;
+    padding-top: 10px !important;
+    padding-bottom: 5px !important;
+    cursor: default !important;
+    pointer-events: none !important;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+#adminmenu .aips-menu-section-header a {
+    color: #a7aaad !important;
+    pointer-events: none !important;
+    cursor: default !important;
+}
+
+#adminmenu .aips-menu-section-header:hover,
+#adminmenu .aips-menu-section-header a:hover {
+    background-color: transparent !important;
+    color: #a7aaad !important;
+}
+
+/* Ensure section headers don't get highlighted/selected */
+#adminmenu .aips-menu-section-header.current,
+#adminmenu .aips-menu-section-header.current a {
+    background-color: transparent !important;
+    color: #a7aaad !important;
+}

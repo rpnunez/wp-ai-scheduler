@@ -51,8 +51,8 @@ $is_history_tab = isset($is_history_tab) ? $is_history_tab : false;
         <div class="aips-page-header">
             <div class="aips-page-header-top">
                 <div>
-                    <h1 class="aips-page-title"><?php esc_html_e('Generation History', 'ai-post-scheduler'); ?></h1>
-                    <p class="aips-page-description"><?php esc_html_e('View and manage all AI-generated post history with detailed logs and error tracking.', 'ai-post-scheduler'); ?></p>
+                    <h1 class="aips-page-title"><?php esc_html_e('History', 'ai-post-scheduler'); ?></h1>
+                    <p class="aips-page-description"><?php esc_html_e('View generation history, activity logs, and track all AI post generation events with detailed error tracking.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
                     <button class="aips-btn aips-btn-secondary" id="aips-export-history-btn">
