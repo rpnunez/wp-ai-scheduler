@@ -320,14 +320,17 @@ class AIPS_AI_Service {
         
         // Clean and parse JSON
         $json_str = trim($text_response);
+        $json_extracted = false;
         
         // 1. First, try to extract from explicitly tagged ```json code blocks
+        // We trust json-tagged blocks and don't apply further fallbacks
         if (preg_match('/```json\s*([\s\S]*?)\s*```/', $json_str, $matches)) {
             $json_str = trim($matches[1]);
+            $json_extracted = true;
         }
-        // 2. If no json-tagged block, try all fenced code blocks and find one that decodes
-        elseif (preg_match_all('/```[a-zA-Z0-9+_-]*\s*([\s\S]*?)\s*```/', $json_str, $all_matches)) {
-            $json_found = false;
+        // 2. If no json-tagged block, try other fenced code blocks (with language tags)
+        // and find one that decodes successfully
+        elseif (preg_match_all('/```[a-zA-Z0-9+_-]+\s*([\s\S]*?)\s*```/', $json_str, $all_matches)) {
             // Limit to first 5 code blocks to prevent excessive processing
             $blocks_to_check = array_slice($all_matches[1], 0, 5);
             foreach ($blocks_to_check as $block_content) {
@@ -335,17 +338,15 @@ class AIPS_AI_Service {
                 $test_decode = json_decode($test_json, true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($test_decode)) {
                     $json_str = $test_json;
-                    $json_found = true;
+                    $json_extracted = true;
                     break;
                 }
             }
-            // 3. If no valid JSON in code blocks, look for JSON object or array structure
-            if (!$json_found && preg_match('/(\{[\s\S]*\}|\[[\s\S]*\])/', $json_str, $matches)) {
-                $json_str = trim($matches[1]);
-            }
         }
-        // 4. If no code blocks at all, look for JSON object or array structure
-        elseif (preg_match('/(\{[\s\S]*\}|\[[\s\S]*\])/', $json_str, $matches)) {
+        
+        // 3. Final fallback: look for JSON object or array structure in the text
+        // This applies when no code blocks were found, or code blocks didn't contain valid JSON
+        if (!$json_extracted && preg_match('/(\{[\s\S]*\}|\[[\s\S]*\])/', $json_str, $matches)) {
             $json_str = trim($matches[1]);
         }
         
