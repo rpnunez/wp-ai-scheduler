@@ -182,6 +182,19 @@ class AIPS_History_Repository {
     }
     
     /**
+     * Get history record by post ID.
+     *
+     * @param int $post_id The post ID to find.
+     * @return object|null History record or null if not found.
+     */
+    public function get_by_post_id($post_id) {
+        return $this->wpdb->get_row($this->wpdb->prepare(
+            "SELECT * FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
+            $post_id
+        ));
+    }
+    
+    /**
      * Add a log entry to a history item.
      *
      * @param int    $history_id      The ID of the history item.

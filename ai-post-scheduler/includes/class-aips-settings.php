@@ -101,6 +101,15 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('History', 'ai-post-scheduler'),
+            __('History', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-history',
+            array($this, 'render_history_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Authors', 'ai-post-scheduler'),
             __('Authors', 'ai-post-scheduler'),
             'manage_options',

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- [2026-02-09] **AI Edit Feature**: New modal interface for regenerating individual post components (title, excerpt, content, featured image) without full post regeneration. Maintains original generation context (template, author, topic) for consistency. Available on both Generated Posts and Pending Review tabs.
+  - Backend: `AIPS_AI_Edit_Controller` with 3 AJAX endpoints, `AIPS_Component_Regeneration_Service` for regeneration logic
+  - Frontend: Modal UI with change tracking, loading states, and keyboard shortcuts (ESC to close, Ctrl/Cmd+S to save)
+  - Security: Nonce verification, capability checks, input sanitization
+  - Tests: 21 unit tests with comprehensive coverage
+
 ### Refactor
 - [2026-05-27] Refactored `AIPS_Scheduler` to extract execution logic into `AIPS_Schedule_Processor`. `AIPS_Scheduler` now orchestrates while `AIPS_Schedule_Processor` handles the business logic of running schedules (locking, generation, logging).
 - [2026-05-27] Updated `AIPS_Schedule_Repository` to support `LIMIT` and better joining in `get_due_schedules`.
