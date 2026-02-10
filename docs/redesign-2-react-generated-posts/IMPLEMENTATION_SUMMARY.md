@@ -141,7 +141,7 @@ ai-post-scheduler/
 ├── package.json
 ├── package-lock.json
 ├── webpack.config.js
-├── REACT_GENERATED_POSTS.md      # Detailed documentation
+├── docs/redesign-2-react-generated-posts/REACT_GENERATED_POSTS.md      # Detailed documentation
 └── ai-post-scheduler.php          (modified)
 ```
 

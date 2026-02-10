@@ -95,9 +95,9 @@ ai-post-scheduler/
 ├── package.json
 ├── package-lock.json
 ├── webpack.config.js
-├── REACT_GENERATED_POSTS.md
-├── IMPLEMENTATION_SUMMARY.md
-└── QUICKSTART_REACT.md
+├── docs/redesign-2-react-generated-posts/REACT_GENERATED_POSTS.md
+├── docs/redesign-2-react-generated-posts/IMPLEMENTATION_SUMMARY.md
+└── docs/redesign-2-react-generated-posts/QUICKSTART_REACT.md
 ```
 
 ### Modified Files (4)
