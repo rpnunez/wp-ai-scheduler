@@ -260,6 +260,174 @@
           }
         }
       }
+    },
+    {
+      "name": "generate_post",
+      "description": "Generate a single post now with AI",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "template_id": {
+            "type": "integer",
+            "description": "Template ID to use for generation"
+          },
+          "author_topic_id": {
+            "type": "integer",
+            "description": "Author topic ID for topic-based generation"
+          },
+          "schedule_id": {
+            "type": "integer",
+            "description": "Schedule ID to use schedule configuration"
+          },
+          "overrides": {
+            "type": "object",
+            "description": "Optional overrides for post creation",
+            "properties": {
+              "title": { "type": "string" },
+              "category_ids": { "type": "array", "items": { "type": "integer" } },
+              "tag_ids": { "type": "array", "items": { "type": "integer" } },
+              "post_status": { "type": "string", "enum": ["draft", "publish", "pending", "private"] },
+              "post_author": { "type": "integer" }
+            }
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "post_id": { "type": "integer" },
+          "history_id": { "type": "integer" },
+          "post": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "title": { "type": "string" },
+              "status": { "type": "string" },
+              "url": { "type": "string" },
+              "edit_url": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "list_templates",
+      "description": "Get all available templates",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "active_only": {
+            "type": "boolean",
+            "description": "Return only active templates",
+            "default": false
+          },
+          "search": {
+            "type": "string",
+            "description": "Search term to filter templates by name"
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "is_active": { "type": "boolean" },
+                "prompt_template": { "type": "string" },
+                "title_prompt": { "type": "string" },
+                "excerpt_prompt": { "type": "string" },
+                "post_status": { "type": "string" },
+                "post_category": { "type": "integer" },
+                "post_author": { "type": "integer" },
+                "voice_id": { "type": "integer" },
+                "article_structure_id": { "type": "integer" },
+                "created_at": { "type": "string" }
+              }
+            }
+          },
+          "count": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "name": "get_generation_history",
+      "description": "Retrieve past post generations with filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "per_page": {
+            "type": "integer",
+            "description": "Number of items per page (1-100)",
+            "default": 20,
+            "minimum": 1,
+            "maximum": 100
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number",
+            "default": 1,
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "description": "Filter by status",
+            "enum": ["completed", "failed", "pending"]
+          },
+          "template_id": {
+            "type": "integer",
+            "description": "Filter by template ID"
+          },
+          "search": {
+            "type": "string",
+            "description": "Search term for post title"
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "uuid": { "type": "string" },
+                "post_id": { "type": "integer" },
+                "template_id": { "type": "integer" },
+                "template_name": { "type": "string" },
+                "status": { "type": "string" },
+                "generated_title": { "type": "string" },
+                "error_message": { "type": "string" },
+                "created_at": { "type": "string" },
+                "completed_at": { "type": "string" },
+                "post_url": { "type": "string" },
+                "edit_url": { "type": "string" }
+              }
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "pages": { "type": "integer" },
+              "current_page": { "type": "integer" },
+              "per_page": { "type": "integer" }
+            }
+          }
+        }
+      }
     }
   ],
   "authentication": {
