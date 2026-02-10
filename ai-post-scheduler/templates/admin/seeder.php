@@ -4,43 +4,43 @@ if (!defined('ABSPATH')) {
 }
 ?>
 <div class="wrap aips-wrap">
-<div class="aips-page-container">
-<!-- Page Header -->
-<div class="aips-page-header">
-<div class="aips-page-header-top">
-<div>
-<h1 class="aips-page-title"><?php esc_html_e('Database Seeder', 'ai-post-scheduler'); ?></h1>
-<p class="aips-page-description"><?php esc_html_e('Generate test data to quickly populate your database with AI-generated templates, schedules, and content for testing purposes.', 'ai-post-scheduler'); ?></p>
-</div>
-</div>
-</div>
+	<div class="aips-page-container">
+		<!-- Page Header -->
+		<div class="aips-page-header">
+			<div class="aips-page-header-top">
+				<div>
+					<h1 class="aips-page-title"><?php esc_html_e('Database Seeder', 'ai-post-scheduler'); ?></h1>
+					<p class="aips-page-description"><?php esc_html_e('Generate test data to quickly populate your database with AI-generated templates, schedules, and content for testing purposes.', 'ai-post-scheduler'); ?></p>
+				</div>
+			</div>
+		</div>
 
-<!-- Content Panel -->
-<div class="aips-content-panel">
-<div class="aips-panel-body">
-<form id="aips-seeder-form">
-<div class="aips-form-section">
-<h3 class="aips-form-section-title">
-<span class="dashicons dashicons-admin-generic"></span>
-<?php esc_html_e('Seed Configuration', 'ai-post-scheduler'); ?>
-</h3>
+		<!-- Content Panel -->
+		<div class="aips-content-panel">
+			<div class="aips-panel-body">
+				<form id="aips-seeder-form">
+					<div class="aips-form-section">
+						<h3 class="aips-form-section-title">
+							<span class="dashicons dashicons-admin-generic"></span>
+							<?php esc_html_e('Seed Configuration', 'ai-post-scheduler'); ?>
+						</h3>
 
-<div class="aips-form-row">
-<label for="seeder-keywords"><?php esc_html_e('Seeder Keywords', 'ai-post-scheduler'); ?></label>
-<textarea id="seeder-keywords" name="keywords" rows="3" class="aips-form-input" placeholder="<?php esc_attr_e('e.g., technology, fitness, vegan recipes', 'ai-post-scheduler'); ?>"></textarea>
-<p class="aips-field-description"><?php esc_html_e('Comma-separated keywords to guide the AI generation (optional).', 'ai-post-scheduler'); ?></p>
-</div>
+						<div class="aips-form-row">
+							<label for="seeder-keywords"><?php esc_html_e('Seeder Keywords', 'ai-post-scheduler'); ?></label>
+							<textarea id="seeder-keywords" name="keywords" rows="3" class="aips-form-input" placeholder="<?php esc_attr_e('e.g., technology, fitness, vegan recipes', 'ai-post-scheduler'); ?>"></textarea>
+							<p class="aips-field-description"><?php esc_html_e('Comma-separated keywords to guide the AI generation (optional).', 'ai-post-scheduler'); ?></p>
+						</div>
 
-<div class="aips-form-grid aips-form-grid-2">
-<div class="aips-form-row">
-<label for="seeder-voices"><?php esc_html_e('Voices', 'ai-post-scheduler'); ?></label>
-<input type="number" id="seeder-voices" name="voices" value="0" min="0" max="50" class="aips-form-input">
-<p class="aips-field-description"><?php esc_html_e('Number of personas to create.', 'ai-post-scheduler'); ?></p>
-</div>
+						<div class="aips-form-grid aips-form-grid-2">
+							<div class="aips-form-row">
+								<label for="seeder-voices"><?php esc_html_e('Voices', 'ai-post-scheduler'); ?></label>
+								<input type="number" id="seeder-voices" name="voices" value="0" min="0" max="50" class="aips-form-input">
+								<p class="aips-field-description"><?php esc_html_e('Number of personas to create.', 'ai-post-scheduler'); ?></p>
+							</div>
 
-<div class="aips-form-row">
-<label for="seeder-templates"><?php esc_html_e('Templates', 'ai-post-scheduler'); ?></label>
-<input type="number" id="seeder-templates" name="templates" value="0" min="0" max="50" class="aips-form-input">
+							<div class="aips-form-row">
+								<label for="seeder-templates"><?php esc_html_e('Templates', 'ai-post-scheduler'); ?></label>
+								<input type="number" id="seeder-templates" name="templates" value="0" min="0" max="50" class="aips-form-input">
 <p class="aips-field-description"><?php esc_html_e('Number of post templates to create.', 'ai-post-scheduler'); ?></p>
 </div>
 
