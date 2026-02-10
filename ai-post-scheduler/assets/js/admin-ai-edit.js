@@ -352,8 +352,8 @@
 			if (response.success) {
 				window.AIPS.showAIEditNotice(response.data.message, 'success');
 				
-				// Close modal
-				window.AIPS.closeAIEditModal();
+				// Close modal without unsaved-changes prompt
+				window.AIPS.closeAIEditModal(null, { skipConfirm: true });
 				
 				// Refresh page to show updated data
 				setTimeout(function() {
@@ -375,7 +375,8 @@
 		/**
 		 * Close the modal
 		 */
-		closeAIEditModal: function(e) {
+		closeAIEditModal: function(e, options) {
+			options = options || {};
 			// Allow closing via overlay, cancel button, or close button
 			if (e) {
 				var $target = $(e.target);
@@ -389,7 +390,7 @@
 				}
 			}
 			
-			if (aiEditState.changedComponents.size > 0) {
+			if (!options.skipConfirm && aiEditState.changedComponents.size > 0) {
 				if (!confirm(aipsAIEditL10n.confirmClose)) {
 					if (e) e.stopPropagation();
 					return;
