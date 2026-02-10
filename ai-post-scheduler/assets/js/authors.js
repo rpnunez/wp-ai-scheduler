@@ -393,6 +393,16 @@
 
 			$('.aips-tab-link').removeClass('active');
 			$tab.addClass('active');
+			
+			// If in Kanban view, switch to List view when tab is clicked
+			if (typeof KanbanModule !== 'undefined' && KanbanModule.currentView === 'kanban') {
+				// Switch to list view
+				$('#aips-kanban-view').hide();
+				$('#aips-list-view').show();
+				$('.aips-view-toggle-btn').removeClass('active');
+				$('.aips-view-toggle-btn[data-view="list"]').addClass('active');
+				KanbanModule.currentView = 'list';
+			}
 
 			// Add fade transition
 			$('#aips-topics-content').fadeOut(200, () => {
@@ -1369,6 +1379,9 @@
 				}
 			});
 			
+			// Update tab counts to sync with Kanban counts
+			this.updateColumnCounts();
+			
 			// Clear generate column
 			$(`.aips-kanban-column-body[data-status="generate"]`).html(
 				'<p class="aips-kanban-drop-zone">' + (aipsAuthorsL10n.dropToGenerate || 'Drop here to generate post immediately') + '</p>'
@@ -1563,7 +1576,7 @@
 			
 			const topicId = $(e.currentTarget).data('topic-id');
 			
-			if (!confirm(aipsAuthorsL10n.confirmDelete || 'Are you sure you want to delete this topic?')) {
+			if (!confirm(aipsAuthorsL10n.confirmDeleteTopic || 'Are you sure you want to delete this topic?')) {
 				return;
 			}
 			

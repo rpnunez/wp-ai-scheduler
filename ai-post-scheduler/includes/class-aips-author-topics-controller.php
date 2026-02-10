@@ -884,6 +884,16 @@ class AIPS_Author_Topics_Controller {
 		
 		// Handle "generate" status - immediately generate post and move to approved
 		if ($new_status === 'generate') {
+			// Validate that topic can be generated (only from pending or approved)
+			if (!in_array($topic->status, array('pending', 'approved'))) {
+				wp_send_json_error(array(
+					'message' => __('Only pending or approved topics can be generated. Please approve this topic first.', 'ai-post-scheduler')
+				));
+			}
+			
+			// Store original status in case we need to revert
+			$original_status = $topic->status;
+			
 			// Create history container for generation
 			$history = $this->history_service->create('topic_generation_kanban', array(
 				'topic_id' => $topic_id,
@@ -897,24 +907,29 @@ class AIPS_Author_Topics_Controller {
 					'topic_id' => $topic_id,
 					'topic_title' => $topic->topic_title,
 					'author_id' => $topic->author_id,
+					'original_status' => $original_status,
 				)
 			);
 			
 			// Ensure topic is approved first
 			$this->repository->update_status($topic_id, 'approved', get_current_user_id());
 			
-			// Generate the post
-			$result = $this->post_generator->generate_from_topic($topic_id);
+			// Generate the post using the correct method
+			$result = $this->post_generator->generate_now($topic_id);
 			
 			if (is_wp_error($result)) {
+				// Revert topic status on failure
+				$this->repository->update_status($topic_id, $original_status, get_current_user_id());
+				
 				$history->record_error(
 					sprintf(__('Failed to generate post for topic "%s"', 'ai-post-scheduler'), $topic->topic_title),
-					array('topic_id' => $topic_id, 'error_code' => 'GENERATION_FAILED'),
+					array('topic_id' => $topic_id, 'error_code' => 'GENERATION_FAILED', 'reverted_to' => $original_status),
 					$result
 				);
 				
 				wp_send_json_error(array(
-					'message' => sprintf(__('Failed to generate post: %s', 'ai-post-scheduler'), $result->get_error_message())
+					'message' => sprintf(__('Failed to generate post: %s', 'ai-post-scheduler'), $result->get_error_message()),
+					'status' => $original_status // Return original status for UI rollback
 				));
 			}
 			

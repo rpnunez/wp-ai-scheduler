@@ -227,28 +227,61 @@ class AIPS_Kanban_Board_Test extends WP_UnitTestCase {
 	}
 	
 	/**
-	 * Test that 'generate' status is accepted as a valid status value
+	 * Test that 'generate' status triggers post generation workflow
 	 * 
 	 * Note: Full generation workflow testing requires a complete WordPress environment
-	 * with AI Engine plugin active. This test verifies that 'generate' is recognized
-	 * as a valid status value by the endpoint.
+	 * with AI Engine plugin active. This test verifies the endpoint accepts 'generate'
+	 * status and handles the transition validation properly.
 	 */
-	public function test_kanban_generate_status_sets_approved_first() {
+	public function test_kanban_generate_status_validates_transitions() {
 		wp_set_current_user($this->admin_user_id);
 		
-		// Set up POST data
+		// Test 1: Generate from pending status (should be allowed)
+		$pending_topic_id = $this->repository->create(array(
+			'author_id' => $this->author_id,
+			'topic_title' => 'Test Pending Topic',
+			'topic_prompt' => 'Test topic for generation',
+			'status' => 'pending',
+			'generated_at' => current_time('mysql')
+		));
+		
+		// Verify the topic can be moved to approved first (which generate does)
+		$result = $this->repository->update_status($pending_topic_id, 'approved', get_current_user_id());
+		$this->assertTrue($result);
+		
+		// Clean up: reset to pending for next test
+		$this->repository->update_status($pending_topic_id, 'pending', get_current_user_id());
+		
+		// Test 2: Try to generate from rejected status (should fail validation)
+		$rejected_topic_id = $this->repository->create(array(
+			'author_id' => $this->author_id,
+			'topic_title' => 'Test Rejected Topic',
+			'topic_prompt' => 'Test rejected topic',
+			'status' => 'rejected',
+			'generated_at' => current_time('mysql')
+		));
+		
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
-		$_POST['topic_id'] = $this->topic_id;
+		$_POST['topic_id'] = $rejected_topic_id;
 		$_POST['status'] = 'generate';
 		
-		// Note: This test will likely fail at the generation step since we don't have
-		// full WordPress environment. But we can at least verify the endpoint is reachable.
-		// In a real environment with mocks, we'd verify:
-		// 1. Topic status is set to approved
-		// 2. Post generation is triggered
-		// 3. Success/error response is appropriate
+		// Capture output
+		ob_start();
+		try {
+			$this->controller->ajax_update_topic_status_kanban();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected
+		}
+		$output = ob_get_clean();
 		
-		// For now, just verify the endpoint accepts the 'generate' status as valid
+		// Parse JSON response
+		$response = json_decode($output, true);
+		
+		// Should fail because rejected topics cannot be generated
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('approved', strtolower($response['data']['message']));
+		
+		// Verify 'generate' is in the valid statuses list
 		$valid_statuses = array('pending', 'approved', 'rejected', 'generate');
 		$this->assertContains('generate', $valid_statuses);
 	}

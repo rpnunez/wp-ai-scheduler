@@ -624,45 +624,45 @@ transition: all 0.2s ease;
 }
 
 .aips-view-toggle-btn:hover {
-color: #2271b1;
+	color: #2271b1;
 }
 
 .aips-view-toggle-btn.active {
-background: #fff;
-color: #2271b1;
-font-weight: 600;
-box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+	background: #fff;
+	color: #2271b1;
+	font-weight: 600;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .aips-view-toggle-btn .dashicons {
-font-size: 18px;
-width: 18px;
-height: 18px;
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
 }
 
 /* Kanban Container */
 .aips-kanban-container {
-background: #f6f7f7;
-padding: 20px;
-border-radius: 4px;
-min-height: 400px;
+	background: #f6f7f7;
+	padding: 20px;
+	border-radius: 4px;
+	min-height: 400px;
 }
 
 .aips-kanban-board {
-display: grid;
-grid-template-columns: repeat(4, 1fr);
-gap: 20px;
-margin: 0;
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 20px;
+	margin: 0;
 }
 
 /* Kanban Column */
 .aips-kanban-column {
-background: #fff;
-border-radius: 4px;
-box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-display: flex;
-flex-direction: column;
-min-height: 400px;
+	background: #fff;
+	border-radius: 4px;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+	display: flex;
+	flex-direction: column;
+	min-height: 400px;
 }
 
 .aips-kanban-column-header {
