@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- [2026-02-10] **MCP Bridge**: New Model Context Protocol bridge (`mcp-bridge.php`) that exposes plugin functionality to AI tools and GitHub Copilot via JSON-RPC 2.0 API. Includes 11 tools for cache management, database operations, system diagnostics, data export, cron management, and more. Complete with comprehensive documentation, JSON schema, example clients (Python, Shell), unit tests, and validation script. See `MCP_BRIDGE_README.md` for details.
+  - Tools: `list_tools`, `clear_cache`, `check_database`, `repair_database`, `check_upgrades`, `system_status`, `clear_history`, `export_data`, `get_cron_status`, `trigger_cron`, `get_plugin_info`
+  - Security: WordPress capability-based authentication (`manage_options`)
+  - Documentation: Complete API reference with request/response examples
+  - Testing: 20+ unit test cases and structure validation script
+  - Integration: Example clients for quick integration with MCP-compatible tools
+
 - [2026-02-09] **AI Edit Feature**: New modal interface for regenerating individual post components (title, excerpt, content, featured image) without full post regeneration. Maintains original generation context (template, author, topic) for consistency. Available on both Generated Posts and Pending Review tabs.
   - Backend: `AIPS_AI_Edit_Controller` with 3 AJAX endpoints, `AIPS_Component_Regeneration_Service` for regeneration logic
   - Frontend: Modal UI with change tracking, loading states, and keyboard shortcuts (ESC to close, Ctrl/Cmd+S to save)
