@@ -69,78 +69,141 @@ class AIPS_Generated_Posts_Controller {
 	 * Render the Generated Posts admin page
 	 */
 	public function render_page() {
-		// Use separate pagination parameters for each tab
-		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
-		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;
+		// Get filter parameters
+		$current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
 		$search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-		
-		// Get completed history entries with post IDs (for Generated Posts tab)
-		$history = $this->history_repository->get_history(array(
-			'page' => $generated_page,
-			'per_page' => 20,
-			'status' => 'completed',
-			'search' => $search_query,
-		));
-		
-		// Get schedule data for each post
-		$posts_data = array();
-		foreach ($history['items'] as $item) {
-			if (!$item->post_id) {
-				continue;
-			}
-			
-			$post = get_post($item->post_id);
-			if (!$post) {
-				continue;
-			}
-			
-			// Get most recent schedule for this template (if exists)
-			$schedule = null;
-			if ($item->template_id) {
-				$schedules = $this->schedule_repository->get_by_template($item->template_id);
-				// get_by_template returns multiple schedules, get the first one
-				$schedule = !empty($schedules) ? $schedules[0] : null;
-			}
-			
-			// Format source information
-			$source = $this->format_source($item);
-			
-			$posts_data[] = array(
-				'history_id' => $item->id,
-				'post_id' => $item->post_id,
-				'title' => $post->post_title,
-				'date_generated' => $item->created_at,
-				'date_published' => $post->post_date,
-				'date_scheduled' => $schedule ? $schedule->next_run : null,
-				'edit_link' => get_edit_post_link($item->post_id),
-				'source' => $source,
-			);
-		}
-		
-		// Get draft posts for Post Review tab
+		$status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : 'all';
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
-		$draft_posts = $this->post_review_repository->get_draft_posts(array(
-			'page' => $review_page,
-			'search' => $search_query,
-			'template_id' => $template_id,
-		));
 		
-		// Pass separate page variables for each tab
-		$current_page = $generated_page; // For Generated Posts tab
-		$review_current_page = $review_page; // For Pending Review tab
+		$per_page = 20;
+		$posts_data = array();
+		$total_items = 0;
+		$total_pages = 1;
+		
+		// Determine which posts to show based on status filter
+		if ($status_filter === 'draft') {
+			// Show draft posts only
+			$draft_posts = $this->post_review_repository->get_draft_posts(array(
+				'page' => $current_page,
+				'per_page' => $per_page,
+				'search' => $search_query,
+				'template_id' => $template_id,
+			));
+			
+			foreach ($draft_posts['items'] as $item) {
+				$post = get_post($item->post_id);
+				if (!$post) {
+					continue;
+				}
+				
+				$source = $this->format_source($item);
+				
+				$posts_data[] = array(
+					'history_id' => $item->id,
+					'post_id' => $item->post_id,
+					'title' => $post->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler'),
+					'status' => 'draft',
+					'date_generated' => $item->created_at,
+					'date_published' => $post->post_date,
+					'date_modified' => $post->post_modified,
+					'date_scheduled' => null,
+					'edit_link' => get_edit_post_link($item->post_id),
+					'source' => $source,
+				);
+			}
+			
+			$total_items = $draft_posts['total'];
+			$total_pages = $draft_posts['pages'];
+			
+		} else {
+			// Show published posts or all posts
+			$history_status = ($status_filter === 'published') ? 'completed' : null;
+			
+			$history = $this->history_repository->get_history(array(
+				'page' => $current_page,
+				'per_page' => $per_page,
+				'status' => $history_status,
+				'search' => $search_query,
+			));
+			
+			foreach ($history['items'] as $item) {
+				if (!$item->post_id) {
+					continue;
+				}
+				
+				$post = get_post($item->post_id);
+				if (!$post) {
+					continue;
+				}
+				
+				// Filter by status if 'all' selected
+				if ($status_filter === 'all' && $post->post_status !== 'publish' && $post->post_status !== 'draft') {
+					continue;
+				}
+				
+				// Get most recent schedule for this template (if exists)
+				$schedule = null;
+				if ($item->template_id) {
+					$schedules = $this->schedule_repository->get_by_template($item->template_id);
+					$schedule = !empty($schedules) ? $schedules[0] : null;
+				}
+				
+				$source = $this->format_source($item);
+				
+				$posts_data[] = array(
+					'history_id' => $item->id,
+					'post_id' => $item->post_id,
+					'title' => $post->post_title,
+					'status' => $post->post_status,
+					'date_generated' => $item->created_at,
+					'date_published' => $post->post_date,
+					'date_modified' => $post->post_modified,
+					'date_scheduled' => $schedule ? $schedule->next_run : null,
+					'edit_link' => get_edit_post_link($item->post_id),
+					'source' => $source,
+				);
+			}
+			
+			$total_items = $history['total'];
+			$total_pages = $history['pages'];
+		}
 		
 		// Get templates for filter dropdown
 		$template_repository = new AIPS_Template_Repository();
 		$templates = $template_repository->get_all();
 		
-		// Get globally-initialized Post Review handler
-		global $aips_post_review_handler;
-		$post_review_handler = isset($aips_post_review_handler) ? $aips_post_review_handler : $this->post_review_repository;
+		// Count posts by status for filter pills
+		$draft_count = $this->get_draft_count();
+		$published_count = $this->get_published_count();
+		$all_count = $draft_count + $published_count;
 		
 		// Make controller available to template for formatting
 		$controller = $this;
 		
 		include AIPS_PLUGIN_DIR . 'templates/admin/generated-posts.php';
+	}
+	
+	/**
+	 * Get count of draft posts
+	 */
+	private function get_draft_count() {
+		$draft_posts = $this->post_review_repository->get_draft_posts(array(
+			'page' => 1,
+			'per_page' => 1,
+		));
+		return $draft_posts['total'];
+	}
+	
+	/**
+	 * Get count of published posts
+	 */
+	private function get_published_count() {
+		$history = $this->history_repository->get_history(array(
+			'page' => 1,
+			'per_page' => 1,
+			'status' => 'completed',
+		));
+		return $history['total'];
 	}
 	
 	/**
