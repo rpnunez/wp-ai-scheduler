@@ -150,14 +150,14 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		ob_start();
 		try {
 			$this->controller->ajax_regenerate_component();
-			$output = ob_get_clean();
-			$response = json_decode($output, true);
-			
-			$this->assertFalse($response['success']);
-			$this->assertStringContainsString('Invalid component', $response['data']['message']);
-		} catch (Exception $e) {
-			ob_end_clean();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected exception from wp_send_json_error
 		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+		
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('Invalid component', $response['data']['message']);
 	}
 	
 	/**
@@ -179,14 +179,14 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		ob_start();
 		try {
 			$this->controller->ajax_save_post_components();
-			$output = ob_get_clean();
-			$response = json_decode($output, true);
-			
-			$this->assertFalse($response['success']);
-			$this->assertStringContainsString('Permission denied', $response['data']['message']);
-		} catch (Exception $e) {
-			ob_end_clean();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected exception from wp_send_json_error
 		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+		
+		$this->assertFalse($response['success']);
+		$this->assertStringContainsString('Permission denied', $response['data']['message']);
 	}
 	
 	/**
@@ -213,20 +213,19 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		ob_start();
 		try {
 			$this->controller->ajax_save_post_components();
-			$output = ob_get_clean();
-			$response = json_decode($output, true);
-			
-			$this->assertTrue($response['success']);
-			
-			// Verify post was updated
-			$updated_post = get_post($post_id);
-			$this->assertEquals('New Title', $updated_post->post_title);
-			$this->assertEquals('New excerpt', $updated_post->post_excerpt);
-			$this->assertEquals('New content', $updated_post->post_content);
-		} catch (Exception $e) {
-			ob_end_clean();
-			$this->fail('Should not throw exception: ' . $e->getMessage());
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected exception from wp_send_json_success
 		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+		
+		$this->assertTrue($response['success']);
+		
+		// Verify post was updated
+		$updated_post = get_post($post_id);
+		$this->assertEquals('New Title', $updated_post->post_title);
+		$this->assertEquals('New excerpt', $updated_post->post_excerpt);
+		$this->assertEquals('New content', $updated_post->post_content);
 	}
 	
 	/**
@@ -249,22 +248,21 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		ob_start();
 		try {
 			$this->controller->ajax_save_post_components();
-			$output = ob_get_clean();
-			$response = json_decode($output, true);
-			
-			$this->assertTrue($response['success']);
-			
-			// Verify malicious content was removed
-			$updated_post = get_post($post_id);
-			$this->assertStringNotContainsString('<script>', $updated_post->post_title);
-			$this->assertStringNotContainsString('<script>', $updated_post->post_excerpt);
-			
-			// Content should allow safe HTML
-			$this->assertStringContainsString('<p>Safe content</p>', $updated_post->post_content);
-			$this->assertStringNotContainsString('<script>', $updated_post->post_content);
-		} catch (Exception $e) {
-			ob_end_clean();
-			$this->fail('Should not throw exception: ' . $e->getMessage());
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected exception from wp_send_json_success
 		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+		
+		$this->assertTrue($response['success']);
+		
+		// Verify malicious content was removed
+		$updated_post = get_post($post_id);
+		$this->assertStringNotContainsString('<script>', $updated_post->post_title);
+		$this->assertStringNotContainsString('<script>', $updated_post->post_excerpt);
+		
+		// Content should allow safe HTML
+		$this->assertStringContainsString('<p>Safe content</p>', $updated_post->post_content);
+		$this->assertStringNotContainsString('<script>', $updated_post->post_content);
 	}
 }
