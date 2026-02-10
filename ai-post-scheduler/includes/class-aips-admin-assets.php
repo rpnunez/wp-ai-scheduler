@@ -43,14 +43,6 @@ class AIPS_Admin_Assets {
             AIPS_VERSION
         );
 
-        // Redesigned Admin Styles (Meow Apps style)
-        wp_enqueue_style(
-            'aips-admin-redesign-style',
-            AIPS_PLUGIN_URL . 'assets/css/admin-redesign.css',
-            array('aips-admin-style'),
-            AIPS_VERSION
-        );
-
         wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
@@ -189,7 +181,22 @@ class AIPS_Admin_Assets {
 			));
 		}
 
-        // Research Page Scripts
+        // Research Page Styles & Scripts
+		if (strpos($hook, 'aips-research') !== false) {
+			wp_enqueue_style(
+				'aips-research-style',
+				AIPS_PLUGIN_URL . 'assets/css/research.css',
+				array('aips-admin-style'),
+				AIPS_VERSION
+			);
+
+			wp_enqueue_style(
+				'aips-planner-style',
+				AIPS_PLUGIN_URL . 'assets/css/planner.css',
+				array('aips-admin-style'),
+				AIPS_VERSION
+			);
+		}
 
         wp_enqueue_script(
             'aips-admin-research',

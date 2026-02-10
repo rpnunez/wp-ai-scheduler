@@ -1,0 +1,131 @@
+/**
+ * Planner Page Styles
+ * Topic brainstorming and scheduling interface
+ */
+
+/* Topics Grid */
+.aips-topics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+}
+
+.topic-item {
+    background: #fff;
+    padding: 10px;
+    border: 1px solid #eee;
+    display: flex;
+    align-items: center;
+}
+
+.topic-checkbox {
+    margin-right: 10px !important;
+}
+
+.topic-text-input {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 3px 5px;
+    font-size: 14px;
+    color: #1d2327;
+}
+
+.topic-text-input:hover {
+    border: 1px solid #ccc;
+    background: #fff;
+}
+
+.topic-text-input:focus {
+    border: 1px solid #2271b1;
+    background: #fff;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
+.topic-checkbox:checked + .topic-text-input {
+    font-weight: 500;
+}
+
+/* Planner Specific Utilities */
+.aips-planner-form-grid-2-1 {
+    grid-template-columns: 2fr 1fr;
+}
+
+.aips-planner-count-input {
+    width: 100px;
+}
+
+.aips-planner-divider {
+    margin: 24px 0;
+    border: none;
+    border-top: 1px solid var(--aips-border-color, #ddd);
+}
+
+.aips-planner-results {
+    display: none;
+    margin-top: 20px;
+}
+
+.aips-planner-results.active {
+    display: block;
+}
+
+.aips-planner-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--aips-border-color, #ddd);
+}
+
+.aips-planner-select-all {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.aips-planner-select-all input {
+    margin: 0;
+}
+
+.aips-planner-selection-count {
+    margin-left: 16px;
+    color: #646970;
+}
+
+.aips-planner-toolbar-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.aips-planner-topic-search {
+    max-width: 200px;
+}
+
+.aips-planner-schedule-settings {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--aips-border-color, #ddd);
+}
+
+.aips-planner-schedule-settings h4 {
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.aips-planner-schedule-grid {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.aips-planner-actions {
+    margin-top: 20px;
+}

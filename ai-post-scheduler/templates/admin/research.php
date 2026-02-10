@@ -45,7 +45,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         </div>
 
         <!-- Old nav-tab-wrapper for JS compatibility -->
-        <div class="nav-tab-wrapper" style="display: none;">
+        <div class="nav-tab-wrapper" class="hidden">
             <a href="#trending" class="nav-tab<?php echo $active_tab === 'trending' ? ' nav-tab-active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
             <a href="#planner" class="nav-tab<?php echo $active_tab === 'planner' ? ' nav-tab-active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
         </div>
@@ -188,7 +188,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <div class="aips-search-wrapper">
                     <label class="screen-reader-text" for="filter-search"><?php esc_html_e('Search topics...', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="filter-search" class="regular-text" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>" style="max-width: 200px;">
-                    <button type="button" id="filter-search-clear" class="button" style="display: none;" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="filter-search-clear" class="button" class="hidden" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
             
@@ -258,129 +258,4 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     </div><!-- .aips-page-container -->
 </div><!-- .wrap -->
 
-<style>
-.aips-research {
-    max-width: 1200px;
-}
 
-.aips-stats-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin: 20px 0 30px;
-}
-
-.aips-stat-card {
-    background: #fff;
-    border: 1px solid #ccd0d4;
-    border-radius: 4px;
-    padding: 20px;
-    text-align: center;
-}
-
-.aips-stat-card h3 {
-    margin: 0 0 10px;
-    font-size: 32px;
-    color: #2271b1;
-}
-
-.aips-stat-card p {
-    margin: 0;
-    color: #646970;
-    font-size: 14px;
-}
-
-.aips-card {
-    background: #fff;
-    border: 1px solid #ccd0d4;
-    border-radius: 4px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-.aips-card h2 {
-    margin-top: 0;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-}
-
-.aips-filters {
-    margin-bottom: 20px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.aips-filter-select {
-    min-width: 200px;
-}
-
-.aips-topics-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.aips-topics-table th,
-.aips-topics-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-}
-
-.aips-topics-table th {
-    background: #f6f7f7;
-    font-weight: 600;
-}
-
-.aips-topics-table tbody tr:hover {
-    background: #f9f9f9;
-}
-
-.aips-score-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 12px;
-}
-
-.aips-score-high {
-    background: #00a32a;
-    color: #fff;
-}
-
-.aips-score-medium {
-    background: #ffb900;
-    color: #000;
-}
-
-.aips-score-low {
-    background: #999;
-    color: #fff;
-}
-
-.aips-keywords-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-}
-
-.aips-keyword-tag {
-    display: inline-block;
-    padding: 3px 8px;
-    background: #f0f0f1;
-    border-radius: 3px;
-    font-size: 11px;
-}
-
-.aips-topic-actions {
-    display: flex;
-    gap: 5px;
-}
-
-.button.is-loading .spinner {
-    visibility: visible;
-    float: none;
-}
-</style>
