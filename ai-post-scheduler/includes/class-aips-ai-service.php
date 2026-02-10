@@ -321,11 +321,15 @@ class AIPS_AI_Service {
         // Clean and parse JSON
         $json_str = trim($text_response);
         
-        // Remove potential markdown code blocks
-        $json_str = preg_replace('/^```json\s*/m', '', $json_str);
-        $json_str = preg_replace('/^```\s*/m', '', $json_str);
-        $json_str = preg_replace('/```$/m', '', $json_str);
-        $json_str = trim($json_str);
+        // 1. Try to extract from markdown code blocks first
+        if (preg_match('/```(?:json)?\s*([\s\S]*?)\s*```/', $json_str, $matches)) {
+            $json_str = trim($matches[1]);
+        }
+        // 2. If no code blocks, look for JSON object or array structure
+        // This is a simple heuristic: find the first { or [ and the last } or ]
+        elseif (preg_match('/(\{[\s\S]*\}|\[[\s\S]*\])/', $json_str, $matches)) {
+            $json_str = trim($matches[1]);
+        }
         
         // Decode JSON
         $data = json_decode($json_str, true);
