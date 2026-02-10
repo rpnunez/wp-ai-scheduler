@@ -754,4 +754,16 @@ class AIPS_Generator {
 
         return $featured_image_id;
     }
+    
+    /**
+     * Set the history container for logging
+     *
+     * Allows external code to set a specific history container for logging.
+     * Useful for component regeneration where we want to log to a specific container.
+     *
+     * @param AIPS_History_Container $history_container History container instance
+     */
+    public function set_history_container($history_container) {
+        $this->current_history = $history_container;
+    }
 }

@@ -42,6 +42,11 @@ class AIPS_Component_Regeneration_Service {
 	private $history_repository;
 	
 	/**
+	 * @var AIPS_History_Service History service for unified logging
+	 */
+	private $history_service;
+	
+	/**
 	 * @var AIPS_Template_Repository Template repository
 	 */
 	private $template_repository;
@@ -76,6 +81,7 @@ class AIPS_Component_Regeneration_Service {
 	 */
 	public function __construct() {
 		$this->history_repository = new AIPS_History_Repository();
+		$this->history_service = new AIPS_History_Service();
 		$this->template_repository = new AIPS_Template_Repository();
 		$this->author_topics_repository = new AIPS_Author_Topics_Repository();
 		$this->authors_repository = new AIPS_Authors_Repository();
@@ -179,6 +185,18 @@ class AIPS_Component_Regeneration_Service {
 		}
 		
 		$generation_context = $context['generation_context'];
+		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
+		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
+		
+		// Create a History Container for this regeneration
+		$history_container = $this->history_service->create('component_regeneration', array(
+			'post_id' => $post_id,
+			'parent_history_id' => $history_id,
+			'component_type' => 'title',
+		));
+		
+		// Set the history container on the generator so it logs properly
+		$this->generator->set_history_container($history_container);
 		
 		// Get template, voice, and topic for generator
 		if ($generation_context->get_type() === 'template') {
@@ -217,6 +235,18 @@ class AIPS_Component_Regeneration_Service {
 		$generation_context = $context['generation_context'];
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		$content = isset($context['current_content']) ? $context['current_content'] : '';
+		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
+		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
+		
+		// Create a History Container for this regeneration
+		$history_container = $this->history_service->create('component_regeneration', array(
+			'post_id' => $post_id,
+			'parent_history_id' => $history_id,
+			'component_type' => 'excerpt',
+		));
+		
+		// Set the history container on the generator so it logs properly
+		$this->generator->set_history_container($history_container);
 		
 		// Get voice and topic for generator
 		$voice = null;
@@ -248,6 +278,18 @@ class AIPS_Component_Regeneration_Service {
 		}
 		
 		$generation_context = $context['generation_context'];
+		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
+		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
+		
+		// Create a History Container for this regeneration
+		$history_container = $this->history_service->create('component_regeneration', array(
+			'post_id' => $post_id,
+			'parent_history_id' => $history_id,
+			'component_type' => 'content',
+		));
+		
+		// Set the history container on the generator so it logs properly
+		$this->generator->set_history_container($history_container);
 		
 		// Build the content prompt using the generation context
 		$prompt = $this->prompt_builder->build_content_prompt($generation_context);
@@ -279,6 +321,8 @@ class AIPS_Component_Regeneration_Service {
 		
 		$generation_context = $context['generation_context'];
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
+		$post_id = absint($context['post_id']);
+		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 		
 		// Get the image prompt from the generation context
 		$image_prompt = $generation_context->get_image_prompt();
@@ -290,17 +334,194 @@ class AIPS_Component_Regeneration_Service {
 		$topic_str = $generation_context->get_topic();
 		$processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
 		
+		// Create a History Container for this regeneration
+		$history_container = $this->history_service->create('component_regeneration', array(
+			'post_id' => $post_id,
+			'parent_history_id' => $history_id,
+			'component_type' => 'featured_image',
+		));
+		
+		// Log the AI request for image generation
+		$history_container->record(
+			'ai_request',
+			"Requesting AI image generation for featured_image",
+			array(
+				'prompt' => $processed_image_prompt,
+				'title' => $title,
+			),
+			null,
+			array('component' => 'featured_image', 'post_id' => $post_id)
+		);
+		
 		// Generate and upload the featured image
 		$attachment_id = $this->image_service->generate_and_upload_featured_image($processed_image_prompt, $title);
 		
 		if (is_wp_error($attachment_id)) {
+			// Log the error
+			$history_container->record_error($attachment_id->get_error_message(), array(
+				'component' => 'featured_image',
+				'post_id' => $post_id,
+			));
 			return $attachment_id;
 		}
+		
+		// Log successful image generation
+		$history_container->record(
+			'ai_response',
+			"AI image generation successful for featured_image",
+			null,
+			array(
+				'attachment_id' => $attachment_id,
+				'url' => wp_get_attachment_url($attachment_id),
+			),
+			array('component' => 'featured_image', 'post_id' => $post_id)
+		);
 		
 		// Return attachment ID and URL
 		return array(
 			'attachment_id' => $attachment_id,
 			'url' => wp_get_attachment_url($attachment_id),
 		);
+	}
+	
+	/**
+	 * Log a component regeneration event
+	 *
+	 * Creates a History Container to log the regeneration request and response
+	 * with component-specific metadata for revision tracking.
+	 *
+	 * @param int $post_id Post ID
+	 * @param int $history_id Original generation history ID
+	 * @param string $component_type Component type (title, excerpt, content, featured_image)
+	 * @param mixed $previous_value Previous value before regeneration
+	 * @param mixed $new_value New value after regeneration
+	 * @param string $prompt Prompt used for regeneration
+	 * @return int|false History container ID or false on failure
+	 */
+	public function log_component_regeneration($post_id, $history_id, $component_type, $previous_value, $new_value, $prompt = '') {
+		// Create a history container for this regeneration
+		$container = $this->history_service->create('component_regeneration', array(
+			'post_id' => $post_id,
+			'parent_history_id' => $history_id,
+			'component_type' => $component_type,
+		));
+		
+		// Log the AI request with previous value in context
+		$container->record(
+			'ai_request',
+			sprintf(__('Regenerating %s for post %d', 'ai-post-scheduler'), $component_type, $post_id),
+			$prompt,
+			null,
+			array(
+				'component_type' => $component_type,
+				'post_id' => $post_id,
+				'history_id' => $history_id,
+				'previous_value' => $previous_value,
+			)
+		);
+		
+		// Log the AI response with new value
+		$container->record(
+			'ai_response',
+			sprintf(__('%s regenerated successfully', 'ai-post-scheduler'), ucfirst($component_type)),
+			null,
+			$new_value,
+			array(
+				'component_type' => $component_type,
+				'post_id' => $post_id,
+				'history_id' => $history_id,
+			)
+		);
+		
+		return $container->get_id();
+	}
+	
+	/**
+	 * Get all revisions for a specific post component
+	 *
+	 * Retrieves all AI_RESPONSE logs for a given post and component type,
+	 * ordered by timestamp (newest first). Queries based on component in context.
+	 *
+	 * @param int $post_id Post ID
+	 * @param string $component_type Component type (title, excerpt, content, featured_image)
+	 * @param int $limit Maximum number of revisions to retrieve (default: 20)
+	 * @return array Array of revision objects with id, timestamp, value, history_id
+	 */
+	public function get_component_revisions($post_id, $component_type, $limit = 20) {
+		global $wpdb;
+		
+		$history_log_table = $wpdb->prefix . 'aips_history_log';
+		$history_table = $wpdb->prefix . 'aips_history';
+		
+		// Query for AI_RESPONSE logs with matching component in context
+		// The context field contains JSON like {"component":"title","post_id":123}
+		$sql = $wpdb->prepare("
+			SELECT 
+				hl.id,
+				hl.timestamp,
+				hl.details,
+				h.id as history_id,
+				h.uuid,
+				h.post_id
+			FROM {$history_log_table} hl
+			INNER JOIN {$history_table} h ON hl.history_id = h.id
+			WHERE hl.history_type_id = %d
+			AND hl.log_type = 'ai_response'
+			AND hl.details LIKE %s
+			AND (
+				h.post_id = %d
+				OR hl.details LIKE %s
+			)
+			ORDER BY hl.timestamp DESC
+			LIMIT %d
+		",
+			AIPS_History_Type::AI_RESPONSE,
+			'%"component":"' . $wpdb->esc_like($component_type) . '"%',
+			$post_id,
+			'%"post_id":' . absint($post_id) . '%',
+			$limit
+		);
+		
+		$results = $wpdb->get_results($sql);
+		
+		if (empty($results)) {
+			return array();
+		}
+		
+		// Parse and format the results
+		$revisions = array();
+		foreach ($results as $row) {
+			$details = json_decode($row->details, true);
+			if (!$details) {
+				continue;
+			}
+			
+			// Extract the output value (the regenerated content)
+			$value = '';
+			if (isset($details['output'])) {
+				if (isset($details['output_encoded']) && $details['output_encoded']) {
+					$value = base64_decode($details['output']);
+				} else if (is_array($details['output']) && isset($details['output']['value'])) {
+					$value = $details['output']['value'];
+				} else if (is_string($details['output'])) {
+					$value = $details['output'];
+				} else {
+					// For complex outputs like featured_image with attachment_id and url
+					$value = $details['output'];
+				}
+			}
+			
+			$revisions[] = array(
+				'id' => $row->id,
+				'history_id' => $row->history_id,
+				'uuid' => $row->uuid,
+				'timestamp' => $row->timestamp,
+				'component_type' => $component_type,
+				'value' => $value,
+				'context' => isset($details['context']) ? $details['context'] : array(),
+			);
+		}
+		
+		return $revisions;
 	}
 }
