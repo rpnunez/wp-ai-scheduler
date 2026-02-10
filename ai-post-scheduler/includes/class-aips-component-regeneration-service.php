@@ -188,13 +188,19 @@ class AIPS_Component_Regeneration_Service {
 		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 		
-		// Create a History Container for this regeneration
-		$history_container = $this->history_service->create('component_regeneration', array(
-			'post_id' => $post_id,
-			'parent_history_id' => $history_id,
-		));
+		// Find and reuse existing History Container for this post
+		$history_record = $this->history_repository->get_by_post_id($post_id);
+		if (!$history_record) {
+			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
+		}
 		
-		// Set the history container on the generator so it logs properly
+		// Load the existing History Container
+		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
+		if (!$history_container) {
+			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+		}
+		
+		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
 		
 		// Get template, voice, and topic for generator
@@ -237,13 +243,19 @@ class AIPS_Component_Regeneration_Service {
 		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 		
-		// Create a History Container for this regeneration
-		$history_container = $this->history_service->create('component_regeneration', array(
-			'post_id' => $post_id,
-			'parent_history_id' => $history_id,
-		));
+		// Find and reuse existing History Container for this post
+		$history_record = $this->history_repository->get_by_post_id($post_id);
+		if (!$history_record) {
+			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
+		}
 		
-		// Set the history container on the generator so it logs properly
+		// Load the existing History Container
+		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
+		if (!$history_container) {
+			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+		}
+		
+		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
 		
 		// Get voice and topic for generator
@@ -279,13 +291,19 @@ class AIPS_Component_Regeneration_Service {
 		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 		
-		// Create a History Container for this regeneration
-		$history_container = $this->history_service->create('component_regeneration', array(
-			'post_id' => $post_id,
-			'parent_history_id' => $history_id,
-		));
+		// Find and reuse existing History Container for this post
+		$history_record = $this->history_repository->get_by_post_id($post_id);
+		if (!$history_record) {
+			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
+		}
 		
-		// Set the history container on the generator so it logs properly
+		// Load the existing History Container
+		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
+		if (!$history_container) {
+			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+		}
+		
+		// Set the history container on the generator so it logs to the same container
 		$this->generator->set_history_container($history_container);
 		
 		// Build the content prompt using the generation context
@@ -331,11 +349,17 @@ class AIPS_Component_Regeneration_Service {
 		$topic_str = $generation_context->get_topic();
 		$processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
 		
-		// Create a History Container for this regeneration
-		$history_container = $this->history_service->create('component_regeneration', array(
-			'post_id' => $post_id,
-			'parent_history_id' => $history_id,
-		));
+		// Find and reuse existing History Container for this post
+		$history_record = $this->history_repository->get_by_post_id($post_id);
+		if (!$history_record) {
+			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
+		}
+		
+		// Load the existing History Container
+		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
+		if (!$history_container) {
+			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+		}
 		
 		// Log the AI request for image generation
 		$history_container->record(

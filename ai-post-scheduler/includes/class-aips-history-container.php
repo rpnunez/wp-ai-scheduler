@@ -61,18 +61,51 @@ class AIPS_History_Container {
 	 * @param AIPS_History_Repository $repository Repository instance
 	 * @param string $type Type of history container
 	 * @param array $metadata Optional metadata
+	 * @param int|null $existing_history_id Optional. Load existing container by ID
 	 */
-	public function __construct($repository, $type, $metadata = array()) {
+	public function __construct($repository, $type, $metadata = array(), $existing_history_id = null) {
+		$this->repository = $repository;
+		$this->session = null;
+		
+		if ($existing_history_id) {
+			// Load existing history container
+			$history = $repository->get_by_id($existing_history_id);
+			if ($history) {
+				$this->uuid = $history->uuid;
+				$this->history_id = $history->id;
+				$this->type = $type;
+				$this->metadata = $metadata;
+				$this->is_persisted = true;
+				return;
+			}
+		}
+		
+		// Create new container
 		$this->uuid = $this->generate_uuid();
 		$this->history_id = null;
 		$this->type = $type;
 		$this->metadata = $metadata;
-		$this->repository = $repository;
-		$this->session = null;
 		$this->is_persisted = false;
 		
 		// Persist to database immediately
 		$this->persist();
+	}
+	
+	/**
+	 * Load an existing History Container by ID
+	 *
+	 * @param AIPS_History_Repository $repository Repository instance
+	 * @param int $history_id History ID to load
+	 * @return AIPS_History_Container|null Container instance or null if not found
+	 */
+	public static function load_existing($repository, $history_id) {
+		$history = $repository->get_by_id($history_id);
+		if (!$history) {
+			return null;
+		}
+		
+		// Create container with existing ID
+		return new self($repository, 'post_generation', array(), $history_id);
 	}
 	
 	/**
