@@ -50,7 +50,10 @@ class Test_AIPS_MCP_Bridge extends WP_UnitTestCase {
 			'export_data',
 			'get_cron_status',
 			'trigger_cron',
-			'get_plugin_info'
+			'get_plugin_info',
+			'generate_post',
+			'list_templates',
+			'get_generation_history'
 		);
 		
 		foreach ($expected_tools as $tool) {
@@ -356,4 +359,246 @@ class Test_AIPS_MCP_Bridge extends WP_UnitTestCase {
 			$this->assertIsArray($tool['parameters'], "Tool '$tool_name' parameters should be array");
 		}
 	}
+
+	/**
+	 * Test list_templates returns templates
+	 */
+	public function test_list_templates() {
+		$result = $this->bridge->execute_tool('list_templates', array());
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('templates', $result);
+		$this->assertArrayHasKey('count', $result);
+		$this->assertIsArray($result['templates']);
+	}
+
+	/**
+	 * Test list_templates with active_only filter
+	 */
+	public function test_list_templates_active_only() {
+		$result = $this->bridge->execute_tool('list_templates', array('active_only' => true));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertIsArray($result['templates']);
+		
+		// Verify all returned templates are active
+		foreach ($result['templates'] as $template) {
+			$this->assertTrue($template['is_active'], 'Template should be active when using active_only filter');
+		}
+	}
+
+	/**
+	 * Test list_templates with search filter
+	 */
+	public function test_list_templates_with_search() {
+		$result = $this->bridge->execute_tool('list_templates', array('search' => 'test'));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertIsArray($result['templates']);
+	}
+
+	/**
+	 * Test list_templates returns proper structure
+	 */
+	public function test_list_templates_structure() {
+		$result = $this->bridge->execute_tool('list_templates', array());
+		
+		if (!empty($result['templates'])) {
+			$template = $result['templates'][0];
+			
+			$this->assertArrayHasKey('id', $template);
+			$this->assertArrayHasKey('name', $template);
+			$this->assertArrayHasKey('is_active', $template);
+			$this->assertArrayHasKey('prompt_template', $template);
+			$this->assertArrayHasKey('title_prompt', $template);
+			$this->assertArrayHasKey('excerpt_prompt', $template);
+			$this->assertArrayHasKey('post_status', $template);
+			$this->assertArrayHasKey('created_at', $template);
+		}
+	}
+
+	/**
+	 * Test get_generation_history returns history
+	 */
+	public function test_get_generation_history() {
+		$result = $this->bridge->execute_tool('get_generation_history', array());
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('items', $result);
+		$this->assertArrayHasKey('pagination', $result);
+		$this->assertIsArray($result['items']);
+	}
+
+	/**
+	 * Test get_generation_history with pagination
+	 */
+	public function test_get_generation_history_pagination() {
+		$result = $this->bridge->execute_tool('get_generation_history', array(
+			'per_page' => 10,
+			'page' => 1
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('pagination', $result);
+		
+		$pagination = $result['pagination'];
+		$this->assertArrayHasKey('total', $pagination);
+		$this->assertArrayHasKey('pages', $pagination);
+		$this->assertArrayHasKey('current_page', $pagination);
+		$this->assertArrayHasKey('per_page', $pagination);
+		$this->assertEquals(10, $pagination['per_page']);
+		$this->assertEquals(1, $pagination['current_page']);
+	}
+
+	/**
+	 * Test get_generation_history with status filter
+	 */
+	public function test_get_generation_history_with_status_filter() {
+		$result = $this->bridge->execute_tool('get_generation_history', array(
+			'status' => 'completed'
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertIsArray($result['items']);
+		
+		// Verify all items have completed status
+		foreach ($result['items'] as $item) {
+			$this->assertEquals('completed', $item['status']);
+		}
+	}
+
+	/**
+	 * Test get_generation_history with template_id filter
+	 */
+	public function test_get_generation_history_with_template_filter() {
+		$result = $this->bridge->execute_tool('get_generation_history', array(
+			'template_id' => 1
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertIsArray($result['items']);
+	}
+
+	/**
+	 * Test get_generation_history with search
+	 */
+	public function test_get_generation_history_with_search() {
+		$result = $this->bridge->execute_tool('get_generation_history', array(
+			'search' => 'test'
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertIsArray($result['items']);
+	}
+
+	/**
+	 * Test get_generation_history item structure
+	 */
+	public function test_get_generation_history_item_structure() {
+		$result = $this->bridge->execute_tool('get_generation_history', array());
+		
+		if (!empty($result['items'])) {
+			$item = $result['items'][0];
+			
+			$this->assertArrayHasKey('id', $item);
+			$this->assertArrayHasKey('uuid', $item);
+			$this->assertArrayHasKey('post_id', $item);
+			$this->assertArrayHasKey('template_id', $item);
+			$this->assertArrayHasKey('template_name', $item);
+			$this->assertArrayHasKey('status', $item);
+			$this->assertArrayHasKey('generated_title', $item);
+			$this->assertArrayHasKey('created_at', $item);
+			$this->assertArrayHasKey('completed_at', $item);
+		}
+	}
+
+	/**
+	 * Test get_generation_history enforces pagination limits
+	 */
+	public function test_get_generation_history_pagination_limits() {
+		// Test that per_page is clamped to 100
+		$result = $this->bridge->execute_tool('get_generation_history', array(
+			'per_page' => 200 // Should be clamped to 100
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertLessThanOrEqual(100, $result['pagination']['per_page']);
+		
+		// Test that per_page is clamped to minimum 1
+		$result2 = $this->bridge->execute_tool('get_generation_history', array(
+			'per_page' => 0 // Should be clamped to 1
+		));
+		
+		$this->assertIsArray($result2);
+		$this->assertTrue($result2['success']);
+		$this->assertGreaterThanOrEqual(1, $result2['pagination']['per_page']);
+	}
+
+	/**
+	 * Test generate_post requires a source parameter
+	 */
+	public function test_generate_post_requires_source() {
+		$result = $this->bridge->execute_tool('generate_post', array());
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('missing_source', $result->get_error_code());
+	}
+
+	/**
+	 * Test generate_post with invalid template_id
+	 */
+	public function test_generate_post_invalid_template() {
+		$result = $this->bridge->execute_tool('generate_post', array(
+			'template_id' => 999999 // Non-existent template
+		));
+		
+		// Should return an error
+		$this->assertInstanceOf(WP_Error::class, $result);
+	}
+
+	/**
+	 * Test generate_post with invalid schedule_id
+	 */
+	public function test_generate_post_invalid_schedule() {
+		$result = $this->bridge->execute_tool('generate_post', array(
+			'schedule_id' => 999999 // Non-existent schedule
+		));
+		
+		// Should return an error
+		$this->assertInstanceOf(WP_Error::class, $result);
+	}
+
+	/**
+	 * Test generate_post with invalid author_topic_id
+	 */
+	public function test_generate_post_invalid_topic() {
+		$result = $this->bridge->execute_tool('generate_post', array(
+			'author_topic_id' => 999999 // Non-existent topic
+		));
+		
+		// Should return an error
+		$this->assertInstanceOf(WP_Error::class, $result);
+	}
+
+	/**
+	 * Test that new tools are registered in list_tools
+	 */
+	public function test_new_tools_registered() {
+		$result = $this->bridge->execute_tool('list_tools', array());
+		
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('generate_post', $result['tools']);
+		$this->assertArrayHasKey('list_templates', $result['tools']);
+		$this->assertArrayHasKey('get_generation_history', $result['tools']);
+	}
 }
+
