@@ -35,7 +35,7 @@ if (!empty($history_items)):
         </td>
         <td class="column-actions">
             <?php if ($item->post_id): ?>
-            <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="button button-small" target="_blank">
+            <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="button button-small" target="_blank" rel="noopener noreferrer">
                 <?php esc_html_e('View', 'ai-post-scheduler'); ?>
             </a>
             <?php endif; ?>
