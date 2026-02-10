@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 <div class="wrap aips-wrap">
     <?php if (!class_exists('Meow_MWAI_Core')): ?>
     <div class="notice notice-error">
-        <p><?php esc_html_e('AI Engine plugin is not installed or activated. This plugin requires Meow Apps AI Engine to function.', 'ai-post-scheduler'); ?></p>
+        <p><?php esc_html_e('AI Engine plugin is not installed or activated. This plugin requires AI Engine to function.', 'ai-post-scheduler'); ?></p>
     </div>
     <?php endif; ?>
     

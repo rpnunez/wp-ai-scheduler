@@ -1,6 +1,6 @@
 # UI Redesign Project - AI Post Scheduler
 
-**Goal:** Transform the plugin UI to match the clean, modern Meow Apps style (WP Media Cleaner)  
+**Goal:** Transform the plugin UI to match the clean, modern admin UI style  
 **Status:** Phase 2 In Progress - 50% Complete (6/18 pages)  
 **Branch:** `copilot/redesign-plugin-ui`
 
@@ -21,7 +21,7 @@ This redesign transforms the AI Post Scheduler plugin's interface to match profe
 
 ### Key Objectives
 
-✅ Modern, clean Meow Apps-style UI  
+✅ Modern, clean admin UI  
 ✅ Framed containers instead of full-width pages  
 ✅ Icon-enhanced status badges and compact buttons  
 ✅ Professional empty states with clear CTAs  
@@ -374,8 +374,8 @@ Before moving to next page:
 - [WCAG 2.1 Quick Reference](https://www.w3.org/WAI/WCAG21/quickref/)
 
 **Design Reference:**
-- WP Media Cleaner (Meow Apps)
-- Other Meow Apps plugins
+- Modern WordPress admin UI design
+- Professional WordPress plugins
 
 ---
 

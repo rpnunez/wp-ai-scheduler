@@ -20,9 +20,9 @@ This document defines the design system for the "WP Media Cleaner style" redesig
 4. **Information Dense** — Show more data in less space
 5. **Accessible by Default** — Meet WCAG 2.1 AA standards
 
-### Meow Apps Style Characteristics
+### Modern Design Characteristics
 
-Based on WP Media Cleaner and other Meow Apps products:
+Based on modern admin UI best practices:
 - **Framed Containers** — Content lives in defined panels, not edge-to-edge
 - **Generous White Space** — Breathing room between elements
 - **Subtle Shadows** — Soft depth without harsh edges
@@ -707,7 +707,7 @@ All design tokens should be defined as CSS custom properties in a root styleshee
 
 ## Notes
 
-- Design system is intentionally minimal to match Meow Apps style
+- Design system is intentionally minimal to match modern admin UI style
 - All tokens are optional; fallbacks to WordPress defaults included
 - Focus on subtle refinement rather than dramatic changes
 - System designed to be extended as needed
