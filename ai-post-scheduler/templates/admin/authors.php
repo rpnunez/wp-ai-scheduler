@@ -25,7 +25,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     $article_structures = $structures_repository->get_all(true); // Get active structures only
 }
 ?>
-<div class="wrap aips-wrap aips-redesign">
+<div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
         <div class="aips-page-header">

@@ -7,7 +7,7 @@ if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
 ?>
-<div class="wrap aips-wrap aips-redesign">
+<div class="wrap aips-wrap">
 	<div class="aips-page-container">
 		<!-- Page Header -->
 		<div class="aips-page-header">

@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<div class="wrap aips-wrap aips-redesign">
+<div class="wrap aips-wrap">
     <?php if (!class_exists('Meow_MWAI_Core')): ?>
     <div class="notice notice-error">
         <p><?php esc_html_e('AI Engine plugin is not installed or activated. This plugin requires Meow Apps AI Engine to function.', 'ai-post-scheduler'); ?></p>

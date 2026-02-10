@@ -1,6 +1,5 @@
 /**
  * AI Post Scheduler - Redesigned Admin UI
- * Meow Apps (WP Media Cleaner) Style
  *
  * This stylesheet provides a modern, clean design system that sits on top of
  * WordPress admin while maintaining full compatibility and accessibility.
@@ -121,18 +120,18 @@
 }
 
 /* ==========================================================================
-   Layout System - Framed Containers (Meow Style)
+   Layout System - Framed Containers
    ========================================================================== */
 
 /* Main Page Container */
-.aips-redesign .aips-page-container {
+.aips-page-container {
 	max-width: var(--aips-container-xl);
 	margin: var(--aips-space-6) auto;
 	padding: 0 var(--aips-space-5);
 }
 
 /* Page Header Block */
-.aips-redesign .aips-page-header {
+.aips-page-header {
 	background: var(--aips-white);
 	border: 1px solid var(--aips-gray-200);
 	border-radius: var(--aips-radius-md);
@@ -141,7 +140,7 @@
 	box-shadow: var(--aips-shadow-sm);
 }
 
-.aips-redesign .aips-page-header-top {
+.aips-page-header-top {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
@@ -149,7 +148,7 @@
 	margin-bottom: var(--aips-space-3);
 }
 
-.aips-redesign .aips-page-title {
+.aips-page-title {
 	font-size: var(--aips-text-2xl);
 	font-weight: var(--aips-font-semibold);
 	color: var(--aips-gray-900);
@@ -157,21 +156,21 @@
 	margin: 0;
 }
 
-.aips-redesign .aips-page-description {
+.aips-page-description {
 	font-size: var(--aips-text-sm);
 	color: var(--aips-gray-500);
 	line-height: var(--aips-leading-normal);
 	margin: 0;
 }
 
-.aips-redesign .aips-page-actions {
+.aips-page-actions {
 	display: flex;
 	gap: var(--aips-space-2);
 	flex-shrink: 0;
 }
 
 /* Content Panel */
-.aips-redesign .aips-content-panel {
+.aips-content-panel {
 	background: var(--aips-white);
 	border: 1px solid var(--aips-gray-200);
 	border-radius: var(--aips-radius-md);
@@ -179,7 +178,7 @@
 	margin-bottom: var(--aips-space-5);
 }
 
-.aips-redesign .aips-panel-header {
+.aips-panel-header {
 	padding: var(--aips-space-5);
 	border-bottom: 1px solid var(--aips-gray-100);
 	display: flex;
@@ -188,23 +187,23 @@
 	gap: var(--aips-space-4);
 }
 
-.aips-redesign .aips-panel-title {
+.aips-panel-title {
 	font-size: var(--aips-text-lg);
 	font-weight: var(--aips-font-semibold);
 	color: var(--aips-gray-900);
 	margin: 0;
 }
 
-.aips-redesign .aips-panel-body {
+.aips-panel-body {
 	padding: var(--aips-space-5);
 }
 
-.aips-redesign .aips-panel-body.no-padding {
+.aips-panel-body.no-padding {
 	padding: 0;
 }
 
 /* Filter Bar */
-.aips-redesign .aips-filter-bar {
+.aips-filter-bar {
 	background: var(--aips-gray-50);
 	border-bottom: 1px solid var(--aips-gray-200);
 	padding: var(--aips-space-4) var(--aips-space-5);
@@ -214,7 +213,7 @@
 	flex-wrap: wrap;
 }
 
-.aips-redesign .aips-filter-bar.sticky {
+.aips-filter-bar.sticky {
 	position: sticky;
 	top: 32px; /* WordPress admin bar height */
 	z-index: var(--aips-z-sticky);
@@ -233,32 +232,32 @@
  *   screens and gracefully collapse on narrower viewports.
  */
 /* Grid System */
-.aips-redesign .aips-grid {
+.aips-grid {
 	display: grid;
 	gap: var(--aips-space-5);
 }
 
-.aips-redesign .aips-grid-cols-2 {
+.aips-grid-cols-2 {
 	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
-.aips-redesign .aips-grid-cols-3 {
+.aips-grid-cols-3 {
 	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 }
 
-.aips-redesign .aips-grid-cols-4 {
+.aips-grid-cols-4 {
 	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
 /* Two Column Layout with Sidebar */
-.aips-redesign .aips-layout-with-sidebar {
+.aips-layout-with-sidebar {
 	display: grid;
 	grid-template-columns: 1fr 300px;
 	gap: var(--aips-space-5);
 }
 
 @media (max-width: 1024px) {
-	.aips-redesign .aips-layout-with-sidebar {
+	.aips-layout-with-sidebar {
 		grid-template-columns: 1fr;
 	}
 }
@@ -267,14 +266,14 @@
    Status Summary Panel
    ========================================================================== */
 
-.aips-redesign .aips-status-summary {
+.aips-status-summary {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 	gap: var(--aips-space-4);
 	margin-bottom: var(--aips-space-5);
 }
 
-.aips-redesign .aips-summary-card {
+.aips-summary-card {
 	background: var(--aips-white);
 	border: 1px solid var(--aips-gray-200);
 	border-radius: var(--aips-radius-md);
@@ -285,23 +284,23 @@
 	transition: all var(--aips-transition-base);
 }
 
-.aips-redesign .aips-summary-card:hover {
+.aips-summary-card:hover {
 	box-shadow: var(--aips-shadow-base);
 }
 
-.aips-redesign .aips-summary-card.highlight {
+.aips-summary-card.highlight {
 	border-left: 3px solid var(--aips-primary);
 }
 
-.aips-redesign .aips-summary-card.warning {
+.aips-summary-card.warning {
 	border-left: 3px solid var(--aips-warning);
 }
 
-.aips-redesign .aips-summary-card.error {
+.aips-summary-card.error {
 	border-left: 3px solid var(--aips-error);
 }
 
-.aips-redesign .aips-summary-icon {
+.aips-summary-icon {
 	font-size: 32px;
 	width: 40px;
 	height: 40px;
@@ -309,32 +308,32 @@
 	flex-shrink: 0;
 }
 
-.aips-redesign .aips-summary-card.highlight .aips-summary-icon {
+.aips-summary-card.highlight .aips-summary-icon {
 	color: var(--aips-primary);
 }
 
-.aips-redesign .aips-summary-card.warning .aips-summary-icon {
+.aips-summary-card.warning .aips-summary-icon {
 	color: var(--aips-warning);
 }
 
-.aips-redesign .aips-summary-card.error .aips-summary-icon {
+.aips-summary-card.error .aips-summary-icon {
 	color: var(--aips-error);
 }
 
-.aips-redesign .aips-summary-content {
+.aips-summary-content {
 	display: flex;
 	flex-direction: column;
 	gap: var(--aips-space-1);
 }
 
-.aips-redesign .aips-summary-number {
+.aips-summary-number {
 	font-size: var(--aips-text-3xl);
 	font-weight: var(--aips-font-semibold);
 	color: var(--aips-gray-900);
 	line-height: var(--aips-leading-none);
 }
 
-.aips-redesign .aips-summary-label {
+.aips-summary-label {
 	font-size: var(--aips-text-xs);
 	color: var(--aips-gray-500);
 	text-transform: uppercase;
@@ -346,13 +345,13 @@
    Modern Table/List Styling
    ========================================================================== */
 
-.aips-redesign .aips-table {
+.aips-table {
 	width: 100%;
 	border-collapse: separate;
 	border-spacing: 0;
 }
 
-.aips-redesign .aips-table thead th {
+.aips-table thead th {
 	background: var(--aips-gray-50);
 	border-bottom: 2px solid var(--aips-gray-200);
 	padding: var(--aips-space-3) var(--aips-space-4);
@@ -364,7 +363,7 @@
 	letter-spacing: 0.05em;
 }
 
-.aips-redesign .aips-table tbody td {
+.aips-table tbody td {
 	padding: var(--aips-space-4);
 	border-bottom: 1px solid var(--aips-gray-100);
 	font-size: var(--aips-text-sm);
@@ -372,31 +371,31 @@
 	vertical-align: middle;
 }
 
-.aips-redesign .aips-table tbody tr {
+.aips-table tbody tr {
 	transition: background-color var(--aips-transition-fast);
 }
 
-.aips-redesign .aips-table tbody tr:hover {
+.aips-table tbody tr:hover {
 	background: var(--aips-gray-50);
 }
 
-.aips-redesign .aips-table tbody tr:last-child td {
+.aips-table tbody tr:last-child td {
 	border-bottom: none;
 }
 
 /* Table Cell Content Types */
-.aips-redesign .aips-table .cell-primary {
+.aips-table .cell-primary {
 	font-weight: var(--aips-font-medium);
 	color: var(--aips-gray-900);
 }
 
-.aips-redesign .aips-table .cell-meta {
+.aips-table .cell-meta {
 	font-size: var(--aips-text-xs);
 	color: var(--aips-gray-500);
 	margin-top: var(--aips-space-1);
 }
 
-.aips-redesign .aips-table .cell-actions {
+.aips-table .cell-actions {
 	display: flex;
 	gap: var(--aips-space-2);
 	align-items: center;
@@ -406,7 +405,7 @@
    Status Badges (Modern Design)
    ========================================================================== */
 
-.aips-redesign .aips-badge {
+.aips-badge {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--aips-space-1);
@@ -417,32 +416,32 @@
 	line-height: var(--aips-leading-tight);
 }
 
-.aips-redesign .aips-badge-success {
+.aips-badge-success {
 	background: var(--aips-success-light);
 	color: var(--aips-success-dark);
 }
 
-.aips-redesign .aips-badge-warning {
+.aips-badge-warning {
 	background: var(--aips-warning-light);
 	color: var(--aips-warning-dark);
 }
 
-.aips-redesign .aips-badge-error {
+.aips-badge-error {
 	background: var(--aips-error-light);
 	color: var(--aips-error-dark);
 }
 
-.aips-redesign .aips-badge-info {
+.aips-badge-info {
 	background: var(--aips-info-light);
 	color: var(--aips-info-dark);
 }
 
-.aips-redesign .aips-badge-neutral {
+.aips-badge-neutral {
 	background: var(--aips-gray-100);
 	color: var(--aips-gray-700);
 }
 
-.aips-redesign .aips-badge .dashicons {
+.aips-badge .dashicons {
 	font-size: 14px;
 	width: 14px;
 	height: 14px;
@@ -452,7 +451,7 @@
    Buttons (Redesigned)
    ========================================================================== */
 
-.aips-redesign .aips-btn {
+.aips-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -467,64 +466,64 @@
 	text-decoration: none;
 }
 
-.aips-redesign .aips-btn:focus {
+.aips-btn:focus {
 	outline: 2px solid var(--aips-primary);
 	outline-offset: 2px;
 }
 
-.aips-redesign .aips-btn-primary {
+.aips-btn-primary {
 	background: var(--aips-primary);
 	color: var(--aips-white);
 }
 
-.aips-redesign .aips-btn-primary:hover {
+.aips-btn-primary:hover {
 	background: var(--aips-primary-hover);
 	box-shadow: var(--aips-shadow-sm);
 }
 
-.aips-redesign .aips-btn-secondary {
+.aips-btn-secondary {
 	background: var(--aips-white);
 	color: var(--aips-gray-700);
 	border-color: var(--aips-gray-300);
 }
 
-.aips-redesign .aips-btn-secondary:hover {
+.aips-btn-secondary:hover {
 	border-color: var(--aips-gray-400);
 	box-shadow: var(--aips-shadow-xs);
 }
 
-.aips-redesign .aips-btn-ghost {
+.aips-btn-ghost {
 	background: transparent;
 	color: var(--aips-gray-600);
 	border: none;
 }
 
-.aips-redesign .aips-btn-ghost:hover {
+.aips-btn-ghost:hover {
 	background: var(--aips-gray-50);
 }
 
-.aips-redesign .aips-btn-danger {
+.aips-btn-danger {
 	background: transparent;
 	color: var(--aips-error);
 	border: none;
 }
 
-.aips-redesign .aips-btn-danger:hover {
+.aips-btn-danger:hover {
 	background: var(--aips-error-light);
 }
 
-.aips-redesign .aips-btn-sm {
+.aips-btn-sm {
 	padding: var(--aips-space-1) var(--aips-space-3);
 	font-size: var(--aips-text-xs);
 }
 
-.aips-redesign .aips-btn-icon {
+.aips-btn-icon {
 	padding: var(--aips-space-2);
 	width: 32px;
 	height: 32px;
 }
 
-.aips-redesign .aips-btn .dashicons {
+.aips-btn .dashicons {
 	font-size: 16px;
 	width: 16px;
 	height: 16px;
@@ -534,7 +533,7 @@
    Cards
    ========================================================================== */
 
-.aips-redesign .aips-card {
+.aips-card {
 	background: var(--aips-white);
 	border: 1px solid var(--aips-gray-200);
 	border-radius: var(--aips-radius-md);
@@ -543,28 +542,28 @@
 	transition: all var(--aips-transition-base);
 }
 
-.aips-redesign .aips-card:hover {
+.aips-card:hover {
 	box-shadow: var(--aips-shadow-base);
 }
 
-.aips-redesign .aips-card-header {
+.aips-card-header {
 	padding-bottom: var(--aips-space-4);
 	border-bottom: 1px solid var(--aips-gray-100);
 	margin-bottom: var(--aips-space-4);
 }
 
-.aips-redesign .aips-card-title {
+.aips-card-title {
 	font-size: var(--aips-text-lg);
 	font-weight: var(--aips-font-semibold);
 	color: var(--aips-gray-900);
 	margin: 0;
 }
 
-.aips-redesign .aips-card-body {
+.aips-card-body {
 	/* Content area */
 }
 
-.aips-redesign .aips-card-footer {
+.aips-card-footer {
 	padding-top: var(--aips-space-4);
 	border-top: 1px solid var(--aips-gray-100);
 	margin-top: var(--aips-space-4);
@@ -574,12 +573,12 @@
    Empty States
    ========================================================================== */
 
-.aips-redesign .aips-empty-state {
+.aips-empty-state {
 	text-align: center;
 	padding: var(--aips-space-12) var(--aips-space-6);
 }
 
-.aips-redesign .aips-empty-state-icon {
+.aips-empty-state-icon {
 	font-size: 64px;
 	width: 64px;
 	height: 64px;
@@ -587,14 +586,14 @@
 	margin: 0 auto var(--aips-space-4);
 }
 
-.aips-redesign .aips-empty-state-title {
+.aips-empty-state-title {
 	font-size: var(--aips-text-lg);
 	font-weight: var(--aips-font-semibold);
 	color: var(--aips-gray-700);
 	margin: 0 0 var(--aips-space-2);
 }
 
-.aips-redesign .aips-empty-state-description {
+.aips-empty-state-description {
 	font-size: var(--aips-text-sm);
 	color: var(--aips-gray-500);
 	margin: 0 0 var(--aips-space-6);
@@ -603,7 +602,7 @@
 	margin-right: auto;
 }
 
-.aips-redesign .aips-empty-state-actions {
+.aips-empty-state-actions {
 	display: flex;
 	gap: var(--aips-space-3);
 	justify-content: center;
@@ -613,11 +612,11 @@
    Forms
    ========================================================================== */
 
-.aips-redesign .aips-form-group {
+.aips-form-group {
 	margin-bottom: var(--aips-space-5);
 }
 
-.aips-redesign .aips-form-label {
+.aips-form-label {
 	display: block;
 	font-size: var(--aips-text-sm);
 	font-weight: var(--aips-font-medium);
@@ -625,9 +624,9 @@
 	margin-bottom: var(--aips-space-2);
 }
 
-.aips-redesign .aips-form-input,
-.aips-redesign .aips-form-select,
-.aips-redesign .aips-form-textarea {
+.aips-form-input,
+.aips-form-select,
+.aips-form-textarea {
 	width: 100%;
 	padding: var(--aips-space-2) var(--aips-space-3);
 	font-size: var(--aips-text-sm);
@@ -638,25 +637,25 @@
 	color: var(--aips-gray-900);
 }
 
-.aips-redesign .aips-form-input:focus,
-.aips-redesign .aips-form-select:focus,
-.aips-redesign .aips-form-textarea:focus {
+.aips-form-input:focus,
+.aips-form-select:focus,
+.aips-form-textarea:focus {
 	outline: none;
 	border-color: var(--aips-primary);
 	box-shadow: 0 0 0 3px var(--aips-primary-light);
 }
 
-.aips-redesign .aips-form-help {
+.aips-form-help {
 	font-size: var(--aips-text-xs);
 	color: var(--aips-gray-500);
 	margin-top: var(--aips-space-1);
 }
 
-.aips-redesign .aips-form-section {
+.aips-form-section {
 	margin-bottom: var(--aips-space-8);
 }
 
-.aips-redesign .aips-form-section-header {
+.aips-form-section-header {
 	display: flex;
 	align-items: center;
 	gap: var(--aips-space-3);
@@ -665,21 +664,21 @@
 	border-bottom: 1px solid var(--aips-gray-200);
 }
 
-.aips-redesign .aips-form-section-icon {
+.aips-form-section-icon {
 	font-size: 20px;
 	width: 20px;
 	height: 20px;
 	color: var(--aips-primary);
 }
 
-.aips-redesign .aips-form-section-title {
+.aips-form-section-title {
 	font-size: var(--aips-text-lg);
 	font-weight: var(--aips-font-semibold);
 	color: var(--aips-gray-900);
 	margin: 0;
 }
 
-.aips-redesign .aips-form-section-description {
+.aips-form-section-description {
 	font-size: var(--aips-text-sm);
 	color: var(--aips-gray-500);
 	margin: var(--aips-space-2) 0 0;
@@ -689,7 +688,7 @@
    Quick Actions Toolbar
    ========================================================================== */
 
-.aips-redesign .aips-quick-actions {
+.aips-quick-actions {
 	display: flex;
 	gap: var(--aips-space-3);
 	flex-wrap: wrap;
@@ -700,44 +699,44 @@
    ========================================================================== */
 
 @media (max-width: 782px) {
-	.aips-redesign .aips-page-container {
+	.aips-page-container {
 		margin: var(--aips-space-4) auto;
 		padding: 0 var(--aips-space-3);
 	}
 
-	.aips-redesign .aips-page-header {
+	.aips-page-header {
 		padding: var(--aips-space-4);
 	}
 
-	.aips-redesign .aips-page-header-top {
+	.aips-page-header-top {
 		flex-direction: column;
 		align-items: flex-start;
 	}
 
-	.aips-redesign .aips-page-actions {
+	.aips-page-actions {
 		width: 100%;
 	}
 
-	.aips-redesign .aips-page-actions .aips-btn {
+	.aips-page-actions .aips-btn {
 		flex: 1;
 	}
 
-	.aips-redesign .aips-panel-body {
+	.aips-panel-body {
 		padding: var(--aips-space-3);
 	}
 
-	.aips-redesign .aips-filter-bar {
+	.aips-filter-bar {
 		padding: var(--aips-space-3);
 	}
 
-	.aips-redesign .aips-table thead th,
-	.aips-redesign .aips-table tbody td {
+	.aips-table thead th,
+	.aips-table tbody td {
 		padding: var(--aips-space-2) var(--aips-space-3);
 	}
 
-	.aips-redesign .aips-grid-cols-2,
-	.aips-redesign .aips-grid-cols-3,
-	.aips-redesign .aips-grid-cols-4 {
+	.aips-grid-cols-2,
+	.aips-grid-cols-3,
+	.aips-grid-cols-4 {
 		grid-template-columns: 1fr;
 	}
 }
@@ -746,7 +745,7 @@
    Accessibility Utilities
    ========================================================================== */
 
-.aips-redesign .aips-sr-only {
+.aips-sr-only {
 	position: absolute;
 	width: 1px;
 	height: 1px;

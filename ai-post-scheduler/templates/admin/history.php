@@ -45,7 +45,7 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
 $is_history_tab = isset($is_history_tab) ? $is_history_tab : false;
 ?>
 <?php if (!$is_history_tab): ?>
-<div class="wrap aips-wrap aips-redesign">
+<div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
         <div class="aips-page-header">

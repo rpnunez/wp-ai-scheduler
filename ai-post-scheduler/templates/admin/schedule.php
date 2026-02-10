@@ -17,7 +17,7 @@ $article_structures = $structure_manager->get_active_structures();
 $template_type_selector = new AIPS_Template_Type_Selector();
 $rotation_patterns = $template_type_selector->get_rotation_patterns();
 ?>
-<div class="wrap aips-wrap aips-redesign">
+<div class="wrap aips-wrap">
     <div class="aips-page-container">
         <!-- Page Header -->
         <div class="aips-page-header">

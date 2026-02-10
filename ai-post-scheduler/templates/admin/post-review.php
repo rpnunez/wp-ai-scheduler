@@ -33,7 +33,7 @@ $template_repository = new AIPS_Template_Repository();
 $templates = $template_repository->get_all();
 ?>
 
-<div class="wrap aips-wrap aips-redesign">
+<div class="wrap aips-wrap">
 	<div class="aips-page-container">
 		<!-- Page Header -->
 		<div class="aips-page-header">
