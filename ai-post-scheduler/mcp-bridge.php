@@ -255,6 +255,112 @@ class AIPS_MCP_Bridge {
 					)
 				),
 				'handler' => array($this, 'tool_get_generation_history')
+			),
+			'get_history' => array(
+				'description' => 'Get detailed history record by history ID or post ID',
+				'parameters' => array(
+					'history_id' => array(
+						'type' => 'integer',
+						'description' => 'History record ID',
+						'required' => false
+					),
+					'post_id' => array(
+						'type' => 'integer',
+						'description' => 'WordPress post ID to find history for',
+						'required' => false
+					),
+					'include_logs' => array(
+						'type' => 'boolean',
+						'description' => 'Include detailed log entries',
+						'required' => false,
+						'default' => true
+					)
+				),
+				'handler' => array($this, 'tool_get_history')
+			),
+			'list_authors' => array(
+				'description' => 'Get all authors with optional filtering',
+				'parameters' => array(
+					'active_only' => array(
+						'type' => 'boolean',
+						'description' => 'Return only active authors',
+						'required' => false,
+						'default' => false
+					)
+				),
+				'handler' => array($this, 'tool_list_authors')
+			),
+			'get_author' => array(
+				'description' => 'Get author details by ID',
+				'parameters' => array(
+					'author_id' => array(
+						'type' => 'integer',
+						'description' => 'Author ID',
+						'required' => true
+					)
+				),
+				'handler' => array($this, 'tool_get_author')
+			),
+			'list_author_topics' => array(
+				'description' => 'Get topics for an author with filtering',
+				'parameters' => array(
+					'author_id' => array(
+						'type' => 'integer',
+						'description' => 'Author ID',
+						'required' => true
+					),
+					'status' => array(
+						'type' => 'string',
+						'description' => 'Filter by status: pending, approved, rejected',
+						'required' => false
+					),
+					'limit' => array(
+						'type' => 'integer',
+						'description' => 'Maximum number of topics to return',
+						'required' => false,
+						'default' => 50
+					)
+				),
+				'handler' => array($this, 'tool_list_author_topics')
+			),
+			'get_author_topic' => array(
+				'description' => 'Get specific topic details by ID',
+				'parameters' => array(
+					'topic_id' => array(
+						'type' => 'integer',
+						'description' => 'Topic ID',
+						'required' => true
+					)
+				),
+				'handler' => array($this, 'tool_get_author_topic')
+			),
+			'regenerate_post_component' => array(
+				'description' => 'Regenerate individual post component (title, excerpt, content, or featured_image)',
+				'parameters' => array(
+					'post_id' => array(
+						'type' => 'integer',
+						'description' => 'WordPress post ID',
+						'required' => true
+					),
+					'history_id' => array(
+						'type' => 'integer',
+						'description' => 'History record ID for context',
+						'required' => true
+					),
+					'component' => array(
+						'type' => 'string',
+						'description' => 'Component to regenerate',
+						'required' => true,
+						'enum' => array('title', 'excerpt', 'content', 'featured_image')
+					),
+					'save' => array(
+						'type' => 'boolean',
+						'description' => 'Automatically save to post (false returns preview only)',
+						'required' => false,
+						'default' => false
+					)
+				),
+				'handler' => array($this, 'tool_regenerate_post_component')
 			)
 		);
 	}
@@ -908,6 +1014,334 @@ class AIPS_MCP_Bridge {
 				'per_page' => $args['per_page']
 			)
 		);
+	}
+	
+	/**
+	 * Tool: Get history
+	 */
+	private function tool_get_history($params) {
+		// Must provide either history_id or post_id
+		if (empty($params['history_id']) && empty($params['post_id'])) {
+			return new WP_Error('missing_parameter', 'Must provide history_id or post_id');
+		}
+		
+		$history_repo = new AIPS_History_Repository();
+		$include_logs = isset($params['include_logs']) ? $params['include_logs'] : true;
+		
+		// Get history record
+		if (!empty($params['history_id'])) {
+			$history = $history_repo->get_by_id($params['history_id']);
+		} else {
+			$history = $history_repo->get_by_post_id($params['post_id']);
+		}
+		
+		if (!$history) {
+			return new WP_Error('history_not_found', 'History record not found');
+		}
+		
+		// Format the response
+		$result = array(
+			'success' => true,
+			'history' => array(
+				'id' => $history->id,
+				'uuid' => $history->uuid,
+				'post_id' => $history->post_id,
+				'template_id' => $history->template_id,
+				'author_id' => isset($history->author_id) ? $history->author_id : null,
+				'topic_id' => isset($history->topic_id) ? $history->topic_id : null,
+				'status' => $history->status,
+				'generated_title' => $history->generated_title,
+				'generated_content' => isset($history->generated_content) ? $history->generated_content : null,
+				'error_message' => $history->error_message,
+				'creation_method' => isset($history->creation_method) ? $history->creation_method : null,
+				'created_at' => $history->created_at,
+				'completed_at' => $history->completed_at,
+				'post_url' => $history->post_id ? get_permalink($history->post_id) : null,
+				'edit_url' => $history->post_id ? get_edit_post_link($history->post_id, 'raw') : null
+			)
+		);
+		
+		// Add logs if requested and available
+		if ($include_logs && isset($history->log)) {
+			$formatted_logs = array();
+			foreach ($history->log as $log) {
+				$formatted_logs[] = array(
+					'id' => $log->id,
+					'log_type' => $log->log_type,
+					'history_type_id' => isset($log->history_type_id) ? $log->history_type_id : null,
+					'details' => json_decode($log->details, true),
+					'timestamp' => $log->timestamp
+				);
+			}
+			$result['history']['logs'] = $formatted_logs;
+			$result['history']['log_count'] = count($formatted_logs);
+		}
+		
+		return $result;
+	}
+	
+	/**
+	 * Tool: List authors
+	 */
+	private function tool_list_authors($params) {
+		$authors_repo = new AIPS_Authors_Repository();
+		$active_only = isset($params['active_only']) ? $params['active_only'] : false;
+		
+		$authors = $authors_repo->get_all($active_only);
+		
+		// Format authors for response
+		$formatted_authors = array();
+		foreach ($authors as $author) {
+			$formatted_authors[] = array(
+				'id' => $author->id,
+				'name' => $author->name,
+				'bio' => isset($author->bio) ? $author->bio : '',
+				'expertise' => isset($author->expertise) ? $author->expertise : '',
+				'tone' => isset($author->tone) ? $author->tone : '',
+				'is_active' => (bool) $author->is_active,
+				'created_at' => $author->created_at
+			);
+		}
+		
+		return array(
+			'success' => true,
+			'authors' => $formatted_authors,
+			'count' => count($formatted_authors)
+		);
+	}
+	
+	/**
+	 * Tool: Get author
+	 */
+	private function tool_get_author($params) {
+		if (empty($params['author_id'])) {
+			return new WP_Error('missing_parameter', 'author_id is required');
+		}
+		
+		$authors_repo = new AIPS_Authors_Repository();
+		$author = $authors_repo->get_by_id($params['author_id']);
+		
+		if (!$author) {
+			return new WP_Error('author_not_found', 'Author not found');
+		}
+		
+		return array(
+			'success' => true,
+			'author' => array(
+				'id' => $author->id,
+				'name' => $author->name,
+				'bio' => isset($author->bio) ? $author->bio : '',
+				'expertise' => isset($author->expertise) ? $author->expertise : '',
+				'tone' => isset($author->tone) ? $author->tone : '',
+				'is_active' => (bool) $author->is_active,
+				'created_at' => $author->created_at,
+				'updated_at' => isset($author->updated_at) ? $author->updated_at : null
+			)
+		);
+	}
+	
+	/**
+	 * Tool: List author topics
+	 */
+	private function tool_list_author_topics($params) {
+		if (empty($params['author_id'])) {
+			return new WP_Error('missing_parameter', 'author_id is required');
+		}
+		
+		$topics_repo = new AIPS_Author_Topics_Repository();
+		$status = isset($params['status']) ? $params['status'] : null;
+		$limit = isset($params['limit']) ? max(1, min(500, $params['limit'])) : 50;
+		
+		// Get topics for author
+		$topics = $topics_repo->get_by_author($params['author_id'], $status);
+		
+		// Limit results
+		if (count($topics) > $limit) {
+			$topics = array_slice($topics, 0, $limit);
+		}
+		
+		// Format topics for response
+		$formatted_topics = array();
+		foreach ($topics as $topic) {
+			$formatted_topics[] = array(
+				'id' => $topic->id,
+				'author_id' => $topic->author_id,
+				'topic_title' => $topic->topic_title,
+				'topic_prompt' => isset($topic->topic_prompt) ? $topic->topic_prompt : '',
+				'status' => $topic->status,
+				'score' => isset($topic->score) ? (int) $topic->score : null,
+				'keywords' => isset($topic->keywords) ? $topic->keywords : '',
+				'metadata' => isset($topic->metadata) ? $topic->metadata : '',
+				'generated_at' => $topic->generated_at,
+				'approved_at' => isset($topic->approved_at) ? $topic->approved_at : null
+			);
+		}
+		
+		return array(
+			'success' => true,
+			'topics' => $formatted_topics,
+			'count' => count($formatted_topics),
+			'total_available' => count($topics_repo->get_by_author($params['author_id'], $status))
+		);
+	}
+	
+	/**
+	 * Tool: Get author topic
+	 */
+	private function tool_get_author_topic($params) {
+		if (empty($params['topic_id'])) {
+			return new WP_Error('missing_parameter', 'topic_id is required');
+		}
+		
+		$topics_repo = new AIPS_Author_Topics_Repository();
+		$topic = $topics_repo->get_by_id($params['topic_id']);
+		
+		if (!$topic) {
+			return new WP_Error('topic_not_found', 'Topic not found');
+		}
+		
+		return array(
+			'success' => true,
+			'topic' => array(
+				'id' => $topic->id,
+				'author_id' => $topic->author_id,
+				'topic_title' => $topic->topic_title,
+				'topic_prompt' => isset($topic->topic_prompt) ? $topic->topic_prompt : '',
+				'status' => $topic->status,
+				'score' => isset($topic->score) ? (int) $topic->score : null,
+				'keywords' => isset($topic->keywords) ? $topic->keywords : '',
+				'metadata' => isset($topic->metadata) ? $topic->metadata : '',
+				'generated_at' => $topic->generated_at,
+				'approved_at' => isset($topic->approved_at) ? $topic->approved_at : null,
+				'feedback' => isset($topic->feedback) ? $topic->feedback : null
+			)
+		);
+	}
+	
+	/**
+	 * Tool: Regenerate post component
+	 */
+	private function tool_regenerate_post_component($params) {
+		// Validate required parameters
+		if (empty($params['post_id'])) {
+			return new WP_Error('missing_parameter', 'post_id is required');
+		}
+		if (empty($params['history_id'])) {
+			return new WP_Error('missing_parameter', 'history_id is required');
+		}
+		if (empty($params['component'])) {
+			return new WP_Error('missing_parameter', 'component is required');
+		}
+		
+		// Validate component type
+		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		if (!in_array($params['component'], $valid_components)) {
+			return new WP_Error('invalid_component', 'Invalid component. Must be one of: ' . implode(', ', $valid_components));
+		}
+		
+		// Check if post exists
+		$post = get_post($params['post_id']);
+		if (!$post) {
+			return new WP_Error('post_not_found', 'Post not found');
+		}
+		
+		// Initialize regeneration service
+		$regen_service = new AIPS_Component_Regeneration_Service();
+		
+		// Get generation context
+		$context = $regen_service->get_generation_context($params['history_id']);
+		if (is_wp_error($context)) {
+			return $context;
+		}
+		
+		// Verify context matches post
+		if (isset($context['post_id']) && $context['post_id'] != $params['post_id']) {
+			return new WP_Error('context_mismatch', 'History record does not belong to this post');
+		}
+		
+		// Add post_id to context
+		$context['post_id'] = $params['post_id'];
+		
+		// Regenerate the component
+		$component = $params['component'];
+		$result = null;
+		
+		try {
+			switch ($component) {
+				case 'title':
+					$result = $regen_service->regenerate_title($context);
+					break;
+				case 'excerpt':
+					$result = $regen_service->regenerate_excerpt($context);
+					break;
+				case 'content':
+					$result = $regen_service->regenerate_content($context);
+					break;
+				case 'featured_image':
+					$result = $regen_service->regenerate_featured_image($context);
+					break;
+			}
+		} catch (Exception $e) {
+			return new WP_Error('regeneration_failed', 'Component regeneration failed: ' . $e->getMessage());
+		}
+		
+		if (is_wp_error($result)) {
+			return $result;
+		}
+		
+		// Prepare response
+		$response = array(
+			'success' => true,
+			'component' => $component,
+			'post_id' => $params['post_id'],
+			'history_id' => $params['history_id'],
+			'saved' => false
+		);
+		
+		// Save to post if requested
+		if (isset($params['save']) && $params['save'] === true) {
+			$update_data = array('ID' => $params['post_id']);
+			
+			switch ($component) {
+				case 'title':
+					$update_data['post_title'] = $result;
+					$response['new_value'] = $result;
+					break;
+				case 'excerpt':
+					$update_data['post_excerpt'] = $result;
+					$response['new_value'] = $result;
+					break;
+				case 'content':
+					$update_data['post_content'] = $result;
+					$response['new_value'] = $result;
+					break;
+				case 'featured_image':
+					if (isset($result['attachment_id'])) {
+						set_post_thumbnail($params['post_id'], $result['attachment_id']);
+						$response['new_value'] = array(
+							'attachment_id' => $result['attachment_id'],
+							'url' => isset($result['url']) ? $result['url'] : wp_get_attachment_url($result['attachment_id'])
+						);
+					}
+					break;
+			}
+			
+			if ($component !== 'featured_image') {
+				$updated = wp_update_post($update_data, true);
+				if (is_wp_error($updated)) {
+					return $updated;
+				}
+			}
+			
+			$response['saved'] = true;
+			$response['message'] = ucfirst($component) . ' regenerated and saved successfully';
+		} else {
+			// Return preview only
+			$response['new_value'] = $result;
+			$response['message'] = ucfirst($component) . ' regenerated (preview only, not saved)';
+		}
+		
+		return $response;
 	}
 }
 
