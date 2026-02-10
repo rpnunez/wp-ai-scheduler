@@ -5,7 +5,7 @@
 import { useState, useEffect } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
-import { Spinner, Notice } from '@wordpress/components';
+import { Spinner, Notice, Modal, Button } from '@wordpress/components';
 import PostFilters from './PostFilters';
 import PostsList from './PostsList';
 import SessionModal from './SessionModal';
@@ -28,6 +28,9 @@ const GeneratedPostsApp = () => {
 	});
 	const [sessionModalOpen, setSessionModalOpen] = useState(false);
 	const [sessionId, setSessionId] = useState(null);
+	const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+	const [postToDelete, setPostToDelete] = useState(null);
+	const [successMessage, setSuccessMessage] = useState(null);
 
 	// Configure API fetch with nonce
 	useEffect(() => {
@@ -102,31 +105,47 @@ const GeneratedPostsApp = () => {
 		setSessionModalOpen(true);
 	};
 
-	const handleDeletePost = async (postId) => {
-		if (!confirm(__('Are you sure you want to delete this post?', 'ai-post-scheduler'))) {
-			return;
-		}
+	const handleDeletePost = (postId) => {
+		setPostToDelete(postId);
+		setDeleteModalOpen(true);
+	};
+
+	const confirmDeletePost = async () => {
+		if (!postToDelete) return;
 
 		try {
 			await apiFetch({
-				path: `/generated-posts/${postId}`,
+				path: `/generated-posts/${postToDelete}`,
 				method: 'DELETE',
 			});
 
 			// Refresh the list
-			setPosts(posts.filter(post => post.post_id !== postId));
+			setPosts(posts.filter(post => post.post_id !== postToDelete));
 			setPagination(prev => ({ ...prev, total: prev.total - 1 }));
+			
+			// Show success message
+			setSuccessMessage(__('Post deleted successfully.', 'ai-post-scheduler'));
+			setTimeout(() => setSuccessMessage(null), 3000);
 		} catch (err) {
 			console.error('Failed to delete post:', err);
-			alert(__('Failed to delete post. Please try again.', 'ai-post-scheduler'));
+			setError(__('Failed to delete post. Please try again.', 'ai-post-scheduler'));
+		} finally {
+			setDeleteModalOpen(false);
+			setPostToDelete(null);
 		}
 	};
 
 	return (
 		<div className="aips-generated-posts-react">
 			{error && (
-				<Notice status="error" isDismissible={false}>
+				<Notice status="error" isDismissible onRemove={() => setError(null)}>
 					{error}
+				</Notice>
+			)}
+
+			{successMessage && (
+				<Notice status="success" isDismissible onRemove={() => setSuccessMessage(null)}>
+					{successMessage}
 				</Notice>
 			)}
 
@@ -156,6 +175,31 @@ const GeneratedPostsApp = () => {
 					sessionId={sessionId}
 					onClose={() => setSessionModalOpen(false)}
 				/>
+			)}
+
+			{deleteModalOpen && (
+				<Modal
+					title={__('Confirm Delete', 'ai-post-scheduler')}
+					onRequestClose={() => setDeleteModalOpen(false)}
+					className="aips-confirm-modal"
+				>
+					<p>{__('Are you sure you want to delete this post? This action cannot be undone.', 'ai-post-scheduler')}</p>
+					<div className="aips-modal-actions">
+						<Button
+							variant="secondary"
+							onClick={() => setDeleteModalOpen(false)}
+						>
+							{__('Cancel', 'ai-post-scheduler')}
+						</Button>
+						<Button
+							variant="primary"
+							isDestructive
+							onClick={confirmDeletePost}
+						>
+							{__('Delete', 'ai-post-scheduler')}
+						</Button>
+					</div>
+				</Modal>
 			)}
 		</div>
 	);

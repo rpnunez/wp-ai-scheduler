@@ -141,25 +141,16 @@ class AIPS_Generated_Posts_API {
 		$search = $request->get_param('search');
 		$template_id = $request->get_param('template_id');
 		
-		// Map frontend status to backend status
-		$history_status = '';
-		if ($status === 'published' || $status === 'draft') {
-			// For published/draft, we'll filter by post_status after getting results
-			$history_status = 'completed';
-		} elseif ($status === 'pending') {
-			$history_status = 'completed';
-		}
-		
-		// Get history entries
+		// Get history entries (completed only)
 		$history = $this->history_repository->get_history(array(
 			'page' => $page,
-			'per_page' => $per_page * 2, // Get more to account for filtering
-			'status' => $history_status ?: 'completed',
+			'per_page' => 100, // Get more to allow for post status filtering
+			'status' => 'completed',
 			'search' => $search,
 			'template_id' => $template_id,
 		));
 		
-		// Format posts data
+		// Format posts data and apply post status filter
 		$posts_data = array();
 		foreach ($history['items'] as $item) {
 			if (!$item->post_id) {
@@ -217,16 +208,29 @@ class AIPS_Generated_Posts_API {
 				'source' => $source,
 			);
 			
-			// Stop if we have enough posts
+			// Stop if we have enough posts for this page
 			if (count($posts_data) >= $per_page) {
 				break;
 			}
 		}
 		
+		// Calculate total and pages (approximate when filtering)
+		// Note: This is an approximation since we're filtering after query
+		// For production, consider adding post_status to history table or using WP_Query
+		$total = count($posts_data);
+		$pages = 1;
+		
+		// If we got a full page, there might be more
+		if (count($posts_data) >= $per_page) {
+			// Estimate based on current page
+			$total = $page * $per_page + 1; // At least one more page
+			$pages = $page + 1;
+		}
+		
 		return new WP_REST_Response(array(
 			'posts' => $posts_data,
-			'total' => $history['total'],
-			'pages' => $history['pages'],
+			'total' => $total,
+			'pages' => $pages,
 			'current_page' => $page,
 		), 200);
 	}
