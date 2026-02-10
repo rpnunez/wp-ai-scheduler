@@ -104,8 +104,26 @@ class AIPS_History_Container {
 			return null;
 		}
 		
-		// Create container with existing ID
-		return new self($repository, 'post_generation', array(), $history_id);
+		// Preserve original metadata from the history record
+		$metadata = array();
+		if (isset($history->post_id) && $history->post_id) {
+			$metadata['post_id'] = $history->post_id;
+		}
+		if (isset($history->template_id) && $history->template_id) {
+			$metadata['template_id'] = $history->template_id;
+		}
+		if (isset($history->author_id) && $history->author_id) {
+			$metadata['author_id'] = $history->author_id;
+		}
+		if (isset($history->topic_id) && $history->topic_id) {
+			$metadata['topic_id'] = $history->topic_id;
+		}
+		if (isset($history->creation_method) && $history->creation_method) {
+			$metadata['creation_method'] = $history->creation_method;
+		}
+		
+		// Create container with existing ID and preserved metadata
+		return new self($repository, $history->type, $metadata, $history_id);
 	}
 	
 	/**
