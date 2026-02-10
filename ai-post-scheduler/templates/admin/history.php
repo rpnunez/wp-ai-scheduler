@@ -42,6 +42,9 @@ if (isset($history_handler)) {
 $history_base_page = isset($history_base_page) ? $history_base_page : 'aips-history';
 $history_base_args = isset($history_base_args) && is_array($history_base_args) ? $history_base_args : array();
 $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=' . $history_base_page));
+
+// Determine if this is being displayed in a tab or as a standalone page
+$is_history_tab = isset($is_history_tab) ? $is_history_tab : false;
 ?>
 <div class="wrap aips-wrap">
     <h1><?php esc_html_e('History', 'ai-post-scheduler'); ?></h1>
@@ -49,9 +52,6 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
     <p class="description">
         <?php esc_html_e('View post generation history, activity logs, errors, and system events in one place.', 'ai-post-scheduler'); ?>
     </p>
-    
-    <div class="aips-history-tab">
-    <h2><?php esc_html_e('Generation History', 'ai-post-scheduler'); ?></h2>
     
     <div class="aips-history-stats">
         <div class="aips-stat-inline">
@@ -255,5 +255,4 @@ $history_base_url = add_query_arg($history_base_args, admin_url('admin.php?page=
             </div>
         </div>
     </div>
-</div>
 </div><!-- .wrap -->
