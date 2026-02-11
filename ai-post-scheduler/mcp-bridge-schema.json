@@ -677,6 +677,214 @@
           "message": { "type": "string" }
         }
       }
+    },
+    {
+      "name": "get_generation_stats",
+      "description": "Get generation statistics (success rates, performance metrics)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "description": "Time period for stats",
+            "enum": ["all", "today", "week", "month"],
+            "default": "all"
+          },
+          "template_id": {
+            "type": "integer",
+            "description": "Filter by template ID"
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "completed": { "type": "integer" },
+              "failed": { "type": "integer" },
+              "processing": { "type": "integer" },
+              "success_rate": { "type": "number" },
+              "period": { "type": "string" },
+              "by_template": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "get_post_metadata",
+      "description": "Get AI generation metadata for a specific post",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "integer",
+            "description": "WordPress post ID"
+          }
+        },
+        "required": ["post_id"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "post_id": { "type": "integer" },
+              "post_title": { "type": "string" },
+              "post_status": { "type": "string" },
+              "post_date": { "type": "string" },
+              "history_id": { "type": "integer" },
+              "template_id": { "type": "integer" },
+              "template_name": { "type": "string" },
+              "author_id": { "type": "integer" },
+              "topic_id": { "type": "integer" },
+              "creation_method": { "type": "string" },
+              "generated_at": { "type": "string" },
+              "completed_at": { "type": "string" },
+              "status": { "type": "string" },
+              "ai_model": { "type": "string" },
+              "tokens_used": { "type": "integer" },
+              "generation_time": { "type": "number" },
+              "has_prompt": { "type": "boolean" },
+              "post_url": { "type": "string" },
+              "edit_url": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "get_ai_models",
+      "description": "List available AI models from AI Engine",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "current_model": { "type": "string" },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "provider": { "type": "string" },
+                "type": { "type": "string" },
+                "is_current": { "type": "boolean" }
+              }
+            }
+          },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "test_ai_connection",
+      "description": "Test AI Engine connection with a simple query",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "test_prompt": {
+            "type": "string",
+            "description": "Optional test prompt",
+            "default": "Say \"Hello\" if you can read this."
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "connected": { "type": "boolean" },
+          "test_prompt": { "type": "string" },
+          "response": { "type": "string" },
+          "response_time_ms": { "type": "number" },
+          "model": { "type": "string" },
+          "message": { "type": "string" },
+          "error": { "type": "string" },
+          "error_code": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "get_plugin_settings",
+      "description": "Get plugin configuration settings",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Settings category",
+            "enum": ["ai", "resilience", "logging", "all"],
+            "default": "all"
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "category": { "type": "string" },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "ai": {
+                "type": "object",
+                "properties": {
+                  "model": { "type": "string" },
+                  "max_tokens": { "type": "integer" },
+                  "temperature": { "type": "number" },
+                  "default_post_status": { "type": "string" },
+                  "default_post_author": { "type": "integer" }
+                }
+              },
+              "resilience": {
+                "type": "object",
+                "properties": {
+                  "enable_retry": { "type": "boolean" },
+                  "retry_max_attempts": { "type": "integer" },
+                  "retry_initial_delay": { "type": "integer" },
+                  "enable_rate_limiting": { "type": "boolean" },
+                  "rate_limit_requests": { "type": "integer" },
+                  "rate_limit_period": { "type": "integer" },
+                  "enable_circuit_breaker": { "type": "boolean" },
+                  "circuit_breaker_threshold": { "type": "integer" },
+                  "circuit_breaker_timeout": { "type": "integer" }
+                }
+              },
+              "logging": {
+                "type": "object",
+                "properties": {
+                  "enable_logging": { "type": "boolean" },
+                  "log_retention_days": { "type": "integer" }
+                }
+              },
+              "thresholds": {
+                "type": "object",
+                "properties": {
+                  "generated_posts_log_threshold_tmpfile": { "type": "integer" },
+                  "generated_posts_log_threshold_client": { "type": "integer" },
+                  "history_export_max_records": { "type": "integer" }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "authentication": {

@@ -59,7 +59,12 @@ class Test_AIPS_MCP_Bridge extends WP_UnitTestCase {
 			'get_author',
 			'list_author_topics',
 			'get_author_topic',
-			'regenerate_post_component'
+			'regenerate_post_component',
+			'get_generation_stats',
+			'get_post_metadata',
+			'get_ai_models',
+			'test_ai_connection',
+			'get_plugin_settings'
 		);
 		
 		foreach ($expected_tools as $tool) {
@@ -836,6 +841,182 @@ class Test_AIPS_MCP_Bridge extends WP_UnitTestCase {
 		$this->assertArrayHasKey('list_author_topics', $result['tools']);
 		$this->assertArrayHasKey('get_author_topic', $result['tools']);
 		$this->assertArrayHasKey('regenerate_post_component', $result['tools']);
+	}
+
+	/**
+	 * Test get_generation_stats returns expected structure
+	 */
+	public function test_get_generation_stats() {
+		$result = $this->bridge->execute_tool('get_generation_stats', array());
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('stats', $result);
+		$this->assertArrayHasKey('total', $result['stats']);
+		$this->assertArrayHasKey('completed', $result['stats']);
+		$this->assertArrayHasKey('failed', $result['stats']);
+		$this->assertArrayHasKey('processing', $result['stats']);
+		$this->assertArrayHasKey('success_rate', $result['stats']);
+		$this->assertArrayHasKey('by_template', $result['stats']);
+	}
+
+	/**
+	 * Test get_generation_stats with period filter
+	 */
+	public function test_get_generation_stats_with_period() {
+		$result = $this->bridge->execute_tool('get_generation_stats', array(
+			'period' => 'week'
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertEquals('week', $result['stats']['period']);
+	}
+
+	/**
+	 * Test get_generation_stats with template filter
+	 */
+	public function test_get_generation_stats_with_template() {
+		$result = $this->bridge->execute_tool('get_generation_stats', array(
+			'template_id' => 1
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+	}
+
+	/**
+	 * Test get_post_metadata requires post_id
+	 */
+	public function test_get_post_metadata_requires_parameter() {
+		$result = $this->bridge->execute_tool('get_post_metadata', array());
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('missing_parameter', $result->get_error_code());
+	}
+
+	/**
+	 * Test get_post_metadata with invalid post
+	 */
+	public function test_get_post_metadata_invalid_post() {
+		$result = $this->bridge->execute_tool('get_post_metadata', array(
+			'post_id' => 999999
+		));
+		
+		$this->assertInstanceOf(WP_Error::class, $result);
+		$this->assertEquals('post_not_found', $result->get_error_code());
+	}
+
+	/**
+	 * Test get_ai_models returns expected structure
+	 */
+	public function test_get_ai_models() {
+		$result = $this->bridge->execute_tool('get_ai_models', array());
+		
+		$this->assertIsArray($result);
+		// May return error if AI Engine not available, which is ok for test
+		if (isset($result['success']) && $result['success']) {
+			$this->assertArrayHasKey('models', $result);
+			$this->assertArrayHasKey('current_model', $result);
+			$this->assertIsArray($result['models']);
+		}
+	}
+
+	/**
+	 * Test test_ai_connection returns expected structure
+	 */
+	public function test_test_ai_connection() {
+		$result = $this->bridge->execute_tool('test_ai_connection', array());
+		
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('connected', $result);
+		$this->assertIsBool($result['connected']);
+		
+		// If connected, should have response
+		if ($result['connected']) {
+			$this->assertArrayHasKey('response', $result);
+			$this->assertArrayHasKey('response_time_ms', $result);
+		} else {
+			// If not connected, should have error message
+			$this->assertArrayHasKey('error', $result);
+		}
+	}
+
+	/**
+	 * Test test_ai_connection with custom prompt
+	 */
+	public function test_test_ai_connection_with_prompt() {
+		$result = $this->bridge->execute_tool('test_ai_connection', array(
+			'test_prompt' => 'Hello AI'
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('connected', $result);
+	}
+
+	/**
+	 * Test get_plugin_settings returns expected structure
+	 */
+	public function test_get_plugin_settings() {
+		$result = $this->bridge->execute_tool('get_plugin_settings', array());
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('settings', $result);
+		$this->assertArrayHasKey('category', $result);
+		$this->assertEquals('all', $result['category']);
+		
+		// Should have all categories when 'all' is requested
+		$this->assertArrayHasKey('ai', $result['settings']);
+		$this->assertArrayHasKey('resilience', $result['settings']);
+		$this->assertArrayHasKey('logging', $result['settings']);
+	}
+
+	/**
+	 * Test get_plugin_settings with category filter
+	 */
+	public function test_get_plugin_settings_with_category() {
+		$result = $this->bridge->execute_tool('get_plugin_settings', array(
+			'category' => 'ai'
+		));
+		
+		$this->assertIsArray($result);
+		$this->assertTrue($result['success']);
+		$this->assertEquals('ai', $result['category']);
+		$this->assertArrayHasKey('ai', $result['settings']);
+		
+		// Should only have ai category
+		$this->assertArrayNotHasKey('resilience', $result['settings']);
+		$this->assertArrayNotHasKey('logging', $result['settings']);
+	}
+
+	/**
+	 * Test get_plugin_settings AI settings structure
+	 */
+	public function test_get_plugin_settings_ai_structure() {
+		$result = $this->bridge->execute_tool('get_plugin_settings', array(
+			'category' => 'ai'
+		));
+		
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('model', $result['settings']['ai']);
+		$this->assertArrayHasKey('max_tokens', $result['settings']['ai']);
+		$this->assertArrayHasKey('temperature', $result['settings']['ai']);
+		$this->assertArrayHasKey('default_post_status', $result['settings']['ai']);
+	}
+
+	/**
+	 * Test that all Phase 3 tools are registered
+	 */
+	public function test_phase_3_tools_registered() {
+		$result = $this->bridge->execute_tool('list_tools', array());
+		
+		$this->assertTrue($result['success']);
+		$this->assertArrayHasKey('get_generation_stats', $result['tools']);
+		$this->assertArrayHasKey('get_post_metadata', $result['tools']);
+		$this->assertArrayHasKey('get_ai_models', $result['tools']);
+		$this->assertArrayHasKey('test_ai_connection', $result['tools']);
+		$this->assertArrayHasKey('get_plugin_settings', $result['tools']);
 	}
 }
 
