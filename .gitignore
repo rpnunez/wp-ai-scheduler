@@ -29,3 +29,12 @@ Thumbs.db
 node_modules/
 scripts/__pycache__/
 .phpunit.result.cache
+
+# Docker
+.env
+docker-compose.override.yml
+backup.sql
+
+# Data directories
+data/
+wordpress/
