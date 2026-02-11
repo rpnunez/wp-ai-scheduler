@@ -229,11 +229,10 @@ class AIPS_Schedule_Processor {
             'activity',
             $log_activity_msg,
             array(
-                'event_type' => $event_type,
-                'event_status' => 'success',
-            ),
-            null,
-            array(
+                'input' => array(
+                    'event_type' => $event_type,
+                    'event_status' => 'success',
+                ),
                 'schedule_id' => $schedule->schedule_id,
                 'template_id' => $schedule->template_id,
                 'frequency' => $schedule->frequency,
@@ -322,11 +321,10 @@ class AIPS_Schedule_Processor {
                         $schedule->name
                     ),
                     array(
-                        'event_type' => 'schedule_failed',
-                        'event_status' => 'failed',
-                    ),
-                    null,
-                    array(
+                        'input' => array(
+                            'event_type' => 'schedule_failed',
+                            'event_status' => 'failed',
+                        ),
                         'schedule_id' => $schedule->schedule_id,
                         'template_id' => $schedule->template_id,
                         'error' => is_wp_error($result) ? $result->get_error_message() : 'Unknown error',
@@ -360,11 +358,10 @@ class AIPS_Schedule_Processor {
                 $error_msg
             ),
             array(
-                'event_type' => $is_manual ? 'manual_schedule_failed' : 'schedule_failed',
-                'event_status' => 'failed',
-            ),
-            null,
-            array(
+                'input' => array(
+                    'event_type' => $is_manual ? 'manual_schedule_failed' : 'schedule_failed',
+                    'event_status' => 'failed',
+                ),
                 'schedule_id' => $schedule->schedule_id,
                 'template_id' => $schedule->template_id,
                 'error' => $error_msg,
@@ -408,11 +405,10 @@ class AIPS_Schedule_Processor {
                     $post->post_title
                 ),
                 array(
-                    'event_type' => $event_type,
-                    'event_status' => $event_status,
-                ),
-                null,
-                array(
+                    'input' => array(
+                        'event_type' => $event_type,
+                        'event_status' => $event_status,
+                    ),
                     'schedule_id' => $schedule->schedule_id,
                     'post_id' => $result,
                     'template_id' => $schedule->template_id,

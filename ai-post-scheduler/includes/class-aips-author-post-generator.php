@@ -180,11 +180,10 @@ class AIPS_Author_Post_Generator {
 						$post_id->get_error_message()
 					),
 					array(
-						'topic_id' => $topic->id,
-						'topic_title' => $topic->topic_title,
-					),
-					null,
-					array(
+						'input' => array(
+							'topic_id' => $topic->id,
+							'topic_title' => $topic->topic_title,
+						),
 						'author_id' => $author->id,
 						'author_name' => $author->name,
 						'error' => $post_id->get_error_message(),
@@ -224,15 +223,15 @@ class AIPS_Author_Post_Generator {
 					$author->name
 				),
 				array(
-					'topic_id' => $topic->id,
-					'topic_title' => $topic->topic_title,
-				),
-				array(
-					'post_id' => $post_id,
-					'post_title' => $post_title,
-					'post_status' => $post_status,
-				),
-				array(
+					'input' => array(
+						'topic_id' => $topic->id,
+						'topic_title' => $topic->topic_title,
+					),
+					'output' => array(
+						'post_id' => $post_id,
+						'post_title' => $post_title,
+						'post_status' => $post_status,
+					),
 					'author_id' => $author->id,
 					'author_name' => $author->name,
 				)
@@ -259,11 +258,10 @@ class AIPS_Author_Post_Generator {
 					$e->getMessage()
 				),
 				array(
-					'topic_id' => $topic->id,
-					'topic_title' => $topic->topic_title,
-				),
-				null,
-				array(
+					'input' => array(
+						'topic_id' => $topic->id,
+						'topic_title' => $topic->topic_title,
+					),
 					'author_id' => $author->id,
 					'author_name' => $author->name,
 					'error' => $e->getMessage(),
