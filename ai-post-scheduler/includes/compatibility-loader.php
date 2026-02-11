@@ -44,3 +44,31 @@ class_alias('AIPS\\Models\\TemplateContext', 'AIPS_Template_Context');
 class_alias('AIPS\\Models\\TopicContext', 'AIPS_Topic_Context');
 class_alias('AIPS\\Models\\TemplateTypeSelector', 'AIPS_Template_Type_Selector');
 class_alias('AIPS\\Models\\ArticleStructureManager', 'AIPS_Article_Structure_Manager');
+
+// Services - Core
+class_alias('AIPS\\Services\\Logger', 'AIPS_Logger');
+class_alias('AIPS\\Services\\ImageService', 'AIPS_Image_Service');
+class_alias('AIPS\\Services\\HistoryService', 'AIPS_History_Service');
+class_alias('AIPS\\Services\\SessionToJson', 'AIPS_Session_To_Json');
+class_alias('AIPS\\Services\\SeederService', 'AIPS_Seeder_Service');
+
+// Services - AI
+class_alias('AIPS\\Services\\AI\\AIService', 'AIPS_AI_Service');
+class_alias('AIPS\\Services\\AI\\EmbeddingsService', 'AIPS_Embeddings_Service');
+class_alias('AIPS\\Services\\AI\\PromptBuilder', 'AIPS_Prompt_Builder');
+class_alias('AIPS\\Services\\AI\\ResilienceService', 'AIPS_Resilience_Service');
+
+// Services - Content
+class_alias('AIPS\\Services\\Content\\ComponentRegenerationService', 'AIPS_Component_Regeneration_Service');
+class_alias('AIPS\\Services\\Content\\PostCreator', 'AIPS_Post_Creator');
+class_alias('AIPS\\Services\\Content\\TemplateProcessor', 'AIPS_Template_Processor');
+class_alias('AIPS\\Services\\Content\\TemplateHelper', 'AIPS_Template_Helper');
+
+// Services - Research
+class_alias('AIPS\\Services\\Research\\ResearchService', 'AIPS_Research_Service');
+class_alias('AIPS\\Services\\Research\\TopicExpansionService', 'AIPS_Topic_Expansion_Service');
+class_alias('AIPS\\Services\\Research\\TopicPenaltyService', 'AIPS_Topic_Penalty_Service');
+
+// Services - Generation
+class_alias('AIPS\\Services\\Generation\\GenerationLogger', 'AIPS_Generation_Logger');
+class_alias('AIPS\\Services\\Generation\\GenerationSession', 'AIPS_Generation_Session');
