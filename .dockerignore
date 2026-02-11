@@ -61,13 +61,13 @@ scripts/
 collect_changelogs.py
 
 # Development start scripts (not needed in image)
-startpdev.sh
-startpdev.bat
-startpdev.ps1
+start-dev.sh
+start-dev.bat
+start-dev.ps1
 
-# Keep these required files for Docker build:
-# !healthcheck.sh
-# !docker-entrypoint.sh
-# !docker-compose.yml
-# !Dockerfile
-# !ai-post-scheduler/
+# Note: The following files are required and NOT ignored:
+# - healthcheck.sh
+# - docker-entrypoint.sh
+# - docker-compose.yml
+# - Dockerfile
+# - ai-post-scheduler/

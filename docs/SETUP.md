@@ -5,9 +5,9 @@
 For a complete development environment with WordPress, use the Docker setup:
 
 ```bash
-./startpdev.sh  # On Unix/Linux/Mac
-startpdev.bat   # On Windows (CMD)
-./startpdev.ps1 # On Windows (PowerShell)
+./start-dev.sh  # On Unix/Linux/Mac
+start-dev.bat   # On Windows (CMD)
+./start-dev.ps1 # On Windows (PowerShell)
 ```
 
 See [DOCKER_README.md](../DOCKER_README.md) in the repository root for full documentation.

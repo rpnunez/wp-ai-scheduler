@@ -13,17 +13,17 @@ This repository includes a complete Docker development environment for the WP AI
 
 **On Unix/Linux/Mac:**
 ```bash
-./startpdev.sh
+./start-dev.sh
 ```
 
 **On Windows (Command Prompt):**
 ```cmd
-startpdev.bat
+start-dev.bat
 ```
 
 **On Windows (PowerShell):**
 ```powershell
-./startpdev.ps1
+./start-dev.ps1
 ```
 
 The startup script will:
@@ -121,14 +121,14 @@ If you encounter database connection issues, try:
 
 ```bash
 docker compose down -v  # Remove volumes
-./startpdev.sh          # Start fresh
+./start-dev.sh          # Start fresh
 ```
 
 **Warning:** This will delete all data in the database.
 
 ## Development Workflow
 
-1. Start the environment: `./startpdev.sh`
+1. Start the environment: `./start-dev.sh`
 2. Make code changes in the `ai-post-scheduler/` directory
 3. Changes are immediately available in WordPress
 4. View logs to debug: `docker compose logs -f web`
