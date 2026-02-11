@@ -1,5 +1,19 @@
 # Post-Setup Instructions
 
+## Docker Development Environment
+
+For a complete development environment with WordPress, use the Docker setup:
+
+```bash
+./startpdev.sh  # On Unix/Linux/Mac
+startpdev.bat   # On Windows (CMD)
+./startpdev.ps1 # On Windows (PowerShell)
+```
+
+See [DOCKER_README.md](../DOCKER_README.md) in the repository root for full documentation.
+
+## Manual Setup
+
 After cloning this repository, please update the `.gitignore` file with the following content:
 
 ```
