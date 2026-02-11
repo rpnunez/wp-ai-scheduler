@@ -56,11 +56,11 @@ COPY ai-post-scheduler /plugin-src/ai-post-scheduler
 
 # Copy custom entrypoint and make executable
 COPY docker-entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
 
 # Copy healthcheck script and make executable
 COPY healthcheck.sh /usr/local/bin/healthcheck.sh
-RUN chmod +x /usr/local/bin/healthcheck.sh
+RUN sed -i 's/\r$//' /usr/local/bin/healthcheck.sh && chmod +x /usr/local/bin/healthcheck.sh
 
 # Define healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
