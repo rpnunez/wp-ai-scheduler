@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- [2026-02-11] **MCP Bridge - Phase 3 Tools (v1.3.0)**: Extended MCP Bridge with 5 analytics and testing tools for performance monitoring, metadata access, and configuration management.
+  - New Tools: `get_generation_stats` (success rates, performance metrics with period/template filtering), `get_post_metadata` (AI metadata for posts including tokens, model, timing), `get_ai_models` (list available AI models), `test_ai_connection` (verify AI Engine with response time), `get_plugin_settings` (categorized configuration access)
+  - Features: Period-based analytics (today/week/month); Template breakdown statistics; Post metadata with token usage and generation time; AI connection testing with custom prompts; Categorized settings (ai/resilience/logging)
+  - Testing: 17 new unit test cases (77+ total)
+  - Documentation: `MCP_BRIDGE_PHASE3_TOOLS.md` with complete API reference, 5 workflow examples, and integration tips
+  - Total MCP tools: 25 (was 20)
+
 - [2026-02-10] **MCP Bridge - Phase 2 Tools (v1.2.0)**: Extended MCP Bridge with 6 additional tools for history management, author management, and component regeneration.
   - New Tools: `get_history` (detailed history with logs by ID or post_id), `list_authors` (author discovery), `get_author` (author details), `list_author_topics` (topics with filtering), `get_author_topic` (topic details), `regenerate_post_component` (regenerate title/excerpt/content/featured_image)
   - Features: Access detailed generation history with logs; Manage authors and their topics; Regenerate individual post components with preview mode; Support for all component types including featured images
