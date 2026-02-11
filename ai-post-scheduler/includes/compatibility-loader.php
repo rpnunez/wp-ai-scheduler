@@ -18,5 +18,5 @@ if (!defined('ABSPATH')) {
 // This file will be populated as classes are migrated
 // Format: class_alias('AIPS\\Namespace\\NewClassName', 'AIPS_Old_Class_Name');
 
-// Example:
-// class_alias('AIPS\\Repositories\\TemplateRepository', 'AIPS_Template_Repository');
+// Repositories
+class_alias('AIPS\\Repositories\\DBManager', 'AIPS_DB_Manager');
