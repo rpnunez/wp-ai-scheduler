@@ -39,12 +39,13 @@ Write-Host "[OK] All required files found" -ForegroundColor Green
 Write-Host ""
 
 # Check for docker-compose or docker compose
-$dockerCompose = "docker compose"
 try {
     docker-compose --version | Out-Null
     $dockerCompose = "docker-compose"
+    Write-Host "Using docker-compose (V1)" -ForegroundColor Yellow
 } catch {
-    Write-Host "Using Docker Compose V2" -ForegroundColor Yellow
+    Write-Host "Using Docker Compose V2 (docker compose)" -ForegroundColor Yellow
+    $dockerCompose = "docker compose"
 }
 
 # Stop any existing containers
