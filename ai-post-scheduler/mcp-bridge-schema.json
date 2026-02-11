@@ -32,7 +32,16 @@
             "type": "string",
             "description": "Type of cache to clear: all, history_stats, schedule_stats, or specific transient name",
             "default": "all",
-            "enum": ["all", "history_stats", "schedule_stats"]
+            "oneOf": [
+              {
+                "enum": ["all", "history_stats", "schedule_stats"],
+                "description": "Known cache groups: all caches, history statistics, or schedule statistics"
+              },
+              {
+                "type": "string",
+                "description": "Specific transient name to clear"
+              }
+            ]
           }
         },
         "required": []

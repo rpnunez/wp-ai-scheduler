@@ -7,6 +7,17 @@
  * without requiring a full WordPress environment.
  */
 
+// Prevent web access: allow only CLI (or WP-CLI) execution.
+if ( php_sapi_name() !== 'cli' && ! defined( 'WP_CLI' ) ) {
+	if ( ! headers_sent() ) {
+		if ( function_exists( 'http_response_code' ) ) {
+			http_response_code( 404 );
+		} else {
+			header( 'HTTP/1.1 404 Not Found' );
+		}
+	}
+	exit;
+}
 echo "=== MCP Bridge Validation Script ===\n\n";
 
 // Check that mcp-bridge.php exists

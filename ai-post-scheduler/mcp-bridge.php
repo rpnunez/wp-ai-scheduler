@@ -467,10 +467,16 @@ class AIPS_MCP_Bridge {
 	 * Execute a tool by name
 	 * 
 	 * @param string $tool_name Tool to execute
-	 * @param array $params Parameters for the tool
+	 * @param array  $params Parameters for the tool
+	 * @param bool   $bypass_cap_check Whether to bypass capability checks (for trusted contexts like WP-CLI/tests)
 	 * @return mixed|WP_Error Result or error
 	 */
-	public function execute_tool($tool_name, $params = array()) {
+	public function execute_tool($tool_name, $params = array(), $bypass_cap_check = false) {
+		// Enforce capability check by default to prevent unauthorized tool execution
+		if (!$bypass_cap_check && function_exists('current_user_can') && !current_user_can('manage_options')) {
+			return new WP_Error('aips_mcp_insufficient_permissions', 'Insufficient permissions. Admin access required.');
+		}
+		
 		if (!isset($this->tools[$tool_name])) {
 			return new WP_Error('tool_not_found', 'Tool not found: ' . $tool_name);
 		}
@@ -679,33 +685,14 @@ class AIPS_MCP_Bridge {
 	 * Tool: Clear history
 	 */
 	private function tool_clear_history($params) {
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_history';
+		$repository = new AIPS_History_Repository();
 		
-		$where = array();
+		$result = $repository->clear_history(array(
+			'status' => $params['status'],
+			'older_than_days' => $params['older_than_days'],
+		));
 		
-		if ($params['older_than_days'] > 0) {
-			$date = date('Y-m-d H:i:s', strtotime("-{$params['older_than_days']} days"));
-			$where[] = $wpdb->prepare("created_at < %s", $date);
-		}
-		
-		if ($params['status'] !== 'all') {
-			$where[] = $wpdb->prepare("status = %s", $params['status']);
-		}
-		
-		$where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-		
-		$count = $wpdb->get_var("SELECT COUNT(*) FROM $table $where_clause");
-		$deleted = $wpdb->query("DELETE FROM $table $where_clause");
-		
-		// Clear cache
-		delete_transient('aips_history_stats');
-		
-		return array(
-			'success' => true,
-			'deleted' => $deleted,
-			'message' => "Deleted $deleted history records"
-		);
+		return $result;
 	}
 	
 	/**
