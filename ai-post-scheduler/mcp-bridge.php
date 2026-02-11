@@ -361,6 +361,63 @@ class AIPS_MCP_Bridge {
 					)
 				),
 				'handler' => array($this, 'tool_regenerate_post_component')
+			),
+			'get_generation_stats' => array(
+				'description' => 'Get generation statistics (success rates, performance metrics)',
+				'parameters' => array(
+					'period' => array(
+						'type' => 'string',
+						'description' => 'Time period for stats: all, today, week, month',
+						'required' => false,
+						'default' => 'all'
+					),
+					'template_id' => array(
+						'type' => 'integer',
+						'description' => 'Filter by template ID',
+						'required' => false
+					)
+				),
+				'handler' => array($this, 'tool_get_generation_stats')
+			),
+			'get_post_metadata' => array(
+				'description' => 'Get AI generation metadata for a specific post',
+				'parameters' => array(
+					'post_id' => array(
+						'type' => 'integer',
+						'description' => 'WordPress post ID',
+						'required' => true
+					)
+				),
+				'handler' => array($this, 'tool_get_post_metadata')
+			),
+			'get_ai_models' => array(
+				'description' => 'List available AI models from AI Engine',
+				'parameters' => array(),
+				'handler' => array($this, 'tool_get_ai_models')
+			),
+			'test_ai_connection' => array(
+				'description' => 'Test AI Engine connection with a simple query',
+				'parameters' => array(
+					'test_prompt' => array(
+						'type' => 'string',
+						'description' => 'Optional test prompt',
+						'required' => false,
+						'default' => 'Say "Hello" if you can read this.'
+					)
+				),
+				'handler' => array($this, 'tool_test_ai_connection')
+			),
+			'get_plugin_settings' => array(
+				'description' => 'Get plugin configuration settings',
+				'parameters' => array(
+					'category' => array(
+						'type' => 'string',
+						'description' => 'Settings category: ai, resilience, logging, all',
+						'required' => false,
+						'default' => 'all'
+					)
+				),
+				'handler' => array($this, 'tool_get_plugin_settings')
 			)
 		);
 	}
@@ -1342,6 +1399,313 @@ class AIPS_MCP_Bridge {
 		}
 		
 		return $response;
+	}
+	
+	/**
+	 * Tool: Get generation stats
+	 */
+	private function tool_get_generation_stats($params) {
+		$history_repo = new AIPS_History_Repository();
+		$period = isset($params['period']) ? $params['period'] : 'all';
+		$template_id = isset($params['template_id']) ? $params['template_id'] : null;
+		
+		// Get overall stats
+		$stats = $history_repo->get_stats();
+		
+		// Add period filtering if needed
+		if ($period !== 'all') {
+			$date_filter = '';
+			switch ($period) {
+				case 'today':
+					$date_filter = date('Y-m-d 00:00:00');
+					break;
+				case 'week':
+					$date_filter = date('Y-m-d 00:00:00', strtotime('-7 days'));
+					break;
+				case 'month':
+					$date_filter = date('Y-m-d 00:00:00', strtotime('-30 days'));
+					break;
+			}
+			
+			if ($date_filter) {
+				global $wpdb;
+				$table_name = $wpdb->prefix . 'aips_history';
+				
+				$where = "created_at >= %s";
+				$query_args = array($date_filter);
+				
+				if ($template_id) {
+					$where .= " AND template_id = %d";
+					$query_args[] = $template_id;
+				}
+				
+				$results = $wpdb->get_row($wpdb->prepare("
+					SELECT
+						COUNT(*) as total,
+						SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+						SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+						SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
+					FROM {$table_name}
+					WHERE {$where}
+				", $query_args));
+				
+				$stats = array(
+					'total' => (int) $results->total,
+					'completed' => (int) $results->completed,
+					'failed' => (int) $results->failed,
+					'processing' => (int) $results->processing,
+				);
+				
+				$stats['success_rate'] = $stats['total'] > 0 
+					? round(($stats['completed'] / $stats['total']) * 100, 1) 
+					: 0;
+			}
+		} elseif ($template_id) {
+			// Filter by template for all time
+			$template_count = $history_repo->get_template_stats($template_id);
+			$stats['template_id'] = $template_id;
+			$stats['template_completed'] = $template_count;
+		}
+		
+		// Add template breakdown
+		$stats['by_template'] = $history_repo->get_all_template_stats();
+		
+		// Add period info
+		$stats['period'] = $period;
+		
+		return array(
+			'success' => true,
+			'stats' => $stats
+		);
+	}
+	
+	/**
+	 * Tool: Get post metadata
+	 */
+	private function tool_get_post_metadata($params) {
+		if (empty($params['post_id'])) {
+			return new WP_Error('missing_parameter', 'post_id is required');
+		}
+		
+		$post_id = $params['post_id'];
+		
+		// Check if post exists
+		$post = get_post($post_id);
+		if (!$post) {
+			return new WP_Error('post_not_found', 'Post not found');
+		}
+		
+		// Get history for this post
+		$history_repo = new AIPS_History_Repository();
+		$history = $history_repo->get_by_post_id($post_id);
+		
+		if (!$history) {
+			return new WP_Error('history_not_found', 'No generation history found for this post');
+		}
+		
+		// Get AI-specific metadata from post meta
+		$ai_model = get_post_meta($post_id, '_aips_ai_model', true);
+		$ai_prompt = get_post_meta($post_id, '_aips_prompt', true);
+		$generation_time = get_post_meta($post_id, '_aips_generation_time', true);
+		$tokens_used = get_post_meta($post_id, '_aips_tokens_used', true);
+		
+		// Build response
+		$metadata = array(
+			'post_id' => $post_id,
+			'post_title' => $post->post_title,
+			'post_status' => $post->post_status,
+			'post_date' => $post->post_date,
+			'history_id' => $history->id,
+			'template_id' => $history->template_id,
+			'template_name' => isset($history->template_name) ? $history->template_name : null,
+			'author_id' => isset($history->author_id) ? $history->author_id : null,
+			'topic_id' => isset($history->topic_id) ? $history->topic_id : null,
+			'creation_method' => isset($history->creation_method) ? $history->creation_method : null,
+			'generated_at' => $history->created_at,
+			'completed_at' => $history->completed_at,
+			'status' => $history->status,
+			'ai_model' => $ai_model ?: null,
+			'tokens_used' => $tokens_used ? (int) $tokens_used : null,
+			'generation_time' => $generation_time ? (float) $generation_time : null,
+			'has_prompt' => !empty($ai_prompt),
+			'post_url' => get_permalink($post_id),
+			'edit_url' => get_edit_post_link($post_id, 'raw')
+		);
+		
+		return array(
+			'success' => true,
+			'metadata' => $metadata
+		);
+	}
+	
+	/**
+	 * Tool: Get AI models
+	 */
+	private function tool_get_ai_models($params) {
+		// Check if AI Engine is available
+		$ai_service = new AIPS_AI_Service();
+		
+		if (!$ai_service->is_available()) {
+			return new WP_Error('ai_unavailable', 'AI Engine plugin is not available or not configured');
+		}
+		
+		// Get the current configured model
+		$current_model = get_option('aips_ai_model', '');
+		
+		// Try to get available models from AI Engine
+		global $mwai;
+		$available_models = array();
+		
+		if ($mwai) {
+			// AI Engine doesn't expose a direct API for listing models
+			// We'll provide the commonly available models and indicate which is configured
+			$common_models = array(
+				'gpt-4' => array('name' => 'GPT-4', 'provider' => 'OpenAI', 'type' => 'chat'),
+				'gpt-4-turbo' => array('name' => 'GPT-4 Turbo', 'provider' => 'OpenAI', 'type' => 'chat'),
+				'gpt-4o' => array('name' => 'GPT-4o', 'provider' => 'OpenAI', 'type' => 'chat'),
+				'gpt-3.5-turbo' => array('name' => 'GPT-3.5 Turbo', 'provider' => 'OpenAI', 'type' => 'chat'),
+				'claude-3-opus' => array('name' => 'Claude 3 Opus', 'provider' => 'Anthropic', 'type' => 'chat'),
+				'claude-3-sonnet' => array('name' => 'Claude 3 Sonnet', 'provider' => 'Anthropic', 'type' => 'chat'),
+				'claude-3-haiku' => array('name' => 'Claude 3 Haiku', 'provider' => 'Anthropic', 'type' => 'chat'),
+			);
+			
+			foreach ($common_models as $model_id => $model_info) {
+				$available_models[] = array(
+					'id' => $model_id,
+					'name' => $model_info['name'],
+					'provider' => $model_info['provider'],
+					'type' => $model_info['type'],
+					'is_current' => ($model_id === $current_model)
+				);
+			}
+		}
+		
+		return array(
+			'success' => true,
+			'current_model' => $current_model ?: null,
+			'models' => $available_models,
+			'note' => 'Model availability depends on AI Engine configuration. List shows common models.'
+		);
+	}
+	
+	/**
+	 * Tool: Test AI connection
+	 */
+	private function tool_test_ai_connection($params) {
+		$test_prompt = isset($params['test_prompt']) ? $params['test_prompt'] : 'Say "Hello" if you can read this.';
+		
+		// Check if AI Engine is available
+		$ai_service = new AIPS_AI_Service();
+		
+		if (!$ai_service->is_available()) {
+			return array(
+				'success' => false,
+				'connected' => false,
+				'error' => 'AI Engine plugin is not available or not installed',
+				'message' => 'Please install and activate the AI Engine plugin'
+			);
+		}
+		
+		// Try a simple test query
+		$start_time = microtime(true);
+		
+		try {
+			$result = $ai_service->generate_text($test_prompt, array(
+				'max_tokens' => 50,
+				'temperature' => 0.7
+			));
+			
+			$elapsed_time = round((microtime(true) - $start_time) * 1000, 2);
+			
+			if (is_wp_error($result)) {
+				return array(
+					'success' => false,
+					'connected' => false,
+					'error' => $result->get_error_message(),
+					'error_code' => $result->get_error_code(),
+					'response_time_ms' => $elapsed_time
+				);
+			}
+			
+			return array(
+				'success' => true,
+				'connected' => true,
+				'test_prompt' => $test_prompt,
+				'response' => substr($result, 0, 200), // Limit response length
+				'response_time_ms' => $elapsed_time,
+				'model' => get_option('aips_ai_model', 'default'),
+				'message' => 'AI Engine connection successful'
+			);
+			
+		} catch (Exception $e) {
+			$elapsed_time = round((microtime(true) - $start_time) * 1000, 2);
+			
+			return array(
+				'success' => false,
+				'connected' => false,
+				'error' => $e->getMessage(),
+				'response_time_ms' => $elapsed_time
+			);
+		}
+	}
+	
+	/**
+	 * Tool: Get plugin settings
+	 */
+	private function tool_get_plugin_settings($params) {
+		$category = isset($params['category']) ? $params['category'] : 'all';
+		$config = AIPS_Config::get_instance();
+		
+		$settings = array();
+		
+		// AI Settings
+		if ($category === 'all' || $category === 'ai') {
+			$settings['ai'] = array(
+				'model' => get_option('aips_ai_model', ''),
+				'max_tokens' => (int) get_option('aips_max_tokens', 2000),
+				'temperature' => (float) get_option('aips_temperature', 0.7),
+				'default_post_status' => get_option('aips_default_post_status', 'draft'),
+				'default_post_author' => (int) get_option('aips_default_post_author', 1)
+			);
+		}
+		
+		// Resilience Settings
+		if ($category === 'all' || $category === 'resilience') {
+			$settings['resilience'] = array(
+				'enable_retry' => (bool) get_option('aips_enable_retry', true),
+				'retry_max_attempts' => (int) get_option('aips_retry_max_attempts', 3),
+				'retry_initial_delay' => (int) get_option('aips_retry_initial_delay', 1),
+				'enable_rate_limiting' => (bool) get_option('aips_enable_rate_limiting', false),
+				'rate_limit_requests' => (int) get_option('aips_rate_limit_requests', 10),
+				'rate_limit_period' => (int) get_option('aips_rate_limit_period', 60),
+				'enable_circuit_breaker' => (bool) get_option('aips_enable_circuit_breaker', false),
+				'circuit_breaker_threshold' => (int) get_option('aips_circuit_breaker_threshold', 5),
+				'circuit_breaker_timeout' => (int) get_option('aips_circuit_breaker_timeout', 300)
+			);
+		}
+		
+		// Logging Settings
+		if ($category === 'all' || $category === 'logging') {
+			$settings['logging'] = array(
+				'enable_logging' => (bool) get_option('aips_enable_logging', true),
+				'log_retention_days' => (int) get_option('aips_log_retention_days', 30)
+			);
+		}
+		
+		// Export Thresholds
+		if ($category === 'all') {
+			$settings['thresholds'] = array(
+				'generated_posts_log_threshold_tmpfile' => (int) get_option('generated_posts_log_threshold_tmpfile', 200),
+				'generated_posts_log_threshold_client' => (int) get_option('generated_posts_log_threshold_client', 20),
+				'history_export_max_records' => (int) get_option('history_export_max_records', 10000)
+			);
+		}
+		
+		return array(
+			'success' => true,
+			'category' => $category,
+			'settings' => $settings
+		);
 	}
 }
 
