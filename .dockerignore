@@ -1,0 +1,69 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+.jules
+
+# Documentation
+*.md
+docs/
+CHANGELOG.md
+COPILOT_SETUP_STEPS.md
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+.build
+*.log
+*.tmp
+
+# Test files (we don't need tests in the image)
+tests/
+phpunit.xml
+.phpunit.result.cache
+
+# Composer dev dependencies (install only production deps in image)
+# vendor/
+
+# Docker files (don't copy Docker files into the image)
+Dockerfile
+docker-compose*.yml
+docker-entrypoint.sh
+healthcheck.sh
+mariadb-conf/
+
+# Scripts
+scripts/
+collect_changelogs.py
+
+# QA tools
+qodana.yaml
+
+# Temporary files
+tmp/
+temp/
+*.cache
+
+# Environment files
+.env
+.env.*
+
+# Node modules (if any)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Other plugin directories at root level (only copy ai-post-scheduler)
+# But keep composer files for the plugin
+composer.json
+composer.lock
+index.php
