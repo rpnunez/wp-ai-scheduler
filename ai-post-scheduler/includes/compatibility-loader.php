@@ -72,3 +72,9 @@ class_alias('AIPS\\Services\\Research\\TopicPenaltyService', 'AIPS_Topic_Penalty
 // Services - Generation
 class_alias('AIPS\\Services\\Generation\\GenerationLogger', 'AIPS_Generation_Logger');
 class_alias('AIPS\\Services\\Generation\\GenerationSession', 'AIPS_Generation_Session');
+
+// Generators
+class_alias('AIPS\\Generators\\Generator', 'AIPS_Generator');
+class_alias('AIPS\\Generators\\AuthorPostGenerator', 'AIPS_Author_Post_Generator');
+class_alias('AIPS\\Generators\\AuthorTopicsGenerator', 'AIPS_Author_Topics_Generator');
+class_alias('AIPS\\Generators\\ScheduleProcessor', 'AIPS_Schedule_Processor');
