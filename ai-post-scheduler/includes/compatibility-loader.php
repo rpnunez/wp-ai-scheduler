@@ -32,3 +32,15 @@ class_alias('AIPS\\Repositories\\PromptSectionRepository', 'AIPS_Prompt_Section_
 class_alias('AIPS\\Repositories\\PostReviewRepository', 'AIPS_Post_Review_Repository');
 class_alias('AIPS\\Repositories\\FeedbackRepository', 'AIPS_Feedback_Repository');
 class_alias('AIPS\\Repositories\\TrendingTopicsRepository', 'AIPS_Trending_Topics_Repository');
+
+// Interfaces
+class_alias('AIPS\\Interfaces\\GenerationContext', 'AIPS_Generation_Context');
+
+// Models
+class_alias('AIPS\\Models\\Config', 'AIPS_Config');
+class_alias('AIPS\\Models\\HistoryType', 'AIPS_History_Type');
+class_alias('AIPS\\Models\\HistoryContainer', 'AIPS_History_Container');
+class_alias('AIPS\\Models\\TemplateContext', 'AIPS_Template_Context');
+class_alias('AIPS\\Models\\TopicContext', 'AIPS_Topic_Context');
+class_alias('AIPS\\Models\\TemplateTypeSelector', 'AIPS_Template_Type_Selector');
+class_alias('AIPS\\Models\\ArticleStructureManager', 'AIPS_Article_Structure_Manager');
