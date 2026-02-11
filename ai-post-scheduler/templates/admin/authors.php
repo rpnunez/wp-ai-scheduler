@@ -301,14 +301,75 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <h2 id="aips-topics-modal-title"><?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?></h2>
 
-        		<div class="aips-topics-tabs">
-                    <button class="aips-tab-link active" data-tab="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?> (<span id="pending-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="approved"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?> (<span id="approved-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?> (<span id="rejected-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="feedback"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></button>
+        		<div class="aips-topics-header">
+        		    <div class="aips-topics-tabs">
+                        <button class="aips-tab-link active" data-tab="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?> (<span id="pending-count">0</span>)</button>
+                        <button class="aips-tab-link" data-tab="approved"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?> (<span id="approved-count">0</span>)</button>
+                        <button class="aips-tab-link" data-tab="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?> (<span id="rejected-count">0</span>)</button>
+                        <button class="aips-tab-link" data-tab="feedback"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></button>
+                    </div>
+                    <div class="aips-view-toggle">
+                        <button class="aips-view-toggle-btn" data-view="list" title="<?php esc_attr_e('Switch to List View', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-list-view"></span>
+                            <?php esc_html_e('List', 'ai-post-scheduler'); ?>
+                        </button>
+                        <button class="aips-view-toggle-btn active" data-view="kanban" title="<?php esc_attr_e('Switch to Kanban View', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-grid-view"></span>
+                            <?php esc_html_e('Kanban', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
                 </div>
         
-                <div class="aips-topics-list-container">
+                <!-- Kanban View Container -->
+                <div id="aips-kanban-view" class="aips-kanban-container" style="display: block;">
+                    <div class="aips-kanban-board">
+                        <div class="aips-kanban-column" data-status="pending">
+                            <div class="aips-kanban-column-header">
+                                <span class="dashicons dashicons-clock"></span>
+                                <h3><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></h3>
+                                <span class="aips-kanban-count" data-status="pending">0</span>
+                            </div>
+                            <div class="aips-kanban-column-body" data-status="pending">
+                                <p class="aips-kanban-empty"><?php esc_html_e('No pending topics', 'ai-post-scheduler'); ?></p>
+                            </div>
+                        </div>
+                        
+                        <div class="aips-kanban-column" data-status="approved">
+                            <div class="aips-kanban-column-header">
+                                <span class="dashicons dashicons-yes-alt"></span>
+                                <h3><?php esc_html_e('Approved', 'ai-post-scheduler'); ?></h3>
+                                <span class="aips-kanban-count" data-status="approved">0</span>
+                            </div>
+                            <div class="aips-kanban-column-body" data-status="approved">
+                                <p class="aips-kanban-empty"><?php esc_html_e('No approved topics', 'ai-post-scheduler'); ?></p>
+                            </div>
+                        </div>
+                        
+                        <div class="aips-kanban-column" data-status="rejected">
+                            <div class="aips-kanban-column-header">
+                                <span class="dashicons dashicons-dismiss"></span>
+                                <h3><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?></h3>
+                                <span class="aips-kanban-count" data-status="rejected">0</span>
+                            </div>
+                            <div class="aips-kanban-column-body" data-status="rejected">
+                                <p class="aips-kanban-empty"><?php esc_html_e('No rejected topics', 'ai-post-scheduler'); ?></p>
+                            </div>
+                        </div>
+                        
+                        <div class="aips-kanban-column aips-kanban-generate" data-status="generate">
+                            <div class="aips-kanban-column-header">
+                                <span class="dashicons dashicons-admin-generic"></span>
+                                <h3><?php esc_html_e('Generate', 'ai-post-scheduler'); ?></h3>
+                            </div>
+                            <div class="aips-kanban-column-body" data-status="generate">
+                                <p class="aips-kanban-drop-zone"><?php esc_html_e('Drop here to generate post immediately', 'ai-post-scheduler'); ?></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- List View Container -->
+                <div id="aips-list-view" class="aips-topics-list-container" style="display: none;">
                     <div class="aips-bulk-actions">
                         <select class="aips-bulk-action-select">
                             <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>

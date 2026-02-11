@@ -178,6 +178,17 @@ class AIPS_Admin_Assets {
 				'logUser' => __('User', 'ai-post-scheduler'),
 				'logDate' => __('Date', 'ai-post-scheduler'),
 				'logDetails' => __('Details', 'ai-post-scheduler'),
+				// Kanban Board strings
+				'noPendingTopics' => __('No pending topics', 'ai-post-scheduler'),
+				'noApprovedTopics' => __('No approved topics', 'ai-post-scheduler'),
+				'noRejectedTopics' => __('No rejected topics', 'ai-post-scheduler'),
+				'dropToGenerate' => __('Drop here to generate post immediately', 'ai-post-scheduler'),
+				'errorUpdating' => __('Failed to update topic', 'ai-post-scheduler'),
+				'topicDeleted' => __('Topic deleted successfully', 'ai-post-scheduler'),
+				'viewDetails' => __('View Details', 'ai-post-scheduler'),
+				'description' => __('Description', 'ai-post-scheduler'),
+				'rationale' => __('Rationale', 'ai-post-scheduler'),
+				'reviewed' => __('Reviewed', 'ai-post-scheduler'),
 			));
 		}
 
