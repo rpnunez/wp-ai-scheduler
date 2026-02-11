@@ -12,8 +12,8 @@ coverage/
 
 # IDE
 .idea/
-.vscode/settings.json
-.vscode/launch.json
+.vscode/*
+!.vscode/launch.json
 *.swp
 *.swo
 *~
@@ -35,3 +35,12 @@ Thumbs.db
 node_modules/
 scripts/__pycache__/
 .phpunit.result.cache
+
+# Docker
+.env
+docker-compose.override.yml
+backup.sql
+
+# Data directories
+data/
+wordpress/
