@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- [2026-02-10] **MCP Bridge - Phase 2 Tools (v1.2.0)**: Extended MCP Bridge with 6 additional tools for history management, author management, and component regeneration.
+  - New Tools: `get_history` (detailed history with logs by ID or post_id), `list_authors` (author discovery), `get_author` (author details), `list_author_topics` (topics with filtering), `get_author_topic` (topic details), `regenerate_post_component` (regenerate title/excerpt/content/featured_image)
+  - Features: Access detailed generation history with logs; Manage authors and their topics; Regenerate individual post components with preview mode; Support for all component types including featured images
+  - Testing: 21 new unit test cases (60+ total)
+  - Documentation: `MCP_BRIDGE_PHASE2_TOOLS.md` with complete API reference and workflow examples
+  - Total MCP tools: 20 (was 14)
+
 - [2026-02-10] **MCP Bridge - Content Generation Tools (v1.1.0)**: Extended MCP Bridge with 3 new tools for AI content generation and management. Phase 1 (MVP) implementation complete.
   - New Tools: `generate_post` (generate single post with overrides), `list_templates` (get all templates with filtering), `get_generation_history` (retrieve past generations with pagination)
   - Features: Generate posts from templates, author topics, or schedules; Apply custom overrides (title, categories, tags, status); Filter and search templates; Paginated history with status/template filtering
