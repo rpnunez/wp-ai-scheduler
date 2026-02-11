@@ -181,7 +181,22 @@ class AIPS_Admin_Assets {
 			));
 		}
 
-        // Research Page Scripts
+        // Research Page Styles & Scripts
+		if (strpos($hook, 'aips-research') !== false) {
+			wp_enqueue_style(
+				'aips-research-style',
+				AIPS_PLUGIN_URL . 'assets/css/research.css',
+				array('aips-admin-style'),
+				AIPS_VERSION
+			);
+
+			wp_enqueue_style(
+				'aips-planner-style',
+				AIPS_PLUGIN_URL . 'assets/css/planner.css',
+				array('aips-admin-style'),
+				AIPS_VERSION
+			);
+		}
 
         wp_enqueue_script(
             'aips-admin-research',

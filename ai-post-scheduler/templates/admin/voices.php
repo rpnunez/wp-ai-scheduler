@@ -4,74 +4,124 @@ if (!defined('ABSPATH')) {
 }
 ?>
 <div class="wrap aips-wrap">
-    <h1>
-        <?php esc_html_e('Voices', 'ai-post-scheduler'); ?>
-        <button class="page-title-action aips-add-voice-btn"><?php esc_html_e('Add New', 'ai-post-scheduler'); ?></button>
-    </h1>
-    
-    <div class="aips-voices-container">
-        <?php if (!empty($voices)): ?>
-        <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
-            <label class="screen-reader-text" for="aips-voice-search"><?php esc_html_e('Search Voices:', 'ai-post-scheduler'); ?></label>
-            <input type="search" id="aips-voice-search" class="regular-text" placeholder="<?php esc_attr_e('Search voices...', 'ai-post-scheduler'); ?>">
-            <button type="button" id="aips-voice-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+    <div class="aips-page-container">
+        <!-- Page Header -->
+        <div class="aips-page-header">
+            <div class="aips-page-header-top">
+                <div>
+                    <h1 class="aips-page-title"><?php esc_html_e('Voices', 'ai-post-scheduler'); ?></h1>
+                    <p class="aips-page-description">
+                        <?php esc_html_e('Define consistent tone and style templates for AI-generated content.', 'ai-post-scheduler'); ?>
+                    </p>
+                </div>
+                <div class="aips-page-actions">
+                    <button class="aips-btn aips-btn-primary aips-add-voice-btn">
+                        <span class="dashicons dashicons-plus-alt2"></span>
+                        <?php esc_html_e('Add Voice', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <table class="wp-list-table widefat fixed striped aips-voices-list">
-            <thead>
-                <tr>
-                    <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
-                    <th class="column-title-prompt"><?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?></th>
-                    <th class="column-active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
-                    <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($voices as $voice): ?>
-                <tr data-voice-id="<?php echo esc_attr($voice->id); ?>">
-                    <td class="column-name">
-                        <strong><?php echo esc_html($voice->name); ?></strong>
-                    </td>
-                    <td class="column-title-prompt">
-                        <small><?php echo esc_html(substr($voice->title_prompt, 0, 60)) . (strlen($voice->title_prompt) > 60 ? '...' : ''); ?></small>
-                    </td>
-                    <td class="column-active">
-                        <span class="aips-status aips-status-<?php echo $voice->is_active ? 'active' : 'inactive'; ?>">
-                            <?php echo $voice->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?>
-                        </span>
-                    </td>
-                    <td class="column-actions">
-                        <button class="button aips-edit-voice" data-id="<?php echo esc_attr($voice->id); ?>">
-                            <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-                        </button>
-                        <button class="button button-link-delete aips-delete-voice" data-id="<?php echo esc_attr($voice->id); ?>">
-                            <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
-                        </button>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+        <!-- Content Panel -->
+        <div class="aips-content-panel">
+            <div class="aips-voices-container">
+                <?php if (!empty($voices)): ?>
+                <!-- Filter Bar -->
+                <div class="aips-filter-bar">
+                    <div class="aips-filter-left">
+                        <span class="aips-result-count"><?php printf(esc_html__('%d voices', 'ai-post-scheduler'), count($voices)); ?></span>
+                    </div>
+                    <div class="aips-filter-right">
+                        <label class="screen-reader-text" for="aips-voice-search"><?php esc_html_e('Search Voices:', 'ai-post-scheduler'); ?></label>
+                        <input type="search" id="aips-voice-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search voices...', 'ai-post-scheduler'); ?>">
+                        <button type="button" id="aips-voice-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    </div>
+                </div>
 
-        <div id="aips-voice-search-no-results" class="aips-empty-state" style="display: none;">
-            <span class="dashicons dashicons-search" aria-hidden="true"></span>
-            <h3><?php esc_html_e('No Voices Found', 'ai-post-scheduler'); ?></h3>
-            <p><?php esc_html_e('No voices match your search criteria.', 'ai-post-scheduler'); ?></p>
-            <button type="button" class="button button-primary aips-clear-voice-search-btn">
-                <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-            </button>
-        </div>
+                <!-- Table -->
+                <div class="aips-panel-body no-padding">
+                    <table class="aips-table aips-voices-list">
+                        <thead>
+                            <tr>
+                                <th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
+                                <th class="column-title-prompt"><?php esc_html_e('Title Prompt', 'ai-post-scheduler'); ?></th>
+                                <th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+                                <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($voices as $voice): ?>
+                            <tr data-voice-id="<?php echo esc_attr($voice->id); ?>">
+                                <td class="column-name">
+                                    <div class="aips-table-primary">
+                                        <strong><?php echo esc_html($voice->name); ?></strong>
+                                    </div>
+                                </td>
+                                <td class="column-title-prompt">
+                                    <div class="aips-table-meta">
+                                        <?php echo esc_html(substr($voice->title_prompt, 0, 80)) . (strlen($voice->title_prompt) > 80 ? '...' : ''); ?>
+                                    </div>
+                                </td>
+                                <td class="column-status">
+                                    <?php if ($voice->is_active): ?>
+                                        <span class="aips-badge aips-badge-success">
+                                            <span class="dashicons dashicons-yes-alt"></span>
+                                            <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="aips-badge aips-badge-neutral">
+                                            <span class="dashicons dashicons-minus"></span>
+                                            <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="column-actions">
+                                    <div class="aips-action-buttons">
+                                        <button class="aips-btn aips-btn-sm aips-edit-voice" data-id="<?php echo esc_attr($voice->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+                                            <span class="dashicons dashicons-edit"></span>
+                                            <span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
+                                        </button>
+                                        <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-voice" data-id="<?php echo esc_attr($voice->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                            <span class="dashicons dashicons-trash"></span>
+                                            <span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
 
-        <?php else: ?>
-        <div class="aips-empty-state">
-            <span class="dashicons dashicons-format-quote" aria-hidden="true"></span>
-            <h3><?php esc_html_e('No Voices Yet', 'ai-post-scheduler'); ?></h3>
-            <p><?php esc_html_e('Create a voice to establish consistent tone and style for your generated posts.', 'ai-post-scheduler'); ?></p>
-            <button class="button button-primary button-large aips-add-voice-btn">
-                <?php esc_html_e('Create Voice', 'ai-post-scheduler'); ?>
-            </button>
+                <!-- No Search Results -->
+                <div id="aips-voice-search-no-results" class="aips-empty-state" style="display: none;">
+                    <div class="aips-empty-icon">
+                        <span class="dashicons dashicons-search"></span>
+                    </div>
+                    <h3 class="aips-empty-title"><?php esc_html_e('No Voices Found', 'ai-post-scheduler'); ?></h3>
+                    <p class="aips-empty-description"><?php esc_html_e('No voices match your search criteria.', 'ai-post-scheduler'); ?></p>
+                    <button type="button" class="aips-btn aips-btn-primary aips-clear-voice-search-btn">
+                        <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
+
+                <?php else: ?>
+                <!-- Empty State -->
+                <div class="aips-empty-state">
+                    <div class="aips-empty-icon">
+                        <span class="dashicons dashicons-format-quote"></span>
+                    </div>
+                    <h3 class="aips-empty-title"><?php esc_html_e('No Voices Yet', 'ai-post-scheduler'); ?></h3>
+                    <p class="aips-empty-description"><?php esc_html_e('Create a voice to establish consistent tone and style for your generated posts.', 'ai-post-scheduler'); ?></p>
+                    <button class="aips-btn aips-btn-primary aips-btn-lg aips-add-voice-btn">
+                        <span class="dashicons dashicons-plus-alt2"></span>
+                        <?php esc_html_e('Create Voice', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
+                <?php endif; ?>
+            </div>
         </div>
-        <?php endif; ?>
     </div>
     
     <div id="aips-voice-modal" class="aips-modal" style="display: none;">
