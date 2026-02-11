@@ -98,8 +98,11 @@ class AIPS_Author_Topics_Generator {
 
 		// Bolt Optimization: Use bulk insert to reduce database round-trips
 		if ($this->topics_repository->create_bulk($topics)) {
-			// Retrieve created topics to get IDs (fetch latest N topics for author)
-			$created_topics = $this->topics_repository->get_latest_by_author($author->id, count($topics));
+			// Get the timestamp used for generation (from the first topic)
+			$generated_at = isset($topics[0]['generated_at']) ? $topics[0]['generated_at'] : current_time('mysql');
+
+			// Retrieve created topics to get IDs (fetch latest N topics for author generated after this timestamp)
+			$created_topics = $this->topics_repository->get_latest_by_author($author->id, count($topics), $generated_at);
 
 			// Reverse to match original order (oldest to newest ID)
 			$created_topics = array_reverse($created_topics);
@@ -215,6 +218,9 @@ class AIPS_Author_Topics_Generator {
 			$this->logger->log("JSON data is not an array for author {$author->id}", 'warning');
 			return array();
 		}
+
+		// Use a single timestamp for the entire batch to ensure consistent filtering
+		$generation_date = current_time('mysql');
 		
 		foreach ($json_data as $item) {
 			// Validate required fields
@@ -241,9 +247,10 @@ class AIPS_Author_Topics_Generator {
 				'topic_prompt' => '', // Will be built when generating post
 				'status' => 'pending',
 				'score' => $score,
+				'generated_at' => $generation_date,
 				'metadata' => wp_json_encode(array(
 					'generated_via' => 'ai_json',
-					'generation_date' => current_time('mysql'),
+					'generation_date' => $generation_date,
 					'keywords' => $keywords
 				))
 			);
