@@ -18,6 +18,9 @@
     "wp-phpunit/wp-phpunit": "^6.6"
   },
   "autoload": {
+    "psr-4": {
+      "AIPS\\": "ai-post-scheduler/src/"
+    },
     "classmap": [
       "ai-post-scheduler/includes/"
     ]

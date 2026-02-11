@@ -331,9 +331,31 @@ Welcome to the AI Post Scheduler plugin documentation. This directory contains c
 
 **Overall:** 🎯 **94% Complete**
 
+### PSR-4 Refactoring Status
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Documentation | ✅ 100% | 6 comprehensive documents (180KB) |
+| Implementation | 📋 Ready | All phases planned and documented |
+| Target Version | v2.0.0-alpha | With backward compatibility |
+| Estimated Time | 30-42 hours | Fully documented implementation |
+
+**Status:** 📚 **Documentation Complete - Ready for Implementation**
+
+See [README_PSR4.md](README_PSR4.md) for navigation guide to all PSR-4 documentation.
+
 ---
 
 ## 📖 Additional Documentation
+
+### PSR-4 Refactoring Documentation
+- **`README_PSR4.md`** - Navigation guide for PSR-4 documentation
+- **`PSR4_EXECUTIVE_SUMMARY.md`** - High-level overview of PSR-4 refactoring
+- **`PSR4_REFACTORING_PLAN.md`** - Complete refactoring plan (82KB)
+- **`PSR4_IMPLEMENTATION_GUIDE.md`** - Step-by-step implementation guide
+- **`PSR4_MIGRATION_CHECKLIST.md`** - Detailed checklist for 77 classes
+- **`PSR4_CLASS_MAPPING.md`** - Quick reference for class name conversions
+- **`PSR4_MIGRATION_SCRIPTS.md`** - Automation scripts and helpers
 
 ### In Plugin Directory
 - **`readme.txt`** - WordPress plugin description (user-facing)
