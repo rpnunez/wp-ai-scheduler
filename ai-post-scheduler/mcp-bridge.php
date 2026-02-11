@@ -467,10 +467,16 @@ class AIPS_MCP_Bridge {
 	 * Execute a tool by name
 	 * 
 	 * @param string $tool_name Tool to execute
-	 * @param array $params Parameters for the tool
+	 * @param array  $params Parameters for the tool
+	 * @param bool   $bypass_cap_check Whether to bypass capability checks (for trusted contexts like WP-CLI/tests)
 	 * @return mixed|WP_Error Result or error
 	 */
-	public function execute_tool($tool_name, $params = array()) {
+	public function execute_tool($tool_name, $params = array(), $bypass_cap_check = false) {
+		// Enforce capability check by default to prevent unauthorized tool execution
+		if (!$bypass_cap_check && function_exists('current_user_can') && !current_user_can('manage_options')) {
+			return new WP_Error('aips_mcp_insufficient_permissions', 'Insufficient permissions. Admin access required.');
+		}
+		
 		if (!isset($this->tools[$tool_name])) {
 			return new WP_Error('tool_not_found', 'Tool not found: ' . $tool_name);
 		}
