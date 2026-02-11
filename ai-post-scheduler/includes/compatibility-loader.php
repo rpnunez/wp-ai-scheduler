@@ -94,3 +94,15 @@ class_alias('AIPS\\Controllers\\Admin\\ResearchController', 'AIPS_Research_Contr
 class_alias('AIPS\\Controllers\\Admin\\ScheduleController', 'AIPS_Schedule_Controller');
 class_alias('AIPS\\Controllers\\Admin\\StructuresController', 'AIPS_Structures_Controller');
 class_alias('AIPS\\Controllers\\Admin\\TemplatesController', 'AIPS_Templates_Controller');
+
+// Admin Classes
+class_alias('AIPS\\Admin\\Settings', 'AIPS_Settings');
+class_alias('AIPS\\Admin\\AdminAssets', 'AIPS_Admin_Assets');
+class_alias('AIPS\\Admin\\History', 'AIPS_History');
+class_alias('AIPS\\Admin\\Scheduler', 'AIPS_Scheduler');
+class_alias('AIPS\\Admin\\Templates', 'AIPS_Templates');
+class_alias('AIPS\\Admin\\Voices', 'AIPS_Voices');
+class_alias('AIPS\\Admin\\PostReview', 'AIPS_Post_Review');
+class_alias('AIPS\\Admin\\SeederAdmin', 'AIPS_Seeder_Admin');
+class_alias('AIPS\\Admin\\SystemStatus', 'AIPS_System_Status');
+class_alias('AIPS\\Admin\\Upgrades', 'AIPS_Upgrades');
