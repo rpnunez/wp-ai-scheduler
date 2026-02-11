@@ -78,3 +78,19 @@ class_alias('AIPS\\Generators\\Generator', 'AIPS_Generator');
 class_alias('AIPS\\Generators\\AuthorPostGenerator', 'AIPS_Author_Post_Generator');
 class_alias('AIPS\\Generators\\AuthorTopicsGenerator', 'AIPS_Author_Topics_Generator');
 class_alias('AIPS\\Generators\\ScheduleProcessor', 'AIPS_Schedule_Processor');
+
+// Controllers - Core
+class_alias('AIPS\\Controllers\\AIEditController', 'AIPS_AI_Edit_Controller');
+class_alias('AIPS\\Controllers\\DataManagementController', 'AIPS_Data_Management');
+
+// Controllers - Admin
+class_alias('AIPS\\Controllers\\Admin\\AuthorsController', 'AIPS_Authors_Controller');
+class_alias('AIPS\\Controllers\\Admin\\AuthorTopicsController', 'AIPS_Author_Topics_Controller');
+class_alias('AIPS\\Controllers\\Admin\\CalendarController', 'AIPS_Calendar_Controller');
+class_alias('AIPS\\Controllers\\Admin\\DashboardController', 'AIPS_Dashboard_Controller');
+class_alias('AIPS\\Controllers\\Admin\\GeneratedPostsController', 'AIPS_Generated_Posts_Controller');
+class_alias('AIPS\\Controllers\\Admin\\PromptSectionsController', 'AIPS_Prompt_Sections_Controller');
+class_alias('AIPS\\Controllers\\Admin\\ResearchController', 'AIPS_Research_Controller');
+class_alias('AIPS\\Controllers\\Admin\\ScheduleController', 'AIPS_Schedule_Controller');
+class_alias('AIPS\\Controllers\\Admin\\StructuresController', 'AIPS_Structures_Controller');
+class_alias('AIPS\\Controllers\\Admin\\TemplatesController', 'AIPS_Templates_Controller');
