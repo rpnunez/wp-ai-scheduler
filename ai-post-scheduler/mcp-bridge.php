@@ -685,33 +685,14 @@ class AIPS_MCP_Bridge {
 	 * Tool: Clear history
 	 */
 	private function tool_clear_history($params) {
-		global $wpdb;
-		$table = $wpdb->prefix . 'aips_history';
+		$repository = new AIPS_History_Repository();
 		
-		$where = array();
+		$result = $repository->clear_history(array(
+			'status' => $params['status'],
+			'older_than_days' => $params['older_than_days'],
+		));
 		
-		if ($params['older_than_days'] > 0) {
-			$date = date('Y-m-d H:i:s', strtotime("-{$params['older_than_days']} days"));
-			$where[] = $wpdb->prepare("created_at < %s", $date);
-		}
-		
-		if ($params['status'] !== 'all') {
-			$where[] = $wpdb->prepare("status = %s", $params['status']);
-		}
-		
-		$where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-		
-		$count = $wpdb->get_var("SELECT COUNT(*) FROM $table $where_clause");
-		$deleted = $wpdb->query("DELETE FROM $table $where_clause");
-		
-		// Clear cache
-		delete_transient('aips_history_stats');
-		
-		return array(
-			'success' => true,
-			'deleted' => $deleted,
-			'message' => "Deleted $deleted history records"
-		);
+		return $result;
 	}
 	
 	/**

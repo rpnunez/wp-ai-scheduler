@@ -8,6 +8,18 @@
  * @package AI_Post_Scheduler
  */
 
+// Prevent web access: allow only CLI (or WP-CLI) execution.
+if ( php_sapi_name() !== 'cli' && ! defined( 'WP_CLI' ) ) {
+	if ( ! headers_sent() ) {
+		if ( function_exists( 'http_response_code' ) ) {
+			http_response_code( 404 );
+		} else {
+			header( 'HTTP/1.1 404 Not Found' );
+		}
+	}
+	exit;
+}
+
 // Bootstrap WordPress
 $wp_load_path = dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-load.php';
 if (!file_exists($wp_load_path)) {
@@ -28,7 +40,7 @@ $bridge = new AIPS_MCP_Bridge();
 // Test 1: List Tools
 echo "Test 1: List Tools\n";
 echo str_repeat("-", 50) . "\n";
-$result = $bridge->execute_tool('list_tools', array());
+$result = $bridge->execute_tool('list_tools', array(), true);
 if (is_wp_error($result)) {
 	echo "ERROR: " . $result->get_error_message() . "\n";
 } else {
@@ -42,7 +54,7 @@ echo "\n";
 // Test 2: Get Plugin Info
 echo "Test 2: Get Plugin Info\n";
 echo str_repeat("-", 50) . "\n";
-$result = $bridge->execute_tool('get_plugin_info', array());
+$result = $bridge->execute_tool('get_plugin_info', array(), true);
 if (is_wp_error($result)) {
 	echo "ERROR: " . $result->get_error_message() . "\n";
 } else {
@@ -58,7 +70,7 @@ echo "\n";
 // Test 3: Check Database
 echo "Test 3: Check Database\n";
 echo str_repeat("-", 50) . "\n";
-$result = $bridge->execute_tool('check_database', array());
+$result = $bridge->execute_tool('check_database', array(), true);
 if (is_wp_error($result)) {
 	echo "ERROR: " . $result->get_error_message() . "\n";
 } else {
@@ -73,7 +85,7 @@ echo "\n";
 // Test 4: Check Upgrades (without running)
 echo "Test 4: Check Upgrades\n";
 echo str_repeat("-", 50) . "\n";
-$result = $bridge->execute_tool('check_upgrades', array('run' => false));
+$result = $bridge->execute_tool('check_upgrades', array('run' => false), true);
 if (is_wp_error($result)) {
 	echo "ERROR: " . $result->get_error_message() . "\n";
 } else {
@@ -86,7 +98,7 @@ echo "\n";
 // Test 5: Get Cron Status
 echo "Test 5: Get Cron Status\n";
 echo str_repeat("-", 50) . "\n";
-$result = $bridge->execute_tool('get_cron_status', array());
+$result = $bridge->execute_tool('get_cron_status', array(), true);
 if (is_wp_error($result)) {
 	echo "ERROR: " . $result->get_error_message() . "\n";
 } else {
@@ -102,7 +114,7 @@ echo "\n";
 // Test 6: System Status (environment only)
 echo "Test 6: System Status (Environment)\n";
 echo str_repeat("-", 50) . "\n";
-$result = $bridge->execute_tool('system_status', array('section' => 'environment'));
+$result = $bridge->execute_tool('system_status', array('section' => 'environment'), true);
 if (is_wp_error($result)) {
 	echo "ERROR: " . $result->get_error_message() . "\n";
 } else {
@@ -119,7 +131,7 @@ echo "\n";
 // Test 7: Clear Cache (dry run)
 echo "Test 7: Clear Cache\n";
 echo str_repeat("-", 50) . "\n";
-$result = $bridge->execute_tool('clear_cache', array('cache_type' => 'history_stats'));
+$result = $bridge->execute_tool('clear_cache', array('cache_type' => 'history_stats'), true);
 if (is_wp_error($result)) {
 	echo "ERROR: " . $result->get_error_message() . "\n";
 } else {
@@ -134,7 +146,7 @@ echo "\n";
 // Test 8: Invalid Tool (should fail)
 echo "Test 8: Invalid Tool (Expected Failure)\n";
 echo str_repeat("-", 50) . "\n";
-$result = $bridge->execute_tool('nonexistent_tool', array());
+$result = $bridge->execute_tool('nonexistent_tool', array(), true);
 if (is_wp_error($result)) {
 	echo "Expected error received: " . $result->get_error_message() . "\n";
 } else {
