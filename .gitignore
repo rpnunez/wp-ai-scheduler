@@ -18,6 +18,11 @@ coverage/
 *.swo
 *~
 
+# Environment variables (security)
+.env
+.env.local
+.env.*.local
+
 # OS
 .DS_Store
 Thumbs.db

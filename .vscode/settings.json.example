@@ -1,0 +1,26 @@
+{
+  "// Configuration for AI Post Scheduler MCP Bridge": "",
+  "// Copy this file to settings.json and update with your credentials": "",
+  "// For security, use environment variables (see MCP_BRIDGE_VSCODE_SETUP.md)": "",
+  
+  "mcp.servers": {
+    "aips": {
+      "name": "AI Post Scheduler",
+      "url": "https://your-site.com/wp-content/plugins/ai-post-scheduler/mcp-bridge.php",
+      "auth": {
+        "type": "basic",
+        "username": "${env:WP_USERNAME}",
+        "password": "${env:WP_APP_PASSWORD}"
+      },
+      "timeout": 60000,
+      "description": "WordPress AI Post Scheduler MCP Bridge - 25 tools for content generation"
+    }
+  },
+  
+  "// Alternative: Hardcode credentials (not recommended)": "",
+  "// \"username\": \"your-wp-username\",": "",
+  "// \"password\": \"xxxx xxxx xxxx xxxx xxxx xxxx\",": "",
+  
+  "// Multiple environments example": "",
+  "// See MCP_BRIDGE_VSCODE_SETUP.md for complete multi-environment setup": ""
+}
