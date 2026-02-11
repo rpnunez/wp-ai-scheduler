@@ -12,10 +12,16 @@ coverage/
 
 # IDE
 .idea/
-.vscode/
+.vscode/settings.json
+.vscode/launch.json
 *.swp
 *.swo
 *~
+
+# Environment variables (security)
+.env
+.env.local
+.env.*.local
 
 # OS
 .DS_Store

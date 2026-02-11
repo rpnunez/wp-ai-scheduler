@@ -4,8 +4,15 @@
 
 The MCP (Model Context Protocol) Bridge provides a JSON-RPC 2.0 style API that exposes AI Post Scheduler plugin functionality to MCP-compatible AI tools, GitHub Copilot, and other automation systems.
 
+**🚀 Quick Links:**
+- **[VSCode Setup Guide](./MCP_BRIDGE_VSCODE_SETUP.md)** - Configure VSCode + GitHub Copilot
+- **[Integration Guide](./MCP_BRIDGE_INTEGRATION.md)** - All integration options
+- **[Quick Start](./MCP_BRIDGE_QUICKSTART.md)** - Get started in minutes
+- **[JSON Schema](./mcp-bridge-schema.json)** - Complete API reference
+
 ## Features
 
+### Core Features (11 tools)
 - **Cache Management**: Clear plugin transients and caches
 - **Database Operations**: Repair, verify, and maintain database tables
 - **System Diagnostics**: Comprehensive health checks and status information
@@ -14,9 +21,63 @@ The MCP (Model Context Protocol) Bridge provides a JSON-RPC 2.0 style API that e
 - **Upgrade Management**: Check and run database migrations
 - **History Management**: Clear and manage generation history
 
+### Content Generation (3 tools)
+- Generate posts from templates or author topics
+- List and filter templates
+- View generation history
+
+### Author Management (6 tools)
+- Manage authors and topics
+- Regenerate post components
+- Get detailed history records
+
+### Analytics & Testing (5 tools)
+- Generation statistics and success rates
+- Post metadata and AI details
+- AI model information
+- Connection testing
+- Plugin settings access
+
+**Total: 25 tools** across 5 categories. See [Tool Documentation](#available-tools) below.
+
 ## Installation
 
 The MCP bridge is included in the plugin at `ai-post-scheduler/mcp-bridge.php`. No additional installation is required.
+
+## Quick Start Options
+
+### Option 1: VSCode + GitHub Copilot (Recommended)
+
+Perfect for developers who want AI-assisted content management in their IDE.
+
+👉 **[Complete VSCode Setup Guide](./MCP_BRIDGE_VSCODE_SETUP.md)**
+
+Quick setup:
+1. Create `.vscode/settings.json` with MCP server configuration
+2. Set WordPress credentials in `.env`
+3. Test with: `@mcp list_tools from aips`
+
+### Option 2: Command Line
+
+Quick operations and automation scripts.
+
+👉 **[Quick Start Guide](./MCP_BRIDGE_QUICKSTART.md)**
+
+```bash
+curl -X POST https://your-site.com/wp-content/plugins/ai-post-scheduler/mcp-bridge.php \
+  -u "admin:app-password" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"list_tools","params":{},"id":1}'
+```
+
+### Option 3: All Integration Methods
+
+See **[MCP Bridge Integration Guide](./MCP_BRIDGE_INTEGRATION.md)** for:
+- Python client
+- Node.js/JavaScript
+- PHP integration
+- CI/CD pipelines
+- Monitoring dashboards
 
 ## Usage
 
