@@ -1,7 +1,8 @@
 #!/bin/bash
-# This script serves as the entrypoint for the Docker container.
-# It handles the setup of WordPress, including database connection,
+# Docker entrypoint script for WordPress plugin development
+# This script handles the setup of WordPress, including database connection,
 # core installation, configuration, and plugin activation.
+# Optimized for development with AI Post Scheduler plugin.
 
 # Exit immediately if a command exits with a non-zero status.
 set -e
@@ -28,6 +29,11 @@ set -e
 DB_HOST="$(echo ${WORDPRESS_DB_HOST} | cut -d: -f1)"
 DB_PORT="$(echo ${WORDPRESS_DB_HOST} | cut -s -d: -f2)"
 DB_PORT="${DB_PORT:-3306}"
+
+echo "============================================================"
+echo "  WordPress Plugin Development Environment"
+echo "  AI Post Scheduler"
+echo "============================================================"
 
 #============================================================
 # MySQL Health Check
@@ -84,6 +90,9 @@ if [ ! -f /var/www/html/wp-config.php ]; then
   # Set memory limits
   wp config set WP_MEMORY_LIMIT '512M' --type=constant --path=/var/www/html --allow-root
   wp config set WP_MAX_MEMORY_LIMIT '512M' --type=constant --path=/var/www/html --allow-root
+  
+  # Disable fatal error handler for better debugging
+  wp config set WP_DISABLE_FATAL_ERROR_HANDLER true --raw --type=constant --path=/var/www/html --allow-root
 
   # Create the WordPress database if it doesn't already exist.
   echo "[entrypoint] Creating database (if not exists)..."
@@ -108,7 +117,7 @@ else
 fi
 
 #============================================================
-# NunezScheduler Installation
+# AI Post Scheduler Plugin Installation
 #============================================================
 
 # Ensure the plugins directory exists.
@@ -116,25 +125,48 @@ mkdir -p /var/www/html/wp-content/plugins
 
 PLUGIN_SLUG="ai-post-scheduler"
 
-# Check if the plugin source directory exists and if the plugin is not already copied.
-if [ -d "/plugin-src/${PLUGIN_SLUG}" ] && [ ! -d "/var/www/html/wp-content/plugins/${PLUGIN_SLUG}" ]; then
-  echo "[entrypoint] Copying plugin ${PLUGIN_SLUG} into WordPress plugins..."
-
-  # Copy the plugin from the source volume to the WordPress plugins directory.
+# Check if plugin is mounted as a volume (development mode)
+if [ -d "/var/www/html/wp-content/plugins/${PLUGIN_SLUG}" ]; then
+  echo "[entrypoint] Plugin ${PLUGIN_SLUG} found (mounted volume for development)."
+  # Set appropriate ownership for the mounted plugin
+  chown -R www-data:www-data /var/www/html/wp-content/plugins/${PLUGIN_SLUG}
+# Otherwise, copy from image if available and not already copied
+elif [ -d "/plugin-src/${PLUGIN_SLUG}" ]; then
+  echo "[entrypoint] Copying plugin ${PLUGIN_SLUG} from image into WordPress plugins..."
   cp -R /plugin-src/"${PLUGIN_SLUG}" /var/www/html/wp-content/plugins/
+  chown -R www-data:www-data /var/www/html/wp-content/plugins/${PLUGIN_SLUG}
+else
+  echo "[entrypoint] WARNING: Plugin ${PLUGIN_SLUG} not found in /plugin-src or mounted volume!"
 fi
 
 # Set appropriate ownership for WordPress files. www-data is the user Apache runs as.
 chown -R www-data:www-data /var/www/html
 
-# Check if the plugin is active.
+# Check if the plugin is active and activate if needed.
 if wp plugin is-active "${PLUGIN_SLUG}" --path=/var/www/html --allow-root 2>/dev/null; then
-  echo "[entrypoint] Plugin ${PLUGIN_SLUG} already active."
+  echo "[entrypoint] Plugin ${PLUGIN_SLUG} is already active."
 else
   echo "[entrypoint] Activating plugin ${PLUGIN_SLUG}..."
+  wp plugin activate "${PLUGIN_SLUG}" --path=/var/www/html --allow-root || {
+    echo "[entrypoint] WARNING: Failed to activate ${PLUGIN_SLUG}. Check plugin compatibility."
+  }
+fi
 
-  # Activate the plugin. || true prevents failure if activation has issues (though we want it to succeed).
-  wp plugin activate "${PLUGIN_SLUG}" --path=/var/www/html --allow-root || true
+# Install and activate Meow Apps AI Engine if not present (required dependency)
+echo "[entrypoint] Checking for Meow Apps AI Engine plugin..."
+if ! wp plugin is-installed ai-engine --path=/var/www/html --allow-root 2>/dev/null; then
+  echo "[entrypoint] Installing Meow Apps AI Engine (required dependency)..."
+  # Note: This is a placeholder. The actual plugin might need manual installation or API key
+  # wp plugin install ai-engine --activate --path=/var/www/html --allow-root || {
+  echo "[entrypoint] NOTE: Meow Apps AI Engine is required for this plugin to function."
+  echo "[entrypoint] Please install it manually from WordPress admin or via WP-CLI."
+  # }
+else
+  echo "[entrypoint] Meow Apps AI Engine is already installed."
+  if ! wp plugin is-active ai-engine --path=/var/www/html --allow-root 2>/dev/null; then
+    echo "[entrypoint] Activating AI Engine..."
+    wp plugin activate ai-engine --path=/var/www/html --allow-root 2>/dev/null || true
+  fi
 fi
 
 #============================================================
@@ -142,25 +174,50 @@ fi
 #============================================================
 
 if [ "${ENTRYPOINT_DEBUG}" = "1" ]; then
-  # --- Debugging Information (if ENTRYPOINT_DEBUG is enabled) ---
-  echo "[entrypoint] ENTRYPOINT_DEBUG=1 — printing diagnostics..."
+  echo ""
+  echo "============================================================"
+  echo "  Debug Information"
+  echo "============================================================"
 
-  echo "---- apache2ctl configtest ----"
+  echo "---- Apache Configuration Test ----"
   apache2ctl configtest || true
 
-  echo "---- /var/www/html listing ----"
-  ls -la /var/www/html || true
+  echo ""
+  echo "---- WordPress Installation Info ----"
+  if [ -f /var/www/html/wp-config.php ]; then
+    wp core version --path=/var/www/html --allow-root || true
+    echo ""
+    echo "Site URL: ${WP_SITE_URL}"
+    echo "Admin User: ${WP_ADMIN_USER}"
+    echo "Admin Password: ${WP_ADMIN_PASSWORD}"
+  fi
 
-#  echo "---- wp-config.php head (if present) ----"
-#  if [ -f /var/www/html/wp-config.php ]; then
-#    sed -n '1,120p' /var/www/html/wp-config.php || true
-#  fi
+  echo ""
+  echo "---- Installed Plugins ----"
+  wp plugin list --path=/var/www/html --allow-root || true
 
-  # Tail Apache logs for real-time monitoring.
-  echo "---- tailing Apache error log (foreground) ----"
+  echo ""
+  echo "---- Xdebug Status ----"
+  php -v | grep -i xdebug || echo "Xdebug not detected"
+  echo ""
+  echo "Xdebug configuration:"
+  php -i | grep -i "xdebug.mode\|xdebug.client_host\|xdebug.client_port\|xdebug.start_with_request" || true
 
+  echo ""
+  echo "---- PHP Info ----"
+  php -i | grep -i "memory_limit\|upload_max_filesize\|post_max_size\|max_execution_time" || true
+
+  echo ""
+  echo "============================================================"
+  echo "  Development environment ready!"
+  echo "  WordPress: ${WP_SITE_URL}"
+  echo "  phpMyAdmin: http://localhost:8082"
+  echo "  Xdebug: Listening on port 9003"
+  echo "============================================================"
+  echo ""
+
+  # Tail Apache logs for real-time monitoring in background
   if [ -f /var/log/apache2/error.log ]; then
-    # Background the tail command so it doesn't block execution.
     tail -n +1 -F /var/log/apache2/error.log &
   fi
 fi
