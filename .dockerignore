@@ -3,67 +3,71 @@
 .gitignore
 .gitattributes
 
-# CI/CD
-.github
-.jules
-
-# Documentation
-*.md
+# Documentation (not needed in image)
 docs/
-CHANGELOG.md
-COPILOT_SETUP_STEPS.md
+*.md
+!ai-post-scheduler/*.md
 
 # IDE and editor files
-.vscode
-.idea
+.idea/
+.vscode/
 *.swp
 *.swo
 *~
+
+# OS files
 .DS_Store
-
-# Build artifacts
-.build
-*.log
-*.tmp
-
-# Test files (we don't need tests in the image)
-tests/
-phpunit.xml
-.phpunit.result.cache
-
-# Composer dev dependencies (install only production deps in image)
-# vendor/
-
-# Docker files (don't copy Docker files into the image)
-Dockerfile
-docker-compose*.yml
-docker-entrypoint.sh
-healthcheck.sh
-mariadb-conf/
-
-# Scripts
-scripts/
-collect_changelogs.py
-
-# QA tools
-qodana.yaml
+Thumbs.db
 
 # Temporary files
-tmp/
-temp/
-*.cache
+*.log
+*.tmp
+/tmp/
 
-# Environment files
-.env
-.env.*
+# Test files and coverage (not needed in image)
+tests/
+coverage/
+.phpunit.result.cache
+phpunit.xml
+ai-post-scheduler/tests/
+ai-post-scheduler/coverage/
+ai-post-scheduler/.phpunit.result.cache
+ai-post-scheduler/phpunit.xml
+
+# Build artifacts
+.build/
 
 # Node modules (if any)
 node_modules/
-package-lock.json
-yarn.lock
 
-# Other plugin directories at root level (only copy ai-post-scheduler)
-# But keep composer files for the plugin
-composer.json
-composer.lock
-index.php
+# Vendor dependencies in root (keep ai-post-scheduler/vendor for plugin)
+/vendor/
+/composer.lock
+
+# Database data
+data/
+
+# CI/CD files
+.github/
+.jules/
+qodana.yaml
+
+# Docker volumes
+db_data_v2/
+wordpress_data_v2/
+
+# Scripts (not needed in image)
+scripts/
+collect_changelogs.py
+
+# Development start scripts (not needed in image)
+start-dev.sh
+start-dev.bat
+start-dev.ps1
+
+# Note: The following files are required and NOT ignored:
+# - healthcheck.sh
+# - docker-entrypoint.sh
+# - docker-compose.yml
+# - Dockerfile
+# - ai-post-scheduler/
