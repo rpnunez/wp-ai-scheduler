@@ -233,6 +233,31 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get post quantity.
+	 *
+	 * @return int Post quantity.
+	 */
+	public function get_post_quantity() {
+		return isset($this->template->post_quantity) ? $this->template->post_quantity : 1;
+	}
+
+	/**
+	 * Magic getter for backward compatibility.
+	 *
+	 * @param string $name Property name.
+	 * @return mixed Property value.
+	 */
+	public function __get($name) {
+		if (method_exists($this, 'get_' . $name)) {
+			return $this->{'get_' . $name}();
+		}
+		if (isset($this->template->$name)) {
+			return $this->template->$name;
+		}
+		return null;
+	}
+
+	/**
 	 * Get all context data as an array.
 	 *
 	 * @return array Context data.

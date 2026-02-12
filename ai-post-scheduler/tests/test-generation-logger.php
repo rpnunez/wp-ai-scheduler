@@ -57,10 +57,10 @@ class Test_AIPS_Generation_Logger extends WP_UnitTestCase {
 				$this->equalTo($history_id),
 				$this->equalTo('title'),
 				$this->callback(function($details) {
-					return isset($details['prompt']) &&
-					       isset($details['options']) &&
-					       isset($details['response']) &&
-					       isset($details['error']) &&
+					return array_key_exists('prompt', $details) &&
+					       array_key_exists('options', $details) &&
+					       array_key_exists('response', $details) &&
+					       array_key_exists('error', $details) &&
 					       $details['prompt'] === 'Generate a title' &&
 					       $details['response'] === base64_encode('Great Title') &&
 					       $details['error'] === null;

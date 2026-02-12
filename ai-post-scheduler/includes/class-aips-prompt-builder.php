@@ -238,7 +238,7 @@ class AIPS_Prompt_Builder {
             }
             
             // Only include content if not using conversation context
-            if (!$use_conversation_context && !empty($content)) {
+            if (!$use_conversation_context) {
                 $prompt .= "\n\nHere is the content:\n\n" . $content;
             }
 
@@ -271,7 +271,7 @@ class AIPS_Prompt_Builder {
         }
 
         // Only include content if not using conversation context
-        if (!$use_conversation_context && !empty($content)) {
+        if (!$use_conversation_context) {
             $prompt .= "\n\nHere is the content:\n\n" . $content;
         }
 
