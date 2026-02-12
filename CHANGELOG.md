@@ -52,6 +52,7 @@ All notable changes to this project will be documented in this file.
 - 2024-05-30: Optimized author topic generation by replacing iterative database inserts with a single bulk INSERT query, reducing database round-trips from N to 1.
 
 ### Fixed
+- [2026-05-27] Fixed performance regression in `AIPS_History_Repository::get_history` where duplicated columns were selected. Default behavior is now optimized to select only list columns.
 - 2024-05-28: Fixed infinite loop in schedule processing where failed "One Time" schedules were incorrectly rescheduled for the next day. They are now deactivated upon failure.
 
 ### Added
