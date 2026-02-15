@@ -260,11 +260,7 @@ class AIPS_AI_Service {
                 $this->logger->log('Calling simpleJsonQuery with params: ' . wp_json_encode(array_keys($json_query_params)), 'debug');
                 
                 // Use simpleJsonQuery which returns structured JSON data
-                // $result = $mwai->simpleJsonQuery($prompt, $json_query_params);
-                $result = $mwai->simpleJsonQuery($prompt);
-
-                error_log('Result type: ' . gettype($result));
-                error_log('Result content: ' . var_export($result, true));
+                $result = $mwai->simpleJsonQuery($prompt, $json_query_params);
                 
                 if (empty($result)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
