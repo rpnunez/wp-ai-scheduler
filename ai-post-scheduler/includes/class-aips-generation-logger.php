@@ -109,11 +109,6 @@ class AIPS_Generation_Logger {
      * @param array $context Context data.
      */
     public function warning($message, $context = array()) {
-        // Fix potential bug where logger doesn't have warning method
-        if (method_exists($this->logger, 'warning')) {
-            $this->logger->warning($message, $context);
-        } else {
-            $this->logger->log($message, 'warning', $context);
-        }
+        $this->logger->warning($message, $context);
     }
 }

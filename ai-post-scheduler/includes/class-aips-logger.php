@@ -88,6 +88,26 @@ class AIPS_Logger {
         }
     }
     
+    /**
+     * Log a warning message.
+     *
+     * @param string $message Warning message.
+     * @param array $context Context data.
+     */
+    public function warning($message, $context = array()) {
+        $this->log($message, 'warning', $context);
+    }
+
+    /**
+     * Log an error message.
+     *
+     * @param string $message Error message.
+     * @param array $context Context data.
+     */
+    public function error($message, $context = array()) {
+        $this->log($message, 'error', $context);
+    }
+
     public function get_logs($lines = 100) {
         if (!file_exists($this->log_file)) {
             return array();
