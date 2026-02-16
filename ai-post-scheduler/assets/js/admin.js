@@ -1174,6 +1174,7 @@
 
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
+            var isHistoryTab = $('.aips-page-container').length === 0;
 
             var $btn = $(this);
             $btn.prop('disabled', true).text('Reloading...');
@@ -1186,7 +1187,8 @@
                     action: 'aips_reload_history',
                     nonce: aipsAjax.nonce,
                     status: status,
-                    search: search
+                    search: search,
+                    is_history_tab: isHistoryTab
                 },
                 success: function(response) {
                     if (!response.success) {
