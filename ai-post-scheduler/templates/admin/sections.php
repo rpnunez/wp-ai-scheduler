@@ -8,71 +8,108 @@ if (!isset($sections) || !is_array($sections)) {
 }
 ?>
 <div class="wrap aips-wrap">
-	<h1>
-		<?php esc_html_e('Prompt Sections', 'ai-post-scheduler'); ?>
-		<button class="page-title-action aips-add-section-btn"><?php esc_html_e('Add New', 'ai-post-scheduler'); ?></button>
-	</h1>
-
-	<div class="aips-structures-container">
-		<?php if (!empty($sections)) : ?>
-		<div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
-			<label class="screen-reader-text" for="aips-section-search"><?php esc_html_e('Search Sections:', 'ai-post-scheduler'); ?></label>
-			<input type="search" id="aips-section-search" class="regular-text" placeholder="<?php esc_attr_e('Search sections...', 'ai-post-scheduler'); ?>">
-			<button type="button" id="aips-section-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+	<div class="aips-page-container">
+		<!-- Page Header -->
+		<div class="aips-page-header">
+			<div class="aips-page-header-top">
+				<div>
+					<h1 class="aips-page-title"><?php esc_html_e('Prompt Sections', 'ai-post-scheduler'); ?></h1>
+					<p class="aips-page-description"><?php esc_html_e('Create and manage reusable prompt sections that can be inserted into your templates using placeholders.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="aips-page-actions">
+					<button class="aips-btn aips-btn-primary aips-add-section-btn">
+						<span class="dashicons dashicons-plus-alt"></span>
+						<?php esc_html_e('Add Section', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
+			</div>
 		</div>
 
-		<table class="wp-list-table widefat fixed striped aips-sections-list">
-			<thead>
-				<tr>
-					<th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
-					<th class="column-key"><?php esc_html_e('Key', 'ai-post-scheduler'); ?></th>
-					<th class="column-description"><?php esc_html_e('Description', 'ai-post-scheduler'); ?></th>
-					<th class="column-active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
-					<th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-				</tr>
-			</thead>
-			<tbody>
-				<?php foreach ($sections as $section) : ?>
-				<tr data-section-id="<?php echo esc_attr($section->id); ?>">
-					<td class="column-name"><?php echo esc_html($section->name); ?></td>
-					<td class="column-key">
-						<div class="aips-variable-code-cell">
-							<code><?php echo esc_html($section->section_key); ?></code>
-							<button type="button" class="aips-copy-btn" data-clipboard-text="{{section:<?php echo esc_attr($section->section_key); ?>}}" aria-label="<?php esc_attr_e('Copy placeholder', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Copy placeholder', 'ai-post-scheduler'); ?>">
-								<span class="dashicons dashicons-admin-page"></span>
-							</button>
-						</div>
-					</td>
-					<td class="column-description"><?php echo esc_html($section->description); ?></td>
-					<td class="column-active"><?php echo $section->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
-					<td class="column-actions">
-						<button class="button aips-edit-section" data-id="<?php echo esc_attr($section->id); ?>"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></button>
-						<button class="button button-link-delete aips-delete-section" data-id="<?php echo esc_attr($section->id); ?>"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></button>
-					</td>
-				</tr>
-				<?php endforeach; ?>
-			</tbody>
-		</table>
+		<!-- Content Panel -->
+		<div class="aips-content-panel">
+			<?php if (!empty($sections)) : ?>
+			<!-- Filter Bar -->
+			<div class="aips-filter-bar">
+				<input type="search" id="aips-section-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sections...', 'ai-post-scheduler'); ?>">
+			</div>
 
-		<div id="aips-section-search-no-results" class="aips-empty-state" style="display: none;">
-			<span class="dashicons dashicons-search" aria-hidden="true"></span>
-			<h3><?php esc_html_e('No Sections Found', 'ai-post-scheduler'); ?></h3>
-			<p><?php esc_html_e('No prompt sections match your search criteria.', 'ai-post-scheduler'); ?></p>
-			<button type="button" class="button button-primary aips-clear-section-search-btn">
-				<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-			</button>
+			<!-- Table -->
+			<div class="aips-panel-body no-padding">
+				<table class="aips-table">
+					<thead>
+						<tr>
+							<th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
+							<th class="column-key"><?php esc_html_e('Key', 'ai-post-scheduler'); ?></th>
+							<th class="column-description"><?php esc_html_e('Description', 'ai-post-scheduler'); ?></th>
+							<th class="column-active"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
+							<th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ($sections as $section) : ?>
+						<tr data-section-id="<?php echo esc_attr($section->id); ?>">
+							<td class="column-name"><strong><?php echo esc_html($section->name); ?></strong></td>
+							<td class="column-key">
+								<div class="aips-variable-code-cell">
+									<code><?php echo esc_html($section->section_key); ?></code>
+									<button type="button" class="aips-copy-btn" data-clipboard-text="{{section:<?php echo esc_attr($section->section_key); ?>}}" aria-label="<?php esc_attr_e('Copy placeholder', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Copy placeholder', 'ai-post-scheduler'); ?>">
+										<span class="dashicons dashicons-admin-page"></span>
+									</button>
+								</div>
+							</td>
+							<td class="column-description"><?php echo esc_html($section->description); ?></td>
+							<td class="column-active">
+								<?php if ($section->is_active) : ?>
+									<span class="aips-badge aips-badge-success">
+										<span class="dashicons dashicons-yes-alt"></span>
+										<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
+									</span>
+								<?php else : ?>
+									<span class="aips-badge aips-badge-neutral">
+										<span class="dashicons dashicons-minus"></span>
+										<?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
+									</span>
+								<?php endif; ?>
+							</td>
+							<td class="column-actions">
+								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-edit"></span>
+								</button>
+								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-trash"></span>
+								</button>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+
+			<!-- No Search Results State -->
+			<div id="aips-section-search-no-results" class="aips-empty-state" style="display: none;">
+				<span class="dashicons dashicons-search" style="font-size: 64px; width: 64px; height: 64px;"></span>
+				<h3><?php esc_html_e('No Sections Found', 'ai-post-scheduler'); ?></h3>
+				<p><?php esc_html_e('No prompt sections match your search criteria.', 'ai-post-scheduler'); ?></p>
+				<button type="button" class="aips-btn aips-btn-primary aips-clear-section-search-btn">
+					<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+			<?php else : ?>
+			<!-- Empty State -->
+			<div class="aips-empty-state">
+				<span class="dashicons dashicons-editor-table" style="font-size: 64px; width: 64px; height: 64px;"></span>
+				<h3><?php esc_html_e('No Prompt Sections', 'ai-post-scheduler'); ?></h3>
+				<p><?php esc_html_e('Create reusable prompt sections that can be inserted into your article structures using placeholders like {{section:key}}.', 'ai-post-scheduler'); ?></p>
+				<button class="aips-btn aips-btn-primary aips-add-section-btn">
+					<span class="dashicons dashicons-plus-alt"></span>
+					<?php esc_html_e('Create First Section', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+			<?php endif; ?>
 		</div>
-		<?php else : ?>
-		<div class="aips-empty-state">
-			<span class="dashicons dashicons-editor-table" aria-hidden="true"></span>
-			<h3><?php esc_html_e('No Prompt Sections', 'ai-post-scheduler'); ?></h3>
-			<p><?php esc_html_e('Create prompt sections to reuse across article structures.', 'ai-post-scheduler'); ?></p>
-			<button class="button button-primary aips-add-section-btn"><?php esc_html_e('Create Section', 'ai-post-scheduler'); ?></button>
-		</div>
-		<?php endif; ?>
 	</div>
 
-	<div id="aips-section-modal" class="aips-modal" style="display: none;">
+	<!-- Section Modal (kept as-is for JavaScript compatibility) --><div id="aips-section-modal" class="aips-modal" style="display: none;">
 		<div class="aips-modal-content">
 			<div class="aips-modal-header">
 				<h2 id="aips-section-modal-title"><?php esc_html_e('Add New Prompt Section', 'ai-post-scheduler'); ?></h2>

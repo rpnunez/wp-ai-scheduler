@@ -1,0 +1,916 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AI Post Scheduler MCP Bridge API",
+  "description": "Model Context Protocol bridge for AI Post Scheduler WordPress plugin",
+  "version": "1.0.0",
+  "protocol": "jsonrpc-2.0",
+  "tools": [
+    {
+      "name": "list_tools",
+      "description": "List all available MCP tools with their descriptions and parameters",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "version": { "type": "string" },
+          "tools": { "type": "object" }
+        }
+      }
+    },
+    {
+      "name": "clear_cache",
+      "description": "Clear all plugin caches (transients)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cache_type": {
+            "type": "string",
+            "description": "Type of cache to clear: all, history_stats, schedule_stats, or specific transient name",
+            "default": "all",
+            "oneOf": [
+              {
+                "enum": ["all", "history_stats", "schedule_stats"],
+                "description": "Known cache groups: all caches, history statistics, or schedule statistics"
+              },
+              {
+                "type": "string",
+                "description": "Specific transient name to clear"
+              }
+            ]
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "cleared": { "type": "array", "items": { "type": "string" } },
+          "count": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "name": "check_database",
+      "description": "Check database health and verify all tables/columns exist",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "database": { "type": "object" }
+        }
+      }
+    },
+    {
+      "name": "repair_database",
+      "description": "Repair database tables using WordPress dbDelta",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "check_upgrades",
+      "description": "Check if database upgrades are needed and optionally run them",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "type": "boolean",
+            "description": "If true, run upgrades. If false, just check.",
+            "default": false
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "current_version": { "type": "string" },
+          "plugin_version": { "type": "string" },
+          "needs_upgrade": { "type": "boolean" },
+          "upgraded": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "name": "system_status",
+      "description": "Get comprehensive system status including environment, plugin, database, filesystem, cron, and logs",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "section": {
+            "type": "string",
+            "description": "Specific section: all, environment, plugin, database, filesystem, cron, logs",
+            "default": "all",
+            "enum": ["all", "environment", "plugin", "database", "filesystem", "cron", "logs"]
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "system_info": { "type": "object" }
+        }
+      }
+    },
+    {
+      "name": "clear_history",
+      "description": "Clear generation history records",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "older_than_days": {
+            "type": "integer",
+            "description": "Clear records older than N days. If 0, clear all.",
+            "default": 0,
+            "minimum": 0
+          },
+          "status": {
+            "type": "string",
+            "description": "Clear only records with specific status: all, completed, failed, pending",
+            "default": "all",
+            "enum": ["all", "completed", "failed", "pending"]
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "deleted": { "type": "integer" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "export_data",
+      "description": "Export plugin data in JSON or MySQL format",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "description": "Export format: json or mysql",
+            "enum": ["json", "mysql"]
+          },
+          "tables": {
+            "type": "array",
+            "description": "List of tables to export (empty for all)",
+            "items": { "type": "string" },
+            "default": []
+          }
+        },
+        "required": ["format"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "format": { "type": "string" },
+          "file": { "type": "string" },
+          "url": { "type": "string" },
+          "size": { "type": "integer" },
+          "tables": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    {
+      "name": "get_cron_status",
+      "description": "Get status of all scheduled cron jobs",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "crons": { "type": "object" }
+        }
+      }
+    },
+    {
+      "name": "trigger_cron",
+      "description": "Manually trigger a specific cron job",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hook": {
+            "type": "string",
+            "description": "Cron hook name",
+            "enum": [
+              "aips_generate_scheduled_posts",
+              "aips_generate_author_topics",
+              "aips_generate_author_posts",
+              "aips_scheduled_research",
+              "aips_send_review_notifications",
+              "aips_cleanup_export_files"
+            ]
+          }
+        },
+        "required": ["hook"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "hook": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "get_plugin_info",
+      "description": "Get plugin version, settings, and configuration",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "plugin": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "version": { "type": "string" },
+              "db_version": { "type": "string" },
+              "php_version": { "type": "string" },
+              "wp_version": { "type": "string" },
+              "ai_engine_active": { "type": "boolean" },
+              "settings": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "generate_post",
+      "description": "Generate a single post now with AI",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "template_id": {
+            "type": "integer",
+            "description": "Template ID to use for generation"
+          },
+          "author_topic_id": {
+            "type": "integer",
+            "description": "Author topic ID for topic-based generation"
+          },
+          "schedule_id": {
+            "type": "integer",
+            "description": "Schedule ID to use schedule configuration"
+          },
+          "overrides": {
+            "type": "object",
+            "description": "Optional overrides for post creation",
+            "properties": {
+              "title": { "type": "string" },
+              "category_ids": { "type": "array", "items": { "type": "integer" } },
+              "tag_ids": { "type": "array", "items": { "type": "integer" } },
+              "post_status": { "type": "string", "enum": ["draft", "publish", "pending", "private"] },
+              "post_author": { "type": "integer" }
+            }
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "post_id": { "type": "integer" },
+          "history_id": { "type": "integer" },
+          "post": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "title": { "type": "string" },
+              "status": { "type": "string" },
+              "url": { "type": "string" },
+              "edit_url": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "list_templates",
+      "description": "Get all available templates",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "active_only": {
+            "type": "boolean",
+            "description": "Return only active templates",
+            "default": false
+          },
+          "search": {
+            "type": "string",
+            "description": "Search term to filter templates by name"
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "is_active": { "type": "boolean" },
+                "prompt_template": { "type": "string" },
+                "title_prompt": { "type": "string" },
+                "excerpt_prompt": { "type": "string" },
+                "post_status": { "type": "string" },
+                "post_category": { "type": "integer" },
+                "post_author": { "type": "integer" },
+                "voice_id": { "type": "integer" },
+                "article_structure_id": { "type": "integer" },
+                "created_at": { "type": "string" }
+              }
+            }
+          },
+          "count": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "name": "get_generation_history",
+      "description": "Retrieve past post generations with filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "per_page": {
+            "type": "integer",
+            "description": "Number of items per page (1-100)",
+            "default": 20,
+            "minimum": 1,
+            "maximum": 100
+          },
+          "page": {
+            "type": "integer",
+            "description": "Page number",
+            "default": 1,
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "description": "Filter by status",
+            "enum": ["completed", "failed", "pending"]
+          },
+          "template_id": {
+            "type": "integer",
+            "description": "Filter by template ID"
+          },
+          "search": {
+            "type": "string",
+            "description": "Search term for post title"
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "uuid": { "type": "string" },
+                "post_id": { "type": "integer" },
+                "template_id": { "type": "integer" },
+                "template_name": { "type": "string" },
+                "status": { "type": "string" },
+                "generated_title": { "type": "string" },
+                "error_message": { "type": "string" },
+                "created_at": { "type": "string" },
+                "completed_at": { "type": "string" },
+                "post_url": { "type": "string" },
+                "edit_url": { "type": "string" }
+              }
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "pages": { "type": "integer" },
+              "current_page": { "type": "integer" },
+              "per_page": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "get_history",
+      "description": "Get detailed history record by history ID or post ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "history_id": {
+            "type": "integer",
+            "description": "History record ID"
+          },
+          "post_id": {
+            "type": "integer",
+            "description": "WordPress post ID to find history for"
+          },
+          "include_logs": {
+            "type": "boolean",
+            "description": "Include detailed log entries",
+            "default": true
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "history": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "uuid": { "type": "string" },
+              "post_id": { "type": "integer" },
+              "template_id": { "type": "integer" },
+              "author_id": { "type": "integer" },
+              "topic_id": { "type": "integer" },
+              "status": { "type": "string" },
+              "generated_title": { "type": "string" },
+              "generated_content": { "type": "string" },
+              "error_message": { "type": "string" },
+              "creation_method": { "type": "string" },
+              "created_at": { "type": "string" },
+              "completed_at": { "type": "string" },
+              "post_url": { "type": "string" },
+              "edit_url": { "type": "string" },
+              "logs": { "type": "array" },
+              "log_count": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "list_authors",
+      "description": "Get all authors with optional filtering",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "active_only": {
+            "type": "boolean",
+            "description": "Return only active authors",
+            "default": false
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "name": { "type": "string" },
+                "bio": { "type": "string" },
+                "expertise": { "type": "string" },
+                "tone": { "type": "string" },
+                "is_active": { "type": "boolean" },
+                "created_at": { "type": "string" }
+              }
+            }
+          },
+          "count": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "name": "get_author",
+      "description": "Get author details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "integer",
+            "description": "Author ID"
+          }
+        },
+        "required": ["author_id"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "author": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string" },
+              "bio": { "type": "string" },
+              "expertise": { "type": "string" },
+              "tone": { "type": "string" },
+              "is_active": { "type": "boolean" },
+              "created_at": { "type": "string" },
+              "updated_at": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "list_author_topics",
+      "description": "Get topics for an author with filtering",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "author_id": {
+            "type": "integer",
+            "description": "Author ID"
+          },
+          "status": {
+            "type": "string",
+            "description": "Filter by status",
+            "enum": ["pending", "approved", "rejected"]
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of topics to return",
+            "default": 50,
+            "minimum": 1,
+            "maximum": 500
+          }
+        },
+        "required": ["author_id"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "author_id": { "type": "integer" },
+                "topic_title": { "type": "string" },
+                "topic_prompt": { "type": "string" },
+                "status": { "type": "string" },
+                "score": { "type": "integer" },
+                "keywords": { "type": "string" },
+                "metadata": { "type": "string" },
+                "generated_at": { "type": "string" },
+                "approved_at": { "type": "string" }
+              }
+            }
+          },
+          "count": { "type": "integer" },
+          "total_available": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "name": "get_author_topic",
+      "description": "Get specific topic details by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic_id": {
+            "type": "integer",
+            "description": "Topic ID"
+          }
+        },
+        "required": ["topic_id"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "topic": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer" },
+              "author_id": { "type": "integer" },
+              "topic_title": { "type": "string" },
+              "topic_prompt": { "type": "string" },
+              "status": { "type": "string" },
+              "score": { "type": "integer" },
+              "keywords": { "type": "string" },
+              "metadata": { "type": "string" },
+              "generated_at": { "type": "string" },
+              "approved_at": { "type": "string" },
+              "feedback": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "regenerate_post_component",
+      "description": "Regenerate individual post component (title, excerpt, content, or featured_image)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "integer",
+            "description": "WordPress post ID"
+          },
+          "history_id": {
+            "type": "integer",
+            "description": "History record ID for context"
+          },
+          "component": {
+            "type": "string",
+            "description": "Component to regenerate",
+            "enum": ["title", "excerpt", "content", "featured_image"]
+          },
+          "save": {
+            "type": "boolean",
+            "description": "Automatically save to post (false returns preview only)",
+            "default": false
+          }
+        },
+        "required": ["post_id", "history_id", "component"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "component": { "type": "string" },
+          "post_id": { "type": "integer" },
+          "history_id": { "type": "integer" },
+          "saved": { "type": "boolean" },
+          "new_value": { "type": ["string", "object"] },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "get_generation_stats",
+      "description": "Get generation statistics (success rates, performance metrics)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "description": "Time period for stats",
+            "enum": ["all", "today", "week", "month"],
+            "default": "all"
+          },
+          "template_id": {
+            "type": "integer",
+            "description": "Filter by template ID"
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "completed": { "type": "integer" },
+              "failed": { "type": "integer" },
+              "processing": { "type": "integer" },
+              "success_rate": { "type": "number" },
+              "period": { "type": "string" },
+              "by_template": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "get_post_metadata",
+      "description": "Get AI generation metadata for a specific post",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "integer",
+            "description": "WordPress post ID"
+          }
+        },
+        "required": ["post_id"]
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "post_id": { "type": "integer" },
+              "post_title": { "type": "string" },
+              "post_status": { "type": "string" },
+              "post_date": { "type": "string" },
+              "history_id": { "type": "integer" },
+              "template_id": { "type": "integer" },
+              "template_name": { "type": "string" },
+              "author_id": { "type": "integer" },
+              "topic_id": { "type": "integer" },
+              "creation_method": { "type": "string" },
+              "generated_at": { "type": "string" },
+              "completed_at": { "type": "string" },
+              "status": { "type": "string" },
+              "ai_model": { "type": "string" },
+              "tokens_used": { "type": "integer" },
+              "generation_time": { "type": "number" },
+              "has_prompt": { "type": "boolean" },
+              "post_url": { "type": "string" },
+              "edit_url": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "get_ai_models",
+      "description": "List available AI models from AI Engine",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "current_model": { "type": "string" },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "provider": { "type": "string" },
+                "type": { "type": "string" },
+                "is_current": { "type": "boolean" }
+              }
+            }
+          },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "test_ai_connection",
+      "description": "Test AI Engine connection with a simple query",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "test_prompt": {
+            "type": "string",
+            "description": "Optional test prompt",
+            "default": "Say \"Hello\" if you can read this."
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "connected": { "type": "boolean" },
+          "test_prompt": { "type": "string" },
+          "response": { "type": "string" },
+          "response_time_ms": { "type": "number" },
+          "model": { "type": "string" },
+          "message": { "type": "string" },
+          "error": { "type": "string" },
+          "error_code": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "get_plugin_settings",
+      "description": "Get plugin configuration settings",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Settings category",
+            "enum": ["ai", "resilience", "logging", "all"],
+            "default": "all"
+          }
+        },
+        "required": []
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "category": { "type": "string" },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "ai": {
+                "type": "object",
+                "properties": {
+                  "model": { "type": "string" },
+                  "max_tokens": { "type": "integer" },
+                  "temperature": { "type": "number" },
+                  "default_post_status": { "type": "string" },
+                  "default_post_author": { "type": "integer" }
+                }
+              },
+              "resilience": {
+                "type": "object",
+                "properties": {
+                  "enable_retry": { "type": "boolean" },
+                  "retry_max_attempts": { "type": "integer" },
+                  "retry_initial_delay": { "type": "integer" },
+                  "enable_rate_limiting": { "type": "boolean" },
+                  "rate_limit_requests": { "type": "integer" },
+                  "rate_limit_period": { "type": "integer" },
+                  "enable_circuit_breaker": { "type": "boolean" },
+                  "circuit_breaker_threshold": { "type": "integer" },
+                  "circuit_breaker_timeout": { "type": "integer" }
+                }
+              },
+              "logging": {
+                "type": "object",
+                "properties": {
+                  "enable_logging": { "type": "boolean" },
+                  "log_retention_days": { "type": "integer" }
+                }
+              },
+              "thresholds": {
+                "type": "object",
+                "properties": {
+                  "generated_posts_log_threshold_tmpfile": { "type": "integer" },
+                  "generated_posts_log_threshold_client": { "type": "integer" },
+                  "history_export_max_records": { "type": "integer" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "authentication": {
+    "type": "wordpress",
+    "required": true,
+    "capability": "manage_options",
+    "methods": [
+      "session_cookie",
+      "application_password",
+      "custom_token"
+    ]
+  },
+  "errors": {
+    "-32700": "Parse error - Invalid JSON",
+    "-32600": "Invalid Request - Missing method",
+    "-32601": "Method not found",
+    "-32001": "Insufficient permissions",
+    "-32000": "Tool execution error"
+  }
+}

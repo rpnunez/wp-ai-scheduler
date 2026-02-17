@@ -26,36 +26,68 @@ if (!in_array($active_tab, $valid_tabs, true)) {
 }
 ?>
 
-<div class="wrap aips-research">
-    <h1><?php echo esc_html__('Research', 'ai-post-scheduler'); ?></h1>
+<div class="wrap aips-wrap">
+    <div class="aips-page-container">
+        <!-- Page Header -->
+        <div class="aips-page-header">
+            <div class="aips-page-header-top">
+                <div>
+                    <h1 class="aips-page-title"><?php echo esc_html__('Research', 'ai-post-scheduler'); ?></h1>
+                    <p class="aips-page-description"><?php echo esc_html__('Discover trending topics in your niche using AI-powered research and automatically schedule content creation.', 'ai-post-scheduler'); ?></p>
+                </div>
+            </div>
+        </div>
 
-    <div class="nav-tab-wrapper">
-        <a href="#trending" class="nav-tab<?php echo $active_tab === 'trending' ? ' nav-tab-active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
-        <a href="#planner" class="nav-tab<?php echo $active_tab === 'planner' ? ' nav-tab-active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
-    </div>
+        <!-- Tab Navigation -->
+        <div class="aips-tab-nav">
+            <a href="#trending" class="aips-tab-link<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
+            <a href="#planner" class="aips-tab-link<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
+        </div>
+
+        <!-- Old nav-tab-wrapper for JS compatibility -->
+        <div class="nav-tab-wrapper" class="hidden">
+            <a href="#trending" class="nav-tab<?php echo $active_tab === 'trending' ? ' nav-tab-active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
+            <a href="#planner" class="nav-tab<?php echo $active_tab === 'planner' ? ' nav-tab-active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
+        </div>
 
     <div id="trending-tab" class="aips-tab-content<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'trending' ? '' : 'display:none;'; ?>">
-        <p class="description">
-            <?php echo esc_html__('Use AI to discover trending topics in your niche and automatically schedule content creation. This feature helps you stay current with what your audience is searching for.', 'ai-post-scheduler'); ?>
-        </p>
-        
         <!-- Research Stats -->
-        <div class="aips-stats-cards">
+        <div class="aips-stats-grid aips-grid-4">
             <div class="aips-stat-card">
-                <h3><?php echo esc_html(number_format($stats['total_topics'])); ?></h3>
-                <p><?php echo esc_html__('Total Topics', 'ai-post-scheduler'); ?></p>
+                <div class="aips-stat-icon">
+                    <span class="dashicons dashicons-lightbulb"></span>
+                </div>
+                <div class="aips-stat-content">
+                    <div class="aips-stat-value"><?php echo esc_html(number_format($stats['total_topics'])); ?></div>
+                    <div class="aips-stat-label"><?php echo esc_html__('Total Topics', 'ai-post-scheduler'); ?></div>
+                </div>
             </div>
             <div class="aips-stat-card">
-                <h3><?php echo esc_html(number_format($stats['niches_count'])); ?></h3>
-                <p><?php echo esc_html__('Niches', 'ai-post-scheduler'); ?></p>
+                <div class="aips-stat-icon">
+                    <span class="dashicons dashicons-category"></span>
+                </div>
+                <div class="aips-stat-content">
+                    <div class="aips-stat-value"><?php echo esc_html(number_format($stats['niches_count'])); ?></div>
+                    <div class="aips-stat-label"><?php echo esc_html__('Niches', 'ai-post-scheduler'); ?></div>
+                </div>
             </div>
             <div class="aips-stat-card">
-                <h3><?php echo esc_html($stats['avg_score']); ?></h3>
-                <p><?php echo esc_html__('Avg Score', 'ai-post-scheduler'); ?></p>
+                <div class="aips-stat-icon aips-stat-icon-info">
+                    <span class="dashicons dashicons-star-filled"></span>
+                </div>
+                <div class="aips-stat-content">
+                    <div class="aips-stat-value"><?php echo esc_html($stats['avg_score']); ?></div>
+                    <div class="aips-stat-label"><?php echo esc_html__('Avg Score', 'ai-post-scheduler'); ?></div>
+                </div>
             </div>
             <div class="aips-stat-card">
-                <h3><?php echo esc_html(number_format($stats['recent_research_count'])); ?></h3>
-                <p><?php echo esc_html__('Last 7 Days', 'ai-post-scheduler'); ?></p>
+                <div class="aips-stat-icon aips-stat-icon-success">
+                    <span class="dashicons dashicons-calendar-alt"></span>
+                </div>
+                <div class="aips-stat-content">
+                    <div class="aips-stat-value"><?php echo esc_html(number_format($stats['recent_research_count'])); ?></div>
+                    <div class="aips-stat-label"><?php echo esc_html__('Last 7 Days', 'ai-post-scheduler'); ?></div>
+                </div>
             </div>
         </div>
         
@@ -156,7 +188,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 <div class="aips-search-wrapper">
                     <label class="screen-reader-text" for="filter-search"><?php esc_html_e('Search topics...', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="filter-search" class="regular-text" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>" style="max-width: 200px;">
-                    <button type="button" id="filter-search-clear" class="button" style="display: none;" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="filter-search-clear" class="button" class="hidden" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
             
@@ -223,131 +255,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     <div id="planner-tab" class="aips-tab-content<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'planner' ? '' : 'display:none;'; ?>">
         <?php include AIPS_PLUGIN_DIR . 'templates/admin/planner.php'; ?>
     </div>
-</div>
+    </div><!-- .aips-page-container -->
+</div><!-- .wrap -->
 
-<style>
-.aips-research {
-    max-width: 1200px;
-}
 
-.aips-stats-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin: 20px 0 30px;
-}
-
-.aips-stat-card {
-    background: #fff;
-    border: 1px solid #ccd0d4;
-    border-radius: 4px;
-    padding: 20px;
-    text-align: center;
-}
-
-.aips-stat-card h3 {
-    margin: 0 0 10px;
-    font-size: 32px;
-    color: #2271b1;
-}
-
-.aips-stat-card p {
-    margin: 0;
-    color: #646970;
-    font-size: 14px;
-}
-
-.aips-card {
-    background: #fff;
-    border: 1px solid #ccd0d4;
-    border-radius: 4px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-.aips-card h2 {
-    margin-top: 0;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-}
-
-.aips-filters {
-    margin-bottom: 20px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.aips-filter-select {
-    min-width: 200px;
-}
-
-.aips-topics-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.aips-topics-table th,
-.aips-topics-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-}
-
-.aips-topics-table th {
-    background: #f6f7f7;
-    font-weight: 600;
-}
-
-.aips-topics-table tbody tr:hover {
-    background: #f9f9f9;
-}
-
-.aips-score-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 12px;
-}
-
-.aips-score-high {
-    background: #00a32a;
-    color: #fff;
-}
-
-.aips-score-medium {
-    background: #ffb900;
-    color: #000;
-}
-
-.aips-score-low {
-    background: #999;
-    color: #fff;
-}
-
-.aips-keywords-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-}
-
-.aips-keyword-tag {
-    display: inline-block;
-    padding: 3px 8px;
-    background: #f0f0f1;
-    border-radius: 3px;
-    font-size: 11px;
-}
-
-.aips-topic-actions {
-    display: flex;
-    gap: 5px;
-}
-
-.button.is-loading .spinner {
-    visibility: visible;
-    float: none;
-}
-</style>
