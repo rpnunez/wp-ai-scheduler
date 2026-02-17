@@ -1,0 +1,73 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Documentation (not needed in image)
+docs/
+*.md
+!ai-post-scheduler/*.md
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+/tmp/
+
+# Test files and coverage (not needed in image)
+tests/
+coverage/
+.phpunit.result.cache
+phpunit.xml
+ai-post-scheduler/tests/
+ai-post-scheduler/coverage/
+ai-post-scheduler/.phpunit.result.cache
+ai-post-scheduler/phpunit.xml
+
+# Build artifacts
+.build/
+
+# Node modules (if any)
+node_modules/
+
+# Vendor dependencies in root (keep ai-post-scheduler/vendor for plugin)
+/vendor/
+/composer.lock
+
+# Database data
+data/
+
+# CI/CD files
+.github/
+.jules/
+qodana.yaml
+
+# Docker volumes
+db_data_v2/
+wordpress_data_v2/
+
+# Scripts (not needed in image)
+scripts/
+collect_changelogs.py
+
+# Development start scripts (not needed in image)
+start-dev.sh
+start-dev.bat
+start-dev.ps1
+
+# Note: The following files are required and NOT ignored:
+# - healthcheck.sh
+# - docker-entrypoint.sh
+# - docker-compose.yml
+# - Dockerfile
+# - ai-post-scheduler/

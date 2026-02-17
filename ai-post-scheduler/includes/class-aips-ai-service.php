@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_AI_Service
  *
- * Provides AI content generation capabilities through Meow Apps AI Engine integration.
+ * Provides AI content generation capabilities through AI Engine integration.
  * Handles error recovery, logging, and provides a consistent interface for AI operations.
  */
 class AIPS_AI_Service {

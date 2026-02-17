@@ -18,156 +18,204 @@ $template_type_selector = new AIPS_Template_Type_Selector();
 $rotation_patterns = $template_type_selector->get_rotation_patterns();
 ?>
 <div class="wrap aips-wrap">
-    <h1>
-        <?php esc_html_e('Post Schedules', 'ai-post-scheduler'); ?>
-        <button class="page-title-action aips-add-schedule-btn"><?php esc_html_e('Add New', 'ai-post-scheduler'); ?></button>
-    </h1>
-    
-    <?php if (empty($templates)): ?>
-    <div class="notice notice-warning">
-        <p><?php esc_html_e('You need to create at least one active template before you can schedule posts.', 'ai-post-scheduler'); ?>
-        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-templates')); ?>"><?php esc_html_e('Create Template', 'ai-post-scheduler'); ?></a></p>
-    </div>
-    <?php endif; ?>
-    
-    <div class="aips-schedules-container">
-        <?php if (!empty($schedules)): ?>
-        <div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
-            <label class="screen-reader-text" for="aips-schedule-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
-            <input type="search" id="aips-schedule-search" class="regular-text" placeholder="<?php esc_attr_e('Search schedules...', 'ai-post-scheduler'); ?>">
-            <button type="button" id="aips-schedule-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+    <div class="aips-page-container">
+        <!-- Page Header -->
+        <div class="aips-page-header">
+            <div class="aips-page-header-top">
+                <div>
+                    <h1 class="aips-page-title"><?php esc_html_e('Post Schedules', 'ai-post-scheduler'); ?></h1>
+                    <p class="aips-page-description"><?php esc_html_e('Automate post generation by setting up recurring schedules for your templates.', 'ai-post-scheduler'); ?></p>
+                </div>
+                <div class="aips-page-actions">
+                    <button class="aips-btn aips-btn-primary aips-add-schedule-btn" <?php echo empty($templates) ? 'disabled' : ''; ?>>
+                        <span class="dashicons dashicons-plus-alt"></span>
+                        <?php esc_html_e('Add Schedule', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
+            </div>
         </div>
-
-        <table class="wp-list-table widefat fixed striped">
-            <thead>
-                <tr>
-                    <th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
-                    <th class="column-structure"><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></th>
-                    <th class="column-frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
-                    <th class="column-next-run"><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></th>
-                    <th class="column-last-run"><?php esc_html_e('Last Run', 'ai-post-scheduler'); ?></th>
-                    <th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
-                    <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php 
-                // Get article structure repository for lookup
-                $structure_repo = new AIPS_Article_Structure_Repository();
-                foreach ($schedules as $schedule): 
-                    // Get structure info
-                    $structure_display = __('Default', 'ai-post-scheduler');
-                    if (!empty($schedule->article_structure_id)) {
-                        $structure = $structure_repo->get_by_id($schedule->article_structure_id);
-                        if ($structure) {
-                            $structure_display = $structure->name;
-                        }
-                    } else if (!empty($schedule->rotation_pattern)) {
-                        $structure_display = __('Rotating', 'ai-post-scheduler');
-                    }
-                ?>
-                <tr data-schedule-id="<?php echo esc_attr($schedule->id); ?>"
-                    data-template-id="<?php echo esc_attr($schedule->template_id); ?>"
-                    data-frequency="<?php echo esc_attr($schedule->frequency); ?>"
-                    data-topic="<?php echo esc_attr($schedule->topic); ?>"
-                    data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
-                    data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
-                    <td class="column-template">
-                        <?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?>
-                    </td>
-                    <td class="column-structure">
-                        <?php echo esc_html($structure_display); ?>
-                        <?php if (!empty($schedule->rotation_pattern)): ?>
-                            <br><small style="color: #666;"><?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->rotation_pattern))); ?></small>
-                        <?php endif; ?>
-                    </td>
-                    <td class="column-frequency">
-                        <?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->frequency))); ?>
-                    </td>
-                    <td class="column-next-run">
-                        <?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($schedule->next_run))); ?>
-                    </td>
-                    <td class="column-last-run">
+        
+        <?php if (empty($templates)): ?>
+        <div class="aips-content-panel">
+            <div class="aips-panel-body">
+                <div class="aips-empty-state">
+                    <div class="dashicons dashicons-info aips-empty-state-icon" aria-hidden="true" style="color: var(--aips-warning);"></div>
+                    <h3 class="aips-empty-state-title"><?php esc_html_e('No Templates Available', 'ai-post-scheduler'); ?></h3>
+                    <p class="aips-empty-state-description"><?php esc_html_e('You need to create at least one active template before you can schedule posts.', 'ai-post-scheduler'); ?></p>
+                    <div class="aips-empty-state-actions">
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-templates')); ?>" class="aips-btn aips-btn-primary">
+                            <span class="dashicons dashicons-media-document"></span>
+                            <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php elseif (!empty($schedules)): ?>
+        <!-- Content Panel with Filter Bar -->
+        <div class="aips-content-panel">
+            <!-- Filter Bar -->
+            <div class="aips-filter-bar">
+                <label class="screen-reader-text" for="aips-schedule-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
+                <input type="search" id="aips-schedule-search" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search schedules...', 'ai-post-scheduler'); ?>">
+                <button type="button" id="aips-schedule-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+            </div>
+            
+            <!-- Schedules Table -->
+            <div class="aips-panel-body no-padding">
+                <table class="aips-table">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Next Run', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Last Run', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         <?php 
-                        if ($schedule->last_run) {
-                            echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($schedule->last_run)));
-                        } else {
-                            esc_html_e('Never', 'ai-post-scheduler');
-                        }
+                        // Get article structure repository for lookup
+                        $structure_repo = new AIPS_Article_Structure_Repository();
+                        foreach ($schedules as $schedule): 
+                            // Get structure info
+                            $structure_display = __('Default', 'ai-post-scheduler');
+                            if (!empty($schedule->article_structure_id)) {
+                                $structure = $structure_repo->get_by_id($schedule->article_structure_id);
+                                if ($structure) {
+                                    $structure_display = $structure->name;
+                                }
+                            } else if (!empty($schedule->rotation_pattern)) {
+                                $structure_display = __('Rotating', 'ai-post-scheduler');
+                            }
                         ?>
-                    </td>
-                    <td class="column-status">
-                        <?php 
-                        $status = isset($schedule->status) ? $schedule->status : 'active';
-                        $status_class = '';
-                        $status_icon = '';
-                        $status_text = '';
-                        
-                        switch ($status) {
-                            case 'failed':
-                                $status_class = 'aips-status-failed';
-                                $status_icon = 'dashicons-warning';
-                                $status_text = __('Failed', 'ai-post-scheduler');
-                                break;
-                            case 'inactive':
-                                $status_class = 'aips-status-inactive';
-                                $status_icon = 'dashicons-marker';
-                                $status_text = __('Inactive', 'ai-post-scheduler');
-                                break;
-                            case 'active':
-                            default:
-                                $status_class = 'aips-status-active';
-                                $status_icon = 'dashicons-yes';
-                                $status_text = __('Active', 'ai-post-scheduler');
-                                break;
-                        }
-                        ?>
-                        <div class="aips-schedule-status-wrapper">
-                            <span class="aips-schedule-status <?php echo esc_attr($status_class); ?>">
-                                <span class="dashicons <?php echo esc_attr($status_icon); ?>"></span>
-                                <?php echo esc_html($status_text); ?>
-                            </span>
-                            <label class="aips-toggle">
-                                <input type="checkbox" class="aips-toggle-schedule" aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>" data-id="<?php echo esc_attr($schedule->id); ?>" <?php checked($schedule->is_active, 1); ?>>
-                                <span class="aips-toggle-slider"></span>
-                            </label>
-                        </div>
-                    </td>
-                    <td class="column-actions">
-                        <button class="button aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>">
-                            <?php esc_html_e('Clone', 'ai-post-scheduler'); ?>
+                        <tr data-schedule-id="<?php echo esc_attr($schedule->id); ?>"
+                            data-template-id="<?php echo esc_attr($schedule->template_id); ?>"
+                            data-frequency="<?php echo esc_attr($schedule->frequency); ?>"
+                            data-topic="<?php echo esc_attr($schedule->topic); ?>"
+                            data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
+                            data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
+                            <td>
+                                <div class="cell-primary"><?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?></div>
+                            </td>
+                            <td>
+                                <div>
+                                    <?php echo esc_html($structure_display); ?>
+                                    <?php if (!empty($schedule->rotation_pattern)): ?>
+                                        <div class="cell-meta"><?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->rotation_pattern))); ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="aips-badge aips-badge-info">
+                                    <?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->frequency))); ?>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="cell-meta">
+                                    <?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($schedule->next_run))); ?>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="cell-meta">
+                                    <?php 
+                                    if ($schedule->last_run) {
+                                        echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($schedule->last_run)));
+                                    } else {
+                                        esc_html_e('Never', 'ai-post-scheduler');
+                                    }
+                                    ?>
+                                </div>
+                            </td>
+                            <td>
+                                <?php 
+                                $status = isset($schedule->status) ? $schedule->status : 'active';
+                                switch ($status) {
+                                    case 'failed':
+                                        $badge_class = 'aips-badge-error';
+                                        $icon = 'dashicons-warning';
+                                        $text = __('Failed', 'ai-post-scheduler');
+                                        break;
+                                    case 'inactive':
+                                        $badge_class = 'aips-badge-neutral';
+                                        $icon = 'dashicons-minus';
+                                        $text = __('Inactive', 'ai-post-scheduler');
+                                        break;
+                                    case 'active':
+                                    default:
+                                        $badge_class = 'aips-badge-success';
+                                        $icon = 'dashicons-yes-alt';
+                                        $text = __('Active', 'ai-post-scheduler');
+                                        break;
+                                }
+                                ?>
+                                <div class="aips-schedule-status-wrapper" style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="aips-badge <?php echo esc_attr($badge_class); ?>">
+                                        <span class="dashicons <?php echo esc_attr($icon); ?>"></span>
+                                        <?php echo esc_html($text); ?>
+                                    </span>
+                                    <label class="aips-toggle">
+                                        <input type="checkbox" class="aips-toggle-schedule" aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>" data-id="<?php echo esc_attr($schedule->id); ?>" <?php checked($schedule->is_active, 1); ?>>
+                                        <span class="aips-toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="cell-actions">
+                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
+                                        <span class="dashicons dashicons-admin-page"></span>
+                                    </button>
+                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                        <span class="dashicons dashicons-trash"></span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                
+                <!-- No Search Results State -->
+                <div id="aips-schedule-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+                    <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+                    <h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
+                    <p class="aips-empty-state-description"><?php esc_html_e('No schedules match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
+                    <div class="aips-empty-state-actions">
+                        <button type="button" class="aips-btn aips-btn-primary aips-clear-schedule-search-btn">
+                            <span class="dashicons dashicons-dismiss"></span>
+                            <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
                         </button>
-                        <button class="button button-link-delete aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>">
-                            <?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
-                        </button>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-        <div id="aips-schedule-search-no-results" class="aips-empty-state" style="display: none;">
-            <span class="dashicons dashicons-search" aria-hidden="true"></span>
-            <h3><?php esc_html_e('No Schedules Found', 'ai-post-scheduler'); ?></h3>
-            <p><?php esc_html_e('No schedules match your search criteria.', 'ai-post-scheduler'); ?></p>
-            <button type="button" class="button button-primary aips-clear-schedule-search-btn">
-                <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-            </button>
+                    </div>
+                </div>
+            </div>
         </div>
         <?php else: ?>
-        <div class="aips-empty-state">
-            <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
-            <h3><?php esc_html_e('No Schedules Yet', 'ai-post-scheduler'); ?></h3>
-            <p><?php esc_html_e('Create a schedule to automatically generate posts on a regular basis.', 'ai-post-scheduler'); ?></p>
-            <?php if (!empty($templates)): ?>
-            <button class="button button-primary button-large aips-add-schedule-btn">
-                <?php esc_html_e('Create Schedule', 'ai-post-scheduler'); ?>
-            </button>
-            <?php endif; ?>
+        <!-- Empty State -->
+        <div class="aips-content-panel">
+            <div class="aips-panel-body">
+                <div class="aips-empty-state">
+                    <div class="dashicons dashicons-calendar-alt aips-empty-state-icon" aria-hidden="true"></div>
+                    <h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Yet', 'ai-post-scheduler'); ?></h3>
+                    <p class="aips-empty-state-description"><?php esc_html_e('Create a schedule to automatically generate posts on a regular basis using your templates.', 'ai-post-scheduler'); ?></p>
+                    <?php if (!empty($templates)): ?>
+                    <div class="aips-empty-state-actions">
+                        <button class="aips-btn aips-btn-primary aips-add-schedule-btn">
+                            <span class="dashicons dashicons-plus-alt"></span>
+                            <?php esc_html_e('Create Schedule', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
         <?php endif; ?>
     </div>
-    
-    <div id="aips-schedule-modal" class="aips-modal" style="display: none;">
+</div>
+
+<!-- Keep original modal markup below (not redesigned yet) -->
+<div id="aips-schedule-modal" class="aips-modal" style="display: none;">
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2 id="aips-schedule-modal-title"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>

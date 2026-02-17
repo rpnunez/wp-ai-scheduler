@@ -181,7 +181,22 @@ class AIPS_Admin_Assets {
 			));
 		}
 
-        // Research Page Scripts
+        // Research Page Styles & Scripts
+		if (strpos($hook, 'aips-research') !== false) {
+			wp_enqueue_style(
+				'aips-research-style',
+				AIPS_PLUGIN_URL . 'assets/css/research.css',
+				array('aips-admin-style'),
+				AIPS_VERSION
+			);
+
+			wp_enqueue_style(
+				'aips-planner-style',
+				AIPS_PLUGIN_URL . 'assets/css/planner.css',
+				array('aips-admin-style'),
+				AIPS_VERSION
+			);
+		}
 
         wp_enqueue_script(
             'aips-admin-research',
@@ -339,6 +354,24 @@ class AIPS_Admin_Assets {
                 'confirmClose' => __('You have unsaved changes. Are you sure you want to close?', 'ai-post-scheduler'),
                 'noChanges' => __('No changes to save.', 'ai-post-scheduler'),
             ));
+        }
+
+        // Calendar Page Scripts
+        if (strpos($hook, 'aips-schedule-calendar') !== false) {
+            wp_enqueue_style(
+                'aips-calendar-style',
+                AIPS_PLUGIN_URL . 'assets/css/calendar.css',
+                array(),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-calendar-script',
+                AIPS_PLUGIN_URL . 'assets/js/calendar.js',
+                array('jquery', 'aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
         }
 
         if (strpos($hook, 'aips-dev-tools') !== false) {

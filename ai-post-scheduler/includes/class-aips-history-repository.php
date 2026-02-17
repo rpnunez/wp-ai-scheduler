@@ -482,4 +482,63 @@ class AIPS_History_Repository {
 
         return $result;
     }
+
+    /**
+     * Clear history entries based on filters.
+     * 
+     * This method provides a centralized way to delete history records
+     * with optional filtering by status and age.
+     *
+     * @param array $args {
+     *     Optional. Filter arguments.
+     *     @type string $status         Status to filter by ('all', 'completed', 'failed', 'processing'). Default 'all'.
+     *     @type int    $older_than_days Only delete records older than this many days. Default 0 (no age filter).
+     * }
+     * @return array {
+     *     @type bool   $success Whether the operation succeeded.
+     *     @type int    $deleted Number of records deleted.
+     *     @type string $message Human-readable message.
+     * }
+     */
+    public function clear_history($args = array()) {
+        $defaults = array(
+            'status' => 'all',
+            'older_than_days' => 0,
+        );
+        
+        $args = wp_parse_args($args, $defaults);
+        
+        $where = array();
+        
+        // Add age filter if specified
+        if ($args['older_than_days'] > 0) {
+            $date = date('Y-m-d H:i:s', strtotime("-{$args['older_than_days']} days"));
+            $where[] = $this->wpdb->prepare("created_at < %s", $date);
+        }
+        
+        // Add status filter if not 'all'
+        if ($args['status'] !== 'all') {
+            $where[] = $this->wpdb->prepare("status = %s", $args['status']);
+        }
+        
+        // Build WHERE clause
+        $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        
+        // Count records that will be deleted
+        $count = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} $where_clause");
+        
+        // Delete records
+        $deleted = $this->wpdb->query("DELETE FROM {$this->table_name} $where_clause");
+        
+        // Clear cache
+        if ($deleted !== false && $deleted > 0) {
+            delete_transient('aips_history_stats');
+        }
+        
+        return array(
+            'success' => $deleted !== false,
+            'deleted' => $deleted !== false ? (int) $deleted : 0,
+            'message' => $deleted !== false ? "Deleted {$deleted} history records" : "Failed to delete history records"
+        );
+    }
 }
