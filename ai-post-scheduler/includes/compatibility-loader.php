@@ -1,12 +1,18 @@
 <?php
 /**
  * Backward Compatibility Layer
- * 
+ *
  * Provides class aliases for old class names to maintain backward compatibility
  * with third-party code that may reference the old AIPS_* class names.
- * 
- * This file will be maintained for 2-3 versions and then deprecated.
- * 
+ *
+ * DEPRECATION TIMELINE:
+ * - v2.0.0: All 77 classes migrated. Old names work via aliases.
+ * - v2.1.0: Deprecation notices may be added (optional).
+ * - v3.0.0: This file will be removed. Use namespaced classes only.
+ *
+ * MIGRATION: Replace AIPS_Old_Class with AIPS\Namespace\NewClass and add use statement.
+ * See docs/psr-4-refactor/PSR4_CLASS_MAPPING.md for full mapping.
+ *
  * @package AI_Post_Scheduler
  * @since 2.0.0
  */
@@ -14,9 +20,6 @@
 if (!defined('ABSPATH')) {
 	exit;
 }
-
-// This file will be populated as classes are migrated
-// Format: class_alias('AIPS\\Namespace\\NewClassName', 'AIPS_Old_Class_Name');
 
 // Repositories
 class_alias('AIPS\\Repositories\\DBManager', 'AIPS_DB_Manager');
@@ -98,7 +101,9 @@ class_alias('AIPS\\Controllers\\Admin\\TemplatesController', 'AIPS_Templates_Con
 // Admin Classes
 class_alias('AIPS\\Admin\\Settings', 'AIPS_Settings');
 class_alias('AIPS\\Admin\\AdminAssets', 'AIPS_Admin_Assets');
+class_alias('AIPS\\Admin\\DevTools', 'AIPS_Dev_Tools');
 class_alias('AIPS\\Admin\\History', 'AIPS_History');
+class_alias('AIPS\\Admin\\Planner', 'AIPS_Planner');
 class_alias('AIPS\\Admin\\Scheduler', 'AIPS_Scheduler');
 class_alias('AIPS\\Admin\\Templates', 'AIPS_Templates');
 class_alias('AIPS\\Admin\\Voices', 'AIPS_Voices');
@@ -106,3 +111,20 @@ class_alias('AIPS\\Admin\\PostReview', 'AIPS_Post_Review');
 class_alias('AIPS\\Admin\\SeederAdmin', 'AIPS_Seeder_Admin');
 class_alias('AIPS\\Admin\\SystemStatus', 'AIPS_System_Status');
 class_alias('AIPS\\Admin\\Upgrades', 'AIPS_Upgrades');
+
+// Utilities
+class_alias('AIPS\\Utilities\\IntervalCalculator', 'AIPS_Interval_Calculator');
+class_alias('AIPS\\Utilities\\AuthorTopicsScheduler', 'AIPS_Author_Topics_Scheduler');
+
+// Data Management - Export
+class_alias('AIPS\\DataManagement\\Export\\ExportHandler', 'AIPS_Data_Management_Export');
+class_alias('AIPS\\DataManagement\\Export\\JsonExporter', 'AIPS_Data_Management_Export_JSON');
+class_alias('AIPS\\DataManagement\\Export\\MySQLExporter', 'AIPS_Data_Management_Export_MySQL');
+
+// Data Management - Import
+class_alias('AIPS\\DataManagement\\Import\\ImportHandler', 'AIPS_Data_Management_Import');
+class_alias('AIPS\\DataManagement\\Import\\JsonImporter', 'AIPS_Data_Management_Import_JSON');
+class_alias('AIPS\\DataManagement\\Import\\MySQLImporter', 'AIPS_Data_Management_Import_MySQL');
+
+// Notifications
+class_alias('AIPS\\Notifications\\PostReviewNotifications', 'AIPS_Post_Review_Notifications');

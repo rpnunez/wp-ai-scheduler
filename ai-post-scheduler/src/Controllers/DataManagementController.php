@@ -1,45 +1,48 @@
 <?php
 namespace AIPS\Controllers;
 
+use AIPS\DataManagement\Export\MySQLExporter;
+use AIPS\DataManagement\Export\JsonExporter;
+use AIPS\DataManagement\Import\MySQLImporter;
+use AIPS\DataManagement\Import\JsonImporter;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
 
 /**
  * Data Management Controller
- * 
+ *
  * Handles export and import of plugin data
  */
 class DataManagementController {
-	
+
 	/**
 	 * Available export formats
-	 * 
+	 *
 	 * @var array
 	 */
 	private $export_formats = array();
-	
+
 	/**
 	 * Available import formats
-	 * 
+	 *
 	 * @var array
 	 */
 	private $import_formats = array();
-	
+
 	/**
 	 * Constructor
 	 */
 	public function __construct() {
-		// Register export formats
 		$this->export_formats = array(
-			'mysql' => new AIPS_Data_Management_Export_MySQL(),
-			'json' => new AIPS_Data_Management_Export_JSON(),
+			'mysql' => new MySQLExporter(),
+			'json' => new JsonExporter(),
 		);
-		
-		// Register import formats
+
 		$this->import_formats = array(
-			'mysql' => new AIPS_Data_Management_Import_MySQL(),
-			'json' => new AIPS_Data_Management_Import_JSON(),
+			'mysql' => new MySQLImporter(),
+			'json' => new JsonImporter(),
 		);
 		
 		// Register AJAX handlers

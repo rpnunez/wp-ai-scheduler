@@ -130,7 +130,7 @@ ai-post-scheduler/
 Four comprehensive guides have been created:
 
 ### 1. Implementation Guide (28KB)
-**File:** `docs/PSR4_IMPLEMENTATION_GUIDE.md`
+**File:** `docs/psr-4-refactor/PSR4_IMPLEMENTATION_GUIDE.md`
 
 Step-by-step instructions for implementing each phase:
 - Detailed migration procedures
@@ -140,7 +140,7 @@ Step-by-step instructions for implementing each phase:
 - Rollback procedures
 
 ### 2. Migration Checklist (21KB)
-**File:** `docs/PSR4_MIGRATION_CHECKLIST.md`
+**File:** `docs/psr-4-refactor/PSR4_MIGRATION_CHECKLIST.md`
 
 Granular task list for tracking progress:
 - Checkbox for each of 77 classes
@@ -149,7 +149,7 @@ Granular task list for tracking progress:
 - Statistics tracking
 
 ### 3. Class Mapping Reference (18KB)
-**File:** `docs/PSR4_CLASS_MAPPING.md`
+**File:** `docs/psr-4-refactor/PSR4_CLASS_MAPPING.md`
 
 Quick reference for class name conversions:
 - Old → New class name mappings
@@ -158,7 +158,7 @@ Quick reference for class name conversions:
 - FAQ section
 
 ### 4. Migration Scripts (14KB)
-**File:** `docs/PSR4_MIGRATION_SCRIPTS.md`
+**File:** `docs/psr-4-refactor/PSR4_MIGRATION_SCRIPTS.md`
 
 Automation helpers to speed up migration:
 - Directory structure creator
@@ -282,7 +282,7 @@ $repo = new TemplateRepository();
 - **Checklist**: Track your progress
 - **Class Mapping**: Quick reference during migration
 - **Scripts**: Automation helpers
-- **Original Plan**: `docs/PSR4_REFACTORING_PLAN.md`
+- **Original Plan**: `docs/psr-4-refactor/PSR4_REFACTORING_PLAN.md`
 
 ## Conclusion
 

@@ -352,7 +352,7 @@ while IFS='|' read -r old_class new_class; do
         echo "✗ $old_class (NOT FOUND)"
         ((FAILED++))
     fi
-done < docs/PSR4_CLASS_MAPPING.md
+done < docs/psr-4-refactor/PSR4_CLASS_MAPPING.md
 
 echo ""
 echo "Results: $PASSED passed, $FAILED failed"

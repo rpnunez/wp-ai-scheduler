@@ -112,16 +112,16 @@ Ready to start implementing? Here's your quick start:
 
 ```bash
 # 1. Read the Executive Summary
-cat docs/PSR4_EXECUTIVE_SUMMARY.md
+cat docs/psr-4-refactor/PSR4_EXECUTIVE_SUMMARY.md
 
 # 2. Create a branch
 git checkout -b refactor/psr4-migration
 
 # 3. Start with Phase 0 (Preparation)
-# Follow: docs/PSR4_IMPLEMENTATION_GUIDE.md#phase-0
+# Follow: docs/psr-4-refactor/PSR4_IMPLEMENTATION_GUIDE.md#phase-0
 
 # 4. Track your progress
-# Use: docs/PSR4_MIGRATION_CHECKLIST.md
+# Use: docs/psr-4-refactor/PSR4_MIGRATION_CHECKLIST.md
 ```
 
 ## Document Status

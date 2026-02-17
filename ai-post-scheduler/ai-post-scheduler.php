@@ -53,8 +53,16 @@ final class AI_Post_Scheduler {
     }
     
     private function includes() {
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
-        AIPS_Autoloader::register();
+        // Load Composer PSR-4 autoloader (try plugin vendor first, then project root)
+        $autoload = file_exists(AIPS_PLUGIN_DIR . 'vendor/autoload.php')
+            ? AIPS_PLUGIN_DIR . 'vendor/autoload.php'
+            : dirname(__DIR__) . '/vendor/autoload.php';
+        if (file_exists($autoload)) {
+            require_once $autoload;
+        }
+
+        // Load backward compatibility layer (class aliases for old AIPS_* names)
+        require_once AIPS_PLUGIN_DIR . 'includes/compatibility-loader.php';
     }
     
     private function init_hooks() {

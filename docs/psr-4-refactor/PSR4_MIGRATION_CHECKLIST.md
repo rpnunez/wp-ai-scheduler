@@ -681,7 +681,7 @@ This checklist tracks the migration of all 77 classes from `includes/` to `src/`
 
 ### Documentation
 
-- [ ] Create `docs/ARCHITECTURE.md`
+- [ ] Create `docs/psr-4-refactor/ARCHITECTURE.md`
   - [ ] Document namespace structure
   - [ ] Document directory organization
   - [ ] Document dependency patterns
@@ -698,7 +698,7 @@ This checklist tracks the migration of all 77 classes from `includes/` to `src/`
   - [ ] Add migration guide
   - [ ] List all changes
 
-- [ ] Create `docs/MIGRATION_GUIDE.md`
+- [ ] Create `docs/psr-4-refactor/MIGRATION_GUIDE.md`
   - [ ] Guide for developers
   - [ ] Code examples
   - [ ] Common issues

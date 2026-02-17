@@ -934,7 +934,7 @@ For developers:
 - Update class instantiations to use new namespaced classes
 - Add `use` statements at top of files
 - Old class names still work via compatibility layer
-- See `/docs/PSR4_IMPLEMENTATION_GUIDE.md` for details
+- See `docs/psr-4-refactor/PSR4_IMPLEMENTATION_GUIDE.md` for details
 
 ### Deprecated
 - Old `AIPS_*` class names (use `AIPS\Namespace\ClassName` instead)

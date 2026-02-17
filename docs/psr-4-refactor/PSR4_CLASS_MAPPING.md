@@ -520,9 +520,9 @@ $templates = $controller->get_templates();
 
 ## Additional Resources
 
-- **Full Plan:** `/docs/PSR4_REFACTORING_PLAN.md`
-- **Implementation Guide:** `/docs/PSR4_IMPLEMENTATION_GUIDE.md`
-- **Checklist:** `/docs/PSR4_MIGRATION_CHECKLIST.md`
+- **Full Plan:** `docs/psr-4-refactor/PSR4_REFACTORING_PLAN.md`
+- **Implementation Guide:** `docs/psr-4-refactor/PSR4_IMPLEMENTATION_GUIDE.md`
+- **Checklist:** `docs/psr-4-refactor/PSR4_MIGRATION_CHECKLIST.md`
 - **Compatibility Layer:** `includes/compatibility-loader.php`
 
 ---

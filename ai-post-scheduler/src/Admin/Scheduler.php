@@ -2,59 +2,60 @@
 
 namespace AIPS\Admin;
 
+use AIPS\Utilities\IntervalCalculator;
+use AIPS\Repositories\ScheduleRepository;
+use AIPS\Repositories\TemplateRepository;
+use AIPS\Services\HistoryService;
+use AIPS\Models\TemplateTypeSelector;
+use AIPS\Generators\ScheduleProcessor;
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-
 class Scheduler {
-    
+
     private $schedule_table;
     private $templates_table;
     private $interval_calculator;
     private $template_type_selector;
-    
+
     /**
-     * @var AIPS_Generator|null Generator instance (for dependency injection)
+     * @var \AIPS\Generators\Generator|null Generator instance (for dependency injection)
      */
     private $generator;
 
     /**
-     * @var AIPS_Schedule_Repository Repository for database operations
+     * @var ScheduleRepository Repository for database operations
      */
     private $repository;
 
     /**
-     * @var AIPS_Template_Repository Repository for templates
+     * @var TemplateRepository Repository for templates
      */
     private $template_repository;
-    
+
     /**
-     * @var AIPS_History_Service Service for history logging
+     * @var HistoryService Service for history logging
      */
     private $history_service;
 
     /**
-     * @var AIPS_Schedule_Processor Processor for executing schedules
+     * @var ScheduleProcessor Processor for executing schedules
      */
     private $processor;
-    
+
     public function __construct() {
         global $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
-        $this->interval_calculator = new AIPS_Interval_Calculator();
-        $this->repository = new AIPS_Schedule_Repository();
-        $this->template_repository = new AIPS_Template_Repository();
-        $this->history_service = new AIPS_History_Service();
-        $this->template_type_selector = new AIPS_Template_Type_Selector();
-        
-        // Instantiate the processor with dependencies
-        // We pass the generator if it's already set (which it isn't in __construct usually)
-        // or let the processor instantiate its own.
-        // For consistency with current dependency injection pattern, we instantiate the processor
-        // and rely on setters or internal defaults.
-        $this->processor = new AIPS_Schedule_Processor(
+        $this->interval_calculator = new IntervalCalculator();
+        $this->repository = new ScheduleRepository();
+        $this->template_repository = new TemplateRepository();
+        $this->history_service = new HistoryService();
+        $this->template_type_selector = new TemplateTypeSelector();
+
+        $this->processor = new ScheduleProcessor(
             $this->repository,
             $this->template_repository,
             null, // Generator will be lazy loaded or set via set_generator
@@ -81,7 +82,7 @@ class Scheduler {
     /**
      * Set a custom repository instance (dependency injection).
      *
-     * @param AIPS_Schedule_Repository $repository
+     * @param ScheduleRepository $repository
      */
     public function set_repository($repository) {
         $this->repository = $repository;
@@ -93,7 +94,7 @@ class Scheduler {
     /**
      * Set a custom template repository instance (dependency injection).
      *
-     * @param AIPS_Template_Repository $repository
+     * @param TemplateRepository $repository
      */
     public function set_template_repository($repository) {
         $this->template_repository = $repository;
@@ -105,7 +106,7 @@ class Scheduler {
     /**
      * Set a custom processor instance (dependency injection).
      *
-     * @param AIPS_Schedule_Processor $processor
+     * @param ScheduleProcessor $processor
      */
     public function set_processor($processor) {
         $this->processor = $processor;
