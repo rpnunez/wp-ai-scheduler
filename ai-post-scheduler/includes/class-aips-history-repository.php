@@ -431,9 +431,17 @@ class AIPS_History_Repository {
         delete_transient('aips_history_stats');
 
         if (empty($status)) {
+            $this->wpdb->query("TRUNCATE TABLE {$this->table_name_log}");
             return $this->wpdb->query("TRUNCATE TABLE {$this->table_name}");
         }
         
+        // Delete logs first using subquery
+        $this->wpdb->query($this->wpdb->prepare(
+            "DELETE FROM {$this->table_name_log}
+             WHERE history_id IN (SELECT id FROM {$this->table_name} WHERE status = %s)",
+            $status
+        ));
+
         return $this->wpdb->delete($this->table_name, array('status' => $status), array('%s'));
     }
     
@@ -444,6 +452,7 @@ class AIPS_History_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
+        $this->wpdb->delete($this->table_name_log, array('history_id' => $id), array('%d'));
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
 
         if ($result !== false) {
@@ -474,6 +483,7 @@ class AIPS_History_Repository {
 
         $ids_sql = implode(',', $ids);
 
+        $this->wpdb->query("DELETE FROM {$this->table_name_log} WHERE history_id IN ($ids_sql)");
         $result = $this->wpdb->query("DELETE FROM {$this->table_name} WHERE id IN ($ids_sql)");
 
         if ($result !== false) {
@@ -527,6 +537,14 @@ class AIPS_History_Repository {
         // Count records that will be deleted
         $count = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} $where_clause");
         
+        // Delete logs first
+        if (!empty($where_clause)) {
+            $this->wpdb->query("DELETE FROM {$this->table_name_log} WHERE history_id IN (SELECT id FROM {$this->table_name} $where_clause)");
+        } else {
+            // If no where clause, truncate or delete all logs
+            $this->wpdb->query("TRUNCATE TABLE {$this->table_name_log}");
+        }
+
         // Delete records
         $deleted = $this->wpdb->query("DELETE FROM {$this->table_name} $where_clause");
         
