@@ -95,17 +95,18 @@ class AIPS_Interval_Calculator {
      * Determines when a scheduled task should run next based on its frequency setting.
      * Handles various interval types including hourly, daily, weekly, and day-specific schedules.
      *
-     * @param string      $frequency  The frequency identifier (e.g., 'daily', 'hourly', 'every_monday').
-     * @param string|null $start_time Optional. The base time to calculate from. Defaults to current time.
+     * @param string      $frequency      The frequency identifier (e.g., 'daily', 'hourly', 'every_monday').
+     * @param string|null $start_time     Optional. The base time to calculate from. Defaults to current time.
+     * @param bool        $allow_catch_up Optional. Whether to fast-forward past times to the future. Default true.
      * @return string The next run time in MySQL datetime format (Y-m-d H:i:s).
      */
-    public function calculate_next_run($frequency, $start_time = null) {
+    public function calculate_next_run($frequency, $start_time = null, $allow_catch_up = true) {
         $base_time = $start_time ? strtotime($start_time) : current_time('timestamp');
         $now = current_time('timestamp');
         
         // If start time is in the past, add intervals until future (Catch-up logic)
         // This prevents schedule drift by preserving the phase of the schedule
-        if ($base_time < $now) {
+        if ($allow_catch_up && $base_time < $now) {
             $interval_duration = $this->get_interval_duration($frequency);
             
             // For fixed intervals (with known duration), use mathematical calculation

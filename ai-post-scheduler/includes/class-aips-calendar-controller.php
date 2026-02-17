@@ -121,7 +121,8 @@ class AIPS_Calendar_Controller {
 			// Calculate next occurrence using interval calculator
 			$next_run_str = $this->interval_calculator->calculate_next_run(
 				$schedule->frequency,
-				date('Y-m-d H:i:s', $current)
+				date('Y-m-d H:i:s', $current),
+				false // Disable catch-up logic to allow historical/future projection
 			);
 			
 			if (!$next_run_str) {
@@ -154,7 +155,8 @@ class AIPS_Calendar_Controller {
 		while ($next_run < $target && $limit > 0) {
 			$current_date_str = $this->interval_calculator->calculate_next_run(
 				$schedule->frequency,
-				$current_date_str
+				$current_date_str,
+				false // Disable catch-up logic
 			);
 			
 			if (!$current_date_str) {

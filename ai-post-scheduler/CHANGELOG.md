@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [hunter-fix-calendar-past-dates] - 2026-02-17
+### Fixed
+- Fixed a logic bug in `AIPS_Interval_Calculator` where past dates were always fast-forwarded to the current time, preventing accurate historical calendar generation.
+- Updated `AIPS_Calendar_Controller` to explicitly disable catch-up logic when calculating schedule occurrences for the calendar view.
+- Refactored `Test_AIPS_Calendar_Controller` to use PHPUnit mocks instead of relying on limited global environment mocks, improving test reliability and performance.
+
 <<<<<<< HEAD
 ## [refactor-post-generation-flow] - 2026-02-07
 ### Changed
