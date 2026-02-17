@@ -47,10 +47,7 @@ class GenerationLogger {
      * @return void
      */
     public function log_ai_call($type, $prompt, $response, $options = array(), $error = null) {
-        $this->session->log_ai_call();
-        if ($error) {
-            $this->session->add_error();
-        }
+        $this->session->log_ai_call($type, $prompt, $response, $options, $error);
 
         if ($this->history_id && $this->history_repository) {
             $details = array(
@@ -94,7 +91,7 @@ class GenerationLogger {
      * @return void
      */
     public function log_error($type, $message) {
-        $this->session->add_error();
+        $this->session->add_error($type, $message);
 
         if ($this->history_id) {
             $details = array(

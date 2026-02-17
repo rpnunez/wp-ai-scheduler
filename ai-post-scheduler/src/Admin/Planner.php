@@ -54,7 +54,7 @@ class Planner {
         $json_str = preg_replace('/```$/', '', $json_str);
         $json_str = trim($json_str);
 
-        $topics = json_decode($json_str);
+        $topics = json_decode($json_str, true);
 
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
             $topics = array_filter(array_map('trim', explode("\n", $json_str)));
@@ -63,7 +63,11 @@ class Planner {
                     'message' => __('Failed to parse AI response. Raw response: ', 'ai-post-scheduler') . substr($json_str, 0, 100) . '...'
                 ));
             }
+        } elseif (isset($topics['topics']) && is_array($topics['topics'])) {
+            $topics = $topics['topics'];
         }
+
+        $topics = array_values(array_filter(array_map('trim', (array) $topics), 'is_string'));
 
         do_action('aips_planner_topics_generated', $topics, $niche);
 

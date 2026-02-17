@@ -10,7 +10,7 @@ class ScheduleController {
     private $scheduler;
 
     public function __construct($scheduler = null) {
-        $this->scheduler = $scheduler ?: new AIPS_Scheduler();
+        $this->scheduler = $scheduler ?: new \AIPS_Scheduler();
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
@@ -40,7 +40,7 @@ class ScheduleController {
             wp_send_json_error(array('message' => __('Please select a template.', 'ai-post-scheduler')));
         }
 
-        $interval_calculator = new AIPS_Interval_Calculator();
+        $interval_calculator = new \AIPS_Interval_Calculator();
         if (!$interval_calculator->is_valid_frequency($data['frequency'])) {
             wp_send_json_error(array('message' => __('Invalid frequency selected.', 'ai-post-scheduler')));
         }
@@ -129,7 +129,7 @@ class ScheduleController {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
         }
 
-        $templates = new AIPS_Templates();
+        $templates = new \AIPS_Templates();
         $template = $templates->get($template_id);
 
         if (!$template) {
@@ -138,7 +138,7 @@ class ScheduleController {
 
         $voice = null;
         if (!empty($template->voice_id)) {
-            $voices = new AIPS_Voices();
+            $voices = new \AIPS_Voices();
             $voice = $voices->get($template->voice_id);
         }
 
@@ -156,7 +156,7 @@ class ScheduleController {
         $post_ids = array();
         $errors = array();
 
-        $generator = new AIPS_Generator();
+        $generator = new \AIPS_Generator();
         $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
 
         for ($i = 0; $i < $quantity; $i++) {

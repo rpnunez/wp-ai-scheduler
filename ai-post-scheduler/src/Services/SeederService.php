@@ -13,10 +13,10 @@ class SeederService {
     private $scheduler;
 
     public function __construct() {
-        $this->generator = new AIPS_Generator();
-        $this->voices = new AIPS_Voices();
-        $this->templates = new AIPS_Templates();
-        $this->scheduler = new AIPS_Scheduler();
+        $this->generator = new \AIPS_Generator();
+        $this->voices = new \AIPS_Voices();
+        $this->templates = new \AIPS_Templates();
+        $this->scheduler = new \AIPS_Scheduler();
     }
 
     /**

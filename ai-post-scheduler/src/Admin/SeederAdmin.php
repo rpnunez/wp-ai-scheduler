@@ -15,7 +15,7 @@ class SeederAdmin {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
         add_action('wp_ajax_aips_process_seeder', array($this, 'ajax_process_seeder'));
 
-        $this->service = new AIPS_Seeder_Service();
+        $this->service = new \AIPS_Seeder_Service();
     }
 
     public function enqueue_assets($hook) {

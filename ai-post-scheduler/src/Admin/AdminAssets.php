@@ -291,7 +291,7 @@ class AdminAssets {
             );
 
             // Pass client-side threshold from config to JS
-            $config = AIPS_Config::get_instance();
+            $config = \AIPS_Config::get_instance();
             $client_threshold = (int) $config->get_option('generated_posts_log_threshold_client', 20);
             wp_localize_script('aips-admin-generated-posts', 'aipsGeneratedPostsConfig', array(
                 'clientLogThreshold' => $client_threshold,

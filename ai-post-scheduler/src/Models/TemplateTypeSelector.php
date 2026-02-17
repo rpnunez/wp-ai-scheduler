@@ -43,7 +43,7 @@ class TemplateTypeSelector {
 	 * Initialize the selector.
 	 */
 	public function __construct() {
-		$this->structure_repository = new AIPS_Article_Structure_Repository();
+		$this->structure_repository = new \AIPS_Article_Structure_Repository();
 		$this->schedule_repository = new \AIPS_Schedule_Repository();
 	}
 	

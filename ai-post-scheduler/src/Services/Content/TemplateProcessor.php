@@ -40,6 +40,7 @@ class TemplateProcessor {
      * @return string The processed template with variables replaced.
      */
     public function process($template, $topic = null) {
+        $template = $template ?? '';
         $variables = $this->get_variables($topic);
         return str_replace(array_keys($variables), array_values($variables), $template);
     }
@@ -266,7 +267,7 @@ class TemplateProcessor {
         $close_count = substr_count($template, '}}');
         
         if ($open_count !== $close_count) {
-            return new WP_Error(
+            return new \WP_Error(
                 'unclosed_braces',
                 __('Template has unclosed variable braces. Each {{ must have a matching }}.', 'ai-post-scheduler')
             );
@@ -287,7 +288,7 @@ class TemplateProcessor {
                 $var_name = trim($var_name);
                 
                 if (!in_array($var_name, $available_vars)) {
-                    return new WP_Error(
+                    return new \WP_Error(
                         'invalid_variable',
                         sprintf(
                             __('Unknown variable: {{%s}}. Available variables: %s', 'ai-post-scheduler'),

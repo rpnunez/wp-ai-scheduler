@@ -34,7 +34,7 @@ class HistoryService {
 	 * @param AIPS_History_Repository|null $repository Optional repository instance
 	 */
 	public function __construct($repository = null) {
-		$this->repository = $repository ?: new AIPS_History_Repository();
+		$this->repository = $repository ?: new \AIPS_History_Repository();
 	}
 	
 	/**
@@ -45,7 +45,7 @@ class HistoryService {
 	 * @return AIPS_History_Container History container object
 	 */
 	public function create($type, $metadata = array()) {
-		return new AIPS_History_Container($this->repository, $type, $metadata);
+		return new \AIPS_History_Container($this->repository, $type, $metadata);
 	}
 	
 	/**
@@ -62,7 +62,7 @@ class HistoryService {
 		global $wpdb;
 		
 		$where_clauses = array("history_type_id = %d");
-		$where_args = array(AIPS_History_Type::ACTIVITY);
+		$where_args = array(\AIPS_History_Type::ACTIVITY);
 		
 		// Event type filter
 		if (!empty($filters['event_type'])) {

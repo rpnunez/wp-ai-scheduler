@@ -39,8 +39,8 @@ class ImageService {
      * @param AIPS_AI_Service|null $ai_service Optional AI Service instance. Creates new if not provided.
      */
     public function __construct($ai_service = null) {
-        $this->ai_service = $ai_service ? $ai_service : new AIPS_AI_Service();
-        $this->logger = new AIPS_Logger();
+        $this->ai_service = $ai_service ? $ai_service : new \AIPS_AI_Service();
+        $this->logger = new \AIPS_Logger();
     }
     
     /**
@@ -90,7 +90,7 @@ class ImageService {
      */
     public function select_media_library_image($media_ids) {
         if (empty($media_ids)) {
-            return new WP_Error('no_media_images', __('No media library images were provided.', 'ai-post-scheduler'));
+            return new \WP_Error('no_media_images', __('No media library images were provided.', 'ai-post-scheduler'));
         }
 
         if (!is_array($media_ids)) {
@@ -107,7 +107,7 @@ class ImageService {
         }
 
         if (empty($valid_ids)) {
-            return new WP_Error('invalid_media_images', __('No valid image attachments were found in the selected media items.', 'ai-post-scheduler'));
+            return new \WP_Error('invalid_media_images', __('No valid image attachments were found in the selected media items.', 'ai-post-scheduler'));
         }
 
         return $valid_ids[array_rand($valid_ids)];
@@ -123,11 +123,11 @@ class ImageService {
         $access_key = trim(get_option('aips_unsplash_access_key', ''));
 
         if (empty($access_key)) {
-            return new WP_Error('unsplash_key_missing', __('Unsplash access key is not configured.', 'ai-post-scheduler'));
+            return new \WP_Error('unsplash_key_missing', __('Unsplash access key is not configured.', 'ai-post-scheduler'));
         }
 
         if (empty($keywords)) {
-            return new WP_Error('unsplash_keywords_missing', __('Please provide keywords to search for an Unsplash image.', 'ai-post-scheduler'));
+            return new \WP_Error('unsplash_keywords_missing', __('Please provide keywords to search for an Unsplash image.', 'ai-post-scheduler'));
         }
 
         $keywords = sanitize_text_field($keywords);
@@ -145,19 +145,19 @@ class ImageService {
 
         if (is_wp_error($response)) {
             $this->logger->log($response->get_error_message(), 'error');
-            return new WP_Error('unsplash_request_failed', __('Failed to contact Unsplash API.', 'ai-post-scheduler'));
+            return new \WP_Error('unsplash_request_failed', __('Failed to contact Unsplash API.', 'ai-post-scheduler'));
         }
 
         $status_code = wp_remote_retrieve_response_code($response);
         if ($status_code !== 200) {
             $this->logger->log('Unsplash API returned HTTP ' . $status_code, 'error');
-            return new WP_Error('unsplash_http_error', sprintf(__('Unsplash API returned HTTP %d.', 'ai-post-scheduler'), $status_code));
+            return new \WP_Error('unsplash_http_error', sprintf(__('Unsplash API returned HTTP %d.', 'ai-post-scheduler'), $status_code));
         }
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
         if (empty($body) || !is_array($body)) {
-            return new WP_Error('unsplash_invalid_response', __('Invalid response from Unsplash API.', 'ai-post-scheduler'));
+            return new \WP_Error('unsplash_invalid_response', __('Invalid response from Unsplash API.', 'ai-post-scheduler'));
         }
 
         $image_url = '';
@@ -169,7 +169,7 @@ class ImageService {
         }
 
         if (empty($image_url)) {
-            return new WP_Error('unsplash_image_missing', __('Unsplash did not return a usable image URL.', 'ai-post-scheduler'));
+            return new \WP_Error('unsplash_image_missing', __('Unsplash did not return a usable image URL.', 'ai-post-scheduler'));
         }
 
         return esc_url_raw($image_url);
@@ -194,7 +194,7 @@ class ImageService {
         $response_object = wp_safe_remote_get($image_url);
 
         if (is_wp_error($response_object)) {
-            $error = new WP_Error(
+            $error = new \WP_Error(
                 'image_download_failed',
                 sprintf(__('Failed to fetch image: %s', 'ai-post-scheduler'), $response_object->get_error_message())
             );
@@ -205,7 +205,7 @@ class ImageService {
         // Validate HTTP response code
         $response_code = wp_remote_retrieve_response_code($response_object);
         if ($response_code !== 200) {
-            $error = new WP_Error(
+            $error = new \WP_Error(
                 'image_download_failed',
                 sprintf(__('Failed to fetch image. HTTP Code: %d', 'ai-post-scheduler'), $response_code)
             );
@@ -216,7 +216,7 @@ class ImageService {
         // Validate content type is an image
         $content_type = wp_remote_retrieve_header($response_object, 'content-type');
         if (strpos($content_type, 'image/') !== 0) {
-            $error = new WP_Error(
+            $error = new \WP_Error(
                 'invalid_content_type',
                 sprintf(__('Invalid content type: %s. Expected an image.', 'ai-post-scheduler'), $content_type)
             );
@@ -227,7 +227,7 @@ class ImageService {
         $image_data = wp_remote_retrieve_body($response_object);
         
         if (empty($image_data)) {
-            $error = new WP_Error(
+            $error = new \WP_Error(
                 'empty_image_data',
                 __('Downloaded image has no content.', 'ai-post-scheduler')
             );
@@ -242,7 +242,7 @@ class ImageService {
             $real_mime = $finfo->buffer($image_data);
 
             if (strpos($real_mime, 'image/') !== 0) {
-                $error = new WP_Error(
+                $error = new \WP_Error(
                     'invalid_image_content',
                     sprintf(__('Security check failed: Content appears to be %s, expected image.', 'ai-post-scheduler'), $real_mime)
                 );
@@ -274,7 +274,7 @@ class ImageService {
         $upload = wp_upload_bits($filename, null, $image_data);
         
         if (!empty($upload['error'])) {
-            $error = new WP_Error(
+            $error = new \WP_Error(
                 'image_save_failed',
                 sprintf(__('Failed to write image file: %s', 'ai-post-scheduler'), $upload['error'])
             );
@@ -324,7 +324,7 @@ class ImageService {
         $attachment_id = wp_insert_attachment($attachment, $file_path);
         
         if (is_wp_error($attachment_id)) {
-            $error = new WP_Error(
+            $error = new \WP_Error(
                 'attachment_insert_failed',
                 sprintf(__('Failed to insert attachment: %s', 'ai-post-scheduler'), $attachment_id->get_error_message())
             );
@@ -367,18 +367,18 @@ class ImageService {
      */
     public function validate_image_url($image_url) {
         if (empty($image_url)) {
-            return new WP_Error('empty_url', __('Image URL is empty.', 'ai-post-scheduler'));
+            return new \WP_Error('empty_url', __('Image URL is empty.', 'ai-post-scheduler'));
         }
         
         if (!filter_var($image_url, FILTER_VALIDATE_URL)) {
-            return new WP_Error('invalid_url', __('Image URL is not valid.', 'ai-post-scheduler'));
+            return new \WP_Error('invalid_url', __('Image URL is not valid.', 'ai-post-scheduler'));
         }
         
         // Use HEAD request to check if URL is accessible
         $response = wp_safe_remote_head($image_url);
         
         if (is_wp_error($response)) {
-            return new WP_Error(
+            return new \WP_Error(
                 'url_not_accessible',
                 sprintf(__('Image URL is not accessible: %s', 'ai-post-scheduler'), $response->get_error_message())
             );
@@ -386,7 +386,7 @@ class ImageService {
         
         $response_code = wp_remote_retrieve_response_code($response);
         if ($response_code !== 200) {
-            return new WP_Error(
+            return new \WP_Error(
                 'url_not_accessible',
                 sprintf(__('Image URL returned HTTP %d.', 'ai-post-scheduler'), $response_code)
             );

@@ -41,9 +41,9 @@ class ResearchController {
      * Initialize the controller.
      */
     public function __construct() {
-        $this->research_service = new AIPS_Research_Service();
-        $this->repository = new AIPS_Trending_Topics_Repository();
-        $this->logger = new AIPS_Logger();
+        $this->research_service = new \AIPS_Research_Service();
+        $this->repository = new \AIPS_Trending_Topics_Repository();
+        $this->logger = new \AIPS_Logger();
         
         $this->init_hooks();
     }
@@ -247,8 +247,8 @@ class ResearchController {
         }
         
         // Use scheduler to create schedules
-        $scheduler = new AIPS_Scheduler();
-        $interval_calculator = new AIPS_Interval_Calculator();
+        $scheduler = new \AIPS_Scheduler();
+        $interval_calculator = new \AIPS_Interval_Calculator();
         
         $base_time = strtotime($start_date);
         if ($base_time === false) {

@@ -32,7 +32,7 @@ class SessionToJson {
 	 * Initialize the converter
 	 */
 	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
+		$this->history_repository = new \AIPS_History_Repository();
 	}
 	
 	/**
@@ -46,7 +46,7 @@ class SessionToJson {
 		$history_item = $this->history_repository->get_by_id($history_id);
 		
 		if (!$history_item) {
-			return new WP_Error('not_found', __('History item not found.', 'ai-post-scheduler'));
+			return new \WP_Error('not_found', __('History item not found.', 'ai-post-scheduler'));
 		}
 		
 		// Build the comprehensive session structure
@@ -237,7 +237,7 @@ class SessionToJson {
 				'id' => $log_entry->id,
 				'log_type' => $log_entry->log_type,
 				'history_type_id' => (int) $log_entry->history_type_id,
-				'history_type_label' => AIPS_History_Type::get_label($log_entry->history_type_id),
+				'history_type_label' => \AIPS_History_Type::get_label($log_entry->history_type_id),
 				'timestamp' => $log_entry->timestamp,
 				'details' => $details,
 			);
@@ -279,13 +279,13 @@ class SessionToJson {
 			$stats['log_types'][$type_id]++;
 			
 			// Count specific types
-			if ($type_id === AIPS_History_Type::ERROR) {
+			if ($type_id === \AIPS_History_Type::ERROR) {
 				$stats['errors']++;
-			} elseif ($type_id === AIPS_History_Type::WARNING) {
+			} elseif ($type_id === \AIPS_History_Type::WARNING) {
 				$stats['warnings']++;
-			} elseif ($type_id === AIPS_History_Type::AI_REQUEST) {
+			} elseif ($type_id === \AIPS_History_Type::AI_REQUEST) {
 				$stats['ai_requests']++;
-			} elseif ($type_id === AIPS_History_Type::AI_RESPONSE) {
+			} elseif ($type_id === \AIPS_History_Type::AI_RESPONSE) {
 				$stats['ai_responses']++;
 			}
 		}
@@ -316,7 +316,7 @@ class SessionToJson {
 
 		$json_string = wp_json_encode($session_data, $options);
 		if ($json_string === false) {
-			return new WP_Error('json_encode_failed', __('Failed to encode JSON.', 'ai-post-scheduler'));
+			return new \WP_Error('json_encode_failed', __('Failed to encode JSON.', 'ai-post-scheduler'));
 		}
 
 		$upload = wp_upload_dir();
@@ -325,7 +325,7 @@ class SessionToJson {
 		
 		if (!file_exists($base_dir)) {
 			if (!wp_mkdir_p($base_dir)) {
-				return new WP_Error('mkdir_failed', __('Failed to create export directory.', 'ai-post-scheduler'));
+				return new \WP_Error('mkdir_failed', __('Failed to create export directory.', 'ai-post-scheduler'));
 			}
 			
 			// Add .htaccess to protect directory
@@ -341,7 +341,7 @@ class SessionToJson {
 		
 		$bytes = file_put_contents($filepath, $json_string, LOCK_EX);
 		if ($bytes === false) {
-			return new WP_Error('write_failed', __('Failed to write export file.', 'ai-post-scheduler'));
+			return new \WP_Error('write_failed', __('Failed to write export file.', 'ai-post-scheduler'));
 		}
 		
 		// Try to set restrictive permissions

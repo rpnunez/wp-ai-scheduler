@@ -15,7 +15,7 @@ class Voices {
     private $repository;
     
     public function __construct() {
-        $this->repository = new AIPS_Voices_Repository();
+        $this->repository = new \AIPS_Voices_Repository();
         
         add_action('wp_ajax_aips_save_voice', array($this, 'ajax_save_voice'));
         add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));

@@ -16,7 +16,7 @@ class TemplateHelper {
      * @param array  $allowed    Optional list of allowed frequency keys.
      */
     public static function render_frequency_dropdown($field_id, $field_name, $selected, $label_text, $allowed = array()) {
-        $calculator = new AIPS_Interval_Calculator();
+        $calculator = new \AIPS_Interval_Calculator();
         $options = $calculator->get_all_interval_displays($allowed);
         ?>
         <label for="<?php echo esc_attr($field_id); ?>"><?php echo esc_html($label_text); ?></label>

@@ -631,20 +631,24 @@ This checklist tracks the migration of all 77 classes from `includes/` to `src/`
 
 ### Update Test Infrastructure
 
-- [ ] Update `tests/bootstrap.php`
-  - [ ] Load Composer autoloader
-  - [ ] Load compatibility layer
-  - [ ] Update paths
+- [x] Update `tests/bootstrap.php`
+  - [x] Load Composer autoloader (plugin dir + project root)
+  - [x] Load compatibility layer in fallback mode
+  - [x] Update paths for fallback when WP test lib not available
 
-- [ ] Update Individual Test Files
-  - [ ] Add use statements
-  - [ ] Update class instantiations
-  - [ ] Fix broken tests
+- [x] Update Individual Test Files
+  - [x] Fix namespace resolution: `new \AIPS_*` for global classes in namespaced files
+  - [x] Fix static calls: `\AIPS_Config::`, `\AIPS_DB_Manager::`, etc.
+  - [x] Fix `WP_Error` → `\WP_Error` in all `src/` files
+  - [x] Fix `AIPS_Generation_Context` instanceof → `\AIPS_Generation_Context`
+  - [x] GenerationSession: add `log_ai_call($type,$prompt,$response,$options,$error)`, `add_error($type,$message)`, `get_ai_calls()`, `get_errors()`, `was_successful()`, `to_array()`, `to_json()`
+  - [x] AIService: pass `$json_query_params` to `simpleJsonQuery($prompt, $options)`
 
 ### Run Test Suite
 
-- [ ] Run all tests: `composer test`
-- [ ] Fix failing tests
+- [x] Run all tests: `php vendor/bin/phpunit --configuration phpunit.xml`
+- [x] Fix PSR-4 related test failures (44 core tests passing)
+- [ ] Remaining failures: WP test library not installed (`/tmp/wordpress-tests-lib`), repository tests need real wpdb
 - [ ] Run with coverage: `composer test:coverage`
 - [ ] Verify coverage maintained
 
@@ -718,8 +722,11 @@ This checklist tracks the migration of all 77 classes from `includes/` to `src/`
 - [ ] Verify .gitignore is correct
 
 ### Phase 11 Completion
-- [ ] All documentation complete
-- [ ] Code quality passes
+- [x] ARCHITECTURE.md created
+- [x] MIGRATION_GUIDE.md created
+- [x] README.md updated with PSR-4 section
+- [x] CHANGELOG.md updated with v2.0.0
+- [ ] Run PHPCS (optional)
 - [ ] Commit Phase 11 changes
 - [ ] Tag: `v2.0.0`
 

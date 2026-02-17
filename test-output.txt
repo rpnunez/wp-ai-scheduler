@@ -1,0 +1,33 @@
+﻿php : PHP Warning:  Module "openssl" is already loaded in Unknown on line 0
+At line:1 char:48
++ ... -scheduler; php vendor\bin\phpunit --configuration phpunit.xml 2>&1 | ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PHP Warning:  M...known on line 0:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+Warning: Module "openssl" is already loaded in Unknown on line 0
+Warning: WordPress test library not found at /tmp/wordpress-tests-lib
+Tests will run in limited mode without WordPress environment.
+
+Warning: WordPress test library not found at /tmp/wordpress-tests-lib
+Tests will run in limited mode without WordPress environment.
+
+Warning: WordPress test library not found at /tmp/wordpress-tests-lib
+Tests will run in limited mode without WordPress environment.
+
+Warning: WordPress test library not found at /tmp/wordpress-tests-lib
+Tests will run in limited mode without WordPress environment.
+
+Warning: WordPress test library not found at /tmp/wordpress-tests-lib
+Tests will run in limited mode without WordPress environment.
+
+PHPUnit 9.6.31 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.2.12
+Configuration: phpunit.xml
+Warning:       XDEBUG_MODE=coverage (environment variable) or xdebug.mode=coverage (PHP configuration setting) has to be set
+
+..E....E.EEEEE..EE..E..EEEEEEEEEEEEEE.EFEEEFFEEEEEE..F.........  63 / 472 ( 13%)
+....FR{"success":true,"data":{"events":[],"year":2026,"month":2}}.R{"success":false,"data":{"message":"Unauthorized access."}}R{"success":false,"data":{"message":"Invalid month."}}FFF.E.EEEEEEEEEEEEE............EE....EEEEEEEEEEFFEEF.E 126 / 472 ( 26%)
+EEEEFF.....FF.......E..FFE...EFEEEEEE..EEEE....∩╗┐ID,Date,Title,Status,Template,"Post ID","Error Message"

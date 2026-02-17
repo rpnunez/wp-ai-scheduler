@@ -72,9 +72,19 @@ class GenerationSession {
 	private $ai_call_count;
 
 	/**
+	 * @var array AI calls made during generation (for backward compatibility)
+	 */
+	private $ai_calls;
+
+	/**
 	 * @var int Counter for errors encountered during generation
 	 */
 	private $error_count;
+
+	/**
+	 * @var array Errors encountered during generation (for backward compatibility)
+	 */
+	private $errors;
 
 	/**
 	 * @var array|null Final result of the generation (success/failure + data)
@@ -100,7 +110,9 @@ class GenerationSession {
 		$this->voice = null;
 		$this->context = null;
 		$this->ai_call_count = 0;
+		$this->ai_calls = array();
 		$this->error_count = 0;
+		$this->errors = array();
 		$this->result = null;
 	}
 
@@ -109,7 +121,7 @@ class GenerationSession {
 	 *
 	 * Supports both legacy template-based calls and new context-based calls.
 	 *
-	 * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+	 * @param object|\AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
 	 * @param object|null $voice    Optional voice object (legacy, ignored if context is provided).
 	 * @return void
 	 */
@@ -118,7 +130,7 @@ class GenerationSession {
 		$this->started_at = current_time('mysql');
 
 		// Check if we're using the new context-based approach
-		if ($template_or_context instanceof AIPS_Generation_Context) {
+		if ($template_or_context instanceof \AIPS_Generation_Context) {
 			// New context-based approach
 			$this->context = $template_or_context->to_array();
 			
@@ -197,19 +209,51 @@ class GenerationSession {
 	/**
 	 * Log an AI call made during generation.
 	 *
+	 * @param string      $type     Call type (e.g. 'content', 'title', 'excerpt').
+	 * @param string     $prompt   The prompt sent.
+	 * @param string|null $response The AI response content or null on error.
+	 * @param array      $options  Options passed to the AI.
+	 * @param string|null $error   Error message if the call failed.
 	 * @return void
 	 */
-	public function log_ai_call() {
+	public function log_ai_call($type = '', $prompt = '', $response = null, $options = array(), $error = null) {
 		$this->ai_call_count++;
+		$this->ai_calls[] = array(
+			'type' => $type,
+			'request' => array(
+				'prompt' => $prompt,
+				'options' => $options,
+			),
+			'response' => array(
+				'content' => $response,
+				'success' => $error === null,
+				'error' => $error,
+			),
+		);
+		if ($error !== null) {
+			$this->error_count++;
+			$this->errors[] = array(
+				'type' => $type,
+				'message' => $error,
+				'timestamp' => function_exists('current_time') ? current_time('mysql') : date('Y-m-d H:i:s'),
+			);
+		}
 	}
 
 	/**
 	 * Add an error to the session.
 	 *
+	 * @param string $type    Error type (e.g. 'featured_image').
+	 * @param string $message Error message.
 	 * @return void
 	 */
-	public function add_error() {
+	public function add_error($type = '', $message = '') {
 		$this->error_count++;
+		$this->errors[] = array(
+			'type' => $type,
+			'message' => $message,
+			'timestamp' => function_exists('current_time') ? current_time('mysql') : date('Y-m-d H:i:s'),
+		);
 	}
 
 	/**
@@ -309,5 +353,65 @@ class GenerationSession {
 	 */
 	public function get_context() {
 		return $this->context;
+	}
+
+	/**
+	 * Get AI calls made during the session.
+	 *
+	 * @return array Array of AI call records.
+	 */
+	public function get_ai_calls() {
+		return $this->ai_calls;
+	}
+
+	/**
+	 * Get errors encountered during the session.
+	 *
+	 * @return array Array of error records.
+	 */
+	public function get_errors() {
+		return $this->errors;
+	}
+
+	/**
+	 * Check if the generation completed successfully.
+	 *
+	 * @return bool True if completed with success, false otherwise.
+	 */
+	public function was_successful() {
+		if ($this->result === null) {
+			return false;
+		}
+		return !empty($this->result['success']);
+	}
+
+	/**
+	 * Get session data as array for serialization.
+	 *
+	 * @return array Session data.
+	 */
+	public function to_array() {
+		$data = array(
+			'started_at' => $this->started_at,
+			'completed_at' => $this->completed_at,
+			'template' => $this->template,
+			'voice' => $this->voice,
+			'context' => $this->context,
+			'ai_calls' => $this->ai_calls,
+			'errors' => $this->errors,
+			'ai_call_count' => $this->ai_call_count,
+			'error_count' => $this->error_count,
+			'result' => $this->result,
+		);
+		return $data;
+	}
+
+	/**
+	 * Get session data as JSON string.
+	 *
+	 * @return string JSON-encoded session data.
+	 */
+	public function to_json() {
+		return function_exists('wp_json_encode') ? wp_json_encode($this->to_array()) : json_encode($this->to_array());
 	}
 }

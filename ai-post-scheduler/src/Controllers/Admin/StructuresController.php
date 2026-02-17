@@ -10,7 +10,7 @@ class StructuresController {
     private $repo;
 
     public function __construct($repo = null) {
-        $this->repo = $repo ?: new AIPS_Article_Structure_Repository();
+        $this->repo = $repo ?: new \AIPS_Article_Structure_Repository();
 
         add_action('wp_ajax_aips_get_structures', array($this, 'ajax_get_structures'));
         add_action('wp_ajax_aips_get_structure', array($this, 'ajax_get_structure'));
@@ -70,7 +70,7 @@ class StructuresController {
             wp_send_json_error(array('message' => __('Name and prompt template are required.', 'ai-post-scheduler')));
         }
 
-        $manager = new AIPS_Article_Structure_Manager();
+        $manager = new \AIPS_Article_Structure_Manager();
 
         if ($id) {
             $result = $manager->update_structure($id, $name, $sections, $prompt_template, $description, $is_default == 1, $is_active == 1);
@@ -99,7 +99,7 @@ class StructuresController {
             wp_send_json_error(array('message' => __('Invalid structure ID.', 'ai-post-scheduler')));
         }
 
-        $manager = new AIPS_Article_Structure_Manager();
+        $manager = new \AIPS_Article_Structure_Manager();
         $result = $manager->delete_structure($id);
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));

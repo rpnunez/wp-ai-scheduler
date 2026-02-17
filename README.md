@@ -88,20 +88,28 @@ composer test:coverage
 vendor/bin/phpunit tests/test-specific.php
 ```
 
-### Code Structure
+### Code Structure (PSR-4 as of v2.0.0)
 
 ```
 ai-post-scheduler/
-├── includes/                # Core PHP classes
-│   ├── class-aips-*.php    # All classes use AIPS_ prefix
+├── src/                    # PSR-4 source (primary)
 │   ├── Repositories/       # Database layer
-│   ├── Services/           # Business logic
-│   └── Controllers/        # Request handlers
+│   ├── Services/           # Business logic (AI, Content, Research, Generation)
+│   ├── Controllers/        # Request handlers (Admin, AIEdit, DataManagement)
+│   ├── Generators/         # Content generation orchestration
+│   ├── Models/             # Data models & interfaces
+│   ├── Admin/              # Admin UI components
+│   ├── Utilities/          # Helpers
+│   ├── DataManagement/     # Export & Import
+│   └── Notifications/      # Post review notifications
+├── includes/               # Compatibility layer (class aliases)
 ├── templates/              # Admin UI templates
 ├── assets/                 # CSS, JS files
 ├── tests/                  # PHPUnit tests
 └── migrations/             # Database migrations
 ```
+
+**PSR-4 Migration:** All 77 classes use `AIPS\*` namespaces. Old `AIPS_*` names work via compatibility aliases. See [docs/psr-4-refactor/](docs/psr-4-refactor/) for architecture and migration guide.
 
 ## 📋 Requirements
 
@@ -119,8 +127,13 @@ ai-post-scheduler/
 
 ## 📖 Documentation
 
+- [PSR-4 Architecture](docs/psr-4-refactor/ARCHITECTURE.md) — Namespace structure and dependency patterns
+- [PSR-4 Migration Guide](docs/psr-4-refactor/MIGRATION_GUIDE.md) — Migrating from `AIPS_*` to namespaced classes
+- [PSR-4 Class Mapping](docs/psr-4-refactor/PSR4_CLASS_MAPPING.md) — Complete old → new class reference
 - [Architectural Improvements](docs/ARCHITECTURAL_IMPROVEMENTS.md)
-- [PSR-4 Refactoring Plan](docs/PSR4_REFACTORING_PLAN.md)
+- [Testing Guide](docs/TESTING.md)
+- [Changelog](CHANGELOG.md)
+- [Architectural Improvements](docs/ARCHITECTURAL_IMPROVEMENTS.md)
 - [Testing Guide](docs/TESTING.md)
 - [Changelog](CHANGELOG.md)
 

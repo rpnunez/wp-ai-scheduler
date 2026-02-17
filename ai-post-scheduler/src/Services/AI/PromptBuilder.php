@@ -11,8 +11,8 @@ class PromptBuilder {
     private $structure_manager;
 
     public function __construct($template_processor = null, $structure_manager = null) {
-        $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-        $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
+        $this->template_processor = $template_processor ?: new \AIPS_Template_Processor();
+        $this->structure_manager = $structure_manager ?: new \AIPS_Article_Structure_Manager();
     }
 
     /**
@@ -27,7 +27,7 @@ class PromptBuilder {
      */
     public function build_content_prompt($template_or_context, $topic = null, $voice = null) {
         // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
+        if ($template_or_context instanceof \AIPS_Generation_Context) {
             $context = $template_or_context;
             
             do_action('aips_before_build_content_prompt', $context, null);
@@ -118,7 +118,7 @@ class PromptBuilder {
         $context_parts = array();
         
         // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
+        if ($template_or_context instanceof \AIPS_Generation_Context) {
             $context = $template_or_context;
             $topic_str = $context->get_topic();
             
@@ -206,7 +206,7 @@ class PromptBuilder {
         $title_instructions = '';
         
         // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
+        if ($template_or_context instanceof \AIPS_Generation_Context) {
             $context = $template_or_context;
             $topic_str = $context->get_topic();
             
@@ -434,7 +434,7 @@ class PromptBuilder {
             return null;
         }
 
-        $voice_service = new AIPS_Voices();
+        $voice_service = new \AIPS_Voices();
         return $voice_service->get($voice_id);
     }
 }

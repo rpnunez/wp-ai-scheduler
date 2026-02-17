@@ -92,6 +92,10 @@ class JsonImporter extends ImportHandler {
                 continue;
             }
 
+            if (!is_array($rows)) {
+                continue;
+            }
+
             $full_table_name = $tables[$table_name];
 
             $wpdb->query("TRUNCATE TABLE `" . esc_sql($full_table_name) . "`");

@@ -65,11 +65,11 @@ class AIService {
      * Initialize the AI Service.
      */
     public function __construct($logger = null, $config = null, $resilience_service = null) {
-        $this->logger = $logger ?: new AIPS_Logger();
-        $this->config = $config ?: AIPS_Config::get_instance();
+        $this->logger = $logger ?: new \AIPS_Logger();
+        $this->config = $config ?: \AIPS_Config::get_instance();
         $this->call_log = array();
 
-        $this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service($this->logger, $this->config);
+        $this->resilience_service = $resilience_service ?: new \AIPS_Resilience_Service($this->logger, $this->config);
     }
     
     /**
@@ -114,21 +114,21 @@ class AIService {
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $error = new \WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
         
         // Check circuit breaker
         if (!$this->resilience_service->check_circuit_breaker()) {
-            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
+            $error = new \WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
         
         // Check rate limiting
         if (!$this->resilience_service->check_rate_limit()) {
-            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+            $error = new \WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
@@ -172,13 +172,13 @@ class AIService {
                     return $result;
                 }
                 
-                $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
+                $error = new \WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
                 $this->log_call('text', $prompt, null, $options, $error->get_error_message());
                 $this->resilience_service->record_failure();
                 return $error;
                 
             } catch (Exception $e) {
-                $error = new WP_Error('generation_failed', $e->getMessage());
+                $error = new \WP_Error('generation_failed', $e->getMessage());
                 $this->log_call('text', $prompt, null, $options, $e->getMessage());
                 $this->resilience_service->record_failure();
                 return $error;
@@ -202,7 +202,7 @@ class AIService {
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $error = new \WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call('json', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
@@ -217,14 +217,14 @@ class AIService {
         
         // Check circuit breaker
         if (!$this->resilience_service->check_circuit_breaker()) {
-            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
+            $error = new \WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
             $this->log_call('json', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
         
         // Check rate limiting
         if (!$this->resilience_service->check_rate_limit()) {
-            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+            $error = new \WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
             $this->log_call('json', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
@@ -262,14 +262,10 @@ class AIService {
                 $this->logger->log('Calling simpleJsonQuery with params: ' . wp_json_encode(array_keys($json_query_params)), 'debug');
                 
                 // Use simpleJsonQuery which returns structured JSON data
-                // $result = $mwai->simpleJsonQuery($prompt, $json_query_params);
-                $result = $mwai->simpleJsonQuery($prompt);
+                $result = $mwai->simpleJsonQuery($prompt, $json_query_params);
 
-                error_log('Result type: ' . gettype($result));
-                error_log('Result content: ' . var_export($result, true));
-                
                 if (empty($result)) {
-                    $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
+                    $error = new \WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
                     $this->log_call('json', $prompt, null, $options, $error->get_error_message());
                     $this->resilience_service->record_failure();
                     return $error;
@@ -277,7 +273,7 @@ class AIService {
                 
                 // Validate that we got valid JSON data
                 if (!is_array($result)) {
-                    $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
+                    $error = new \WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
                     $this->log_call('json', $prompt, null, $options, $error->get_error_message());
                     $this->resilience_service->record_failure();
                     return $error;
@@ -288,7 +284,7 @@ class AIService {
                 return $result;
                 
             } catch (Exception $e) {
-                $error = new WP_Error('generation_failed', $e->getMessage());
+                $error = new \WP_Error('generation_failed', $e->getMessage());
                 $this->log_call('json', $prompt, null, $options, $e->getMessage());
                 $this->resilience_service->record_failure();
                 return $error;
@@ -333,7 +329,7 @@ class AIService {
         $data = json_decode($json_str, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
-            $error = new WP_Error('json_parse_error', sprintf(
+            $error = new \WP_Error('json_parse_error', sprintf(
                 __('Failed to parse JSON: %s', 'ai-post-scheduler'),
                 json_last_error_msg()
             ));
@@ -346,7 +342,7 @@ class AIService {
         }
         
         if (!is_array($data)) {
-            $error = new WP_Error('invalid_json_format', __('Parsed JSON is not in expected array format.', 'ai-post-scheduler'));
+            $error = new \WP_Error('invalid_json_format', __('Parsed JSON is not in expected array format.', 'ai-post-scheduler'));
             $this->log_call('json', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
@@ -371,21 +367,21 @@ class AIService {
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $error = new \WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call('image', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
 
         // Check circuit breaker
         if (!$this->resilience_service->check_circuit_breaker()) {
-            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
+            $error = new \WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
             $this->log_call('image', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
         
         // Check rate limiting
         if (!$this->resilience_service->check_rate_limit()) {
-            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+            $error = new \WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
             $this->log_call('image', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
@@ -404,7 +400,7 @@ class AIService {
                 $image_url = $ai->simpleImageQuery($prompt, $params);
 
                 if (!$image_url || empty($image_url)) {
-                    $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
+                    $error = new \WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
                     $this->log_call('image', $prompt, null, $options, $error->get_error_message());
                     $this->resilience_service->record_failure();
                     return $error;
@@ -416,7 +412,7 @@ class AIService {
                 }
 
                 if (empty($image_url)) {
-                    $error = new WP_Error('no_image_url', __('No image URL in AI response.', 'ai-post-scheduler'));
+                    $error = new \WP_Error('no_image_url', __('No image URL in AI response.', 'ai-post-scheduler'));
                     $this->log_call('image', $prompt, null, $options, $error->get_error_message());
                     $this->resilience_service->record_failure();
                     return $error;
@@ -427,7 +423,7 @@ class AIService {
                 return $image_url;
 
             } catch (Exception $e) {
-                $error = new WP_Error('generation_failed', $e->getMessage());
+                $error = new \WP_Error('generation_failed', $e->getMessage());
                 $this->log_call('image', $prompt, null, $options, $e->getMessage());
                 $this->resilience_service->record_failure();
                 return $error;
@@ -452,7 +448,7 @@ class AIService {
         $ai = $this->get_ai_engine();
         
         if (!$ai) {
-            $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+            $error = new \WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call($log_type, $message, null, $options, $error->get_error_message());
             return $error;
         }
@@ -466,7 +462,7 @@ class AIService {
                 'chatbot_id' => $chatbot_id
             ));
             
-            $error = new WP_Error('chatbot_unavailable', sprintf(__('%s', 'ai-post-scheduler'), 'AI Engine chatbot feature is not available.'));
+            $error = new \WP_Error('chatbot_unavailable', sprintf(__('%s', 'ai-post-scheduler'), 'AI Engine chatbot feature is not available.'));
 
             $this->log_call($log_type, $message, null, $options, $error->get_error_message());
 
@@ -475,14 +471,14 @@ class AIService {
         
         // Check circuit breaker
         if (!$this->resilience_service->check_circuit_breaker()) {
-            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
+            $error = new \WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
             $this->log_call($log_type, $message, null, $options, $error->get_error_message());
             return $error;
         }
         
         // Check rate limiting
         if (!$this->resilience_service->check_rate_limit()) {
-            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+            $error = new \WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
             $this->log_call($log_type, $message, null, $options, $error->get_error_message());
             return $error;
         }
@@ -529,7 +525,7 @@ class AIService {
                 
                 // Validate response structure
                 if (!is_string($response)) {
-                    $error = new WP_Error('invalid_chatbot_response', 
+                    $error = new \WP_Error('invalid_chatbot_response', 
                         sprintf(__('AI Engine returned an unexpected response type: %s', 'ai-post-scheduler'), gettype($response))
                     );
 
@@ -559,7 +555,7 @@ class AIService {
                 return $result;
                 
             } catch (Exception $e) {
-                $error = new WP_Error('chatbot_failed', $e->getMessage());
+                $error = new \WP_Error('chatbot_failed', $e->getMessage());
                 $this->log_call($log_type, $message, null, $options, $e->getMessage());
                 $this->resilience_service->record_failure();
                 return $error;

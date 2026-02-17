@@ -269,17 +269,17 @@ class HistoryContainer {
 	 */
 	private function map_log_type_to_history_type($log_type) {
 		$map = array(
-			'activity' => AIPS_History_Type::ACTIVITY,
-			'ai_request' => AIPS_History_Type::AI_REQUEST,
-			'ai_response' => AIPS_History_Type::AI_RESPONSE,
-			'error' => AIPS_History_Type::ERROR,
-			'warning' => AIPS_History_Type::WARNING,
-			'info' => AIPS_History_Type::INFO,
-			'debug' => AIPS_History_Type::DEBUG,
-			'log' => AIPS_History_Type::LOG,
+			'activity' => \AIPS_History_Type::ACTIVITY,
+			'ai_request' => \AIPS_History_Type::AI_REQUEST,
+			'ai_response' => \AIPS_History_Type::AI_RESPONSE,
+			'error' => \AIPS_History_Type::ERROR,
+			'warning' => \AIPS_History_Type::WARNING,
+			'info' => \AIPS_History_Type::INFO,
+			'debug' => \AIPS_History_Type::DEBUG,
+			'log' => \AIPS_History_Type::LOG,
 		);
 		
-		return isset($map[$log_type]) ? $map[$log_type] : AIPS_History_Type::LOG;
+		return isset($map[$log_type]) ? $map[$log_type] : \AIPS_History_Type::LOG;
 	}
 	
 	/**
@@ -407,7 +407,7 @@ class HistoryContainer {
 	 * @return self For method chaining
 	 */
 	public function with_session($context, $voice = null) {
-		$this->session = new AIPS_Generation_Session();
+		$this->session = new \AIPS_Generation_Session();
 		$this->session->start($context, $voice);
 		return $this;
 	}

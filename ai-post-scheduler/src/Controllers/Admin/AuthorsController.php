@@ -55,12 +55,12 @@ class AuthorsController {
 	 * Initialize the controller.
 	 */
 	public function __construct() {
-		$this->repository = new AIPS_Authors_Repository();
-		$this->topics_repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->feedback_repository = new AIPS_Feedback_Repository();
-		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
-		$this->interval_calculator = new AIPS_Interval_Calculator();
+		$this->repository = new \AIPS_Authors_Repository();
+		$this->topics_repository = new \AIPS_Author_Topics_Repository();
+		$this->logs_repository = new \AIPS_Author_Topic_Logs_Repository();
+		$this->feedback_repository = new \AIPS_Feedback_Repository();
+		$this->topics_scheduler = new \AIPS_Author_Topics_Scheduler();
+		$this->interval_calculator = new \AIPS_Interval_Calculator();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));

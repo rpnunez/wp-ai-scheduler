@@ -24,8 +24,8 @@ class Templates {
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_templates';
-        $this->repository = new AIPS_Template_Repository();
-        $this->interval_calculator = new AIPS_Interval_Calculator();
+        $this->repository = new \AIPS_Template_Repository();
+        $this->interval_calculator = new \AIPS_Interval_Calculator();
     }
     
     public function get_all($active_only = false) {

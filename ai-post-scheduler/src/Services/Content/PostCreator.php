@@ -50,7 +50,7 @@ class PostCreator {
         $template = isset($data['template']) ? $data['template'] : null;
 
         // If we have a context, use it; otherwise fall back to template
-        if ($context instanceof AIPS_Generation_Context) {
+        if ($context instanceof \AIPS_Generation_Context) {
             $post_status = $context->get_post_status();
             $post_author = $context->get_post_author();
             $post_category = $context->get_post_category();
@@ -61,7 +61,7 @@ class PostCreator {
             $post_category = !empty($template->post_category) ? $template->post_category : null;
             $post_tags = !empty($template->post_tags) ? $template->post_tags : '';
         } else {
-            return new WP_Error('missing_context', 'Either a template object or generation context is required for post creation.');
+            return new \WP_Error('missing_context', 'Either a template object or generation context is required for post creation.');
         }
 
         $post_data = array(

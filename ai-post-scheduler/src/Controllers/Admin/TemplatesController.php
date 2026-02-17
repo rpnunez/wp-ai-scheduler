@@ -10,7 +10,7 @@ class TemplatesController {
     private $templates;
 
     public function __construct($templates = null) {
-        $this->templates = $templates ?: new AIPS_Templates();
+        $this->templates = $templates ?: new \AIPS_Templates();
 
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
@@ -173,7 +173,7 @@ class TemplatesController {
             wp_send_json_error(array('message' => __('Prompt template is required.', 'ai-post-scheduler')));
         }
 
-        $generator = new AIPS_Generator();
+        $generator = new \AIPS_Generator();
         $result = $generator->generate_content($prompt);
 
         if (is_wp_error($result)) {
@@ -200,7 +200,7 @@ class TemplatesController {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
         }
 
-        $history = new AIPS_History();
+        $history = new \AIPS_History();
         $data = $history->get_history(array(
             'template_id' => $template_id,
             'page' => $page,
@@ -306,7 +306,7 @@ class TemplatesController {
         }
 
         // Use Prompt Builder to build all prompts
-        $prompt_builder = new AIPS_Prompt_Builder();
+        $prompt_builder = new \AIPS_Prompt_Builder();
         
         // Get voice if selected
         $voice = $prompt_builder->get_voice($template_data->voice_id);

@@ -37,8 +37,8 @@ class PostReview {
 	 * Initialize the post review handler.
 	 */
 	public function __construct() {
-		$this->repository = new AIPS_Post_Review_Repository();
-		$this->history_service = new AIPS_History_Service();
+		$this->repository = new \AIPS_Post_Review_Repository();
+		$this->history_service = new \AIPS_History_Service();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_draft_posts', array($this, 'ajax_get_draft_posts'));
@@ -359,7 +359,7 @@ class PostReview {
 		}
 		
 		// Get the template
-		$template_repository = new AIPS_Template_Repository();
+		$template_repository = new \AIPS_Template_Repository();
 		$template = $template_repository->get_by_id($history_item->template_id);
 		
 		if (!$template) {
@@ -383,7 +383,7 @@ class PostReview {
 		));
 		
 		// Trigger regeneration using the generator (same API as history retry)
-		$generator = new AIPS_Generator();
+		$generator = new \AIPS_Generator();
 		$result = $generator->generate_post($template);
 		
 		if (is_wp_error($result)) {

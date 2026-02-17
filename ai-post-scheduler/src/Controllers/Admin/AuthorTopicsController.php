@@ -55,12 +55,12 @@ class AuthorTopicsController {
 	 * Initialize the controller.
 	 */
 	public function __construct() {
-		$this->repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->feedback_repository = new AIPS_Feedback_Repository();
-		$this->post_generator = new AIPS_Author_Post_Generator();
-		$this->penalty_service = new AIPS_Topic_Penalty_Service();
-		$this->history_service = new AIPS_History_Service();
+		$this->repository = new \AIPS_Author_Topics_Repository();
+		$this->logs_repository = new \AIPS_Author_Topic_Logs_Repository();
+		$this->feedback_repository = new \AIPS_Feedback_Repository();
+		$this->post_generator = new \AIPS_Author_Post_Generator();
+		$this->penalty_service = new \AIPS_Topic_Penalty_Service();
+		$this->history_service = new \AIPS_History_Service();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -620,7 +620,7 @@ class AuthorTopicsController {
 			wp_send_json_error(array('message' => __('Invalid topic or author ID.', 'ai-post-scheduler')));
 		}
 		
-		$expansion_service = new AIPS_Topic_Expansion_Service();
+		$expansion_service = new \AIPS_Topic_Expansion_Service();
 		$similar_topics = $expansion_service->find_similar_topics($topic_id, $author_id, $limit);
 		
 		// Enrich with topic details
@@ -654,7 +654,7 @@ class AuthorTopicsController {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 		
-		$expansion_service = new AIPS_Topic_Expansion_Service();
+		$expansion_service = new \AIPS_Topic_Expansion_Service();
 		$suggestions = $expansion_service->suggest_related_topics($author_id, $limit);
 		
 		wp_send_json_success(array('suggestions' => $suggestions));
@@ -676,7 +676,7 @@ class AuthorTopicsController {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 		
-		$expansion_service = new AIPS_Topic_Expansion_Service();
+		$expansion_service = new \AIPS_Topic_Expansion_Service();
 		$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
 		
 		wp_send_json_success(array(

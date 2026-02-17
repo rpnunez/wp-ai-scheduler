@@ -76,7 +76,7 @@ class SystemStatus {
         global $wpdb;
         
         // Get expected columns from AIPS_DB_Manager (single source of truth)
-        $tables = AIPS_DB_Manager::get_expected_columns();
+        $tables = \AIPS_DB_Manager::get_expected_columns();
 
         $results = array();
 
@@ -163,7 +163,7 @@ class SystemStatus {
         $logs_data = array();
 
         // Check AIPS logs
-        $logger = new AIPS_Logger();
+        $logger = new \AIPS_Logger();
         $log_files = $logger->get_log_files();
 
         if (!empty($log_files)) {

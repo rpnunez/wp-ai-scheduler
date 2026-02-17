@@ -23,9 +23,9 @@ class DashboardController {
      */
     public function render_page() {
         // Use repositories instead of direct SQL
-        $history_repo = new AIPS_History_Repository();
-        $schedule_repo = new AIPS_Schedule_Repository();
-        $template_repo = new AIPS_Template_Repository();
+        $history_repo = new \AIPS_History_Repository();
+        $schedule_repo = new \AIPS_Schedule_Repository();
+        $template_repo = new \AIPS_Template_Repository();
 
         // Get stats
         $history_stats = $history_repo->get_stats();

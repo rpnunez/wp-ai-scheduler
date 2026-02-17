@@ -65,13 +65,13 @@ class ArticleStructureManager {
 		$structure = $this->structure_repository->get_by_id($structure_id);
 		
 		if (!$structure) {
-			return new WP_Error('structure_not_found', __('Article structure not found.', 'ai-post-scheduler'));
+			return new \WP_Error('structure_not_found', __('Article structure not found.', 'ai-post-scheduler'));
 		}
 		
 		$structure_data = json_decode($structure->structure_data, true);
 		
 		if (json_last_error() !== JSON_ERROR_NONE) {
-			return new WP_Error('invalid_structure_data', __('Invalid article structure data.', 'ai-post-scheduler'));
+			return new \WP_Error('invalid_structure_data', __('Invalid article structure data.', 'ai-post-scheduler'));
 		}
 		
 		return array(
@@ -99,7 +99,7 @@ class ArticleStructureManager {
 			if (!empty($structures)) {
 				$structure = $structures[0];
 			} else {
-				return new WP_Error('no_structures', __('No article structures available.', 'ai-post-scheduler'));
+				return new \WP_Error('no_structures', __('No article structures available.', 'ai-post-scheduler'));
 			}
 		}
 		
@@ -188,7 +188,7 @@ class ArticleStructureManager {
 		$missing_sections = array_diff($sections, array_keys($available_sections));
 		
 		if (!empty($missing_sections)) {
-			return new WP_Error(
+			return new \WP_Error(
 				'invalid_sections',
 				sprintf(
 					__('Invalid section keys: %s', 'ai-post-scheduler'),
@@ -213,7 +213,7 @@ class ArticleStructureManager {
 		$id = $this->structure_repository->create($data);
 		
 		if (!$id) {
-			return new WP_Error('create_failed', __('Failed to create article structure.', 'ai-post-scheduler'));
+			return new \WP_Error('create_failed', __('Failed to create article structure.', 'ai-post-scheduler'));
 		}
 		
 		do_action('aips_structure_created', $id, $structure_data);
@@ -237,7 +237,7 @@ class ArticleStructureManager {
 		$structure = $this->structure_repository->get_by_id($structure_id);
 		
 		if (!$structure) {
-			return new WP_Error('structure_not_found', __('Article structure not found.', 'ai-post-scheduler'));
+			return new \WP_Error('structure_not_found', __('Article structure not found.', 'ai-post-scheduler'));
 		}
 		
 		// Validate sections exist
@@ -245,7 +245,7 @@ class ArticleStructureManager {
 		$missing_sections = array_diff($sections, array_keys($available_sections));
 		
 		if (!empty($missing_sections)) {
-			return new WP_Error(
+			return new \WP_Error(
 				'invalid_sections',
 				sprintf(
 					__('Invalid section keys: %s', 'ai-post-scheduler'),
@@ -278,7 +278,7 @@ class ArticleStructureManager {
 		$result = $this->structure_repository->update($structure_id, $data);
 		
 		if (!$result) {
-			return new WP_Error('update_failed', __('Failed to update article structure.', 'ai-post-scheduler'));
+			return new \WP_Error('update_failed', __('Failed to update article structure.', 'ai-post-scheduler'));
 		}
 		
 		do_action('aips_structure_updated', $structure_id, $structure_data);
@@ -296,14 +296,14 @@ class ArticleStructureManager {
 		$structure = $this->structure_repository->get_by_id($structure_id);
 		
 		if (!$structure) {
-			return new WP_Error('structure_not_found', __('Article structure not found.', 'ai-post-scheduler'));
+			return new \WP_Error('structure_not_found', __('Article structure not found.', 'ai-post-scheduler'));
 		}
 		
 		// Don't allow deleting the default structure if it's the only one
 		if ($structure->is_default) {
 			$count = $this->structure_repository->count_by_status();
 			if ($count['active'] <= 1) {
-				return new WP_Error(
+				return new \WP_Error(
 					'cannot_delete_default',
 					__('Cannot delete the default article structure. Create another structure first.', 'ai-post-scheduler')
 				);
@@ -313,7 +313,7 @@ class ArticleStructureManager {
 		$result = $this->structure_repository->delete($structure_id);
 		
 		if (!$result) {
-			return new WP_Error('delete_failed', __('Failed to delete article structure.', 'ai-post-scheduler'));
+			return new \WP_Error('delete_failed', __('Failed to delete article structure.', 'ai-post-scheduler'));
 		}
 		
 		do_action('aips_structure_deleted', $structure_id);

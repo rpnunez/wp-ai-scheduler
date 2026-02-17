@@ -51,10 +51,10 @@ class AuthorTopicsGenerator {
 	 * @param object|null $logs_repository Logs repository (optional for testing).
 	 */
 	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null) {
-		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
-		$this->logger = $logger ?: new AIPS_Logger();
-		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
+		$this->ai_service = $ai_service ?: new \AIPS_AI_Service();
+		$this->logger = $logger ?: new \AIPS_Logger();
+		$this->topics_repository = $topics_repository ?: new \AIPS_Author_Topics_Repository();
+		$this->logs_repository = $logs_repository ?: new \AIPS_Author_Topic_Logs_Repository();
 	}
 	
 	/**
@@ -65,7 +65,7 @@ class AuthorTopicsGenerator {
 	 */
 	public function generate_topics($author) {
 		if (!$author || !isset($author->id)) {
-			return new WP_Error('invalid_author', 'Invalid author object provided');
+			return new \WP_Error('invalid_author', 'Invalid author object provided');
 		}
 		
 		$this->logger->log("Starting topic generation for author: {$author->name} (ID: {$author->id})", 'info', array(
@@ -92,7 +92,7 @@ class AuthorTopicsGenerator {
 		
 		if (empty($topics)) {
 			$this->logger->log("No topics parsed from AI response for author {$author->id}", 'warning');
-			return new WP_Error('no_topics_parsed', 'Failed to parse topics from AI response');
+			return new \WP_Error('no_topics_parsed', 'Failed to parse topics from AI response');
 		}
 		
 		// Save topics to database
@@ -117,7 +117,7 @@ class AuthorTopicsGenerator {
 			}
 		} else {
 			$this->logger->log("Failed to bulk create topics for author {$author->id}", 'error');
-			return new WP_Error('db_insert_error', 'Failed to save generated topics to database');
+			return new \WP_Error('db_insert_error', 'Failed to save generated topics to database');
 		}
 		
 		$count = count($saved_topics);

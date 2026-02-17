@@ -82,20 +82,20 @@ class ComponentRegenerationService {
 	 * Constructor
 	 */
 	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->history_service = new AIPS_History_Service();
-		$this->template_repository = new AIPS_Template_Repository();
-		$this->author_topics_repository = new AIPS_Author_Topics_Repository();
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->voices_repository = new AIPS_Voices_Repository();
-		$this->template_processor = new AIPS_Template_Processor();
-		$this->structure_manager = new AIPS_Article_Structure_Manager();
+		$this->history_repository = new \AIPS_History_Repository();
+		$this->history_service = new \AIPS_History_Service();
+		$this->template_repository = new \AIPS_Template_Repository();
+		$this->author_topics_repository = new \AIPS_Author_Topics_Repository();
+		$this->authors_repository = new \AIPS_Authors_Repository();
+		$this->voices_repository = new \AIPS_Voices_Repository();
+		$this->template_processor = new \AIPS_Template_Processor();
+		$this->structure_manager = new \AIPS_Article_Structure_Manager();
 		
 		// Initialize AI services
-		$ai_service = new AIPS_AI_Service();
-		$this->generator = new AIPS_Generator(null, $ai_service);
-		$this->image_service = new AIPS_Image_Service($ai_service);
-		$this->prompt_builder = new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
+		$ai_service = new \AIPS_AI_Service();
+		$this->generator = new \AIPS_Generator(null, $ai_service);
+		$this->image_service = new \AIPS_Image_Service($ai_service);
+		$this->prompt_builder = new \AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 	}
 	
 	/**
@@ -112,7 +112,7 @@ class ComponentRegenerationService {
 		$history = $this->history_repository->get_by_id($history_id);
 		
 		if (!$history) {
-			return new WP_Error('invalid_history', __('Invalid history record.', 'ai-post-scheduler'));
+			return new \WP_Error('invalid_history', __('Invalid history record.', 'ai-post-scheduler'));
 		}
 		
 		$context = array(
@@ -128,7 +128,7 @@ class ComponentRegenerationService {
 			// This is a Template-based post
 			$template = $this->template_repository->get_by_id($history->template_id);
 			if (!$template) {
-				return new WP_Error('missing_template', __('Template data not found.', 'ai-post-scheduler'));
+				return new \WP_Error('missing_template', __('Template data not found.', 'ai-post-scheduler'));
 			}
 			
 			// Fetch voice if available
@@ -147,7 +147,7 @@ class ComponentRegenerationService {
 			}
 			
 			// Create Template Context
-			$context['generation_context'] = new AIPS_Template_Context($template, $voice, $topic_string);
+			$context['generation_context'] = new \AIPS_Template_Context($template, $voice, $topic_string);
 			$context['context_type'] = 'template';
 			$context['context_name'] = $template->name;
 			
@@ -155,21 +155,21 @@ class ComponentRegenerationService {
 			// This is a Topic-based post (Author + Topic)
 			$author = $this->authors_repository->get_by_id($history->author_id);
 			if (!$author) {
-				return new WP_Error('missing_author', __('Author data not found.', 'ai-post-scheduler'));
+				return new \WP_Error('missing_author', __('Author data not found.', 'ai-post-scheduler'));
 			}
 			
 			$topic = $this->author_topics_repository->get_by_id($history->topic_id);
 			if (!$topic) {
-				return new WP_Error('missing_topic', __('Topic data not found.', 'ai-post-scheduler'));
+				return new \WP_Error('missing_topic', __('Topic data not found.', 'ai-post-scheduler'));
 			}
 			
 			// Create Topic Context
-			$context['generation_context'] = new AIPS_Topic_Context($author, $topic);
+			$context['generation_context'] = new \AIPS_Topic_Context($author, $topic);
 			$context['context_type'] = 'topic';
 			$context['context_name'] = $author->name . ': ' . $topic->topic_title;
 			
 		} else {
-			return new WP_Error('invalid_context', __('Unable to determine generation context type.', 'ai-post-scheduler'));
+			return new \WP_Error('invalid_context', __('Unable to determine generation context type.', 'ai-post-scheduler'));
 		}
 		
 		return $context;
@@ -182,8 +182,8 @@ class ComponentRegenerationService {
 	 * @return string|WP_Error Generated title or error
 	 */
 	public function regenerate_title($context) {
-		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
-			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof \AIPS_Generation_Context)) {
+			return new \WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
 		
 		$generation_context = $context['generation_context'];
@@ -193,13 +193,13 @@ class ComponentRegenerationService {
 		// Find and reuse existing History Container for this post
 		$history_record = $this->history_repository->get_by_post_id($post_id);
 		if (!$history_record) {
-			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
+			return new \WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
 		}
 		
 		// Load the existing History Container
-		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
+		$history_container = \AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
 		if (!$history_container) {
-			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+			return new \WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
 		}
 		
 		// Set the history container on the generator so it logs to the same container
@@ -235,8 +235,8 @@ class ComponentRegenerationService {
 	 * @return string|WP_Error Generated excerpt or error
 	 */
 	public function regenerate_excerpt($context) {
-		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
-			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof \AIPS_Generation_Context)) {
+			return new \WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
 		
 		$generation_context = $context['generation_context'];
@@ -248,13 +248,13 @@ class ComponentRegenerationService {
 		// Find and reuse existing History Container for this post
 		$history_record = $this->history_repository->get_by_post_id($post_id);
 		if (!$history_record) {
-			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
+			return new \WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
 		}
 		
 		// Load the existing History Container
-		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
+		$history_container = \AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
 		if (!$history_container) {
-			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+			return new \WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
 		}
 		
 		// Set the history container on the generator so it logs to the same container
@@ -285,8 +285,8 @@ class ComponentRegenerationService {
 	 * @return string|WP_Error Generated content or error
 	 */
 	public function regenerate_content($context) {
-		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
-			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof \AIPS_Generation_Context)) {
+			return new \WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
 		
 		$generation_context = $context['generation_context'];
@@ -296,13 +296,13 @@ class ComponentRegenerationService {
 		// Find and reuse existing History Container for this post
 		$history_record = $this->history_repository->get_by_post_id($post_id);
 		if (!$history_record) {
-			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
+			return new \WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
 		}
 		
 		// Load the existing History Container
-		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
+		$history_container = \AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
 		if (!$history_container) {
-			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+			return new \WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
 		}
 		
 		// Set the history container on the generator so it logs to the same container
@@ -328,12 +328,12 @@ class ComponentRegenerationService {
 	 * @return array|WP_Error Array with attachment_id and url, or error
 	 */
 	public function regenerate_featured_image($context) {
-		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
-			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof \AIPS_Generation_Context)) {
+			return new \WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
 		}
 		
 		if (!isset($context['post_id'])) {
-			return new WP_Error('missing_post_id', __('Post ID is required.', 'ai-post-scheduler'));
+			return new \WP_Error('missing_post_id', __('Post ID is required.', 'ai-post-scheduler'));
 		}
 		
 		$generation_context = $context['generation_context'];
@@ -344,7 +344,7 @@ class ComponentRegenerationService {
 		// Get the image prompt from the generation context
 		$image_prompt = $generation_context->get_image_prompt();
 		if (empty($image_prompt)) {
-			return new WP_Error('no_image_prompt', __('No image prompt available for this context.', 'ai-post-scheduler'));
+			return new \WP_Error('no_image_prompt', __('No image prompt available for this context.', 'ai-post-scheduler'));
 		}
 		
 		// Process the image prompt with topic if available
@@ -354,13 +354,13 @@ class ComponentRegenerationService {
 		// Find and reuse existing History Container for this post
 		$history_record = $this->history_repository->get_by_post_id($post_id);
 		if (!$history_record) {
-			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
+			return new \WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
 		}
 		
 		// Load the existing History Container
-		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
+		$history_container = \AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
 		if (!$history_container) {
-			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+			return new \WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
 		}
 		
 		// Log the AI request for image generation
@@ -445,7 +445,7 @@ class ComponentRegenerationService {
 			ORDER BY hl.timestamp DESC
 			LIMIT %d
 		",
-			AIPS_History_Type::AI_RESPONSE,
+			\AIPS_History_Type::AI_RESPONSE,
 			'%"component":"' . $wpdb->esc_like($component_type) . '"%',
 			$post_id,
 			'%"post_id":' . absint($post_id) . '%',

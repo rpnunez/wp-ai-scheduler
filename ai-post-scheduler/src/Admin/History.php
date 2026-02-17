@@ -19,7 +19,7 @@ class History {
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_history';
-        $this->repository = new AIPS_History_Repository();
+        $this->repository = new \AIPS_History_Repository();
         
         add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
         add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
@@ -104,14 +104,14 @@ class History {
             wp_send_json_error(array('message' => __('History item not found or no template associated.', 'ai-post-scheduler')));
         }
         
-        $templates = new AIPS_Templates();
+        $templates = new \AIPS_Templates();
         $template = $templates->get($history_item->template_id);
         
         if (!$template) {
             wp_send_json_error(array('message' => __('Template no longer exists.', 'ai-post-scheduler')));
         }
         
-        $generator = new AIPS_Generator();
+        $generator = new \AIPS_Generator();
         $result = $generator->generate_post($template);
         
         if (is_wp_error($result)) {
@@ -293,7 +293,7 @@ class History {
         $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
 
         // Get max records limit from configuration
-        $config = AIPS_Config::get_instance();
+        $config = \AIPS_Config::get_instance();
         $max_records = (int) $config->get_option('history_export_max_records', 10000);
 
         // Fetch all matching records

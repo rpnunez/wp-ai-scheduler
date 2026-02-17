@@ -44,9 +44,9 @@ class ResearchService {
      * @param AIPS_AI_Service|null $ai_service Optional AI service instance for dependency injection.
      */
     public function __construct($ai_service = null) {
-        $this->ai_service = $ai_service ?: new AIPS_AI_Service();
-        $this->logger = new AIPS_Logger();
-        $this->config = AIPS_Config::get_instance();
+        $this->ai_service = $ai_service ?: new \AIPS_AI_Service();
+        $this->logger = new \AIPS_Logger();
+        $this->config = \AIPS_Config::get_instance();
     }
 
     /**
@@ -62,11 +62,11 @@ class ResearchService {
      */
     public function research_trending_topics($niche, $count = 10, $keywords = array()) {
         if (empty($niche)) {
-            return new WP_Error('missing_niche', __('Niche parameter is required for research.', 'ai-post-scheduler'));
+            return new \WP_Error('missing_niche', __('Niche parameter is required for research.', 'ai-post-scheduler'));
         }
 
         if (!$this->ai_service->is_available()) {
-            return new WP_Error('ai_unavailable', __('AI Engine is not available for research.', 'ai-post-scheduler'));
+            return new \WP_Error('ai_unavailable', __('AI Engine is not available for research.', 'ai-post-scheduler'));
         }
 
         // Validate count
@@ -197,7 +197,7 @@ class ResearchService {
      */
     private function validate_and_normalize_topics($topics, $count) {
         if (!is_array($topics)) {
-            return new WP_Error('invalid_format', __('AI response is not in expected array format.', 'ai-post-scheduler'));
+            return new \WP_Error('invalid_format', __('AI response is not in expected array format.', 'ai-post-scheduler'));
         }
 
         // Validate and normalize topics
@@ -209,7 +209,7 @@ class ResearchService {
         }
 
         if (empty($validated_topics)) {
-            return new WP_Error('no_valid_topics', __('No valid topics found in AI response.', 'ai-post-scheduler'));
+            return new \WP_Error('no_valid_topics', __('No valid topics found in AI response.', 'ai-post-scheduler'));
         }
 
         // Sort by score (highest first)
@@ -255,7 +255,7 @@ class ResearchService {
         }
 
         if (!is_array($topics)) {
-            return new WP_Error('invalid_format', __('AI response is not in expected array format.', 'ai-post-scheduler'));
+            return new \WP_Error('invalid_format', __('AI response is not in expected array format.', 'ai-post-scheduler'));
         }
 
         // Validate and normalize topics
@@ -267,7 +267,7 @@ class ResearchService {
         }
 
         if (empty($validated_topics)) {
-            return new WP_Error('no_valid_topics', __('No valid topics found in AI response.', 'ai-post-scheduler'));
+            return new \WP_Error('no_valid_topics', __('No valid topics found in AI response.', 'ai-post-scheduler'));
         }
 
         // Sort by score (highest first)
@@ -363,7 +363,7 @@ class ResearchService {
         }
 
         if (empty($topics)) {
-            return new WP_Error('extraction_failed', __('Failed to extract topics from AI response.', 'ai-post-scheduler'));
+            return new \WP_Error('extraction_failed', __('Failed to extract topics from AI response.', 'ai-post-scheduler'));
         }
 
         return $topics;

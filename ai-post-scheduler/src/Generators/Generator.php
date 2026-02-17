@@ -70,18 +70,18 @@ class Generator {
         $history_service = null,
         $prompt_builder = null
     ) {
-        $this->logger = $logger ?: new AIPS_Logger();
-        $this->ai_service = $ai_service ?: new AIPS_AI_Service();
-        $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-        $this->image_service = $image_service ?: new AIPS_Image_Service($this->ai_service);
-        $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
-        $this->post_creator = $post_creator ?: new AIPS_Post_Creator();
-        $this->history_service = $history_service ?: new AIPS_History_Service();
-        $this->history_repository = new AIPS_History_Repository();
-        $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
+        $this->logger = $logger ?: new \AIPS_Logger();
+        $this->ai_service = $ai_service ?: new \AIPS_AI_Service();
+        $this->template_processor = $template_processor ?: new \AIPS_Template_Processor();
+        $this->image_service = $image_service ?: new \AIPS_Image_Service($this->ai_service);
+        $this->structure_manager = $structure_manager ?: new \AIPS_Article_Structure_Manager();
+        $this->post_creator = $post_creator ?: new \AIPS_Post_Creator();
+        $this->history_service = $history_service ?: new \AIPS_History_Service();
+        $this->history_repository = new \AIPS_History_Repository();
+        $this->prompt_builder = $prompt_builder ?: new \AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 
         // Initialize logger wrapper
-        $this->generation_logger = new AIPS_Generation_Logger($this->logger, $this->history_service, new AIPS_Generation_Session());
+        $this->generation_logger = new \AIPS_Generation_Logger($this->logger, $this->history_service, new \AIPS_Generation_Session());
     }
     
     /**
@@ -175,7 +175,7 @@ class Generator {
      */
     public function resolve_ai_variables($template, $content, $voice = null) {
         // For backward compatibility, convert to context and delegate
-        $context = new AIPS_Template_Context($template, $voice, null);
+        $context = new \AIPS_Template_Context($template, $voice, null);
         return $this->resolve_ai_variables_from_context($context, $content);
     }
     
@@ -305,7 +305,7 @@ class Generator {
      */
     public function generate_title($template, $voice = null, $topic = null, $content = '', $options = array(), $ai_variables = array()) {
         // For backward compatibility, convert to context and delegate
-        $context = new AIPS_Template_Context($template, $voice, $topic);
+        $context = new \AIPS_Template_Context($template, $voice, $topic);
         return $this->generate_title_from_context($context, $content, $ai_variables, $options);
     }
     
@@ -433,13 +433,13 @@ class Generator {
      */
     public function generate_post($template_or_context, $voice = null, $topic = null) {
         // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
+        if ($template_or_context instanceof \AIPS_Generation_Context) {
             return $this->generate_post_from_context($template_or_context);
         }
         
         // Legacy template-based approach - convert to context and delegate
         $template = $template_or_context;
-        $context = new AIPS_Template_Context($template, $voice, $topic);
+        $context = new \AIPS_Template_Context($template, $voice, $topic);
         return $this->generate_post_from_context($context);
     }
     
@@ -502,6 +502,14 @@ class Generator {
 
         if (!empty($content_context)) {
             $content_options['context'] = $content_context;
+        }
+
+        if (trim((string) $content_prompt) === '') {
+            $err = new \WP_Error('empty_prompt', __('Content prompt is empty. Check template configuration.', 'ai-post-scheduler'));
+            $this->current_history->record_error($err->get_error_message(), array('component' => 'content'));
+            $this->current_history->complete_failure($err->get_error_message(), array('component' => 'content'));
+            do_action('aips_post_generation_failed', $context->get_id(), $err->get_error_message(), $context->get_topic());
+            return $err;
         }
 
         // Ask AI to generate the article body
@@ -737,7 +745,7 @@ class Generator {
                 }
             }
         } else {
-            $featured_image_result = new WP_Error('missing_image_prompt', __('Image prompt is required to generate a featured image.', 'ai-post-scheduler'));
+            $featured_image_result = new \WP_Error('missing_image_prompt', __('Image prompt is required to generate a featured image.', 'ai-post-scheduler'));
         }
 
         if (is_wp_error($featured_image_result)) {

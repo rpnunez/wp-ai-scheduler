@@ -56,9 +56,9 @@ class GeneratedPostsController {
 	 * Initialize the controller
 	 */
 	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->schedule_repository = new AIPS_Schedule_Repository();
-		$this->post_review_repository = new AIPS_Post_Review_Repository();
+		$this->history_repository = new \AIPS_History_Repository();
+		$this->schedule_repository = new \AIPS_Schedule_Repository();
+		$this->post_review_repository = new \AIPS_Post_Review_Repository();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
@@ -132,7 +132,7 @@ class GeneratedPostsController {
 		$review_current_page = $review_page; // For Pending Review tab
 		
 		// Get templates for filter dropdown
-		$template_repository = new AIPS_Template_Repository();
+		$template_repository = new \AIPS_Template_Repository();
 		$templates = $template_repository->get_all();
 		
 		// Get globally-initialized Post Review handler
@@ -176,11 +176,11 @@ class GeneratedPostsController {
 			$details = json_decode($log_entry->details, true);
 			
 			// Categorize based on history_type_id
-			$type_id = isset($log_entry->history_type_id) ? (int) $log_entry->history_type_id : AIPS_History_Type::LOG;
+			$type_id = isset($log_entry->history_type_id) ? (int) $log_entry->history_type_id : \AIPS_History_Type::LOG;
 			
 			switch ($type_id) {
-				case AIPS_History_Type::AI_REQUEST:
-				case AIPS_History_Type::AI_RESPONSE:
+				case \AIPS_History_Type::AI_REQUEST:
+				case \AIPS_History_Type::AI_RESPONSE:
 					// Group AI requests and responses together by component
 					$component_type = isset($details['context']['component']) ? $details['context']['component'] : 'unknown';
 					
@@ -193,7 +193,7 @@ class GeneratedPostsController {
 						);
 					}
 					
-					if ($type_id === AIPS_History_Type::AI_REQUEST) {
+					if ($type_id === \AIPS_History_Type::AI_REQUEST) {
 						$ai_calls[$component_type]['request'] = $details;
 					} else {
 						// Decode base64-encoded AI output if flagged
@@ -204,13 +204,13 @@ class GeneratedPostsController {
 					}
 					break;
 					
-				case AIPS_History_Type::ERROR:
-				case AIPS_History_Type::WARNING:
-				case AIPS_History_Type::LOG:
-				case AIPS_History_Type::INFO:
-				case AIPS_History_Type::DEBUG:
+				case \AIPS_History_Type::ERROR:
+				case \AIPS_History_Type::WARNING:
+				case \AIPS_History_Type::LOG:
+				case \AIPS_History_Type::INFO:
+				case \AIPS_History_Type::DEBUG:
 					$logs[] = array(
-						'type' => AIPS_History_Type::get_label($type_id),
+						'type' => \AIPS_History_Type::get_label($type_id),
 						'type_id' => $type_id,
 						'timestamp' => $log_entry->timestamp,
 						'log_type' => $log_entry->log_type,
@@ -226,7 +226,7 @@ class GeneratedPostsController {
 		// Collect regenerations / revisions per component
 		$component_revisions = array();
 		if ($history_item->post_id) {
-			$regeneration_service = new AIPS_Component_Regeneration_Service();
+			$regeneration_service = new \AIPS_Component_Regeneration_Service();
 			$components = array('title', 'excerpt', 'content', 'featured_image');
 			foreach ($components as $component) {
 				$component_revisions[$component] = $regeneration_service->get_component_revisions(
@@ -281,10 +281,10 @@ class GeneratedPostsController {
 		// Heuristic: if there are many log entries, write to tempfile instead of echoing directly
 		$log_count = isset($history_item->log) && is_array($history_item->log) ? count($history_item->log) : 0;
 		// Read thresholds from configuration
-		$config = AIPS_Config::get_instance();
+		$config = \AIPS_Config::get_instance();
 		$TEMPFILE_LOG_THRESHOLD = (int) $config->get_option('generated_posts_log_threshold_tmpfile', 200);
 		
-		$converter = new AIPS_Session_To_JSON();
+		$converter = new \AIPS_Session_To_JSON();
 		
 		if ($log_count >= $TEMPFILE_LOG_THRESHOLD) {
 			$temp = $converter->generate_json_to_tempfile($history_id, true);
@@ -367,7 +367,7 @@ class GeneratedPostsController {
 		}
 		
 		// Use the Session To JSON converter
-		$converter = new AIPS_Session_To_JSON();
+		$converter = new \AIPS_Session_To_JSON();
 		$json_string = $converter->generate_json_string($history_id, true);
 		
 		if (is_wp_error($json_string)) {
@@ -394,7 +394,7 @@ class GeneratedPostsController {
 			$template_id = $history_item->template_id;
 			
 			if (!isset($this->template_cache[$template_id])) {
-				$template_repository = new AIPS_Template_Repository();
+				$template_repository = new \AIPS_Template_Repository();
 				$this->template_cache[$template_id] = $template_repository->get_by_id($template_id);
 			}
 			
@@ -409,12 +409,12 @@ class GeneratedPostsController {
 			$topic_id = $history_item->topic_id;
 			
 			if (!isset($this->author_cache[$author_id])) {
-				$authors_repository = new AIPS_Authors_Repository();
+				$authors_repository = new \AIPS_Authors_Repository();
 				$this->author_cache[$author_id] = $authors_repository->get_by_id($author_id);
 			}
 			
 			if (!isset($this->topic_cache[$topic_id])) {
-				$topics_repository = new AIPS_Author_Topics_Repository();
+				$topics_repository = new \AIPS_Author_Topics_Repository();
 				$this->topic_cache[$topic_id] = $topics_repository->get_by_id($topic_id);
 			}
 			

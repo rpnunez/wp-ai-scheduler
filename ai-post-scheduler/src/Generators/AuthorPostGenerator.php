@@ -68,14 +68,14 @@ class AuthorPostGenerator {
 	 * Initialize the generator.
 	 */
 	public function __construct() {
-		$this->authors_repository = new AIPS_Authors_Repository();
-		$this->topics_repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
-		$this->generator = new AIPS_Generator();
-		$this->logger = new AIPS_Logger();
-		$this->interval_calculator = new AIPS_Interval_Calculator();
-		$this->expansion_service = new AIPS_Topic_Expansion_Service();
-		$this->history_service = new AIPS_History_Service();
+		$this->authors_repository = new \AIPS_Authors_Repository();
+		$this->topics_repository = new \AIPS_Author_Topics_Repository();
+		$this->logs_repository = new \AIPS_Author_Topic_Logs_Repository();
+		$this->generator = new \AIPS_Generator();
+		$this->logger = new \AIPS_Logger();
+		$this->interval_calculator = new \AIPS_Interval_Calculator();
+		$this->expansion_service = new \AIPS_Topic_Expansion_Service();
+		$this->history_service = new \AIPS_History_Service();
 		
 		// Hook into WordPress cron
 		add_action('aips_generate_author_posts', array($this, 'process_post_generation'));
@@ -124,7 +124,7 @@ class AuthorPostGenerator {
 			
 			// Still update the schedule to avoid getting stuck
 			$this->update_author_schedule($author);
-			return new WP_Error('no_topics', 'No approved topics available');
+			return new \WP_Error('no_topics', 'No approved topics available');
 		}
 		
 		$topic = $topics[0];
@@ -157,7 +157,7 @@ class AuthorPostGenerator {
 		}
 		
 		// Build a context object for the generator with the creation method
-		$context = new AIPS_Topic_Context($author, $topic, $expanded_context, $creation_method);
+		$context = new \AIPS_Topic_Context($author, $topic, $expanded_context, $creation_method);
 		
 		// Generate the post using the context
 		// Note: The Generator internally creates its own history container
@@ -272,7 +272,7 @@ class AuthorPostGenerator {
 				)
 			);
 			
-			return new WP_Error('generation_failed', $e->getMessage());
+			return new \WP_Error('generation_failed', $e->getMessage());
 		}
 	}
 	
@@ -301,13 +301,13 @@ class AuthorPostGenerator {
 		$topic = $this->topics_repository->get_by_id($topic_id);
 		
 		if (!$topic) {
-			return new WP_Error('invalid_topic', 'Topic not found');
+			return new \WP_Error('invalid_topic', 'Topic not found');
 		}
 		
 		$author = $this->authors_repository->get_by_id($topic->author_id);
 		
 		if (!$author) {
-			return new WP_Error('invalid_author', 'Author not found');
+			return new \WP_Error('invalid_author', 'Author not found');
 		}
 		
 		// Manual generation

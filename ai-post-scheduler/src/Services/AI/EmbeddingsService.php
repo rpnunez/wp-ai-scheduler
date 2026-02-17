@@ -41,8 +41,8 @@ class EmbeddingsService {
 	 * Initialize the embeddings service.
 	 */
 	public function __construct($ai_service = null, $logger = null) {
-		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
-		$this->logger = $logger ?: new AIPS_Logger();
+		$this->ai_service = $ai_service ?: new \AIPS_AI_Service();
+		$this->logger = $logger ?: new \AIPS_Logger();
 		$this->embedding_cache = array();
 	}
 	
@@ -55,7 +55,7 @@ class EmbeddingsService {
 	 */
 	public function generate_embedding($text, $options = array()) {
 		if (empty($text)) {
-			return new WP_Error('empty_text', __('Cannot generate embedding for empty text.', 'ai-post-scheduler'));
+			return new \WP_Error('empty_text', __('Cannot generate embedding for empty text.', 'ai-post-scheduler'));
 		}
 		
 		// Check cache
@@ -65,7 +65,7 @@ class EmbeddingsService {
 		}
 		
 		if (!$this->ai_service->is_available()) {
-			return new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+			return new \WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 		}
 		
 		// Get AI engine through global
@@ -76,7 +76,7 @@ class EmbeddingsService {
 		}
 		
 		if (!$ai) {
-			return new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
+			return new \WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 		}
 		
 		try {
@@ -106,11 +106,11 @@ class EmbeddingsService {
 			}
 			
 			// Fallback: If Meow AI doesn't support embeddings directly, return an error
-			return new WP_Error('embeddings_not_supported', __('Embeddings are not supported by the current AI Engine configuration.', 'ai-post-scheduler'));
+			return new \WP_Error('embeddings_not_supported', __('Embeddings are not supported by the current AI Engine configuration.', 'ai-post-scheduler'));
 			
 		} catch (Exception $e) {
 			$this->logger->log('Embedding generation failed: ' . $e->getMessage(), 'error');
-			return new WP_Error('embedding_failed', $e->getMessage());
+			return new \WP_Error('embedding_failed', $e->getMessage());
 		}
 	}
 	
@@ -123,11 +123,11 @@ class EmbeddingsService {
 	 */
 	public function calculate_similarity($embedding1, $embedding2) {
 		if (!is_array($embedding1) || !is_array($embedding2)) {
-			return new WP_Error('invalid_embeddings', __('Invalid embedding vectors provided.', 'ai-post-scheduler'));
+			return new \WP_Error('invalid_embeddings', __('Invalid embedding vectors provided.', 'ai-post-scheduler'));
 		}
 		
 		if (count($embedding1) !== count($embedding2)) {
-			return new WP_Error('dimension_mismatch', __('Embedding vectors must have the same dimensions.', 'ai-post-scheduler'));
+			return new \WP_Error('dimension_mismatch', __('Embedding vectors must have the same dimensions.', 'ai-post-scheduler'));
 		}
 		
 		// Calculate cosine similarity
@@ -145,7 +145,7 @@ class EmbeddingsService {
 		$magnitude2 = sqrt($magnitude2);
 		
 		if ($magnitude1 == 0 || $magnitude2 == 0) {
-			return new WP_Error('zero_magnitude', __('Cannot calculate similarity with zero magnitude vectors.', 'ai-post-scheduler'));
+			return new \WP_Error('zero_magnitude', __('Cannot calculate similarity with zero magnitude vectors.', 'ai-post-scheduler'));
 		}
 		
 		$similarity = $dot_product / ($magnitude1 * $magnitude2);

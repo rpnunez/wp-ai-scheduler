@@ -47,8 +47,8 @@ class ResilienceService {
      * @param AIPS_Config|null $config Config instance.
      */
     public function __construct($logger = null, $config = null) {
-        $this->logger = $logger ?: new AIPS_Logger();
-        $this->config = $config ?: AIPS_Config::get_instance();
+        $this->logger = $logger ?: new \AIPS_Logger();
+        $this->config = $config ?: \AIPS_Config::get_instance();
         $this->load_circuit_breaker_state();
     }
 

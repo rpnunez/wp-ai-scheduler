@@ -70,13 +70,13 @@ class ScheduleProcessor {
         $template_type_selector = null,
         $logger = null
     ) {
-        $this->repository = $repository ?: new AIPS_Schedule_Repository();
-        $this->template_repository = $template_repository ?: new AIPS_Template_Repository();
-        $this->generator = $generator ?: new AIPS_Generator();
-        $this->history_service = $history_service ?: new AIPS_History_Service();
-        $this->interval_calculator = new AIPS_Interval_Calculator();
-        $this->template_type_selector = $template_type_selector ?: new AIPS_Template_Type_Selector();
-        $this->logger = $logger ?: new AIPS_Logger();
+        $this->repository = $repository ?: new \AIPS_Schedule_Repository();
+        $this->template_repository = $template_repository ?: new \AIPS_Template_Repository();
+        $this->generator = $generator ?: new \AIPS_Generator();
+        $this->history_service = $history_service ?: new \AIPS_History_Service();
+        $this->interval_calculator = new \AIPS_Interval_Calculator();
+        $this->template_type_selector = $template_type_selector ?: new \AIPS_Template_Type_Selector();
+        $this->logger = $logger ?: new \AIPS_Logger();
     }
 
     /**
@@ -125,13 +125,13 @@ class ScheduleProcessor {
         $schedule = $this->repository->get_by_id($schedule_id);
 
         if (!$schedule) {
-            return new WP_Error('schedule_not_found', __('Schedule not found.', 'ai-post-scheduler'));
+            return new \WP_Error('schedule_not_found', __('Schedule not found.', 'ai-post-scheduler'));
         }
 
         $template_data = $this->template_repository->get_by_id($schedule->template_id);
 
         if (!$template_data) {
-            return new WP_Error('template_not_found', __('Template not found.', 'ai-post-scheduler'));
+            return new \WP_Error('template_not_found', __('Template not found.', 'ai-post-scheduler'));
         }
 
         // Merge schedule data with template data to create a unified object
@@ -269,7 +269,7 @@ class ScheduleProcessor {
         $creation_method = $is_manual ? 'manual' : 'scheduled';
         
         // Create context with creation_method
-        $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
+        $context = new \AIPS_Template_Context($template, null, $topic, $creation_method);
         $result = $this->generator->generate_post($context);
 
         // Handle Post-Execution Logic (Cleanup/Updates)

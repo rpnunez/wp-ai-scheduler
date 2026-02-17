@@ -41,9 +41,9 @@ class TopicExpansionService {
 	 * Initialize the topic expansion service.
 	 */
 	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null) {
-		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
-		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->logger = $logger ?: new AIPS_Logger();
+		$this->embeddings_service = $embeddings_service ?: new \AIPS_Embeddings_Service();
+		$this->topics_repository = $topics_repository ?: new \AIPS_Author_Topics_Repository();
+		$this->logger = $logger ?: new \AIPS_Logger();
 	}
 	
 	/**
@@ -56,7 +56,7 @@ class TopicExpansionService {
 		$topic = $this->topics_repository->get_by_id($topic_id);
 		
 		if (!$topic) {
-			return new WP_Error('topic_not_found', __('Topic not found.', 'ai-post-scheduler'));
+			return new \WP_Error('topic_not_found', __('Topic not found.', 'ai-post-scheduler'));
 		}
 		
 		// Generate embedding for topic title (could also include topic_prompt if available)
@@ -89,7 +89,7 @@ class TopicExpansionService {
 			return true;
 		}
 		
-		return new WP_Error('update_failed', __('Failed to store embedding.', 'ai-post-scheduler'));
+		return new \WP_Error('update_failed', __('Failed to store embedding.', 'ai-post-scheduler'));
 	}
 	
 	/**

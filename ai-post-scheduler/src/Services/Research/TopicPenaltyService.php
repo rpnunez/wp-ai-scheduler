@@ -52,9 +52,9 @@ class TopicPenaltyService {
 	 * Initialize the penalty service.
 	 */
 	public function __construct($topics_repository = null, $authors_repository = null, $logger = null) {
-		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
-		$this->logger = $logger ?: new AIPS_Logger();
+		$this->topics_repository = $topics_repository ?: new \AIPS_Author_Topics_Repository();
+		$this->authors_repository = $authors_repository ?: new \AIPS_Authors_Repository();
+		$this->logger = $logger ?: new \AIPS_Logger();
 	}
 	
 	/**
@@ -68,7 +68,7 @@ class TopicPenaltyService {
 		$topic = $this->topics_repository->get_by_id($topic_id);
 		
 		if (!$topic) {
-			return new WP_Error('topic_not_found', __('Topic not found.', 'ai-post-scheduler'));
+			return new \WP_Error('topic_not_found', __('Topic not found.', 'ai-post-scheduler'));
 		}
 		
 		// Get penalty weight
@@ -98,7 +98,7 @@ class TopicPenaltyService {
 			return true;
 		}
 		
-		return new WP_Error('update_failed', __('Failed to apply penalty.', 'ai-post-scheduler'));
+		return new \WP_Error('update_failed', __('Failed to apply penalty.', 'ai-post-scheduler'));
 	}
 	
 	/**
@@ -112,7 +112,7 @@ class TopicPenaltyService {
 		$topic = $this->topics_repository->get_by_id($topic_id);
 		
 		if (!$topic) {
-			return new WP_Error('topic_not_found', __('Topic not found.', 'ai-post-scheduler'));
+			return new \WP_Error('topic_not_found', __('Topic not found.', 'ai-post-scheduler'));
 		}
 		
 		// Apply positive reward (opposite of penalty)
@@ -135,7 +135,7 @@ class TopicPenaltyService {
 			return true;
 		}
 		
-		return new WP_Error('update_failed', __('Failed to apply reward.', 'ai-post-scheduler'));
+		return new \WP_Error('update_failed', __('Failed to apply reward.', 'ai-post-scheduler'));
 	}
 	
 	/**

@@ -469,7 +469,7 @@ class Settings {
         // AIPS_Dev_Tools is instantiated in init if admin, but we need to call render_page on an instance.
         // Since we don't have a global instance registry accessible easily here, we'll instantiate it on demand.
         // It's a lightweight class, mostly for AJAX and rendering.
-        $dev_tools = new AIPS_Dev_Tools();
+        $dev_tools = new \AIPS_Dev_Tools();
         $dev_tools->render_page();
     }
 
@@ -580,7 +580,7 @@ class Settings {
      * @return void
      */
     public function render_dashboard_page() {
-        $controller = new AIPS_Dashboard_Controller();
+        $controller = new \AIPS_Dashboard_Controller();
         $controller->render_page();
     }
     
@@ -592,7 +592,7 @@ class Settings {
      * @return void
      */
     public function render_voices_page() {
-        $voices_handler = new AIPS_Voices();
+        $voices_handler = new \AIPS_Voices();
         $voices_handler->render_page();
     }
     
@@ -604,7 +604,7 @@ class Settings {
      * @return void
      */
     public function render_templates_page() {
-        $templates_handler = new AIPS_Templates();
+        $templates_handler = new \AIPS_Templates();
         $templates_handler->render_page();
     }
     
@@ -661,7 +661,7 @@ class Settings {
      */
     public function render_activity_page() {
         // Use History Service to get activity feed
-        $history_service = new AIPS_History_Service();
+        $history_service = new \AIPS_History_Service();
         
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $per_page = 50;
@@ -693,7 +693,7 @@ class Settings {
      * @return void
      */
     public function render_generated_posts_page() {
-        $controller = new AIPS_Generated_Posts_Controller();
+        $controller = new \AIPS_Generated_Posts_Controller();
         $controller->render_page();
     }
 
@@ -724,8 +724,8 @@ class Settings {
      * @return void
      */
     public function render_structures_page() {
-        $structure_repo = new AIPS_Article_Structure_Repository();
-        $section_repo = new AIPS_Prompt_Section_Repository();
+        $structure_repo = new \AIPS_Article_Structure_Repository();
+        $section_repo = new \AIPS_Prompt_Section_Repository();
         
         $structures = $structure_repo->get_all(false);
         $sections = $section_repo->get_all(false);
@@ -741,7 +741,7 @@ class Settings {
      * @return void
      */
     public function render_prompt_sections_page() {
-        $section_repo = new AIPS_Prompt_Section_Repository();
+        $section_repo = new \AIPS_Prompt_Section_Repository();
         $sections = $section_repo->get_all(false);
         
         include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
@@ -755,7 +755,7 @@ class Settings {
      * @return void
      */
     public function render_history_page() {
-        $history_handler = new AIPS_History();
+        $history_handler = new \AIPS_History();
         $history_handler->render_page();
     }
     
@@ -789,7 +789,7 @@ class Settings {
      * @return void
      */
     public function render_status_page() {
-        $status_handler = new AIPS_System_Status();
+        $status_handler = new \AIPS_System_Status();
         $status_handler->render_page();
     }
 
@@ -805,7 +805,7 @@ class Settings {
             wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
         }
 
-        $ai_service = new AIPS_AI_Service();
+        $ai_service = new \AIPS_AI_Service();
         $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('max_tokens' => 10));
 
         if (is_wp_error($result)) {
@@ -831,7 +831,7 @@ class Settings {
         $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
         $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 50;
 
-        $history_service = new AIPS_History_Service();
+        $history_service = new \AIPS_History_Service();
         
         // Build filters
         $filters = array();

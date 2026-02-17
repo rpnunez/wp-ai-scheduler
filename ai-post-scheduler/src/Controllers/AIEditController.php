@@ -32,7 +32,7 @@ class AIEditController {
 	 * Constructor
 	 */
 	public function __construct() {
-		$this->service = new AIPS_Component_Regeneration_Service();
+		$this->service = new \AIPS_Component_Regeneration_Service();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));
