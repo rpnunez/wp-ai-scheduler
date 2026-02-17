@@ -57,6 +57,7 @@
 
             $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
             $(document).on('click', '.aips-edit-voice', this.editVoice);
+            $(document).on('click', '.aips-clone-voice', this.cloneVoice);
             $(document).on('click', '.aips-delete-voice', this.deleteVoice);
             $(document).on('click', '.aips-save-voice', this.saveVoice);
 
@@ -843,6 +844,40 @@
                         $('#aips-voice-modal-title').text('Edit Voice');
                         $('#aips-voice-modal').show();
                     }
+                }
+            });
+        },
+
+        cloneVoice: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var id = $btn.data('id');
+
+            if (!confirm('Are you sure you want to clone this voice?')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update"></span>');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_clone_voice',
+                    nonce: aipsAjax.nonce,
+                    voice_id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert(response.data.message);
+                        $btn.prop('disabled', false).html('<span class="dashicons dashicons-admin-page"></span>');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-admin-page"></span>');
                 }
             });
         },

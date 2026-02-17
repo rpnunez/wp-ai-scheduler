@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- [2026-06-01] **Clone Voice Feature**: Added "Clone Voice" functionality to the admin interface allowing users to duplicate voice configurations.
+  - Backend: New `ajax_clone_voice` endpoint in `AIPS_Voices` with security checks.
+  - Frontend: "Clone" button in Voices table with confirmation dialog and automatic reload.
+  - Tests: New unit test `Test_Voices_Clone.php` covering the cloning logic.
+
 - [2026-02-11] **MCP Bridge - Phase 3 Tools (v1.3.0)**: Extended MCP Bridge with 5 analytics and testing tools for performance monitoring, metadata access, and configuration management.
   - New Tools: `get_generation_stats` (success rates, performance metrics with period/template filtering), `get_post_metadata` (AI metadata for posts including tokens, model, timing), `get_ai_models` (list available AI models), `test_ai_connection` (verify AI Engine with response time), `get_plugin_settings` (categorized configuration access)
   - Features: Period-based analytics (today/week/month); Template breakdown statistics; Post metadata with token usage and generation time; AI connection testing with custom prompts; Categorized settings (ai/resilience/logging)
