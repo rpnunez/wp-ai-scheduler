@@ -301,58 +301,6 @@ class AIPS_History_Repository {
     }
     
     /**
-     * Get activity feed (high-level events)
-     *
-     * Returns only ACTIVITY type entries for display in activity feed.
-     *
-     * @param int $limit Number of items to return
-     * @param int $offset Offset for pagination
-     * @param array $filters Optional filters (event_type, event_status, search)
-     * @return array Activity entries
-     */
-    public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) {
-        $where_clauses = array("history_type_id = %d");
-        $where_args = array(AIPS_History_Type::ACTIVITY);
-
-        // Event type filter
-        if (!empty($filters['event_type'])) {
-            $where_clauses[] = "details LIKE %s";
-            $where_args[] = '%"event_type":"' . $this->wpdb->esc_like($filters['event_type']) . '"%';
-        }
-
-        // Event status filter
-        if (!empty($filters['event_status'])) {
-            $where_clauses[] = "details LIKE %s";
-            $where_args[] = '%"event_status":"' . $this->wpdb->esc_like($filters['event_status']) . '"%';
-        }
-
-        // Search filter
-        if (!empty($filters['search'])) {
-            $search_term = '%' . $this->wpdb->esc_like($filters['search']) . '%';
-            $where_clauses[] = "(log_type LIKE %s OR details LIKE %s)";
-            $where_args[] = $search_term;
-            $where_args[] = $search_term;
-        }
-
-        $where_sql = implode(' AND ', $where_clauses);
-        $where_args[] = $limit;
-        $where_args[] = $offset;
-
-        $sql = "SELECT hl.*, h.post_id, h.template_id
-                FROM {$this->table_name_log} hl
-                LEFT JOIN {$this->table_name} h ON hl.history_id = h.id
-                WHERE $where_sql
-                ORDER BY hl.timestamp DESC
-                LIMIT %d OFFSET %d";
-
-        if (empty($where_args)) {
-            return $this->wpdb->get_results($sql);
-        }
-
-        return $this->wpdb->get_results($this->wpdb->prepare($sql, $where_args));
-    }
-
-    /**
      * Create a new history entry.
      *
      * @param array $data {
