@@ -1142,11 +1142,11 @@
                     if (isActive) {
                         $badge.addClass('aips-badge-success');
                         $icon.addClass('dashicons-yes-alt');
-                        $badge.contents().filter(function() { return this.nodeType === 3; }).first().replaceWith(' Active');
+                        $badge.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' Active');
                     } else {
                         $badge.addClass('aips-badge-neutral');
                         $icon.addClass('dashicons-minus');
-                        $badge.contents().filter(function() { return this.nodeType === 3; }).first().replaceWith(' Inactive');
+                        $badge.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' Inactive');
                     }
 
                     $toggle.closest('tr').data('is-active', isActive);
