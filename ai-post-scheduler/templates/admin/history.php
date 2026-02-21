@@ -140,6 +140,9 @@ $is_history_tab = isset($is_history_tab) ? $is_history_tab : false;
                         <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
                     </select>
                     <button class="aips-btn aips-btn-sm" id="aips-filter-btn"><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
+                    <?php if (!empty($status_filter)): ?>
+                        <a href="<?php echo esc_url(remove_query_arg('status')); ?>" class="aips-btn aips-btn-sm"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+                    <?php endif; ?>
                 </div>
                 <div class="aips-filter-right">
                     <input type="search" id="aips-history-search-input" name="s" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
@@ -195,6 +198,9 @@ $is_history_tab = isset($is_history_tab) ? $is_history_tab : false;
                 <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
             </select>
             <button class="button" id="aips-filter-btn"><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
+            <?php if (!empty($status_filter)): ?>
+                <a href="<?php echo esc_url(remove_query_arg('status')); ?>" class="button"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+            <?php endif; ?>
             <button class="button" id="aips-delete-selected-btn" disabled><?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?></button>
         </div>
         <div class="alignright">
