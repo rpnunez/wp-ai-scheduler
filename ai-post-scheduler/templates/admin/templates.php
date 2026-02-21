@@ -507,6 +507,10 @@ if (!defined('ABSPATH')) {
                         <span class="dashicons dashicons-cloud-saved"></span>
                         <?php esc_html_e('Save Draft', 'ai-post-scheduler'); ?>
                     </button>
+                    <button type="button" class="button aips-test-template" title="<?php esc_attr_e('Generate a sample post using current settings', 'ai-post-scheduler'); ?>">
+                        <span class="dashicons dashicons-controls-play"></span>
+                        <?php esc_html_e('Test Generation', 'ai-post-scheduler'); ?>
+                    </button>
                     <button type="button" class="button aips-preview-prompts" title="<?php esc_attr_e('Preview the prompts that will be sent to AI', 'ai-post-scheduler'); ?>">
                         <span class="dashicons dashicons-visibility"></span>
                         <?php esc_html_e('Preview Prompts', 'ai-post-scheduler'); ?>
@@ -588,7 +592,27 @@ if (!defined('ABSPATH')) {
                 <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
-                <div id="aips-test-content"></div>
+                <div id="aips-test-result-container">
+                    <div class="aips-form-row">
+                        <label><strong><?php esc_html_e('Generated Title:', 'ai-post-scheduler'); ?></strong></label>
+                        <div id="aips-test-title" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                    </div>
+
+                    <div class="aips-form-row">
+                        <label><strong><?php esc_html_e('Generated Excerpt:', 'ai-post-scheduler'); ?></strong></label>
+                        <div id="aips-test-excerpt" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                    </div>
+
+                    <div class="aips-form-row" id="aips-test-image-row" style="display: none;">
+                        <label><strong><?php esc_html_e('Image Preview (Prompt/Keywords):', 'ai-post-scheduler'); ?></strong></label>
+                        <div id="aips-test-image" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                    </div>
+
+                    <div class="aips-form-row">
+                        <label><strong><?php esc_html_e('Generated Content:', 'ai-post-scheduler'); ?></strong></label>
+                        <div id="aips-test-content" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7; max-height: 400px; overflow-y: auto; white-space: pre-wrap;"></div>
+                    </div>
+                </div>
             </div>
             <div class="aips-modal-footer">
                 <button type="button" class="button aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
