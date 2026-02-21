@@ -116,6 +116,10 @@ if (!defined('ABSPATH')) {
                                         <span class="dashicons dashicons-controls-play"></span>
                                         <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                     </button>
+                                    <a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule&schedule_template=' . $template->id)); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
+                                        <span class="dashicons dashicons-calendar-alt"></span>
+                                        <span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
+                                    </a>
                                     <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-admin-page"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Clone', 'ai-post-scheduler'); ?></span>
@@ -463,6 +467,30 @@ if (!defined('ABSPATH')) {
                                 <input type="checkbox" id="is_active" name="is_active" value="1" checked>
                                 <?php esc_html_e('Template is active', 'ai-post-scheduler'); ?>
                             </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 6: Post-Save Next Steps (shown after successful save) -->
+                    <div class="aips-wizard-step-content aips-post-save-step" data-step="6" style="display: none;">
+                        <div style="text-align: center; padding: 30px 20px;">
+                            <span class="dashicons dashicons-yes-alt" style="font-size: 64px; color: #46b450; width: 64px; height: 64px;"></span>
+                            <h3 style="margin-top: 16px; font-size: 20px;" id="aips-save-success-title"><?php esc_html_e('Template Saved Successfully!', 'ai-post-scheduler'); ?></h3>
+                            <p class="description" style="font-size: 14px; margin-bottom: 24px;"><?php esc_html_e('Your template is ready. What would you like to do next?', 'ai-post-scheduler'); ?></p>
+                            
+                            <div class="aips-next-steps-grid" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; max-width: 600px; margin: 0 auto;">
+                                <a href="#" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px; text-decoration: none;">
+                                    <span class="dashicons dashicons-calendar-alt"></span>
+                                    <?php esc_html_e('Schedule This Template', 'ai-post-scheduler'); ?>
+                                </a>
+                                <button type="button" id="aips-quick-run-now-btn" class="aips-btn aips-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
+                                    <span class="dashicons dashicons-controls-play"></span>
+                                    <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
+                                </button>
+                                <button type="button" id="aips-post-save-done-btn" class="aips-btn aips-btn-ghost" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
+                                    <span class="dashicons dashicons-dismiss"></span>
+                                    <?php esc_html_e('Done', 'ai-post-scheduler'); ?>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </form>
