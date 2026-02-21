@@ -64,3 +64,20 @@
 - `ai-post-scheduler/assets/js/admin.js` — Added `showToast` method to AIPS object; updated `runNowSchedule` success/error handlers to use toast instead of non-existent modal
 - `ai-post-scheduler/assets/css/admin.css` — Added global toast notification styles (`#aips-toast-container`, `.aips-toast`, slide-in/out animations)
 **Outcome:** Users now get immediate, non-blocking visual confirmation when a schedule executes — including a direct link to edit the generated post — without leaving the schedule page.
+
+## 2026-02-21 - Component Regeneration Service Optimization
+**Target Feature:** Component Regeneration
+**Improvement:** Refactored the `AIPS_Component_Regeneration_Service` to significantly reduce its high coupling and improve its adherence to the Single Responsibility Principle. The original class had 16 dependencies, making it difficult to maintain and test.
+**Changes:**
+1.  **Created `AIPS_Generation_Context_Factory`**: Extracted the complex logic for building generation context objects from a history ID into a new factory class. This removed 4 repository dependencies from the service.
+2.  **Moved `get_component_revisions`**: Relocated the database query for component revisions from the service to `AIPS_History_Repository`, centralizing data access logic.
+3.  **Removed Unused Dependency**: Eliminated the unused `AIPS_History_Service` from the constructor.
+**Files Modified:**
+- `wp-ai-scheduler/ai-post-scheduler/includes/class-aips-component-regeneration-service.php`
+- `wp-ai-scheduler/ai-post-scheduler/includes/class-aips-history-repository.php`
+- `wp-ai-scheduler/ai-post-scheduler/includes/class-aips-ai-edit-controller.php`
+- `wp-ai-scheduler/ai-post-scheduler/includes/class-aips-generated-posts-controller.php`
+**Files Added:**
+- `wp-ai-scheduler/ai-post-scheduler/includes/class-aips-generation-context-factory.php`
+**Outcome:** The `AIPS_Component_Regeneration_Service` is now a much leaner orchestrator, delegating data fetching and object creation to specialized classes. This improves code clarity, testability, and maintainability, aligning with the "Flow is Function" philosophy by ensuring the underlying code structure is logical and efficient.
+**Verification Status:** Blocked. The project's test suite requires a Docker environment, which was not running or accessible. Multiple attempts to run the tests via `make test` and `docker-compose exec` failed. A final attempt to run `phpunit` directly on the host failed due to missing WordPress and database dependencies. The refactoring is complete, but could not be verified.

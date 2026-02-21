@@ -593,4 +593,91 @@ class AIPS_History_Repository {
             'message' => $deleted !== false ? "Deleted {$deleted} history records" : "Failed to delete history records"
         );
     }
+
+    /**
+     * Get all revisions for a specific post component
+     *
+     * Retrieves all AI_RESPONSE logs for a given post and component type,
+     * ordered by timestamp (newest first). Queries based on component in context.
+     *
+     * @param int $post_id Post ID
+     * @param string $component_type Component type (title, excerpt, content, featured_image)
+     * @param int $limit Maximum number of revisions to retrieve (default: 20)
+     * @return array Array of revision objects with id, timestamp, value, history_id
+     */
+    public function get_component_revisions($post_id, $component_type, $limit = 20) {
+        $history_log_table = $this->wpdb->prefix . 'aips_history_log';
+        $history_table = $this->wpdb->prefix . 'aips_history';
+
+        // Query for AI_RESPONSE logs with matching component in context
+        // The context field contains JSON like {"component":"title","post_id":123}
+        $sql = $this->wpdb->prepare("
+			SELECT
+				hl.id,
+				hl.timestamp,
+				hl.details,
+				h.id as history_id,
+				h.uuid,
+				h.post_id
+			FROM {$history_log_table} hl
+			INNER JOIN {$history_table} h ON hl.history_id = h.id
+			WHERE hl.history_type_id = %d
+			AND hl.log_type = 'ai_response'
+			AND hl.details LIKE %s
+			AND (
+				h.post_id = %d
+				OR hl.details LIKE %s
+			)
+			ORDER BY hl.timestamp DESC
+			LIMIT %d
+		",
+            AIPS_History_Type::AI_RESPONSE,
+            '%"component":"' . $this->wpdb->esc_like($component_type) . '"%',
+            $post_id,
+            '%"post_id":' . absint($post_id) . '%',
+            $limit
+        );
+
+        $results = $this->wpdb->get_results($sql);
+
+        if (empty($results)) {
+            return array();
+        }
+
+        // Parse and format the results
+        $revisions = array();
+        foreach ($results as $row) {
+            $details = json_decode($row->details, true);
+            if (!$details) {
+                continue;
+            }
+
+            // Extract the output value (the regenerated content)
+            $value = '';
+            if (isset($details['output'])) {
+                if (isset($details['output_encoded']) && $details['output_encoded']) {
+                    $value = base64_decode($details['output']);
+                } else if (is_array($details['output']) && isset($details['output']['value'])) {
+                    $value = $details['output']['value'];
+                } else if (is_string($details['output'])) {
+                    $value = $details['output'];
+                } else {
+                    // For complex outputs like featured_image with attachment_id and url
+                    $value = $details['output'];
+                }
+            }
+
+            $revisions[] = array(
+                'id' => $row->id,
+                'history_id' => $row->history_id,
+                'uuid' => $row->uuid,
+                'timestamp' => $row->timestamp,
+                'component_type' => $component_type,
+                'value' => $value,
+                'context' => isset($details['context']) ? $details['context'] : array(),
+            );
+        }
+
+        return $revisions;
+    }
 }
