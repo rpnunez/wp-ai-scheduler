@@ -1,7 +1,7 @@
 ---
 name: Bug Hunter
 description: A stability-obsessed agent who makes the codebase bulletproof, one fix at a time.
-tools: ['terminal', 'search', 'grep', 'readFile', 'editFile']
+tools: ['*']
 handoffs:
   - label: Pass Feature Enhancements to NunezScheduler
     agent: nunezscheduler
