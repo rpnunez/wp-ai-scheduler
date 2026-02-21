@@ -43,6 +43,9 @@ if (!defined('ABSPATH')) {
 						<label class="screen-reader-text" for="post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 						<input type="search" id="post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
 						<input type="submit" id="search-submit" class="aips-btn aips-btn-secondary" value="<?php esc_attr_e('Search Posts', 'ai-post-scheduler'); ?>">
+						<?php if (!empty($search_query)): ?>
+							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-secondary"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+						<?php endif; ?>
 					</form>
 				</div>
 
@@ -178,6 +181,9 @@ if (!defined('ABSPATH')) {
 							<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 							<input type="search" id="aips-post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
 							<input type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-secondary" value="<?php esc_attr_e('Search', 'ai-post-scheduler'); ?>">
+							<?php if (!empty($search_query)): ?>
+								<a href="<?php echo esc_url(remove_query_arg('s')) . '#aips-pending-review'; ?>" class="aips-btn aips-btn-secondary"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+							<?php endif; ?>
 						</p>
 						
 						<?php if (!empty($templates)): ?>
