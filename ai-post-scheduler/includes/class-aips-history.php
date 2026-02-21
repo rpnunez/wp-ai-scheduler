@@ -28,6 +28,30 @@ class AIPS_History {
     public function get_history($args = array()) {
         return $this->repository->get_history($args);
     }
+
+    /**
+     * Generate pagination HTML for history table.
+     *
+     * @param array  $history        History data array.
+     * @param string $base_url       Base URL for pagination links.
+     * @param bool   $is_history_tab Whether this is displayed in a tab.
+     * @param string $status_filter  Current status filter.
+     * @return string HTML for pagination.
+     */
+    public function generate_pagination_html($history, $base_url, $is_history_tab = false, $status_filter = '') {
+        if ($history['pages'] <= 1) {
+            return '';
+        }
+
+        $url = $base_url;
+        if ($status_filter) {
+            $url = add_query_arg('status', $status_filter, $url);
+        }
+
+        ob_start();
+        include AIPS_PLUGIN_DIR . 'templates/partials/history-pagination.php';
+        return ob_get_clean();
+    }
     
     public function get_stats() {
         return $this->repository->get_stats();
@@ -175,9 +199,11 @@ class AIPS_History {
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
         $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $paged = isset($_POST['paged']) ? absint($_POST['paged']) : 1;
+        if ($paged < 1) $paged = 1;
 
         $history = $this->get_history(array(
-            'page' => 1,
+            'page' => $paged,
             'status' => $status_filter,
             'search' => $search_query,
             'fields' => 'list',
@@ -185,56 +211,30 @@ class AIPS_History {
 
         $stats = $this->get_stats();
 
+        // Check if we are in history tab context (passed from JS)
+        // Currently admin.js doesn't pass is_history_tab explicitly but we can infer or pass it if needed.
+        // For now assume false or handle generic base url.
+        // The base URL should be the admin page URL.
+        $base_url = admin_url('admin.php?page=aips-history');
+        if (!empty($search_query)) {
+            $base_url = add_query_arg('s', $search_query, $base_url);
+        }
+
+        $pagination_html = $this->generate_pagination_html($history, $base_url, false, $status_filter);
+
         ob_start();
+
+        // Determine if we are in a tab context based on the passed value or request
+        // In AJAX context, we might not have is_history_tab explicitly passed other than what we inferred for pagination
+        // But for the row partial, $is_history_tab is needed.
+        // We defined $is_history_tab = false in the lines above for pagination. Let's use that.
+        // If we want to support tabs in AJAX reload, we should pass it in POST data.
+        // For now, consistent with pagination.
+        $is_history_tab = false;
 
         if (!empty($history['items'])) {
             foreach ($history['items'] as $item) {
-                ?>
-                <tr>
-                    <th scope="row" class="check-column">
-                        <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>"><?php esc_html_e('Select Item', 'ai-post-scheduler'); ?></label>
-                        <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" name="history[]" value="<?php echo esc_attr($item->id); ?>">
-                    </th>
-                    <td class="column-title">
-                        <?php if ($item->post_id): ?>
-                        <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
-                            <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
-                        </a>
-                        <?php else: ?>
-                        <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
-                        <?php endif; ?>
-                        <?php if ($item->status === 'failed' && $item->error_message): ?>
-                        <div class="aips-error-message"><?php echo esc_html($item->error_message); ?></div>
-                        <?php endif; ?>
-                    </td>
-                    <td class="column-template">
-                        <?php echo esc_html($item->template_name ?: '-'); ?>
-                    </td>
-                    <td class="column-status">
-                        <span class="aips-status aips-status-<?php echo esc_attr($item->status); ?>">
-                            <?php echo esc_html(ucfirst($item->status)); ?>
-                        </span>
-                    </td>
-                    <td class="column-date">
-                        <?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->created_at))); ?>
-                    </td>
-                    <td class="column-actions">
-                        <?php if ($item->post_id): ?>
-                        <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="button button-small" target="_blank">
-                            <?php esc_html_e('View', 'ai-post-scheduler'); ?>
-                        </a>
-                        <?php endif; ?>
-                        <button class="button button-small aips-view-details" data-id="<?php echo esc_attr($item->id); ?>">
-                            <?php esc_html_e('Details', 'ai-post-scheduler'); ?>
-                        </button>
-                        <?php if ($item->status === 'failed' && $item->template_id): ?>
-                        <button class="button button-small aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>">
-                            <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
-                        </button>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <?php
+                include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php';
             }
         }
 
@@ -242,6 +242,7 @@ class AIPS_History {
 
         wp_send_json_success(array(
             'items_html' => $items_html,
+            'pagination_html' => $pagination_html,
             'stats' => array(
                 'total' => (int) $stats['total'],
                 'completed' => (int) $stats['completed'],
@@ -356,6 +357,9 @@ class AIPS_History {
         
         $stats = $this->get_stats();
         
+        // Pass handler to template for helper methods
+        $history_handler = $this;
+
         include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
     }
 }

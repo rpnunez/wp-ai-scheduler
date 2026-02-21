@@ -78,13 +78,24 @@
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
             $(document).on('click', '#aips-export-history-btn', this.exportHistory);
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
-            $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
+            $(document).on('click', '#aips-reload-history-btn', function(e) {
+                AIPS.reloadHistory(e, 1);
+            });
             $(document).on('keypress', '#aips-history-search-input', function(e) {
                 if(e.which == 13) {
                     AIPS.filterHistory(e);
                 }
             });
             $(document).on('click', '.aips-view-details', this.viewDetails);
+
+            // History Pagination
+            $(document).on('click', '#aips-history-pagination a', function(e) {
+                e.preventDefault();
+                var href = $(this).attr('href');
+                var match = href.match(/paged=(\d+)/);
+                var page = match ? parseInt(match[1]) : 1;
+                AIPS.reloadHistory(e, page);
+            });
 
             // History Bulk Actions
             $(document).on('change', '#cb-select-all-1', this.toggleAllHistory);
@@ -1224,6 +1235,8 @@
             e.preventDefault();
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
+
+            // Update URL without reloading
             var url = new URL(window.location.href);
             
             if (status) {
@@ -1239,9 +1252,14 @@
             }
 
             url.searchParams.delete('paged');
-            url.searchParams.set('tab', 'history');
+            // If we are in the main history page, don't set tab param unless needed.
+            // But if we are in a tab, we might need it.
+            // The existing logic enforced tab=history.
+            // However, simply reloading via AJAX is better.
             
-            window.location.href = url.toString();
+            window.history.pushState({path: url.toString()}, '', url.toString());
+
+            AIPS.reloadHistory(e, 1);
         },
 
         exportHistory: function(e) {
@@ -1288,14 +1306,24 @@
             form.appendTo('body').submit().remove();
         },
 
-        reloadHistory: function(e) {
-            e.preventDefault();
+        reloadHistory: function(e, page) {
+            if (e) e.preventDefault();
+
+            page = page || 1;
 
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
 
-            var $btn = $(this);
-            $btn.prop('disabled', true).text('Reloading...');
+            // Only show 'Reloading...' text if triggered by the button
+            var $btn = $('#aips-reload-history-btn');
+            var originalHtml = $btn.html();
+
+            if (e && e.currentTarget && $(e.currentTarget).is('#aips-reload-history-btn')) {
+                $btn.prop('disabled', true).text('Reloading...');
+            } else {
+                 // For pagination/filter, maybe show a spinner or opacity on table?
+                 $('.aips-history-table').css('opacity', '0.5');
+            }
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1305,7 +1333,8 @@
                     action: 'aips_reload_history',
                     nonce: aipsAjax.nonce,
                     status: status,
-                    search: search
+                    search: search,
+                    paged: page
                 },
                 success: function(response) {
                     if (!response.success) {
@@ -1317,6 +1346,25 @@
                     var $tbody = $('.aips-history-table tbody');
                     if ($tbody.length) {
                         $tbody.html(response.data.items_html || '');
+                    } else if ($('.aips-empty-state').length && response.data.items_html) {
+                        // If we were in empty state but now have items (e.g. after clear filter), we might need to reconstruct the table structure
+                        // But simplification: reload page if structure missing is easier.
+                        // For now assume table exists or items_html is empty.
+                        // Ideally we should replace the whole content panel body if switching between empty and list.
+                         location.reload();
+                         return;
+                    }
+
+                    // Update pagination
+                    if (response.data.pagination_html !== undefined) {
+                         var $pagination = $('#aips-history-pagination');
+                         if ($pagination.length) {
+                             $pagination.replaceWith(response.data.pagination_html);
+                         } else {
+                             // If pagination didn't exist (single page) but now does (e.g. limit changed or more items?)
+                             // Append after table
+                             $('.aips-history-table').after(response.data.pagination_html);
+                         }
                     }
 
                     // Update stats
@@ -1330,12 +1378,23 @@
                     // Reset bulk selection state
                     $('#cb-select-all-1').prop('checked', false);
                     AIPS.updateDeleteButton();
+
+                    // Update URL paged parameter if not 1
+                    var url = new URL(window.location.href);
+                    if (page > 1) {
+                        url.searchParams.set('paged', page);
+                    } else {
+                        url.searchParams.delete('paged');
+                    }
+                    window.history.replaceState({path: url.toString()}, '', url.toString());
+
                 },
                 error: function() {
                     alert('An error occurred while reloading history.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Reload');
+                    $btn.prop('disabled', false).html(originalHtml);
+                    $('.aips-history-table').css('opacity', '1');
                 }
             });
         },
