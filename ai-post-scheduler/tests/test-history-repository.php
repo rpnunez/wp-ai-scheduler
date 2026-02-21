@@ -21,11 +21,11 @@ class AIPS_History_Repository_Test extends WP_UnitTestCase {
 		$template_data = array(
 			'name' => 'Test Template',
 			'prompt_template' => 'Test prompt',
-			'post_type' => 'post',
 			'post_status' => 'draft',
+			'post_category' => 1,
 			'is_active' => 1,
 		);
-		$this->test_template_id = $this->template_repository->save($template_data);
+		$this->test_template_id = $this->template_repository->create($template_data);
 		
 		// Create test history entries
 		$this->create_test_history_entries();
