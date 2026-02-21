@@ -165,21 +165,53 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $prompt = isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '';
+        // Collect template data from POST
+        $data = array(
+            'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
+            'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : 'Test Template',
+            'description' => isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '',
+            'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
+            'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field($_POST['title_prompt']) : '',
+            'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
+            'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
+            'post_quantity' => 1,
+            'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
+            'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
+            'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
+            'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field($_POST['featured_image_unsplash_keywords']) : '',
+            'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field($_POST['featured_image_media_ids']) : '',
+            'post_status' => isset($_POST['post_status']) ? sanitize_text_field($_POST['post_status']) : 'draft',
+            'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
+            'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
+            'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
+        );
 
-        if (empty($prompt)) {
+        if (empty($data['prompt_template'])) {
             wp_send_json_error(array('message' => __('Prompt template is required.', 'ai-post-scheduler')));
         }
 
+        // Convert to object for context
+        $template = (object) $data;
+
+        // Get voice if selected
+        $voice = null;
+        if ($template->voice_id) {
+            $prompt_builder = new AIPS_Prompt_Builder();
+            $voice = $prompt_builder->get_voice($template->voice_id);
+        }
+
+        // Create context
+        $context = new AIPS_Template_Context($template, $voice, null, 'preview');
+
         $generator = new AIPS_Generator();
-        $result = $generator->generate_content($prompt);
+        $result = $generator->generate_preview($context);
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));
         }
 
         wp_send_json_success(array(
-            'content' => $result,
+            'result' => $result,
             'message' => __('Test generation successful.', 'ai-post-scheduler')
         ));
     }
