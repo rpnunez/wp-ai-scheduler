@@ -294,47 +294,16 @@ $is_history_tab = isset($is_history_tab) ? $is_history_tab : false;
         </tbody>
     </table>
     
-    <?php if ($history['pages'] > 1): ?>
-    <div class="<?php echo !$is_history_tab ? 'aips-panel-footer' : 'tablenav bottom'; ?>">
-        <div class="tablenav-pages">
-            <span class="displaying-num">
-                 <?php printf(
-                     esc_html__('%d items', 'ai-post-scheduler'),
-                     $history['total']
-                 ); ?>
-             </span>
-             <span class="pagination-links">
-                 <?php
-                $base_url = $history_base_url;
-                if ($status_filter) {
-                    $base_url .= '&status=' . urlencode($status_filter);
-                }
-                
-                if ($history['current_page'] > 1): ?>
-                <a class="prev-page button" href="<?php echo esc_url($base_url . '&paged=' . ($history['current_page'] - 1)); ?>">
-                    <span class="screen-reader-text"><?php esc_html_e('Previous page', 'ai-post-scheduler'); ?></span>
-                    <span aria-hidden="true">&lsaquo;</span>
-                </a>
-                <?php endif; ?>
-                
-                <span class="paging-input">
-                    <span class="tablenav-paging-text">
-                        <?php echo esc_html($history['current_page']); ?>
-                        <?php esc_html_e('of', 'ai-post-scheduler'); ?>
-                        <span class="total-pages"><?php echo esc_html($history['pages']); ?></span>
-                    </span>
-                </span>
-                
-                <?php if ($history['current_page'] < $history['pages']): ?>
-                <a class="next-page button" href="<?php echo esc_url($base_url . '&paged=' . ($history['current_page'] + 1)); ?>">
-                    <span class="screen-reader-text"><?php esc_html_e('Next page', 'ai-post-scheduler'); ?></span>
-                    <span aria-hidden="true">&rsaquo;</span>
-                </a>
-                <?php endif; ?>
-            </span>
-        </div>
-    </div>
-    <?php endif; ?>
+    <?php
+    if (isset($history_handler) && method_exists($history_handler, 'generate_pagination_html')) {
+        echo $history_handler->generate_pagination_html(
+            $history,
+            $history_base_url,
+            $is_history_tab,
+            $status_filter
+        );
+    }
+    ?>
     
     <?php else: ?>
     <div class="aips-empty-state">

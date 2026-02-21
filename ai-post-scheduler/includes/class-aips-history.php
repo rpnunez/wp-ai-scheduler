@@ -28,6 +28,65 @@ class AIPS_History {
     public function get_history($args = array()) {
         return $this->repository->get_history($args);
     }
+
+    /**
+     * Generate pagination HTML for history table.
+     *
+     * @param array  $history        History data array.
+     * @param string $base_url       Base URL for pagination links.
+     * @param bool   $is_history_tab Whether this is displayed in a tab.
+     * @param string $status_filter  Current status filter.
+     * @return string HTML for pagination.
+     */
+    public function generate_pagination_html($history, $base_url, $is_history_tab = false, $status_filter = '') {
+        if ($history['pages'] <= 1) {
+            return '';
+        }
+
+        $url = $base_url;
+        if ($status_filter) {
+            $url = add_query_arg('status', $status_filter, $url);
+        }
+
+        ob_start();
+        ?>
+        <div class="<?php echo !$is_history_tab ? 'aips-panel-footer' : 'tablenav bottom'; ?>" id="aips-history-pagination">
+            <div class="tablenav-pages">
+                <span class="displaying-num">
+                     <?php printf(
+                         esc_html__('%d items', 'ai-post-scheduler'),
+                         $history['total']
+                     ); ?>
+                 </span>
+                 <span class="pagination-links">
+                     <?php
+                    if ($history['current_page'] > 1): ?>
+                    <a class="prev-page button" href="<?php echo esc_url(add_query_arg('paged', $history['current_page'] - 1, $url)); ?>">
+                        <span class="screen-reader-text"><?php esc_html_e('Previous page', 'ai-post-scheduler'); ?></span>
+                        <span aria-hidden="true">&lsaquo;</span>
+                    </a>
+                    <?php endif; ?>
+
+                    <span class="paging-input">
+                        <span class="tablenav-paging-text">
+                            <?php echo esc_html($history['current_page']); ?>
+                            <?php esc_html_e('of', 'ai-post-scheduler'); ?>
+                            <span class="total-pages"><?php echo esc_html($history['pages']); ?></span>
+                        </span>
+                    </span>
+
+                    <?php if ($history['current_page'] < $history['pages']): ?>
+                    <a class="next-page button" href="<?php echo esc_url(add_query_arg('paged', $history['current_page'] + 1, $url)); ?>">
+                        <span class="screen-reader-text"><?php esc_html_e('Next page', 'ai-post-scheduler'); ?></span>
+                        <span aria-hidden="true">&rsaquo;</span>
+                    </a>
+                    <?php endif; ?>
+                </span>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
     
     public function get_stats() {
         return $this->repository->get_stats();
@@ -175,15 +234,28 @@ class AIPS_History {
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
         $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $paged = isset($_POST['paged']) ? absint($_POST['paged']) : 1;
+        if ($paged < 1) $paged = 1;
 
         $history = $this->get_history(array(
-            'page' => 1,
+            'page' => $paged,
             'status' => $status_filter,
             'search' => $search_query,
             'fields' => 'list',
         ));
 
         $stats = $this->get_stats();
+
+        // Check if we are in history tab context (passed from JS)
+        // Currently admin.js doesn't pass is_history_tab explicitly but we can infer or pass it if needed.
+        // For now assume false or handle generic base url.
+        // The base URL should be the admin page URL.
+        $base_url = admin_url('admin.php?page=aips-history');
+        if (!empty($search_query)) {
+            $base_url = add_query_arg('s', $search_query, $base_url);
+        }
+
+        $pagination_html = $this->generate_pagination_html($history, $base_url, false, $status_filter);
 
         ob_start();
 
@@ -242,6 +314,7 @@ class AIPS_History {
 
         wp_send_json_success(array(
             'items_html' => $items_html,
+            'pagination_html' => $pagination_html,
             'stats' => array(
                 'total' => (int) $stats['total'],
                 'completed' => (int) $stats['completed'],
@@ -356,6 +429,9 @@ class AIPS_History {
         
         $stats = $this->get_stats();
         
+        // Pass handler to template for helper methods
+        $history_handler = $this;
+
         include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
     }
 }
