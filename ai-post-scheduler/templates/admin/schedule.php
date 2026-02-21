@@ -96,7 +96,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             data-frequency="<?php echo esc_attr($schedule->frequency); ?>"
                             data-topic="<?php echo esc_attr($schedule->topic); ?>"
                             data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
-                            data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>">
+                            data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>"
+                            data-next-run="<?php echo esc_attr($schedule->next_run); ?>"
+                            data-is-active="<?php echo esc_attr($schedule->is_active); ?>">
                             <td>
                                 <div class="cell-primary"><?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?></div>
                             </td>
@@ -164,6 +166,12 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             </td>
                             <td>
                                 <div class="cell-actions">
+                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-schedule" aria-label="<?php esc_attr_e('Edit schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+                                        <span class="dashicons dashicons-edit"></span>
+                                    </button>
+                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-run-now-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Run now', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
+                                        <span class="dashicons dashicons-controls-play"></span>
+                                    </button>
                                     <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-admin-page"></span>
                                     </button>
