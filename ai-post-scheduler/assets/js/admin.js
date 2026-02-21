@@ -1364,18 +1364,6 @@
                          return;
                     }
 
-                    // Update pagination
-                    if (response.data.pagination_html !== undefined) {
-                         var $pagination = $('#aips-history-pagination');
-                         if ($pagination.length) {
-                             $pagination.replaceWith(response.data.pagination_html);
-                         } else {
-                             // If pagination didn't exist (single page) but now does (e.g. limit changed or more items?)
-                             // Append after table
-                             $('.aips-history-table').after(response.data.pagination_html);
-                         }
-                    }
-
                     // Update pagination in tfoot
                     if (response.data.pagination_html) {
                         var $cell = $('.aips-history-pagination-cell');
