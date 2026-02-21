@@ -56,6 +56,7 @@
 
 		init: function () {
 			this.bindEvents();
+			this.setupKeyboardNavigation();
 		},
 
 		bindEvents: function () {
@@ -100,12 +101,90 @@
 			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
 			$(document).on('click', '.aips-select-all-feedback', this.toggleSelectAllFeedback.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
-			
+
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
-			
+
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
+		},
+
+		/**
+		 * Sets up keyboard navigation for the topics list.
+		 * Supports j/k for navigation and a/r for actions.
+		 */
+		setupKeyboardNavigation: function() {
+			$(document).on('keydown', (e) => {
+				if (!$('#aips-topics-modal').is(':visible')) return;
+
+				// If focus is in an input, ignore navigation keys
+				if ($(e.target).is('input, textarea')) return;
+
+				const $rows = $('.aips-topic-row:visible');
+				if ($rows.length === 0) return;
+
+				const $selected = $('.aips-topic-row.selected-topic:visible');
+				let index = $rows.index($selected);
+
+				switch(e.key) {
+					case 'j':
+					case 'ArrowDown':
+						e.preventDefault();
+						if (index < $rows.length - 1) {
+							this.selectRow($rows.eq(index + 1));
+						} else if (index === -1) {
+							this.selectRow($rows.eq(0));
+						}
+						break;
+					case 'k':
+					case 'ArrowUp':
+						e.preventDefault();
+						if (index > 0) {
+							this.selectRow($rows.eq(index - 1));
+						} else if (index === -1 && $rows.length > 0) {
+                            this.selectRow($rows.eq($rows.length - 1));
+                        }
+						break;
+					case 'a':
+						if ($selected.length) {
+							const $btn = $selected.find('.aips-approve-topic');
+							if ($btn.length) $btn.trigger('click');
+						}
+						break;
+					case 'r':
+						if ($selected.length) {
+							const $btn = $selected.find('.aips-reject-topic');
+							if ($btn.length) $btn.trigger('click');
+						}
+						break;
+					case 'd':
+						if ($selected.length) {
+							const $btn = $selected.find('.aips-delete-topic');
+							if ($btn.length) $btn.trigger('click');
+						}
+						break;
+				}
+			});
+
+			// Click to select
+			$(document).on('click', '.aips-topic-row', (e) => {
+				this.selectRow($(e.currentTarget));
+			});
+		},
+
+		/**
+		 * Selects a topic row and scrolls it into view.
+		 *
+		 * @param {jQuery} $row The row element to select.
+		 */
+		selectRow: function($row) {
+			$('.aips-topic-row').removeClass('selected-topic');
+			$row.addClass('selected-topic');
+
+			// Ensure visible
+			if ($row.length && $row[0].scrollIntoView) {
+				$row[0].scrollIntoView({block: 'nearest', behavior: 'smooth'});
+			}
 		},
 
 		openAddModal: function (e) {
@@ -273,14 +352,14 @@
 			this.currentAuthorId = authorId;
 
 			$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.loadingTopics + '</p>');
-			
+
 			// Reset tabs to pending
 			$('.aips-tab-link').removeClass('active');
 			$('.aips-tab-link[data-tab="pending"]').addClass('active');
-			
+
 			// Update bulk action dropdown for pending tab
 			this.updateBulkActionDropdown('pending');
-			
+
 			$('#aips-topics-modal').fadeIn();
 
 			this.loadTopics('pending');
@@ -300,6 +379,12 @@
 					if (response.success) {
 						this.renderTopics(response.data.topics, status);
 						this.updateTopicCounts(response.data.status_counts);
+						// Select first row by default for keyboard nav
+						if (response.data.topics && response.data.topics.length > 0) {
+							setTimeout(() => {
+								this.selectRow($('.aips-topic-row').first());
+							}, 50);
+						}
 					} else {
 						$('#aips-topics-content').html('<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingTopics) + '</p>');
 					}
@@ -331,14 +416,14 @@
 				html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
 				html += '</button> ';
 				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
-				
+
 				// Add post count badge if there are any posts
 				if (topic.post_count && topic.post_count > 0) {
 					html += ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + aipsAuthorsL10n.viewPosts + '">';
 					html += '<span class="dashicons dashicons-admin-post"></span> ' + topic.post_count;
 					html += '</span>';
 				}
-				
+
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
 				html += '</td>';
 				html += '<td>' + topic.generated_at + '</td>';
@@ -346,15 +431,16 @@
 
 				// Actions based on status
 				if (status === 'pending') {
-					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.approve + '</button> ';
-					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.reject + '</button> ';
+					// Use title attribute to show shortcut hint
+					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.approve + ' (Shift+Click for details)') + '">' + aipsAuthorsL10n.approve + '</button> ';
+					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.reject + ' (Shift+Click for details)') + '">' + aipsAuthorsL10n.reject + '</button> ';
 				} else if (status === 'approved') {
 					html += '<button class="button aips-generate-post-now" data-id="' + topic.id + '">' + aipsAuthorsL10n.generatePostNow + '</button> ';
 				}
 
 				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.edit + '</button>';
 				html += '</td></tr>';
-				
+
 				// Add collapsible detail row
 				html += '<tr class="aips-topic-detail-row" data-topic-id="' + topic.id + '" style="display:none;">';
 				html += '<td colspan="4" class="aips-topic-detail-cell">';
@@ -405,12 +491,12 @@
 
 		updateBulkActionDropdown: function (status) {
 			const $dropdowns = $('.aips-bulk-action-select');
-			
+
 			// Clear existing options except the default one
 			$dropdowns.each(function() {
 				const $dropdown = $(this);
 				$dropdown.find('option:not(:first)').remove();
-				
+
 				// Add options based on the active tab
 				if (status === 'pending') {
 					// Pending Review tab: Approve, Reject, Delete
@@ -457,28 +543,139 @@
 
 		approveTopic: function (e) {
 			e.preventDefault();
+			e.stopPropagation();
 			const topicId = $(e.currentTarget).data('id');
 
-			// Open feedback modal
-			$('#feedback_topic_id').val(topicId);
-			$('#feedback_action').val('approve');
-			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.approveTopicTitle || 'Approve Topic');
-			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.approveReasonPlaceholder || 'Why are you approving this topic?');
-			$('#feedback-submit-btn').text(aipsAuthorsL10n.approve);
-			$('#aips-feedback-modal').fadeIn();
+			// Check for Shift key (Power User mode)
+			if (e.shiftKey) {
+				// Open feedback modal
+				$('#feedback_topic_id').val(topicId);
+				$('#feedback_action').val('approve');
+				$('#aips-feedback-modal-title').text(aipsAuthorsL10n.approveTopicTitle || 'Approve Topic');
+				$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.approveReasonPlaceholder || 'Why are you approving this topic?');
+				$('#feedback-submit-btn').text(aipsAuthorsL10n.approve);
+				$('#aips-feedback-modal').fadeIn();
+			} else {
+				// Quick action
+				this.quickAction(topicId, 'approve');
+			}
 		},
 
 		rejectTopic: function (e) {
 			e.preventDefault();
+			e.stopPropagation();
 			const topicId = $(e.currentTarget).data('id');
 
-			// Open feedback modal
-			$('#feedback_topic_id').val(topicId);
-			$('#feedback_action').val('reject');
-			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic');
-			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
-			$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
-			$('#aips-feedback-modal').fadeIn();
+			// Check for Shift key (Power User mode)
+			if (e.shiftKey) {
+				// Open feedback modal
+				$('#feedback_topic_id').val(topicId);
+				$('#feedback_action').val('reject');
+				$('#aips-feedback-modal-title').text(aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic');
+				$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
+				$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
+				$('#aips-feedback-modal').fadeIn();
+			} else {
+				// Quick action
+				this.quickAction(topicId, 'reject');
+			}
+		},
+
+		/**
+		 * Performs a quick action on a topic.
+		 *
+		 * @param {number} topicId The ID of the topic to act on.
+		 * @param {string} action The action to perform ('approve' or 'reject').
+		 */
+		quickAction: function(topicId, action) {
+			const ajaxAction = action === 'approve' ? 'aips_approve_topic' : 'aips_reject_topic';
+			const $row = $('.aips-topic-row[data-topic-id="' + topicId + '"]');
+			const $buttons = $row.find('button');
+
+			// Optimistic UI state
+			$row.addClass('processing');
+			$buttons.prop('disabled', true);
+			$row.find('.topic-actions').append('<span class="spinner is-active" style="float:none; margin:0 0 0 5px;"></span>');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: ajaxAction,
+					nonce: aipsAuthorsL10n.nonce,
+					topic_id: topicId
+				},
+				success: (response) => {
+					if (response.success) {
+						// Success! Remove row and update UI
+						$row.next('.aips-topic-detail-row').remove(); // Remove detail row
+						$row.slideUp(200, () => {
+							$row.remove();
+
+							// If no rows left, show empty state
+							if ($('.aips-topic-row').length === 0) {
+								$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.noTopicsFound + '</p>');
+							} else {
+								// Select next row for keyboard flow
+								const $next = $('.aips-topic-row').first();
+								if ($next.length) {
+									this.selectRow($next);
+								}
+							}
+						});
+
+						this.updateLocalCounts(action);
+						showToast(response.data.message || 'Success', 'success');
+					} else {
+						// Revert UI on error
+						$row.removeClass('processing');
+						$buttons.prop('disabled', false);
+						$row.find('.spinner').remove();
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
+					}
+				},
+				error: () => {
+					// Revert UI on error
+					$row.removeClass('processing');
+					$buttons.prop('disabled', false);
+					$row.find('.spinner').remove();
+					showToast(aipsAuthorsL10n.errorOccurred || 'Error occurred', 'error');
+				}
+			});
+		},
+
+		/**
+		 * Updates the topic counts in the DOM.
+		 *
+		 * @param {string} action The action performed ('approve', 'reject', or 'delete').
+		 */
+		updateLocalCounts: function(action) {
+			// Parse current counts
+			let pending = parseInt($('#pending-count').text()) || 0;
+			let approved = parseInt($('#approved-count').text()) || 0;
+			let rejected = parseInt($('#rejected-count').text()) || 0;
+
+			// Logic assumes we are in "Pending" tab because quick actions (approve/reject) are only there
+			// If we implement quick actions elsewhere, we need to check current tab
+			const currentTab = $('.aips-tab-link.active').data('tab');
+
+			if (currentTab === 'pending') {
+				pending = Math.max(0, pending - 1);
+				if (action === 'approve') {
+					approved++;
+				} else if (action === 'reject') {
+					rejected++;
+				}
+			} else if (currentTab === 'approved' && action === 'delete') {
+				approved = Math.max(0, approved - 1);
+			} else if (currentTab === 'rejected' && action === 'delete') {
+				rejected = Math.max(0, rejected - 1);
+			}
+
+			// Update DOM
+			$('#pending-count').text(pending);
+			$('#approved-count').text(approved);
+			$('#rejected-count').text(rejected);
 		},
 
 		submitFeedback: function (e) {
@@ -518,7 +715,7 @@
 		loadFeedback: function () {
 			if (!this.currentAuthorId) {
 				$('#aips-topics-content').html('<p>No author selected.</p>');
-				
+
 				return;
 			}
 
@@ -762,19 +959,19 @@
 			html += '</tbody></table>';
 			$('#aips-topic-logs-content').html(html);
 		},
-		
+
 		viewTopicPosts: function (e) {
 			e.preventDefault();
 			e.stopPropagation();
-			
+
 			const topicId = $(e.currentTarget).data('topic-id');
-			
+
 			$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
 			$('#aips-topic-posts-modal').fadeIn();
-			
+
 			this.loadTopicPosts(topicId);
 		},
-		
+
 		loadTopicPosts: function (topicId) {
 			$.ajax({
 				url: ajaxurl,
@@ -788,11 +985,11 @@
 					if (response.success) {
 						const topic = response.data.topic;
 						const posts = response.data.posts;
-						
+
 						$('#aips-topic-posts-modal-title').text(
 							aipsAuthorsL10n.postsGeneratedFrom + ': ' + this.escapeHtml(topic.topic_title)
 						);
-						
+
 						this.renderTopicPosts(posts);
 					} else {
 						$('#aips-topic-posts-content').html(
@@ -805,13 +1002,13 @@
 				}
 			});
 		},
-		
+
 		renderTopicPosts: function (posts) {
 			if (!posts || posts.length === 0) {
 				$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
 				return;
 			}
-			
+
 			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
 			html += '<th>' + aipsAuthorsL10n.postId + '</th>';
 			html += '<th>' + aipsAuthorsL10n.postTitle + '</th>';
@@ -819,7 +1016,7 @@
 			html += '<th>' + aipsAuthorsL10n.datePublished + '</th>';
 			html += '<th>' + aipsAuthorsL10n.actions + '</th>';
 			html += '</tr></thead><tbody>';
-			
+
 			posts.forEach(post => {
 				html += '<tr>';
 				html += '<td>' + this.escapeHtml(post.post_id) + '</td>';
@@ -836,7 +1033,7 @@
 				html += '</td>';
 				html += '</tr>';
 			});
-			
+
 			html += '</tbody></table>';
 			$('#aips-topic-posts-content').html(html);
 		},
@@ -878,7 +1075,7 @@
 			}
 
 			if (ids.length === 0) {
-				const message = activeTab === 'feedback' 
+				const message = activeTab === 'feedback'
 					? (aipsAuthorsL10n.noFeedbackSelected || 'Please select at least one feedback item.')
 					: (aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
 				showToast(message, 'warning');
@@ -969,11 +1166,19 @@
 			});
 		},
 
+		/**
+		 * Generates a localized confirmation message for bulk actions.
+		 *
+		 * @param {string} action The action being performed.
+		 * @param {number} count The number of items selected.
+		 * @param {string} activeTab The currently active tab.
+		 * @returns {string} The formatted confirmation message.
+		 */
 		getBulkConfirmMessage: function (action, count, activeTab) {
 			const messages = {
 				approve: aipsAuthorsL10n.confirmBulkApprove || 'Are you sure you want to approve %d topics?',
 				reject: aipsAuthorsL10n.confirmBulkReject || 'Are you sure you want to reject %d topics?',
-				delete: activeTab === 'feedback' 
+				delete: activeTab === 'feedback'
 					? (aipsAuthorsL10n.confirmBulkDeleteFeedback || 'Are you sure you want to delete %d feedback items? This action cannot be undone.')
 					: (aipsAuthorsL10n.confirmBulkDelete || 'Are you sure you want to delete %d topics? This action cannot be undone.'),
 				generate_now: aipsAuthorsL10n.confirmBulkGenerate || 'Are you sure you want to generate posts for %d topics?'
@@ -993,10 +1198,10 @@
 				if (text === null || text === undefined) {
 					return '';
 				}
-				
+
 				// Convert to string if not already
 				const str = String(text);
-				
+
 				const map = {
 					'&': '&amp;',
 					'<': '&lt;',
@@ -1024,25 +1229,25 @@
 				if (!url) {
 					return '';
 				}
-				
+
 				// Convert to string and trim whitespace
 				const urlStr = String(url).trim();
-				
+
 				if (!urlStr) {
 					return '';
 				}
-				
+
 				// Check for dangerous protocols (case-insensitive)
 				const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
 				const lowerUrl = urlStr.toLowerCase();
-				
+
 				for (const protocol of dangerousProtocols) {
 					if (lowerUrl.startsWith(protocol)) {
 						console.warn('Dangerous URL protocol detected:', protocol);
 						return '';
 					}
 				}
-				
+
 				// For absolute URLs, validate with URL constructor
 				if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
 					try {
@@ -1054,12 +1259,12 @@
 						return '';
 					}
 				}
-				
+
 				// For relative URLs (WordPress admin paths), return as-is after validation
 				if (urlStr.startsWith('/')) {
 					return urlStr;
 				}
-				
+
 				// Reject anything else
 				console.warn('URL does not match allowed patterns:', urlStr);
 				return '';
@@ -1069,7 +1274,7 @@
 			}
 		}
 	};
-	
+
 	// Generation Queue Module
 	const GenerationQueueModule = {
 		init: function () {
@@ -1079,7 +1284,7 @@
 		bindEvents: function () {
 			// Main page tab switching
 			$(document).on('click', '.aips-authors-tab-link', this.switchMainTab.bind(this));
-			
+
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
@@ -1202,7 +1407,7 @@
 
 		generateNowFromQueue: function (topicIds) {
 			const confirmMessage = (aipsAuthorsL10n.confirmGenerateFromQueue || 'Generate posts now for %d selected topic(s)?').replace('%d', topicIds.length);
-			
+
 			if (!confirm(confirmMessage)) {
 				return;
 			}
@@ -1221,7 +1426,7 @@
 				success: (response) => {
 					if (response.success) {
 						showToast(response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.', 'success');
-						
+
 						// Reload the queue
 						this.loadQueueTopics();
 					} else {
