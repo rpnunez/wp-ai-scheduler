@@ -18,9 +18,9 @@
     "wp-phpunit/wp-phpunit": "^6.6"
   },
   "autoload": {
-    "classmap": [
-      "includes/"
-    ]
+    "psr-4": {
+      "AIPS\\": "src/"
+    }
   },
   "autoload-dev": {
     "classmap": [

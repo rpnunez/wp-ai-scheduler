@@ -7,14 +7,28 @@
  * @package AI_Post_Scheduler
  */
 
-// Composer autoloader
-if (file_exists(dirname(__DIR__) . '/vendor/autoload.php')) {
-    require_once dirname(__DIR__) . '/vendor/autoload.php';
+// Composer autoloader (try plugin dir first, then project root)
+$autoload_paths = array(
+    dirname(__DIR__) . '/vendor/autoload.php',
+    dirname(__DIR__, 2) . '/vendor/autoload.php',
+);
+foreach ($autoload_paths as $path) {
+    if (file_exists($path)) {
+        require_once $path;
+        break;
+    }
 }
 
 // Load the Yoast PHPUnit Polyfills autoloader
-if (file_exists(dirname(__DIR__) . '/vendor/yoast/phpunit-polyfills/phpunitpolyfills-autoload.php')) {
-    require_once dirname(__DIR__) . '/vendor/yoast/phpunit-polyfills/phpunitpolyfills-autoload.php';
+$polyfills_paths = array(
+    dirname(__DIR__) . '/vendor/yoast/phpunit-polyfills/phpunitpolyfills-autoload.php',
+    dirname(__DIR__, 2) . '/vendor/yoast/phpunit-polyfills/phpunitpolyfills-autoload.php',
+);
+foreach ($polyfills_paths as $path) {
+    if (file_exists($path)) {
+        require_once $path;
+        break;
+    }
 }
 
 // Define WordPress test environment constants
@@ -37,7 +51,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     function _manually_load_plugin() {
         define('ABSPATH', WP_CORE_DIR . '/');
         
-        // Load plugin files
+        // Load plugin (uses Composer autoloader + compatibility layer)
         require dirname(__DIR__) . '/ai-post-scheduler.php';
     }
     tests_add_filter('muplugins_loaded', '_manually_load_plugin');
@@ -60,6 +74,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     if (!defined('AIPS_PLUGIN_DIR')) {
         define('AIPS_PLUGIN_DIR', dirname(__DIR__) . '/');
+    }
+
+    // Load compatibility layer for PSR-4 class aliases (must be after ABSPATH)
+    $compat_loader = AIPS_PLUGIN_DIR . 'includes/compatibility-loader.php';
+    if (file_exists($compat_loader)) {
+        require_once $compat_loader;
     }
     
     if (!defined('AIPS_PLUGIN_URL')) {
@@ -874,50 +894,6 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         $GLOBALS['wp_filter'] = array();
     }
     
-    // Load plugin classes
-    $includes_dir = dirname(__DIR__) . '/includes/';
-    $files = [
-        'class-aips-logger.php',
-        'class-aips-config.php',
-        'class-aips-db-manager.php',
-        'class-aips-history-repository.php',
-        'class-aips-schedule-repository.php',
-        'class-aips-template-repository.php',
-        'class-aips-article-structure-repository.php',
-        'class-aips-prompt-section-repository.php',
-        'class-aips-template-processor.php',
-        'class-aips-prompt-builder.php',
-        'class-aips-article-structure-manager.php',
-        'class-aips-template-type-selector.php',
-        'class-aips-interval-calculator.php',
-        'class-aips-resilience-service.php',
-        'class-aips-ai-service.php',
-        'class-aips-image-service.php',
-        'interface-aips-generation-context.php',
-        'class-aips-template-context.php',
-        'class-aips-topic-context.php',
-        'class-aips-generation-session.php',
-        'class-aips-post-creator.php',
-        'class-aips-generator.php',
-        'class-aips-scheduler.php',
-        'class-aips-schedule-controller.php',
-        'class-aips-planner.php',
-        'class-aips-history.php',
-        'class-aips-settings.php',
-        'class-aips-admin-assets.php',
-        'class-aips-system-status.php',
-        'class-aips-templates.php',
-        'class-aips-upgrades.php',
-        'class-aips-voices-repository.php',
-        'class-aips-voices.php',
-        'class-aips-structures-controller.php',
-        'class-aips-templates-controller.php',
-        'class-aips-research-controller.php',
-    ];
-    
-    foreach ($files as $file) {
-        if (file_exists($includes_dir . $file)) {
-            require_once $includes_dir . $file;
-        }
-    }
+    // Plugin classes are loaded via Composer PSR-4 autoloader + compatibility layer.
+    // Old class names (AIPS_*) resolve to new namespaced classes via compatibility-loader.php.
 }
