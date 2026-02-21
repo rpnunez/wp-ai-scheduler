@@ -375,6 +375,17 @@ class AIPS_Admin_Assets {
             );
         }
 
+        // History Page Scripts (View Session for Processing items)
+        if (strpos($hook, 'aips-history') !== false) {
+            wp_enqueue_script(
+                'aips-admin-view-session',
+                AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
         if (strpos($hook, 'aips-dev-tools') !== false) {
             wp_enqueue_script(
                 'aips-admin-dev-tools',

@@ -78,9 +78,8 @@
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
             $(document).on('click', '#aips-export-history-btn', this.exportHistory);
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
-            $(document).on('click', '#aips-reload-history-btn', function(e) {
-                AIPS.reloadHistory(e, 1);
-            });
+            $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
+            $(document).on('click', '.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next', this.loadHistoryPage);
             $(document).on('keypress', '#aips-history-search-input', function(e) {
                 if(e.which == 13) {
                     AIPS.filterHistory(e);
@@ -1150,14 +1149,17 @@
                     $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
                     $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
 
+                    // Remove all text nodes (avoids picking wrong node when whitespace creates multiple)
+                    $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
+
                     if (isActive) {
                         $badge.addClass('aips-badge-success');
                         $icon.addClass('dashicons-yes-alt');
-                        $badge.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' Active');
+                        $icon.after(' Active');
                     } else {
                         $badge.addClass('aips-badge-neutral');
                         $icon.addClass('dashicons-minus');
-                        $badge.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' Inactive');
+                        $icon.after(' Inactive');
                     }
 
                     $toggle.closest('tr').data('is-active', isActive);
@@ -1306,23 +1308,30 @@
             form.appendTo('body').submit().remove();
         },
 
-        reloadHistory: function(e, page) {
-            if (e) e.preventDefault();
+        loadHistoryPage: function(e) {
+            e.preventDefault();
+            var $btn = $(e.currentTarget);
+            if ($btn.prop('disabled')) return;
+            var page = $btn.data('page');
+            if (!page) return;
+            AIPS.reloadHistory(e, parseInt(page, 10));
+        },
 
-            page = page || 1;
+        reloadHistory: function(e, paged) {
+            if (e) e.preventDefault();
 
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
+            paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
 
-            // Only show 'Reloading...' text if triggered by the button
             var $btn = $('#aips-reload-history-btn');
-            var originalHtml = $btn.html();
-
-            if (e && e.currentTarget && $(e.currentTarget).is('#aips-reload-history-btn')) {
-                $btn.prop('disabled', true).text('Reloading...');
+            var isReloadBtn = $btn.length && e && $(e.currentTarget).is('#aips-reload-history-btn');
+            var originalHtml;
+            if (isReloadBtn) {
+                originalHtml = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> Reloading...');
             } else {
-                 // For pagination/filter, maybe show a spinner or opacity on table?
-                 $('.aips-history-table').css('opacity', '0.5');
+                $('.aips-history-table').css('opacity', '0.5');
             }
 
             $.ajax({
@@ -1334,7 +1343,7 @@
                     nonce: aipsAjax.nonce,
                     status: status,
                     search: search,
-                    paged: page
+                    paged: paged
                 },
                 success: function(response) {
                     if (!response.success) {
@@ -1367,6 +1376,14 @@
                          }
                     }
 
+                    // Update pagination in tfoot
+                    if (response.data.pagination_html) {
+                        var $cell = $('.aips-history-pagination-cell');
+                        if ($cell.length) {
+                            $cell.html(response.data.pagination_html);
+                        }
+                    }
+
                     // Update stats
                     if (response.data.stats) {
                         $('#aips-stat-total').text(response.data.stats.total);
@@ -1375,25 +1392,27 @@
                         $('#aips-stat-success-rate').text(response.data.stats.success_rate + '%');
                     }
 
-                    // Reset bulk selection state
-                    $('#cb-select-all-1').prop('checked', false);
-                    AIPS.updateDeleteButton();
-
-                    // Update URL paged parameter if not 1
+                    // Update URL without reload
                     var url = new URL(window.location.href);
-                    if (page > 1) {
-                        url.searchParams.set('paged', page);
+                    if (paged > 1) {
+                        url.searchParams.set('paged', paged);
                     } else {
                         url.searchParams.delete('paged');
                     }
-                    window.history.replaceState({path: url.toString()}, '', url.toString());
+                    window.history.replaceState({}, '', url.toString());
+
+                    // Reset bulk selection state
+                    $('#cb-select-all-1').prop('checked', false);
+                    AIPS.updateDeleteButton();
 
                 },
                 error: function() {
                     alert('An error occurred while reloading history.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).html(originalHtml);
+                    if (isReloadBtn && $btn.length) {
+                        $btn.prop('disabled', false).html(originalHtml || '<span class="dashicons dashicons-update"></span> Reload');
+                    }
                     $('.aips-history-table').css('opacity', '1');
                 }
             });
