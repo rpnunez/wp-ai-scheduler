@@ -11,27 +11,6 @@
 - `ai-post-scheduler/includes/class-aips-admin-assets.php` — Added schedulePageUrl to localized script data
 **Outcome:** Users can now go from "Template saved" to "Scheduled" in a single click, reducing the Template→Schedule journey from 5+ manual steps to 1. The wizard's post-save panel keeps the user in-context with clear next actions, following the philosophy: "Streamline the steps required for a user to move from Template to Scheduled Post."
 
-## 2026-02-20 - Template Wizard Optimization
-**Target Feature:** Template Wizard
-**Improvement:** Implemented a full "Test Generation" feature that allows users to preview the exact output (Title, Content, Excerpt) of a template configuration before saving or scheduling it. Previously, the "Test" button only checked the content prompt and ignored other settings like Voice, Title Prompt, and Article Structure.
-**Files Modified:**
-- `ai-post-scheduler/includes/class-aips-generator.php` (Added `generate_preview` method)
-- `ai-post-scheduler/includes/class-aips-templates-controller.php` (Updated `ajax_test_template` to use full context)
-- `ai-post-scheduler/templates/admin/templates.php` (Added "Test Generation" button and improved result modal)
-- `ai-post-scheduler/assets/js/admin.js` (Updated `testTemplate` logic to send full form data)
-**Outcome:** Users can now iteratively refine their templates (including Voice and Title logic) without polluting their post history or creating dummy posts, significantly improving the "Template -> Schedule" workflow efficiency.
-
-## 2026-02-20 - Template-to-Schedule Flow Optimization
-**Target Feature:** Template Wizard / Scheduling Bridge
-**Improvement:** Eliminated the context-breaking page reload after template save and added a seamless bridge to the Scheduling feature. Previously, saving a template triggered `location.reload()`, forcing users to manually navigate to the Schedules page, locate their template in a dropdown, and create a schedule — a 4+ step detour. Now, saving a template presents a "Next Steps" panel offering one-click Schedule, Run Now, or Done actions. A direct "Schedule" button was also added to each template row in the listing. Additionally, the schedule page detects a `?schedule_template=` query param to auto-open the modal pre-filled.
-**Bug Fix (incidental):** The `saveSchedule` JS function was missing topic, article_structure_id, and rotation_pattern fields in its AJAX payload, meaning those form values were never persisted. Fixed as part of this flow work.
-**Files Modified:**
-- `ai-post-scheduler/assets/js/admin.js` — Post-save actions panel, quickRunNow, initScheduleAutoOpen, saveSchedule field fix
-- `ai-post-scheduler/templates/admin/templates.php` — Step 6 wizard panel, Schedule row action button
-- `ai-post-scheduler/templates/admin/schedule.php` — Auto-open via preselect template data attribute
-- `ai-post-scheduler/includes/class-aips-admin-assets.php` — Added schedulePageUrl to localized script data
-**Outcome:** Users can now go from "Template saved" to "Scheduled" in a single click, reducing the Template→Schedule journey from 5+ manual steps to 1. The wizard's post-save panel keeps the user in-context with clear next actions, following the philosophy: "Streamline the steps required for a user to move from Template to Scheduled Post."
-
 ## 2026-02-21 - Schedule Management Flow Optimization
 **Target Feature:** Scheduler
 **Improvement:** Added three missing capabilities to the Schedule page that were forcing users into destructive workarounds:
@@ -42,6 +21,41 @@
 - `ai-post-scheduler/templates/admin/schedule.php` — Added `data-next-run` and `data-is-active` attributes to schedule rows; added Edit and Run Now action buttons
 - `ai-post-scheduler/assets/js/admin.js` — Added `editSchedule` and `runNowSchedule` functions; rewrote `toggleSchedule` with live badge/icon/text updates and error rollback; added event bindings for `.aips-edit-schedule` and `.aips-run-now-schedule`
 **Outcome:** Modifying a schedule is now a 2-step action (Edit → Save) instead of a 5+ step destructive workaround (delete → open modal → re-select template → re-configure → save). Manual execution and toggle feedback are now immediate and in-context, following the philosophy: "Flow is Function — a feature that is difficult to navigate is a broken feature."
+
+## 2026-02-21 - Schedule Run Now Toast Notification (follow-up)
+**Target Feature:** Scheduler (Run Now feedback)
+**Improvement:** The "Run Now" button on the schedule page was firing a successful AJAX call but showing no visual feedback — the code referenced `#aips-post-success-modal` which only exists in `templates.php`, not `schedule.php`. Replaced the broken modal reference with a toast notification system. Added a global `AIPS.showToast()` utility to `admin.js` (following the existing pattern from `authors.js`) and the corresponding toast CSS to `admin.css` (available on all plugin pages). On success, the toast displays the server message plus a clickable "Edit Post" link. On failure, an error toast appears. The toast auto-dismisses after 8 seconds or can be closed manually.
+**Files Modified:**
+- `ai-post-scheduler/assets/js/admin.js` — Added `showToast` method to AIPS object; updated `runNowSchedule` success/error handlers to use toast instead of non-existent modal
+- `ai-post-scheduler/assets/css/admin.css` — Added global toast notification styles (`#aips-toast-container`, `.aips-toast`, slide-in/out animations)
+**Outcome:** Users now get immediate, non-blocking visual confirmation when a schedule executes — including a direct link to edit the generated post — without leaving the schedule page.
+
+## 2026-02-21 - Post Review Flow Optimization
+**Target Feature:** Post Review
+**Improvement:** Implemented a "Quick Preview" feature for draft posts, allowing users to review generated content (Title, Excerpt, Body, Featured Image) in a modal without leaving the admin page. Previously, reviewing a draft required opening it in a new tab via the "Edit" link.
+**Details:**
+- Added a "Preview" button to the actions list in both "Generated Posts" (Pending Review tab) and "Post Review" pages.
+- Created a new AJAX endpoint `aips_get_draft_post_preview` to securely fetch draft content.
+- Refactored `admin-post-review.js` to use the shared `AIPS.showToast` notification system, replacing inconsistent legacy notices.
+- Improved feedback for actions (Publish, Delete, Regenerate) with clear toast messages.
+- Updated the "Regenerate" flow to explicitly inform the user that regeneration has started and they can check History, rather than silently removing the row.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-post-review.php` — Added AJAX endpoint
+- `ai-post-scheduler/includes/class-aips-admin-assets.php` — Added localization strings
+- `ai-post-scheduler/templates/admin/generated-posts.php` — Added Preview button and modal support
+- `ai-post-scheduler/templates/admin/post-review.php` — Added Preview button and modal support
+- `ai-post-scheduler/assets/js/admin-post-review.js` — Refactored logic and implemented preview
+**Outcome:** Reviewing and managing AI-generated drafts is now significantly faster and more fluid, with consistent visual feedback and no need for tab switching.
+
+## 2026-02-20 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Implemented a full "Test Generation" feature that allows users to preview the exact output (Title, Content, Excerpt) of a template configuration before saving or scheduling it. Previously, the "Test" button only checked the content prompt and ignored other settings like Voice, Title Prompt, and Article Structure.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-generator.php` (Added `generate_preview` method)
+- `ai-post-scheduler/includes/class-aips-templates-controller.php` (Updated `ajax_test_template` to use full context)
+- `ai-post-scheduler/templates/admin/templates.php` (Added "Test Generation" button and improved result modal)
+- `ai-post-scheduler/assets/js/admin.js` (Updated `testTemplate` logic to send full form data)
+**Outcome:** Users can now iteratively refine their templates (including Voice and Title logic) without polluting their post history or creating dummy posts, significantly improving the "Template -> Schedule" workflow efficiency.
 
 ## 2026-02-21 - Schedule Run Now Toast Notification (follow-up)
 **Target Feature:** Scheduler (Run Now feedback)

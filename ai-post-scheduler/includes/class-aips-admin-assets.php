@@ -322,6 +322,9 @@ class AIPS_Admin_Assets {
                 'noPostsSelected' => __('Please select at least one post.', 'ai-post-scheduler'),
                 'noDraftPosts' => __('No Draft Posts', 'ai-post-scheduler'),
                 'noDraftPostsDesc' => __('There are no draft posts waiting for review.', 'ai-post-scheduler'),
+                'previewTitle' => __('Post Preview', 'ai-post-scheduler'),
+                'loadingPreview' => __('Loading preview...', 'ai-post-scheduler'),
+                'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
             ));
             
             // AI Edit Modal (for Generated Posts page)
