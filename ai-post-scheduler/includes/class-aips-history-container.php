@@ -201,12 +201,17 @@ class AIPS_History_Container {
 	 *
 	 * @param string $log_type Type of log (e.g., 'activity', 'ai_request', 'ai_response', 'error', 'debug')
 	 * @param string $message Human-readable message
-	 * @param mixed $input Optional input data (will be JSON encoded)
-	 * @param mixed $output Optional output data (will be JSON encoded)
-	 * @param array $context Optional additional context
+	 * @param array $context Optional context data. Can include:
+	 *                       - 'input': Input data for the operation
+	 *                       - 'output': Output/result data  
+	 *                       - 'prompt': AI prompts
+	 *                       - 'response': AI responses
+	 *                       - 'error': Error details
+	 *                       - 'options': Configuration options
+	 *                       - Any custom keys
 	 * @return int|false Log entry ID on success, false on failure
 	 */
-	public function record($log_type, $message, $input = null, $output = null, $context = array()) {
+	public function record($log_type, $message, $context = array()) {
 		if (!$this->is_persisted) {
 			return false;
 		}
@@ -220,13 +225,16 @@ class AIPS_History_Container {
 			'timestamp' => current_time('mysql'),
 		);
 		
-		// Add input if provided
-		if ($input !== null) {
+		// Handle 'input' key in context
+		if (isset($context['input'])) {
+			$input = $context['input'];
 			$details['input'] = is_array($input) || is_object($input) ? $input : array('value' => $input);
+			unset($context['input']);
 		}
 		
-		// Add output if provided
-		if ($output !== null) {
+		// Handle 'output' key in context
+		if (isset($context['output'])) {
+			$output = $context['output'];
 			// Base64 encode if it's a large string (likely AI response)
 			if (is_string($output) && strlen($output) > 500) {
 				$details['output'] = base64_encode($output);
@@ -234,9 +242,10 @@ class AIPS_History_Container {
 			} else {
 				$details['output'] = is_array($output) || is_object($output) ? $output : array('value' => $output);
 			}
+			unset($context['output']);
 		}
 		
-		// Merge additional context
+		// Merge remaining context
 		if (!empty($context)) {
 			$details['context'] = $context;
 		}
@@ -251,12 +260,29 @@ class AIPS_History_Container {
 			$this->session->add_error();
 		}
 		
-		return $this->repository->add_log_entry(
+		// Persist to database
+		$log_id = $this->repository->add_log_entry(
 			$this->history_id,
 			$log_type,
 			$details,
 			$history_type_id
 		);
+		
+		// Write to PHP error log after successful DB insert (when WP_DEBUG enabled)
+		// Note: Input/output are in details array, error_log shows remaining context only
+		if ($log_id && defined('WP_DEBUG') && WP_DEBUG) {
+			$log_entry = sprintf(
+				'[AIPS History] [%s] %s',
+				strtoupper($log_type),
+				$message
+			);
+			if (!empty($details['context'])) {
+				$log_entry .= ' | Context: ' . wp_json_encode($details['context']);
+			}
+			error_log($log_entry);
+		}
+		
+		return $log_id;
 	}
 	
 	/**
@@ -285,22 +311,24 @@ class AIPS_History_Container {
 	 * 
 	 * Standardized error logging that captures all relevant context for debugging.
 	 * Automatically includes PHP error state, memory usage, and performance metrics.
+	 * Note: Automatic context values take precedence and will override any conflicting caller keys.
 	 *
 	 * @param string $message Human-readable error message
-	 * @param array $error_details Error-specific details (e.g., component, error_code, attempt)
+	 * @param array $context Error context (e.g., component, error_code, attempt, input, output)
 	 * @param WP_Error|null $wp_error Optional WP_Error object for additional context
 	 * @return int|false Log entry ID on success, false on failure
 	 */
-	public function record_error($message, $error_details = array(), $wp_error = null) {
-		$context = array_merge(
-			array(
-				'timestamp' => microtime(true),
-				'php_error' => error_get_last(),
-				'memory_usage' => memory_get_usage(true),
-				'memory_peak' => memory_get_peak_usage(true),
-			),
-			$error_details
+	public function record_error($message, $context = array(), $wp_error = null) {
+		// Build automatic error tracking context
+		$auto_context = array(
+			'timestamp' => microtime(true),
+			'php_error' => error_get_last(),
+			'memory_usage' => memory_get_usage(true),
+			'memory_peak' => memory_get_peak_usage(true),
 		);
+		
+		// Merge with caller context - automatic values override any conflicting caller keys
+		$context = array_merge($context, $auto_context);
 		
 		// Add WP_Error details if provided
 		if ($wp_error && is_wp_error($wp_error)) {
@@ -309,22 +337,24 @@ class AIPS_History_Container {
 			$context['wp_error_data'] = $wp_error->get_error_data();
 		}
 		
-		return $this->record('error', $message, $error_details, null, $context);
+		return $this->record('error', $message, $context);
 	}
 	
 	/**
 	 * Log a user-initiated action
 	 * 
 	 * Tracks manual operations triggered by users (vs automated/scheduled operations).
-	 * Includes user context automatically.
+	 * Automatically includes user context.
+	 * Note: Automatic context values take precedence and will override any conflicting caller keys.
 	 *
 	 * @param string $action Action type (e.g., 'manual_generation', 'bulk_delete', 'manual_publish')
 	 * @param string $message Human-readable description
-	 * @param array $action_data Data specific to this action
+	 * @param array $context Data specific to this action (can include input, output, or any custom keys)
 	 * @return int|false Log entry ID on success, false on failure
 	 */
-	public function record_user_action($action, $message, $action_data = array()) {
-		$context = array(
+	public function record_user_action($action, $message, $context = array()) {
+		// Build automatic user action context
+		$auto_context = array(
 			'action_type' => $action,
 			'user_id' => get_current_user_id(),
 			'user_login' => wp_get_current_user()->user_login,
@@ -332,7 +362,10 @@ class AIPS_History_Container {
 			'source' => 'manual_ui',
 		);
 		
-		return $this->record('activity', $message, $action_data, null, $context);
+		// Merge with caller context - automatic values override any conflicting caller keys
+		$context = array_merge($context, $auto_context);
+		
+		return $this->record('activity', $message, $context);
 	}
 	
 	/**
@@ -370,10 +403,10 @@ class AIPS_History_Container {
 	 * Complete this history container with failure
 	 *
 	 * @param string $error_message Error message
-	 * @param array $error_data Optional additional error data
+	 * @param array $context Optional additional error context
 	 * @return bool True on success, false on failure
 	 */
-	public function complete_failure($error_message, $error_data = array()) {
+	public function complete_failure($error_message, $context = array()) {
 		if (!$this->is_persisted) {
 			return false;
 		}
@@ -387,7 +420,7 @@ class AIPS_History_Container {
 		}
 		
 		// Log the error
-		$this->record('error', $error_message, null, null, $error_data);
+		$this->record('error', $error_message, $context);
 		
 		// Update history status
 		return $this->repository->update($this->history_id, array(
