@@ -715,37 +715,70 @@
 
         testTemplate: function(e) {
             e.preventDefault();
-            var prompt = $('#prompt_template').val();
             
-            if (!prompt) {
-                alert('Please enter a prompt template first.');
+            // Validate at least prompt is there
+            if (!$('#prompt_template').val().trim()) {
+                alert(aipsAdminL10n.contentPromptRequired || 'Please enter a content prompt first.');
+                $('#prompt_template').focus();
                 return;
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true).text('Generating...');
+            var originalText = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none; margin:0 5px 0 0;"></span> Generating...');
+
+            // Gather all form data
+            var data = {
+                action: 'aips_test_template',
+                nonce: aipsAjax.nonce,
+                template_id: $('#template_id').val(),
+                name: $('#template_name').val(),
+                description: $('#template_description').val(),
+                prompt_template: $('#prompt_template').val(),
+                title_prompt: $('#title_prompt').val(),
+                voice_id: $('#voice_id').val(),
+                post_quantity: 1, // Force 1 for test
+                generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
+                image_prompt: $('#image_prompt').val(),
+                featured_image_source: $('#featured_image_source').val(),
+                featured_image_unsplash_keywords: $('#featured_image_unsplash_keywords').val(),
+                featured_image_media_ids: $('#featured_image_media_ids').val(),
+                post_status: $('#post_status').val(),
+                post_category: $('#post_category').val(),
+                post_tags: $('#post_tags').val(),
+                post_author: $('#post_author').val(),
+            };
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
-                data: {
-                    action: 'aips_test_template',
-                    nonce: aipsAjax.nonce,
-                    prompt_template: prompt
-                },
+                data: data,
                 success: function(response) {
                     if (response.success) {
-                        $('#aips-test-content').text(response.data.content);
+                        var result = response.data.result;
+
+                        // Populate modal
+                        $('#aips-test-title').text(result.title || '-');
+                        $('#aips-test-excerpt').text(result.excerpt || '-');
+                        $('#aips-test-content').text(result.content || '-');
+
+                        if (result.image_prompt) {
+                            $('#aips-test-image-row').show();
+                            $('#aips-test-image').text(result.image_prompt);
+                        } else {
+                            $('#aips-test-image-row').hide();
+                        }
+
                         $('#aips-test-result-modal').show();
                     } else {
-                        alert(response.data.message);
+                        alert(response.data.message || 'Generation failed.');
                     }
                 },
                 error: function() {
                     alert('An error occurred. Please try again.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Test Generate');
+                    $btn.prop('disabled', false).html(originalText);
                 }
             });
         },
