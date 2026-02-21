@@ -1099,19 +1099,17 @@
                 },
                 success: function(response) {
                     if (response.success) {
+                        var msg = AIPS.escapeHtml(response.data.message || 'Post generated successfully!');
                         if (response.data.edit_url) {
-                            $('#aips-post-link').attr('href', response.data.edit_url);
-                            $('#aips-post-link-container').show();
-                        } else {
-                            $('#aips-post-link-container').hide();
+                            msg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
                         }
-                        $('#aips-post-success-modal').show();
+                        AIPS.showToast(msg, 'success', { isHtml: true, duration: 8000 });
                     } else {
-                        alert(response.data.message);
+                        AIPS.showToast(response.data.message || 'Generation failed.', 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -1907,6 +1905,56 @@
             return text.replace(/["'<>\r\n\t]/g, function(match) {
                 return entityMap[match];
             });
+        },
+
+        /**
+         * Displays a toast notification in the top-right corner of the screen.
+         *
+         * Accepts plain text or pre-built HTML (for links). Plain-text messages
+         * are auto-escaped; if you pass HTML, set {@code isHtml} to true.
+         *
+         * @param {string}  message  - The message to display.
+         * @param {string}  type     - One of 'success', 'error', 'warning', 'info'.
+         * @param {Object}  [opts]   - Optional settings.
+         * @param {boolean} [opts.isHtml=false]    - If true, message is inserted as raw HTML.
+         * @param {number}  [opts.duration=6000]   - Auto-dismiss delay in ms (0 = no auto-dismiss).
+         */
+        showToast: function(message, type, opts) {
+            type = type || 'info';
+            opts = opts || {};
+            var duration = opts.duration !== undefined ? opts.duration : 6000;
+            var isHtml   = opts.isHtml || false;
+
+            var iconMap = { success: '\u2713', error: '\u2715', warning: '\u26A0', info: '\u2139' };
+
+            var $container = $('#aips-toast-container');
+            if (!$container.length) {
+                $container = $('<div id="aips-toast-container"></div>');
+                $('body').append($container);
+            }
+
+            var safeMessage = isHtml ? message : $('<div>').text(message).html();
+
+            var $toast = $('<div class="aips-toast ' + type + '">')
+                .append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
+                .append('<div class="aips-toast-message">' + safeMessage + '</div>')
+                .append('<button class="aips-toast-close" aria-label="Close">&times;</button>');
+
+            $container.append($toast);
+
+            $toast.find('.aips-toast-close').on('click', function() {
+                $toast.addClass('closing');
+                setTimeout(function() { $toast.remove(); }, 300);
+            });
+
+            if (duration > 0) {
+                setTimeout(function() {
+                    if ($toast.parent().length) {
+                        $toast.addClass('closing');
+                        setTimeout(function() { $toast.remove(); }, 300);
+                    }
+                }, duration);
+            }
         },
 
         closeModal: function() {

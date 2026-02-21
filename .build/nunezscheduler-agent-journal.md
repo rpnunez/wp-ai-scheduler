@@ -21,3 +21,11 @@
 - `ai-post-scheduler/templates/admin/schedule.php` — Added `data-next-run` and `data-is-active` attributes to schedule rows; added Edit and Run Now action buttons
 - `ai-post-scheduler/assets/js/admin.js` — Added `editSchedule` and `runNowSchedule` functions; rewrote `toggleSchedule` with live badge/icon/text updates and error rollback; added event bindings for `.aips-edit-schedule` and `.aips-run-now-schedule`
 **Outcome:** Modifying a schedule is now a 2-step action (Edit → Save) instead of a 5+ step destructive workaround (delete → open modal → re-select template → re-configure → save). Manual execution and toggle feedback are now immediate and in-context, following the philosophy: "Flow is Function — a feature that is difficult to navigate is a broken feature."
+
+## 2026-02-21 - Schedule Run Now Toast Notification (follow-up)
+**Target Feature:** Scheduler (Run Now feedback)
+**Improvement:** The "Run Now" button on the schedule page was firing a successful AJAX call but showing no visual feedback — the code referenced `#aips-post-success-modal` which only exists in `templates.php`, not `schedule.php`. Replaced the broken modal reference with a toast notification system. Added a global `AIPS.showToast()` utility to `admin.js` (following the existing pattern from `authors.js`) and the corresponding toast CSS to `admin.css` (available on all plugin pages). On success, the toast displays the server message plus a clickable "Edit Post" link. On failure, an error toast appears. The toast auto-dismisses after 8 seconds or can be closed manually.
+**Files Modified:**
+- `ai-post-scheduler/assets/js/admin.js` — Added `showToast` method to AIPS object; updated `runNowSchedule` success/error handlers to use toast instead of non-existent modal
+- `ai-post-scheduler/assets/css/admin.css` — Added global toast notification styles (`#aips-toast-container`, `.aips-toast`, slide-in/out animations)
+**Outcome:** Users now get immediate, non-blocking visual confirmation when a schedule executes — including a direct link to edit the generated post — without leaving the schedule page.
