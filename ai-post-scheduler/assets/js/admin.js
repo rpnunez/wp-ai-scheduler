@@ -66,7 +66,9 @@
             $(document).on('click', '.aips-save-voice', this.saveVoice);
 
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
+            $(document).on('click', '.aips-edit-schedule', this.editSchedule);
             $(document).on('click', '.aips-clone-schedule', this.cloneSchedule);
+            $(document).on('click', '.aips-run-now-schedule', this.runNowSchedule);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
@@ -925,6 +927,48 @@
             $('#aips-schedule-modal').show();
         },
 
+        /**
+         * Opens the schedule modal pre-filled with the existing schedule's data
+         * so the user can modify it in-place without deleting and recreating.
+         *
+         * @param {Event} e - Click event from the edit button.
+         */
+        editSchedule: function(e) {
+            e.preventDefault();
+
+            var $row = $(this).closest('tr');
+            var scheduleId = $row.data('schedule-id');
+            var templateId = $row.data('template-id');
+            var frequency = $row.data('frequency');
+            var topic = $row.data('topic');
+            var articleStructureId = $row.data('article-structure-id');
+            var rotationPattern = $row.data('rotation-pattern');
+            var nextRun = $row.data('next-run');
+            var isActive = $row.data('is-active');
+
+            $('#aips-schedule-form')[0].reset();
+            $('#schedule_id').val(scheduleId);
+            $('#schedule_template').val(templateId);
+            $('#schedule_frequency').val(frequency);
+            $('#schedule_topic').val(topic || '');
+            $('#article_structure_id').val(articleStructureId || '');
+            $('#rotation_pattern').val(rotationPattern || '');
+            $('#schedule_is_active').prop('checked', isActive == 1);
+
+            if (nextRun) {
+                var dt = new Date(nextRun);
+                if (!isNaN(dt.getTime())) {
+                    var pad = function(n) { return n < 10 ? '0' + n : n; };
+                    var localValue = dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) +
+                        'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
+                    $('#schedule_start_time').val(localValue);
+                }
+            }
+
+            $('#aips-schedule-modal-title').text('Edit Schedule');
+            $('#aips-schedule-modal').show();
+        },
+
         cloneSchedule: function(e) {
             e.preventDefault();
 
@@ -1030,9 +1074,59 @@
             });
         },
 
+        /**
+         * Triggers immediate execution of a specific schedule via its schedule_id.
+         *
+         * @param {Event} e - Click event from the Run Now button.
+         */
+        runNowSchedule: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var scheduleId = $btn.data('id');
+
+            if (!scheduleId) return;
+
+            $btn.prop('disabled', true);
+            $btn.find('.dashicons').removeClass('dashicons-controls-play').addClass('dashicons-update aips-spin');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: scheduleId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        if (response.data.edit_url) {
+                            $('#aips-post-link').attr('href', response.data.edit_url);
+                            $('#aips-post-link-container').show();
+                        } else {
+                            $('#aips-post-link-container').hide();
+                        }
+                        $('#aips-post-success-modal').show();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                    $btn.find('.dashicons').removeClass('dashicons-update aips-spin').addClass('dashicons-controls-play');
+                }
+            });
+        },
+
         toggleSchedule: function() {
-            var id = $(this).data('id');
-            var isActive = $(this).is(':checked') ? 1 : 0;
+            var $toggle = $(this);
+            var id = $toggle.data('id');
+            var isActive = $toggle.is(':checked') ? 1 : 0;
+            var $wrapper = $toggle.closest('.aips-schedule-status-wrapper');
+            var $badge = $wrapper.find('.aips-badge');
+            var $icon = $badge.find('.dashicons');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1043,7 +1137,24 @@
                     schedule_id: id,
                     is_active: isActive
                 },
+                success: function() {
+                    $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
+                    $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
+
+                    if (isActive) {
+                        $badge.addClass('aips-badge-success');
+                        $icon.addClass('dashicons-yes-alt');
+                        $badge.contents().filter(function() { return this.nodeType === 3; }).first().replaceWith(' Active');
+                    } else {
+                        $badge.addClass('aips-badge-neutral');
+                        $icon.addClass('dashicons-minus');
+                        $badge.contents().filter(function() { return this.nodeType === 3; }).first().replaceWith(' Inactive');
+                    }
+
+                    $toggle.closest('tr').data('is-active', isActive);
+                },
                 error: function() {
+                    $toggle.prop('checked', !isActive);
                     alert('An error occurred. Please try again.');
                 }
             });
