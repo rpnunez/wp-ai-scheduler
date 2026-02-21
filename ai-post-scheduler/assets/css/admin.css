@@ -229,6 +229,42 @@
 	box-shadow: var(--aips-shadow-sm);
 }
 
+.aips-filter-left {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+.aips-filter-right {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+	margin-left: auto;
+}
+
+.aips-filter-right .aips-form-input {
+	min-width: 200px;
+}
+
+/* Panel toolbar */
+.aips-panel-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: var(--aips-space-3);
+	padding: var(--aips-space-3) var(--aips-space-5);
+	background: var(--aips-white);
+	border-bottom: 1px solid var(--aips-gray-200);
+}
+
+.aips-toolbar-left,
+.aips-toolbar-right {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
 /**
  * Implements a responsive Grid system for the redesign by using CSS Grid with
  * consistent spacing and utility column presets.
@@ -410,6 +446,79 @@
 	align-items: center;
 }
 
+/* History table: checkbox column background (integrate with table) */
+.aips-history-table thead .column-cb,
+.aips-history-table thead .check-column {
+	background: var(--aips-gray-50);
+	border-bottom: 2px solid var(--aips-gray-200);
+	padding: var(--aips-space-3) var(--aips-space-4);
+}
+
+.aips-history-table tbody .check-column {
+	background: var(--aips-white);
+	border-bottom: 1px solid var(--aips-gray-100);
+	padding: var(--aips-space-4);
+}
+
+.aips-history-table tbody tr:hover .check-column {
+	background: var(--aips-gray-50);
+}
+
+.aips-history-table tbody tr:last-child .check-column {
+	border-bottom: none;
+}
+
+/* Action buttons: horizontal layout with labels */
+.aips-btn-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-2);
+	align-items: center;
+}
+
+.aips-btn-group-inline {
+	flex-direction: row;
+}
+
+/* History table tfoot pagination */
+.aips-history-table tfoot .aips-history-pagination-row td {
+	background: var(--aips-gray-50);
+	border-top: 2px solid var(--aips-gray-200);
+	padding: var(--aips-space-4) var(--aips-space-5);
+	vertical-align: middle;
+}
+
+.aips-history-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: var(--aips-space-4);
+}
+
+.aips-history-pagination-info {
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-600);
+}
+
+.aips-history-pagination-links {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+.aips-history-page-numbers {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-1);
+}
+
+.aips-history-page-ellipsis {
+	padding: 0 var(--aips-space-1);
+	color: var(--aips-gray-500);
+	font-size: var(--aips-text-sm);
+}
+
 /* ==========================================================================
    Status Badges (Modern Design)
    ========================================================================== */
@@ -519,6 +628,24 @@
 
 .aips-btn-danger:hover {
 	background: var(--aips-error-light);
+}
+
+/* Solid danger buttons (toolbar style, matches Reload button appearance) */
+.aips-btn-danger-solid {
+	background: var(--aips-error);
+	color: var(--aips-white);
+	border: 1px solid var(--aips-error-dark);
+}
+
+.aips-btn-danger-solid:hover:not(:disabled) {
+	background: var(--aips-error-dark);
+	border-color: var(--aips-error-dark);
+	box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-btn-danger-solid:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
 .aips-btn-sm {

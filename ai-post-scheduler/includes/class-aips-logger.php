@@ -87,6 +87,14 @@ class AIPS_Logger {
             error_log('[AI Post Scheduler] ' . $log_entry);
         }
     }
+
+    public function warning($message, $context = array()) {
+        $this->log($message, 'warning', $context);
+    }
+
+    public function error($message, $context = array()) {
+        $this->log($message, 'error', $context);
+    }
     
     public function get_logs($lines = 100) {
         if (!file_exists($this->log_file)) {
