@@ -586,3 +586,15 @@
 .aips-toast.closing {
 	animation: slideOut 0.3s ease-in forwards;
 }
+
+/* Selected Topic Highlighting (for keyboard navigation) */
+.aips-topic-row.selected-topic {
+    background-color: #f0f6fc !important;
+    border-left: 3px solid #2271b1 !important;
+}
+
+/* Processing State */
+.aips-topic-row.processing {
+    opacity: 0.6;
+    pointer-events: none;
+}

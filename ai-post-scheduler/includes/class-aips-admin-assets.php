@@ -102,6 +102,7 @@ class AIPS_Admin_Assets {
 				'loading' => __('Loading...', 'ai-post-scheduler'),
 				'saving' => __('Saving...', 'ai-post-scheduler'),
 				'generating' => __('Generating...', 'ai-post-scheduler'),
+				'processing' => __('Processing...', 'ai-post-scheduler'),
 				'confirmDelete' => __('Are you sure you want to delete this author? This will also delete all associated topics and logs.', 'ai-post-scheduler'),
 				'confirmDeleteTopic' => __('Are you sure you want to delete this topic?', 'ai-post-scheduler'),
 				'confirmGenerateTopics' => __('Generate topics for this author now?', 'ai-post-scheduler'),

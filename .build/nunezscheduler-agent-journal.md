@@ -64,3 +64,17 @@
 - `ai-post-scheduler/assets/js/admin.js` — Added `showToast` method to AIPS object; updated `runNowSchedule` success/error handlers to use toast instead of non-existent modal
 - `ai-post-scheduler/assets/css/admin.css` — Added global toast notification styles (`#aips-toast-container`, `.aips-toast`, slide-in/out animations)
 **Outcome:** Users now get immediate, non-blocking visual confirmation when a schedule executes — including a direct link to edit the generated post — without leaving the schedule page.
+
+## 2026-02-21 - Author Topics Approval Flow Optimization
+**Target Feature:** Author Topics
+**Improvement:** Streamlined the topic approval workflow by replacing the mandatory feedback modal with quick actions and implementing keyboard navigation.
+**Details:**
+- **Quick Actions:** Clicking "Approve" or "Reject" now triggers an immediate AJAX call, removing the topic from the list and updating the UI optimistically (no full reload). The feedback modal is still accessible via `Shift+Click`.
+- **Keyboard Navigation:** Added `j`/`k` (or ArrowDown/ArrowUp) to navigate the topics list, and `a`/`r`/`d` to Approve/Reject/Delete the selected topic.
+- **Visual Feedback:** Added `.processing` state for buttons and visual highlighting for the selected row.
+- **Localization:** Added missing 'processing' string to admin assets.
+**Files Modified:**
+- `ai-post-scheduler/assets/js/authors.js` — Implemented `quickAction`, `setupKeyboardNavigation`, and UI updates.
+- `ai-post-scheduler/assets/css/authors.css` — Added `.selected-topic` and `.processing` styles.
+- `ai-post-scheduler/includes/class-aips-admin-assets.php` — Added localization string.
+**Outcome:** Users can now rapidly triage pending topics using keyboard shortcuts or single clicks, significantly reducing the time required to manage large queues of generated topics.
