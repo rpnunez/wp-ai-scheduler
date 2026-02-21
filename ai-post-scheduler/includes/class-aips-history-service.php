@@ -57,50 +57,7 @@ class AIPS_History_Service {
 	 * @return array Activity entries
 	 */
 	public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) {
-		global $wpdb;
-		
-		$where_clauses = array("history_type_id = %d");
-		$where_args = array(AIPS_History_Type::ACTIVITY);
-		
-		// Event type filter
-		if (!empty($filters['event_type'])) {
-			$where_clauses[] = "details LIKE %s";
-			$where_args[] = '%"event_type":"' . $wpdb->esc_like($filters['event_type']) . '"%';
-		}
-		
-		// Event status filter
-		if (!empty($filters['event_status'])) {
-			$where_clauses[] = "details LIKE %s";
-			$where_args[] = '%"event_status":"' . $wpdb->esc_like($filters['event_status']) . '"%';
-		}
-		
-		// Search filter
-		if (!empty($filters['search'])) {
-			$search_term = '%' . $wpdb->esc_like($filters['search']) . '%';
-			$where_clauses[] = "(log_type LIKE %s OR details LIKE %s)";
-			$where_args[] = $search_term;
-			$where_args[] = $search_term;
-		}
-		
-		$where_sql = implode(' AND ', $where_clauses);
-		$where_args[] = $limit;
-		$where_args[] = $offset;
-		
-		$history_log_table = $wpdb->prefix . 'aips_history_log';
-		$history_table = $wpdb->prefix . 'aips_history';
-		
-		$sql = "SELECT hl.*, h.post_id, h.template_id 
-		        FROM {$history_log_table} hl 
-		        LEFT JOIN {$history_table} h ON hl.history_id = h.id 
-		        WHERE $where_sql 
-		        ORDER BY hl.timestamp DESC 
-		        LIMIT %d OFFSET %d";
-		
-		if (empty($where_args)) {
-			return $wpdb->get_results($sql);
-		}
-		
-		return $wpdb->get_results($wpdb->prepare($sql, $where_args));
+		return $this->repository->get_activity_feed($limit, $offset, $filters);
 	}
 	
 	/**

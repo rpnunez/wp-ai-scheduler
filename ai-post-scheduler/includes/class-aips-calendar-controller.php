@@ -143,29 +143,19 @@ class AIPS_Calendar_Controller {
 	 * @return int Timestamp of next occurrence
 	 */
 	private function calculate_next_occurrence($schedule, $start_date) {
-		$next_run = strtotime($schedule->next_run);
-		$target = strtotime($start_date);
+		// Use the new efficient method in Interval Calculator
+		// This avoids the 1000 iteration limit and handles large time gaps
+		$next_occurrence = $this->interval_calculator->calculate_next_occurrence_after(
+			$schedule->frequency,
+			$schedule->next_run,
+			$start_date
+		);
 		
-		// Use interval calculator to fast-forward to the target date
-		$current_date_str = date('Y-m-d H:i:s', $next_run);
-		
-		// Fast-forward using interval calculator with safety limit
-		$limit = 1000;
-		while ($next_run < $target && $limit > 0) {
-			$current_date_str = $this->interval_calculator->calculate_next_run(
-				$schedule->frequency,
-				$current_date_str
-			);
-			
-			if (!$current_date_str) {
-				return $target;
-			}
-			
-			$next_run = strtotime($current_date_str);
-			$limit--;
+		if (!$next_occurrence) {
+			return strtotime($start_date); // Fallback
 		}
 		
-		return $next_run;
+		return strtotime($next_occurrence);
 	}
 	
 	/**
