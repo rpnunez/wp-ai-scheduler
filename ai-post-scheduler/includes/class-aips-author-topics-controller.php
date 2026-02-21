@@ -80,6 +80,7 @@ class AIPS_Author_Topics_Controller {
 		add_action('wp_ajax_aips_compute_topic_embeddings', array($this, 'ajax_compute_topic_embeddings'));
 		add_action('wp_ajax_aips_get_generation_queue', array($this, 'ajax_get_generation_queue'));
 		add_action('wp_ajax_aips_bulk_generate_from_queue', array($this, 'ajax_bulk_generate_from_queue'));
+		add_action('wp_ajax_aips_update_topic_status_kanban', array($this, 'ajax_update_topic_status_kanban'));
 	}
 	
 	/**
@@ -848,6 +849,158 @@ class AIPS_Author_Topics_Controller {
 			'failed_count' => $failed_count,
 			'errors' => $errors
 		));
+	}
+	
+	/**
+	 * AJAX handler for updating topic status via Kanban drag-drop.
+	 * 
+	 * When dragged to "generate" status, immediately triggers post generation.
+	 */
+	public function ajax_update_topic_status_kanban() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+		
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+		
+		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
+		$new_status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+		
+		if (!$topic_id) {
+			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
+		}
+		
+		// Validate status
+		$valid_statuses = array('pending', 'approved', 'rejected', 'generate');
+		if (!in_array($new_status, $valid_statuses)) {
+			wp_send_json_error(array('message' => __('Invalid status.', 'ai-post-scheduler')));
+		}
+		
+		// Get topic details for logging
+		$topic = $this->repository->get_by_id($topic_id);
+		if (!$topic) {
+			wp_send_json_error(array('message' => __('Topic not found.', 'ai-post-scheduler')));
+		}
+		
+		// Handle "generate" status - immediately generate post and move to approved
+		if ($new_status === 'generate') {
+			// Validate that topic can be generated (only from pending or approved)
+			if (!in_array($topic->status, array('pending', 'approved'))) {
+				wp_send_json_error(array(
+					'message' => __('Only pending or approved topics can be generated. Please approve this topic first.', 'ai-post-scheduler')
+				));
+			}
+			
+			// Store original status in case we need to revert
+			$original_status = $topic->status;
+			
+			// Create history container for generation
+			$history = $this->history_service->create('topic_generation_kanban', array(
+				'topic_id' => $topic_id,
+				'author_id' => $topic->author_id,
+			));
+			
+			$history->record_user_action(
+				'generate_post_from_kanban',
+				sprintf(__('User dragged topic "%s" to Generate column', 'ai-post-scheduler'), $topic->topic_title),
+				array(
+					'topic_id' => $topic_id,
+					'topic_title' => $topic->topic_title,
+					'author_id' => $topic->author_id,
+					'original_status' => $original_status,
+				)
+			);
+			
+			// Ensure topic is approved first
+			$this->repository->update_status($topic_id, 'approved', get_current_user_id());
+			
+			// Generate the post using the correct method
+			$result = $this->post_generator->generate_now($topic_id);
+			
+			if (is_wp_error($result)) {
+				// Revert topic status on failure
+				$this->repository->update_status($topic_id, $original_status, get_current_user_id());
+				
+				$history->record_error(
+					sprintf(__('Failed to generate post for topic "%s"', 'ai-post-scheduler'), $topic->topic_title),
+					array('topic_id' => $topic_id, 'error_code' => 'GENERATION_FAILED', 'reverted_to' => $original_status),
+					$result
+				);
+				
+				wp_send_json_error(array(
+					'message' => sprintf(__('Failed to generate post: %s', 'ai-post-scheduler'), $result->get_error_message()),
+					'status' => $original_status // Return original status for UI rollback
+				));
+			}
+			
+			$history->complete_success(array(
+				'post_id' => $result,
+				'topic_id' => $topic_id,
+			));
+			
+			wp_send_json_success(array(
+				'message' => __('Post generated successfully!', 'ai-post-scheduler'),
+				'post_id' => $result,
+				'status' => 'approved', // Return as approved since generation completed
+			));
+		} else {
+			// Normal status update (pending, approved, rejected)
+			$result = $this->repository->update_status($topic_id, $new_status, get_current_user_id());
+			
+			if ($result) {
+				// Log the status change
+				$status_labels = array(
+					'pending' => __('Pending Review', 'ai-post-scheduler'),
+					'approved' => __('Approved', 'ai-post-scheduler'),
+					'rejected' => __('Rejected', 'ai-post-scheduler'),
+				);
+				
+				$history = $this->history_service->create('topic_status_change', array(
+					'topic_id' => $topic_id,
+				));
+				
+				$history->record(
+					'activity',
+					sprintf(
+						__('Topic "%s" moved to %s via Kanban', 'ai-post-scheduler'),
+						$topic->topic_title,
+						$status_labels[$new_status]
+					),
+					array(
+						'event_type' => 'topic_status_changed',
+						'event_status' => 'success',
+					),
+					null,
+					array(
+						'topic_id' => $topic_id,
+						'topic_title' => $topic->topic_title,
+						'author_id' => $topic->author_id,
+						'old_status' => $topic->status,
+						'new_status' => $new_status,
+						'source' => 'kanban_drag_drop',
+						'user_id' => get_current_user_id(),
+					)
+				);
+				
+				// Log to the appropriate logs table
+				if ($new_status === 'approved') {
+					$this->logs_repository->log_approval($topic_id, get_current_user_id());
+					$this->feedback_repository->record_approval($topic_id, get_current_user_id(), '', '', 'other', 'kanban');
+					$this->penalty_service->apply_reward($topic_id, 'other');
+				} elseif ($new_status === 'rejected') {
+					$this->logs_repository->log_rejection($topic_id, get_current_user_id());
+					$this->feedback_repository->record_rejection($topic_id, get_current_user_id(), '', '', 'other', 'kanban');
+					$this->penalty_service->apply_penalty($topic_id, 'other');
+				}
+				
+				wp_send_json_success(array(
+					'message' => sprintf(__('Topic moved to %s', 'ai-post-scheduler'), $status_labels[$new_status]),
+					'status' => $new_status,
+				));
+			} else {
+				wp_send_json_error(array('message' => __('Failed to update topic status.', 'ai-post-scheduler')));
+			}
+		}
 	}
 	
 	/**

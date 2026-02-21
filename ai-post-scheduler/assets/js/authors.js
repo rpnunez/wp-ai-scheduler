@@ -283,7 +283,12 @@
 			
 			$('#aips-topics-modal').fadeIn();
 
-			this.loadTopics('pending');
+			// Load Kanban view by default
+			if (typeof KanbanModule !== 'undefined' && KanbanModule.currentView === 'kanban') {
+				KanbanModule.loadKanbanTopics();
+			} else {
+				this.loadTopics('pending');
+			}
 		},
 
 		loadTopics: function (status) {
@@ -388,6 +393,16 @@
 
 			$('.aips-tab-link').removeClass('active');
 			$tab.addClass('active');
+			
+			// If in Kanban view, switch to List view when tab is clicked
+			if (typeof KanbanModule !== 'undefined' && KanbanModule.currentView === 'kanban') {
+				// Switch to list view
+				$('#aips-kanban-view').hide();
+				$('#aips-list-view').show();
+				$('.aips-view-toggle-btn').removeClass('active');
+				$('.aips-view-toggle-btn[data-view="list"]').addClass('active');
+				KanbanModule.currentView = 'list';
+			}
 
 			// Add fade transition
 			$('#aips-topics-content').fadeOut(200, () => {
@@ -1238,10 +1253,377 @@
 		}
 	};
 
+	// ============================================
+	// Kanban Board Module
+	// ============================================
+	const KanbanModule = {
+		currentView: 'kanban', // Default view
+		allTopics: {},
+		
+		init: function() {
+			this.bindEvents();
+		},
+		
+		bindEvents: function() {
+			// View toggle buttons
+			$(document).on('click', '.aips-view-toggle-btn', this.toggleView.bind(this));
+			
+			// Kanban specific events
+			$(document).on('dragstart', '.aips-kanban-card', this.onDragStart.bind(this));
+			$(document).on('dragend', '.aips-kanban-card', this.onDragEnd.bind(this));
+			$(document).on('dragover', '.aips-kanban-column-body', this.onDragOver.bind(this));
+			$(document).on('dragleave', '.aips-kanban-column-body', this.onDragLeave.bind(this));
+			$(document).on('drop', '.aips-kanban-column-body', this.onDrop.bind(this));
+			
+			// Card action buttons
+			$(document).on('click', '.aips-kanban-card-action.delete', this.deleteTopicFromKanban.bind(this));
+			$(document).on('click', '.aips-kanban-post-badge', this.viewTopicPosts.bind(this));
+		},
+		
+		toggleView: function(e) {
+			e.preventDefault();
+			const $btn = $(e.currentTarget);
+			const view = $btn.data('view');
+			
+			if (view === this.currentView) return;
+			
+			this.currentView = view;
+			$('.aips-view-toggle-btn').removeClass('active');
+			$btn.addClass('active');
+			
+			if (view === 'kanban') {
+				$('#aips-list-view').hide();
+				$('#aips-kanban-view').show();
+				// Load topics into Kanban
+				this.loadKanbanTopics();
+			} else {
+				$('#aips-kanban-view').hide();
+				$('#aips-list-view').show();
+				// Load topics into list (use existing method)
+				const activeTab = $('.aips-tab-link.active').data('tab');
+				if (activeTab && activeTab !== 'feedback') {
+					AuthorsModule.loadTopics(activeTab);
+				}
+			}
+		},
+		
+		loadKanbanTopics: function() {
+			if (!AuthorsModule.currentAuthorId) return;
+			
+			// Show loading
+			$('.aips-kanban-column-body').html('<p class="aips-kanban-loading"><span class="spinner is-active"></span><br>' + (aipsAuthorsL10n.loadingTopics || 'Loading...') + '</p>');
+			
+			// Load all topics (pending, approved, rejected)
+			const statusesToLoad = ['pending', 'approved', 'rejected'];
+			let loadedCount = 0;
+			
+			statusesToLoad.forEach(status => {
+				$.ajax({
+					url: ajaxurl,
+					type: 'POST',
+					data: {
+						action: 'aips_get_author_topics',
+						nonce: aipsAuthorsL10n.nonce,
+						author_id: AuthorsModule.currentAuthorId,
+						status: status
+					},
+					success: (response) => {
+						loadedCount++;
+						
+						if (response.success && response.data.topics) {
+							this.allTopics[status] = response.data.topics;
+						} else {
+							this.allTopics[status] = [];
+						}
+						
+						// When all statuses loaded, render the board
+						if (loadedCount === statusesToLoad.length) {
+							this.renderKanbanBoard();
+						}
+					},
+					error: () => {
+						loadedCount++;
+						this.allTopics[status] = [];
+						
+						if (loadedCount === statusesToLoad.length) {
+							this.renderKanbanBoard();
+						}
+					}
+				});
+			});
+		},
+		
+		renderKanbanBoard: function() {
+			const statuses = ['pending', 'approved', 'rejected'];
+			
+			statuses.forEach(status => {
+				const $columnBody = $(`.aips-kanban-column-body[data-status="${status}"]`);
+				const $count = $(`.aips-kanban-count[data-status="${status}"]`);
+				const topics = this.allTopics[status] || [];
+				
+				$count.text(topics.length);
+				
+				if (topics.length === 0) {
+					const emptyMsg = {
+						'pending': aipsAuthorsL10n.noPendingTopics || 'No pending topics',
+						'approved': aipsAuthorsL10n.noApprovedTopics || 'No approved topics',
+						'rejected': aipsAuthorsL10n.noRejectedTopics || 'No rejected topics'
+					};
+					$columnBody.html('<p class="aips-kanban-empty">' + emptyMsg[status] + '</p>');
+				} else {
+					let html = '';
+					topics.forEach(topic => {
+						html += this.createKanbanCard(topic);
+					});
+					$columnBody.html(html);
+				}
+			});
+			
+			// Update tab counts to sync with Kanban counts
+			this.updateColumnCounts();
+			
+			// Clear generate column
+			$(`.aips-kanban-column-body[data-status="generate"]`).html(
+				'<p class="aips-kanban-drop-zone">' + (aipsAuthorsL10n.dropToGenerate || 'Drop here to generate post immediately') + '</p>'
+			);
+		},
+		
+		createKanbanCard: function(topic) {
+			const postBadge = topic.post_count && topic.post_count > 0 
+				? `<span class="aips-kanban-post-badge" data-topic-id="${topic.id}" title="${aipsAuthorsL10n.viewPosts || 'View posts'}">
+						<span class="dashicons dashicons-admin-post"></span> ${topic.post_count}
+					</span>`
+				: '';
+				
+			return `
+				<div class="aips-kanban-card" draggable="true" data-topic-id="${topic.id}">
+					<div class="aips-kanban-card-title">${this.escapeHtml(topic.topic_title)}</div>
+					<div class="aips-kanban-card-meta">
+						<div class="aips-kanban-card-date">
+							<span class="dashicons dashicons-calendar-alt"></span>
+							${topic.generated_at}
+						</div>
+						${postBadge}
+					</div>
+					<div class="aips-kanban-card-actions">
+						<button class="aips-kanban-card-action delete" data-topic-id="${topic.id}">${aipsAuthorsL10n.delete || 'Delete'}</button>
+					</div>
+				</div>
+			`;
+		},
+		
+		escapeHtml: function(text) {
+			const map = {
+				'&': '&amp;',
+				'<': '&lt;',
+				'>': '&gt;',
+				'"': '&quot;',
+				"'": '&#039;'
+			};
+			return String(text).replace(/[&<>"']/g, m => map[m]);
+		},
+		
+		onDragStart: function(e) {
+			const $card = $(e.currentTarget);
+			$card.addClass('dragging');
+			
+			e.originalEvent.dataTransfer.effectAllowed = 'move';
+			e.originalEvent.dataTransfer.setData('text/plain', $card.data('topic-id'));
+		},
+		
+		onDragEnd: function(e) {
+			$(e.currentTarget).removeClass('dragging');
+			$('.aips-kanban-column-body').removeClass('drag-over');
+		},
+		
+		onDragOver: function(e) {
+			e.preventDefault();
+			e.originalEvent.dataTransfer.dropEffect = 'move';
+			
+			const $target = $(e.currentTarget);
+			if (!$target.hasClass('drag-over')) {
+				$target.addClass('drag-over');
+			}
+			
+			return false;
+		},
+		
+		onDragLeave: function(e) {
+			const $target = $(e.currentTarget);
+			// Only remove if we're actually leaving the column body
+			if (e.target === e.currentTarget) {
+				$target.removeClass('drag-over');
+			}
+		},
+		
+		onDrop: function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			
+			const $column = $(e.currentTarget);
+			$column.removeClass('drag-over');
+			
+			const topicId = e.originalEvent.dataTransfer.getData('text/plain');
+			const newStatus = $column.data('status');
+			
+			if (!topicId || !newStatus) return;
+			
+			// Find the dragged card
+			const $card = $(`.aips-kanban-card[data-topic-id="${topicId}"]`);
+			const oldStatus = $card.closest('.aips-kanban-column').data('status');
+			
+			// Don't do anything if dropped in same column
+			if (oldStatus === newStatus) {
+				return;
+			}
+			
+			// Handle the status change
+			this.updateTopicStatus(topicId, newStatus, $card, oldStatus);
+			
+			return false;
+		},
+		
+		updateTopicStatus: function(topicId, newStatus, $card, oldStatus) {
+			// Show loading state
+			$card.css('opacity', '0.5');
+			
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_update_topic_status_kanban',
+					nonce: aipsAuthorsL10n.nonce,
+					topic_id: topicId,
+					status: newStatus
+				},
+				success: (response) => {
+					if (response.success) {
+						// Show success message
+						showToast(response.data.message, 'success');
+						
+						// If generated, reload the entire board (topic might move to approved)
+						if (newStatus === 'generate') {
+							this.loadKanbanTopics();
+						} else {
+							// Move the card to new column
+							this.moveCardToColumn($card, newStatus);
+							// Update the topic in our data store
+							this.updateTopicInData(topicId, oldStatus, newStatus);
+						}
+					} else {
+						showToast(response.data.message || (aipsAuthorsL10n.errorUpdating || 'Failed to update topic'), 'error');
+						$card.css('opacity', '1');
+					}
+				},
+				error: () => {
+					showToast(aipsAuthorsL10n.errorUpdating || 'Failed to update topic', 'error');
+					$card.css('opacity', '1');
+				}
+			});
+		},
+		
+		moveCardToColumn: function($card, newStatus) {
+			const $newColumn = $(`.aips-kanban-column-body[data-status="${newStatus}"]`);
+			
+			// Remove empty message if exists
+			$newColumn.find('.aips-kanban-empty').remove();
+			
+			// Move card with animation
+			$card.fadeOut(200, function() {
+				$card.appendTo($newColumn).fadeIn(200);
+			});
+			
+			// Update counts
+			this.updateColumnCounts();
+			
+			// Check if old column is now empty
+			const $oldColumn = $card.closest('.aips-kanban-column-body');
+			setTimeout(() => {
+				if ($oldColumn.find('.aips-kanban-card').length === 0) {
+					const status = $oldColumn.data('status');
+					const emptyMsg = {
+						'pending': aipsAuthorsL10n.noPendingTopics || 'No pending topics',
+						'approved': aipsAuthorsL10n.noApprovedTopics || 'No approved topics',
+						'rejected': aipsAuthorsL10n.noRejectedTopics || 'No rejected topics'
+					};
+					$oldColumn.html('<p class="aips-kanban-empty">' + (emptyMsg[status] || 'No topics') + '</p>');
+				}
+			}, 300);
+		},
+		
+		updateTopicInData: function(topicId, oldStatus, newStatus) {
+			// Find and move topic in data
+			const topicIndex = this.allTopics[oldStatus].findIndex(t => t.id == topicId);
+			if (topicIndex > -1) {
+				const topic = this.allTopics[oldStatus].splice(topicIndex, 1)[0];
+				topic.status = newStatus;
+				this.allTopics[newStatus].push(topic);
+			}
+		},
+		
+		updateColumnCounts: function() {
+			['pending', 'approved', 'rejected'].forEach(status => {
+				const count = $(`.aips-kanban-column-body[data-status="${status}"] .aips-kanban-card`).length;
+				$(`.aips-kanban-count[data-status="${status}"]`).text(count);
+				// Also update the tab counts
+				$(`#${status}-count`).text(count);
+			});
+		},
+		
+		deleteTopicFromKanban: function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			
+			const topicId = $(e.currentTarget).data('topic-id');
+			
+			if (!confirm(aipsAuthorsL10n.confirmDeleteTopic || 'Are you sure you want to delete this topic?')) {
+				return;
+			}
+			
+			const $card = $(`.aips-kanban-card[data-topic-id="${topicId}"]`);
+			$card.css('opacity', '0.5');
+			
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_delete_topic',
+					nonce: aipsAuthorsL10n.nonce,
+					topic_id: topicId
+				},
+				success: (response) => {
+					if (response.success) {
+						showToast(response.data.message || (aipsAuthorsL10n.topicDeleted || 'Topic deleted'), 'success');
+						$card.fadeOut(300, function() {
+							$(this).remove();
+							KanbanModule.updateColumnCounts();
+						});
+					} else {
+						showToast(response.data.message || (aipsAuthorsL10n.errorDeleting || 'Failed to delete'), 'error');
+						$card.css('opacity', '1');
+					}
+				},
+				error: () => {
+					showToast(aipsAuthorsL10n.errorDeleting || 'Failed to delete', 'error');
+					$card.css('opacity', '1');
+				}
+			});
+		},
+		
+		viewTopicPosts: function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+			
+			// Delegate to AuthorsModule method
+			AuthorsModule.viewTopicPosts(e);
+		}
+	};
+
 	// Initialize when document is ready
 	$(document).ready(function () {
 		AuthorsModule.init();
 		GenerationQueueModule.init();
+		KanbanModule.init();
 	});
 
 })(jQuery);
