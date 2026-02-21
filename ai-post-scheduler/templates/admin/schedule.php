@@ -215,7 +215,10 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
 </div>
 
 <!-- Keep original modal markup below (not redesigned yet) -->
-<div id="aips-schedule-modal" class="aips-modal" style="display: none;">
+<?php
+$preselect_template_id = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
+?>
+<div id="aips-schedule-modal" class="aips-modal" style="display: none;" data-preselect-template="<?php echo esc_attr($preselect_template_id); ?>">
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2 id="aips-schedule-modal-title"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>
