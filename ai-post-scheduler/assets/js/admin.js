@@ -12,6 +12,7 @@
             this.bindEvents();
             this.initAIVariablesScanner();
             this.handleInitialTabFromHash();
+            this.initScheduleAutoOpen();
         },
         
         handleInitialTabFromHash: function() {
@@ -45,6 +46,10 @@
             $(document).on('click', '.aips-wizard-next', this.wizardNext);
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
 
+            // Post-save next steps
+            $(document).on('click', '#aips-quick-run-now-btn', this.quickRunNow);
+            $(document).on('click', '#aips-post-save-done-btn', function() { location.reload(); });
+
             // Preview drawer
             $(document).on('click', '.aips-preview-prompts', this.previewPrompts);
             $(document).on('click', '.aips-preview-drawer-handle', this.togglePreviewDrawer);
@@ -61,7 +66,9 @@
             $(document).on('click', '.aips-save-voice', this.saveVoice);
 
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
+            $(document).on('click', '.aips-edit-schedule', this.editSchedule);
             $(document).on('click', '.aips-clone-schedule', this.cloneSchedule);
+            $(document).on('click', '.aips-run-now-schedule', this.runNowSchedule);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
@@ -71,13 +78,24 @@
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
             $(document).on('click', '#aips-export-history-btn', this.exportHistory);
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
-            $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
+            $(document).on('click', '#aips-reload-history-btn', function(e) {
+                AIPS.reloadHistory(e, 1);
+            });
             $(document).on('keypress', '#aips-history-search-input', function(e) {
                 if(e.which == 13) {
                     AIPS.filterHistory(e);
                 }
             });
             $(document).on('click', '.aips-view-details', this.viewDetails);
+
+            // History Pagination
+            $(document).on('click', '#aips-history-pagination a', function(e) {
+                e.preventDefault();
+                var href = $(this).attr('href');
+                var match = href.match(/paged=(\d+)/);
+                var page = match ? parseInt(match[1]) : 1;
+                AIPS.reloadHistory(e, page);
+            });
 
             // History Bulk Actions
             $(document).on('change', '#cb-select-all-1', this.toggleAllHistory);
@@ -644,7 +662,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        var savedId = response.data.template_id;
+                        AIPS.lastSavedTemplateId = savedId;
+                        AIPS.showPostSaveActions(savedId);
                     } else {
                         alert(response.data.message);
                     }
@@ -918,6 +938,48 @@
             $('#aips-schedule-modal').show();
         },
 
+        /**
+         * Opens the schedule modal pre-filled with the existing schedule's data
+         * so the user can modify it in-place without deleting and recreating.
+         *
+         * @param {Event} e - Click event from the edit button.
+         */
+        editSchedule: function(e) {
+            e.preventDefault();
+
+            var $row = $(this).closest('tr');
+            var scheduleId = $row.data('schedule-id');
+            var templateId = $row.data('template-id');
+            var frequency = $row.data('frequency');
+            var topic = $row.data('topic');
+            var articleStructureId = $row.data('article-structure-id');
+            var rotationPattern = $row.data('rotation-pattern');
+            var nextRun = $row.data('next-run');
+            var isActive = $row.data('is-active');
+
+            $('#aips-schedule-form')[0].reset();
+            $('#schedule_id').val(scheduleId);
+            $('#schedule_template').val(templateId);
+            $('#schedule_frequency').val(frequency);
+            $('#schedule_topic').val(topic || '');
+            $('#article_structure_id').val(articleStructureId || '');
+            $('#rotation_pattern').val(rotationPattern || '');
+            $('#schedule_is_active').prop('checked', isActive == 1);
+
+            if (nextRun) {
+                var dt = new Date(nextRun);
+                if (!isNaN(dt.getTime())) {
+                    var pad = function(n) { return n < 10 ? '0' + n : n; };
+                    var localValue = dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) +
+                        'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
+                    $('#schedule_start_time').val(localValue);
+                }
+            }
+
+            $('#aips-schedule-modal-title').text('Edit Schedule');
+            $('#aips-schedule-modal').show();
+        },
+
         cloneSchedule: function(e) {
             e.preventDefault();
 
@@ -970,6 +1032,9 @@
                     template_id: $('#schedule_template').val(),
                     frequency: $('#schedule_frequency').val(),
                     start_time: $('#schedule_start_time').val(),
+                    topic: $('#schedule_topic').val(),
+                    article_structure_id: $('#article_structure_id').val(),
+                    rotation_pattern: $('#rotation_pattern').val(),
                     is_active: $('#schedule_is_active').is(':checked') ? 1 : 0
                 },
                 success: function(response) {
@@ -1020,9 +1085,57 @@
             });
         },
 
+        /**
+         * Triggers immediate execution of a specific schedule via its schedule_id.
+         *
+         * @param {Event} e - Click event from the Run Now button.
+         */
+        runNowSchedule: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var scheduleId = $btn.data('id');
+
+            if (!scheduleId) return;
+
+            $btn.prop('disabled', true);
+            $btn.find('.dashicons').removeClass('dashicons-controls-play').addClass('dashicons-update aips-spin');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: scheduleId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var msg = AIPS.escapeHtml(response.data.message || 'Post generated successfully!');
+                        if (response.data.edit_url) {
+                            msg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
+                        }
+                        AIPS.showToast(msg, 'success', { isHtml: true, duration: 8000 });
+                    } else {
+                        AIPS.showToast(response.data.message || 'Generation failed.', 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                    $btn.find('.dashicons').removeClass('dashicons-update aips-spin').addClass('dashicons-controls-play');
+                }
+            });
+        },
+
         toggleSchedule: function() {
-            var id = $(this).data('id');
-            var isActive = $(this).is(':checked') ? 1 : 0;
+            var $toggle = $(this);
+            var id = $toggle.data('id');
+            var isActive = $toggle.is(':checked') ? 1 : 0;
+            var $wrapper = $toggle.closest('.aips-schedule-status-wrapper');
+            var $badge = $wrapper.find('.aips-badge');
+            var $icon = $badge.find('.dashicons');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1033,7 +1146,24 @@
                     schedule_id: id,
                     is_active: isActive
                 },
+                success: function() {
+                    $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
+                    $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
+
+                    if (isActive) {
+                        $badge.addClass('aips-badge-success');
+                        $icon.addClass('dashicons-yes-alt');
+                        $badge.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' Active');
+                    } else {
+                        $badge.addClass('aips-badge-neutral');
+                        $icon.addClass('dashicons-minus');
+                        $badge.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' Inactive');
+                    }
+
+                    $toggle.closest('tr').data('is-active', isActive);
+                },
                 error: function() {
+                    $toggle.prop('checked', !isActive);
                     alert('An error occurred. Please try again.');
                 }
             });
@@ -1105,6 +1235,8 @@
             e.preventDefault();
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
+
+            // Update URL without reloading
             var url = new URL(window.location.href);
             
             if (status) {
@@ -1120,9 +1252,14 @@
             }
 
             url.searchParams.delete('paged');
-            url.searchParams.set('tab', 'history');
+            // If we are in the main history page, don't set tab param unless needed.
+            // But if we are in a tab, we might need it.
+            // The existing logic enforced tab=history.
+            // However, simply reloading via AJAX is better.
             
-            window.location.href = url.toString();
+            window.history.pushState({path: url.toString()}, '', url.toString());
+
+            AIPS.reloadHistory(e, 1);
         },
 
         exportHistory: function(e) {
@@ -1169,14 +1306,24 @@
             form.appendTo('body').submit().remove();
         },
 
-        reloadHistory: function(e) {
-            e.preventDefault();
+        reloadHistory: function(e, page) {
+            if (e) e.preventDefault();
+
+            page = page || 1;
 
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
 
-            var $btn = $(this);
-            $btn.prop('disabled', true).text('Reloading...');
+            // Only show 'Reloading...' text if triggered by the button
+            var $btn = $('#aips-reload-history-btn');
+            var originalHtml = $btn.html();
+
+            if (e && e.currentTarget && $(e.currentTarget).is('#aips-reload-history-btn')) {
+                $btn.prop('disabled', true).text('Reloading...');
+            } else {
+                 // For pagination/filter, maybe show a spinner or opacity on table?
+                 $('.aips-history-table').css('opacity', '0.5');
+            }
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1186,7 +1333,8 @@
                     action: 'aips_reload_history',
                     nonce: aipsAjax.nonce,
                     status: status,
-                    search: search
+                    search: search,
+                    paged: page
                 },
                 success: function(response) {
                     if (!response.success) {
@@ -1198,6 +1346,25 @@
                     var $tbody = $('.aips-history-table tbody');
                     if ($tbody.length) {
                         $tbody.html(response.data.items_html || '');
+                    } else if ($('.aips-empty-state').length && response.data.items_html) {
+                        // If we were in empty state but now have items (e.g. after clear filter), we might need to reconstruct the table structure
+                        // But simplification: reload page if structure missing is easier.
+                        // For now assume table exists or items_html is empty.
+                        // Ideally we should replace the whole content panel body if switching between empty and list.
+                         location.reload();
+                         return;
+                    }
+
+                    // Update pagination
+                    if (response.data.pagination_html !== undefined) {
+                         var $pagination = $('#aips-history-pagination');
+                         if ($pagination.length) {
+                             $pagination.replaceWith(response.data.pagination_html);
+                         } else {
+                             // If pagination didn't exist (single page) but now does (e.g. limit changed or more items?)
+                             // Append after table
+                             $('.aips-history-table').after(response.data.pagination_html);
+                         }
                     }
 
                     // Update stats
@@ -1211,12 +1378,23 @@
                     // Reset bulk selection state
                     $('#cb-select-all-1').prop('checked', false);
                     AIPS.updateDeleteButton();
+
+                    // Update URL paged parameter if not 1
+                    var url = new URL(window.location.href);
+                    if (page > 1) {
+                        url.searchParams.set('paged', page);
+                    } else {
+                        url.searchParams.delete('paged');
+                    }
+                    window.history.replaceState({path: url.toString()}, '', url.toString());
+
                 },
                 error: function() {
                     alert('An error occurred while reloading history.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Reload');
+                    $btn.prop('disabled', false).html(originalHtml);
+                    $('.aips-history-table').css('opacity', '1');
                 }
             });
         },
@@ -1788,12 +1966,154 @@
             });
         },
 
+        /**
+         * Displays a toast notification in the top-right corner of the screen.
+         *
+         * Accepts plain text or pre-built HTML (for links). Plain-text messages
+         * are auto-escaped; if you pass HTML, set {@code isHtml} to true.
+         *
+         * @param {string}  message  - The message to display.
+         * @param {string}  type     - One of 'success', 'error', 'warning', 'info'.
+         * @param {Object}  [opts]   - Optional settings.
+         * @param {boolean} [opts.isHtml=false]    - If true, message is inserted as raw HTML.
+         * @param {number}  [opts.duration=6000]   - Auto-dismiss delay in ms (0 = no auto-dismiss).
+         */
+        showToast: function(message, type, opts) {
+            type = type || 'info';
+            opts = opts || {};
+            var duration = opts.duration !== undefined ? opts.duration : 6000;
+            var isHtml   = opts.isHtml || false;
+
+            var iconMap = { success: '\u2713', error: '\u2715', warning: '\u26A0', info: '\u2139' };
+
+            var $container = $('#aips-toast-container');
+            if (!$container.length) {
+                $container = $('<div id="aips-toast-container"></div>');
+                $('body').append($container);
+            }
+
+            var safeMessage = isHtml ? message : $('<div>').text(message).html();
+
+            var $toast = $('<div class="aips-toast ' + type + '">')
+                .append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
+                .append('<div class="aips-toast-message">' + safeMessage + '</div>')
+                .append('<button class="aips-toast-close" aria-label="Close">&times;</button>');
+
+            $container.append($toast);
+
+            $toast.find('.aips-toast-close').on('click', function() {
+                $toast.addClass('closing');
+                setTimeout(function() { $toast.remove(); }, 300);
+            });
+
+            if (duration > 0) {
+                setTimeout(function() {
+                    if ($toast.parent().length) {
+                        $toast.addClass('closing');
+                        setTimeout(function() { $toast.remove(); }, 300);
+                    }
+                }, duration);
+            }
+        },
+
         closeModal: function() {
             var $target = $(this).closest('.aips-modal');
             if ($target.length) {
                 $target.hide();
             } else {
                 $('.aips-modal').hide();
+            }
+        },
+
+        /**
+         * Displays the post-save "Next Steps" panel inside the template wizard.
+         *
+         * Replaces the hard page reload after a successful template save,
+         * keeping the user in-context with actionable next steps.
+         *
+         * @param {number} templateId - The ID of the just-saved template.
+         */
+        showPostSaveActions: function(templateId) {
+            $('.aips-wizard-step-content').hide();
+            $('.aips-post-save-step').show();
+
+            $('.aips-wizard-progress').hide();
+            $('.aips-wizard-footer').hide();
+
+            var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
+                ? aipsAjax.schedulePageUrl + '&schedule_template=' + templateId
+                : 'admin.php?page=aips-schedule&schedule_template=' + templateId;
+            $('#aips-quick-schedule-btn').attr('href', scheduleUrl).data('template-id', templateId);
+            $('#aips-quick-run-now-btn').data('template-id', templateId);
+        },
+
+        /**
+         * Triggers "Run Now" for the just-saved template from the post-save panel.
+         *
+         * @param {Event} e - Click event.
+         */
+        quickRunNow: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var templateId = $btn.data('template-id');
+
+            if (!templateId) return;
+
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> Generating...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: templateId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#aips-template-modal').hide();
+                        if (response.data.edit_url) {
+                            $('#aips-post-link').attr('href', response.data.edit_url);
+                            $('#aips-post-link-container').show();
+                        } else {
+                            $('#aips-post-link-container').hide();
+                        }
+                        $('#aips-post-success-modal').show();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-controls-play"></span> Run Now');
+                }
+            });
+        },
+
+        /**
+         * Auto-opens the schedule modal with a pre-selected template when
+         * the schedule page is loaded with a ?schedule_template= query parameter.
+         */
+        initScheduleAutoOpen: function() {
+            var $modal = $('#aips-schedule-modal');
+            if (!$modal.length) return;
+
+            var preselectId = $modal.data('preselect-template');
+            if (!preselectId) return;
+
+            $('#aips-schedule-form')[0].reset();
+            $('#schedule_id').val('');
+            $('#schedule_template').val(preselectId);
+            $('#aips-schedule-modal-title').text('Schedule Template');
+            $modal.show();
+
+            // Clean the URL to prevent re-triggering on refresh
+            if (window.history && window.history.replaceState) {
+                var cleanUrl = window.location.href.replace(/[?&]schedule_template=\d+/, '');
+                cleanUrl = cleanUrl.replace(/\?$/, '');
+                window.history.replaceState(null, '', cleanUrl);
             }
         },
 

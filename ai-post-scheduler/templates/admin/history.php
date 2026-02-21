@@ -223,118 +223,21 @@ $is_history_tab = isset($is_history_tab) ? $is_history_tab : false;
         </thead>
         <tbody>
             <?php foreach ($history['items'] as $item): ?>
-            <tr>
-                <th scope="row" class="check-column">
-                    <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>"><?php esc_html_e('Select Item', 'ai-post-scheduler'); ?></label>
-                    <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" name="history[]" value="<?php echo esc_attr($item->id); ?>">
-                </th>
-                <td class="column-title">
-                    <?php if ($item->post_id): ?>
-                    <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
-                        <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
-                    </a>
-                    <?php else: ?>
-                    <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
-                    <?php endif; ?>
-                    <?php if ($item->status === 'failed' && $item->error_message): ?>
-                    <div class="aips-error-message" style="font-size: 12px; color: #dc3232; margin-top: 4px;"><?php echo esc_html($item->error_message); ?></div>
-                    <?php endif; ?>
-                </td>
-                <td class="column-template">
-                    <span class="aips-meta-text"><?php echo esc_html($item->template_name ?: '-'); ?></span>
-                </td>
-                <td class="column-status">
-                    <?php
-                    $status_class = 'aips-badge ';
-                    switch ($item->status) {
-                        case 'completed':
-                            $status_class .= 'aips-badge-success';
-                            $icon = 'yes-alt';
-                            break;
-                        case 'failed':
-                            $status_class .= 'aips-badge-error';
-                            $icon = 'dismiss';
-                            break;
-                        case 'processing':
-                            $status_class .= 'aips-badge-info';
-                            $icon = 'update';
-                            break;
-                        default:
-                            $status_class .= 'aips-badge-neutral';
-                            $icon = 'minus';
-                    }
-                    ?>
-                    <span class="<?php echo esc_attr($status_class); ?>">
-                        <?php if (!$is_history_tab): ?><span class="dashicons dashicons-<?php echo esc_attr($icon); ?>"></span><?php endif; ?>
-                        <?php echo esc_html(ucfirst($item->status)); ?>
-                    </span>
-                </td>
-                <td class="column-date">
-                    <span class="aips-meta-text"><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->created_at))); ?></span>
-                </td>
-                <td class="column-actions">
-                    <div class="aips-btn-group">
-                        <?php if ($item->post_id): ?>
-                        <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="<?php echo !$is_history_tab ? 'aips-btn aips-btn-sm' : 'button button-small'; ?>" target="_blank" title="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>">
-                            <?php if (!$is_history_tab): ?><span class="dashicons dashicons-external"></span><?php else: ?><?php esc_html_e('View', 'ai-post-scheduler'); ?><?php endif; ?>
-                        </a>
-                        <?php endif; ?>
-                        <button class="<?php echo !$is_history_tab ? 'aips-btn aips-btn-sm' : 'button button-small'; ?> aips-view-details" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Details', 'ai-post-scheduler'); ?>">
-                            <?php if (!$is_history_tab): ?><span class="dashicons dashicons-info"></span><?php else: ?><?php esc_html_e('Details', 'ai-post-scheduler'); ?><?php endif; ?>
-                        </button>
-                        <?php if ($item->status === 'failed' && $item->template_id): ?>
-                        <button class="<?php echo !$is_history_tab ? 'aips-btn aips-btn-sm' : 'button button-small'; ?> aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('Retry Generation', 'ai-post-scheduler'); ?>">
-                            <?php if (!$is_history_tab): ?><span class="dashicons dashicons-update"></span><?php else: ?><?php esc_html_e('Retry', 'ai-post-scheduler'); ?><?php endif; ?>
-                        </button>
-                        <?php endif; ?>
-                    </div>
-                </td>
-            </tr>
+                <?php include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php'; ?>
             <?php endforeach; ?>
         </tbody>
     </table>
     
-    <?php if ($history['pages'] > 1): ?>
-    <div class="<?php echo !$is_history_tab ? 'aips-panel-footer' : 'tablenav bottom'; ?>">
-        <div class="tablenav-pages">
-            <span class="displaying-num">
-                 <?php printf(
-                     esc_html__('%d items', 'ai-post-scheduler'),
-                     $history['total']
-                 ); ?>
-             </span>
-             <span class="pagination-links">
-                 <?php
-                $base_url = $history_base_url;
-                if ($status_filter) {
-                    $base_url .= '&status=' . urlencode($status_filter);
-                }
-                
-                if ($history['current_page'] > 1): ?>
-                <a class="prev-page button" href="<?php echo esc_url($base_url . '&paged=' . ($history['current_page'] - 1)); ?>">
-                    <span class="screen-reader-text"><?php esc_html_e('Previous page', 'ai-post-scheduler'); ?></span>
-                    <span aria-hidden="true">&lsaquo;</span>
-                </a>
-                <?php endif; ?>
-                
-                <span class="paging-input">
-                    <span class="tablenav-paging-text">
-                        <?php echo esc_html($history['current_page']); ?>
-                        <?php esc_html_e('of', 'ai-post-scheduler'); ?>
-                        <span class="total-pages"><?php echo esc_html($history['pages']); ?></span>
-                    </span>
-                </span>
-                
-                <?php if ($history['current_page'] < $history['pages']): ?>
-                <a class="next-page button" href="<?php echo esc_url($base_url . '&paged=' . ($history['current_page'] + 1)); ?>">
-                    <span class="screen-reader-text"><?php esc_html_e('Next page', 'ai-post-scheduler'); ?></span>
-                    <span aria-hidden="true">&rsaquo;</span>
-                </a>
-                <?php endif; ?>
-            </span>
-        </div>
-    </div>
-    <?php endif; ?>
+    <?php
+    if (isset($history_handler) && method_exists($history_handler, 'generate_pagination_html')) {
+        echo $history_handler->generate_pagination_html(
+            $history,
+            $history_base_url,
+            $is_history_tab,
+            $status_filter
+        );
+    }
+    ?>
     
     <?php else: ?>
     <div class="aips-empty-state">
