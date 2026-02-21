@@ -47,7 +47,6 @@
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
 
             // Post-save next steps
-            $(document).on('click', '#aips-quick-schedule-btn', this.quickScheduleTemplate);
             $(document).on('click', '#aips-quick-run-now-btn', this.quickRunNow);
             $(document).on('click', '#aips-post-save-done-btn', function() { location.reload(); });
 
@@ -1828,15 +1827,6 @@
                 : 'admin.php?page=aips-schedule&schedule_template=' + templateId;
             $('#aips-quick-schedule-btn').attr('href', scheduleUrl).data('template-id', templateId);
             $('#aips-quick-run-now-btn').data('template-id', templateId);
-        },
-
-        /**
-         * Navigates to the schedule page with the just-saved template pre-selected.
-         *
-         * @param {Event} e - Click event.
-         */
-        quickScheduleTemplate: function(e) {
-            // Allow the link's href to handle navigation
         },
 
         /**
