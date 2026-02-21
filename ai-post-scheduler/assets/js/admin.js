@@ -78,9 +78,8 @@
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
             $(document).on('click', '#aips-export-history-btn', this.exportHistory);
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
-            $(document).on('click', '#aips-reload-history-btn', function(e) {
-                AIPS.reloadHistory(e, 1);
-            });
+            $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
+            $(document).on('click', '.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next', this.loadHistoryPage);
             $(document).on('keypress', '#aips-history-search-input', function(e) {
                 if(e.which == 13) {
                     AIPS.filterHistory(e);
@@ -1012,11 +1011,13 @@
 
         saveSchedule: function(e) {
             e.preventDefault();
+            
             var $btn = $(this);
             var $form = $('#aips-schedule-form');
 
             if (!$form[0].checkValidity()) {
                 $form[0].reportValidity();
+
                 return;
             }
 
@@ -1055,6 +1056,7 @@
 
         deleteSchedule: function(e) {
             e.preventDefault();
+
             if (!confirm('Are you sure you want to delete this schedule?')) {
                 return;
             }
@@ -1092,10 +1094,13 @@
          */
         runNowSchedule: function(e) {
             e.preventDefault();
+
             var $btn = $(this);
             var scheduleId = $btn.data('id');
 
-            if (!scheduleId) return;
+            if (!scheduleId) {
+                return;
+            }
 
             $btn.prop('disabled', true);
             $btn.find('.dashicons').removeClass('dashicons-controls-play').addClass('dashicons-update aips-spin');
@@ -1111,9 +1116,11 @@
                 success: function(response) {
                     if (response.success) {
                         var msg = AIPS.escapeHtml(response.data.message || 'Post generated successfully!');
+
                         if (response.data.edit_url) {
                             msg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
                         }
+
                         AIPS.showToast(msg, 'success', { isHtml: true, duration: 8000 });
                     } else {
                         AIPS.showToast(response.data.message || 'Generation failed.', 'error');
@@ -1150,20 +1157,24 @@
                     $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
                     $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
 
+                    // Remove all text nodes (avoids picking wrong node when whitespace creates multiple)
+                    $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
+
                     if (isActive) {
                         $badge.addClass('aips-badge-success');
                         $icon.addClass('dashicons-yes-alt');
-                        $badge.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' Active');
+                        $icon.after(' Active');
                     } else {
                         $badge.addClass('aips-badge-neutral');
                         $icon.addClass('dashicons-minus');
-                        $badge.contents().filter(function() { return this.nodeType === 3; }).last().replaceWith(' Inactive');
+                        $icon.after(' Inactive');
                     }
 
                     $toggle.closest('tr').data('is-active', isActive);
                 },
                 error: function() {
                     $toggle.prop('checked', !isActive);
+
                     alert('An error occurred. Please try again.');
                 }
             });
@@ -1171,6 +1182,7 @@
 
         clearHistory: function(e) {
             e.preventDefault();
+
             var status = $(this).data('status');
             var message = status ? 'Are you sure you want to clear all ' + status + ' history?' : 'Are you sure you want to clear all history?';
             
@@ -1201,6 +1213,7 @@
 
         retryGeneration: function(e) {
             e.preventDefault();
+
             var id = $(this).data('id');
             var $btn = $(this);
 
@@ -1217,6 +1230,7 @@
                 success: function(response) {
                     if (response.success) {
                         alert(response.data.message);
+
                         location.reload();
                     } else {
                         alert(response.data.message);
@@ -1233,6 +1247,7 @@
 
         filterHistory: function(e) {
             e.preventDefault();
+
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
 
@@ -1264,6 +1279,7 @@
 
         exportHistory: function(e) {
             e.preventDefault();
+
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
             
@@ -1306,23 +1322,43 @@
             form.appendTo('body').submit().remove();
         },
 
-        reloadHistory: function(e, page) {
-            if (e) e.preventDefault();
+        loadHistoryPage: function(e) {
+            e.preventDefault();
 
-            page = page || 1;
+            var $btn = $(e.currentTarget);
+
+            if ($btn.prop('disabled')) {
+                return;
+            }
+
+            var page = $btn.data('page');
+
+            if (!page) {
+                return;
+            }
+
+            AIPS.reloadHistory(e, parseInt(page, 10));
+        },
+
+        reloadHistory: function(e, paged) {
+            if (e) {
+                e.preventDefault();
+            }
 
             var status = $('#aips-filter-status').val();
             var search = $('#aips-history-search-input').val();
+            var $btn = $('#aips-reload-history-btn');            
+            var isReloadBtn = $btn.length && e && $(e.currentTarget).is('#aips-reload-history-btn');
+            var originalHtml;
 
-            // Only show 'Reloading...' text if triggered by the button
-            var $btn = $('#aips-reload-history-btn');
-            var originalHtml = $btn.html();
+            paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
 
-            if (e && e.currentTarget && $(e.currentTarget).is('#aips-reload-history-btn')) {
-                $btn.prop('disabled', true).text('Reloading...');
+            if (isReloadBtn) {
+                originalHtml = $btn.html();
+
+                $btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> Reloading...');
             } else {
-                 // For pagination/filter, maybe show a spinner or opacity on table?
-                 $('.aips-history-table').css('opacity', '0.5');
+                $('.aips-history-table').css('opacity', '0.5');
             }
 
             $.ajax({
@@ -1334,16 +1370,18 @@
                     nonce: aipsAjax.nonce,
                     status: status,
                     search: search,
-                    paged: page
+                    paged: paged
                 },
                 success: function(response) {
                     if (!response.success) {
                         alert(response.data && response.data.message ? response.data.message : 'Failed to reload history.');
+
                         return;
                     }
 
                     // Update table body
                     var $tbody = $('.aips-history-table tbody');
+
                     if ($tbody.length) {
                         $tbody.html(response.data.items_html || '');
                     } else if ($('.aips-empty-state').length && response.data.items_html) {
@@ -1352,19 +1390,17 @@
                         // For now assume table exists or items_html is empty.
                         // Ideally we should replace the whole content panel body if switching between empty and list.
                          location.reload();
+
                          return;
                     }
 
-                    // Update pagination
-                    if (response.data.pagination_html !== undefined) {
-                         var $pagination = $('#aips-history-pagination');
-                         if ($pagination.length) {
-                             $pagination.replaceWith(response.data.pagination_html);
-                         } else {
-                             // If pagination didn't exist (single page) but now does (e.g. limit changed or more items?)
-                             // Append after table
-                             $('.aips-history-table').after(response.data.pagination_html);
-                         }
+                    // Update pagination in tfoot
+                    if (response.data.pagination_html) {
+                        var $cell = $('.aips-history-pagination-cell');
+
+                        if ($cell.length) {
+                            $cell.html(response.data.pagination_html);
+                        }
                     }
 
                     // Update stats
@@ -1375,25 +1411,30 @@
                         $('#aips-stat-success-rate').text(response.data.stats.success_rate + '%');
                     }
 
-                    // Reset bulk selection state
-                    $('#cb-select-all-1').prop('checked', false);
-                    AIPS.updateDeleteButton();
-
-                    // Update URL paged parameter if not 1
+                    // Update URL without reload
                     var url = new URL(window.location.href);
-                    if (page > 1) {
-                        url.searchParams.set('paged', page);
+
+                    if (paged > 1) {
+                        url.searchParams.set('paged', paged);
                     } else {
                         url.searchParams.delete('paged');
                     }
-                    window.history.replaceState({path: url.toString()}, '', url.toString());
 
+                    window.history.replaceState({}, '', url.toString());
+
+                    // Reset bulk selection state
+                    $('#cb-select-all-1').prop('checked', false);
+
+                    AIPS.updateDeleteButton();
                 },
                 error: function() {
                     alert('An error occurred while reloading history.');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).html(originalHtml);
+                    if (isReloadBtn && $btn.length) {
+                        $btn.prop('disabled', false).html(originalHtml || '<span class="dashicons dashicons-update"></span> Reload');
+                    }
+
                     $('.aips-history-table').css('opacity', '1');
                 }
             });
@@ -1401,6 +1442,7 @@
 
         toggleImagePrompt: function(e) {
             var isChecked = $('#generate_featured_image').is(':checked');
+
             $('.aips-featured-image-settings').toggle(isChecked);
             $('#featured_image_source').prop('disabled', !isChecked);
 
@@ -1411,6 +1453,7 @@
 
         toggleFeaturedImageSourceFields: function() {
             var source = $('#featured_image_source').val();
+
             $('.aips-image-source').hide();
 
             if (source === 'unsplash') {

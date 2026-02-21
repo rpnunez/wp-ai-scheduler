@@ -2,45 +2,45 @@
 /**
  * History Pagination Partial
  *
- * @var array  $history        History data array.
- * @var string $url            URL for pagination links.
- * @var bool   $is_history_tab Whether this is displayed in a tab.
+ * AJAX-based pagination with page number buttons. Used by render_pagination_html().
+ *
+ * @var array $history History result with total, pages, current_page.
  */
 if (!defined('ABSPATH')) {
     exit;
 }
+$current = (int) $history['current_page'];
+$pages = (int) $history['pages'];
+$start = max(1, $current - 3);
+$end = min($pages, $current + 3);
 ?>
-<div class="<?php echo !$is_history_tab ? 'aips-panel-footer' : 'tablenav bottom'; ?>" id="aips-history-pagination">
-    <div class="tablenav-pages">
-        <span class="displaying-num">
-             <?php printf(
-                 esc_html__('%d items', 'ai-post-scheduler'),
-                 $history['total']
-             ); ?>
-         </span>
-         <span class="pagination-links">
-             <?php
-            if ($history['current_page'] > 1): ?>
-            <a class="prev-page button" href="<?php echo esc_url(add_query_arg('paged', $history['current_page'] - 1, $url)); ?>">
-                <span class="screen-reader-text"><?php esc_html_e('Previous page', 'ai-post-scheduler'); ?></span>
-                <span aria-hidden="true">&lsaquo;</span>
-            </a>
-            <?php endif; ?>
-
-            <span class="paging-input">
-                <span class="tablenav-paging-text">
-                    <?php echo esc_html($history['current_page']); ?>
-                    <?php esc_html_e('of', 'ai-post-scheduler'); ?>
-                    <span class="total-pages"><?php echo esc_html($history['pages']); ?></span>
-                </span>
-            </span>
-
-            <?php if ($history['current_page'] < $history['pages']): ?>
-            <a class="next-page button" href="<?php echo esc_url(add_query_arg('paged', $history['current_page'] + 1, $url)); ?>">
-                <span class="screen-reader-text"><?php esc_html_e('Next page', 'ai-post-scheduler'); ?></span>
-                <span aria-hidden="true">&rsaquo;</span>
-            </a>
+<div class="aips-history-pagination aips-panel-footer">
+    <span class="aips-history-pagination-info">
+        <?php printf(esc_html__('%d items', 'ai-post-scheduler'), $history['total']); ?>
+    </span>
+    <?php if ($pages > 1): ?>
+    <div class="aips-history-pagination-links">
+        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-prev" data-page="<?php echo esc_attr($current - 1); ?>" <?php echo $current <= 1 ? 'disabled' : ''; ?> aria-label="<?php esc_attr_e('Previous page', 'ai-post-scheduler'); ?>">
+            <span class="dashicons dashicons-arrow-left-alt2"></span>
+        </button>
+        <span class="aips-history-page-numbers">
+            <?php if ($start > 1): ?>
+            <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-link" data-page="1">1</button>
+            <?php if ($start > 2): ?><span class="aips-history-page-ellipsis">…</span><?php endif;
+            endif;
+            for ($p = $start; $p <= $end; $p++):
+                $active = ($p === $current);
+            ?>
+            <button type="button" class="aips-btn aips-btn-sm <?php echo $active ? 'aips-btn-primary' : 'aips-btn-secondary'; ?> aips-history-page-link" data-page="<?php echo esc_attr($p); ?>" <?php echo $active ? 'aria-current="page"' : ''; ?>><?php echo esc_html($p); ?></button>
+            <?php endfor;
+            if ($end < $pages): ?>
+            <?php if ($end < $pages - 1): ?><span class="aips-history-page-ellipsis">…</span><?php endif; ?>
+            <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-link" data-page="<?php echo esc_attr($pages); ?>"><?php echo esc_html($pages); ?></button>
             <?php endif; ?>
         </span>
+        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-next" data-page="<?php echo esc_attr($current + 1); ?>" <?php echo $current >= $pages ? 'disabled' : ''; ?> aria-label="<?php esc_attr_e('Next page', 'ai-post-scheduler'); ?>">
+            <span class="dashicons dashicons-arrow-right-alt2"></span>
+        </button>
     </div>
+    <?php endif; ?>
 </div>

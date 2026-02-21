@@ -32,13 +32,12 @@ class AIPS_History {
     /**
      * Generate pagination HTML for history table.
      *
-     * @param array  $history        History data array.
-     * @param string $base_url       Base URL for pagination links.
-     * @param bool   $is_history_tab Whether this is displayed in a tab.
-     * @param string $status_filter  Current status filter.
+     * @param array  $history       History data array.
+     * @param string $base_url      Base URL for pagination links.
+     * @param string $status_filter Current status filter.
      * @return string HTML for pagination.
      */
-    public function generate_pagination_html($history, $base_url, $is_history_tab = false, $status_filter = '') {
+    public function generate_pagination_html($history, $base_url, $status_filter = '') {
         if ($history['pages'] <= 1) {
             return '';
         }
@@ -187,8 +186,8 @@ class AIPS_History {
     /**
      * AJAX handler to reload the history table and updated stats.
      *
-     * Returns the latest items HTML (table body only) and stats so the
-     * client can refresh the view without a full page reload.
+     * Returns the latest items HTML (table body only), pagination HTML, and stats
+     * so the client can refresh the view without a full page reload.
      */
     public function ajax_reload_history() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -199,8 +198,7 @@ class AIPS_History {
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
         $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
-        $paged = isset($_POST['paged']) ? absint($_POST['paged']) : 1;
-        if ($paged < 1) $paged = 1;
+        $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
 
         $history = $this->get_history(array(
             'page' => $paged,
@@ -211,38 +209,22 @@ class AIPS_History {
 
         $stats = $this->get_stats();
 
-        // Check if we are in history tab context (passed from JS)
-        // Currently admin.js doesn't pass is_history_tab explicitly but we can infer or pass it if needed.
-        // For now assume false or handle generic base url.
-        // The base URL should be the admin page URL.
-        $base_url = admin_url('admin.php?page=aips-history');
-        if (!empty($search_query)) {
-            $base_url = add_query_arg('s', $search_query, $base_url);
-        }
-
-        $pagination_html = $this->generate_pagination_html($history, $base_url, false, $status_filter);
-
         ob_start();
-
-        // Determine if we are in a tab context based on the passed value or request
-        // In AJAX context, we might not have is_history_tab explicitly passed other than what we inferred for pagination
-        // But for the row partial, $is_history_tab is needed.
-        // We defined $is_history_tab = false in the lines above for pagination. Let's use that.
-        // If we want to support tabs in AJAX reload, we should pass it in POST data.
-        // For now, consistent with pagination.
-        $is_history_tab = false;
-
         if (!empty($history['items'])) {
             foreach ($history['items'] as $item) {
                 include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php';
             }
         }
-
         $items_html = ob_get_clean();
+
+        ob_start();
+        $this->render_pagination_html($history, $status_filter, $search_query);
+        $pagination_html = ob_get_clean();
 
         wp_send_json_success(array(
             'items_html' => $items_html,
             'pagination_html' => $pagination_html,
+            'paged' => $paged,
             'stats' => array(
                 'total' => (int) $stats['total'],
                 'completed' => (int) $stats['completed'],
@@ -250,6 +232,17 @@ class AIPS_History {
                 'success_rate' => (float) $stats['success_rate'],
             ),
         ));
+    }
+
+    /**
+     * Render pagination HTML for history table (used by template and AJAX).
+     *
+     * @param array  $history       History result with total, pages, current_page.
+     * @param string $status_filter Status filter value.
+     * @param string $search_query  Search query.
+     */
+    public function render_pagination_html($history, $status_filter = '', $search_query = '') {
+        include AIPS_PLUGIN_DIR . 'templates/partials/history-pagination.php';
     }
     
     /**
