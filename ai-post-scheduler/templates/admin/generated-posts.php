@@ -267,6 +267,12 @@ if (!defined('ABSPATH')) {
 								   title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
 										<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
 									</a>
+									<button type="button"
+										class="button button-small aips-preview-post"
+										data-post-id="<?php echo esc_attr($item->post_id); ?>"
+										title="<?php esc_attr_e('Preview this post', 'ai-post-scheduler'); ?>">
+										<?php esc_html_e('Preview', 'ai-post-scheduler'); ?>
+									</button>
 									<button type="button" 
 										class="button button-small aips-ai-edit-btn" 
 										data-post-id="<?php echo esc_attr($item->post_id); ?>"
@@ -377,7 +383,8 @@ if (!defined('ABSPATH')) {
 			</button>
 		</div>
 		<div class="aips-modal-body" style="height: calc(100% - 60px); padding: 0;">
-			<iframe id="aips-post-preview-iframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+			<div id="aips-preview-content-container" style="padding: 30px; height: 100%; overflow-y: auto; box-sizing: border-box; display: none;"></div>
+			<iframe id="aips-post-preview-iframe" src="" style="width: 100%; height: 100%; border: none; display: none;"></iframe>
 		</div>
 	</div>
 </div>
