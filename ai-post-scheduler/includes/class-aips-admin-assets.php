@@ -54,6 +54,7 @@ class AIPS_Admin_Assets {
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
+            'schedulePageUrl' => admin_url('admin.php?page=aips-schedule'),
         ));
 
         wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(

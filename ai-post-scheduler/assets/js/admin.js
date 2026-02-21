@@ -12,6 +12,7 @@
             this.bindEvents();
             this.initAIVariablesScanner();
             this.handleInitialTabFromHash();
+            this.initScheduleAutoOpen();
         },
         
         handleInitialTabFromHash: function() {
@@ -44,6 +45,11 @@
             // Wizard navigation
             $(document).on('click', '.aips-wizard-next', this.wizardNext);
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
+
+            // Post-save next steps
+            $(document).on('click', '#aips-quick-schedule-btn', this.quickScheduleTemplate);
+            $(document).on('click', '#aips-quick-run-now-btn', this.quickRunNow);
+            $(document).on('click', '#aips-post-save-done-btn', function() { location.reload(); });
 
             // Preview drawer
             $(document).on('click', '.aips-preview-prompts', this.previewPrompts);
@@ -644,7 +650,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        var savedId = response.data.template_id;
+                        AIPS.lastSavedTemplateId = savedId;
+                        AIPS.showPostSaveActions(savedId);
                     } else {
                         alert(response.data.message);
                     }
@@ -970,6 +978,9 @@
                     template_id: $('#schedule_template').val(),
                     frequency: $('#schedule_frequency').val(),
                     start_time: $('#schedule_start_time').val(),
+                    topic: $('#schedule_topic').val(),
+                    article_structure_id: $('#article_structure_id').val(),
+                    rotation_pattern: $('#rotation_pattern').val(),
                     is_active: $('#schedule_is_active').is(':checked') ? 1 : 0
                 },
                 success: function(response) {
@@ -1794,6 +1805,107 @@
                 $target.hide();
             } else {
                 $('.aips-modal').hide();
+            }
+        },
+
+        /**
+         * Displays the post-save "Next Steps" panel inside the template wizard.
+         *
+         * Replaces the hard page reload after a successful template save,
+         * keeping the user in-context with actionable next steps.
+         *
+         * @param {number} templateId - The ID of the just-saved template.
+         */
+        showPostSaveActions: function(templateId) {
+            $('.aips-wizard-step-content').hide();
+            $('.aips-post-save-step').show();
+
+            $('.aips-wizard-progress').hide();
+            $('.aips-wizard-footer').hide();
+
+            var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
+                ? aipsAjax.schedulePageUrl + '&schedule_template=' + templateId
+                : 'admin.php?page=aips-schedule&schedule_template=' + templateId;
+            $('#aips-quick-schedule-btn').attr('href', scheduleUrl).data('template-id', templateId);
+            $('#aips-quick-run-now-btn').data('template-id', templateId);
+        },
+
+        /**
+         * Navigates to the schedule page with the just-saved template pre-selected.
+         *
+         * @param {Event} e - Click event.
+         */
+        quickScheduleTemplate: function(e) {
+            // Allow the link's href to handle navigation
+        },
+
+        /**
+         * Triggers "Run Now" for the just-saved template from the post-save panel.
+         *
+         * @param {Event} e - Click event.
+         */
+        quickRunNow: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var templateId = $btn.data('template-id');
+
+            if (!templateId) return;
+
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> Generating...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_run_now',
+                    nonce: aipsAjax.nonce,
+                    template_id: templateId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#aips-template-modal').hide();
+                        if (response.data.edit_url) {
+                            $('#aips-post-link').attr('href', response.data.edit_url);
+                            $('#aips-post-link-container').show();
+                        } else {
+                            $('#aips-post-link-container').hide();
+                        }
+                        $('#aips-post-success-modal').show();
+                    } else {
+                        alert(response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-controls-play"></span> Run Now');
+                }
+            });
+        },
+
+        /**
+         * Auto-opens the schedule modal with a pre-selected template when
+         * the schedule page is loaded with a ?schedule_template= query parameter.
+         */
+        initScheduleAutoOpen: function() {
+            var $modal = $('#aips-schedule-modal');
+            if (!$modal.length) return;
+
+            var preselectId = $modal.data('preselect-template');
+            if (!preselectId) return;
+
+            $('#aips-schedule-form')[0].reset();
+            $('#schedule_id').val('');
+            $('#schedule_template').val(preselectId);
+            $('#aips-schedule-modal-title').text('Schedule Template');
+            $modal.show();
+
+            // Clean the URL to prevent re-triggering on refresh
+            if (window.history && window.history.replaceState) {
+                var cleanUrl = window.location.href.replace(/[?&]schedule_template=\d+/, '');
+                cleanUrl = cleanUrl.replace(/\?$/, '');
+                window.history.replaceState(null, '', cleanUrl);
             }
         },
 
