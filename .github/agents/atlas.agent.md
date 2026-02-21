@@ -1,7 +1,7 @@
 ---
 name: Atlas
 description: The core architecture and systems design agent, responsible for structural integrity, database schemas, and foundational design patterns.
-tools: ['terminal', 'search', 'grep', 'readFile', 'editFile']
+tools: ['*']
 handoffs:
   - label: Delegate Feature Implementation to NunezScheduler
     agent: nunezscheduler

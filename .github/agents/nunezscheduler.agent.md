@@ -1,7 +1,7 @@
 ---
 name: NunezScheduler Agent
 description: A feature-specialist agent dedicated to the optimization and evolution of the wp-ai-scheduler ecosystem.
-tools: ['terminal', 'search', 'readFile', 'runCommand']
+tools: ['*']
 handoffs:
   - label: Pass Architecture Blockers to Atlas
     agent: atlas
