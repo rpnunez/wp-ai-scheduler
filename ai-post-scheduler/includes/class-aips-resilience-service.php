@@ -119,6 +119,30 @@ class AIPS_Resilience_Service {
     }
 
     /**
+     * Execute a function with full resilience (Circuit Breaker, Rate Limiter, Retry).
+     *
+     * @param callable $function Function to execute.
+     * @param string   $type     Request type for logging.
+     * @param string   $prompt   Prompt for logging.
+     * @param array    $options  Options for logging.
+     * @return mixed Function result or WP_Error.
+     */
+    public function execute_safely($function, $type, $prompt, $options) {
+        // Check circuit breaker
+        if (!$this->check_circuit_breaker()) {
+            return new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
+        }
+
+        // Check rate limiting
+        if (!$this->check_rate_limit()) {
+            return new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
+        }
+
+        // Execute with retry logic
+        return $this->execute_with_retry($function, $type, $prompt, $options);
+    }
+
+    /**
      * Calculate retry delay with exponential backoff and jitter.
      *
      * @param int   $attempt       Current attempt number.
@@ -139,9 +163,7 @@ class AIPS_Resilience_Service {
             $delay += $jitter;
         }
 
-        //@TODO: Intentionally returning a low number during development
-        return 2;
-        //return (int) $delay;
+        return (int) $delay;
     }
 
     // ========================================
