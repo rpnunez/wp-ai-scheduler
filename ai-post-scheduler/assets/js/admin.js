@@ -158,6 +158,7 @@
 
             // Copy to Clipboard
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+            $(document).on('click', '#aips-copy-system-report', this.copySystemReport);
 
             // Article Structures UI handlers
 
@@ -379,6 +380,58 @@
                 showSuccess();
             }, function(err) {
                 console.error('Async: Could not copy text: ', err);
+            });
+        },
+
+        copySystemReport: function(e) {
+            e.preventDefault();
+            var report = [];
+
+            $('.aips-status-page .aips-content-panel').each(function() {
+                var sectionTitle = $(this).find('.aips-panel-header h2').text().trim();
+                report.push('### ' + sectionTitle + ' ###');
+
+                $(this).find('table tbody tr').each(function() {
+                    var $cols = $(this).find('td');
+                    if ($cols.length >= 2) {
+                        var label = $cols.eq(0).text().trim();
+                        // Get text without "Show Details" link or hidden textarea text initially
+                        var value = $cols.eq(1).clone().children().remove().end().text().trim();
+
+                        var detailsTextarea = $cols.eq(1).find('textarea');
+                        if (detailsTextarea.length && detailsTextarea.val()) {
+                            value += '\n[Details]\n' + detailsTextarea.val();
+                        }
+
+                        report.push(label + ': ' + value);
+                    }
+                });
+                report.push(''); // Empty line between sections
+            });
+
+            var finalReport = report.join('\n').trim();
+
+            if (!navigator.clipboard) {
+                var textArea = document.createElement("textarea");
+                textArea.value = finalReport;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    AIPS.showToast('System report copied to clipboard!', 'success');
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                    AIPS.showToast('Failed to copy report.', 'error');
+                }
+                document.body.removeChild(textArea);
+                return;
+            }
+
+            navigator.clipboard.writeText(finalReport).then(function() {
+                AIPS.showToast('System report copied to clipboard!', 'success');
+            }, function(err) {
+                console.error('Async: Could not copy text: ', err);
+                AIPS.showToast('Failed to copy report.', 'error');
             });
         },
 

@@ -12,6 +12,12 @@ if (!defined('ABSPATH')) {
                     <h1 class="aips-page-title"><?php esc_html_e('System Status', 'ai-post-scheduler'); ?></h1>
                     <p class="aips-page-description"><?php esc_html_e('Monitor system health, PHP configuration, WordPress environment, and plugin compatibility.', 'ai-post-scheduler'); ?></p>
                 </div>
+            <div class="aips-page-actions">
+                <button class="aips-btn aips-btn-secondary" id="aips-copy-system-report">
+                    <span class="dashicons dashicons-clipboard"></span>
+                    <?php esc_html_e('Copy System Report', 'ai-post-scheduler'); ?>
+                </button>
+            </div>
             </div>
         </div>
 
