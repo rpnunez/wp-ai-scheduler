@@ -903,6 +903,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-schedule-controller.php',
         'class-aips-planner.php',
         'class-aips-history.php',
+        'class-aips-history-type.php',
+        'class-aips-history-container.php',
+        'class-aips-history-service.php',
         'class-aips-settings.php',
         'class-aips-admin-assets.php',
         'class-aips-system-status.php',
@@ -913,6 +916,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
+        'class-aips-activity-controller.php',
     ];
     
     foreach ($files as $file) {

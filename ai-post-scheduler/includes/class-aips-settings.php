@@ -14,16 +14,21 @@ if (!defined('ABSPATH')) {
 class AIPS_Settings {
     
     /**
+     * @var AIPS_Activity_Controller
+     */
+    private $activity_controller;
+
+    /**
      * Initialize the settings class.
      *
      * Hooks into admin_menu, admin_init, and admin_enqueue_scripts.
      */
     public function __construct() {
+        $this->activity_controller = new AIPS_Activity_Controller();
+
         add_action('admin_menu', array($this, 'add_menu_pages'));
         add_action('admin_init', array($this, 'register_settings'));
         add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
-        add_action('wp_ajax_aips_get_activity', array($this, 'ajax_get_activity'));
-        add_action('wp_ajax_aips_get_activity_detail', array($this, 'ajax_get_activity_detail'));
     }
     
     /**
@@ -651,36 +656,12 @@ class AIPS_Settings {
     /**
      * Render the Activity page.
      *
-     * Includes the activity template file.
+     * Delegates rendering to the AIPS_Activity_Controller.
      *
      * @return void
      */
     public function render_activity_page() {
-        // Use History Service to get activity feed
-        $history_service = new AIPS_History_Service();
-        
-        $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
-        $per_page = 50;
-        $offset = ($current_page - 1) * $per_page;
-        
-        $event_type = isset($_GET['event_type']) ? sanitize_text_field($_GET['event_type']) : '';
-        $event_status = isset($_GET['event_status']) ? sanitize_text_field($_GET['event_status']) : '';
-        $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        
-        $filters = array();
-        if ($event_type) {
-            $filters['event_type'] = $event_type;
-        }
-        if ($event_status) {
-            $filters['event_status'] = $event_status;
-        }
-        if ($search_query) {
-            $filters['search'] = $search_query;
-        }
-        
-        $activities = $history_service->get_activity_feed($per_page, $offset, $filters);
-        
-        include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
+        $this->activity_controller->render_page();
     }
     
     /**
@@ -813,122 +794,4 @@ class AIPS_Settings {
         }
     }
 
-    /**
-     * AJAX handler to get activity feed.
-     */
-    public function ajax_get_activity() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
-        }
-
-        $filter = isset($_POST['filter']) ? sanitize_text_field($_POST['filter']) : 'all';
-        $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
-        $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 50;
-
-        $history_service = new AIPS_History_Service();
-        
-        // Build filters
-        $filters = array();
-        if ($search) {
-            $filters['search'] = $search;
-        }
-
-        // Map filter to event types or statuses
-        if ($filter === 'published') {
-            $filters['event_type'] = 'post_published';
-        } elseif ($filter === 'drafts') {
-            $filters['event_type'] = 'post_generated';
-        } elseif ($filter === 'failed') {
-            $filters['event_status'] = 'failed';
-        }
-
-        $activity_logs = $history_service->get_activity_feed($limit, 0, $filters);
-
-        // Format activities for the frontend
-        $activities = array();
-        foreach ($activity_logs as $log) {
-            $details = json_decode($log->details, true);
-            
-            $activity = array(
-                'id' => $log->id,
-                'message' => $log->log_type,
-                'type' => isset($details['event_type']) ? $details['event_type'] : 'info',
-                'status' => isset($details['event_status']) ? $details['event_status'] : 'info',
-                'date_formatted' => mysql2date(get_option('date_format') . ' ' . get_option('time_format'), $log->timestamp),
-                'post' => null
-            );
-
-            // Get post data if available
-            if ($log->post_id) {
-                $post = get_post($log->post_id);
-                if ($post) {
-                    $activity['post'] = array(
-                        'id' => $post->ID,
-                        'title' => $post->post_title,
-                        'status' => $post->post_status,
-                        'edit_url' => get_edit_post_link($post->ID, 'raw')
-                    );
-                }
-            }
-
-            $activities[] = $activity;
-        }
-
-        wp_send_json_success(array('activities' => $activities));
-    }
-
-    /**
-     * AJAX handler to get activity detail for a specific post.
-     */
-    public function ajax_get_activity_detail() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
-        }
-
-        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
-
-        if (!$post_id) {
-            wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
-        }
-
-        $post = get_post($post_id);
-        if (!$post) {
-            wp_send_json_error(array('message' => __('Post not found.', 'ai-post-scheduler')));
-        }
-
-        $detail = array(
-            'id' => $post->ID,
-            'title' => $post->post_title,
-            'content' => $post->post_content,
-            'excerpt' => $post->post_excerpt,
-            'status' => $post->post_status,
-            'date' => mysql2date(get_option('date_format') . ' ' . get_option('time_format'), $post->post_date),
-            'author' => get_the_author_meta('display_name', $post->post_author),
-            'edit_url' => get_edit_post_link($post->ID, 'raw'),
-            'view_url' => get_permalink($post->ID),
-            'featured_image_url' => get_the_post_thumbnail_url($post->ID, 'large'),
-            'categories' => array(),
-            'tags' => array()
-        );
-
-        // Get categories
-        $categories = get_the_category($post->ID);
-        foreach ($categories as $category) {
-            $detail['categories'][] = $category->name;
-        }
-
-        // Get tags
-        $tags = get_the_tags($post->ID);
-        if ($tags) {
-            foreach ($tags as $tag) {
-                $detail['tags'][] = $tag->name;
-            }
-        }
-
-        wp_send_json_success(array('post' => $detail));
-    }
 }
