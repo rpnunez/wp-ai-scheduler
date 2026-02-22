@@ -17,6 +17,7 @@ class AIPS_Voices {
         add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
         add_action('wp_ajax_aips_get_voice', array($this, 'ajax_get_voice'));
         add_action('wp_ajax_aips_search_voices', array($this, 'ajax_search_voices'));
+        add_action('wp_ajax_aips_clone_voice', array($this, 'ajax_clone_voice'));
     }
     
     public function get_all($active_only = false) {
@@ -133,6 +134,45 @@ class AIPS_Voices {
         $voices = $this->repository->search($search);
         
         wp_send_json_success(array('voices' => $voices));
+    }
+
+    public function ajax_clone_voice() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
+        }
+
+        $voice = $this->get($id);
+
+        if (!$voice) {
+            wp_send_json_error(array('message' => __('Voice not found.', 'ai-post-scheduler')));
+        }
+
+        $data = array(
+            'name' => $voice->name . ' (Clone)',
+            'title_prompt' => $voice->title_prompt,
+            'content_instructions' => $voice->content_instructions,
+            'excerpt_instructions' => $voice->excerpt_instructions,
+            'is_active' => $voice->is_active
+        );
+
+        $new_id = $this->save($data);
+
+        if ($new_id) {
+            wp_send_json_success(array(
+                'message' => __('Voice cloned successfully.', 'ai-post-scheduler'),
+                'voice_id' => $new_id
+            ));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to clone voice.', 'ai-post-scheduler')));
+        }
     }
     
     public function render_page() {

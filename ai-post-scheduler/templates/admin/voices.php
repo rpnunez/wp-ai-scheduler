@@ -82,6 +82,10 @@ if (!defined('ABSPATH')) {
                                             <span class="dashicons dashicons-edit"></span>
                                             <span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
                                         </button>
+                                        <button class="aips-btn aips-btn-sm aips-clone-voice" data-id="<?php echo esc_attr($voice->id); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
+                                            <span class="dashicons dashicons-admin-page"></span>
+                                            <span class="screen-reader-text"><?php esc_html_e('Clone', 'ai-post-scheduler'); ?></span>
+                                        </button>
                                         <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-voice" data-id="<?php echo esc_attr($voice->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
                                             <span class="dashicons dashicons-trash"></span>
                                             <span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
