@@ -375,6 +375,80 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
+
+        // Feature Flags Section
+        register_setting('aips_settings', 'aips_feature_flags', array(
+            'sanitize_callback' => array($this, 'sanitize_feature_flags')
+        ));
+
+        add_settings_section(
+            'aips_feature_flags_section',
+            __('Feature Flags (Beta)', 'ai-post-scheduler'),
+            array($this, 'feature_flags_section_callback'),
+            'aips-settings'
+        );
+
+        $config = AIPS_Config::get_instance();
+        $features = $config->get_available_features();
+
+        foreach ($features as $feature_key => $feature_data) {
+            add_settings_field(
+                'aips_feature_' . $feature_key,
+                $feature_data['name'],
+                array($this, 'feature_flag_field_callback'),
+                'aips-settings',
+                'aips_feature_flags_section',
+                array(
+                    'feature_key' => $feature_key,
+                    'description' => $feature_data['description'],
+                    'default' => isset($feature_data['default']) ? $feature_data['default'] : false
+                )
+            );
+        }
+    }
+
+    /**
+     * Sanitize feature flags input.
+     *
+     * @param array $input Input array from form.
+     * @return array Sanitized array.
+     */
+    public function sanitize_feature_flags($input) {
+        $output = array();
+        $config = AIPS_Config::get_instance();
+        $features = $config->get_available_features();
+
+        foreach ($features as $key => $data) {
+            $output[$key] = isset($input[$key]) && $input[$key] == 1;
+        }
+        return $output;
+    }
+
+    /**
+     * Render the feature flags section description.
+     */
+    public function feature_flags_section_callback() {
+        echo '<p>' . esc_html__('Enable or disable experimental features.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render a feature flag checkbox.
+     *
+     * @param array $args Field arguments.
+     */
+    public function feature_flag_field_callback($args) {
+        $feature_key = $args['feature_key'];
+        $description = $args['description'];
+
+        $config = AIPS_Config::get_instance();
+        $enabled = $config->is_feature_enabled($feature_key, $args['default']);
+
+        ?>
+        <label>
+            <input type="checkbox" name="aips_feature_flags[<?php echo esc_attr($feature_key); ?>]" value="1" <?php checked($enabled, true); ?>>
+            <?php echo esc_html($description); ?>
+        </label>
+        <?php
     }
         
     /**
