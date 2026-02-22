@@ -1223,6 +1223,9 @@
                 return;
             }
 
+            var $btn = $(this);
+            $btn.prop('disabled', true);
+
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
@@ -1233,13 +1236,19 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        AIPS.showToast(response.data.message || 'History cleared successfully.', 'success');
+
+                        // Reset to page 1 as list is now empty or significantly changed
+                        AIPS.reloadHistory(null, 1);
                     } else {
-                        alert(response.data.message);
+                        AIPS.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
                 }
             });
         },
@@ -1262,15 +1271,24 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
+                        var msg = response.data.message || 'Post regenerated successfully!';
 
-                        location.reload();
+                        if (response.data.post_id) {
+                            // Construct standard WP edit link
+                            var editUrl = 'post.php?post=' + response.data.post_id + '&action=edit';
+                            msg += ' <a href="' + editUrl + '" target="_blank">Edit Post</a>';
+                        }
+
+                        AIPS.showToast(msg, 'success', { isHtml: true, duration: 8000 });
+
+                        // Reload history list on current page to show updated status
+                        AIPS.reloadHistory(null, AIPS.getCurrentHistoryPage());
                     } else {
-                        alert(response.data.message);
+                        AIPS.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Retry');
@@ -1353,6 +1371,11 @@
             
             // Append form to body, submit, and remove
             form.appendTo('body').submit().remove();
+        },
+
+        getCurrentHistoryPage: function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            return parseInt(urlParams.get('paged')) || 1;
         },
 
         loadHistoryPage: function(e) {
@@ -2368,14 +2391,17 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        AIPS.showToast(response.data.message || 'Items deleted successfully.', 'success');
+
+                        // Stay on current page, reloadHistory will handle refreshing the list
+                        AIPS.reloadHistory(null, AIPS.getCurrentHistoryPage());
                     } else {
-                        alert(response.data.message);
+                        AIPS.showToast(response.data.message, 'error');
                         $btn.prop('disabled', false).text('Delete Selected');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.showToast('An error occurred. Please try again.', 'error');
                     $btn.prop('disabled', false).text('Delete Selected');
                 }
             });

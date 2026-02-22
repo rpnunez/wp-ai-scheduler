@@ -64,3 +64,15 @@
 - `ai-post-scheduler/assets/js/admin.js` — Added `showToast` method to AIPS object; updated `runNowSchedule` success/error handlers to use toast instead of non-existent modal
 - `ai-post-scheduler/assets/css/admin.css` — Added global toast notification styles (`#aips-toast-container`, `.aips-toast`, slide-in/out animations)
 **Outcome:** Users now get immediate, non-blocking visual confirmation when a schedule executes — including a direct link to edit the generated post — without leaving the schedule page.
+
+## 2026-02-22 - History Page Flow Optimization
+**Target Feature:** History Page
+**Improvement:** Replaced disruptive full page reloads with seamless AJAX updates for key History actions (Retry, Clear, Delete). Previously, retrying a failed generation or clearing history logs would force a page refresh, breaking the user's flow and losing context. Now, these actions trigger a background update and refresh only the history list and stats via `AIPS.reloadHistory`, while providing immediate visual feedback using the Toast notification system.
+**Details:**
+- Added `AIPS.getCurrentHistoryPage()` helper to maintain pagination state during updates.
+- Refactored `retryGeneration` to use `AIPS.showToast` and `AIPS.reloadHistory`. Added a direct "Edit Post" link to the success toast.
+- Refactored `clearHistory` to use toast notifications and reset the list to page 1 via AJAX.
+- Refactored `deleteSelectedHistory` to maintain the current page and update the list without reload.
+**Files Modified:**
+- `ai-post-scheduler/assets/js/admin.js` — Implemented `getCurrentHistoryPage` and refactored action handlers.
+**Outcome:** Managing generation history is now a fluid, single-page application experience. Users can retry failed posts or clean up logs without losing their place or waiting for page reloads, aligning with the "Flow is Function" philosophy.
