@@ -141,35 +141,6 @@ class AIPS_Interval_Calculator {
         
         return date('Y-m-d H:i:s', $next);
     }
-
-    /**
-     * Calculate the first scheduled occurrence on or after a given target date.
-     *
-     * @param string $frequency   The frequency identifier.
-     * @param string $last_run    The last run time (base time).
-     * @param string $target_date The target date to find the next occurrence after.
-     * @return string The next occurrence date string.
-     */
-    public function calculate_next_occurrence_after($frequency, $last_run, $target_date) {
-        $base_time = strtotime($last_run);
-        $target = strtotime($target_date);
-
-        // If the base time is already after the target, return it
-        if ($base_time >= $target) {
-            return date('Y-m-d H:i:s', $base_time);
-        }
-
-        // Iterate with a high limit (e.g. 100,000 iterations covers ~11 years of hourly data)
-        // This is safe for DST and variable length intervals as it uses calculate_next_timestamp logic
-        $limit = 100000;
-
-        while ($base_time < $target && $limit > 0) {
-            $base_time = $this->calculate_next_timestamp($frequency, $base_time);
-            $limit--;
-        }
-
-        return date('Y-m-d H:i:s', $base_time);
-    }
     
     /**
      * Calculate the next run timestamp for a given frequency.

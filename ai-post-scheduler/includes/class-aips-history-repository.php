@@ -301,58 +301,6 @@ class AIPS_History_Repository {
     }
     
     /**
-     * Get activity feed (high-level events)
-     *
-     * Returns only ACTIVITY type entries for display in activity feed.
-     *
-     * @param int $limit Number of items to return
-     * @param int $offset Offset for pagination
-     * @param array $filters Optional filters (event_type, event_status, search)
-     * @return array Activity entries
-     */
-    public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) {
-        $where_clauses = array("history_type_id = %d");
-        $where_args = array(AIPS_History_Type::ACTIVITY);
-
-        // Event type filter
-        if (!empty($filters['event_type'])) {
-            $where_clauses[] = "details LIKE %s";
-            $where_args[] = '%"event_type":"' . $this->wpdb->esc_like($filters['event_type']) . '"%';
-        }
-
-        // Event status filter
-        if (!empty($filters['event_status'])) {
-            $where_clauses[] = "details LIKE %s";
-            $where_args[] = '%"event_status":"' . $this->wpdb->esc_like($filters['event_status']) . '"%';
-        }
-
-        // Search filter
-        if (!empty($filters['search'])) {
-            $search_term = '%' . $this->wpdb->esc_like($filters['search']) . '%';
-            $where_clauses[] = "(log_type LIKE %s OR details LIKE %s)";
-            $where_args[] = $search_term;
-            $where_args[] = $search_term;
-        }
-
-        $where_sql = implode(' AND ', $where_clauses);
-        $where_args[] = $limit;
-        $where_args[] = $offset;
-
-        $sql = "SELECT hl.*, h.post_id, h.template_id
-                FROM {$this->table_name_log} hl
-                LEFT JOIN {$this->table_name} h ON hl.history_id = h.id
-                WHERE $where_sql
-                ORDER BY hl.timestamp DESC
-                LIMIT %d OFFSET %d";
-
-        if (empty($where_args)) {
-            return $this->wpdb->get_results($sql);
-        }
-
-        return $this->wpdb->get_results($this->wpdb->prepare($sql, $where_args));
-    }
-
-    /**
      * Create a new history entry.
      *
      * @param array $data {
@@ -483,9 +431,17 @@ class AIPS_History_Repository {
         delete_transient('aips_history_stats');
 
         if (empty($status)) {
+            $this->wpdb->query("TRUNCATE TABLE {$this->table_name_log}");
             return $this->wpdb->query("TRUNCATE TABLE {$this->table_name}");
         }
         
+        // Delete logs first using subquery
+        $this->wpdb->query($this->wpdb->prepare(
+            "DELETE FROM {$this->table_name_log}
+             WHERE history_id IN (SELECT id FROM {$this->table_name} WHERE status = %s)",
+            $status
+        ));
+
         return $this->wpdb->delete($this->table_name, array('status' => $status), array('%s'));
     }
     
@@ -496,6 +452,7 @@ class AIPS_History_Repository {
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
+        $this->wpdb->delete($this->table_name_log, array('history_id' => $id), array('%d'));
         $result = $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
 
         if ($result !== false) {
@@ -526,6 +483,7 @@ class AIPS_History_Repository {
 
         $ids_sql = implode(',', $ids);
 
+        $this->wpdb->query("DELETE FROM {$this->table_name_log} WHERE history_id IN ($ids_sql)");
         $result = $this->wpdb->query("DELETE FROM {$this->table_name} WHERE id IN ($ids_sql)");
 
         if ($result !== false) {
@@ -579,6 +537,14 @@ class AIPS_History_Repository {
         // Count records that will be deleted
         $count = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} $where_clause");
         
+        // Delete logs first
+        if (!empty($where_clause)) {
+            $this->wpdb->query("DELETE FROM {$this->table_name_log} WHERE history_id IN (SELECT id FROM {$this->table_name} $where_clause)");
+        } else {
+            // If no where clause, truncate or delete all logs
+            $this->wpdb->query("TRUNCATE TABLE {$this->table_name_log}");
+        }
+
         // Delete records
         $deleted = $this->wpdb->query("DELETE FROM {$this->table_name} $where_clause");
         
