@@ -179,6 +179,7 @@ class AIPS_Admin_Assets {
 				'logUser' => __('User', 'ai-post-scheduler'),
 				'logDate' => __('Date', 'ai-post-scheduler'),
 				'logDetails' => __('Details', 'ai-post-scheduler'),
+				'viewLog' => __('View Log', 'ai-post-scheduler'),
 			));
 		}
 

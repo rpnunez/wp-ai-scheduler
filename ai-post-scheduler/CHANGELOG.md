@@ -129,3 +129,6 @@ All notable changes to this project will be documented in this file.
 ## [sentinel-prevent-directory-listing] - 2024-05-24
 ### Security
 - [2024-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
+
+- Implemented Author Search in admin interface.
+- Added 'View Log' button to author topics list.

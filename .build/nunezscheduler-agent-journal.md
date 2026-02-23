@@ -64,3 +64,9 @@
 - `ai-post-scheduler/assets/js/admin.js` — Added `showToast` method to AIPS object; updated `runNowSchedule` success/error handlers to use toast instead of non-existent modal
 - `ai-post-scheduler/assets/css/admin.css` — Added global toast notification styles (`#aips-toast-container`, `.aips-toast`, slide-in/out animations)
 **Outcome:** Users now get immediate, non-blocking visual confirmation when a schedule executes — including a direct link to edit the generated post — without leaving the schedule page.
+
+## 2026-01-23 - Authors Feature Optimization
+**Target Feature:** Authors Feature
+**Improvement:** Implemented Author Search (client-side) and added 'View Log' button to topics list.
+**Files Modified:** ai-post-scheduler/assets/js/authors.js, ai-post-scheduler/includes/class-aips-admin-assets.php
+**Outcome:** Users can now filter the authors list by name or niche, and view logs for specific topics directly from the topics modal, improving navigation and debuggability.
