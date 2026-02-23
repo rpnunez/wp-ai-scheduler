@@ -2,6 +2,29 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// Generate plain-text system report
+$report_text = "### AI Post Scheduler System Report ###\n\n";
+if (!empty($system_info)) {
+    foreach ($system_info as $section => $checks) {
+        if (empty($checks)) continue;
+        $report_text .= "### " . ucfirst($section) . " ###\n";
+        foreach ($checks as $key => $check) {
+            $value = is_array($check['value']) ? implode(', ', $check['value']) : $check['value'];
+            $status = isset($check['status']) ? strtoupper($check['status']) : 'INFO';
+            $report_text .= $check['label'] . ": " . $value . " (" . $status . ")\n";
+            if (!empty($check['details'])) {
+                if (is_array($check['details'])) {
+                    $report_text .= "Details:\n" . implode("\n", $check['details']) . "\n";
+                } else {
+                    $report_text .= "Details: " . $check['details'] . "\n";
+                }
+            }
+        }
+        $report_text .= "\n";
+    }
+}
+$report_text .= "Generated at: " . current_time('mysql') . "\n";
 ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
@@ -11,6 +34,12 @@ if (!defined('ABSPATH')) {
                 <div>
                     <h1 class="aips-page-title"><?php esc_html_e('System Status', 'ai-post-scheduler'); ?></h1>
                     <p class="aips-page-description"><?php esc_html_e('Monitor system health, PHP configuration, WordPress environment, and plugin compatibility.', 'ai-post-scheduler'); ?></p>
+                </div>
+                <div class="aips-page-actions">
+                    <button type="button" class="aips-btn aips-btn-secondary aips-copy-btn" data-clipboard-target="#aips-system-report-raw">
+                        <span class="dashicons dashicons-clipboard"></span> <?php esc_html_e('Copy System Report', 'ai-post-scheduler'); ?>
+                    </button>
+                    <textarea id="aips-system-report-raw" style="display:none;"><?php echo esc_textarea($report_text); ?></textarea>
                 </div>
             </div>
         </div>
