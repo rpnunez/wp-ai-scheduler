@@ -102,6 +102,11 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                     </td>
                                     <td>
                                         <strong style="font-size: 14px;"><?php echo esc_html($posts_count); ?></strong>
+                                        <?php if ($posts_count > 0): ?>
+                                            <button type="button" class="button button-small aips-view-author-posts" data-id="<?php echo esc_attr($author->id); ?>" style="margin-left: 5px;">
+                                                <?php esc_html_e('View', 'ai-post-scheduler'); ?>
+                                            </button>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php if ($author->is_active): ?>
@@ -358,12 +363,12 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     </div>
 </div>
 
-<!-- Topic Posts Modal -->
-<div id="aips-topic-posts-modal" class="aips-modal" style="display: none;">
+<!-- Posts Modal -->
+<div id="aips-posts-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">
         <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-        <h2 id="aips-topic-posts-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
-        <div id="aips-topic-posts-content">
+        <h2 id="aips-posts-modal-title"><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></h2>
+        <div id="aips-posts-content">
             <p><?php esc_html_e('Loading posts...', 'ai-post-scheduler'); ?></p>
         </div>
     </div>

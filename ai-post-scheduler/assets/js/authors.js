@@ -53,6 +53,8 @@
 	// Authors Module
 	const AuthorsModule = {
 		currentAuthorId: null,
+		currentViewContext: null,
+		currentViewId: null,
 
 		init: function () {
 			this.bindEvents();
@@ -67,6 +69,9 @@
 
 			// View Topics Button
 			$(document).on('click', '.aips-view-author', this.viewTopics.bind(this));
+
+			// View Author Posts Button
+			$(document).on('click', '.aips-view-author-posts', this.viewAuthorPosts.bind(this));
 
 			// Generate Topics Now Button
 			$(document).on('click', '.aips-generate-topics-now', this.generateTopicsNow.bind(this));
@@ -100,12 +105,16 @@
 			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
 			$(document).on('click', '.aips-select-all-feedback', this.toggleSelectAllFeedback.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
-			
+
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
-			
+
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
+
+			// Post actions
+			$(document).on('click', '.aips-regenerate-post', this.regeneratePost.bind(this));
+			$(document).on('click', '.aips-delete-generated-post', this.deleteGeneratedPost.bind(this));
 		},
 
 		openAddModal: function (e) {
@@ -273,14 +282,14 @@
 			this.currentAuthorId = authorId;
 
 			$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.loadingTopics + '</p>');
-			
+
 			// Reset tabs to pending
 			$('.aips-tab-link').removeClass('active');
 			$('.aips-tab-link[data-tab="pending"]').addClass('active');
-			
+
 			// Update bulk action dropdown for pending tab
 			this.updateBulkActionDropdown('pending');
-			
+
 			$('#aips-topics-modal').fadeIn();
 
 			this.loadTopics('pending');
@@ -331,14 +340,14 @@
 				html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
 				html += '</button> ';
 				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
-				
+
 				// Add post count badge if there are any posts
 				if (topic.post_count && topic.post_count > 0) {
 					html += ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + aipsAuthorsL10n.viewPosts + '">';
 					html += '<span class="dashicons dashicons-admin-post"></span> ' + topic.post_count;
 					html += '</span>';
 				}
-				
+
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
 				html += '</td>';
 				html += '<td>' + topic.generated_at + '</td>';
@@ -354,7 +363,7 @@
 
 				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.edit + '</button>';
 				html += '</td></tr>';
-				
+
 				// Add collapsible detail row
 				html += '<tr class="aips-topic-detail-row" data-topic-id="' + topic.id + '" style="display:none;">';
 				html += '<td colspan="4" class="aips-topic-detail-cell">';
@@ -405,12 +414,12 @@
 
 		updateBulkActionDropdown: function (status) {
 			const $dropdowns = $('.aips-bulk-action-select');
-			
+
 			// Clear existing options except the default one
 			$dropdowns.each(function() {
 				const $dropdown = $(this);
 				$dropdown.find('option:not(:first)').remove();
-				
+
 				// Add options based on the active tab
 				if (status === 'pending') {
 					// Pending Review tab: Approve, Reject, Delete
@@ -518,7 +527,7 @@
 		loadFeedback: function () {
 			if (!this.currentAuthorId) {
 				$('#aips-topics-content').html('<p>No author selected.</p>');
-				
+
 				return;
 			}
 
@@ -762,19 +771,60 @@
 			html += '</tbody></table>';
 			$('#aips-topic-logs-content').html(html);
 		},
-		
+
+		viewAuthorPosts: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const authorId = $(e.currentTarget).data('id');
+			this.currentViewContext = 'author';
+			this.currentViewId = authorId;
+
+			$('#aips-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
+			$('#aips-posts-modal').fadeIn();
+
+			this.loadAuthorPosts(authorId);
+		},
+
+		loadAuthorPosts: function (authorId) {
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_author_posts',
+					nonce: aipsAuthorsL10n.nonce,
+					author_id: authorId
+				},
+				success: (response) => {
+					if (response.success) {
+						$('#aips-posts-modal-title').text(aipsAuthorsL10n.postsGenerated || 'Generated Posts');
+						this.renderPosts(response.data.posts, 'author');
+					} else {
+						$('#aips-posts-content').html(
+							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingPosts) + '</p>'
+						);
+					}
+				},
+				error: () => {
+					$('#aips-posts-content').html('<p>' + aipsAuthorsL10n.errorLoadingPosts + '</p>');
+				}
+			});
+		},
+
 		viewTopicPosts: function (e) {
 			e.preventDefault();
 			e.stopPropagation();
-			
+
 			const topicId = $(e.currentTarget).data('topic-id');
-			
-			$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
-			$('#aips-topic-posts-modal').fadeIn();
-			
+			this.currentViewContext = 'topic';
+			this.currentViewId = topicId;
+
+			$('#aips-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
+			$('#aips-posts-modal').fadeIn();
+
 			this.loadTopicPosts(topicId);
 		},
-		
+
 		loadTopicPosts: function (topicId) {
 			$.ajax({
 				url: ajaxurl,
@@ -788,42 +838,48 @@
 					if (response.success) {
 						const topic = response.data.topic;
 						const posts = response.data.posts;
-						
-						$('#aips-topic-posts-modal-title').text(
+
+						$('#aips-posts-modal-title').text(
 							aipsAuthorsL10n.postsGeneratedFrom + ': ' + this.escapeHtml(topic.topic_title)
 						);
-						
-						this.renderTopicPosts(posts);
+
+						this.renderPosts(posts, 'topic');
 					} else {
-						$('#aips-topic-posts-content').html(
+						$('#aips-posts-content').html(
 							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingPosts) + '</p>'
 						);
 					}
 				},
 				error: () => {
-					$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.errorLoadingPosts + '</p>');
+					$('#aips-posts-content').html('<p>' + aipsAuthorsL10n.errorLoadingPosts + '</p>');
 				}
 			});
 		},
-		
-		renderTopicPosts: function (posts) {
+
+		renderPosts: function (posts, context) {
 			if (!posts || posts.length === 0) {
-				$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
+				$('#aips-posts-content').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
 				return;
 			}
-			
+
 			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
 			html += '<th>' + aipsAuthorsL10n.postId + '</th>';
 			html += '<th>' + aipsAuthorsL10n.postTitle + '</th>';
+			if (context === 'author') {
+				html += '<th>' + (aipsAuthorsL10n.topic || 'Topic') + '</th>';
+			}
 			html += '<th>' + aipsAuthorsL10n.dateGenerated + '</th>';
 			html += '<th>' + aipsAuthorsL10n.datePublished + '</th>';
 			html += '<th>' + aipsAuthorsL10n.actions + '</th>';
 			html += '</tr></thead><tbody>';
-			
+
 			posts.forEach(post => {
 				html += '<tr>';
 				html += '<td>' + this.escapeHtml(post.post_id) + '</td>';
 				html += '<td>' + this.escapeHtml(post.post_title) + '</td>';
+				if (context === 'author') {
+					html += '<td>' + this.escapeHtml(post.topic_title || '-') + '</td>';
+				}
 				html += '<td>' + this.escapeHtml(post.date_generated || '') + '</td>';
 				html += '<td>' + this.escapeHtml(post.date_published || aipsAuthorsL10n.notPublished) + '</td>';
 				html += '<td>';
@@ -831,14 +887,103 @@
 					html += '<a href="' + this.sanitizeUrl(post.edit_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
 				}
 				if (post.post_url && post.post_status === 'publish') {
-					html += '<a href="' + this.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
+					html += '<a href="' + this.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a> ';
 				}
+
+				// Add Regenerate and Delete buttons
+				const topicId = post.topic_id || (context === 'topic' ? this.currentViewId : null) || post.author_topic_id;
+
+				if (topicId) {
+					html += '<button type="button" class="button aips-regenerate-post" data-post-id="' + post.post_id + '" data-topic-id="' + topicId + '" title="' + (aipsAuthorsL10n.regenerate || 'Regenerate') + '"><span class="dashicons dashicons-update"></span></button> ';
+				}
+				html += '<button type="button" class="button aips-delete-generated-post" data-post-id="' + post.post_id + '" title="' + (aipsAuthorsL10n.delete || 'Delete') + '"><span class="dashicons dashicons-trash"></span></button>';
+
 				html += '</td>';
 				html += '</tr>';
 			});
-			
+
 			html += '</tbody></table>';
-			$('#aips-topic-posts-content').html(html);
+			$('#aips-posts-content').html(html);
+		},
+
+		regeneratePost: function (e) {
+			e.preventDefault();
+			const $btn = $(e.currentTarget);
+			const postId = $btn.data('post-id');
+			const topicId = $btn.data('topic-id');
+
+			if (!confirm(aipsAuthorsL10n.confirmRegenerate || 'Are you sure you want to regenerate this post? The current post will be deleted.')) {
+				return;
+			}
+
+			$btn.prop('disabled', true);
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_regenerate_post',
+					nonce: aipsAuthorsL10n.nonce,
+					post_id: postId,
+					topic_id: topicId
+				},
+				success: (response) => {
+					if (response.success) {
+						showToast(response.data.message || aipsAuthorsL10n.regenerateSuccess || 'Post regenerated successfully.', 'success');
+						if (this.currentViewContext === 'author') {
+							this.loadAuthorPosts(this.currentViewId);
+						} else {
+							this.loadTopicPosts(this.currentViewId);
+						}
+					} else {
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRegenerating || 'Error regenerating post.', 'error');
+						$btn.prop('disabled', false);
+					}
+				},
+				error: () => {
+					showToast(aipsAuthorsL10n.errorRegenerating || 'Error regenerating post.', 'error');
+					$btn.prop('disabled', false);
+				}
+			});
+		},
+
+		deleteGeneratedPost: function (e) {
+			e.preventDefault();
+			const $btn = $(e.currentTarget);
+			const postId = $btn.data('post-id');
+
+			if (!confirm(aipsAuthorsL10n.confirmDelete || 'Are you sure you want to delete this post?')) {
+				return;
+			}
+
+			$btn.prop('disabled', true);
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_delete_generated_post',
+					nonce: aipsAuthorsL10n.nonce,
+					post_id: postId
+				},
+				success: (response) => {
+					if (response.success) {
+						showToast(response.data.message || aipsAuthorsL10n.deleteSuccess || 'Post deleted successfully.', 'success');
+						if (this.currentViewContext === 'author') {
+							this.loadAuthorPosts(this.currentViewId);
+						} else {
+							this.loadTopicPosts(this.currentViewId);
+						}
+					} else {
+						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting || 'Error deleting post.', 'error');
+						$btn.prop('disabled', false);
+					}
+				},
+				error: () => {
+					showToast(aipsAuthorsL10n.errorDeleting || 'Error deleting post.', 'error');
+					$btn.prop('disabled', false);
+				}
+			});
 		},
 
 		toggleSelectAll: function (e) {
@@ -878,7 +1023,7 @@
 			}
 
 			if (ids.length === 0) {
-				const message = activeTab === 'feedback' 
+				const message = activeTab === 'feedback'
 					? (aipsAuthorsL10n.noFeedbackSelected || 'Please select at least one feedback item.')
 					: (aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
 				showToast(message, 'warning');
@@ -973,7 +1118,7 @@
 			const messages = {
 				approve: aipsAuthorsL10n.confirmBulkApprove || 'Are you sure you want to approve %d topics?',
 				reject: aipsAuthorsL10n.confirmBulkReject || 'Are you sure you want to reject %d topics?',
-				delete: activeTab === 'feedback' 
+				delete: activeTab === 'feedback'
 					? (aipsAuthorsL10n.confirmBulkDeleteFeedback || 'Are you sure you want to delete %d feedback items? This action cannot be undone.')
 					: (aipsAuthorsL10n.confirmBulkDelete || 'Are you sure you want to delete %d topics? This action cannot be undone.'),
 				generate_now: aipsAuthorsL10n.confirmBulkGenerate || 'Are you sure you want to generate posts for %d topics?'
@@ -993,10 +1138,10 @@
 				if (text === null || text === undefined) {
 					return '';
 				}
-				
+
 				// Convert to string if not already
 				const str = String(text);
-				
+
 				const map = {
 					'&': '&amp;',
 					'<': '&lt;',
@@ -1024,25 +1169,25 @@
 				if (!url) {
 					return '';
 				}
-				
+
 				// Convert to string and trim whitespace
 				const urlStr = String(url).trim();
-				
+
 				if (!urlStr) {
 					return '';
 				}
-				
+
 				// Check for dangerous protocols (case-insensitive)
 				const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
 				const lowerUrl = urlStr.toLowerCase();
-				
+
 				for (const protocol of dangerousProtocols) {
 					if (lowerUrl.startsWith(protocol)) {
 						console.warn('Dangerous URL protocol detected:', protocol);
 						return '';
 					}
 				}
-				
+
 				// For absolute URLs, validate with URL constructor
 				if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
 					try {
@@ -1054,12 +1199,12 @@
 						return '';
 					}
 				}
-				
+
 				// For relative URLs (WordPress admin paths), return as-is after validation
 				if (urlStr.startsWith('/')) {
 					return urlStr;
 				}
-				
+
 				// Reject anything else
 				console.warn('URL does not match allowed patterns:', urlStr);
 				return '';
@@ -1069,7 +1214,7 @@
 			}
 		}
 	};
-	
+
 	// Generation Queue Module
 	const GenerationQueueModule = {
 		init: function () {
@@ -1079,7 +1224,7 @@
 		bindEvents: function () {
 			// Main page tab switching
 			$(document).on('click', '.aips-authors-tab-link', this.switchMainTab.bind(this));
-			
+
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
@@ -1202,7 +1347,7 @@
 
 		generateNowFromQueue: function (topicIds) {
 			const confirmMessage = (aipsAuthorsL10n.confirmGenerateFromQueue || 'Generate posts now for %d selected topic(s)?').replace('%d', topicIds.length);
-			
+
 			if (!confirm(confirmMessage)) {
 				return;
 			}
@@ -1221,7 +1366,7 @@
 				success: (response) => {
 					if (response.success) {
 						showToast(response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.', 'success');
-						
+
 						// Reload the queue
 						this.loadQueueTopics();
 					} else {
