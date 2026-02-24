@@ -2948,3 +2948,47 @@ width: 20px !important;
 height: 20px !important;
 margin-right: 8px;
 }
+
+/* ==========================================================================
+   Utility: ID Display & Copy Button
+   ========================================================================== */
+
+.aips-table-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.aips-id-badge {
+    font-size: 11px;
+    color: var(--aips-gray-500);
+    background: var(--aips-gray-50);
+    padding: 2px 4px;
+    border-radius: var(--aips-radius-sm);
+    font-family: monospace;
+}
+
+.aips-copy-btn.aips-copy-btn-small {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.aips-copy-btn.aips-copy-btn-small:hover {
+    background: var(--aips-gray-100);
+    border: none;
+}
+
+.aips-copy-btn.aips-copy-btn-small .dashicons {
+    font-size: 12px;
+    width: 12px;
+    height: 12px;
+    color: var(--aips-gray-500);
+    margin: 0;
+}
