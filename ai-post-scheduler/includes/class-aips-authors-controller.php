@@ -224,12 +224,25 @@ class AIPS_Authors_Controller {
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		$status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : null;
+		$page = isset($_POST['page']) ? absint($_POST['page']) : 1;
+		$per_page = isset($_POST['per_page']) ? absint($_POST['per_page']) : 10;
+		$search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
 		
 		if (!$author_id) {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 		
-		$topics = $this->topics_repository->get_by_author($author_id, $status);
+		$offset = ($page - 1) * $per_page;
+
+		$args = array(
+			'status' => $status,
+			'limit' => $per_page,
+			'offset' => $offset,
+			'search' => $search
+		);
+
+		$topics = $this->topics_repository->get_by_author($author_id, $args);
+		$total_topics = $this->topics_repository->count_by_author($author_id, $args);
 		$status_counts = $this->topics_repository->get_status_counts($author_id);
 		
 		// Add post count to each topic
@@ -246,7 +259,10 @@ class AIPS_Authors_Controller {
 		
 		wp_send_json_success(array(
 			'topics' => $topics,
-			'status_counts' => $status_counts
+			'status_counts' => $status_counts,
+			'total' => $total_topics,
+			'pages' => ceil($total_topics / $per_page),
+			'current_page' => $page
 		));
 	}
 	

@@ -321,6 +321,10 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                 </div>
         
                 <div class="aips-topics-list-container">
+                    <div class="aips-filter-bar" style="margin-bottom: 15px;">
+                        <input type="search" id="aips-topics-search" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
+                    </div>
+
                     <div class="aips-bulk-actions">
                         <select class="aips-bulk-action-select">
                             <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>

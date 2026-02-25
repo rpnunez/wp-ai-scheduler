@@ -41,24 +41,109 @@ class AIPS_Author_Topics_Repository {
 	}
 	
 	/**
-	 * Get all topics for an author.
+	 * Get all topics for an author with optional filtering and pagination.
 	 *
 	 * @param int $author_id Author ID.
-	 * @param string $status Optional. Filter by status (pending, approved, rejected). Default null (all).
+	 * @param string|array $args Optional. Filter by status (string) or array of arguments.
+	 *                           If array, supports:
+	 *                           - status: string (pending, approved, rejected)
+	 *                           - search: string (search query for title/description)
+	 *                           - limit: int (posts per page)
+	 *                           - offset: int (pagination offset)
+	 *                           - orderby: string (column to order by)
+	 *                           - order: string (ASC or DESC)
 	 * @return array Array of topic objects.
 	 */
-	public function get_by_author($author_id, $status = null) {
-		if ($status) {
-			return $this->wpdb->get_results($this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE author_id = %d AND status = %s ORDER BY generated_at DESC",
-				$author_id,
-				$status
-			));
+	public function get_by_author($author_id, $args = null) {
+		$defaults = array(
+			'status' => null,
+			'search' => '',
+			'limit' => null,
+			'offset' => 0,
+			'orderby' => 'generated_at',
+			'order' => 'DESC'
+		);
+
+		// Handle backward compatibility where $args was just $status string
+		if (is_string($args)) {
+			$args = array('status' => $args);
 		}
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE author_id = %d ORDER BY generated_at DESC",
-			$author_id
-		));
+
+		$args = wp_parse_args($args, $defaults);
+
+		$where = array('author_id = %d');
+		$query_args = array($author_id);
+
+		if (!empty($args['status'])) {
+			$where[] = 'status = %s';
+			$query_args[] = $args['status'];
+		}
+
+		if (!empty($args['search'])) {
+			$where[] = '(topic_title LIKE %s OR topic_description LIKE %s)';
+			$search_term = '%' . $this->wpdb->esc_like($args['search']) . '%';
+			$query_args[] = $search_term;
+			$query_args[] = $search_term;
+		}
+
+		$where_clause = implode(' AND ', $where);
+
+		// Sanitize orderby to prevent SQL injection
+		$allowed_orderby = array('id', 'topic_title', 'generated_at', 'status', 'score');
+		$orderby = in_array($args['orderby'], $allowed_orderby) ? $args['orderby'] : 'generated_at';
+		$order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
+
+		$sql = "SELECT * FROM {$this->table_name} WHERE {$where_clause} ORDER BY {$orderby} {$order}";
+
+		if (!empty($args['limit'])) {
+			$sql .= " LIMIT %d OFFSET %d";
+			$query_args[] = $args['limit'];
+			$query_args[] = $args['offset'];
+		}
+
+		return $this->wpdb->get_results($this->wpdb->prepare($sql, $query_args));
+	}
+
+	/**
+	 * Get total count of topics for an author matching criteria.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param string|array $args Optional. Filter arguments (status, search).
+	 * @return int Total count.
+	 */
+	public function count_by_author($author_id, $args = null) {
+		$defaults = array(
+			'status' => null,
+			'search' => ''
+		);
+
+		// Handle backward compatibility where $args was just $status string
+		if (is_string($args)) {
+			$args = array('status' => $args);
+		}
+
+		$args = wp_parse_args($args, $defaults);
+
+		$where = array('author_id = %d');
+		$query_args = array($author_id);
+
+		if (!empty($args['status'])) {
+			$where[] = 'status = %s';
+			$query_args[] = $args['status'];
+		}
+
+		if (!empty($args['search'])) {
+			$where[] = '(topic_title LIKE %s OR topic_description LIKE %s)';
+			$search_term = '%' . $this->wpdb->esc_like($args['search']) . '%';
+			$query_args[] = $search_term;
+			$query_args[] = $search_term;
+		}
+
+		$where_clause = implode(' AND ', $where);
+
+		$sql = "SELECT COUNT(*) FROM {$this->table_name} WHERE {$where_clause}";
+
+		return (int) $this->wpdb->get_var($this->wpdb->prepare($sql, $query_args));
 	}
 	
 	/**

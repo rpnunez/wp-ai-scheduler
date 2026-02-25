@@ -179,6 +179,11 @@ class AIPS_Admin_Assets {
 				'logUser' => __('User', 'ai-post-scheduler'),
 				'logDate' => __('Date', 'ai-post-scheduler'),
 				'logDetails' => __('Details', 'ai-post-scheduler'),
+				'previous' => __('Previous', 'ai-post-scheduler'),
+				'next' => __('Next', 'ai-post-scheduler'),
+				'page' => __('Page', 'ai-post-scheduler'),
+				'of' => __('of', 'ai-post-scheduler'),
+				'searchPlaceholder' => __('Search topics...', 'ai-post-scheduler'),
 			));
 		}
 
