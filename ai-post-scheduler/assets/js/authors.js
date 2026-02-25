@@ -78,6 +78,13 @@
 			// Close Modal
 			$('.aips-modal-close').on('click', this.closeModals.bind(this));
 
+			// Approve Topic Modal Cancel button
+			$(document).on('click', '.aips-approve-topic-cancel', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				$('#aips-approve-topic-modal').fadeOut();
+			});
+
 			// Submit Author Form
 			$('#aips-author-form').on('submit', this.saveAuthor.bind(this));
 
@@ -1189,6 +1196,11 @@
 
 		closeModals: function (e) {
 			e.preventDefault();
+			// Only close modals that are not the Approve Topic / Feedback modal if it's open
+			if ($('#aips-feedback-modal').is(':visible')) {
+				// Do not close parent modal if Approve Topic / Feedback modal is open
+				return;
+			}
 			$('.aips-modal').fadeOut();
 		},
 
