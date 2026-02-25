@@ -146,6 +146,8 @@
 						$('#author_keywords').val(author.keywords || '');
 						$('#author_details').val(author.details || '');
 						$('#article_structure_id').val(author.article_structure_id || '');
+						$('#voice_tone').val(author.voice_tone || '');
+						$('#writing_style').val(author.writing_style || '');
 						$('#topic_generation_quantity').val(author.topic_generation_quantity);
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);

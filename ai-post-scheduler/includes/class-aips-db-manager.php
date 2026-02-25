@@ -223,6 +223,8 @@ class AIPS_DB_Manager {
             post_author bigint(20) DEFAULT NULL,
             generate_featured_image tinyint(1) DEFAULT 0,
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
+            voice_tone varchar(100) DEFAULT NULL,
+            writing_style varchar(100) DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
