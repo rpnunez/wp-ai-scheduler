@@ -111,8 +111,8 @@ flowchart TD
 
     Author_Post_Generator --> Generator
     Component_Regeneration_Service --> Generator
-    Generator --> Generation_Session
     Generator --> Generation_Logger
+    Generator --> Generation_Session
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
@@ -194,8 +194,8 @@ flowchart TD
     Templates_Controller["Templates Controller"]
     Templates["Templates"]
 
-    Article_Structure_Manager --> Template_Processor
     Article_Structure_Manager --> Article_Structure_Repository
+    Article_Structure_Manager --> Template_Processor
     Generated_Posts_Controller --> Post_Review_Repository
     Generated_Posts_Controller --> Template_Repository
     Post_Review_Notifications --> Post_Review_Repository
@@ -204,6 +204,7 @@ flowchart TD
     Template_Type_Selector --> Article_Structure_Repository
     Templates_Controller --> Template_Context
     Templates_Controller --> Templates
+    Templates_Controller --> Template_Context
     Templates --> Template_Repository
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
