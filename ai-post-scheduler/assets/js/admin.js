@@ -158,6 +158,7 @@
 
             // Copy to Clipboard
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
+            $(document).on('click', '#aips-copy-system-report', this.copySystemReport);
 
             // Article Structures UI handlers
 
@@ -323,6 +324,79 @@
                         alert(response.data.message || aipsAdminL10n.deleteSectionFailed);
                     }
                 }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
+            });
+        },
+
+        copySystemReport: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var report = 'AI Post Scheduler - System Report\n';
+            report += 'Generated: ' + new Date().toISOString() + '\n\n';
+
+            $('.aips-content-panel').each(function() {
+                var sectionTitle = $(this).find('.aips-panel-header h2').text().trim();
+
+                if (!sectionTitle) return;
+
+                report += '### ' + sectionTitle + ' ###\n';
+
+                $(this).find('table tbody tr').each(function() {
+                    var $cols = $(this).find('td');
+                    if ($cols.length < 3) return;
+
+                    var check = $cols.eq(0).text().trim();
+                    var $valueCol = $cols.eq(1);
+                    var status = $cols.eq(2).text().trim();
+
+                    // Get primary value (excluding details/links)
+                    // We clone to not affect the DOM, remove children (like the details toggle link/div), and get text
+                    var value = $valueCol.clone().children().remove().end().text().trim();
+
+                    // Check for detailed log in textarea
+                    var $textarea = $valueCol.find('textarea');
+                    var details = $textarea.length ? $textarea.val() : '';
+
+                    report += check + ': ' + value + ' (' + status + ')\n';
+
+                    if (details && details.trim().length > 0) {
+                        report += 'Details:\n' + details.trim() + '\n';
+                    }
+                });
+
+                report += '\n';
+            });
+
+            var showSuccess = function() {
+                var originalHtml = $btn.html();
+                $btn.html('<span class="dashicons dashicons-yes"></span> Copied!');
+                $btn.prop('disabled', true);
+                setTimeout(function() {
+                    $btn.html(originalHtml);
+                    $btn.prop('disabled', false);
+                }, 2000);
+            };
+
+            if (!navigator.clipboard) {
+                var textArea = document.createElement("textarea");
+                textArea.value = report;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showSuccess();
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                    alert('Failed to copy report to clipboard.');
+                }
+                document.body.removeChild(textArea);
+                return;
+            }
+
+            navigator.clipboard.writeText(report).then(function() {
+                showSuccess();
+            }, function(err) {
+                console.error('Async: Could not copy text: ', err);
+                alert('Failed to copy report to clipboard.');
             });
         },
 
