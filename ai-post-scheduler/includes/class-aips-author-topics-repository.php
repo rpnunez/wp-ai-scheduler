@@ -45,20 +45,64 @@ class AIPS_Author_Topics_Repository {
 	 *
 	 * @param int $author_id Author ID.
 	 * @param string $status Optional. Filter by status (pending, approved, rejected). Default null (all).
+	 * @param array $args Optional. Arguments for pagination and search.
 	 * @return array Array of topic objects.
 	 */
-	public function get_by_author($author_id, $status = null) {
+	public function get_by_author($author_id, $status = null, $args = array()) {
+		$defaults = array(
+			'limit'  => -1,
+			'offset' => 0,
+			'search' => '',
+		);
+		$args = wp_parse_args($args, $defaults);
+
+		$query = "SELECT * FROM {$this->table_name} WHERE author_id = %d";
+		$params = array($author_id);
+
 		if ($status) {
-			return $this->wpdb->get_results($this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE author_id = %d AND status = %s ORDER BY generated_at DESC",
-				$author_id,
-				$status
-			));
+			$query .= " AND status = %s";
+			$params[] = $status;
 		}
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE author_id = %d ORDER BY generated_at DESC",
-			$author_id
-		));
+
+		if (!empty($args['search'])) {
+			$query .= " AND topic_title LIKE %s";
+			$params[] = '%' . $this->wpdb->esc_like($args['search']) . '%';
+		}
+
+		$query .= " ORDER BY generated_at DESC";
+
+		if ($args['limit'] > 0) {
+			$query .= " LIMIT %d OFFSET %d";
+			$params[] = $args['limit'];
+			$params[] = $args['offset'];
+		}
+
+		return $this->wpdb->get_results($this->wpdb->prepare($query, $params));
+	}
+
+	/**
+	 * Count topics for an author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param string $status Optional. Filter by status.
+	 * @param string $search Optional. Search term.
+	 * @return int Total count.
+	 */
+	public function count_by_author($author_id, $status = null, $search = '') {
+		$query = "SELECT COUNT(*) FROM {$this->table_name} WHERE author_id = %d";
+		$params = array($author_id);
+
+		if ($status) {
+			$query .= " AND status = %s";
+			$params[] = $status;
+		}
+
+		if (!empty($search)) {
+			$query .= " AND topic_title LIKE %s";
+			$params[] = '%' . $this->wpdb->esc_like($search) . '%';
+		}
+
+		return (int) $this->wpdb->get_var($this->wpdb->prepare($query, $params));
 	}
 	
 	/**
