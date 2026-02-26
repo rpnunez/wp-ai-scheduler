@@ -64,3 +64,15 @@
 - `ai-post-scheduler/assets/js/admin.js` — Added `showToast` method to AIPS object; updated `runNowSchedule` success/error handlers to use toast instead of non-existent modal
 - `ai-post-scheduler/assets/css/admin.css` — Added global toast notification styles (`#aips-toast-container`, `.aips-toast`, slide-in/out animations)
 **Outcome:** Users now get immediate, non-blocking visual confirmation when a schedule executes — including a direct link to edit the generated post — without leaving the schedule page.
+
+## 2026-05-28 - Authors Feature Flow Optimization
+**Target Feature:** Authors Feature (Topic Approval Workflow)
+**Improvement:** Addressed critical gaps in the Authors workflow by implementing client-side author search and direct post management actions (Regenerate, Delete) within the topic view.
+**Details:**
+- Implemented `handleAuthorSearch` in `authors.js` to filter the authors table by name or niche in real-time.
+- Updated `renderTopicPosts` to inject "Regenerate" and "Delete" buttons for each generated post.
+- Implemented `regeneratePost` and `deleteGeneratedPost` functions in `authors.js` to handle the AJAX calls with confirmation dialogs and toast feedback.
+- Used existing backend endpoints `aips_regenerate_post` and `aips_delete_generated_post`.
+**Files Modified:**
+- `ai-post-scheduler/assets/js/authors.js`
+**Outcome:** Users can now efficiently locate authors via search and manage generated posts directly from the Authors interface without navigating away or using workarounds, significantly improving the "flow" of managing topic-based content.

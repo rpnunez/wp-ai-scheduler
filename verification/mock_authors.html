@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Authors</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .aips-table { width: 100%; border-collapse: collapse; }
+        .aips-table th, .aips-table td { border: 1px solid #ddd; padding: 8px; }
+        .aips-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .aips-modal-content { background: white; margin: 100px auto; padding: 20px; width: 50%; }
+        /* Toast styles */
+        #aips-toast-container { position: fixed; top: 20px; right: 20px; }
+        .aips-toast { background: #333; color: white; padding: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="wrap aips-wrap">
+        <div class="aips-page-container">
+            <div class="aips-authors-tabs">
+                <button class="aips-authors-tab-link active" data-tab="authors-list">Authors List</button>
+                <button class="aips-authors-tab-link" data-tab="generation-queue">Generation Queue</button>
+            </div>
+
+            <div id="authors-list-tab" class="aips-authors-tab-content active">
+                <div class="aips-content-panel">
+                    <!-- Filter Bar -->
+                    <div class="aips-filter-bar">
+                        <label for="aips-author-search">Search Authors:</label>
+                        <input type="search" id="aips-author-search" class="aips-form-input" placeholder="Search authors...">
+                        <button type="button" id="aips-author-search-clear" class="aips-btn aips-btn-secondary" style="display: none;">Clear</button>
+                    </div>
+
+                    <!-- Authors Table -->
+                    <div class="aips-panel-body no-padding">
+                        <table class="aips-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Field/Niche</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr data-author-id="1">
+                                    <td><div class="cell-primary">John Doe</div></td>
+                                    <td>Tech Blog</td>
+                                    <td><button class="aips-view-author" data-id="1">View Topics</button></td>
+                                </tr>
+                                <tr data-author-id="2">
+                                    <td><div class="cell-primary">Jane Smith</div></td>
+                                    <td>Gardening</td>
+                                    <td><button class="aips-view-author" data-id="2">View Topics</button></td>
+                                </tr>
+                                <tr data-author-id="3">
+                                    <td><div class="cell-primary">Bob Johnson</div></td>
+                                    <td>Tech News</td>
+                                    <td><button class="aips-view-author" data-id="3">View Topics</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div id="aips-author-search-no-results" class="aips-empty-state" style="display: none;">
+                            <h3>No Authors Found</h3>
+                            <button type="button" class="aips-btn aips-btn-primary aips-clear-author-search-btn">Clear Search</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="aips-topic-posts-modal" class="aips-modal">
+        <div class="aips-modal-content">
+            <h2 id="aips-topic-posts-modal-title">Posts</h2>
+            <div id="aips-topic-posts-content"></div>
+        </div>
+    </div>
+
+    <script>
+        var ajaxurl = '/wp-admin/admin-ajax.php';
+        var aipsAuthorsL10n = {
+            nonce: '12345',
+            regenerate: 'Regenerate',
+            delete: 'Delete',
+            confirmRegeneratePost: 'Are you sure?',
+            confirmDeletePost: 'Are you sure?',
+            viewDetails: 'View Details',
+            description: 'Description',
+            rationale: 'Rationale',
+            reviewed: 'Reviewed'
+        };
+    </script>
+    <script src="../ai-post-scheduler/assets/js/authors.js"></script>
+
+</body>
+</html>
