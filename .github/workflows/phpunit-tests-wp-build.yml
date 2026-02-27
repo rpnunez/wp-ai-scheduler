@@ -63,7 +63,9 @@ jobs:
             sleep 2
           done
 
-      - name: Install WordPress test dependencies via official installer
+      - name: Install WordPress test dependencies via local installer
+        env:
+          WP_CORE_DIR: /tmp/wordpress-tests-lib/src
         run: |
           set -euo pipefail
 
@@ -73,16 +75,12 @@ jobs:
           DB_HOST=127.0.0.1
           WP_VERSION=latest
 
-          # Download the official installer script from wordpress-develop and run it
-          curl -sSL https://raw.githubusercontent.com/WordPress/wordpress-develop/master/tools/install-wp-tests.sh -o /tmp/install-wp-tests.sh
-          chmod +x /tmp/install-wp-tests.sh
-
-          # Run the installer; this will create /tmp/wordpress-tests-lib and the WP core at /tmp/wordpress-tests-lib/src
-          /tmp/install-wp-tests.sh $DB_NAME $DB_USER "$DB_PASS" $DB_HOST $WP_VERSION
+          chmod +x scripts/install-wp-tests.sh
+          scripts/install-wp-tests.sh "$DB_NAME" "$DB_USER" "$DB_PASS" "$DB_HOST" "$WP_VERSION"
 
           # Sanity listing
           ls -la /tmp/wordpress-tests-lib || true
-          ls -la /tmp/wordpress-tests-lib/src || true
+          ls -la "$WP_CORE_DIR" || true
 
       - name: Install plugin into test WP
         run: |

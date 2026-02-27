@@ -14,6 +14,13 @@
             $('#cb-select-all-1').prop('checked', allChecked);
         });
 
+        // Preview Post (Button and Icon)
+        $(document).on('click', '.aips-preview-post, .aips-preview-trigger', function(e) {
+            e.preventDefault();
+            var postId = $(this).data('post-id');
+            previewPost(postId);
+        });
+
         // Publish single post
         $(document).on('click', '.aips-publish-post', function(e) {
             e.preventDefault();
@@ -37,19 +44,40 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        showNotice(response.data.message || aipsPostReviewL10n.publishSuccess, 'success');
+                        if (window.AIPS && window.AIPS.showToast) {
+                            var msg = response.data.message || aipsPostReviewL10n.publishSuccess;
+                            // Add Edit link if available (requires extra data from backend, but standard message is fine)
+                            if (response.data.post_id) {
+                                var editUrl = 'post.php?post=' + response.data.post_id + '&action=edit';
+                                msg += ' <a href="' + editUrl + '" target="_blank">Edit Post</a>';
+                                AIPS.showToast(msg, 'success', { isHtml: true });
+                            } else {
+                                AIPS.showToast(msg, 'success');
+                            }
+                        } else {
+                            alert(response.data.message || aipsPostReviewL10n.publishSuccess);
+                        }
+
                         row.fadeOut(400, function() {
                             $(this).remove();
                             updateDraftCount();
                             checkEmptyState();
                         });
                     } else {
-                        showNotice(response.data.message || aipsPostReviewL10n.publishError, 'error');
+                        if (window.AIPS && window.AIPS.showToast) {
+                            AIPS.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
+                        } else {
+                            alert(response.data.message || aipsPostReviewL10n.publishError);
+                        }
                         button.prop('disabled', false).text(aipsPostReviewL10n.publish || 'Publish');
                     }
                 },
                 error: function() {
-                    showNotice(aipsPostReviewL10n.publishError, 'error');
+                    if (window.AIPS && window.AIPS.showToast) {
+                        AIPS.showToast(aipsPostReviewL10n.publishError, 'error');
+                    } else {
+                        alert(aipsPostReviewL10n.publishError);
+                    }
                     button.prop('disabled', false).text(aipsPostReviewL10n.publish || 'Publish');
                 }
             });
@@ -80,19 +108,32 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        showNotice(response.data.message || aipsPostReviewL10n.deleteSuccess, 'success');
+                        if (window.AIPS && window.AIPS.showToast) {
+                            AIPS.showToast(response.data.message || aipsPostReviewL10n.deleteSuccess, 'success');
+                        } else {
+                            alert(response.data.message || aipsPostReviewL10n.deleteSuccess);
+                        }
+
                         row.fadeOut(400, function() {
                             $(this).remove();
                             updateDraftCount();
                             checkEmptyState();
                         });
                     } else {
-                        showNotice(response.data.message || aipsPostReviewL10n.deleteError, 'error');
+                        if (window.AIPS && window.AIPS.showToast) {
+                            AIPS.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
+                        } else {
+                            alert(response.data.message || aipsPostReviewL10n.deleteError);
+                        }
                         button.prop('disabled', false).text(aipsPostReviewL10n.delete || 'Delete');
                     }
                 },
                 error: function() {
-                    showNotice(aipsPostReviewL10n.deleteError, 'error');
+                    if (window.AIPS && window.AIPS.showToast) {
+                        AIPS.showToast(aipsPostReviewL10n.deleteError, 'error');
+                    } else {
+                        alert(aipsPostReviewL10n.deleteError);
+                    }
                     button.prop('disabled', false).text(aipsPostReviewL10n.delete || 'Delete');
                 }
             });
@@ -121,26 +162,39 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        showNotice(response.data.message || aipsPostReviewL10n.regenerateSuccess, 'success');
+                        // Show generic "Started" message instead of "Success"
+                        var msg = response.data.message || aipsPostReviewL10n.regenerateSuccess;
+                        if (window.AIPS && window.AIPS.showToast) {
+                            AIPS.showToast(msg + ' Check History for progress.', 'success');
+                        } else {
+                            alert(msg);
+                        }
+
+                        // We still remove the row because the post is deleted
                         row.fadeOut(400, function() {
                             $(this).remove();
                             updateDraftCount();
                             checkEmptyState();
                         });
                     } else {
-                        showNotice(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
+                        if (window.AIPS && window.AIPS.showToast) {
+                            AIPS.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
+                        } else {
+                            alert(response.data.message || aipsPostReviewL10n.regenerateError);
+                        }
                         button.prop('disabled', false).text(aipsPostReviewL10n.regenerate || 'Re-generate');
                     }
                 },
                 error: function() {
-                    showNotice(aipsPostReviewL10n.regenerateError, 'error');
+                    if (window.AIPS && window.AIPS.showToast) {
+                        AIPS.showToast(aipsPostReviewL10n.regenerateError, 'error');
+                    } else {
+                        alert(aipsPostReviewL10n.regenerateError);
+                    }
                     button.prop('disabled', false).text(aipsPostReviewL10n.regenerate || 'Re-generate');
                 }
             });
         });
-
-        // View Session functionality is now handled by admin-view-session.js
-        // No duplicate event handlers needed here
 
         // Bulk actions
         $('#aips-bulk-action-btn').on('click', function(e) {
@@ -189,7 +243,11 @@
                 success: function(response) {
                     if (response.success) {
                         var msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
-                        showNotice(msg, 'success');
+                        if (window.AIPS && window.AIPS.showToast) {
+                            AIPS.showToast(msg, 'success');
+                        } else {
+                            alert(msg);
+                        }
 
                         checkedBoxes.each(function() {
                             $(this).closest('tr').fadeOut(400, function() {
@@ -199,11 +257,19 @@
                             });
                         });
                     } else {
-                        showNotice(response.data.message || aipsPostReviewL10n.publishError, 'error');
+                        if (window.AIPS && window.AIPS.showToast) {
+                            AIPS.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
+                        } else {
+                            alert(response.data.message || aipsPostReviewL10n.publishError);
+                        }
                     }
                 },
                 error: function() {
-                    showNotice(aipsPostReviewL10n.publishError, 'error');
+                    if (window.AIPS && window.AIPS.showToast) {
+                        AIPS.showToast(aipsPostReviewL10n.publishError, 'error');
+                    } else {
+                        alert(aipsPostReviewL10n.publishError);
+                    }
                 }
             });
         }
@@ -236,7 +302,11 @@
                 success: function(response) {
                     if (response.success) {
                         var msg = aipsPostReviewL10n.bulkDeleteSuccess.replace('%d', response.data.count || count);
-                        showNotice(msg, 'success');
+                        if (window.AIPS && window.AIPS.showToast) {
+                            AIPS.showToast(msg, 'success');
+                        } else {
+                            alert(msg);
+                        }
 
                         checkedBoxes.each(function() {
                             $(this).closest('tr').fadeOut(400, function() {
@@ -246,11 +316,19 @@
                             });
                         });
                     } else {
-                        showNotice(response.data.message || aipsPostReviewL10n.deleteError, 'error');
+                        if (window.AIPS && window.AIPS.showToast) {
+                            AIPS.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
+                        } else {
+                            alert(response.data.message || aipsPostReviewL10n.deleteError);
+                        }
                     }
                 },
                 error: function() {
-                    showNotice(aipsPostReviewL10n.deleteError, 'error');
+                    if (window.AIPS && window.AIPS.showToast) {
+                        AIPS.showToast(aipsPostReviewL10n.deleteError, 'error');
+                    } else {
+                        alert(aipsPostReviewL10n.deleteError);
+                    }
                 }
             });
         }
@@ -264,7 +342,6 @@
         // Update draft count
         function updateDraftCount() {
             var visibleRows = $('.aips-post-review-table tbody tr:visible').length;
-
             $('#aips-draft-count').text(visibleRows);
         }
 
@@ -283,50 +360,83 @@
                         '<p>' + (aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review.') + '</p>' +
                         '</div>';
                     $('#aips-post-review-form').after(emptyStateHtml);
+                } else {
+                    $('.aips-empty-state').show();
                 }
             }
         }
 
-        // Show notice
-        function showNotice(message, type) {
-            type = type || 'info';
+        // Preview Post Function
+        function previewPost(postId) {
+            var modal = $('#aips-post-preview-modal');
+            var contentContainer = $('#aips-preview-content-container');
+            var iframe = $('#aips-post-preview-iframe');
+            var headerTitle = modal.find('.aips-modal-header h2');
 
-            var noticeClass = 'notice-' + type;
-            var notice = $('<div class="notice ' + noticeClass + ' is-dismissible"></div>');
-            var paragraph = $('<p></p>').text(message);
-            notice.append(paragraph);
+            // Reset modal state
+            contentContainer.show().html('<div class="aips-loading-spinner"><span class="spinner is-active" style="float:none; margin: 0 auto; display:block;"></span> <p style="text-align:center;">' + (aipsPostReviewL10n.loadingPreview || 'Loading preview...') + '</p></div>');
+            iframe.hide().attr('src', '');
+            headerTitle.text(aipsPostReviewL10n.previewTitle || 'Post Preview');
 
-            $('.wrap h1').after(notice);
+            modal.show();
 
-            // Auto-dismiss after 5 seconds
-            setTimeout(function() {
-                notice.fadeOut(400, function() {
-                    $(this).remove();
-                });
-            }, 5000);
+            $.ajax({
+                url: aipsPostReviewL10n.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_draft_post_preview',
+                    post_id: postId,
+                    nonce: aipsPostReviewL10n.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var data = response.data;
+                        var html = '';
 
-            // Make dismissible
-            notice.on('click', '.notice-dismiss', function() {
-                notice.fadeOut(400, function() {
-                    $(this).remove();
-                });
+                        // Title
+                        html += '<h1 style="margin-bottom: 20px;">' + data.title + '</h1>';
+
+                        // Featured Image
+                        if (data.featured_image) {
+                            html += '<div class="aips-preview-image" style="margin-bottom: 20px;">';
+                            html += '<img src="' + data.featured_image + '" style="max-width: 100%; height: auto; border-radius: 4px;">';
+                            html += '</div>';
+                        }
+
+                        // Excerpt
+                        if (data.excerpt) {
+                            html += '<div class="aips-preview-excerpt" style="background: #f0f0f1; padding: 15px; margin-bottom: 20px; border-left: 4px solid #72aee6;">';
+                            html += '<strong>Excerpt:</strong> ' + data.excerpt;
+                            html += '</div>';
+                        }
+
+                        // Content
+                        html += '<div class="aips-preview-body">' + data.content + '</div>';
+
+                        // Edit Link at bottom
+                        if (data.edit_url) {
+                            html += '<div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px;">';
+                            html += '<a href="' + data.edit_url + '" target="_blank" class="button button-primary">Edit Post in WordPress</a>';
+                            html += '</div>';
+                        }
+
+                        contentContainer.html(html);
+                    } else {
+                        contentContainer.html('<div class="notice notice-error inline"><p>' + (response.data.message || aipsPostReviewL10n.previewError) + '</p></div>');
+                    }
+                },
+                error: function() {
+                    contentContainer.html('<div class="notice notice-error inline"><p>' + (aipsPostReviewL10n.previewError || 'Failed to load preview.') + '</p></div>');
+                }
             });
         }
 
-        // Escape HTML
-        function escapeHtml(text) {
-            if (!text) return '';
-            if (text === null || text === undefined) {
-                return '';
-            }
-            return String(text)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
+        // Close modal handlers (using delegated events to handle dynamically added modals if any)
+        $(document).on('click', '#aips-post-preview-modal .aips-modal-close, #aips-post-preview-modal .aips-modal-overlay', function() {
+            $('#aips-post-preview-modal').hide();
+            $('#aips-post-preview-iframe').attr('src', '');
+        });
+
     });
 
 })(jQuery);
-

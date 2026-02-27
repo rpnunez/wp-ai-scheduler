@@ -54,6 +54,7 @@ class AIPS_Admin_Assets {
         wp_localize_script('aips-admin-script', 'aipsAjax', array(
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('aips_ajax_nonce'),
+            'schedulePageUrl' => admin_url('admin.php?page=aips-schedule'),
         ));
 
         wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
@@ -321,6 +322,9 @@ class AIPS_Admin_Assets {
                 'noPostsSelected' => __('Please select at least one post.', 'ai-post-scheduler'),
                 'noDraftPosts' => __('No Draft Posts', 'ai-post-scheduler'),
                 'noDraftPostsDesc' => __('There are no draft posts waiting for review.', 'ai-post-scheduler'),
+                'previewTitle' => __('Post Preview', 'ai-post-scheduler'),
+                'loadingPreview' => __('Loading preview...', 'ai-post-scheduler'),
+                'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
             ));
             
             // AI Edit Modal (for Generated Posts page)
@@ -369,6 +373,17 @@ class AIPS_Admin_Assets {
                 'aips-calendar-script',
                 AIPS_PLUGIN_URL . 'assets/js/calendar.js',
                 array('jquery', 'aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
+        // History Page Scripts (View Session for Processing items)
+        if (strpos($hook, 'aips-history') !== false) {
+            wp_enqueue_script(
+                'aips-admin-view-session',
+                AIPS_PLUGIN_URL . 'assets/js/admin-view-session.js',
+                array('aips-admin-script'),
                 AIPS_VERSION,
                 true
             );

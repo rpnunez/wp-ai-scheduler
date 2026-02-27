@@ -2,7 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-<<<<<<< HEAD
 ## [refactor-post-generation-flow] - 2026-02-07
 ### Changed
 - **MAJOR**: Refactored post generation to use AI Engine's Chatbot feature for conversational context
@@ -27,11 +26,10 @@ All notable changes to this project will be documented in this file.
 - Three-step generation: content → title (with content context) → excerpt (with full context)
 - Full backward compatibility: template key still provided in hooks for template contexts
 - Resilience features maintained (circuit breaker, rate limiting, retries)
-=======
+
 ## [sentinel-fix-import-sql-injection] - 2025-01-06
 ### Security
 - [2025-01-06] Fixed a Critical SQL Injection vulnerability in `AIPS_Data_Management_Import_MySQL::import` that allowed arbitrary SQL execution (e.g., `DELETE`) by enforcing a strict whitelist of allowed SQL commands (`INSERT`, `DROP`, `CREATE`, `SET`, `LOCK`, `UNLOCK`) and validating target tables.
->>>>>>> main
 
 ## [wizard-run-schedule-now] - 2025-01-05
 ### Added

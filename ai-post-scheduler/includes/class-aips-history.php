@@ -28,6 +28,29 @@ class AIPS_History {
     public function get_history($args = array()) {
         return $this->repository->get_history($args);
     }
+
+    /**
+     * Generate pagination HTML for history table.
+     *
+     * @param array  $history       History data array.
+     * @param string $base_url      Base URL for pagination links.
+     * @param string $status_filter Current status filter.
+     * @return string HTML for pagination.
+     */
+    public function generate_pagination_html($history, $base_url, $status_filter = '') {
+        if ($history['pages'] <= 1) {
+            return '';
+        }
+
+        $url = $base_url;
+        if ($status_filter) {
+            $url = add_query_arg('status', $status_filter, $url);
+        }
+
+        ob_start();
+        include AIPS_PLUGIN_DIR . 'templates/partials/history-pagination.php';
+        return ob_get_clean();
+    }
     
     public function get_stats() {
         return $this->repository->get_stats();
@@ -163,8 +186,8 @@ class AIPS_History {
     /**
      * AJAX handler to reload the history table and updated stats.
      *
-     * Returns the latest items HTML (table body only) and stats so the
-     * client can refresh the view without a full page reload.
+     * Returns the latest items HTML (table body only), pagination HTML, and stats
+     * so the client can refresh the view without a full page reload.
      */
     public function ajax_reload_history() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -175,9 +198,10 @@ class AIPS_History {
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
         $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
 
         $history = $this->get_history(array(
-            'page' => 1,
+            'page' => $paged,
             'status' => $status_filter,
             'search' => $search_query,
             'fields' => 'list',
@@ -186,62 +210,21 @@ class AIPS_History {
         $stats = $this->get_stats();
 
         ob_start();
-
         if (!empty($history['items'])) {
             foreach ($history['items'] as $item) {
-                ?>
-                <tr>
-                    <th scope="row" class="check-column">
-                        <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>"><?php esc_html_e('Select Item', 'ai-post-scheduler'); ?></label>
-                        <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" name="history[]" value="<?php echo esc_attr($item->id); ?>">
-                    </th>
-                    <td class="column-title">
-                        <?php if ($item->post_id): ?>
-                        <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>">
-                            <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
-                        </a>
-                        <?php else: ?>
-                        <?php echo esc_html($item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
-                        <?php endif; ?>
-                        <?php if ($item->status === 'failed' && $item->error_message): ?>
-                        <div class="aips-error-message"><?php echo esc_html($item->error_message); ?></div>
-                        <?php endif; ?>
-                    </td>
-                    <td class="column-template">
-                        <?php echo esc_html($item->template_name ?: '-'); ?>
-                    </td>
-                    <td class="column-status">
-                        <span class="aips-status aips-status-<?php echo esc_attr($item->status); ?>">
-                            <?php echo esc_html(ucfirst($item->status)); ?>
-                        </span>
-                    </td>
-                    <td class="column-date">
-                        <?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->created_at))); ?>
-                    </td>
-                    <td class="column-actions">
-                        <?php if ($item->post_id): ?>
-                        <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="button button-small" target="_blank">
-                            <?php esc_html_e('View', 'ai-post-scheduler'); ?>
-                        </a>
-                        <?php endif; ?>
-                        <button class="button button-small aips-view-details" data-id="<?php echo esc_attr($item->id); ?>">
-                            <?php esc_html_e('Details', 'ai-post-scheduler'); ?>
-                        </button>
-                        <?php if ($item->status === 'failed' && $item->template_id): ?>
-                        <button class="button button-small aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>">
-                            <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
-                        </button>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <?php
+                include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php';
             }
         }
-
         $items_html = ob_get_clean();
+
+        ob_start();
+        $this->render_pagination_html($history, $status_filter, $search_query);
+        $pagination_html = ob_get_clean();
 
         wp_send_json_success(array(
             'items_html' => $items_html,
+            'pagination_html' => $pagination_html,
+            'paged' => $paged,
             'stats' => array(
                 'total' => (int) $stats['total'],
                 'completed' => (int) $stats['completed'],
@@ -249,6 +232,17 @@ class AIPS_History {
                 'success_rate' => (float) $stats['success_rate'],
             ),
         ));
+    }
+
+    /**
+     * Render pagination HTML for history table (used by template and AJAX).
+     *
+     * @param array  $history       History result with total, pages, current_page.
+     * @param string $status_filter Status filter value.
+     * @param string $search_query  Search query.
+     */
+    public function render_pagination_html($history, $status_filter = '', $search_query = '') {
+        include AIPS_PLUGIN_DIR . 'templates/partials/history-pagination.php';
     }
     
     /**
@@ -356,6 +350,9 @@ class AIPS_History {
         
         $stats = $this->get_stats();
         
+        // Pass handler to template for helper methods
+        $history_handler = $this;
+
         include AIPS_PLUGIN_DIR . 'templates/admin/history.php';
     }
 }

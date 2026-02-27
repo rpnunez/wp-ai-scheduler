@@ -151,6 +151,16 @@ class AIPS_Author_Topics_Generator {
 			$prompt .= "Additional Context:\n{$author->details}\n\n";
 		}
 		
+		// Add voice/tone if provided
+		if (!empty($author->voice_tone)) {
+			$prompt .= "Tone: {$author->voice_tone}\n\n";
+		}
+		
+		// Add writing style if provided
+		if (!empty($author->writing_style)) {
+			$prompt .= "Writing Style: {$author->writing_style}\n\n";
+		}
+		
 		// Add custom prompt if provided
 		if (!empty($author->topic_generation_prompt)) {
 			$prompt .= "{$author->topic_generation_prompt}\n\n";

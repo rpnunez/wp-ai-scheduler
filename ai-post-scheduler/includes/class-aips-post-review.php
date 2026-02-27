@@ -44,6 +44,7 @@ class AIPS_Post_Review {
 		add_action('wp_ajax_aips_regenerate_post', array($this, 'ajax_regenerate_post'));
 		add_action('wp_ajax_aips_delete_draft_post', array($this, 'ajax_delete_draft_post'));
 		add_action('wp_ajax_aips_bulk_delete_draft_posts', array($this, 'ajax_bulk_delete_draft_posts'));
+		add_action('wp_ajax_aips_get_draft_post_preview', array($this, 'ajax_get_draft_post_preview'));
 	}
 	
 	/**
@@ -65,6 +66,40 @@ class AIPS_Post_Review {
 		return $this->repository->get_draft_count();
 	}
 	
+	/**
+	 * AJAX handler to get draft post preview data.
+	 */
+	public function ajax_get_draft_post_preview() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+
+		if (!$post_id) {
+			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
+		}
+
+		$post = get_post($post_id);
+
+		if (!$post || $post->post_status !== 'draft') {
+			wp_send_json_error(array('message' => __('Post not found or not a draft.', 'ai-post-scheduler')));
+		}
+
+		// Prepare preview data
+		$data = array(
+			'title' => get_the_title($post),
+			'content' => apply_filters('the_content', $post->post_content),
+			'excerpt' => get_the_excerpt($post),
+			'featured_image' => get_the_post_thumbnail_url($post_id, 'full'),
+			'edit_url' => get_edit_post_link($post_id),
+		);
+
+		wp_send_json_success($data);
+	}
+
 	/**
 	 * AJAX handler to get draft posts.
 	 */

@@ -60,7 +60,7 @@ class Test_AIPS_Generation_Logger extends WP_UnitTestCase {
 					return isset($details['prompt']) &&
 					       isset($details['options']) &&
 					       isset($details['response']) &&
-					       isset($details['error']) &&
+					       array_key_exists('error', $details) &&
 					       $details['prompt'] === 'Generate a title' &&
 					       $details['response'] === base64_encode('Great Title') &&
 					       $details['error'] === null;

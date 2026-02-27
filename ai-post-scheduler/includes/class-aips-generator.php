@@ -413,6 +413,72 @@ class AIPS_Generator {
     }
     
     /**
+     * Generate a preview of a post from a context without creating it in WordPress.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return array|WP_Error Array with title, content, excerpt, and image prompt, or WP_Error.
+     */
+    public function generate_preview($context) {
+        // Build the full content prompt from context
+        $content_prompt = $this->prompt_builder->build_content_prompt($context);
+
+        // Build contextual instructions
+        $content_context = $this->prompt_builder->build_content_context($context);
+        $content_options = array();
+
+        if (!empty($content_context)) {
+            $content_options['context'] = $content_context;
+        }
+
+        // Ask AI to generate the article body
+        $content = $this->generate_content($content_prompt, $content_options, 'content_preview');
+
+        if (is_wp_error($content)) {
+            return $content;
+        }
+
+        // Resolve AI variables
+        $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
+
+        // Generate the title
+        $title = $this->generate_title_from_context($context, $content, $ai_variables);
+
+        if (is_wp_error($title)) {
+            // Fallback title on error
+            $title = __('Error generating title', 'ai-post-scheduler');
+        }
+
+        // Generate excerpt
+        $excerpt_content = mb_substr($content, 0, 6000);
+        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context);
+
+        $result = array(
+            'title' => $title,
+            'content' => $content,
+            'excerpt' => $excerpt,
+            'image_prompt' => '',
+            'image_source' => $context->get_featured_image_source(),
+        );
+
+        // Handle image preview data (not generation)
+        if ($context->should_generate_featured_image()) {
+            if ($context->get_featured_image_source() === 'ai_prompt') {
+                $image_prompt = $context->get_image_prompt();
+                $topic_str = $context->get_topic();
+                $processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
+                $result['image_prompt'] = $processed_image_prompt;
+            } elseif ($context->get_featured_image_source() === 'unsplash') {
+                $keywords = $context->get_unsplash_keywords();
+                $topic_str = $context->get_topic();
+                $processed_keywords = $this->template_processor->process($keywords, $topic_str);
+                $result['image_prompt'] = $processed_keywords;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Main entry point to generate a post from a context (template, topic, etc.).
      *
      * Supports both legacy template-based calls and new context-based calls.

@@ -108,6 +108,8 @@ class AIPS_Authors_Controller {
 			'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
 			'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
 			'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
+			'voice_tone' => isset($_POST['voice_tone']) ? sanitize_text_field($_POST['voice_tone']) : '',
+			'writing_style' => isset($_POST['writing_style']) ? sanitize_text_field($_POST['writing_style']) : '',
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		

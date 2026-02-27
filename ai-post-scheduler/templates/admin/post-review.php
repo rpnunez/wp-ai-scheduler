@@ -172,6 +172,12 @@ $templates = $template_repository->get_all();
 										   title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
 											<span class="dashicons dashicons-edit"></span>
 										</a>
+										<button type="button"
+												class="aips-btn aips-btn-sm aips-preview-post"
+												data-post-id="<?php echo esc_attr($item->post_id); ?>"
+												title="<?php esc_attr_e('Preview post content', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-media-text"></span>
+										</button>
 										<button type="button" 
 												class="aips-btn aips-btn-sm aips-view-session" 
 												data-history-id="<?php echo esc_attr($item->id); ?>"
@@ -259,6 +265,23 @@ $templates = $template_repository->get_all();
 				<p class="aips-empty-description"><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
 			</div>
 			<?php endif; ?>
+		</div>
+	</div>
+</div>
+
+<!-- Post Preview Modal -->
+<div id="aips-post-preview-modal" class="aips-modal" style="display: none;">
+	<div class="aips-modal-overlay"></div>
+	<div class="aips-modal-content" style="width: 90%; max-width: 800px; height: 90vh;">
+		<div class="aips-modal-header">
+			<h2><?php esc_html_e('Post Preview', 'ai-post-scheduler'); ?></h2>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-no-alt"></span>
+			</button>
+		</div>
+		<div class="aips-modal-body" style="height: calc(100% - 60px); padding: 0;">
+			<div id="aips-preview-content-container" style="padding: 30px; height: 100%; overflow-y: auto; box-sizing: border-box; display: none;"></div>
+			<iframe id="aips-post-preview-iframe" src="" style="width: 100%; height: 100%; border: none; display: none;"></iframe>
 		</div>
 	</div>
 </div>

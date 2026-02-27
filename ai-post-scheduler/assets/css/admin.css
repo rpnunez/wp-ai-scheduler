@@ -229,6 +229,42 @@
 	box-shadow: var(--aips-shadow-sm);
 }
 
+.aips-filter-left {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+.aips-filter-right {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+	margin-left: auto;
+}
+
+.aips-filter-right .aips-form-input {
+	min-width: 200px;
+}
+
+/* Panel toolbar */
+.aips-panel-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: var(--aips-space-3);
+	padding: var(--aips-space-3) var(--aips-space-5);
+	background: var(--aips-white);
+	border-bottom: 1px solid var(--aips-gray-200);
+}
+
+.aips-toolbar-left,
+.aips-toolbar-right {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
 /**
  * Implements a responsive Grid system for the redesign by using CSS Grid with
  * consistent spacing and utility column presets.
@@ -410,6 +446,79 @@
 	align-items: center;
 }
 
+/* History table: checkbox column background (integrate with table) */
+.aips-history-table thead .column-cb,
+.aips-history-table thead .check-column {
+	background: var(--aips-gray-50);
+	border-bottom: 2px solid var(--aips-gray-200);
+	padding: var(--aips-space-3) var(--aips-space-4);
+}
+
+.aips-history-table tbody .check-column {
+	background: var(--aips-white);
+	border-bottom: 1px solid var(--aips-gray-100);
+	padding: var(--aips-space-4);
+}
+
+.aips-history-table tbody tr:hover .check-column {
+	background: var(--aips-gray-50);
+}
+
+.aips-history-table tbody tr:last-child .check-column {
+	border-bottom: none;
+}
+
+/* Action buttons: horizontal layout with labels */
+.aips-btn-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--aips-space-2);
+	align-items: center;
+}
+
+.aips-btn-group-inline {
+	flex-direction: row;
+}
+
+/* History table tfoot pagination */
+.aips-history-table tfoot .aips-history-pagination-row td {
+	background: var(--aips-gray-50);
+	border-top: 2px solid var(--aips-gray-200);
+	padding: var(--aips-space-4) var(--aips-space-5);
+	vertical-align: middle;
+}
+
+.aips-history-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: var(--aips-space-4);
+}
+
+.aips-history-pagination-info {
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-600);
+}
+
+.aips-history-pagination-links {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-2);
+}
+
+.aips-history-page-numbers {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-1);
+}
+
+.aips-history-page-ellipsis {
+	padding: 0 var(--aips-space-1);
+	color: var(--aips-gray-500);
+	font-size: var(--aips-text-sm);
+}
+
 /* ==========================================================================
    Status Badges (Modern Design)
    ========================================================================== */
@@ -519,6 +628,24 @@
 
 .aips-btn-danger:hover {
 	background: var(--aips-error-light);
+}
+
+/* Solid danger buttons (toolbar style, matches Reload button appearance) */
+.aips-btn-danger-solid {
+	background: var(--aips-error);
+	color: var(--aips-white);
+	border: 1px solid var(--aips-error-dark);
+}
+
+.aips-btn-danger-solid:hover:not(:disabled) {
+	background: var(--aips-error-dark);
+	border-color: var(--aips-error-dark);
+	box-shadow: var(--aips-shadow-sm);
+}
+
+.aips-btn-danger-solid:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
 .aips-btn-sm {
@@ -1431,6 +1558,11 @@
     100% { transform: rotate(360deg); }
 }
 
+.aips-spin {
+    animation: aips-spin 1s linear infinite;
+    display: inline-block;
+}
+
 .aips-modal-large {
     max-width: 900px;
     max-height: 90vh;
@@ -2267,6 +2399,114 @@
         transform: translateY(0);
         opacity: 1;
     }
+}
+
+/* Toast Notification Styles (global) */
+#aips-toast-container {
+    position: fixed;
+    top: 32px;
+    right: 20px;
+    z-index: 160001;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+@media screen and (max-width: 782px) {
+    #aips-toast-container {
+        top: 46px;
+        right: 10px;
+        left: 10px;
+    }
+}
+
+.aips-toast {
+    position: relative;
+    min-width: 300px;
+    max-width: 500px;
+    padding: 14px 18px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-left: 4px solid #2271b1;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    animation: aipsSlideIn 0.3s ease-out;
+    pointer-events: auto;
+}
+
+@media screen and (max-width: 782px) {
+    .aips-toast {
+        min-width: 250px;
+        max-width: 100%;
+        width: 100%;
+    }
+}
+
+.aips-toast.success { border-left-color: #00a32a; }
+.aips-toast.error   { border-left-color: #d63638; }
+.aips-toast.warning { border-left-color: #dba617; }
+.aips-toast.info    { border-left-color: #2271b1; }
+
+.aips-toast-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.aips-toast.success .aips-toast-icon { color: #00a32a; }
+.aips-toast.error   .aips-toast-icon { color: #d63638; }
+.aips-toast.warning .aips-toast-icon { color: #dba617; }
+.aips-toast.info    .aips-toast-icon { color: #2271b1; }
+
+.aips-toast-message {
+    flex: 1;
+    line-height: 1.5;
+}
+
+.aips-toast-message a {
+    color: #2271b1;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.aips-toast-message a:hover {
+    color: #135e96;
+}
+
+.aips-toast-close {
+    cursor: pointer;
+    font-size: 20px;
+    color: #666;
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: 8px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.aips-toast-close:hover {
+    color: #000;
+}
+
+@keyframes aipsSlideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.aips-toast.closing {
+    animation: aipsSlideOut 0.3s ease-in forwards;
 }
 
 /* Session Info Styles */
