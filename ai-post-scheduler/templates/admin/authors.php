@@ -137,7 +137,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
-                    
+
                     <!-- No Search Results State -->
                     <div id="aips-author-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
                         <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
@@ -178,7 +178,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                     <p class="description" style="margin-bottom: 20px;">
                         <?php esc_html_e('This queue shows all approved topics across all authors, ready for post generation. Topics are processed in the order they were approved.', 'ai-post-scheduler'); ?>
                     </p>
-                    
+
                     <!-- Bulk Actions -->
                     <div class="aips-bulk-actions" style="margin-bottom: 15px;">
                         <select id="aips-queue-bulk-action-select" class="aips-form-select aips-queue-bulk-action-select">
@@ -313,40 +313,52 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         <h2 id="aips-topics-modal-title"><?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?></h2>
 
-        		<div class="aips-topics-tabs">
-                    <button class="aips-tab-link active" data-tab="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?> (<span id="pending-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="approved"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?> (<span id="approved-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?> (<span id="rejected-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="feedback"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></button>
-                </div>
-        
-                <div class="aips-topics-list-container">
-                    <div class="aips-bulk-actions">
-                        <select class="aips-bulk-action-select">
-                            <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-                            <option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
-                            <option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
-                            <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-                        </select>
-                        <button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
-                    </div>
-        
-                    <div id="aips-topics-content">
-                        <p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
-                    </div>
-        
-                    <div class="aips-bulk-actions">
-                        <select class="aips-bulk-action-select">
-                            <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-                            <option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
-                            <option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
-                            <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-                        </select>
-                        <button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
-                    </div>
+        <div class="aips-modal-header-actions" style="margin-bottom: 15px; display: flex; justify-content: flex-end;">
+            <input type="search" id="aips-topic-search" class="aips-form-input" style="max-width: 250px;" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
+        </div>
+
+        <div class="aips-topics-tabs">
+            <button class="aips-tab-link active" data-tab="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?> (<span id="pending-count">0</span>)</button>
+            <button class="aips-tab-link" data-tab="approved"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?> (<span id="approved-count">0</span>)</button>
+            <button class="aips-tab-link" data-tab="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?> (<span id="rejected-count">0</span>)</button>
+            <button class="aips-tab-link" data-tab="feedback"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></button>
+        </div>
+
+        <div class="aips-topics-list-container">
+            <div class="aips-bulk-actions">
+                <select class="aips-bulk-action-select">
+                    <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+                    <option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
+                    <option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
+                    <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+                </select>
+                <button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+            </div>
+
+            <div id="aips-topics-content">
+                <p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="aips-pagination" id="aips-topics-pagination" style="display: none; justify-content: space-between; align-items: center; margin-top: 15px;">
+                <span class="aips-pagination-info"><?php esc_html_e('Page', 'ai-post-scheduler'); ?> <span id="aips-current-page">1</span> <?php esc_html_e('of', 'ai-post-scheduler'); ?> <span id="aips-total-pages">1</span></span>
+                <div class="aips-pagination-buttons">
+                    <button type="button" class="button aips-pagination-prev" disabled>&laquo; <?php esc_html_e('Previous', 'ai-post-scheduler'); ?></button>
+                    <button type="button" class="button aips-pagination-next" disabled><?php esc_html_e('Next', 'ai-post-scheduler'); ?> &raquo;</button>
                 </div>
             </div>
+
+            <div class="aips-bulk-actions" style="margin-top: 15px;">
+                <select class="aips-bulk-action-select">
+                    <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+                    <option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
+                    <option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
+                    <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+                </select>
+                <button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+            </div>
         </div>
+    </div>
+</div>
 <!-- Feedback Modal -->
 <div id="aips-feedback-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content">
