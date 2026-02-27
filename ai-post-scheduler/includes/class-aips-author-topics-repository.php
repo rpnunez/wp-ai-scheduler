@@ -41,24 +41,96 @@ class AIPS_Author_Topics_Repository {
 	}
 	
 	/**
-	 * Get all topics for an author.
+	 * Get topics for an author with optional filtering and pagination.
 	 *
 	 * @param int $author_id Author ID.
-	 * @param string $status Optional. Filter by status (pending, approved, rejected). Default null (all).
+	 * @param array $args Optional. Arguments for filtering and pagination.
+	 *                    - status: string (pending, approved, rejected)
+	 *                    - limit: int (number of items per page)
+	 *                    - offset: int (offset for pagination)
+	 *                    - search: string (search query for topic title)
 	 * @return array Array of topic objects.
 	 */
-	public function get_by_author($author_id, $status = null) {
-		if ($status) {
-			return $this->wpdb->get_results($this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE author_id = %d AND status = %s ORDER BY generated_at DESC",
-				$author_id,
-				$status
-			));
+	public function get_by_author($author_id, $args = array()) {
+		// Backward compatibility: if $args is a string, treat it as status
+		if (is_string($args)) {
+			$args = array('status' => $args);
 		}
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE author_id = %d ORDER BY generated_at DESC",
-			$author_id
-		));
+
+		$defaults = array(
+			'status' => null,
+			'limit'  => null,
+			'offset' => 0,
+			'search' => null,
+		);
+
+		$args = wp_parse_args($args, $defaults);
+
+		$sql = "SELECT * FROM {$this->table_name} WHERE author_id = %d";
+		$params = array($author_id);
+
+		// Status filter
+		if (!empty($args['status'])) {
+			$sql .= " AND status = %s";
+			$params[] = $args['status'];
+		}
+
+		// Search filter
+		if (!empty($args['search'])) {
+			$sql .= " AND topic_title LIKE %s";
+			$params[] = '%' . $this->wpdb->esc_like($args['search']) . '%';
+		}
+
+		// Order
+		$sql .= " ORDER BY generated_at DESC";
+
+		// Pagination
+		if (!empty($args['limit'])) {
+			$sql .= " LIMIT %d";
+			$params[] = $args['limit'];
+
+			if (!empty($args['offset'])) {
+				$sql .= " OFFSET %d";
+				$params[] = $args['offset'];
+			}
+		}
+
+		return $this->wpdb->get_results($this->wpdb->prepare($sql, $params));
+	}
+
+	/**
+	 * Get total count of topics for an author with optional filtering.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param array $args Optional. Arguments for filtering.
+	 *                    - status: string (pending, approved, rejected)
+	 *                    - search: string (search query for topic title)
+	 * @return int Total count.
+	 */
+	public function count_by_author($author_id, $args = array()) {
+		$defaults = array(
+			'status' => null,
+			'search' => null,
+		);
+
+		$args = wp_parse_args($args, $defaults);
+
+		$sql = "SELECT COUNT(*) FROM {$this->table_name} WHERE author_id = %d";
+		$params = array($author_id);
+
+		// Status filter
+		if (!empty($args['status'])) {
+			$sql .= " AND status = %s";
+			$params[] = $args['status'];
+		}
+
+		// Search filter
+		if (!empty($args['search'])) {
+			$sql .= " AND topic_title LIKE %s";
+			$params[] = '%' . $this->wpdb->esc_like($args['search']) . '%';
+		}
+
+		return (int) $this->wpdb->get_var($this->wpdb->prepare($sql, $params));
 	}
 	
 	/**

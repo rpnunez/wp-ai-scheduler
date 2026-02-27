@@ -321,6 +321,11 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                 </div>
         
                 <div class="aips-topics-list-container">
+                    <!-- Search Bar -->
+                    <div class="aips-filter-bar" style="margin-bottom: 15px;">
+                        <input type="search" id="aips-topic-search" class="aips-form-input" style="width: 100%; max-width: 400px;" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
+                    </div>
+
                     <div class="aips-bulk-actions">
                         <select class="aips-bulk-action-select">
                             <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
@@ -333,6 +338,17 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         
                     <div id="aips-topics-content">
                         <p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="aips-pagination" style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="aips-pagination-info">
+                            <?php esc_html_e('Page', 'ai-post-scheduler'); ?> <span id="aips-current-page">1</span> <?php esc_html_e('of', 'ai-post-scheduler'); ?> <span id="aips-total-pages">1</span>
+                        </div>
+                        <div class="aips-pagination-controls">
+                            <button class="button aips-pagination-prev" disabled>&laquo; <?php esc_html_e('Previous', 'ai-post-scheduler'); ?></button>
+                            <button class="button aips-pagination-next" disabled><?php esc_html_e('Next', 'ai-post-scheduler'); ?> &raquo;</button>
+                        </div>
                     </div>
         
                     <div class="aips-bulk-actions">
