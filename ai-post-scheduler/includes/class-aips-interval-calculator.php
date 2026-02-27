@@ -34,47 +34,56 @@ class AIPS_Interval_Calculator {
 
         $intervals['hourly'] = array(
             'interval' => 3600,
-            'display' => __('Hourly', 'ai-post-scheduler')
+            'display' => __('Hourly', 'ai-post-scheduler'),
+            'type' => 'fixed'
         );
 
         $intervals['every_4_hours'] = array(
             'interval' => 14400,
-            'display' => __('Every 4 Hours', 'ai-post-scheduler')
+            'display' => __('Every 4 Hours', 'ai-post-scheduler'),
+            'type' => 'fixed'
         );
 
         $intervals['every_6_hours'] = array(
             'interval' => 21600,
-            'display' => __('Every 6 Hours', 'ai-post-scheduler')
+            'display' => __('Every 6 Hours', 'ai-post-scheduler'),
+            'type' => 'fixed'
         );
         
         $intervals['every_12_hours'] = array(
             'interval' => 43200,
-            'display' => __('Every 12 Hours', 'ai-post-scheduler')
+            'display' => __('Every 12 Hours', 'ai-post-scheduler'),
+            'type' => 'fixed'
         );
         
         $intervals['daily'] = array(
             'interval' => 86400,
-            'display' => __('Daily', 'ai-post-scheduler')
+            'display' => __('Daily', 'ai-post-scheduler'),
+            'type' => 'fixed'
         );
 
         $intervals['weekly'] = array(
             'interval' => 604800,
-            'display' => __('Once Weekly', 'ai-post-scheduler')
+            'display' => __('Once Weekly', 'ai-post-scheduler'),
+            'type' => 'fixed'
         );
 
         $intervals['bi_weekly'] = array(
             'interval' => 1209600,
-            'display' => __('Every 2 Weeks', 'ai-post-scheduler')
+            'display' => __('Every 2 Weeks', 'ai-post-scheduler'),
+            'type' => 'fixed'
         );
 
         $intervals['monthly'] = array(
             'interval' => 2592000,
-            'display' => __('Monthly', 'ai-post-scheduler')
+            'display' => __('Monthly', 'ai-post-scheduler'),
+            'type' => 'calendar'
         );
 
         $intervals['once'] = array(
             'interval' => 86400, // Default to daily interval, but handled specially
-            'display' => __('Once', 'ai-post-scheduler')
+            'display' => __('Once', 'ai-post-scheduler'),
+            'type' => 'fixed'
         );
 
         // Add day-specific intervals
@@ -82,7 +91,8 @@ class AIPS_Interval_Calculator {
         foreach ($days as $day) {
             $intervals['every_' . strtolower($day)] = array(
                 'interval' => 604800,
-                'display' => sprintf(__('Every %s', 'ai-post-scheduler'), $day)
+                'display' => sprintf(__('Every %s', 'ai-post-scheduler'), $day),
+                'type' => 'calendar' // Day-specific is calendar-based (e.g. "next Monday")
             );
         }
         
@@ -107,9 +117,12 @@ class AIPS_Interval_Calculator {
         // This prevents schedule drift by preserving the phase of the schedule
         if ($base_time < $now) {
             $interval_duration = $this->get_interval_duration($frequency);
+            $intervals = $this->get_intervals();
+            $interval_type = isset($intervals[$frequency]['type']) ? $intervals[$frequency]['type'] : 'fixed';
             
-            // For fixed intervals (with known duration), use mathematical calculation
-            if ($interval_duration > 0) {
+            // For fixed intervals (with known duration), use mathematical calculation.
+            // But skip for calendar types (like monthly) which vary in length.
+            if ($interval_duration > 0 && $interval_type !== 'calendar') {
                 $time_diff = $now - $base_time;
                 $intervals_needed = ceil($time_diff / $interval_duration);
                 
@@ -122,7 +135,7 @@ class AIPS_Interval_Calculator {
                     $base_time += ($intervals_needed * $interval_duration);
                 }
             } else {
-                // For day-specific intervals (e.g., every_monday), iterate with safety limit
+                // For day-specific intervals or calendar intervals (e.g., every_monday, monthly), iterate with safety limit
                 $limit = 1000; // Reduced from 50000 - if we need more than 1000 iterations, something is wrong
                 while ($base_time <= $now && $limit > 0) {
                     $base_time = $this->calculate_next_timestamp($frequency, $base_time);
