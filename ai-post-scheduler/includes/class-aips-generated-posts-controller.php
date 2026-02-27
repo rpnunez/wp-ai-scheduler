@@ -224,10 +224,9 @@ class AIPS_Generated_Posts_Controller {
 		// Collect regenerations / revisions per component
 		$component_revisions = array();
 		if ($history_item->post_id) {
-			$regeneration_service = new AIPS_Component_Regeneration_Service();
 			$components = array('title', 'excerpt', 'content', 'featured_image');
 			foreach ($components as $component) {
-				$component_revisions[$component] = $regeneration_service->get_component_revisions(
+				$component_revisions[$component] = $this->history_repository->get_component_revisions(
 					absint($history_item->post_id),
 					$component,
 					20
