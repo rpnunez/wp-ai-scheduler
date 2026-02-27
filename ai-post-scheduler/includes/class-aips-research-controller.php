@@ -34,6 +34,11 @@ class AIPS_Research_Controller {
      * @var AIPS_Logger Logger instance
      */
     private $logger;
+
+    /**
+     * @var AIPS_Content_Auditor Content Auditor instance
+     */
+    private $content_auditor;
     
     /**
      * Initialize the controller.
@@ -42,6 +47,7 @@ class AIPS_Research_Controller {
         $this->research_service = new AIPS_Research_Service();
         $this->repository = new AIPS_Trending_Topics_Repository();
         $this->logger = new AIPS_Logger();
+        $this->content_auditor = new AIPS_Content_Auditor();
         
         $this->init_hooks();
     }
@@ -56,6 +62,8 @@ class AIPS_Research_Controller {
         add_action('wp_ajax_aips_delete_trending_topic', array($this, 'ajax_delete_trending_topic'));
         add_action('wp_ajax_aips_delete_trending_topic_bulk', array($this, 'ajax_delete_trending_topic_bulk'));
         add_action('wp_ajax_aips_schedule_trending_topics', array($this, 'ajax_schedule_trending_topics'));
+        add_action('wp_ajax_aips_perform_gap_analysis', array($this, 'ajax_perform_gap_analysis'));
+        add_action('wp_ajax_aips_generate_topics_from_gap', array($this, 'ajax_generate_topics_from_gap'));
         
         // Scheduled research cron
         add_action('aips_scheduled_research', array($this, 'run_scheduled_research'));
@@ -394,5 +402,68 @@ class AIPS_Research_Controller {
         }
         
         return $topics;
+    }
+
+    /**
+     * AJAX handler: Perform gap analysis.
+     */
+    public function ajax_perform_gap_analysis() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $niche = isset($_POST['niche']) ? sanitize_text_field($_POST['niche']) : '';
+
+        if (empty($niche)) {
+            wp_send_json_error(array('message' => __('Niche is required.', 'ai-post-scheduler')));
+        }
+
+        $gaps = $this->content_auditor->perform_gap_analysis($niche);
+
+        if (is_wp_error($gaps)) {
+            wp_send_json_error(array('message' => $gaps->get_error_message()));
+        }
+
+        wp_send_json_success(array(
+            'gaps' => $gaps,
+            'niche' => $niche
+        ));
+    }
+
+    /**
+     * AJAX handler: Generate topics from a gap.
+     *
+     * Uses the gap topic as a seed for the standard research service.
+     */
+    public function ajax_generate_topics_from_gap() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $gap_topic = isset($_POST['gap_topic']) ? sanitize_text_field($_POST['gap_topic']) : '';
+        $niche = isset($_POST['niche']) ? sanitize_text_field($_POST['niche']) : '';
+
+        if (empty($gap_topic) || empty($niche)) {
+            wp_send_json_error(array('message' => __('Gap topic and niche are required.', 'ai-post-scheduler')));
+        }
+
+        // Use the gap topic as a keyword for research
+        $topics = $this->research_service->research_trending_topics($niche, 5, array($gap_topic));
+
+        if (is_wp_error($topics)) {
+            wp_send_json_error(array('message' => $topics->get_error_message()));
+        }
+
+        // Save to database
+        $saved_count = $this->repository->save_research_batch($topics, $niche);
+
+        wp_send_json_success(array(
+            'message' => sprintf(__('Generated and saved %d topics based on "%s".', 'ai-post-scheduler'), count($topics), $gap_topic),
+            'count' => count($topics)
+        ));
     }
 }

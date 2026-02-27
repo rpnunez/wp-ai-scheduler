@@ -205,11 +205,9 @@ class AIPS_AI_Service {
             return $error;
         }
         
-        // Try to use global $mwai for simpleJsonQuery if available
-        global $mwai;
-        
-        // If $mwai is not available or doesn't have simpleJsonQuery, fall back to text-based JSON
-        if (!$mwai || !method_exists($mwai, 'simpleJsonQuery')) {
+        // If $ai doesn't have simpleJsonQuery, fall back to text-based JSON
+        if (!method_exists($ai, 'simpleJsonQuery')) {
+            $this->logger->log('Using fallback JSON generation (simpleJsonQuery not available)', 'info');
             return $this->fallback_json_generation($prompt, $options);
         }
         
@@ -230,7 +228,7 @@ class AIPS_AI_Service {
         $options = $this->prepare_options($options);
         
         // Try with retry logic
-        return $this->resilience_service->execute_with_retry(function() use ($mwai, $prompt, $options) {
+        return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
             try {
                 // Filter options for simpleJsonQuery - it only supports specific parameters
                 // According to AI Engine docs, simpleJsonQuery has a very limited parameter set
@@ -242,14 +240,14 @@ class AIPS_AI_Service {
                 }
                 
                 // Only pass temperature if specified
-                if (isset($options['temperature'])) {
-                    //$json_query_params['temperature'] = $options['temperature'];
-                }
+                // if (isset($options['temperature'])) {
+                //    $json_query_params['temperature'] = $options['temperature'];
+                // }
                 
                 // Convert max_tokens to maxTokens for AI Engine
-                if (isset($options['max_tokens'])) {
-                    //$json_query_params['maxTokens'] = $options['max_tokens'];
-                }
+                // if (isset($options['max_tokens'])) {
+                //    $json_query_params['maxTokens'] = $options['max_tokens'];
+                // }
                 
                 // Only pass env_id if specified  
                 if (isset($options['env_id'])) {
@@ -260,8 +258,8 @@ class AIPS_AI_Service {
                 $this->logger->log('Calling simpleJsonQuery with params: ' . wp_json_encode(array_keys($json_query_params)), 'debug');
                 
                 // Use simpleJsonQuery which returns structured JSON data
-                // $result = $mwai->simpleJsonQuery($prompt, $json_query_params);
-                $result = $mwai->simpleJsonQuery($prompt);
+                // $result = $ai->simpleJsonQuery($prompt, $json_query_params);
+                $result = $ai->simpleJsonQuery($prompt, $json_query_params);
                 
                 if (empty($result)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
@@ -283,10 +281,9 @@ class AIPS_AI_Service {
                 return $result;
                 
             } catch (Exception $e) {
-                $error = new WP_Error('generation_failed', $e->getMessage());
-                $this->log_call('json', $prompt, null, $options, $e->getMessage());
-                $this->resilience_service->record_failure();
-                return $error;
+                // If simpleJsonQuery fails (e.g. unsupported params), try fallback
+                $this->logger->log('simpleJsonQuery failed, trying fallback: ' . $e->getMessage(), 'warning');
+                return $this->fallback_json_generation($prompt, $options);
             }
         }, 'json', $prompt, $options);
     }
@@ -332,9 +329,11 @@ class AIPS_AI_Service {
                 __('Failed to parse JSON: %s', 'ai-post-scheduler'),
                 json_last_error_msg()
             ));
+
             $this->logger->log('JSON parse error: ' . json_last_error_msg(), 'error', array(
                 'response_preview' => substr($json_str, 0, 200),
             ));
+
             // Log as json type with error
             $this->log_call('json', $prompt, null, $options, $error->get_error_message());
             return $error;
