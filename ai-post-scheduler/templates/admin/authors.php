@@ -83,6 +83,12 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                 <tr data-author-id="<?php echo esc_attr($author->id); ?>">
                                     <td>
                                         <div class="cell-primary"><?php echo esc_html($author->name); ?></div>
+                                        <div class="aips-table-meta-row">
+                                            <span class="aips-badge aips-badge-neutral">ID: <?php echo esc_html($author->id); ?></span>
+                                            <button type="button" class="aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Copy Author ID', 'ai-post-scheduler'); ?>">
+                                                <span class="dashicons dashicons-admin-page"></span>
+                                            </button>
+                                        </div>
                                     </td>
                                     <td>
                                         <?php echo esc_html($author->field_niche); ?>
