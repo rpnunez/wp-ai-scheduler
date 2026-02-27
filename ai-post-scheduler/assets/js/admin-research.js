@@ -362,6 +362,133 @@
         if ($('#load-topics').length > 0) {
             $('#load-topics').trigger('click');
         }
+
+        // --- Gap Analysis Logic ---
+
+        // Analyze Gaps Button
+        $('#analyze-gaps-btn').on('click', function(e) {
+            e.preventDefault();
+            const niche = $('#gap-niche').val();
+            const $btn = $(this);
+            const $spinner = $btn.next('.spinner');
+
+            if (!niche) {
+                alert('Please enter a target niche.');
+                return;
+            }
+
+            $btn.prop('disabled', true);
+            $spinner.addClass('is-active');
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'aips_perform_gap_analysis',
+                    nonce: $('#aips_nonce').val(),
+                    niche: niche
+                },
+                success: function(response) {
+                    if (response.success) {
+                        renderGapResults(response.data.gaps);
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred during gap analysis.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false);
+                    $spinner.removeClass('is-active');
+                }
+            });
+        });
+
+        // Render Gap Cards
+        function renderGapResults(gaps) {
+            const $container = $('#gap-results-container');
+            const $grid = $container.find('.aips-gap-grid');
+            $grid.empty();
+
+            if (!gaps || gaps.length === 0) {
+                $grid.html('<p>No gaps found.</p>');
+                $container.show();
+                return;
+            }
+
+            gaps.forEach(function(gap) {
+                const priorityClass = (gap.priority || 'Medium').toLowerCase();
+                let cardHtml = `
+                    <div class="aips-gap-card priority-${escapeHtml(priorityClass)}">
+                        <span class="aips-gap-badge ${escapeHtml(priorityClass)}">${escapeHtml(gap.priority)} Priority</span>
+                        <h4>${escapeHtml(gap.missing_topic)}</h4>
+                        <p class="aips-gap-reason">${escapeHtml(gap.reason)}</p>
+                        <p class="aips-gap-intent">Intent: ${escapeHtml(gap.search_intent)}</p>
+                        <div class="aips-gap-actions">
+                            <button class="button button-secondary generate-gap-ideas" data-topic="${escapeHtml(gap.missing_topic)}">
+                                Generate Ideas
+                            </button>
+                        </div>
+                    </div>
+                `;
+                $grid.append(cardHtml);
+            });
+
+            $container.slideDown();
+        }
+
+        // Generate Ideas from Gap
+        $(document).on('click', '.generate-gap-ideas', function(e) {
+            e.preventDefault();
+            const $btn = $(this);
+            const topic = $btn.data('topic');
+            const niche = $('#gap-niche').val();
+
+            $btn.prop('disabled', true).text('Generating...');
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'aips_generate_topics_from_gap',
+                    nonce: $('#aips_nonce').val(),
+                    gap_topic: topic,
+                    niche: niche
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        // Switch to Trending tab and reload
+                        $('.aips-tab-link[data-tab="trending"]').trigger('click');
+                        // Wait for tab switch then reload
+                        setTimeout(function() {
+                            $('#load-topics').trigger('click');
+                        }, 500);
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while generating topics.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Generate Ideas');
+                }
+            });
+        });
+
+        // Tab Switching Logic (if not already handled globally)
+        $('.aips-tab-link').on('click', function(e) {
+            e.preventDefault();
+            const tab = $(this).data('tab');
+            
+            $('.aips-tab-link').removeClass('active');
+            $(this).addClass('active');
+            
+            $('.aips-tab-content').hide();
+            $('#' + tab + '-tab').show();
+        });
     });
 
 })(jQuery);

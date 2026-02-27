@@ -20,7 +20,7 @@ $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
 $interval_calculator = new AIPS_Interval_Calculator();
 $default_research_frequency = 'daily';
 $active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'trending';
-$valid_tabs = array('trending', 'planner');
+$valid_tabs = array('trending', 'planner', 'gap-analysis');
 if (!in_array($active_tab, $valid_tabs, true)) {
     $active_tab = 'trending';
 }
@@ -41,12 +41,14 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         <!-- Tab Navigation -->
         <div class="aips-tab-nav">
             <a href="#trending" class="aips-tab-link<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
+            <a href="#gap-analysis" class="aips-tab-link<?php echo $active_tab === 'gap-analysis' ? ' active' : ''; ?>" data-tab="gap-analysis"><?php echo esc_html__('Gap Analysis', 'ai-post-scheduler'); ?></a>
             <a href="#planner" class="aips-tab-link<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
         </div>
 
         <!-- Old nav-tab-wrapper for JS compatibility -->
         <div class="nav-tab-wrapper" class="hidden">
             <a href="#trending" class="nav-tab<?php echo $active_tab === 'trending' ? ' nav-tab-active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
+            <a href="#gap-analysis" class="nav-tab<?php echo $active_tab === 'gap-analysis' ? ' nav-tab-active' : ''; ?>" data-tab="gap-analysis"><?php echo esc_html__('Gap Analysis', 'ai-post-scheduler'); ?></a>
             <a href="#planner" class="nav-tab<?php echo $active_tab === 'planner' ? ' nav-tab-active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
         </div>
 
@@ -252,10 +254,31 @@ if (!in_array($active_tab, $valid_tabs, true)) {
         </div>
     </div>
 
+    <div id="gap-analysis-tab" class="aips-tab-content<?php echo $active_tab === 'gap-analysis' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'gap-analysis' ? '' : 'display:none;'; ?>">
+        <div class="aips-card">
+            <h2><?php echo esc_html__('Content Gap Analysis', 'ai-post-scheduler'); ?></h2>
+            <p class="description"><?php echo esc_html__('Analyze your existing content against your target niche to identify missing sub-topics and opportunities.', 'ai-post-scheduler'); ?></p>
+            
+            <div class="aips-gap-analysis-controls">
+                <input type="text" id="gap-niche" class="regular-text" placeholder="<?php echo esc_attr__('Enter Target Niche (e.g., Sustainable Gardening)', 'ai-post-scheduler'); ?>">
+                <button type="button" class="button button-primary" id="analyze-gaps-btn">
+                    <span class="dashicons dashicons-chart-area"></span>
+                    <?php echo esc_html__('Analyze Site for Gaps', 'ai-post-scheduler'); ?>
+                </button>
+                <span class="spinner" style="float: none; margin-left: 10px;"></span>
+            </div>
+
+            <div id="gap-results-container" style="margin-top: 30px; display: none;">
+                <h3><?php echo esc_html__('Identified Content Gaps', 'ai-post-scheduler'); ?></h3>
+                <div class="aips-gap-grid">
+                    <!-- Gap cards will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="planner-tab" class="aips-tab-content<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'planner' ? '' : 'display:none;'; ?>">
         <?php include AIPS_PLUGIN_DIR . 'templates/admin/planner.php'; ?>
     </div>
     </div><!-- .aips-page-container -->
 </div><!-- .wrap -->
-
-
