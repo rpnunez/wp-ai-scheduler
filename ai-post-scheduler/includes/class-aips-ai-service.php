@@ -117,24 +117,10 @@ class AIPS_AI_Service {
             return $error;
         }
         
-        // Check circuit breaker
-        if (!$this->resilience_service->check_circuit_breaker()) {
-            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
-            $this->log_call('text', $prompt, null, $options, $error->get_error_message());
-            return $error;
-        }
-        
-        // Check rate limiting
-        if (!$this->resilience_service->check_rate_limit()) {
-            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
-            $this->log_call('text', $prompt, null, $options, $error->get_error_message());
-            return $error;
-        }
-        
         $options = $this->prepare_options($options);
         
-        // Try with retry logic
-        return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
+        // Execute safely with retry, circuit breaker, and rate limiting
+        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
             try {
                 // Build params array for simpleTextQuery
                 $params = array();
@@ -182,6 +168,16 @@ class AIPS_AI_Service {
                 return $error;
             }
         }, 'text', $prompt, $options);
+
+        // Log resilience failures (circuit breaker, rate limit)
+        if (is_wp_error($result)) {
+            $code = $result->get_error_code();
+            if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
+                $this->log_call('text', $prompt, null, $options, $result->get_error_message());
+            }
+        }
+
+        return $result;
     }
     
     /**
@@ -211,24 +207,10 @@ class AIPS_AI_Service {
             return $this->fallback_json_generation($prompt, $options);
         }
         
-        // Check circuit breaker
-        if (!$this->resilience_service->check_circuit_breaker()) {
-            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
-            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
-            return $error;
-        }
-        
-        // Check rate limiting
-        if (!$this->resilience_service->check_rate_limit()) {
-            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
-            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
-            return $error;
-        }
-        
         $options = $this->prepare_options($options);
         
-        // Try with retry logic
-        return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
+        // Execute safely with retry, circuit breaker, and rate limiting
+        $result = $this->resilience_service->execute_safely(function() use ($mwai, $prompt, $options) {
             try {
                 // Filter options for simpleJsonQuery - it only supports specific parameters
                 // According to AI Engine docs, simpleJsonQuery has a very limited parameter set
@@ -258,7 +240,6 @@ class AIPS_AI_Service {
                 $this->logger->log('Calling simpleJsonQuery with params: ' . wp_json_encode(array_keys($json_query_params)), 'debug');
                 
                 // Use simpleJsonQuery which returns structured JSON data
-                // $result = $ai->simpleJsonQuery($prompt, $json_query_params);
                 $result = $ai->simpleJsonQuery($prompt, $json_query_params);
                 
                 if (empty($result)) {
@@ -286,6 +267,16 @@ class AIPS_AI_Service {
                 return $this->fallback_json_generation($prompt, $options);
             }
         }, 'json', $prompt, $options);
+
+        // Log resilience failures (circuit breaker, rate limit)
+        if (is_wp_error($result)) {
+            $code = $result->get_error_code();
+            if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
+                $this->log_call('json', $prompt, null, $options, $result->get_error_message());
+            }
+        }
+
+        return $result;
     }
     
     /**
@@ -370,21 +361,8 @@ class AIPS_AI_Service {
             return $error;
         }
 
-        // Check circuit breaker
-        if (!$this->resilience_service->check_circuit_breaker()) {
-            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
-            $this->log_call('image', $prompt, null, $options, $error->get_error_message());
-            return $error;
-        }
-        
-        // Check rate limiting
-        if (!$this->resilience_service->check_rate_limit()) {
-            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
-            $this->log_call('image', $prompt, null, $options, $error->get_error_message());
-            return $error;
-        }
-
-        return $this->resilience_service->execute_with_retry(function() use ($ai, $prompt, $options) {
+        // Execute safely with retry, circuit breaker, and rate limiting
+        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
             try {
                 // Build params array for simpleImageQuery
                 $params = array();
@@ -427,6 +405,16 @@ class AIPS_AI_Service {
                 return $error;
             }
         }, 'image', $prompt, $options);
+
+        // Log resilience failures (circuit breaker, rate limit)
+        if (is_wp_error($result)) {
+            $code = $result->get_error_code();
+            if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
+                $this->log_call('image', $prompt, null, $options, $result->get_error_message());
+            }
+        }
+
+        return $result;
     }
     
     /**
@@ -467,22 +455,8 @@ class AIPS_AI_Service {
             return $error;
         }
         
-        // Check circuit breaker
-        if (!$this->resilience_service->check_circuit_breaker()) {
-            $error = new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
-            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
-            return $error;
-        }
-        
-        // Check rate limiting
-        if (!$this->resilience_service->check_rate_limit()) {
-            $error = new WP_Error('rate_limit_exceeded', __('Rate limit exceeded. Please try again later.', 'ai-post-scheduler'));
-            $this->log_call($log_type, $message, null, $options, $error->get_error_message());
-            return $error;
-        }
-        
-        // Try with retry logic
-        return $this->resilience_service->execute_with_retry(function() use ($ai, $chatbot_id, $message, $options, $log_type) {
+        // Execute safely with retry, circuit breaker, and rate limiting
+        $result = $this->resilience_service->execute_safely(function() use ($ai, $chatbot_id, $message, $options, $log_type) {
             try {
                 // Extract supported options for the chatbot call
                 // AI Engine's simpleChatbotQuery supports: chatId, context, instructions
@@ -559,6 +533,16 @@ class AIPS_AI_Service {
                 return $error;
             }
         }, $log_type, $message, $options);
+
+        // Log resilience failures (circuit breaker, rate limit)
+        if (is_wp_error($result)) {
+            $code = $result->get_error_code();
+            if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
+                $this->log_call($log_type, $message, null, $options, $result->get_error_message());
+            }
+        }
+
+        return $result;
     }
     
     /**

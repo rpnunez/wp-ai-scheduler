@@ -25,12 +25,18 @@ class AIPS_AI_Edit_Controller {
 	 * @var AIPS_Component_Regeneration_Service Regeneration service
 	 */
 	private $service;
+
+	/**
+	 * @var AIPS_History_Repository
+	 */
+	private $history_repository;
 	
 	/**
 	 * Constructor
 	 */
 	public function __construct() {
 		$this->service = new AIPS_Component_Regeneration_Service();
+		$this->history_repository = new AIPS_History_Repository();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));
@@ -306,7 +312,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Get revisions
-		$revisions = $this->service->get_component_revisions($post_id, $component, 20);
+		$revisions = $this->history_repository->get_component_revisions($post_id, $component, 20);
 		
 		wp_send_json_success(array(
 			'revisions' => $revisions,
@@ -346,7 +352,7 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Get the revision to restore
-		$revisions = $this->service->get_component_revisions($post_id, $component, 100);
+		$revisions = $this->history_repository->get_component_revisions($post_id, $component, 100);
 		$revision_to_restore = null;
 		foreach ($revisions as $rev) {
 			if ($rev['id'] == $revision_id) {
