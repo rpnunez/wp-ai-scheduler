@@ -4,12 +4,12 @@ if (!defined('ABSPATH')) {
 }
 
 class AIPS_Scheduler {
-    
+
     private $schedule_table;
     private $templates_table;
     private $interval_calculator;
     private $template_type_selector;
-    
+
     /**
      * @var AIPS_Generator|null Generator instance (for dependency injection)
      */
@@ -24,7 +24,7 @@ class AIPS_Scheduler {
      * @var AIPS_Template_Repository Repository for templates
      */
     private $template_repository;
-    
+
     /**
      * @var AIPS_History_Service Service for history logging
      */
@@ -34,7 +34,7 @@ class AIPS_Scheduler {
      * @var AIPS_Schedule_Processor Processor for executing schedules
      */
     private $processor;
-    
+
     public function __construct() {
         global $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
@@ -44,7 +44,7 @@ class AIPS_Scheduler {
         $this->template_repository = new AIPS_Template_Repository();
         $this->history_service = new AIPS_History_Service();
         $this->template_type_selector = new AIPS_Template_Type_Selector();
-        
+
         // Instantiate the processor with dependencies
         // We pass the generator if it's already set (which it isn't in __construct usually)
         // or let the processor instantiate its own.
@@ -106,7 +106,7 @@ class AIPS_Scheduler {
     public function set_processor($processor) {
         $this->processor = $processor;
     }
-    
+
     /**
      * Get all available scheduling intervals.
      *
@@ -125,48 +125,19 @@ class AIPS_Scheduler {
     public function add_cron_intervals($schedules) {
         return $this->interval_calculator->merge_with_wp_schedules($schedules);
     }
-    
+
     public function get_all_schedules() {
         return $this->repository->get_all();
     }
-    
+
     public function get_schedule($id) {
         return $this->repository->get_by_id($id);
     }
-    
+
     public function save_schedule($data) {
         $frequency = sanitize_text_field($data['frequency']);
+        $next_run = $this->determine_next_run_for_save($data);
 
-        if (isset($data['next_run'])) {
-            $next_run = sanitize_text_field($data['next_run']);
-        } else {
-            // Use start_time as the initial run time if provided, otherwise start now.
-            $start_time = isset($data['start_time']) && !empty($data['start_time'])
-                ? $data['start_time']
-                : current_time('mysql');
-
-            // Default behavior: reset next_run to start_time
-            $next_run = date('Y-m-d H:i:s', strtotime($start_time));
-
-            // Hunter: Fix for schedule reset bug.
-            // When updating a schedule, if the proposed start_time is in the past (likely the original start date populated in the form)
-            // and the schedule is already running in the future, we should NOT reset the timeline to the past.
-            if (!empty($data['id'])) {
-                $existing_schedule = $this->repository->get_by_id(absint($data['id']));
-                if ($existing_schedule) {
-                    $start_timestamp = strtotime($start_time);
-                    $existing_next_run_timestamp = strtotime($existing_schedule->next_run);
-                    $now_timestamp = current_time('timestamp');
-
-                    // Heuristic: If start_time is significantly in the past (older than 1 min ago to allow for 'now')
-                    // and the existing schedule is healthy (next_run is in the future), preserve the existing schedule.
-                    if ($start_timestamp < ($now_timestamp - 60) && $existing_next_run_timestamp > $now_timestamp) {
-                        $next_run = $existing_schedule->next_run;
-                    }
-                }
-            }
-        }
-        
         $schedule_data = array(
             'template_id' => absint($data['template_id']),
             'frequency' => $frequency,
@@ -188,7 +159,7 @@ class AIPS_Scheduler {
     public function save_schedule_bulk($schedules) {
         return $this->repository->create_bulk($schedules);
     }
-    
+
     public function delete_schedule($id) {
         return $this->repository->delete($id);
     }
@@ -196,7 +167,7 @@ class AIPS_Scheduler {
     public function toggle_active($id, $is_active) {
         return $this->repository->set_active($id, $is_active);
     }
-    
+
     /**
      * Calculate the next run time for a schedule.
      *
@@ -207,7 +178,7 @@ class AIPS_Scheduler {
     public function calculate_next_run($frequency, $start_time = null) {
         return $this->interval_calculator->calculate_next_run($frequency, $start_time);
     }
-    
+
     /**
      * Run a specific schedule immediately.
      *
@@ -225,5 +196,47 @@ class AIPS_Scheduler {
      */
     public function process_scheduled_posts() {
         $this->processor->process_due_schedules();
+    }
+
+    /**
+     * Determine the next run time for a schedule being saved.
+     *
+     * Encapsulates logic for preserving existing schedule timeline when updating.
+     *
+     * @param array $data Schedule data.
+     * @return string Next run time in MySQL format.
+     */
+    private function determine_next_run_for_save($data) {
+        if (isset($data['next_run'])) {
+            return sanitize_text_field($data['next_run']);
+        }
+
+        // Use start_time as the initial run time if provided, otherwise start now.
+        $start_time = isset($data['start_time']) && !empty($data['start_time'])
+            ? $data['start_time']
+            : current_time('mysql');
+
+        // Default behavior: reset next_run to start_time
+        $next_run = date('Y-m-d H:i:s', strtotime($start_time));
+
+        // Hunter: Fix for schedule reset bug.
+        // When updating a schedule, if the proposed start_time is in the past (likely the original start date populated in the form)
+        // and the schedule is already running in the future, we should NOT reset the timeline to the past.
+        if (!empty($data['id'])) {
+            $existing_schedule = $this->repository->get_by_id(absint($data['id']));
+            if ($existing_schedule) {
+                $start_timestamp = strtotime($start_time);
+                $existing_next_run_timestamp = strtotime($existing_schedule->next_run);
+                $now_timestamp = current_time('timestamp');
+
+                // Heuristic: If start_time is significantly in the past (older than 1 min ago to allow for 'now')
+                // and the existing schedule is healthy (next_run is in the future), preserve the existing schedule.
+                if ($start_timestamp < ($now_timestamp - 60) && $existing_next_run_timestamp > $now_timestamp) {
+                    $next_run = $existing_schedule->next_run;
+                }
+            }
+        }
+
+        return $next_run;
     }
 }

@@ -72,7 +72,7 @@ class AIPS_Post_Creator {
         );
 
         if (!empty($post_category)) {
-            $post_data['post_category'] = array($post_category);
+            $post_data['post_category'] = is_array($post_category) ? $post_category : array($post_category);
         } elseif ($default_cat = get_option('aips_default_category')) {
             $post_data['post_category'] = array($default_cat);
         }
