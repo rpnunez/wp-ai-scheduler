@@ -106,6 +106,52 @@
 			
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
+
+			// Author search
+			$(document).on('keyup search', '#aips-author-search', this.filterAuthors.bind(this));
+			$(document).on('click', '#aips-author-search-clear', this.clearAuthorSearch.bind(this));
+			$(document).on('click', '.aips-clear-author-search-btn', this.clearAuthorSearch.bind(this));
+		},
+
+		filterAuthors: function() {
+			var term = $('#aips-author-search').val().toLowerCase().trim();
+			var $rows = $('#authors-list-tab .aips-table tbody tr');
+			var $noResults = $('#aips-author-search-no-results');
+			var $table = $('#authors-list-tab .aips-table');
+			var $clearBtn = $('#aips-author-search-clear');
+			var hasVisible = false;
+
+			if (term.length > 0) {
+				$clearBtn.show();
+			} else {
+				$clearBtn.hide();
+			}
+
+			$rows.each(function() {
+				var $row = $(this);
+				var name = $row.find('.cell-primary').text().toLowerCase();
+				var field = $row.find('td:nth-child(2)').text().toLowerCase();
+
+				if (name.indexOf(term) > -1 || field.indexOf(term) > -1) {
+					$row.show();
+					hasVisible = true;
+				} else {
+					$row.hide();
+				}
+			});
+
+			if (!hasVisible && term.length > 0) {
+				$table.hide();
+				$noResults.show();
+			} else {
+				$table.show();
+				$noResults.hide();
+			}
+		},
+
+		clearAuthorSearch: function(e) {
+			e.preventDefault();
+			$('#aips-author-search').val('').trigger('keyup');
 		},
 
 		openAddModal: function (e) {
@@ -127,7 +173,7 @@
 
 			// Load author data
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_get_author',
@@ -177,7 +223,7 @@
 			$submitBtn.prop('disabled', true).text(aipsAuthorsL10n.saving);
 
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: formData + '&action=aips_save_author&nonce=' + aipsAuthorsL10n.nonce,
 				success: (response) => {
@@ -207,7 +253,7 @@
 			}
 
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_delete_author',
@@ -243,7 +289,7 @@
 			$btn.prop('disabled', true).text(aipsAuthorsL10n.generating);
 
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_generate_topics_now',
@@ -290,7 +336,7 @@
 
 		loadTopics: function (status) {
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_get_author_topics',
@@ -493,7 +539,7 @@
 			const ajaxAction = action === 'approve' ? 'aips_approve_topic' : 'aips_reject_topic';
 
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: ajaxAction,
@@ -527,7 +573,7 @@
 			$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.loading + '</p>');
 
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_get_author_feedback',
@@ -586,7 +632,7 @@
 			}
 
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_delete_topic',
@@ -636,7 +682,7 @@
 			}
 
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_edit_topic',
@@ -681,7 +727,7 @@
 			$btn.prop('disabled', true).text(aipsAuthorsL10n.generating);
 
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_generate_post_from_topic',
@@ -717,7 +763,7 @@
 
 		loadTopicLogs: function (topicId) {
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_get_topic_logs',
@@ -779,7 +825,7 @@
 		
 		loadTopicPosts: function (topicId) {
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_get_topic_posts',
@@ -939,7 +985,7 @@
 
 			// Execute bulk action
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: data,
 				success: (response) => {
@@ -1116,7 +1162,7 @@
 			$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.loadingQueue || 'Loading queue...') + '</p>');
 
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_get_generation_queue',
@@ -1213,7 +1259,7 @@
 			$button.prop('disabled', true).text(aipsAuthorsL10n.generating || 'Generating...');
 
 			$.ajax({
-				url: ajaxurl,
+				url: aipsAuthorsL10n.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'aips_bulk_generate_from_queue',

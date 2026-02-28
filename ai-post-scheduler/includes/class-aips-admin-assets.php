@@ -95,6 +95,7 @@ class AIPS_Admin_Assets {
 
 			// Localize script with translations and nonce
 			wp_localize_script('aips-authors-script', 'aipsAuthorsL10n', array(
+				'ajaxUrl' => admin_url('admin-ajax.php'),
 				'nonce' => wp_create_nonce('aips_ajax_nonce'),
 				'addNewAuthor' => __('Add New Author', 'ai-post-scheduler'),
 				'editAuthor' => __('Edit Author', 'ai-post-scheduler'),
