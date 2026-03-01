@@ -57,6 +57,12 @@ if (!defined('ABSPATH')) {
                                     <div class="aips-table-primary">
                                         <strong><?php echo esc_html($voice->name); ?></strong>
                                     </div>
+                                    <div class="aips-table-meta-row">
+                                        <span class="aips-badge aips-badge-neutral" style="font-size: 10px; padding: 2px 4px;">ID: <?php echo esc_html($voice->id); ?></span>
+                                        <button type="button" class="aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($voice->id); ?>" aria-label="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>">
+                                            <span class="dashicons dashicons-admin-page" style="font-size: 14px; width: 14px; height: 14px;"></span>
+                                        </button>
+                                    </div>
                                 </td>
                                 <td class="column-title-prompt">
                                     <div class="aips-table-meta">

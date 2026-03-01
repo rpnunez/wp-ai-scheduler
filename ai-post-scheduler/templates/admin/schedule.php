@@ -101,6 +101,12 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             data-is-active="<?php echo esc_attr($schedule->is_active); ?>">
                             <td>
                                 <div class="cell-primary"><?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?></div>
+                                <div class="aips-table-meta-row">
+                                    <span class="aips-badge aips-badge-neutral" style="font-size: 10px; padding: 2px 4px;">ID: <?php echo esc_html($schedule->id); ?></span>
+                                    <button type="button" class="aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>">
+                                        <span class="dashicons dashicons-admin-page" style="font-size: 14px; width: 14px; height: 14px;"></span>
+                                    </button>
+                                </div>
                             </td>
                             <td>
                                 <div>

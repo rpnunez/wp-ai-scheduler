@@ -2948,3 +2948,33 @@ width: 20px !important;
 height: 20px !important;
 margin-right: 8px;
 }
+
+.aips-table-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.aips-copy-btn-small {
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #a7aaad;
+    height: auto;
+    min-height: 0;
+    line-height: 1;
+}
+
+.aips-copy-btn-small:hover {
+    color: #2271b1;
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+.aips-copy-btn-small:focus {
+    box-shadow: none;
+    outline: none;
+}

@@ -68,7 +68,15 @@ if (!isset($sections) || !is_array($sections)) {
 				<tbody>
 					<?php foreach ($structures as $structure): ?>
 					<tr data-structure-id="<?php echo esc_attr($structure->id); ?>">
-						<td class="column-name"><?php echo esc_html($structure->name); ?></td>
+						<td class="column-name">
+							<?php echo esc_html($structure->name); ?>
+							<div class="aips-table-meta-row">
+								<span class="aips-badge aips-badge-neutral" style="font-size: 10px; padding: 2px 4px;">ID: <?php echo esc_html($structure->id); ?></span>
+								<button type="button" class="aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($structure->id); ?>" aria-label="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-admin-page" style="font-size: 14px; width: 14px; height: 14px;"></span>
+								</button>
+							</div>
+						</td>
 						<td class="column-description"><?php echo esc_html($structure->description); ?></td>
 						<td class="column-active"><?php echo $structure->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
 						<td class="column-default"><?php echo $structure->is_default ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
@@ -121,7 +129,15 @@ if (!isset($sections) || !is_array($sections)) {
 				<tbody>
 					<?php foreach ($sections as $section) : ?>
 					<tr data-section-id="<?php echo esc_attr($section->id); ?>">
-						<td><?php echo esc_html($section->name); ?></td>
+						<td>
+							<?php echo esc_html($section->name); ?>
+							<div class="aips-table-meta-row">
+								<span class="aips-badge aips-badge-neutral" style="font-size: 10px; padding: 2px 4px;">ID: <?php echo esc_html($section->id); ?></span>
+								<button type="button" class="aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-admin-page" style="font-size: 14px; width: 14px; height: 14px;"></span>
+								</button>
+							</div>
+						</td>
 						<td><code><?php echo esc_html($section->section_key); ?></code></td>
 						<td><?php echo esc_html($section->description); ?></td>
 						<td><?php echo $section->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
