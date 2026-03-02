@@ -98,6 +98,9 @@
 
             // History Bulk Actions
             $(document).on('change', '#cb-select-all-1', this.toggleAllHistory);
+
+            // Toggle Password Visibility
+            $(document).on('click', '.aips-toggle-password', this.togglePasswordVisibility);
             $(document).on('change', '.aips-history-table input[name="history[]"]', this.toggleHistorySelection);
             $(document).on('click', '#aips-delete-selected-btn', this.deleteSelectedHistory);
 
@@ -2335,6 +2338,21 @@
             var allChecked = $('.aips-history-table input[name="history[]"]').length === $('.aips-history-table input[name="history[]"]:checked').length;
             $('#cb-select-all-1').prop('checked', allChecked);
             AIPS.updateDeleteButton();
+        },
+
+        togglePasswordVisibility: function() {
+            var $btn = $(this);
+            var targetId = $btn.data('target');
+            var $input = $('#' + targetId);
+            var $icon = $btn.find('.dashicons');
+
+            if ($input.attr('type') === 'password') {
+                $input.attr('type', 'text');
+                $icon.removeClass('dashicons-visibility').addClass('dashicons-hidden');
+            } else {
+                $input.attr('type', 'password');
+                $icon.removeClass('dashicons-hidden').addClass('dashicons-visibility');
+            }
         },
 
         updateDeleteButton: function() {

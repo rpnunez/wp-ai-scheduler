@@ -35,3 +35,8 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+## 2026-01-23 - Password Visibility Toggle\n**Learning:** The Unsplash Access Key field lacked an eye toggle and  input type.\n**Action:** Updated the Settings page input  to a  field and added a Dashicon toggle, including  and  to meet accessibility constraints.
+
+## 2026-01-23 - Password Visibility Toggle
+**Learning:** The Unsplash Access Key field lacked an eye toggle and `password` input type, and previous implementations of toggles sometimes lacked proper `a11y` tags.
+**Action:** Updated the Settings page input `aips_unsplash_access_key` to a `password` field and added a Dashicon toggle, ensuring to include `aria-label` and `title` to meet accessibility constraints.
