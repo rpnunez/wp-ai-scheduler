@@ -68,7 +68,7 @@ class AIPS_Generator {
         $history_service = null,
         $prompt_builder = null
     ) {
-        $this->logger = $logger ?: new AIPS_Logger();
+        $this->logger = $logger ?: AIPS_Logger::get_instance();
         $this->ai_service = $ai_service ?: new AIPS_AI_Service();
         $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
         $this->image_service = $image_service ?: new AIPS_Image_Service($this->ai_service);

@@ -51,7 +51,7 @@ class AIPS_Author_Topics_Scheduler {
 	public function __construct() {
 		$this->authors_repository = new AIPS_Authors_Repository();
 		$this->topics_generator = new AIPS_Author_Topics_Generator();
-		$this->logger = new AIPS_Logger();
+		$this->logger = AIPS_Logger::get_instance();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_service = new AIPS_History_Service();
 		

@@ -8,7 +8,7 @@ class AIPS_Upgrades {
     private $logger;
     
     public function __construct() {
-        $this->logger = new AIPS_Logger();
+        $this->logger = AIPS_Logger::get_instance();
     }
     
     public static function check_and_run() {

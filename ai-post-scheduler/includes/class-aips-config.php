@@ -30,6 +30,11 @@ class AIPS_Config {
      * @var array Feature flags cache
      */
     private $feature_flags = array();
+
+    /**
+     * @var array In-memory cache for option values retrieved during this request.
+     */
+    private $options_cache = array();
     
     /**
      * Get singleton instance.
@@ -87,30 +92,56 @@ class AIPS_Config {
     /**
      * Get a specific option value with fallback to default.
      *
+     * Results for options that exist in the database are cached in-memory for
+     * the duration of the request so that repeated calls within a single page
+     * load do not re-hit the WordPress options infrastructure.
+     *
+     * Non-existent options are intentionally NOT cached so that a caller-
+     * supplied $default is always respected, and so that a later write via
+     * set_option() is immediately visible to subsequent get_option() calls.
+     *
      * @param string $option_name Option name.
      * @param mixed  $default     Optional. Default value if option not found.
      * @return mixed Option value or default.
      */
     public function get_option($option_name, $default = null) {
-        $value = get_option($option_name);
-        
-        if ($value === false && $default === null) {
-            $defaults = $this->get_default_options();
-            return isset($defaults[$option_name]) ? $defaults[$option_name] : null;
+        if (array_key_exists($option_name, $this->options_cache)) {
+            return $this->options_cache[$option_name];
         }
-        
-        return $value !== false ? $value : $default;
+
+        $value = get_option($option_name);
+
+        if ($value !== false) {
+            // Option exists in DB — cache it.
+            $this->options_cache[$option_name] = $value;
+            return $value;
+        }
+
+        // Option not in DB — fall back to plugin defaults or caller's default.
+        // We do NOT cache this so that a caller-supplied $default is always
+        // applied correctly, and so that a future set_option() becomes visible
+        // on the very next get_option() call.
+        $defaults = $this->get_default_options();
+        return isset($defaults[$option_name]) ? $defaults[$option_name] : $default;
     }
-    
+
     /**
      * Set an option value.
+     *
+     * Also updates the in-memory cache unconditionally so subsequent
+     * get_option() calls within the same request return the new value
+     * immediately, even when update_option() returns false because the
+     * value is unchanged in the database.
      *
      * @param string $option_name Option name.
      * @param mixed  $value       Option value.
      * @return bool True on success, false on failure.
      */
     public function set_option($option_name, $value) {
-        return update_option($option_name, $value);
+        $result = update_option($option_name, $value);
+        // Always sync the cache so the new value is visible within this request.
+        $this->options_cache[$option_name] = $value;
+        return $result;
     }
     
     // ========================================

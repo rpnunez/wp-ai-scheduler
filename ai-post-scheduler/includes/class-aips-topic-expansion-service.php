@@ -41,7 +41,7 @@ class AIPS_Topic_Expansion_Service {
 	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null) {
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
-		$this->logger = $logger ?: new AIPS_Logger();
+		$this->logger = $logger ?: AIPS_Logger::get_instance();
 	}
 	
 	/**

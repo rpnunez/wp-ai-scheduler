@@ -282,9 +282,18 @@ class AIPS_History_Repository {
     /**
      * Get statistics for all templates.
      *
+     * Results are cached in a transient (same TTL as the overall history stats)
+     * and are automatically invalidated whenever a history record is created,
+     * updated, or deleted.
+     *
      * @return array Associative array of template ID => count.
      */
     public function get_all_template_stats() {
+        $cached = get_transient('aips_all_template_stats');
+        if ($cached !== false) {
+            return $cached;
+        }
+
         $results = $this->wpdb->get_results("
             SELECT template_id, COUNT(*) as count
             FROM {$this->table_name}
@@ -296,6 +305,8 @@ class AIPS_History_Repository {
         foreach ($results as $row) {
             $stats[$row->template_id] = (int) $row->count;
         }
+
+        set_transient('aips_all_template_stats', $stats, HOUR_IN_SECONDS);
 
         return $stats;
     }
@@ -393,6 +404,7 @@ class AIPS_History_Repository {
         
         if ($result) {
             delete_transient('aips_history_stats');
+            delete_transient('aips_all_template_stats');
         }
 
         return $result ? $this->wpdb->insert_id : false;
@@ -468,6 +480,7 @@ class AIPS_History_Repository {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+            delete_transient('aips_all_template_stats');
         }
 
         return $result !== false;
@@ -481,6 +494,7 @@ class AIPS_History_Repository {
      */
     public function delete_by_status($status = '') {
         delete_transient('aips_history_stats');
+        delete_transient('aips_all_template_stats');
 
         if (empty($status)) {
             return $this->wpdb->query("TRUNCATE TABLE {$this->table_name}");
@@ -500,6 +514,7 @@ class AIPS_History_Repository {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+            delete_transient('aips_all_template_stats');
         }
 
         return $result !== false;
@@ -530,6 +545,7 @@ class AIPS_History_Repository {
 
         if ($result !== false) {
             delete_transient('aips_history_stats');
+            delete_transient('aips_all_template_stats');
         }
 
         return $result;
@@ -585,6 +601,7 @@ class AIPS_History_Repository {
         // Clear cache
         if ($deleted !== false && $deleted > 0) {
             delete_transient('aips_history_stats');
+            delete_transient('aips_all_template_stats');
         }
         
         return array(

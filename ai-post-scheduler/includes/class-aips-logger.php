@@ -4,7 +4,27 @@ if (!defined('ABSPATH')) {
 }
 
 class AIPS_Logger {
-    
+
+    /**
+     * @var AIPS_Logger|null Singleton instance.
+     */
+    private static $instance = null;
+
+    /**
+     * Get the shared logger instance.
+     *
+     * Using a singleton avoids re-running wp_upload_dir() and get_option()
+     * on every service construction within the same request.
+     *
+     * @return AIPS_Logger
+     */
+    public static function get_instance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
     private $log_file;
     private $enabled;
     private $dir_checked = false;

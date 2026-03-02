@@ -63,7 +63,7 @@ class AIPS_AI_Service {
      * Initialize the AI Service.
      */
     public function __construct($logger = null, $config = null, $resilience_service = null) {
-        $this->logger = $logger ?: new AIPS_Logger();
+        $this->logger = $logger ?: AIPS_Logger::get_instance();
         $this->config = $config ?: AIPS_Config::get_instance();
         $this->call_log = array();
 

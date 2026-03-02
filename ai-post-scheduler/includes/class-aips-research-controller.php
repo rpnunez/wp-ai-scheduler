@@ -46,7 +46,7 @@ class AIPS_Research_Controller {
     public function __construct() {
         $this->research_service = new AIPS_Research_Service();
         $this->repository = new AIPS_Trending_Topics_Repository();
-        $this->logger = new AIPS_Logger();
+        $this->logger = AIPS_Logger::get_instance();
         $this->content_auditor = new AIPS_Content_Auditor();
         
         $this->init_hooks();

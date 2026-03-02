@@ -159,7 +159,7 @@ class AIPS_System_Status {
         $logs_data = array();
 
         // Check AIPS logs
-        $logger = new AIPS_Logger();
+        $logger = AIPS_Logger::get_instance();
         $log_files = $logger->get_log_files();
 
         if (!empty($log_files)) {
