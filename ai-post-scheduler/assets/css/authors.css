@@ -586,3 +586,149 @@
 .aips-toast.closing {
 	animation: slideOut 0.3s ease-in forwards;
 }
+
+/* =========================================================
+   Author Topics Page
+   ========================================================= */
+
+/* Breadcrumb Navigation */
+.aips-breadcrumb {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	color: #50575e;
+	margin-bottom: 12px;
+}
+
+.aips-breadcrumb a {
+	color: #2271b1;
+	text-decoration: none;
+}
+
+.aips-breadcrumb a:hover {
+	text-decoration: underline;
+}
+
+.aips-breadcrumb-sep {
+	color: #a7aaad;
+	font-size: 16px;
+	line-height: 1;
+}
+
+/* Author Topics Statistics */
+.aips-author-topics-stats {
+	display: flex;
+	gap: 16px;
+	margin-bottom: 24px;
+	flex-wrap: wrap;
+}
+
+.aips-stat-card {
+	flex: 1;
+	min-width: 120px;
+	padding: 16px 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.aips-stat-value {
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1;
+	color: #1d2327;
+}
+
+.aips-stat-label {
+	font-size: 12px;
+	color: #50575e;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	text-align: center;
+}
+
+.aips-stat-pending .aips-stat-value {
+	color: #d63638;
+}
+
+.aips-stat-approved .aips-stat-value {
+	color: #00a32a;
+}
+
+.aips-stat-rejected .aips-stat-value {
+	color: #50575e;
+}
+
+.aips-stat-generated .aips-stat-value {
+	color: #2271b1;
+}
+
+/* Page-level Topics Tabs (full page variant) */
+.aips-page-tabs {
+	border-bottom: 1px solid #c3c4c7;
+	margin-bottom: 0;
+	padding: 0 20px;
+}
+
+.aips-page-tabs .aips-tab-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 12px 16px;
+	border: none;
+	border-bottom: 2px solid transparent;
+	background: none;
+	cursor: pointer;
+	font-size: 14px;
+	color: #50575e;
+	margin-bottom: -1px;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.aips-page-tabs .aips-tab-link.active {
+	color: #2271b1;
+	border-bottom-color: #2271b1;
+	font-weight: 600;
+}
+
+.aips-page-tabs .aips-tab-link:hover {
+	color: #2271b1;
+}
+
+.aips-tab-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 20px;
+	height: 20px;
+	padding: 0 6px;
+	background: #c3c4c7;
+	color: #1d2327;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.aips-tab-link.active .aips-tab-count {
+	background: #2271b1;
+	color: #fff;
+}
+
+@media screen and (max-width: 782px) {
+	.aips-author-topics-stats {
+		gap: 10px;
+	}
+
+	.aips-stat-card {
+		min-width: calc(50% - 5px);
+		flex: none;
+	}
+}
+

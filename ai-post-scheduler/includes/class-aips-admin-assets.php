@@ -77,7 +77,7 @@ class AIPS_Admin_Assets {
         ));
 
 		// Enqueue Authors-specific assets
-		if (strpos($hook, 'aips-authors') !== false) {
+		if (strpos($hook, 'aips-authors') !== false || strpos($hook, 'aips-author-topics') !== false) {
 			wp_enqueue_style(
 				'aips-authors-style',
 				AIPS_PLUGIN_URL . 'assets/css/authors.css',
@@ -179,7 +179,25 @@ class AIPS_Admin_Assets {
 				'logUser' => __('User', 'ai-post-scheduler'),
 				'logDate' => __('Date', 'ai-post-scheduler'),
 				'logDetails' => __('Details', 'ai-post-scheduler'),
+				'toastCloseLabel' => __('Close notification', 'ai-post-scheduler'),
 			));
+
+			// On the Author Topics page, initialize the topics view with the current author
+			if (strpos($hook, 'aips-author-topics') !== false) {
+				$page_author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
+				if ($page_author_id) {
+					wp_add_inline_script(
+						'aips-authors-script',
+						'jQuery(document).ready(function($) {
+							if (typeof AuthorsModule !== "undefined") {
+								AuthorsModule.currentAuthorId = ' . (int) $page_author_id . ';
+								AuthorsModule.loadTopics("pending");
+								AuthorsModule.updateBulkActionDropdown("pending");
+							}
+						});'
+					);
+				}
+			}
 		}
 
         // Research Page Styles & Scripts

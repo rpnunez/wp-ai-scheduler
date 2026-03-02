@@ -112,6 +112,16 @@ class AIPS_Settings {
              array($this, 'render_research_page')
          );
 
+        // Author Topics page - hidden from menu navigation, accessible via URL
+        add_submenu_page(
+            null,
+            __('Author Topics', 'ai-post-scheduler'),
+            __('Author Topics', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-author-topics',
+            array($this, 'render_author_topics_page')
+        );
+
         // Publishing section
         $this->add_section_header('ai-post-scheduler', __('Publishing', 'ai-post-scheduler'));
         
@@ -646,6 +656,18 @@ class AIPS_Settings {
      */
     public function render_authors_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
+    }
+
+    /**
+     * Render the Author Topics page.
+     *
+     * Displays all AI-generated topics for a specific author with full
+     * management capabilities (approve, reject, edit, delete, generate post).
+     *
+     * @return void
+     */
+    public function render_author_topics_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/author-topics.php';
     }
     
     /**
