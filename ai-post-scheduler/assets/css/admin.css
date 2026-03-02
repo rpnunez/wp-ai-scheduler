@@ -2938,6 +2938,9 @@
    Utility Classes
    ========================================================================== */
 
+.aips-flex { display: flex; }
+.aips-gap-2 { gap: 10px; }
+.aips-items-center { align-items: center; }
 .hidden {
 display: none !important;
 }

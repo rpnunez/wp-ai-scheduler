@@ -102,10 +102,14 @@ $default_planner_frequency = 'daily';
                     </div>
                 </div>
 
-                <div class="aips-planner-actions">
+                <div class="aips-planner-actions aips-flex aips-gap-2 aips-items-center">
                     <button type="button" id="btn-bulk-schedule" class="aips-btn aips-btn-primary aips-btn-lg">
                         <span class="dashicons dashicons-calendar-alt" ></span>
                         <?php echo esc_html__('Schedule Selected Topics', 'ai-post-scheduler'); ?>
+                    </button>
+                    <button type="button" id="btn-quick-schedule-all" class="aips-btn aips-btn-secondary aips-btn-lg" title="<?php echo esc_attr__('Quickly schedule all topics using the first template, starting now, daily.', 'ai-post-scheduler'); ?>">
+                        <span class="dashicons dashicons-controls-forward" ></span>
+                        <?php echo esc_html__('Quick Schedule All', 'ai-post-scheduler'); ?>
                     </button>
                     <span class="spinner"></span>
                 </div>

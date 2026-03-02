@@ -244,6 +244,69 @@
             }
         },
 
+        /**
+         * Quick Schedule All Handler
+         * Selects all generated topics, uses the first available template,
+         * sets the start time to now, and triggers the bulk schedule process.
+         *
+         * @param {Event} e - The click event
+         */
+        quickScheduleAll: function(e) {
+            e.preventDefault();
+            var topics = [];
+
+            // Select all topics
+            $('.topic-checkbox').prop('checked', true);
+            window.AIPS.updateSelectionCount();
+
+            $('.topic-checkbox:checked').each(function() {
+                var val = $(this).siblings('.topic-text-input').val();
+                if (val && val.trim().length > 0) {
+                    topics.push(val.trim());
+                }
+            });
+
+            if (topics.length === 0) {
+                alert('No topics available to schedule.');
+                return;
+            }
+
+            // Get first template if none is selected
+            var $templateSelect = $('#bulk-template');
+            if (!$templateSelect.val()) {
+                var firstVal = $templateSelect.find('option:not([value=""])').first().val();
+                if (firstVal) {
+                    $templateSelect.val(firstVal);
+                } else {
+                    alert('No templates available. Please create a template first.');
+                    return;
+                }
+            }
+
+            // Set start date to now
+            var now = new Date();
+            var pad = function(n) { return n < 10 ? '0' + n : n; };
+            var nowStr = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+            $('#bulk-start-date').val(nowStr);
+
+            // Default frequency to daily if not set
+            if (!$('#bulk-frequency').val()) {
+                $('#bulk-frequency').val('daily');
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true);
+            $btn.next('.spinner').addClass('is-active');
+
+            window.AIPS.performBulkSchedule(topics, $btn);
+        },
+
+        /**
+         * Bulk Schedule Handler
+         * Gathers selected topics and schedule settings, and triggers the bulk schedule process.
+         *
+         * @param {Event} e - The click event
+         */
         bulkSchedule: function(e) {
             e.preventDefault();
             var topics = [];
@@ -275,7 +338,21 @@
 
             var $btn = $(this);
             $btn.prop('disabled', true);
-            $btn.next('.spinner').addClass('is-active');
+            $btn.siblings('.spinner').addClass('is-active');
+
+            window.AIPS.performBulkSchedule(topics, $btn);
+        },
+
+        /**
+         * Performs the actual AJAX call to bulk schedule topics.
+         *
+         * @param {Array} topics - The array of topic strings to schedule.
+         * @param {jQuery} $btn - The button element that triggered the action, used for loading state.
+         */
+        performBulkSchedule: function(topics, $btn) {
+            var templateId = $('#bulk-template').val();
+            var startDate = $('#bulk-start-date').val();
+            var frequency = $('#bulk-frequency').val();
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -286,7 +363,7 @@
                     topics: topics,
                     template_id: templateId,
                     start_date: startDate,
-                    frequency: $('#bulk-frequency').val()
+                    frequency: frequency
                 },
                 success: function(response) {
                     if (response.success) {
@@ -304,7 +381,7 @@
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
-                    $btn.next('.spinner').removeClass('is-active');
+                    $btn.siblings('.spinner').removeClass('is-active');
                 }
             });
         }
@@ -315,6 +392,7 @@
         $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
         $(document).on('click', '#btn-parse-manual', window.AIPS.parseManualTopics);
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
+        $(document).on('click', '#btn-quick-schedule-all', window.AIPS.quickScheduleAll);
         $(document).on('click', '#btn-clear-topics', window.AIPS.clearTopics);
         $(document).on('click', '#btn-copy-topics', window.AIPS.copySelectedTopics);
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
