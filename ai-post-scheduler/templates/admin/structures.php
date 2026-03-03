@@ -68,7 +68,17 @@ if (!isset($sections) || !is_array($sections)) {
 				<tbody>
 					<?php foreach ($structures as $structure): ?>
 					<tr data-structure-id="<?php echo esc_attr($structure->id); ?>">
-						<td class="column-name"><?php echo esc_html($structure->name); ?></td>
+						<td class="column-name">
+							<div class="cell-primary">
+								<?php echo esc_html($structure->name); ?>
+								<div class="aips-table-meta-row">
+									<span class="aips-badge aips-badge-neutral">ID: <?php echo esc_html($structure->id); ?></span>
+									<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($structure->id); ?>" title="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>">
+										<span class="dashicons dashicons-admin-page"></span>
+									</button>
+								</div>
+							</div>
+						</td>
 						<td class="column-description"><?php echo esc_html($structure->description); ?></td>
 						<td class="column-active"><?php echo $structure->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
 						<td class="column-default"><?php echo $structure->is_default ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>

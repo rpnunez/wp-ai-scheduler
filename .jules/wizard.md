@@ -35,3 +35,8 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+## 2025-02-17 - Add Copy to Clipboard for IDs
+
+Learning: Copy to Clipboard buttons are an effective and quick UX enhancement for items like IDs, especially when dealing with scheduling and integrations. The standard pattern in this plugin for admin tables uses a `.aips-table-meta-row` containing a neutral badge for the ID, and a small ghost button (`.aips-copy-btn-small`) tied to the clipboard logic.
+
+Action: Ensure the IDs are rendered clearly using the badge alongside the main entity name inside the primary cell of list tables, maintaining UI consistency with existing areas. Always use the provided helper classes like `.aips-copy-btn` and `data-clipboard-text` to plug into the existing JS.
