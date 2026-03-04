@@ -35,3 +35,7 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+
+## 2025-03-04 - Add "Clear Search" button to Prompt Sections
+Learning: Adding clear search buttons to search inputs improves UX by allowing users to quickly clear filters.
+Action: Always include clear buttons for search inputs to maintain consistency across the UI.

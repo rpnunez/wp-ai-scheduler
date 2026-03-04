@@ -31,11 +31,12 @@ if (!isset($sections) || !is_array($sections)) {
 			<!-- Filter Bar -->
 			<div class="aips-filter-bar">
 				<input type="search" id="aips-section-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sections...', 'ai-post-scheduler'); ?>">
+				<button type="button" id="aips-section-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 			</div>
 
 			<!-- Table -->
 			<div class="aips-panel-body no-padding">
-				<table class="aips-table">
+				<table class="aips-table aips-sections-list">
 					<thead>
 						<tr>
 							<th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
