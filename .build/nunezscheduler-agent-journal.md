@@ -81,3 +81,10 @@
 - `wp-ai-scheduler/ai-post-scheduler/includes/class-aips-generation-context-factory.php`
 **Outcome:** The `AIPS_Component_Regeneration_Service` is now a much leaner orchestrator, delegating data fetching and object creation to specialized classes. This improves code clarity, testability, and maintainability, aligning with the "Flow is Function" philosophy by ensuring the underlying code structure is logical and efficient.
 **Verification Status:** Blocked. The project's test suite requires a Docker environment, which was not running or accessible. Multiple attempts to run the tests via `make test` and `docker-compose exec` failed. A final attempt to run `phpunit` directly on the host failed due to missing WordPress and database dependencies. The refactoring is complete, but could not be verified.
+## 2026-03-04 - Template-to-Schedule Flow Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Optimized the flow of creating a schedule right after creating a new template. Instead of redirecting users to the separate Schedule page, I implemented a "Quick Schedule" inline form directly within the final step of the Template Wizard. This reduces friction and context switching, aligning with the "Efficiency over Complexity" philosophy.
+**Files Modified:**
+- `ai-post-scheduler/templates/admin/templates.php`
+- `ai-post-scheduler/assets/js/admin.js`
+**Outcome:** Users can now set a frequency and start time, and save the schedule immediately upon completing a template, saving clicks and maintaining their workflow.

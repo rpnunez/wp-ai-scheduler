@@ -50,6 +50,11 @@
             $(document).on('click', '#aips-quick-run-now-btn', this.quickRunNow);
             $(document).on('click', '#aips-post-save-done-btn', function() { location.reload(); });
 
+            // Quick schedule next steps
+            $(document).on('click', '#aips-quick-schedule-btn', this.toggleQuickSchedule);
+            $(document).on('click', '#aips-quick-schedule-cancel', this.toggleQuickSchedule);
+            $(document).on('click', '#aips-quick-schedule-submit', this.submitQuickSchedule);
+
             // Preview drawer
             $(document).on('click', '.aips-preview-prompts', this.previewPrompts);
             $(document).on('click', '.aips-preview-drawer-handle', this.togglePreviewDrawer);
@@ -2116,11 +2121,79 @@
             $('.aips-wizard-progress').hide();
             $('.aips-wizard-footer').hide();
 
-            var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
-                ? aipsAjax.schedulePageUrl + '&schedule_template=' + templateId
-                : 'admin.php?page=aips-schedule&schedule_template=' + templateId;
-            $('#aips-quick-schedule-btn').attr('href', scheduleUrl).data('template-id', templateId);
+            $('#aips-quick-schedule-btn').data('template-id', templateId);
+            $('#aips-quick-schedule-submit').data('template-id', templateId);
             $('#aips-quick-run-now-btn').data('template-id', templateId);
+        },
+
+        /**
+         * Toggles the quick schedule form visibility
+         *
+         * @param {Event} e - Click event.
+         */
+        toggleQuickSchedule: function(e) {
+            e.preventDefault();
+            var $formContainer = $('#aips-quick-schedule-form-container');
+            var $buttonsGrid = $('.aips-next-steps-grid');
+
+            if ($formContainer.is(':visible')) {
+                $formContainer.slideUp(200);
+                $buttonsGrid.slideDown(200);
+            } else {
+                $buttonsGrid.slideUp(200);
+                $formContainer.slideDown(200);
+            }
+        },
+
+        /**
+         * Submits the quick schedule form
+         *
+         * @param {Event} e - Click event.
+         */
+        submitQuickSchedule: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var templateId = $btn.data('template-id');
+            var frequency = $('#quick_schedule_frequency').val();
+            var startTime = $('#quick_schedule_start_time').val();
+
+            if (!templateId) return;
+
+            $btn.prop('disabled', true).text(aipsAjax.saving || 'Saving...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_save_schedule',
+                    nonce: aipsAjax.nonce,
+                    template_id: templateId,
+                    frequency: frequency,
+                    start_time: startTime,
+                    is_active: 1
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.showToast(response.data.message || 'Schedule saved successfully.', 'success');
+
+                        // Update UI to show success
+                        $('#aips-quick-schedule-form-container').html(
+                            '<div style="text-align: center; padding: 10px;">' +
+                            '<span class="dashicons dashicons-yes-alt" style="color: #46b450; font-size: 32px; width: 32px; height: 32px;"></span>' +
+                            '<p style="margin-top: 10px; font-weight: 600;">Schedule Active</p>' +
+                            '<button type="button" class="button" onclick="location.reload();" style="margin-top: 10px;">Close Wizard</button>' +
+                            '</div>'
+                        );
+                    } else {
+                        AIPS.showToast(response.data.message || 'Error saving schedule.', 'error');
+                        $btn.prop('disabled', false).text('Save Schedule');
+                    }
+                },
+                error: function() {
+                    AIPS.showToast('Error connecting to server.', 'error');
+                    $btn.prop('disabled', false).text('Save Schedule');
+                }
+            });
         },
 
         /**
