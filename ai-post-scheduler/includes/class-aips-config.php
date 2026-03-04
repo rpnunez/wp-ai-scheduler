@@ -96,12 +96,18 @@ class AIPS_Config {
      * the duration of the request so that repeated calls within a single page
      * load do not re-hit the WordPress options infrastructure.
      *
-     * Non-existent options are intentionally NOT cached so that a caller-
-     * supplied $default is always respected, and so that a later write via
-     * set_option() is immediately visible to subsequent get_option() calls.
+     * When an option is absent from the database the priority order is:
+     *   plugin default (get_default_options()) > caller-supplied $default.
+     * Absent options are NOT cached so that set_option() writes are immediately
+     * visible and so plugin defaults are always re-evaluated.
+     *
+     * A sentinel object is used to tell apart "option exists with value false"
+     * from "option not registered at all", since get_option() returns false for
+     * both cases.
      *
      * @param string $option_name Option name.
-     * @param mixed  $default     Optional. Default value if option not found.
+     * @param mixed  $default     Optional. Fallback when neither DB nor plugin
+     *                            defaults contain the option. Default null.
      * @return mixed Option value or default.
      */
     public function get_option($option_name, $default = null) {
@@ -109,18 +115,25 @@ class AIPS_Config {
             return $this->options_cache[$option_name];
         }
 
-        $value = get_option($option_name);
+        // Use a sentinel so that a legitimately stored boolean false is not
+        // confused with "option does not exist" (both would return false
+        // without the sentinel).
+        static $not_set;
+        if (!isset($not_set)) {
+            $not_set = new stdClass();
+        }
 
-        if ($value !== false) {
-            // Option exists in DB — cache it.
+        $value = get_option($option_name, $not_set);
+
+        if ($value !== $not_set) {
+            // Option exists in DB (even if its value is false/0/null) — cache it.
             $this->options_cache[$option_name] = $value;
             return $value;
         }
 
-        // Option not in DB — fall back to plugin defaults or caller's default.
-        // We do NOT cache this so that a caller-supplied $default is always
-        // applied correctly, and so that a future set_option() becomes visible
-        // on the very next get_option() call.
+        // Option not in DB — fall back to plugin defaults, then caller's default.
+        // Not cached so that plugin defaults are always re-evaluated and a later
+        // set_option() write becomes visible on the very next get_option() call.
         $defaults = $this->get_default_options();
         return isset($defaults[$option_name]) ? $defaults[$option_name] : $default;
     }
