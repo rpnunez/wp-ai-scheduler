@@ -508,6 +508,10 @@ if (!defined('ABSPATH')) {
                                         });
 
                                         foreach ($cron_schedules as $key => $schedule) {
+                                            // Only include frequencies that are valid for the scheduler backend
+                                            if ( class_exists( 'AIPS_Interval_Calculator' ) && ! AIPS_Interval_Calculator::is_valid_frequency( $key ) ) {
+                                                continue;
+                                            }
                                             echo '<option value="' . esc_attr($key) . '" ' . selected('daily', $key, false) . '>' . esc_html($schedule['display']) . '</option>';
                                         }
                                         ?>
