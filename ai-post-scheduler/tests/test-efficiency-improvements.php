@@ -11,46 +11,46 @@
 
 class Test_AIPS_Efficiency_Improvements extends WP_UnitTestCase {
 
-/**
- * Reset the AIPS_Config singleton before each test so that the
- * in-memory cache is always empty at test start.
- */
-public function setUp(): void {
-parent::setUp();
-$this->reset_config_singleton();
-}
+	/**
+	 * Reset the AIPS_Config singleton before each test so that the
+	 * in-memory cache is always empty at test start.
+	 */
+	public function setUp(): void {
+		parent::setUp();
+		$this->reset_config_singleton();
+	}
 
-private function reset_config_singleton() {
-$ref       = new ReflectionClass('AIPS_Config');
-$inst_prop = $ref->getProperty('instance');
-$inst_prop->setAccessible(true);
-$inst_prop->setValue(null, null);
-}
+	private function reset_config_singleton() {
+		$ref       = new ReflectionClass( 'AIPS_Config' );
+		$inst_prop = $ref->getProperty( 'instance' );
+		$inst_prop->setAccessible( true );
+		$inst_prop->setValue( null, null );
+	}
 
-// =========================================================================
-// Improvement 1: AIPS_Config in-memory option cache
-// =========================================================================
+	// =========================================================================
+	// Improvement 1: AIPS_Config in-memory option cache
+	// =========================================================================
 
-public function test_config_get_option_returns_existing_value() {
-update_option('aips_max_tokens', 1234);
-$config = AIPS_Config::get_instance();
-$this->assertEquals(1234, $config->get_option('aips_max_tokens'));
-}
+	public function test_config_get_option_returns_existing_value() {
+		update_option( 'aips_max_tokens', 1234 );
+		$config = AIPS_Config::get_instance();
+		$this->assertEquals( 1234, $config->get_option( 'aips_max_tokens' ) );
+	}
 
-public function test_config_get_option_caches_in_memory() {
-update_option('aips_test_cache_key', 'original');
-$config = AIPS_Config::get_instance();
+	public function test_config_get_option_caches_in_memory() {
+		update_option( 'aips_test_cache_key', 'original' );
+		$config = AIPS_Config::get_instance();
 
-// First call – primes the cache.
-$first = $config->get_option('aips_test_cache_key');
-$this->assertEquals('original', $first);
+		// First call – primes the cache.
+		$first = $config->get_option( 'aips_test_cache_key' );
+		$this->assertEquals( 'original', $first );
 
-// Directly change the DB row without going through set_option(),
-// simulating an external change.
-update_option('aips_test_cache_key', 'changed');
+		// Directly change the DB row without going through set_option(),
+		// simulating an external change.
+		update_option( 'aips_test_cache_key', 'changed' );
 
-// Second call – should still return the cached value.
-$cached = $config->get_option('aips_test_cache_key');
+		// Second call – should still return the cached value.
+		$cached = $config->get_option( 'aips_test_cache_key' );
 $this->assertEquals('original', $cached, 'In-memory cache should serve the first-seen value within the same request.');
 }
 
