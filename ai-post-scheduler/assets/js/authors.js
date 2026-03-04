@@ -493,7 +493,7 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						showToast(response.data.message || aipsAuthorsL10n.topicRejected || 'Topic rejected.', 'success');
+						showToast(response.data.message || 'Topic rejected.', 'success');
 						this.loadTopics('pending');
 					} else {
 						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
