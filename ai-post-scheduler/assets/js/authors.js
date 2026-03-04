@@ -353,12 +353,12 @@
 					// Quick Approve/Reject with secondary feedback option
 					html += '<div class="aips-btn-group">';
 					html += '<button class="button aips-quick-approve-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.approve || 'Approve') + '">' + (aipsAuthorsL10n.approve || 'Approve') + '</button>';
-					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
+					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '" aria-label="' + (aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
 					html += '</div>';
 
 					html += '<div class="aips-btn-group">';
 					html += '<button class="button aips-quick-reject-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.reject || 'Reject') + '">' + (aipsAuthorsL10n.reject || 'Reject') + '</button>';
-					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
+					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '" aria-label="' + (aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
 					html += '</div>';
 				} else if (status === 'approved') {
 					html += '<button class="button aips-generate-post-now" data-id="' + topic.id + '">' + aipsAuthorsL10n.generatePostNow + '</button> ';
@@ -493,7 +493,7 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						showToast(response.data.message || 'Topic rejected.', 'success');
+						showToast(response.data.message || aipsAuthorsL10n.topicRejected || 'Topic rejected.', 'success');
 						this.loadTopics('pending');
 					} else {
 						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');

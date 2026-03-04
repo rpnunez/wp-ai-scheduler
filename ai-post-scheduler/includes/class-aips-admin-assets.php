@@ -179,6 +179,12 @@ class AIPS_Admin_Assets {
 				'logUser' => __('User', 'ai-post-scheduler'),
 				'logDate' => __('Date', 'ai-post-scheduler'),
 				'logDetails' => __('Details', 'ai-post-scheduler'),
+				// Quick action strings
+				'processing' => __('Processing...', 'ai-post-scheduler'),
+				'topicApproved' => __('Topic approved.', 'ai-post-scheduler'),
+				'topicRejected' => __('Topic rejected.', 'ai-post-scheduler'),
+				'approveWithFeedback' => __('Approve with Feedback', 'ai-post-scheduler'),
+				'rejectWithFeedback' => __('Reject with Feedback', 'ai-post-scheduler'),
 			));
 		}
 
