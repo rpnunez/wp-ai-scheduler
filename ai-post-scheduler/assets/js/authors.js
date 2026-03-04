@@ -1240,6 +1240,9 @@
 		}
 	};
 
+	// Export AuthorsModule so it can be reached from wp_add_inline_script initializers
+	window.AuthorsModule = AuthorsModule;
+
 	// Initialize when document is ready
 	$(document).ready(function () {
 		AuthorsModule.init();

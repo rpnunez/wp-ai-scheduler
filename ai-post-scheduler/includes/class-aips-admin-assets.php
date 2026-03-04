@@ -189,10 +189,10 @@ class AIPS_Admin_Assets {
 					wp_add_inline_script(
 						'aips-authors-script',
 						'jQuery(document).ready(function($) {
-							if (typeof AuthorsModule !== "undefined") {
-								AuthorsModule.currentAuthorId = ' . (int) $page_author_id . ';
-								AuthorsModule.loadTopics("pending");
-								AuthorsModule.updateBulkActionDropdown("pending");
+							if (typeof window.AuthorsModule !== "undefined") {
+								window.AuthorsModule.currentAuthorId = ' . (int) $page_author_id . ';
+								window.AuthorsModule.loadTopics("pending");
+								window.AuthorsModule.updateBulkActionDropdown("pending");
 							}
 						});'
 					);

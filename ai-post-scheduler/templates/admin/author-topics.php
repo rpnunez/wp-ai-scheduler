@@ -6,7 +6,7 @@
  * management interface allowing approve, reject, edit, delete, and generation.
  *
  * @package AI_Post_Scheduler
- * @since 1.9.0
+ * @since 1.7.0
  */
 
 if (!defined('ABSPATH')) {
@@ -55,8 +55,7 @@ $topics_repository  = new AIPS_Author_Topics_Repository();
 $logs_repository    = new AIPS_Author_Topic_Logs_Repository();
 $status_counts      = $topics_repository->get_status_counts($author_id);
 $total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
-$generated_posts    = $logs_repository->get_generated_posts_by_author($author_id);
-$posts_count        = count($generated_posts);
+$posts_count        = $logs_repository->count_generated_posts_by_author($author_id);
 ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
