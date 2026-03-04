@@ -1340,5 +1340,5 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - Reduces redundant `get_option()` / `wpdb` round-trips on every page load.
 - Keeps the existing caching contract consistent across all repository read methods.
 - Avoids repeated filesystem and options lookups triggered by the logger constructor; now there is at most one logger construction per request.
-- 10 new targeted tests added (`Test_AIPS_Efficiency_Improvements`); all pass. Pre-existing test failures unchanged.
+- 12 new targeted tests added (`Test_AIPS_Efficiency_Improvements`); all pass. Pre-existing test failures unchanged.
 - Zero breaking changes to public APIs.
