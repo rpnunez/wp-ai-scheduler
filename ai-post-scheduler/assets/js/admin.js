@@ -2133,15 +2133,39 @@
          */
         toggleQuickSchedule: function(e) {
             e.preventDefault();
-            var $formContainer = $('#aips-quick-schedule-form-container');
-            var $buttonsGrid = $('.aips-next-steps-grid');
 
-            if ($formContainer.is(':visible')) {
-                $formContainer.slideUp(200);
+            var $trigger       = $(e.currentTarget);
+            var $formContainer = $('#aips-quick-schedule-form-container');
+            var $buttonsGrid   = $('.aips-next-steps-grid');
+            var isOpen         = $formContainer.is(':visible');
+
+            if (isOpen) {
+                $formContainer.slideUp(200, function() {
+                    // Return focus to the trigger after closing
+                    if ($trigger && $trigger.length) {
+                        $trigger.attr('aria-expanded', 'false');
+                        $trigger.focus();
+                    }
+                });
                 $buttonsGrid.slideDown(200);
             } else {
                 $buttonsGrid.slideUp(200);
-                $formContainer.slideDown(200);
+                $formContainer.slideDown(200, function() {
+                    // Update ARIA state on the trigger
+                    if ($trigger && $trigger.length) {
+                        $trigger.attr('aria-expanded', 'true');
+                    }
+
+                    // Move focus to the first interactive control in the form
+                    var $firstField = $formContainer
+                        .find('input, select, textarea, button')
+                        .filter(':visible')
+                        .first();
+
+                    if ($firstField.length) {
+                        $firstField.focus();
+                    }
+                });
             }
         },
 
