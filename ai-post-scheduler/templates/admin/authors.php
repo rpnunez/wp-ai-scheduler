@@ -118,7 +118,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                     </td>
                                     <td>
                                         <div class="cell-actions">
-                                            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-author-topics&author_id=' . $author->id)); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+                                            <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-author-topics', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
                                                 <span class="dashicons dashicons-visibility"></span>
                                                 <?php esc_html_e('View Topics', 'ai-post-scheduler'); ?>
                                             </a>
