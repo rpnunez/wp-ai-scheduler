@@ -353,12 +353,12 @@
 					// Quick Approve/Reject with secondary feedback option
 					html += '<div class="aips-btn-group">';
 					html += '<button class="button aips-quick-approve-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.approve || 'Approve') + '">' + (aipsAuthorsL10n.approve || 'Approve') + '</button>';
-					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
+					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '" aria-label="' + (aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
 					html += '</div>';
 
 					html += '<div class="aips-btn-group">';
 					html += '<button class="button aips-quick-reject-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.reject || 'Reject') + '">' + (aipsAuthorsL10n.reject || 'Reject') + '</button>';
-					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
+					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" title="' + (aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '" aria-label="' + (aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
 					html += '</div>';
 				} else if (status === 'approved') {
 					html += '<button class="button aips-generate-post-now" data-id="' + topic.id + '">' + aipsAuthorsL10n.generatePostNow + '</button> ';
@@ -447,8 +447,11 @@
 			e.preventDefault();
 			const $btn = $(e.currentTarget);
 			const topicId = $btn.data('id');
+			const $row = $btn.closest('tr');
+			const $rowBtns = $row.find('button');
 
-			$btn.prop('disabled', true).text(aipsAuthorsL10n.processing || '...');
+			$rowBtns.prop('disabled', true);
+			$btn.text(aipsAuthorsL10n.processing || '...');
 
 			$.ajax({
 				url: ajaxurl,
@@ -457,7 +460,7 @@
 					action: 'aips_approve_topic',
 					nonce: aipsAuthorsL10n.nonce,
 					topic_id: topicId,
-					reason: ''
+					skip_feedback: true // Quick actions skip feedback to avoid blank feedback records
 				},
 				success: (response) => {
 					if (response.success) {
@@ -465,12 +468,14 @@
 						this.loadTopics('pending');
 					} else {
 						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorApproving || 'Error approving topic.', 'error');
-						$btn.prop('disabled', false).text(aipsAuthorsL10n.approve || 'Approve');
+						$rowBtns.prop('disabled', false);
+						$btn.text(aipsAuthorsL10n.approve || 'Approve');
 					}
 				},
 				error: () => {
 					showToast(aipsAuthorsL10n.errorApproving || 'Error approving topic.', 'error');
-					$btn.prop('disabled', false).text(aipsAuthorsL10n.approve || 'Approve');
+					$rowBtns.prop('disabled', false);
+					$btn.text(aipsAuthorsL10n.approve || 'Approve');
 				}
 			});
 		},
@@ -479,8 +484,11 @@
 			e.preventDefault();
 			const $btn = $(e.currentTarget);
 			const topicId = $btn.data('id');
+			const $row = $btn.closest('tr');
+			const $rowBtns = $row.find('button');
 
-			$btn.prop('disabled', true).text(aipsAuthorsL10n.processing || '...');
+			$rowBtns.prop('disabled', true);
+			$btn.text(aipsAuthorsL10n.processing || '...');
 
 			$.ajax({
 				url: ajaxurl,
@@ -489,7 +497,7 @@
 					action: 'aips_reject_topic',
 					nonce: aipsAuthorsL10n.nonce,
 					topic_id: topicId,
-					reason: ''
+					skip_feedback: true // Quick actions skip feedback to avoid blank feedback records
 				},
 				success: (response) => {
 					if (response.success) {
@@ -497,12 +505,14 @@
 						this.loadTopics('pending');
 					} else {
 						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
-						$btn.prop('disabled', false).text(aipsAuthorsL10n.reject || 'Reject');
+						$rowBtns.prop('disabled', false);
+						$btn.text(aipsAuthorsL10n.reject || 'Reject');
 					}
 				},
 				error: () => {
 					showToast(aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
-					$btn.prop('disabled', false).text(aipsAuthorsL10n.reject || 'Reject');
+					$rowBtns.prop('disabled', false);
+					$btn.text(aipsAuthorsL10n.reject || 'Reject');
 				}
 			});
 		},
