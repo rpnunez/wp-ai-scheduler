@@ -478,7 +478,7 @@ if (!defined('ABSPATH')) {
                             <p class="description" style="font-size: 14px; margin-bottom: 24px;"><?php esc_html_e('Your template is ready. What would you like to do next?', 'ai-post-scheduler'); ?></p>
                             
                             <div class="aips-next-steps-grid" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; max-width: 600px; margin: 0 auto;">
-                                <button type="button" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
+                                <button type="button" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;" aria-expanded="false" aria-controls="aips-quick-schedule-form-container">
                                     <span class="dashicons dashicons-calendar-alt"></span>
                                     <?php esc_html_e('Schedule This Template', 'ai-post-scheduler'); ?>
                                 </button>
