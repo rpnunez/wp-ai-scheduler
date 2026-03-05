@@ -48,7 +48,15 @@ if (!isset($sections) || !is_array($sections)) {
 					<tbody>
 						<?php foreach ($sections as $section) : ?>
 						<tr data-section-id="<?php echo esc_attr($section->id); ?>">
-							<td class="column-name"><strong><?php echo esc_html($section->name); ?></strong></td>
+							<td class="column-name">
+								<strong><?php echo esc_html($section->name); ?></strong>
+								<div class="aips-table-meta-row" style="margin-top: 5px;">
+									<span class="aips-badge-neutral">ID: <?php echo esc_html($section->id); ?></span>
+									<button type="button" class="aips-copy-btn aips-copy-btn-small" data-clipboard-text="<?php echo esc_attr($section->id); ?>" title="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Copy ID', 'ai-post-scheduler'); ?>">
+										<span class="dashicons dashicons-admin-page"></span>
+									</button>
+								</div>
+							</td>
 							<td class="column-key">
 								<div class="aips-variable-code-cell">
 									<code><?php echo esc_html($section->section_key); ?></code>
