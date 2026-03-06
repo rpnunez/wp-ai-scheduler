@@ -14,7 +14,7 @@
             this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
         },
-        
+
         handleInitialTabFromHash: function() {
             // Check for hash in URL and activate the corresponding tab
             var hash = window.location.hash;
@@ -47,6 +47,7 @@
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
 
             // Post-save next steps
+            $(document).on('click', '#aips-quick-schedule-btn', this.quickSchedule);
             $(document).on('click', '#aips-quick-run-now-btn', this.quickRunNow);
             $(document).on('click', '#aips-post-save-done-btn', function() { location.reload(); });
 
@@ -2124,6 +2125,27 @@
         },
 
         /**
+         * Triggers Quick Schedule for the just-saved template from the post-save panel.
+         *
+         * @param {Event} e - Click event.
+         */
+        quickSchedule: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var templateId = $btn.data('template-id');
+
+            if (!templateId) return;
+
+            // Use the aipsAjax.schedulePageUrl if available or fallback
+            var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
+                ? aipsAjax.schedulePageUrl
+                : 'admin.php?page=aips-schedule';
+
+            // Append the template ID parameter to automatically open the schedule modal
+            window.location.href = scheduleUrl + '&schedule_template=' + templateId + '#open_schedule_modal';
+        },
+
+        /**
          * Triggers "Run Now" for the just-saved template from the post-save panel.
          *
          * @param {Event} e - Click event.
@@ -2176,19 +2198,23 @@
             var $modal = $('#aips-schedule-modal');
             if (!$modal.length) return;
 
-            var preselectId = $modal.data('preselect-template');
+            var urlParams = new URLSearchParams(window.location.search);
+            var preselectId = $modal.data('preselect-template') || urlParams.get('schedule_template');
             if (!preselectId) return;
 
+            // Optional delay if needed, though DOM is loaded at this point
             $('#aips-schedule-form')[0].reset();
             $('#schedule_id').val('');
             $('#schedule_template').val(preselectId);
-            $('#aips-schedule-modal-title').text('Schedule Template');
+            $('#aips-schedule-modal-title').text('Add New Schedule');
             $modal.show();
 
             // Clean the URL to prevent re-triggering on refresh
             if (window.history && window.history.replaceState) {
                 var cleanUrl = window.location.href.replace(/[?&]schedule_template=\d+/, '');
                 cleanUrl = cleanUrl.replace(/\?$/, '');
+                // Also clear hash if it exists
+                cleanUrl = cleanUrl.replace(/#open_schedule_modal$/, '');
                 window.history.replaceState(null, '', cleanUrl);
             }
         },
