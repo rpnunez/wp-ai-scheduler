@@ -210,7 +210,7 @@ class AIPS_AI_Service {
         $options = $this->prepare_options($options);
         
         // Execute safely with retry, circuit breaker, and rate limiting
-        $result = $this->resilience_service->execute_safely(function() use ($mwai, $prompt, $options) {
+        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
             try {
                 // Filter options for simpleJsonQuery - it only supports specific parameters
                 // According to AI Engine docs, simpleJsonQuery has a very limited parameter set
