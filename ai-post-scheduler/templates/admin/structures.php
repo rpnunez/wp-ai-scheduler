@@ -22,6 +22,16 @@ if (!isset($sections) || !is_array($sections)) {
 					<h1 class="aips-page-title"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></h1>
 					<p class="aips-page-description"><?php esc_html_e('Define how your AI-generated content is organized with customizable article structures and sections.', 'ai-post-scheduler'); ?></p>
 				</div>
+				<div class="aips-page-actions">
+					<button type="button" class="aips-btn aips-btn-secondary aips-add-section-btn">
+						<span class="dashicons dashicons-plus-alt2"></span>
+						<?php esc_html_e('Add Structure Section', 'ai-post-scheduler'); ?>
+					</button>
+					<button type="button" class="aips-btn aips-btn-primary aips-add-structure-btn">
+						<span class="dashicons dashicons-plus-alt2"></span>
+						<?php esc_html_e('Add New Structure', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
 			</div>
 		</div>
 
@@ -31,31 +41,38 @@ if (!isset($sections) || !is_array($sections)) {
 			<a href="#aips-structure-sections" class="aips-tab-link" data-tab="aips-structure-sections"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
 		</div>
 
-		<!-- Old nav-tab-wrapper for JS compatibility -->
-		<div class="nav-tab-wrapper" style="display: none;">
-			<a href="#aips-structures" class="nav-tab nav-tab-active" data-tab="aips-structures"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></a>
-			<a href="#aips-structure-sections" class="nav-tab" data-tab="aips-structure-sections"><?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?></a>
-		</div>
-
 	<div id="aips-structures-tab" class="aips-tab-content active">
 		<div class="aips-content-panel">
-			<div class="aips-panel-header">
-				<h2 class="aips-panel-title"><?php esc_html_e('Article Structures', 'ai-post-scheduler'); ?></h2>
-				<button class="aips-btn aips-btn-primary aips-add-structure-btn">
-					<span class="dashicons dashicons-plus-alt2"></span>
-					<?php esc_html_e('Add New', 'ai-post-scheduler'); ?>
-				</button>
-			</div>
-
 		<div class="aips-structures-container">
 			<?php if (!empty($structures)): ?>
-			<div class="aips-search-box" style="margin-bottom: 10px; text-align: right;">
-				<label class="screen-reader-text" for="aips-structure-search"><?php esc_html_e('Search Structures:', 'ai-post-scheduler'); ?></label>
-				<input type="search" id="aips-structure-search" class="regular-text" placeholder="<?php esc_attr_e('Search structures...', 'ai-post-scheduler'); ?>">
-				<button type="button" id="aips-structure-search-clear" class="button" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+			<div class="aips-filter-bar">
+				<div class="aips-filter-left">
+					<span class="aips-result-count">
+						<?php
+						$count = count( $structures );
+						printf(
+							esc_html(
+								_n(
+									'%s structure',
+									'%s structures',
+									$count,
+									'ai-post-scheduler'
+								)
+							),
+							number_format_i18n( $count )
+						);
+						?>
+					</span>
+				</div>
+				<div class="aips-filter-right">
+					<label class="screen-reader-text" for="aips-structure-search"><?php esc_html_e('Search Structures:', 'ai-post-scheduler'); ?></label>
+					<input type="search" id="aips-structure-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search structures...', 'ai-post-scheduler'); ?>">
+					<button type="button" id="aips-structure-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+				</div>
 			</div>
 
-			<table class="wp-list-table widefat fixed striped aips-structures-list">
+			<div class="aips-panel-body no-padding">
+			<table class="aips-table aips-structures-list">
 				<thead>
 					<tr>
 						<th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
@@ -68,24 +85,45 @@ if (!isset($sections) || !is_array($sections)) {
 				<tbody>
 					<?php foreach ($structures as $structure): ?>
 					<tr data-structure-id="<?php echo esc_attr($structure->id); ?>">
-						<td class="column-name"><?php echo esc_html($structure->name); ?></td>
+						<td class="column-name cell-primary"><?php echo esc_html($structure->name); ?></td>
 						<td class="column-description"><?php echo esc_html($structure->description); ?></td>
-						<td class="column-active"><?php echo $structure->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
-						<td class="column-default"><?php echo $structure->is_default ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
+						<td class="column-active">
+							<?php if ($structure->is_active): ?>
+								<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e('Active', 'ai-post-scheduler'); ?></span>
+							<?php else: ?>
+								<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></span>
+							<?php endif; ?>
+						</td>
+						<td class="column-default">
+							<?php if ($structure->is_default): ?>
+								<span class="aips-badge aips-badge-info"><?php esc_html_e('Default', 'ai-post-scheduler'); ?></span>
+							<?php else: ?>
+								<span class="cell-meta">—</span>
+							<?php endif; ?>
+						</td>
 						<td class="column-actions">
-							<button class="button aips-edit-structure" data-id="<?php echo esc_attr($structure->id); ?>"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></button>
-							<button class="button button-link-delete aips-delete-structure" data-id="<?php echo esc_attr($structure->id); ?>"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></button>
+							<div class="aips-action-buttons">
+								<button class="aips-btn aips-btn-sm aips-edit-structure" data-id="<?php echo esc_attr($structure->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-edit"></span>
+									<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
+								</button>
+								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-structure" data-id="<?php echo esc_attr($structure->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-trash"></span>
+									<span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
+								</button>
+							</div>
 						</td>
 					</tr>
 					<?php endforeach; ?>
 				</tbody>
 			</table>
+			</div>
 
 			<div id="aips-structure-search-no-results" class="aips-empty-state" style="display: none;">
 				<span class="dashicons dashicons-search" aria-hidden="true"></span>
 				<h3><?php esc_html_e('No Structures Found', 'ai-post-scheduler'); ?></h3>
 				<p><?php esc_html_e('No article structures match your search criteria.', 'ai-post-scheduler'); ?></p>
-				<button type="button" class="button button-primary aips-clear-structure-search-btn">
+				<button type="button" class="aips-btn aips-btn-primary aips-clear-structure-search-btn">
 					<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
 				</button>
 			</div>
@@ -94,7 +132,7 @@ if (!isset($sections) || !is_array($sections)) {
 				<span class="dashicons dashicons-layout" aria-hidden="true"></span>
 				<h3><?php esc_html_e('No Article Structures', 'ai-post-scheduler'); ?></h3>
 				<p><?php esc_html_e('Create article structures to customize how templates assemble content.', 'ai-post-scheduler'); ?></p>
-				<button class="button button-primary aips-add-structure-btn"><?php esc_html_e('Create Structure', 'ai-post-scheduler'); ?></button>
+				<button class="aips-btn aips-btn-primary aips-add-structure-btn"><?php esc_html_e('Create Structure', 'ai-post-scheduler'); ?></button>
 			</div>
 			<?php endif; ?>
 		</div>
@@ -102,46 +140,87 @@ if (!isset($sections) || !is_array($sections)) {
 	</div>
 
 	<div id="aips-structure-sections-tab" class="aips-tab-content" style="display:none;">
-		<h2>
-			<?php esc_html_e('Structure Sections', 'ai-post-scheduler'); ?>
-			<button class="page-title-action aips-add-section-btn"><?php esc_html_e('Add New', 'ai-post-scheduler'); ?></button>
-		</h2>
-
+		<div class="aips-content-panel">
 		<div class="aips-structures-container">
 			<?php if (!empty($sections)): ?>
-			<table class="wp-list-table widefat fixed striped">
+			<div class="aips-filter-bar">
+				<div class="aips-filter-left">
+					<span class="aips-result-count">
+						<?php
+						$section_count = count( $sections );
+						printf(
+							esc_html( _n( '%s section', '%s sections', $section_count, 'ai-post-scheduler' ) ),
+							number_format_i18n( $section_count )
+						);
+						?>
+					</span>
+				</div>
+				<div class="aips-filter-right">
+					<label class="screen-reader-text" for="aips-section-search"><?php esc_html_e('Search Sections:', 'ai-post-scheduler'); ?></label>
+					<input type="search" id="aips-section-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sections...', 'ai-post-scheduler'); ?>">
+					<button type="button" id="aips-section-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+				</div>
+			</div>
+
+			<div class="aips-panel-body no-padding">
+			<table class="aips-table aips-sections-list">
 				<thead>
 					<tr>
 						<th><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
 						<th><?php esc_html_e('Key', 'ai-post-scheduler'); ?></th>
 						<th><?php esc_html_e('Description', 'ai-post-scheduler'); ?></th>
-						<th><?php esc_html_e('Active', 'ai-post-scheduler'); ?></th>
+						<th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
 						<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php foreach ($sections as $section) : ?>
 					<tr data-section-id="<?php echo esc_attr($section->id); ?>">
-						<td><?php echo esc_html($section->name); ?></td>
-						<td><code><?php echo esc_html($section->section_key); ?></code></td>
-						<td><?php echo esc_html($section->description); ?></td>
-						<td><?php echo $section->is_active ? esc_html__('Yes', 'ai-post-scheduler') : esc_html__('No', 'ai-post-scheduler'); ?></td>
+						<td class="column-name cell-primary"><?php echo esc_html($section->name); ?></td>
+						<td class="column-key"><code><?php echo esc_html($section->section_key); ?></code></td>
+						<td class="column-description"><?php echo esc_html($section->description); ?></td>
 						<td>
-							<button class="button aips-edit-section" data-id="<?php echo esc_attr($section->id); ?>"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></button>
-							<button class="button button-link-delete aips-delete-section" data-id="<?php echo esc_attr($section->id); ?>"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></button>
+							<?php if ($section->is_active): ?>
+								<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> <?php esc_html_e('Active', 'ai-post-scheduler'); ?></span>
+							<?php else: ?>
+								<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></span>
+							<?php endif; ?>
+						</td>
+						<td>
+							<div class="aips-action-buttons">
+								<button class="aips-btn aips-btn-sm aips-edit-section" data-id="<?php echo esc_attr($section->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-edit"></span>
+									<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
+								</button>
+								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-section" data-id="<?php echo esc_attr($section->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-trash"></span>
+									<span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
+								</button>
+							</div>
 						</td>
 					</tr>
 					<?php endforeach; ?>
 				</tbody>
 			</table>
+			</div>
+
+			<div id="aips-section-search-no-results" class="aips-empty-state" style="display: none;">
+				<span class="dashicons dashicons-search" aria-hidden="true"></span>
+				<h3><?php esc_html_e('No Sections Found', 'ai-post-scheduler'); ?></h3>
+				<p><?php esc_html_e('No structure sections match your search criteria.', 'ai-post-scheduler'); ?></p>
+				<button type="button" class="aips-btn aips-btn-primary aips-clear-section-search-btn">
+					<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
 			<?php else : ?>
 			<div class="aips-empty-state">
 				<span class="dashicons dashicons-editor-table" aria-hidden="true"></span>
 				<h3><?php esc_html_e('No Prompt Sections', 'ai-post-scheduler'); ?></h3>
 				<p><?php esc_html_e('Create prompt sections to reuse across article structures.', 'ai-post-scheduler'); ?></p>
-				<button class="button button-primary aips-add-section-btn"><?php esc_html_e('Create Section', 'ai-post-scheduler'); ?></button>
+				<button class="aips-btn aips-btn-primary aips-add-section-btn"><?php esc_html_e('Create Section', 'ai-post-scheduler'); ?></button>
 			</div>
 			<?php endif; ?>
+		</div>
 		</div>
 	</div>
 

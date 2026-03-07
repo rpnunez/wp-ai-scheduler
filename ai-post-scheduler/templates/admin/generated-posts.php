@@ -28,43 +28,57 @@ if (!defined('ABSPATH')) {
 		</div>
 
 		<!-- Tabs navigation -->
-		<div class="nav-tab-wrapper" role="tablist" style="margin-bottom: 20px;">
-			<a href="#aips-generated-posts" id="aips-generated-posts" class="nav-tab nav-tab-active" data-tab="aips-generated-posts" role="tab" aria-selected="true" aria-controls="aips-generated-posts-tab"><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></a>
-			<a href="#aips-pending-review" id="aips-pending-review" class="nav-tab" data-tab="aips-pending-review" role="tab" aria-selected="false" aria-controls="aips-pending-review-tab"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></a>
+		<div class="aips-tab-nav">
+			<a href="#aips-generated-posts" class="aips-tab-link active" data-tab="aips-generated-posts"><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></a>
+			<a href="#aips-pending-review" class="aips-tab-link" data-tab="aips-pending-review"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></a>
 		</div>
 
 		<!-- Tab 1 panel -->
-		<div id="aips-generated-posts-tab" class="aips-tab-content active" role="tabpanel" aria-labelledby="aips-generated-posts" aria-hidden="false">
+		<div id="aips-generated-posts-tab" class="aips-tab-content active" role="tabpanel" aria-hidden="false">
 			<div class="aips-content-panel">
 				<!-- Filter Bar -->
 				<div class="aips-filter-bar">
-					<form method="get" class="search-form" style="display: flex; align-items: center; gap: 8px; margin: 0; flex-wrap: wrap;">
+					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
-						<label class="screen-reader-text" for="post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
-						<input type="search" id="post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
-						<?php if (!empty($authors)): ?>
-						<label class="screen-reader-text" for="aips-filter-author"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>
-						<select name="author_id" id="aips-filter-author" class="aips-form-select">
-							<option value=""><?php esc_html_e('All Authors', 'ai-post-scheduler'); ?></option>
-							<?php foreach ($authors as $a): ?>
-							<option value="<?php echo esc_attr($a->id); ?>" <?php selected($author_id, $a->id); ?>>
-								<?php echo esc_html($a->name); ?>
-							</option>
-							<?php endforeach; ?>
-						</select>
-						<?php endif; ?>
-						<?php if (!empty($templates)): ?>
-						<label class="screen-reader-text" for="aips-filter-template-generated"><?php esc_html_e('Filter by Template:', 'ai-post-scheduler'); ?></label>
-						<select name="template_id" id="aips-filter-template-generated" class="aips-form-select">
-							<option value=""><?php esc_html_e('All Templates', 'ai-post-scheduler'); ?></option>
-							<?php foreach ($templates as $template): ?>
-							<option value="<?php echo esc_attr($template->id); ?>" <?php selected($template_id, $template->id); ?>>
-								<?php echo esc_html($template->name); ?>
-							</option>
-							<?php endforeach; ?>
-						</select>
-						<?php endif; ?>
-						<input type="submit" id="aips-filter-submit" class="aips-btn aips-btn-secondary" value="<?php esc_attr_e('Filter', 'ai-post-scheduler'); ?>">
+						<div class="aips-filter-left">
+							<?php if (!empty($authors)): ?>
+							<label class="screen-reader-text" for="aips-filter-author"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>
+							<select name="author_id" id="aips-filter-author" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Authors', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($authors as $a): ?>
+								<option value="<?php echo esc_attr($a->id); ?>" <?php selected($author_id, $a->id); ?>>
+									<?php echo esc_html($a->name); ?>
+								</option>
+								<?php endforeach; ?>
+							</select>
+							<?php endif; ?>
+							<?php if (!empty($templates)): ?>
+							<label class="screen-reader-text" for="aips-filter-template-generated"><?php esc_html_e('Filter by Template:', 'ai-post-scheduler'); ?></label>
+							<select name="template_id" id="aips-filter-template-generated" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Templates', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($templates as $template): ?>
+								<option value="<?php echo esc_attr($template->id); ?>" <?php selected($template_id, $template->id); ?>>
+									<?php echo esc_html($template->name); ?>
+								</option>
+								<?php endforeach; ?>
+							</select>
+							<?php endif; ?>
+							<button type="submit" id="aips-filter-submit" class="aips-btn aips-btn-sm aips-btn-secondary">
+								<span class="dashicons dashicons-filter"></span>
+								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
+							</button>
+						</div>
+						<div class="aips-filter-right">
+							<label class="screen-reader-text" for="post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
+							<input type="search" id="post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
+							<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary">
+								<span class="dashicons dashicons-search"></span>
+								<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
+							</button>
+							<?php if (!empty($search_query)): ?>
+							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+							<?php endif; ?>
+						</div>
 					</form>
 				</div>
 
@@ -183,46 +197,46 @@ if (!defined('ABSPATH')) {
 		</div>
 
 		<!-- Tab 2 panel -->
-		<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-labelledby="aips-pending-review" aria-hidden="true" hidden>
+		<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
 			<div class="aips-content-panel">
-				<div class="aips-panel-body">
-					<!-- Review and manage draft posts -->
-					<p class="description" style="margin-bottom: 20px;">
-						<?php esc_html_e('Review and manage draft posts generated by AI Post Scheduler before publishing them.', 'ai-post-scheduler'); ?>
-					</p>
-					
-					<div class="aips-post-review-stats" style="margin-bottom: 20px;">
-						<div class="aips-stat-inline">
-							<span class="aips-stat-label"><?php esc_html_e('Draft Posts:', 'ai-post-scheduler'); ?></span>
-							<span class="aips-stat-value" id="aips-draft-count"><?php echo esc_html($draft_posts['total']); ?></span>
-						</div>
-					</div>
-					
-					<form method="get" class="aips-post-review-filters" style="margin-bottom: 20px;">
+				<!-- Filter Bar -->
+				<div class="aips-filter-bar">
+					<form method="get" class="aips-post-review-filters aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
-						
-						<p class="search-box">
-							<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
-							<input type="search" id="aips-post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
-							<input type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-secondary" value="<?php esc_attr_e('Search', 'ai-post-scheduler'); ?>">
-						</p>
-						
-						<?php if (!empty($templates)): ?>
-						<div class="alignleft actions">
+						<div class="aips-filter-left">
+							<span class="aips-result-count"><?php printf(esc_html(_n('%d draft', '%d drafts', $draft_posts['total'], 'ai-post-scheduler')), $draft_posts['total']); ?></span>
+							<?php if (!empty($templates)): ?>
+							<label class="screen-reader-text" for="aips-filter-template"><?php esc_html_e('Filter by Template:', 'ai-post-scheduler'); ?></label>
 							<select name="template_id" id="aips-filter-template" class="aips-form-select">
 								<option value=""><?php esc_html_e('All Templates', 'ai-post-scheduler'); ?></option>
 								<?php foreach ($templates as $template): ?>
 								<option value="<?php echo esc_attr($template->id); ?>" <?php selected($template_id, $template->id); ?>>
 									<?php echo esc_html($template->name); ?>
 								</option>
-					<?php endforeach; ?>
-				</select>
-				<input type="submit" class="button" value="<?php esc_attr_e('Filter', 'ai-post-scheduler'); ?>">
-			</div>
-			<?php endif; ?>
-		</form>
-		
-		<?php if (!empty($draft_posts['items'])): ?>
+								<?php endforeach; ?>
+							</select>
+							<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary">
+								<span class="dashicons dashicons-filter"></span>
+								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
+							</button>
+							<?php endif; ?>
+						</div>
+						<div class="aips-filter-right">
+							<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
+							<input type="search" id="aips-post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
+							<button type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
+								<span class="dashicons dashicons-search"></span>
+								<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
+							</button>
+							<?php if (!empty($search_query)): ?>
+							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
+							<?php endif; ?>
+						</div>
+					</form>
+				</div>
+
+				<div class="aips-panel-body">
+				<?php if (!empty($draft_posts['items'])): ?>
 		<form id="aips-post-review-form" method="post">
 			<div class="tablenav top">
 				<div class="alignleft actions bulkactions">

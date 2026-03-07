@@ -45,51 +45,24 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             <a href="#planner" class="aips-tab-link<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
         </div>
 
-        <!-- Old nav-tab-wrapper for JS compatibility -->
-        <div class="nav-tab-wrapper" class="hidden">
-            <a href="#trending" class="nav-tab<?php echo $active_tab === 'trending' ? ' nav-tab-active' : ''; ?>" data-tab="trending"><?php echo esc_html__('Trending Topics', 'ai-post-scheduler'); ?></a>
-            <a href="#gap-analysis" class="nav-tab<?php echo $active_tab === 'gap-analysis' ? ' nav-tab-active' : ''; ?>" data-tab="gap-analysis"><?php echo esc_html__('Gap Analysis', 'ai-post-scheduler'); ?></a>
-            <a href="#planner" class="nav-tab<?php echo $active_tab === 'planner' ? ' nav-tab-active' : ''; ?>" data-tab="planner"><?php echo esc_html__('Planner', 'ai-post-scheduler'); ?></a>
-        </div>
-
     <div id="trending-tab" class="aips-tab-content<?php echo $active_tab === 'trending' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'trending' ? '' : 'display:none;'; ?>">
         <!-- Research Stats -->
-        <div class="aips-stats-grid aips-grid-4">
+        <div class="aips-topics-stats">
             <div class="aips-stat-card">
-                <div class="aips-stat-icon">
-                    <span class="dashicons dashicons-lightbulb"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value"><?php echo esc_html(number_format($stats['total_topics'])); ?></div>
-                    <div class="aips-stat-label"><?php echo esc_html__('Total Topics', 'ai-post-scheduler'); ?></div>
-                </div>
+                <span class="aips-stat-value"><?php echo esc_html(number_format($stats['total_topics'])); ?></span>
+                <span class="aips-stat-label"><?php echo esc_html__('Total Topics', 'ai-post-scheduler'); ?></span>
             </div>
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon">
-                    <span class="dashicons dashicons-category"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value"><?php echo esc_html(number_format($stats['niches_count'])); ?></div>
-                    <div class="aips-stat-label"><?php echo esc_html__('Niches', 'ai-post-scheduler'); ?></div>
-                </div>
+            <div class="aips-stat-card aips-stat-info">
+                <span class="aips-stat-value"><?php echo esc_html(number_format($stats['niches_count'])); ?></span>
+                <span class="aips-stat-label"><?php echo esc_html__('Niches', 'ai-post-scheduler'); ?></span>
             </div>
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon aips-stat-icon-info">
-                    <span class="dashicons dashicons-star-filled"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value"><?php echo esc_html($stats['avg_score']); ?></div>
-                    <div class="aips-stat-label"><?php echo esc_html__('Avg Score', 'ai-post-scheduler'); ?></div>
-                </div>
+            <div class="aips-stat-card aips-stat-success">
+                <span class="aips-stat-value"><?php echo esc_html($stats['avg_score']); ?></span>
+                <span class="aips-stat-label"><?php echo esc_html__('Avg Score', 'ai-post-scheduler'); ?></span>
             </div>
-            <div class="aips-stat-card">
-                <div class="aips-stat-icon aips-stat-icon-success">
-                    <span class="dashicons dashicons-calendar-alt"></span>
-                </div>
-                <div class="aips-stat-content">
-                    <div class="aips-stat-value"><?php echo esc_html(number_format($stats['recent_research_count'])); ?></div>
-                    <div class="aips-stat-label"><?php echo esc_html__('Last 7 Days', 'ai-post-scheduler'); ?></div>
-                </div>
+            <div class="aips-stat-card aips-stat-warning">
+                <span class="aips-stat-value"><?php echo esc_html(number_format($stats['recent_research_count'])); ?></span>
+                <span class="aips-stat-label"><?php echo esc_html__('Last 7 Days', 'ai-post-scheduler'); ?></span>
             </div>
         </div>
         
@@ -160,37 +133,39 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             <h2><?php echo esc_html__('Trending Topics Library', 'ai-post-scheduler'); ?></h2>
             
             <!-- Filters -->
-            <div class="aips-filters">
-                <select id="filter-niche" class="aips-filter-select">
-                    <option value=""><?php echo esc_html__('All Niches', 'ai-post-scheduler'); ?></option>
-                    <?php foreach ($niches as $niche):
-                        $niche = (object) $niche;
-                    ?>
-                        <option value="<?php echo esc_attr($niche->niche); ?>">
-                            <?php echo esc_html($niche->niche); ?> (<?php echo esc_html($niche->count); ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                
-                <select id="filter-score" class="aips-filter-select">
-                    <option value="0"><?php echo esc_html__('All Scores', 'ai-post-scheduler'); ?></option>
-                    <option value="80"><?php echo esc_html__('Score 80+', 'ai-post-scheduler'); ?></option>
-                    <option value="90"><?php echo esc_html__('Score 90+', 'ai-post-scheduler'); ?></option>
-                </select>
-                
-                <label>
-                    <input type="checkbox" id="filter-fresh" value="1">
-                    <?php echo esc_html__('Fresh Only (Last 7 Days)', 'ai-post-scheduler'); ?>
-                </label>
-                
-                <button type="button" class="button" id="load-topics">
-                    <?php echo esc_html__('Load Topics', 'ai-post-scheduler'); ?>
-                </button>
-
-                <div class="aips-search-wrapper">
+            <div class="aips-filter-bar">
+                <div class="aips-filter-left">
+                    <select id="filter-niche" class="aips-form-select">
+                        <option value=""><?php echo esc_html__('All Niches', 'ai-post-scheduler'); ?></option>
+                        <?php foreach ($niches as $niche):
+                            $niche = (object) $niche;
+                        ?>
+                            <option value="<?php echo esc_attr($niche->niche); ?>">
+                                <?php echo esc_html($niche->niche); ?> (<?php echo esc_html($niche->count); ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    
+                    <select id="filter-score" class="aips-form-select">
+                        <option value="0"><?php echo esc_html__('All Scores', 'ai-post-scheduler'); ?></option>
+                        <option value="80"><?php echo esc_html__('Score 80+', 'ai-post-scheduler'); ?></option>
+                        <option value="90"><?php echo esc_html__('Score 90+', 'ai-post-scheduler'); ?></option>
+                    </select>
+                    
+                    <label class="aips-filter-label-inline">
+                        <input type="checkbox" id="filter-fresh" value="1">
+                        <?php echo esc_html__('Fresh Only (Last 7 Days)', 'ai-post-scheduler'); ?>
+                    </label>
+                    
+                    <button type="button" class="aips-btn aips-btn-secondary" id="load-topics">
+                        <span class="dashicons dashicons-search"></span>
+                        <?php echo esc_html__('Load Topics', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
+                <div class="aips-filter-right">
                     <label class="screen-reader-text" for="filter-search"><?php esc_html_e('Search topics...', 'ai-post-scheduler'); ?></label>
-                    <input type="search" id="filter-search" class="regular-text" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>" style="max-width: 200px;">
-                    <button type="button" id="filter-search-clear" class="button" class="hidden" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <input type="search" id="filter-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
+                    <button type="button" id="filter-search-clear" class="aips-btn aips-btn-secondary" style="display:none;" aria-label="<?php esc_attr_e('Clear search', 'ai-post-scheduler'); ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
             
