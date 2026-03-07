@@ -2509,6 +2509,90 @@
     animation: aipsSlideOut 0.3s ease-in forwards;
 }
 
+/* ==========================================================================
+   Confirm Dialog (AIPS.Utilities.confirm)
+   ========================================================================== */
+
+.aips-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 160100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: aipsConfirmFadeIn var(--aips-transition-fast) ease-out;
+}
+
+.aips-confirm-overlay.aips-confirm-closing {
+    animation: aipsConfirmFadeOut var(--aips-transition-base) ease-in forwards;
+}
+
+@keyframes aipsConfirmFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes aipsConfirmFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+.aips-confirm-dialog {
+    background: var(--aips-white);
+    border-radius: var(--aips-radius-lg);
+    box-shadow: var(--aips-shadow-lg);
+    width: 90%;
+    max-width: 440px;
+    overflow: hidden;
+    animation: aipsConfirmSlideIn var(--aips-transition-fast) ease-out;
+}
+
+.aips-confirm-overlay.aips-confirm-closing .aips-confirm-dialog {
+    animation: aipsConfirmSlideOut var(--aips-transition-base) ease-in forwards;
+}
+
+@keyframes aipsConfirmSlideIn {
+    from { transform: translateY(-16px) scale(0.97); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes aipsConfirmSlideOut {
+    from { transform: translateY(0) scale(1); opacity: 1; }
+    to   { transform: translateY(-16px) scale(0.97); opacity: 0; }
+}
+
+.aips-confirm-header {
+    padding: var(--aips-space-6) var(--aips-space-6) 0;
+}
+
+.aips-confirm-heading {
+    margin: 0;
+    font-size: var(--aips-text-lg);
+    font-weight: var(--aips-font-semibold);
+    color: var(--aips-gray-900);
+    line-height: var(--aips-leading-tight);
+}
+
+.aips-confirm-body {
+    padding: var(--aips-space-4) var(--aips-space-6) var(--aips-space-5);
+}
+
+.aips-confirm-message {
+    margin: 0;
+    font-size: var(--aips-text-base);
+    color: var(--aips-gray-600);
+    line-height: var(--aips-leading-normal);
+}
+
+.aips-confirm-footer {
+    padding: var(--aips-space-4) var(--aips-space-6) var(--aips-space-6);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--aips-space-3);
+    border-top: 1px solid var(--aips-gray-100);
+}
+
 /* Session Info Styles */
 .aips-session-info {
     margin-bottom: 20px;
