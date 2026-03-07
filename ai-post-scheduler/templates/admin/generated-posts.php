@@ -38,7 +38,7 @@ if (!defined('ABSPATH')) {
 			<div class="aips-content-panel">
 				<!-- Filter Bar -->
 				<div class="aips-filter-bar">
-					<form method="get" class="search-form" style="display: contents;">
+					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
 						<div class="aips-filter-left">
 							<?php if (!empty($authors)): ?>
@@ -201,7 +201,7 @@ if (!defined('ABSPATH')) {
 			<div class="aips-content-panel">
 				<!-- Filter Bar -->
 				<div class="aips-filter-bar">
-					<form method="get" class="aips-post-review-filters" style="display: contents;">
+					<form method="get" class="aips-post-review-filters aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
 						<div class="aips-filter-left">
 							<span class="aips-result-count"><?php printf(esc_html(_n('%d draft', '%d drafts', $draft_posts['total'], 'ai-post-scheduler')), $draft_posts['total']); ?></span>

@@ -152,7 +152,7 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                         <option value="90"><?php echo esc_html__('Score 90+', 'ai-post-scheduler'); ?></option>
                     </select>
                     
-                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <label class="aips-filter-label-inline">
                         <input type="checkbox" id="filter-fresh" value="1">
                         <?php echo esc_html__('Fresh Only (Last 7 Days)', 'ai-post-scheduler'); ?>
                     </label>

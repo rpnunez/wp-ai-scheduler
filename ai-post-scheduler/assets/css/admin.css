@@ -1058,6 +1058,21 @@
     padding: 20px;
 }
 
+/* Inline checkbox label within filter bars */
+.aips-filter-label-inline {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #50575e;
+}
+
+/* Form that participates in flex layout without introducing a block */
+.aips-filter-form {
+    display: contents;
+}
+
 .aips-button-group {
     display: flex;
     gap: 10px;
@@ -2691,7 +2706,7 @@
 
 .aips-tab-nav {
     display: flex;
-    gap: 0;
+    gap: 10px;
     margin: 20px 0 0;
     padding: 0;
     list-style: none;
@@ -2710,7 +2725,6 @@
     font-size: 14px;
     color: #50575e;
     border-bottom: 2px solid transparent;
-    margin-right: 10px;
     background: none;
     border-top: none;
     border-left: none;
