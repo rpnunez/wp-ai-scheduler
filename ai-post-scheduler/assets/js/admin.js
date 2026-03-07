@@ -88,21 +88,11 @@
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
             $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
             $(document).on('click', '.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next', this.loadHistoryPage);
-            $(document).on('keypress', '#aips-history-search-input', function(e) {
-                if(e.which == 13) {
-                    AIPS.filterHistory(e);
-                }
-            });
+            $(document).on('keypress', '#aips-history-search-input', this.handleHistorySearchKeypress);
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
             // History Pagination
-            $(document).on('click', '#aips-history-pagination a', function(e) {
-                e.preventDefault();
-                var href = $(this).attr('href');
-                var match = href.match(/paged=(\d+)/);
-                var page = match ? parseInt(match[1]) : 1;
-                AIPS.reloadHistory(e, page);
-            });
+            $(document).on('click', '#aips-history-pagination a', this.handleHistoryPaginationClick);
 
             // History Bulk Actions
             $(document).on('change', '#cb-select-all-1', this.toggleAllHistory);
@@ -169,180 +159,22 @@
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
 
             // Article Structures UI handlers
+            $(document).on('click', '.aips-add-structure-btn', this.openAddStructureModal);
 
-            // @TODO: Refactor to use AIPS.addStructure
-            $(document).on('click', '.aips-add-structure-btn', function(e){
-                e.preventDefault();
-                $('#aips-structure-form')[0].reset();
-                $('#structure_id').val('');
-                $('#aips-structure-modal-title').text('Add New Article Structure');
-                $('#aips-structure-modal').show();
-            });
+            $(document).on('click', '.aips-save-structure', this.saveStructure);
 
-            // @TODO: Refactor to AIPS.closeModal -- or use existing function
-            $(document).on('click', '.aips-modal-close', function(){
-                $(this).closest('.aips-modal').hide();
-            });
+            $(document).on('click', '.aips-edit-structure', this.editStructure);
 
-            // @TODO: Refactor to AIPS.saveStructure
-            $(document).on('click', '.aips-save-structure', function(){
-                var $btn = $(this);
-                $btn.prop('disabled', true).text('Saving...');
-
-                var data = {
-                    action: 'aips_save_structure',
-                    nonce: aipsAjax.nonce,
-                    structure_id: $('#structure_id').val(),
-                    name: $('#structure_name').val(),
-                    description: $('#structure_description').val(),
-                    prompt_template: $('#prompt_template').val(),
-                    sections: $('#structure_sections').val() || [],
-                    is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
-                    is_default: $('#structure_is_default').is(':checked') ? 1 : 0,
-                };
-
-                $.post(aipsAjax.ajaxUrl, data, function(response){
-                    $btn.prop('disabled', false).text('Save Structure');
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveStructureFailed, 'error');
-                    }
-                }).fail(function(){
-                    $btn.prop('disabled', false).text('Save Structure');
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                });
-            });
-
-            // @TODO: Refactor to AIPS.saveStructure
-            $(document).on('click', '.aips-edit-structure', function(){
-                var id = $(this).data('id');
-                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
-                    if (response.success) {
-                        var s = response.data.structure;
-                        var structureData = {};
-
-                        if (s.structure_data) {
-                            try {
-                                structureData = JSON.parse(s.structure_data) || {};
-                            } catch (e) {
-                                console.error('Invalid structure_data JSON for structure ID ' + s.id, e);
-                                structureData = {};
-                            }
-                        }
-
-                        $('#structure_id').val(s.id);
-                        $('#structure_name').val(s.name);
-                        $('#structure_description').val(s.description);
-                        $('#prompt_template').val(structureData.prompt_template || '');
-                        var sections = structureData.sections || [];
-                        $('#structure_sections').val(sections);
-                        $('#structure_is_active').prop('checked', s.is_active == 1);
-                        $('#structure_is_default').prop('checked', s.is_default == 1);
-                        $('#aips-structure-modal-title').text('Edit Article Structure');
-                        $('#aips-structure-modal').show();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadStructureFailed, 'error');
-                    }
-                }).fail(function(){
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
-                });
-            });
-
-            // @TODO: Refactor to AIPS.deleteStructure
-            $(document).on('click', '.aips-delete-structure', function(){
-                var $el = $(this);
-                var id = $el.data('id');
-                var $row = $el.closest('tr');
-                AIPS.Utilities.confirm(aipsAdminL10n.deleteStructureConfirm, 'Confirm', [
-                    { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                    { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                        $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
-                            if (response.success) {
-                                $row.fadeOut(function(){ $(this).remove(); });
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteStructureFailed, 'error');
-                            }
-                        }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
-                    }}
-                ]);
-            });
+            $(document).on('click', '.aips-delete-structure', this.deleteStructure);
 
             // Prompt Sections UI handlers
-            $(document).on('click', '.aips-add-section-btn', function(e){
-                e.preventDefault();
-                $('#aips-section-form')[0].reset();
-                $('#section_id').val('');
-                $('#aips-section-modal-title').text('Add New Prompt Section');
-                $('#aips-section-modal').show();
-            });
+            $(document).on('click', '.aips-add-section-btn', this.openAddSectionModal);
 
-            $(document).on('click', '.aips-save-section', function(){
-                var $btn = $(this);
-                $btn.prop('disabled', true).text('Saving...');
+            $(document).on('click', '.aips-save-section', this.saveSection);
 
-                var data = {
-                    action: 'aips_save_prompt_section',
-                    nonce: aipsAjax.nonce,
-                    section_id: $('#section_id').val(),
-                    name: $('#section_name').val(),
-                    section_key: $('#section_key').val(),
-                    description: $('#section_description').val(),
-                    content: $('#section_content').val(),
-                    is_active: $('#section_is_active').is(':checked') ? 1 : 0
-                };
+            $(document).on('click', '.aips-edit-section', this.editSection);
 
-                $.post(aipsAjax.ajaxUrl, data, function(response){
-                    $btn.prop('disabled', false).text('Save Section');
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveSectionFailed, 'error');
-                    }
-                }).fail(function(){
-                    $btn.prop('disabled', false).text('Save Section');
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                });
-            });
-
-            $(document).on('click', '.aips-edit-section', function(){
-                var id = $(this).data('id');
-                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
-                    if (response.success) {
-                        var s = response.data.section;
-                        $('#section_id').val(s.id);
-                        $('#section_name').val(s.name);
-                        $('#section_key').val(s.section_key);
-                        $('#section_description').val(s.description);
-                        $('#section_content').val(s.content);
-                        $('#section_is_active').prop('checked', s.is_active == 1);
-                        $('#aips-section-modal-title').text('Edit Prompt Section');
-                        $('#aips-section-modal').show();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadSectionFailed, 'error');
-                    }
-                }).fail(function(){
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
-                });
-            });
-
-            $(document).on('click', '.aips-delete-section', function(){
-                var $el = $(this);
-                var id = $el.data('id');
-                var $row = $el.closest('tr');
-                AIPS.Utilities.confirm(aipsAdminL10n.deleteSectionConfirm, 'Confirm', [
-                    { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                    { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                        $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
-                            if (response.success) {
-                                $row.fadeOut(function(){ $(this).remove(); });
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteSectionFailed, 'error');
-                            }
-                        }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
-                    }}
-                ]);
-            });
+            $(document).on('click', '.aips-delete-section', this.deleteSection);
         },
 
         copyToClipboard: function(e) {
@@ -1748,6 +1580,20 @@
             });
         },
 
+        handleHistorySearchKeypress: function(e) {
+            if (e.which == 13) {
+                AIPS.filterHistory(e);
+            }
+        },
+
+        handleHistoryPaginationClick: function(e) {
+            e.preventDefault();
+            var href = $(this).attr('href');
+            var match = href.match(/paged=(\d+)/);
+            var page = match ? parseInt(match[1]) : 1;
+            AIPS.reloadHistory(e, page);
+        },
+
         toggleImagePrompt: function(e) {
             var isChecked = $('#generate_featured_image').is(':checked');
 
@@ -2277,6 +2123,174 @@
             }
             
             $('#aips-details-content').show();
+        },
+
+        // Article Structures handlers
+
+        openAddStructureModal: function(e) {
+            e.preventDefault();
+            $('#aips-structure-form')[0].reset();
+            $('#structure_id').val('');
+            $('#aips-structure-modal-title').text('Add New Article Structure');
+            $('#aips-structure-modal').show();
+        },
+
+        saveStructure: function() {
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Saving...');
+
+            var data = {
+                action: 'aips_save_structure',
+                nonce: aipsAjax.nonce,
+                structure_id: $('#structure_id').val(),
+                name: $('#structure_name').val(),
+                description: $('#structure_description').val(),
+                prompt_template: $('#prompt_template').val(),
+                sections: $('#structure_sections').val() || [],
+                is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
+                is_default: $('#structure_is_default').is(':checked') ? 1 : 0,
+            };
+
+            $.post(aipsAjax.ajaxUrl, data, function(response){
+                $btn.prop('disabled', false).text('Save Structure');
+                if (response.success) {
+                    location.reload();
+                } else {
+                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveStructureFailed, 'error');
+                }
+            }).fail(function(){
+                $btn.prop('disabled', false).text('Save Structure');
+                AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+            });
+        },
+
+        editStructure: function() {
+            var id = $(this).data('id');
+            $.post(aipsAjax.ajaxUrl, {action: 'aips_get_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                if (response.success) {
+                    var s = response.data.structure;
+                    var structureData = {};
+
+                    if (s.structure_data) {
+                        try {
+                            structureData = JSON.parse(s.structure_data) || {};
+                        } catch (e) {
+                            console.error('Invalid structure_data JSON for structure ID ' + s.id, e);
+                            structureData = {};
+                        }
+                    }
+
+                    $('#structure_id').val(s.id);
+                    $('#structure_name').val(s.name);
+                    $('#structure_description').val(s.description);
+                    $('#prompt_template').val(structureData.prompt_template || '');
+                    var sections = structureData.sections || [];
+                    $('#structure_sections').val(sections);
+                    $('#structure_is_active').prop('checked', s.is_active == 1);
+                    $('#structure_is_default').prop('checked', s.is_default == 1);
+                    $('#aips-structure-modal-title').text('Edit Article Structure');
+                    $('#aips-structure-modal').show();
+                } else {
+                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadStructureFailed, 'error');
+                }
+            }).fail(function(){
+                AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
+            });
+        },
+
+        deleteStructure: function() {
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteStructureConfirm, 'Confirm', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                        if (response.success) {
+                            $row.fadeOut(function(){ $(this).remove(); });
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteStructureFailed, 'error');
+                        }
+                    }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                }}
+            ]);
+        },
+
+        // Prompt Sections handlers
+
+        openAddSectionModal: function(e) {
+            e.preventDefault();
+            $('#aips-section-form')[0].reset();
+            $('#section_id').val('');
+            $('#aips-section-modal-title').text('Add New Prompt Section');
+            $('#aips-section-modal').show();
+        },
+
+        saveSection: function() {
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Saving...');
+
+            var data = {
+                action: 'aips_save_prompt_section',
+                nonce: aipsAjax.nonce,
+                section_id: $('#section_id').val(),
+                name: $('#section_name').val(),
+                section_key: $('#section_key').val(),
+                description: $('#section_description').val(),
+                content: $('#section_content').val(),
+                is_active: $('#section_is_active').is(':checked') ? 1 : 0
+            };
+
+            $.post(aipsAjax.ajaxUrl, data, function(response){
+                $btn.prop('disabled', false).text('Save Section');
+                if (response.success) {
+                    location.reload();
+                } else {
+                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveSectionFailed, 'error');
+                }
+            }).fail(function(){
+                $btn.prop('disabled', false).text('Save Section');
+                AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+            });
+        },
+
+        editSection: function() {
+            var id = $(this).data('id');
+            $.post(aipsAjax.ajaxUrl, {action: 'aips_get_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                if (response.success) {
+                    var s = response.data.section;
+                    $('#section_id').val(s.id);
+                    $('#section_name').val(s.name);
+                    $('#section_key').val(s.section_key);
+                    $('#section_description').val(s.description);
+                    $('#section_content').val(s.content);
+                    $('#section_is_active').prop('checked', s.is_active == 1);
+                    $('#aips-section-modal-title').text('Edit Prompt Section');
+                    $('#aips-section-modal').show();
+                } else {
+                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadSectionFailed, 'error');
+                }
+            }).fail(function(){
+                AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
+            });
+        },
+
+        deleteSection: function() {
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteSectionConfirm, 'Confirm', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                        if (response.success) {
+                            $row.fadeOut(function(){ $(this).remove(); });
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteSectionFailed, 'error');
+                        }
+                    }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                }}
+            ]);
         },
 
         escapeHtml: function(text) {
