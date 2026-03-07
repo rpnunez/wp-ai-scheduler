@@ -174,6 +174,8 @@ Potential improvements for future versions:
 - Add tooltips on each step
 - Add keyboard navigation (arrow keys)
 - Add step completion indicators beyond required fields
-- Add ability to jump to specific step (if all previous validated)
 - Add form field grouping animation
 - Add more detailed validation messages
+
+### Implemented Enhancements
+- Save template from any step (allows quick saving when required fields are filled)

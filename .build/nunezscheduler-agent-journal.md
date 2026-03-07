@@ -86,3 +86,8 @@
 **Improvement:** Optimized the workflow from saving a template to scheduling it by introducing a `quickSchedule` action. Now, clicking "Schedule This Template" inside the "Next Steps" wizard directs to the schedules page and immediately triggers the "Add New Schedule" modal with the template field pre-selected.
 **Files Modified:** ai-post-scheduler/assets/js/admin.js
 **Outcome:** Enhances efficiency for the user by streamlining the multi-step navigation process directly to task execution context.
+## 2026-03-07 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Allowed users to save templates from any wizard step, removing the bottleneck of navigating to the end. Added global validation for required fields.
+**Files Modified:** `ai-post-scheduler/assets/js/admin.js`, `docs/features/templates/TEMPLATE_WIZARD_IMPLEMENTATION.md`
+**Outcome:** Users can now bypass unneeded steps and save templates faster with improved cross-step validation flow.
