@@ -197,7 +197,7 @@ if (!defined('ABSPATH')) {
 		</div>
 
 		<!-- Tab 2 panel -->
-		<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true" hidden>
+		<div id="aips-pending-review-tab" class="aips-tab-content" style="display:none;" role="tabpanel" aria-hidden="true">
 			<div class="aips-content-panel">
 				<!-- Filter Bar -->
 				<div class="aips-filter-bar">
