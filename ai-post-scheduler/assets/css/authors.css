@@ -133,16 +133,33 @@
 	margin-bottom: 5px;
 }
 
-/* Feedback icon button — icon-only, compact */
-.topic-actions .aips-topic-feedback-icon {
-	display: block;
+/* Inline feedback buttons displayed below the topic title */
+.aips-topic-inline-feedback {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.aips-topic-inline-feedback .aips-approve-topic,
+.aips-topic-inline-feedback .aips-reject-topic {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+}
+
+.aips-topic-inline-feedback .aips-topic-feedback-icon {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
 	line-height: 1;
 }
 
-.topic-actions .aips-approve-topic,
-.topic-actions .aips-reject-topic {
-	padding: 3px 6px;
-	min-width: 0;
+/* Feedback icon button — icon-only, compact (kept for other uses) */
+.topic-actions .aips-topic-feedback-icon {
+	display: block;
+	line-height: 1;
 }
 
 /* Empty State */

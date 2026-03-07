@@ -293,18 +293,23 @@
 
 			let html = '<table class="wp-list-table widefat fixed striped aips-topics-table"><thead><tr>';
 			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>';
-			html += '<th>' + aipsAuthorsL10n.topicTitle + '</th>';
-			html += '<th>' + aipsAuthorsL10n.generatedAt + '</th>';
-			html += '<th>' + aipsAuthorsL10n.actions + '</th>';
+			html += '<th style="width:60%">' + aipsAuthorsL10n.topicTitle + '</th>';
+			html += '<th style="width:10%">' + aipsAuthorsL10n.generatedAt + '</th>';
+			html += '<th style="width:30%">' + aipsAuthorsL10n.actions + '</th>';
 			html += '</tr></thead><tbody>';
 
 			topics.forEach(topic => {
 				html += '<tr data-topic-id="' + topic.id + '" class="aips-topic-row">';
 				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
 				html += '<td class="topic-title-cell">';
-				html += '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '">';
-				html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
-				html += '</button> ';
+
+				// Expand button only shown for reviewed topics (not on Pending Review tab)
+				if (status !== 'pending') {
+					html += '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '">';
+					html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
+					html += '</button> ';
+				}
+
 				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
 				
 				// Add post count badge if there are any posts
@@ -315,27 +320,36 @@
 				}
 				
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
+
+				// Feedback buttons displayed inline below the topic title (pending only)
+				if (status === 'pending') {
+					html += '<div class="aips-topic-inline-feedback">';
+					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '">';
+					html += '<span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span> ' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '</button>';
+					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '">';
+					html += '<span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span> ' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '</button>';
+					html += '</div>';
+				}
+
 				html += '</td>';
 				html += '<td>' + topic.generated_at + '</td>';
 				html += '<td class="topic-actions">';
 
 				// Actions based on status
 				if (status === 'pending') {
-					// Quick Approve/Reject with secondary feedback option
+					// Quick Approve, Quick Reject, and Edit in a single row
 					html += '<div class="aips-btn-group">';
-					html += '<button class="button aips-quick-approve-topic" data-id="' + topic.id + '" title="' + this.escapeHtml(aipsAuthorsL10n.approve || 'Approve') + '">' + this.escapeHtml(aipsAuthorsL10n.approve || 'Approve') + '</button>';
-					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
-					html += '</div>';
-
-					html += '<div class="aips-btn-group">';
-					html += '<button class="button aips-quick-reject-topic" data-id="' + topic.id + '" title="' + this.escapeHtml(aipsAuthorsL10n.reject || 'Reject') + '">' + this.escapeHtml(aipsAuthorsL10n.reject || 'Reject') + '</button>';
-					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
+					html += '<button class="button aips-quick-approve-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.quickApprove || 'Quick Approve') + '</button>';
+					html += '<button class="button aips-quick-reject-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.quickReject || 'Quick Reject') + '</button>';
+					html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
 					html += '</div>';
 				} else if (status === 'approved') {
 					html += '<button class="button aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button> ';
+					html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
+				} else {
+					html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
 				}
 
-				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
 				html += '</td></tr>';
 				
 				// Add collapsible detail row
@@ -490,13 +504,13 @@
 					} else {
 						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorApproving || 'Error approving topic.', 'error');
 						$rowBtns.prop('disabled', false);
-						$btn.text(aipsAuthorsL10n.approve || 'Approve');
+						$btn.text(aipsAuthorsL10n.quickApprove || 'Quick Approve');
 					}
 				},
 				error: () => {
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorApproving || 'Error approving topic.', 'error');
 					$rowBtns.prop('disabled', false);
-					$btn.text(aipsAuthorsL10n.approve || 'Approve');
+					$btn.text(aipsAuthorsL10n.quickApprove || 'Quick Approve');
 				}
 			});
 		},
@@ -527,13 +541,13 @@
 					} else {
 						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
 						$rowBtns.prop('disabled', false);
-						$btn.text(aipsAuthorsL10n.reject || 'Reject');
+						$btn.text(aipsAuthorsL10n.quickReject || 'Quick Reject');
 					}
 				},
 				error: () => {
 					AIPS.Utilities.showToast(aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
 					$rowBtns.prop('disabled', false);
-					$btn.text(aipsAuthorsL10n.reject || 'Reject');
+					$btn.text(aipsAuthorsL10n.quickReject || 'Quick Reject');
 				}
 			});
 		},
