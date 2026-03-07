@@ -1283,7 +1283,7 @@
 
             var action = $('#aips-schedule-bulk-action').val();
             if (!action) {
-                AIPS.showToast('Please select a bulk action.', 'warning');
+                AIPS.Utilities.showToast('Please select a bulk action.', 'warning');
                 return;
             }
 
@@ -1293,7 +1293,7 @@
             });
 
             if (ids.length === 0) {
-                AIPS.showToast('Please select at least one schedule.', 'warning');
+                AIPS.Utilities.showToast('Please select at least one schedule.', 'warning');
                 return;
             }
 
@@ -1301,10 +1301,14 @@
                 var deleteMsg = ids.length === 1
                     ? 'Are you sure you want to delete 1 schedule?'
                     : 'Are you sure you want to delete ' + ids.length + ' schedules?';
-                if (!confirm(deleteMsg)) {
-                    return;
-                }
-                AIPS.bulkDeleteSchedules(ids);
+                AIPS.Utilities.confirm(
+                    deleteMsg,
+                    'Delete Schedules',
+                    [
+                        { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                        { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() { AIPS.bulkDeleteSchedules(ids); } }
+                    ]
+                );
             } else if (action === 'pause') {
                 AIPS.bulkToggleSchedules(ids, 0);
             } else if (action === 'activate') {
@@ -1322,15 +1326,25 @@
                     success: function(response) {
                         var count = response.success ? (response.data.count || ids.length) : ids.length;
                         var runMsg = 'This will generate an estimated ' + count + ' post' + (count !== 1 ? 's' : '') + '. Are you sure?';
-                        if (confirm(runMsg)) {
-                            AIPS.bulkRunNowSchedules(ids);
-                        }
+                        AIPS.Utilities.confirm(
+                            runMsg,
+                            'Run Schedules Now',
+                            [
+                                { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                                { label: 'Yes, run now', className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
+                            ]
+                        );
                     },
                     error: function() {
                         var runMsg = 'This will run ' + ids.length + ' schedule' + (ids.length !== 1 ? 's' : '') + '. Are you sure?';
-                        if (confirm(runMsg)) {
-                            AIPS.bulkRunNowSchedules(ids);
-                        }
+                        AIPS.Utilities.confirm(
+                            runMsg,
+                            'Run Schedules Now',
+                            [
+                                { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                                { label: 'Yes, run now', className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
+                            ]
+                        );
                     }
                 });
             }
@@ -1350,7 +1364,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.showToast(response.data.message, 'success');
+                        AIPS.Utilities.showToast(response.data.message, 'success');
                         ids.forEach(function(id) {
                             $('tr[data-schedule-id="' + id + '"]').fadeOut(function() {
                                 $(this).remove();
@@ -1359,11 +1373,11 @@
                         $('#cb-select-all-schedules').prop('checked', false);
                         AIPS.updateScheduleBulkActions();
                     } else {
-                        AIPS.showToast(response.data.message || 'Failed to delete schedules.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || 'Failed to delete schedules.', 'error');
                     }
                 },
                 error: function() {
-                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $applyBtn.prop('disabled', false).text('Apply');
@@ -1386,7 +1400,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.showToast(response.data.message, 'success');
+                        AIPS.Utilities.showToast(response.data.message, 'success');
                         ids.forEach(function(id) {
                             var $row = $('tr[data-schedule-id="' + id + '"]');
                             var $toggle = $row.find('.aips-toggle-schedule');
@@ -1412,11 +1426,11 @@
                             $row.data('is-active', isActive);
                         });
                     } else {
-                        AIPS.showToast(response.data.message || 'Failed to update schedules.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || 'Failed to update schedules.', 'error');
                     }
                 },
                 error: function() {
-                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $applyBtn.prop('disabled', false).text('Apply');
@@ -1438,13 +1452,13 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.showToast(response.data.message, 'success', { duration: 8000 });
+                        AIPS.Utilities.showToast(response.data.message, 'success', { duration: 8000 });
                     } else {
-                        AIPS.showToast(response.data.message || 'Bulk run failed.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || 'Bulk run failed.', 'error');
                     }
                 },
                 error: function() {
-                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $applyBtn.prop('disabled', false).text('Apply');
