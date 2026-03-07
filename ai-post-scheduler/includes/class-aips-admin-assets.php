@@ -106,6 +106,8 @@ class AIPS_Admin_Assets {
 			);
 
 			// Localize script with translations and nonce
+			$page_author_id = ( strpos( $hook, 'aips-author-topics' ) !== false && isset( $_GET['author_id'] ) ) ? absint( $_GET['author_id'] ) : 0;
+
 			wp_localize_script('aips-authors-script', 'aipsAuthorsL10n', array(
 				'nonce' => wp_create_nonce('aips_ajax_nonce'),
 				'addNewAuthor' => __('Add New Author', 'ai-post-scheduler'),
@@ -191,24 +193,8 @@ class AIPS_Admin_Assets {
 				'logUser' => __('User', 'ai-post-scheduler'),
 				'logDate' => __('Date', 'ai-post-scheduler'),
 				'logDetails' => __('Details', 'ai-post-scheduler'),
+				'currentAuthorId' => $page_author_id,
 			));
-
-			// On the Author Topics page, initialize the topics view with the current author
-			if (strpos($hook, 'aips-author-topics') !== false) {
-				$page_author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
-				if ($page_author_id) {
-					wp_add_inline_script(
-						'aips-authors-script',
-						'jQuery(document).ready(function($) {
-							if (typeof window.AuthorsModule !== "undefined") {
-								window.AuthorsModule.currentAuthorId = ' . (int) $page_author_id . ';
-								window.AuthorsModule.loadTopics("pending");
-								window.AuthorsModule.updateBulkActionDropdown("pending");
-							}
-						});'
-					);
-				}
-			}
 		}
 
         // Research Page Styles & Scripts

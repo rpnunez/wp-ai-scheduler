@@ -1251,13 +1251,18 @@
 		}
 	};
   
-  // Export AuthorsModule and GenerationQueueModule so they can be reached from wp_add_inline_script initializers
-	window.AuthorsModule = AuthorsModule;
-  window.GenerationQueueModule = GenerationQueueModule;
-
 	// Initialize when document is ready
 	$(document).ready(function () {
-    AuthorsModule.init();
+		AuthorsModule.init();
 		GenerationQueueModule.init();
+
+		// On the Author Topics full-page view, auto-load topics for the current author.
+		// The author ID is passed via aipsAuthorsL10n.currentAuthorId (set by PHP when
+		// the page param is 'aips-author-topics'), so no inline script injection is needed.
+		if ( typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.currentAuthorId ) {
+			AuthorsModule.currentAuthorId = aipsAuthorsL10n.currentAuthorId;
+			AuthorsModule.updateBulkActionDropdown('pending');
+			AuthorsModule.loadTopics('pending');
+		}
 	});
 })(jQuery);
