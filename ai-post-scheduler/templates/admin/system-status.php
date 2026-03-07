@@ -45,8 +45,11 @@ if (!defined('ABSPATH')) {
                                                 <a href="#" class="aips-toggle-log-details" data-target="log-details-<?php echo esc_attr($key); ?>" style="font-size: 13px;">
                                                     <?php esc_html_e('Show Details', 'ai-post-scheduler'); ?>
                                                 </a>
-                                                <div id="log-details-<?php echo esc_attr($key); ?>" class="aips-log-details" style="display:none; margin-top: 10px;">
-                                                    <textarea class="aips-form-input" rows="10" readonly style="font-family: monospace; font-size: 12px;"><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
+                                                <div id="log-details-<?php echo esc_attr($key); ?>" class="aips-log-details" style="display:none; margin-top: 10px; position: relative;">
+                                                    <button type="button" class="aips-btn aips-btn-sm aips-copy-log-btn" style="position: absolute; top: 10px; right: 10px;" aria-label="<?php esc_attr_e('Copy details to clipboard', 'ai-post-scheduler'); ?>">
+                                                        <span class="dashicons dashicons-clipboard"></span> <?php esc_html_e('Copy', 'ai-post-scheduler'); ?>
+                                                    </button>
+                                                    <textarea class="aips-form-input aips-log-textarea" rows="10" readonly style="font-family: monospace; font-size: 12px; padding-top: 35px;"><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
                                                 </div>
                                             <?php endif; ?>
                                         </td>
@@ -95,6 +98,39 @@ jQuery(document).ready(function($) {
             ? <?php echo wp_json_encode( __( 'Hide Details', 'ai-post-scheduler' ) ); ?>
             : <?php echo wp_json_encode( __( 'Show Details', 'ai-post-scheduler' ) ); ?>;
         $(this).text(text);
+    });
+
+    // Copy log details
+    $('.aips-copy-log-btn').on('click', function(e) {
+        e.preventDefault();
+        var $btn = $(this);
+        var $textarea = $btn.siblings('.aips-log-textarea');
+        var textToCopy = $textarea.val();
+        var originalHtml = $btn.html();
+
+        var showSuccess = function() {
+            $btn.html('<span class="dashicons dashicons-yes"></span> ' + <?php echo wp_json_encode( __( 'Copied!', 'ai-post-scheduler' ) ); ?>);
+            setTimeout(function() {
+                $btn.html(originalHtml);
+            }, 2000);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCopy).then(showSuccess).catch(function(err) {
+                console.error('Failed to copy text: ', err);
+            });
+        } else {
+            // Fallback
+            $textarea.select();
+            try {
+                document.execCommand('copy');
+                showSuccess();
+            } catch (err) {
+                console.error('Fallback copy failed: ', err);
+            }
+            // Deselect
+            window.getSelection().removeAllRanges();
+        }
     });
 });
 </script>

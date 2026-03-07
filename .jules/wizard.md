@@ -35,3 +35,9 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+
+## 2026-03-07 - Add Copy to Clipboard for System Status Details
+
+Learning: When implementing "Copy to Clipboard" features for large blocks of text (like system logs), avoid injecting the entire string into an HTML attribute like `data-clipboard-text` as it bloats the DOM. Also, always add `type="button"` to buttons within or near forms to prevent accidental submissions.
+
+Action: Wrote a dedicated JavaScript click handler using the modern `navigator.clipboard` API (with fallback) that reads directly from the adjacent `<textarea>` instead of a data attribute.
