@@ -54,6 +54,7 @@
             $(document).on('click', '#aips-quick-schedule-btn', this.toggleQuickSchedule);
             $(document).on('click', '#aips-quick-schedule-cancel', this.toggleQuickSchedule);
             $(document).on('click', '#aips-quick-schedule-submit', this.submitQuickSchedule);
+            $(document).on('click', '.aips-quick-schedule-close-wizard', function() { location.reload(); });
 
             // Preview drawer
             $(document).on('click', '.aips-preview-prompts', this.previewPrompts);
@@ -2207,10 +2208,10 @@
 
                         // Update UI to show success
                         $('#aips-quick-schedule-form-container').html(
-                            '<div style="text-align: center; padding: 10px;">' +
-                            '<span class="dashicons dashicons-yes-alt" style="color: #46b450; font-size: 32px; width: 32px; height: 32px;"></span>' +
-                            '<p style="margin-top: 10px; font-weight: 600;">Schedule Active</p>' +
-                            '<button type="button" class="button" onclick="location.reload();" style="margin-top: 10px;">Close Wizard</button>' +
+                            '<div class="aips-quick-schedule-success">' +
+                            '<span class="dashicons dashicons-yes-alt"></span>' +
+                            '<p>' + (aipsAdminL10n.scheduleActive || 'Schedule Active') + '</p>' +
+                            '<button type="button" class="button aips-quick-schedule-close-wizard">' + (aipsAdminL10n.closeWizard || 'Close Wizard') + '</button>' +
                             '</div>'
                         );
                     } else {
