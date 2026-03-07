@@ -282,22 +282,22 @@ class AIPS_Admin_Assets {
         );
 
         // Activity Page Scripts
-        wp_enqueue_script(
-            'aips-admin-activity',
-            AIPS_PLUGIN_URL . 'assets/js/admin-activity.js',
-            array('aips-admin-script'),
-            AIPS_VERSION,
-            true
-        );
+        // wp_enqueue_script(
+        //     'aips-admin-activity',
+        //     AIPS_PLUGIN_URL . 'assets/js/admin-activity.js',
+        //     array('aips-admin-script'),
+        //     AIPS_VERSION,
+        //     true
+        // );
 
-        wp_localize_script('aips-admin-activity', 'aipsActivityL10n', array(
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('aips_ajax_nonce'),
-            'confirmPublish' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
-            'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
-            'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
-            'loadingError' => __('Failed to load activity data.', 'ai-post-scheduler'),
-        ));
+        // wp_localize_script('aips-admin-activity', 'aipsActivityL10n', array(
+        //     'ajaxUrl' => admin_url('admin-ajax.php'),
+        //     'nonce' => wp_create_nonce('aips_ajax_nonce'),
+        //     'confirmPublish' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
+        //     'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
+        //     'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
+        //     'loadingError' => __('Failed to load activity data.', 'ai-post-scheduler'),
+        // ));
 
         // Generated Posts Page Scripts
         if (strpos($hook, 'aips-generated-posts') !== false) {
