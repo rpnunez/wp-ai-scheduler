@@ -86,7 +86,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
             
             <!-- Schedules Table -->
             <div class="aips-panel-body no-padding">
-                <table class="aips-table">
+                <table class="aips-table aips-schedule-table">
                     <thead>
                         <tr>
                             <th class="check-column">

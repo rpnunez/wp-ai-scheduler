@@ -286,6 +286,18 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('No schedule IDs provided.', 'ai-post-scheduler')));
         }
 
+        $max_bulk_run = apply_filters('aips_bulk_run_now_limit', 5);
+        if (count($ids) > $max_bulk_run) {
+            wp_send_json_error(array(
+                'message' => sprintf(
+                    /* translators: 1: selected count, 2: maximum allowed */
+                    __('Too many schedules selected (%1$d). Please select no more than %2$d at a time to avoid timeouts.', 'ai-post-scheduler'),
+                    count($ids),
+                    $max_bulk_run
+                ),
+            ));
+        }
+
         $post_ids = array();
         $errors = array();
 

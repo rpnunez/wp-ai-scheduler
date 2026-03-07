@@ -1380,7 +1380,8 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
-                    $applyBtn.prop('disabled', false).text('Apply');
+                    $applyBtn.text('Apply');
+                    AIPS.updateScheduleBulkActions();
                 }
             });
         },
@@ -1433,7 +1434,8 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
-                    $applyBtn.prop('disabled', false).text('Apply');
+                    $applyBtn.text('Apply');
+                    AIPS.updateScheduleBulkActions();
                 }
             });
         },
@@ -1461,7 +1463,8 @@
                     AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
-                    $applyBtn.prop('disabled', false).text('Apply');
+                    $applyBtn.text('Apply');
+                    AIPS.updateScheduleBulkActions();
                 }
             });
         },

@@ -342,6 +342,21 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 		$this->assertEquals( 'No schedule IDs provided.', $response['data']['message'] );
 	}
 
+	public function test_bulk_run_now_exceeds_limit_returns_error() {
+		wp_set_current_user( $this->admin_user_id );
+
+		// Default limit is 5; create 6 schedules
+		$ids = $this->create_test_schedules( 6 );
+
+		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
+		$_POST['ids']   = $ids;
+
+		$response = $this->call_ajax( array( $this->controller, 'ajax_bulk_run_now_schedules' ) );
+
+		$this->assertFalse( $response['success'] );
+		$this->assertStringContainsString( 'Too many schedules selected', $response['data']['message'] );
+	}
+
 	public function test_bulk_run_now_permission_denied() {
 		wp_set_current_user( $this->subscriber_user_id );
 		$ids = $this->create_test_schedules( 2 );

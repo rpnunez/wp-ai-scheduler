@@ -469,13 +469,13 @@
 }
 
 /* Schedule table: checkbox column */
-.aips-table thead .check-column {
+.aips-schedule-table thead .check-column {
 	width: 2.5rem;
 	text-align: center;
 	padding: var(--aips-space-3) var(--aips-space-4);
 }
 
-.aips-table tbody .check-column {
+.aips-schedule-table tbody .check-column {
 	text-align: center;
 	padding: var(--aips-space-4);
 }
