@@ -81,7 +81,7 @@ if (!defined('ABSPATH')) {
                                     <div>
                                         <strong style="font-size: 14px;"><?php echo esc_html($generated_count); ?></strong>
                                         <span class="cell-meta"><?php esc_html_e('generated', 'ai-post-scheduler'); ?></span>
-                                        <a href="#" class="aips-view-template-posts" data-id="<?php echo esc_attr($template->id); ?>" style="font-size: 12px; margin-left: 4px;">
+                                        <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'template_id' => absint( $template->id ) ), admin_url( 'admin.php' ) ) ); ?>" style="font-size: 12px; margin-left: 4px;">
                                             <?php esc_html_e('(view)', 'ai-post-scheduler'); ?>
                                         </a>
                                     </div>
@@ -612,23 +612,6 @@ if (!defined('ABSPATH')) {
                         <label><strong><?php esc_html_e('Generated Content:', 'ai-post-scheduler'); ?></strong></label>
                         <div id="aips-test-content" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7; max-height: 400px; overflow-y: auto; white-space: pre-wrap;"></div>
                     </div>
-                </div>
-            </div>
-            <div class="aips-modal-footer">
-                <button type="button" class="button aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
-            </div>
-        </div>
-    </div>
-
-    <div id="aips-template-posts-modal" class="aips-modal" style="display: none;">
-        <div class="aips-modal-content aips-modal-large">
-            <div class="aips-modal-header">
-                <h2><?php esc_html_e('Generated Posts', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-            </div>
-            <div class="aips-modal-body">
-                <div id="aips-template-posts-content">
-                    <p class="aips-loading"><?php esc_html_e('Loading...', 'ai-post-scheduler'); ?></p>
                 </div>
             </div>
             <div class="aips-modal-footer">
