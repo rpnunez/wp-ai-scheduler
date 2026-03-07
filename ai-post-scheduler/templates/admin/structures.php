@@ -47,7 +47,22 @@ if (!isset($sections) || !is_array($sections)) {
 			<?php if (!empty($structures)): ?>
 			<div class="aips-filter-bar">
 				<div class="aips-filter-left">
-					<span class="aips-result-count"><?php printf(esc_html__('%d structures', 'ai-post-scheduler'), count($structures)); ?></span>
+					<span class="aips-result-count">
+						<?php
+						$count = count( $structures );
+						printf(
+							esc_html(
+								_n(
+									'%s structure',
+									'%s structures',
+									$count,
+									'ai-post-scheduler'
+								)
+							),
+							number_format_i18n( $count )
+						);
+						?>
+					</span>
 				</div>
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-structure-search"><?php esc_html_e('Search Structures:', 'ai-post-scheduler'); ?></label>
