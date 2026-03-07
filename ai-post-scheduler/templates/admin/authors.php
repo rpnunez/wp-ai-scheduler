@@ -194,6 +194,8 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         </div>
     </div>
 </div>
+    </div><!-- .aips-page-container -->
+</div><!-- .wrap.aips-wrap -->
 
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">
