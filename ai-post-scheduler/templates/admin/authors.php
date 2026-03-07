@@ -77,8 +77,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                             <?php foreach ($authors as $author):
                                 $status_counts = $topics_repository->get_status_counts($author->id);
                                 $total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
-                                $posts = $logs_repository->get_generated_posts_by_author($author->id);
-                                $posts_count = count($posts);
+                                $posts_count = $logs_repository->count_generated_posts_by_author($author->id);
                             ?>
                                 <tr data-author-id="<?php echo esc_attr($author->id); ?>">
                                     <td class="column-name">
@@ -118,10 +117,10 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                     </td>
                                     <td>
                                         <div class="cell-actions">
-                                            <button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-author" data-id="<?php echo esc_attr($author->id); ?>">
+                                            <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-author-topics', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
                                                 <span class="dashicons dashicons-visibility"></span>
                                                 <?php esc_html_e('View Topics', 'ai-post-scheduler'); ?>
-                                            </button>
+                                            </a>
                                             <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit author', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-edit"></span>
                                             </button>

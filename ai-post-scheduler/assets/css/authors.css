@@ -133,6 +133,35 @@
 	margin-bottom: 5px;
 }
 
+/* Inline feedback buttons displayed below the topic title */
+.aips-topic-inline-feedback {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.aips-topic-inline-feedback .aips-approve-topic,
+.aips-topic-inline-feedback .aips-reject-topic {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+}
+
+.aips-topic-inline-feedback .aips-topic-feedback-icon {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	line-height: 1;
+}
+
+/* Feedback icon button — icon-only, compact (kept for other uses) */
+.topic-actions .aips-topic-feedback-icon {
+	display: block;
+	line-height: 1;
+}
+
 /* Empty State */
 .aips-empty-state {
 	text-align: center;
@@ -440,149 +469,148 @@
 	min-width: 200px;
 }
 
-/* Toast Notification Styles */
-#aips-toast-container {
-	position: fixed;
-	top: 32px;
-	right: 20px;
-	z-index: 100000;
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	pointer-events: none;
-}
+/* =========================================================
+   Author Topics Page
+   ========================================================= */
 
-/* Responsive adjustments for mobile */
-@media screen and (max-width: 782px) {
-	#aips-toast-container {
-		top: 46px; /* WordPress mobile admin bar height */
-		right: 10px;
-		left: 10px;
-		max-width: calc(100vw - 20px);
-	}
-}
-
-@media screen and (max-width: 600px) {
-	#aips-toast-container {
-		top: 46px;
-		right: 5px;
-		left: 5px;
-		max-width: calc(100vw - 10px);
-	}
-}
-
-.aips-toast {
-	position: relative;
-	min-width: 300px;
-	max-width: 500px;
-	padding: 15px 20px;
-	background: #fff;
-	border-left: 4px solid #2271b1;
-	box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-	border-radius: 4px;
-	animation: slideIn 0.3s ease-out;
+/* Breadcrumb Navigation */
+.aips-breadcrumb {
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	pointer-events: auto;
+	gap: 6px;
+	font-size: 13px;
+	color: #50575e;
+	margin-bottom: 12px;
 }
 
-/* Responsive toast width */
-@media screen and (max-width: 782px) {
-	.aips-toast {
-		min-width: 250px;
-		max-width: 100%;
-		width: 100%;
-	}
-}
-
-@media screen and (max-width: 600px) {
-	.aips-toast {
-		min-width: 200px;
-		padding: 12px 15px;
-		font-size: 14px;
-	}
-}
-
-.aips-toast.success {
-	border-left-color: #00a32a;
-}
-
-.aips-toast.error {
-	border-left-color: #d63638;
-}
-
-.aips-toast.warning {
-	border-left-color: #dba617;
-}
-
-.aips-toast.info {
-	border-left-color: #2271b1;
-}
-
-.aips-toast-icon {
-	font-size: 20px;
-	flex-shrink: 0;
-}
-
-.aips-toast.success .aips-toast-icon {
-	color: #00a32a;
-}
-
-.aips-toast.error .aips-toast-icon {
-	color: #d63638;
-}
-
-.aips-toast.warning .aips-toast-icon {
-	color: #dba617;
-}
-
-.aips-toast.info .aips-toast-icon {
+.aips-breadcrumb a {
 	color: #2271b1;
+	text-decoration: none;
 }
 
-.aips-toast-message {
-	flex: 1;
-	line-height: 1.5;
+.aips-breadcrumb a:hover {
+	text-decoration: underline;
 }
 
-.aips-toast-close {
-	cursor: pointer;
-	font-size: 20px;
-	color: #666;
-	flex-shrink: 0;
-	background: none;
-	border: none;
-	padding: 0;
+.aips-breadcrumb-sep {
+	color: #a7aaad;
+	font-size: 16px;
 	line-height: 1;
 }
 
-.aips-toast-close:hover {
-	color: #000;
+/* Author Topics Statistics */
+.aips-author-topics-stats {
+	display: flex;
+	gap: 16px;
+	margin-bottom: 24px;
+	flex-wrap: wrap;
 }
 
-@keyframes slideIn {
-	from {
-		transform: translateX(100%);
-		opacity: 0;
+.aips-author-topics-stats .aips-stat-card {
+	flex: 1;
+	min-width: 120px;
+	padding: 16px 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.aips-author-topics-stats .aips-stat-value {
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1;
+	color: #1d2327;
+}
+
+.aips-author-topics-stats .aips-stat-label {
+	font-size: 12px;
+	color: #50575e;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	text-align: center;
+}
+
+.aips-author-topics-stats .aips-stat-pending .aips-stat-value {
+	color: #d63638;
+}
+
+.aips-author-topics-stats .aips-stat-approved .aips-stat-value {
+	color: #00a32a;
+}
+
+.aips-author-topics-stats .aips-stat-rejected .aips-stat-value {
+	color: #50575e;
+}
+
+.aips-author-topics-stats .aips-stat-generated .aips-stat-value {
+	color: #2271b1;
+}
+
+/* Page-level Topics Tabs (full page variant) */
+.aips-page-tabs {
+	border-bottom: 1px solid #c3c4c7;
+	margin-bottom: 0;
+	padding: 0 20px;
+}
+
+.aips-page-tabs .aips-tab-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 12px 16px;
+	border: none;
+	border-bottom: 2px solid transparent;
+	background: none;
+	cursor: pointer;
+	font-size: 14px;
+	color: #50575e;
+	margin-bottom: -1px;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.aips-page-tabs .aips-tab-link.active {
+	color: #2271b1;
+	border-bottom-color: #2271b1;
+	font-weight: 600;
+}
+
+.aips-page-tabs .aips-tab-link:hover {
+	color: #2271b1;
+}
+
+.aips-tab-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 20px;
+	height: 20px;
+	padding: 0 6px;
+	background: #c3c4c7;
+	color: #1d2327;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.aips-tab-link.active .aips-tab-count {
+	background: #2271b1;
+	color: #fff;
+}
+
+@media screen and (max-width: 782px) {
+	.aips-author-topics-stats {
+		gap: 10px;
 	}
-	to {
-		transform: translateX(0);
-		opacity: 1;
+
+	.aips-author-topics-stats .aips-stat-card {
+		min-width: calc(50% - 5px);
+		flex: none;
 	}
 }
 
-@keyframes slideOut {
-	from {
-		transform: translateX(0);
-		opacity: 1;
-	}
-	to {
-		transform: translateX(100%);
-		opacity: 0;
-	}
-}
-
-.aips-toast.closing {
-	animation: slideOut 0.3s ease-in forwards;
-}

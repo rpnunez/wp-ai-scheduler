@@ -51,6 +51,10 @@ class AIPS_Admin_Assets {
             true
         );
 
+        wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
+            'closeLabel' => __('Close notification', 'ai-post-scheduler'),
+        ));
+
         wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
@@ -85,11 +89,11 @@ class AIPS_Admin_Assets {
         ));
 
 		// Enqueue Authors-specific assets
-		if (strpos($hook, 'aips-authors') !== false) {
+		if (strpos($hook, 'aips-authors') !== false || strpos($hook, 'aips-author-topics') !== false) {
 			wp_enqueue_style(
 				'aips-authors-style',
 				AIPS_PLUGIN_URL . 'assets/css/authors.css',
-				array(),
+				array('aips-admin-style'),
 				AIPS_VERSION
 			);
 
@@ -102,6 +106,8 @@ class AIPS_Admin_Assets {
 			);
 
 			// Localize script with translations and nonce
+			$page_author_id = ( strpos( $hook, 'aips-author-topics' ) !== false && isset( $_GET['author_id'] ) ) ? absint( $_GET['author_id'] ) : 0;
+
 			wp_localize_script('aips-authors-script', 'aipsAuthorsL10n', array(
 				'nonce' => wp_create_nonce('aips_ajax_nonce'),
 				'addNewAuthor' => __('Add New Author', 'ai-post-scheduler'),
@@ -133,10 +139,12 @@ class AIPS_Admin_Assets {
 				'loadingTopics' => __('Loading topics...', 'ai-post-scheduler'),
 				'noTopicsFound' => __('No topics found.', 'ai-post-scheduler'),
 				'topicTitle' => __('Topic Title', 'ai-post-scheduler'),
-				'generatedAt' => __('Generated', 'ai-post-scheduler'),
+				'generatedAt' => __('Date Topic Generated', 'ai-post-scheduler'),
 				'actions' => __('Actions', 'ai-post-scheduler'),
 				'approve' => __('Approve', 'ai-post-scheduler'),
 				'reject' => __('Reject', 'ai-post-scheduler'),
+				'quickApprove' => __('Quick Approve', 'ai-post-scheduler'),
+				'quickReject' => __('Quick Reject', 'ai-post-scheduler'),
 				'edit' => __('Edit', 'ai-post-scheduler'),
 				'delete' => __('Delete', 'ai-post-scheduler'),
 				'save' => __('Save', 'ai-post-scheduler'),
@@ -187,6 +195,18 @@ class AIPS_Admin_Assets {
 				'logUser' => __('User', 'ai-post-scheduler'),
 				'logDate' => __('Date', 'ai-post-scheduler'),
 				'logDetails' => __('Details', 'ai-post-scheduler'),
+				// Quick action strings
+				'processing' => __('Processing...', 'ai-post-scheduler'),
+				'topicApproved' => __('Topic approved.', 'ai-post-scheduler'),
+				'topicRejected' => __('Topic rejected.', 'ai-post-scheduler'),
+				'approveWithFeedback' => __('Approve with Feedback', 'ai-post-scheduler'),
+				'rejectWithFeedback' => __('Reject with Feedback', 'ai-post-scheduler'),
+			));
+
+			// Pass page-context data (not i18n) in a separate object so it stays
+			// semantically distinct from the translation strings above.
+			wp_localize_script('aips-authors-script', 'aipsAuthorContext', array(
+				'authorId' => $page_author_id,
 			));
 		}
 
