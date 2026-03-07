@@ -20,7 +20,9 @@
             var hash = window.location.hash;
             if (hash) {
                 var tabId = hash.substring(1); // Remove the # prefix
-                var $tabLink = $('.nav-tab[data-tab="' + tabId + '"], .aips-tab-link[data-tab="' + tabId + '"]');
+                var $tabLink = $('.nav-tab[data-tab], .aips-tab-link[data-tab]').filter(function() {
+                    return $(this).data('tab') === tabId;
+                });
                 if ($tabLink.length) {
                     $tabLink.trigger('click');
                 }
