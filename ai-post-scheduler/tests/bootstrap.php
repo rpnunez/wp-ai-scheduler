@@ -876,6 +876,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     
     // Load plugin classes
     $includes_dir = dirname(__DIR__) . '/includes/';
+    if (file_exists(dirname(__DIR__) . '/includes/compatibility-loader.php')) {
+        require_once dirname(__DIR__) . '/includes/compatibility-loader.php';
+    }
     $files = [
         'class-aips-logger.php',
         'class-aips-config.php',
