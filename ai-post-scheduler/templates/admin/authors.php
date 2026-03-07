@@ -77,8 +77,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                             <?php foreach ($authors as $author):
                                 $status_counts = $topics_repository->get_status_counts($author->id);
                                 $total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
-                                $posts = $logs_repository->get_generated_posts_by_author($author->id);
-                                $posts_count = count($posts);
+                                $posts_count = $logs_repository->count_generated_posts_by_author($author->id);
                             ?>
                                 <tr data-author-id="<?php echo esc_attr($author->id); ?>">
                                     <td>
