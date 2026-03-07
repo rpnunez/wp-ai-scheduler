@@ -154,6 +154,9 @@ if (!defined('ABSPATH')) {
                                 <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <label for="aips-import-file" class="screen-reader-text">
+                            <?php esc_html_e('Import file', 'ai-post-scheduler'); ?>
+                        </label>
                         <input type="file" id="aips-import-file" accept=".sql,.json" style="display: inline-block; vertical-align: middle;">
                         <button type="button" class="aips-btn aips-btn-secondary aips-import-data">
                             <span class="dashicons dashicons-upload"></span>
