@@ -8,13 +8,35 @@ if (!defined('ABSPATH')) {
 $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '');
+$date_from     = isset($date_from) ? $date_from : (isset($_GET['date_from']) ? sanitize_text_field($_GET['date_from']) : '');
+$date_to       = isset($date_to) ? $date_to : (isset($_GET['date_to']) ? sanitize_text_field($_GET['date_to']) : '');
 
 if (isset($history_handler)) {
     $history = $history_handler->get_history(array(
-        'page'   => $current_page,
-        'status' => $status_filter,
-        'search' => $search_query,
+        'page'      => $current_page,
+        'status'    => $status_filter,
+        'search'    => $search_query,
+        'date_from' => $date_from,
+        'date_to'   => $date_to,
     ));
+}
+
+// Determine active date-range preset label for the active-state button highlight.
+$active_date_preset = '';
+if (!empty($date_from) || !empty($date_to)) {
+    $today = current_time('Y-m-d');
+    $seven_days_ago  = date('Y-m-d', strtotime('-6 days', strtotime($today)));
+    $thirty_days_ago = date('Y-m-d', strtotime('-29 days', strtotime($today)));
+
+    if ($date_from === $today && $date_to === $today) {
+        $active_date_preset = 'today';
+    } elseif ($date_from === $seven_days_ago && $date_to === $today) {
+        $active_date_preset = '7days';
+    } elseif ($date_from === $thirty_days_ago && $date_to === $today) {
+        $active_date_preset = '30days';
+    } else {
+        $active_date_preset = 'custom';
+    }
 }
 
 ?>
@@ -89,6 +111,42 @@ if (isset($history_handler)) {
                         <span class="dashicons dashicons-filter"></span>
                         <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
                     </button>
+
+                    <!-- Date Range Quick Filters -->
+                    <span class="aips-filter-divider" aria-hidden="true"></span>
+                    <div class="aips-date-range-filters" role="group" aria-label="<?php esc_attr_e('Date range filter', 'ai-post-scheduler'); ?>">
+                        <button type="button"
+                                class="aips-btn aips-btn-sm aips-btn-secondary aips-date-preset<?php echo $active_date_preset === 'today' ? ' aips-btn-active' : ''; ?>"
+                                data-preset="today"
+                                title="<?php esc_attr_e('Show today\'s history', 'ai-post-scheduler'); ?>">
+                            <?php esc_html_e('Today', 'ai-post-scheduler'); ?>
+                        </button>
+                        <button type="button"
+                                class="aips-btn aips-btn-sm aips-btn-secondary aips-date-preset<?php echo $active_date_preset === '7days' ? ' aips-btn-active' : ''; ?>"
+                                data-preset="7days"
+                                title="<?php esc_attr_e('Show last 7 days', 'ai-post-scheduler'); ?>">
+                            <?php esc_html_e('Last 7 Days', 'ai-post-scheduler'); ?>
+                        </button>
+                        <button type="button"
+                                class="aips-btn aips-btn-sm aips-btn-secondary aips-date-preset<?php echo $active_date_preset === '30days' ? ' aips-btn-active' : ''; ?>"
+                                data-preset="30days"
+                                title="<?php esc_attr_e('Show last 30 days', 'ai-post-scheduler'); ?>">
+                            <?php esc_html_e('Last 30 Days', 'ai-post-scheduler'); ?>
+                        </button>
+                        <?php if ($active_date_preset !== ''): ?>
+                        <button type="button"
+                                class="aips-btn aips-btn-sm aips-date-preset-clear"
+                                id="aips-date-preset-clear"
+                                title="<?php esc_attr_e('Clear date filter', 'ai-post-scheduler'); ?>">
+                            <span class="dashicons dashicons-no-alt"></span>
+                            <?php esc_html_e('Clear Date', 'ai-post-scheduler'); ?>
+                        </button>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Hidden inputs carry the active date range through AJAX calls -->
+                    <input type="hidden" id="aips-date-from" value="<?php echo esc_attr($date_from); ?>">
+                    <input type="hidden" id="aips-date-to"   value="<?php echo esc_attr($date_to); ?>">
                 </div>
                 <div class="aips-filter-right">
                     <input type="search" id="aips-history-search-input" name="s" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">

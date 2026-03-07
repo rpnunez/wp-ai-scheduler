@@ -2420,7 +2420,63 @@
     }
 }
 
-/* Toast Notification Styles (global) */
+/* =========================================================
+   History Date-Range Quick Filter
+   ========================================================= */
+
+/* Visual separator between the status dropdown and the date presets */
+.aips-filter-divider {
+    display: inline-block;
+    width: 1px;
+    height: 24px;
+    background: var(--aips-gray-300);
+    margin: 0 var(--aips-space-1);
+    vertical-align: middle;
+}
+
+/* Group the three preset buttons together */
+.aips-date-range-filters {
+    display: flex;
+    align-items: center;
+    gap: var(--aips-space-1);
+    flex-wrap: wrap;
+}
+
+/* Active / pressed state for preset buttons */
+.aips-btn.aips-btn-active {
+    background: var(--aips-primary, #2271b1);
+    color: #fff;
+    border-color: var(--aips-primary, #2271b1);
+}
+
+.aips-btn.aips-btn-active:hover {
+    background: var(--aips-primary-dark, #135e96);
+    border-color: var(--aips-primary-dark, #135e96);
+}
+
+/* "Clear Date" button — subtle / muted style */
+.aips-btn.aips-date-preset-clear {
+    color: var(--aips-gray-600, #6b7280);
+    border-color: transparent;
+    background: transparent;
+    padding-left: var(--aips-space-1);
+    padding-right: var(--aips-space-1);
+}
+
+.aips-btn.aips-date-preset-clear:hover {
+    color: var(--aips-danger, #d63638);
+}
+
+.aips-btn.aips-date-preset-clear .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+    margin-right: 2px;
+}
+
+/* =========================================================
+   Toast Notification Styles (global) */
 #aips-toast-container {
     position: fixed;
     top: 30vh;
