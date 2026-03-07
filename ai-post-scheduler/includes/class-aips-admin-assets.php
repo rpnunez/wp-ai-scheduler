@@ -201,6 +201,21 @@ class AIPS_Admin_Assets {
 				'topicRejected' => __('Topic rejected.', 'ai-post-scheduler'),
 				'approveWithFeedback' => __('Approve with Feedback', 'ai-post-scheduler'),
 				'rejectWithFeedback' => __('Reject with Feedback', 'ai-post-scheduler'),
+				// Bulk generate
+				'generateNow' => __('Generate Now', 'ai-post-scheduler'),
+				'confirmBulkGenerate' => __('Are you sure you want to generate posts for %d topics?', 'ai-post-scheduler'),
+				'noFeedbackSelected' => __('Please select at least one feedback item.', 'ai-post-scheduler'),
+				'errorBulkAction' => __('Error executing bulk action.', 'ai-post-scheduler'),
+				// Progress bar modal strings
+				'generatingPostsTitle' => __('Generating Posts', 'ai-post-scheduler'),
+				'generatingPostsMessage' => __('Please wait while your posts are being generated. This may take a few minutes.', 'ai-post-scheduler'),
+				'estimatedTimeRemaining' => __('Estimated time remaining: %s', 'ai-post-scheduler'),
+				'generationComplete' => __('Generation complete!', 'ai-post-scheduler'),
+				'generationCompletePartial' => __('%d post(s) generated, %d failed.', 'ai-post-scheduler'),
+				'seconds' => __('seconds', 'ai-post-scheduler'),
+				'minute' => __('1 minute', 'ai-post-scheduler'),
+				'minutes' => __('%d minutes', 'ai-post-scheduler'),
+				'minutesSeconds' => __('%dm %ds', 'ai-post-scheduler'),
 			));
 
 			// Pass page-context data (not i18n) in a separate object so it stays
