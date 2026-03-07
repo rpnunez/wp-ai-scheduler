@@ -391,12 +391,18 @@
 			}
 			
 			if (!options.skipConfirm && aiEditState.changedComponents.size > 0) {
-				if (!confirm(aipsAIEditL10n.confirmClose)) {
-					if (e) e.stopPropagation();
-					return;
-				}
+				AIPS.Utilities.confirm(aipsAIEditL10n.confirmClose, 'Notice', [
+					{ label: 'No, keep editing', className: 'aips-btn aips-btn-primary' },
+					{ label: 'Yes, discard changes', className: 'aips-btn aips-btn-danger-solid', action: function() {
+						$('#aips-ai-edit-modal').hide();
+						$('body').removeClass('aips-modal-open');
+						window.AIPS.resetAIEditState();
+					}}
+				]);
+				if (e) e.stopPropagation();
+				return;
 			}
-			
+
 			$('#aips-ai-edit-modal').hide();
 			$('body').removeClass('aips-modal-open');
 			window.AIPS.resetAIEditState();

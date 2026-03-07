@@ -205,11 +205,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message || aipsAdminL10n.saveStructureFailed);
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveStructureFailed, 'error');
                     }
                 }).fail(function(){
                     $btn.prop('disabled', false).text('Save Structure');
-                    alert(aipsAdminL10n.errorTryAgain);
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 });
             });
 
@@ -241,25 +241,30 @@
                         $('#aips-structure-modal-title').text('Edit Article Structure');
                         $('#aips-structure-modal').show();
                     } else {
-                        alert(response.data.message || aipsAdminL10n.loadStructureFailed);
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadStructureFailed, 'error');
                     }
                 }).fail(function(){
-                    alert(aipsAdminL10n.errorOccurred);
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
                 });
             });
 
             // @TODO: Refactor to AIPS.deleteStructure
             $(document).on('click', '.aips-delete-structure', function(){
-                if (!confirm(aipsAdminL10n.deleteStructureConfirm)) return;
-                var id = $(this).data('id');
-                var $row = $(this).closest('tr');
-                $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
-                    if (response.success) {
-                        $row.fadeOut(function(){ $(this).remove(); });
-                    } else {
-                        alert(response.data.message || aipsAdminL10n.deleteStructureFailed);
-                    }
-                }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
+                var $el = $(this);
+                var id = $el.data('id');
+                var $row = $el.closest('tr');
+                AIPS.Utilities.confirm(aipsAdminL10n.deleteStructureConfirm, 'Confirm', [
+                    { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                    { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                        $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                            if (response.success) {
+                                $row.fadeOut(function(){ $(this).remove(); });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteStructureFailed, 'error');
+                            }
+                        }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                    }}
+                ]);
             });
 
             // Prompt Sections UI handlers
@@ -291,11 +296,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message || aipsAdminL10n.saveSectionFailed);
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveSectionFailed, 'error');
                     }
                 }).fail(function(){
                     $btn.prop('disabled', false).text('Save Section');
-                    alert(aipsAdminL10n.errorTryAgain);
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 });
             });
 
@@ -313,24 +318,29 @@
                         $('#aips-section-modal-title').text('Edit Prompt Section');
                         $('#aips-section-modal').show();
                     } else {
-                        alert(response.data.message || aipsAdminL10n.loadSectionFailed);
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadSectionFailed, 'error');
                     }
                 }).fail(function(){
-                    alert(aipsAdminL10n.errorOccurred);
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
                 });
             });
 
             $(document).on('click', '.aips-delete-section', function(){
-                if (!confirm(aipsAdminL10n.deleteSectionConfirm)) return;
-                var id = $(this).data('id');
-                var $row = $(this).closest('tr');
-                $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
-                    if (response.success) {
-                        $row.fadeOut(function(){ $(this).remove(); });
-                    } else {
-                        alert(response.data.message || aipsAdminL10n.deleteSectionFailed);
-                    }
-                }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
+                var $el = $(this);
+                var id = $el.data('id');
+                var $row = $el.closest('tr');
+                AIPS.Utilities.confirm(aipsAdminL10n.deleteSectionConfirm, 'Confirm', [
+                    { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                    { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                        $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                            if (response.success) {
+                                $row.fadeOut(function(){ $(this).remove(); });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteSectionFailed, 'error');
+                            }
+                        }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                    }}
+                ]);
             });
         },
 
@@ -527,11 +537,11 @@
                         AIPS.wizardGoToStep(1);
                         $('#aips-template-modal').show();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -544,33 +554,34 @@
             var $btn = $(this);
             var id = $btn.data('id');
 
-            if (!confirm('Are you sure you want to clone this template?')) {
-                return;
-            }
+            AIPS.Utilities.confirm('Are you sure you want to clone this template?', 'Confirm', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, clone', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $btn.prop('disabled', true).text('Cloning...');
 
-            $btn.prop('disabled', true).text('Cloning...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_clone_template',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        alert(response.data.message);
-                        $btn.prop('disabled', false).text('Clone');
-                    }
-                },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                    $btn.prop('disabled', false).text('Clone');
-                }
-            });
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_clone_template',
+                            nonce: aipsAjax.nonce,
+                            template_id: id
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                location.reload();
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                                $btn.prop('disabled', false).text('Clone');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                            $btn.prop('disabled', false).text('Clone');
+                        }
+                    });
+                }}
+            ]);
         },
 
         deleteTemplate: function(e) {
@@ -612,7 +623,7 @@
                             $(this).remove();
                         });
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                         // Reset button state on error
                         $btn.text($btn.data('original-text'));
                         $btn.removeClass('aips-confirm-delete');
@@ -621,7 +632,7 @@
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                     // Reset button state on error
                     $btn.text($btn.data('original-text'));
                     $btn.removeClass('aips-confirm-delete');
@@ -673,11 +684,11 @@
                         AIPS.lastSavedTemplateId = savedId;
                         AIPS.showPostSaveActions(savedId);
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Template');
@@ -691,7 +702,7 @@
             
             // Validate at least name is provided
             if (!$('#template_name').val().trim()) {
-                alert(aipsAdminL10n.templateNameRequired);
+                AIPS.Utilities.showToast(aipsAdminL10n.templateNameRequired, 'warning');
                 $('#template_name').focus();
                 AIPS.wizardGoToStep(1);
                 return;
@@ -728,11 +739,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).html('<span class="dashicons dashicons-cloud-saved"></span> Save Draft');
@@ -745,7 +756,7 @@
             
             // Validate at least prompt is there
             if (!$('#prompt_template').val().trim()) {
-                alert(aipsAdminL10n.contentPromptRequired || 'Please enter a content prompt first.');
+                AIPS.Utilities.showToast(aipsAdminL10n.contentPromptRequired || 'Please enter a content prompt first.', 'warning');
                 $('#prompt_template').focus();
                 return;
             }
@@ -798,11 +809,11 @@
 
                         $('#aips-test-result-modal').show();
                     } else {
-                        alert(response.data.message || 'Generation failed.');
+                        AIPS.Utilities.showToast(response.data.message || 'Generation failed.', 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).html(originalText);
@@ -836,11 +847,11 @@
                         }
                         $('#aips-post-success-modal').show();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Run Now');
@@ -909,27 +920,30 @@
 
         deleteVoice: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this voice?')) {
-                return;
-            }
-            var id = $(this).data('id');
-            var $row = $(this).closest('tr');
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_voice',
-                    nonce: aipsAjax.nonce,
-                    voice_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() { $(this).remove(); });
-                    } else {
-                        alert(response.data.message);
-                    }
-                }
-            });
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm('Are you sure you want to delete this voice?', 'Confirm', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_delete_voice',
+                            nonce: aipsAjax.nonce,
+                            voice_id: id
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $row.fadeOut(function() { $(this).remove(); });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                            }
+                        }
+                    });
+                }}
+            ]);
         },
 
         saveVoice: function(e) {
@@ -958,11 +972,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Voice');
@@ -1083,11 +1097,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Schedule');
@@ -1098,34 +1112,36 @@
         deleteSchedule: function(e) {
             e.preventDefault();
 
-            if (!confirm('Are you sure you want to delete this schedule?')) {
-                return;
-            }
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
 
-            var id = $(this).data('id');
-            var $row = $(this).closest('tr');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_schedule',
-                    nonce: aipsAjax.nonce,
-                    schedule_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() {
-                            $(this).remove();
-                        });
-                    } else {
-                        alert(response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                }
-            });
+            AIPS.Utilities.confirm('Are you sure you want to delete this schedule?', 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_delete_schedule',
+                            nonce: aipsAjax.nonce,
+                            schedule_id: id
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $row.fadeOut(function() {
+                                    $(this).remove();
+                                });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                        }
+                    });
+                }}
+            ]);
         },
 
         /**
@@ -1162,13 +1178,13 @@
                             msg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
                         }
 
-                        AIPS.showToast(msg, 'success', { isHtml: true, duration: 8000 });
+                        AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
                     } else {
-                        AIPS.showToast(response.data.message || 'Generation failed.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || 'Generation failed.', 'error');
                     }
                 },
                 error: function() {
-                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -1216,7 +1232,7 @@
                 error: function() {
                     $toggle.prop('checked', !isActive);
 
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 }
             });
         },
@@ -1441,30 +1457,31 @@
 
             var status = $(this).data('status');
             var message = status ? 'Are you sure you want to clear all ' + status + ' history?' : 'Are you sure you want to clear all history?';
-            
-            if (!confirm(message)) {
-                return;
-            }
 
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_clear_history',
-                    nonce: aipsAjax.nonce,
-                    status: status
-                },
-                success: function(response) {
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        alert(response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                }
-            });
+            AIPS.Utilities.confirm(message, 'Notice', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, clear', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_clear_history',
+                            nonce: aipsAjax.nonce,
+                            status: status
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                location.reload();
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                        }
+                    });
+                }}
+            ]);
         },
 
         retryGeneration: function(e) {
@@ -1485,15 +1502,15 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'success');
 
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Retry');
@@ -1630,7 +1647,7 @@
                 },
                 success: function(response) {
                     if (!response.success) {
-                        alert(response.data && response.data.message ? response.data.message : 'Failed to reload history.');
+                        AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Failed to reload history.', 'error');
 
                         return;
                     }
@@ -1684,7 +1701,7 @@
                     AIPS.updateDeleteButton();
                 },
                 error: function() {
-                    alert('An error occurred while reloading history.');
+                    AIPS.Utilities.showToast('An error occurred while reloading history.', 'error');
                 },
                 complete: function() {
                     if (isReloadBtn && $btn.length) {
@@ -1740,7 +1757,7 @@
             e.preventDefault();
 
             if (typeof wp === 'undefined' || !wp.media) {
-                alert('Media library is not available.');
+                AIPS.Utilities.showToast('Media library is not available.', 'warning');
                 return;
             }
 
@@ -2082,12 +2099,12 @@
                     if (response.success) {
                         AIPS.renderDetails(response.data);
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                         $('#aips-details-modal').hide();
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                     $('#aips-details-modal').hide();
                 },
                 complete: function() {
@@ -2265,56 +2282,6 @@
             });
         },
 
-        /**
-         * Displays a toast notification in the top-right corner of the screen.
-         *
-         * Accepts plain text or pre-built HTML (for links). Plain-text messages
-         * are auto-escaped; if you pass HTML, set {@code isHtml} to true.
-         *
-         * @param {string}  message  - The message to display.
-         * @param {string}  type     - One of 'success', 'error', 'warning', 'info'.
-         * @param {Object}  [opts]   - Optional settings.
-         * @param {boolean} [opts.isHtml=false]    - If true, message is inserted as raw HTML.
-         * @param {number}  [opts.duration=6000]   - Auto-dismiss delay in ms (0 = no auto-dismiss).
-         */
-        showToast: function(message, type, opts) {
-            type = type || 'info';
-            opts = opts || {};
-            var duration = opts.duration !== undefined ? opts.duration : 6000;
-            var isHtml   = opts.isHtml || false;
-
-            var iconMap = { success: '\u2713', error: '\u2715', warning: '\u26A0', info: '\u2139' };
-
-            var $container = $('#aips-toast-container');
-            if (!$container.length) {
-                $container = $('<div id="aips-toast-container"></div>');
-                $('body').append($container);
-            }
-
-            var safeMessage = isHtml ? message : $('<div>').text(message).html();
-
-            var $toast = $('<div class="aips-toast ' + type + '">')
-                .append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
-                .append('<div class="aips-toast-message">' + safeMessage + '</div>')
-                .append('<button class="aips-toast-close" aria-label="Close">&times;</button>');
-
-            $container.append($toast);
-
-            $toast.find('.aips-toast-close').on('click', function() {
-                $toast.addClass('closing');
-                setTimeout(function() { $toast.remove(); }, 300);
-            });
-
-            if (duration > 0) {
-                setTimeout(function() {
-                    if ($toast.parent().length) {
-                        $toast.addClass('closing');
-                        setTimeout(function() { $toast.remove(); }, 300);
-                    }
-                }, duration);
-            }
-        },
-
         closeModal: function() {
             var $target = $(this).closest('.aips-modal');
             if ($target.length) {
@@ -2407,11 +2374,11 @@
                         }
                         $('#aips-post-success-modal').show();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).html('<span class="dashicons dashicons-controls-play"></span> Run Now');
@@ -2579,7 +2546,7 @@
             }
             
             if (!isValid && errorMessage) {
-                alert(errorMessage);
+                AIPS.Utilities.showToast(errorMessage, 'error');
             }
             
             return isValid;
@@ -2639,12 +2606,11 @@
 
             if (ids.length === 0) return;
 
-            if (!confirm('Are you sure you want to delete ' + ids.length + ' item(s)?')) {
-                return;
-            }
-
             var $btn = $(this);
-            $btn.prop('disabled', true).text('Deleting...');
+            AIPS.Utilities.confirm('Are you sure you want to delete ' + ids.length + ' item(s)?', 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $btn.prop('disabled', true).text('Deleting...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -2658,15 +2624,17 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                         $btn.prop('disabled', false).text('Delete Selected');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                     $btn.prop('disabled', false).text('Delete Selected');
                 }
             });
+                }}
+            ]);
         },
 
         // AI Variables feature methods
