@@ -2202,7 +2202,6 @@
             var preselectId = $modal.data('preselect-template') || urlParams.get('schedule_template');
             if (!preselectId) return;
 
-            // Optional delay if needed, though DOM is loaded at this point
             $('#aips-schedule-form')[0].reset();
             $('#schedule_id').val('');
             $('#schedule_template').val(preselectId);
