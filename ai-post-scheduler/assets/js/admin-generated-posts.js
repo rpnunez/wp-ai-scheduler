@@ -52,6 +52,12 @@
     //   });
       
       // Close preview modal
+      /**
+       * Fade out the post preview modal and clear the iframe `src`.
+       *
+       * Clearing the `src` stops any in-progress page load inside the iframe
+       * and frees the memory used by the preview URL.
+       */
       function closePreviewModal() {
           previewModal.fadeOut(200, function() {
               previewIframe.attr('src', '');

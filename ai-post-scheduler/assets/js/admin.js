@@ -8,6 +8,13 @@
     var SYSTEM_VARIABLES = ['date', 'year', 'month', 'day', 'time', 'site_name', 'site_description', 'random_number', 'topic', 'title'];
 
     Object.assign(AIPS, {
+        /**
+         * Bootstrap the AIPS admin interface.
+         *
+         * Registers all delegated event listeners, runs the initial AI variables
+         * scan, activates any tab referenced by the URL hash, and auto-opens the
+         * schedule modal when a template ID is passed via query parameter.
+         */
         init: function() {
             this.bindEvents();
             this.initAIVariablesScanner();
@@ -15,6 +22,13 @@
             this.initScheduleAutoOpen();
         },
 
+        /**
+         * Activate the tab matching the current URL hash on page load.
+         *
+         * Reads `window.location.hash`, strips the leading `#`, and triggers
+         * a click on the corresponding `.nav-tab[data-tab]` element so the
+         * correct tab panel is displayed immediately after navigation.
+         */
         handleInitialTabFromHash: function() {
             // Check for hash in URL and activate the corresponding tab
             var hash = window.location.hash;
@@ -29,6 +43,13 @@
             }
         },
 
+        /**
+         * Register all delegated jQuery event listeners for the admin UI.
+         *
+         * Uses event delegation on `document` so handlers work for elements
+         * injected dynamically (e.g. rows rendered after an AJAX call).
+         * Each handler is a named method on the AIPS object.
+         */
         bindEvents: function() {
             $(document).on('click', '.aips-add-template-btn', this.openTemplateModal);
             $(document).on('click', '.aips-edit-template', this.editTemplate);
@@ -90,21 +111,11 @@
             $(document).on('click', '#aips-history-search-btn', this.filterHistory);
             $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
             $(document).on('click', '.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next', this.loadHistoryPage);
-            $(document).on('keypress', '#aips-history-search-input', function(e) {
-                if(e.which == 13) {
-                    AIPS.filterHistory(e);
-                }
-            });
+            $(document).on('keypress', '#aips-history-search-input', this.handleHistorySearchKeypress);
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
             // History Pagination
-            $(document).on('click', '#aips-history-pagination a', function(e) {
-                e.preventDefault();
-                var href = $(this).attr('href');
-                var match = href.match(/paged=(\d+)/);
-                var page = match ? parseInt(match[1]) : 1;
-                AIPS.reloadHistory(e, page);
-            });
+            $(document).on('click', '#aips-history-pagination a', this.handleHistoryPaginationClick);
 
             // History Bulk Actions
             $(document).on('change', '#cb-select-all-1', this.toggleAllHistory);
@@ -171,182 +182,35 @@
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
 
             // Article Structures UI handlers
+            $(document).on('click', '.aips-add-structure-btn', this.openAddStructureModal);
 
-            // @TODO: Refactor to use AIPS.addStructure
-            $(document).on('click', '.aips-add-structure-btn', function(e){
-                e.preventDefault();
-                $('#aips-structure-form')[0].reset();
-                $('#structure_id').val('');
-                $('#aips-structure-modal-title').text('Add New Article Structure');
-                $('#aips-structure-modal').show();
-            });
+            $(document).on('click', '.aips-save-structure', this.saveStructure);
 
-            // @TODO: Refactor to AIPS.closeModal -- or use existing function
-            $(document).on('click', '.aips-modal-close', function(){
-                $(this).closest('.aips-modal').hide();
-            });
+            $(document).on('click', '.aips-edit-structure', this.editStructure);
 
-            // @TODO: Refactor to AIPS.saveStructure
-            $(document).on('click', '.aips-save-structure', function(){
-                var $btn = $(this);
-                $btn.prop('disabled', true).text('Saving...');
-
-                var data = {
-                    action: 'aips_save_structure',
-                    nonce: aipsAjax.nonce,
-                    structure_id: $('#structure_id').val(),
-                    name: $('#structure_name').val(),
-                    description: $('#structure_description').val(),
-                    prompt_template: $('#prompt_template').val(),
-                    sections: $('#structure_sections').val() || [],
-                    is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
-                    is_default: $('#structure_is_default').is(':checked') ? 1 : 0,
-                };
-
-                $.post(aipsAjax.ajaxUrl, data, function(response){
-                    $btn.prop('disabled', false).text('Save Structure');
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveStructureFailed, 'error');
-                    }
-                }).fail(function(){
-                    $btn.prop('disabled', false).text('Save Structure');
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                });
-            });
-
-            // @TODO: Refactor to AIPS.saveStructure
-            $(document).on('click', '.aips-edit-structure', function(){
-                var id = $(this).data('id');
-                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
-                    if (response.success) {
-                        var s = response.data.structure;
-                        var structureData = {};
-
-                        if (s.structure_data) {
-                            try {
-                                structureData = JSON.parse(s.structure_data) || {};
-                            } catch (e) {
-                                console.error('Invalid structure_data JSON for structure ID ' + s.id, e);
-                                structureData = {};
-                            }
-                        }
-
-                        $('#structure_id').val(s.id);
-                        $('#structure_name').val(s.name);
-                        $('#structure_description').val(s.description);
-                        $('#prompt_template').val(structureData.prompt_template || '');
-                        var sections = structureData.sections || [];
-                        $('#structure_sections').val(sections);
-                        $('#structure_is_active').prop('checked', s.is_active == 1);
-                        $('#structure_is_default').prop('checked', s.is_default == 1);
-                        $('#aips-structure-modal-title').text('Edit Article Structure');
-                        $('#aips-structure-modal').show();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadStructureFailed, 'error');
-                    }
-                }).fail(function(){
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
-                });
-            });
-
-            // @TODO: Refactor to AIPS.deleteStructure
-            $(document).on('click', '.aips-delete-structure', function(){
-                var $el = $(this);
-                var id = $el.data('id');
-                var $row = $el.closest('tr');
-                AIPS.Utilities.confirm(aipsAdminL10n.deleteStructureConfirm, 'Confirm', [
-                    { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                    { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                        $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
-                            if (response.success) {
-                                $row.fadeOut(function(){ $(this).remove(); });
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteStructureFailed, 'error');
-                            }
-                        }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
-                    }}
-                ]);
-            });
+            $(document).on('click', '.aips-delete-structure', this.deleteStructure);
 
             // Prompt Sections UI handlers
-            $(document).on('click', '.aips-add-section-btn', function(e){
-                e.preventDefault();
-                $('#aips-section-form')[0].reset();
-                $('#section_id').val('');
-                $('#aips-section-modal-title').text('Add New Prompt Section');
-                $('#aips-section-modal').show();
-            });
+            $(document).on('click', '.aips-add-section-btn', this.openAddSectionModal);
 
-            $(document).on('click', '.aips-save-section', function(){
-                var $btn = $(this);
-                $btn.prop('disabled', true).text('Saving...');
+            $(document).on('click', '.aips-save-section', this.saveSection);
 
-                var data = {
-                    action: 'aips_save_prompt_section',
-                    nonce: aipsAjax.nonce,
-                    section_id: $('#section_id').val(),
-                    name: $('#section_name').val(),
-                    section_key: $('#section_key').val(),
-                    description: $('#section_description').val(),
-                    content: $('#section_content').val(),
-                    is_active: $('#section_is_active').is(':checked') ? 1 : 0
-                };
+            $(document).on('click', '.aips-edit-section', this.editSection);
 
-                $.post(aipsAjax.ajaxUrl, data, function(response){
-                    $btn.prop('disabled', false).text('Save Section');
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveSectionFailed, 'error');
-                    }
-                }).fail(function(){
-                    $btn.prop('disabled', false).text('Save Section');
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                });
-            });
-
-            $(document).on('click', '.aips-edit-section', function(){
-                var id = $(this).data('id');
-                $.post(aipsAjax.ajaxUrl, {action: 'aips_get_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
-                    if (response.success) {
-                        var s = response.data.section;
-                        $('#section_id').val(s.id);
-                        $('#section_name').val(s.name);
-                        $('#section_key').val(s.section_key);
-                        $('#section_description').val(s.description);
-                        $('#section_content').val(s.content);
-                        $('#section_is_active').prop('checked', s.is_active == 1);
-                        $('#aips-section-modal-title').text('Edit Prompt Section');
-                        $('#aips-section-modal').show();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadSectionFailed, 'error');
-                    }
-                }).fail(function(){
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
-                });
-            });
-
-            $(document).on('click', '.aips-delete-section', function(){
-                var $el = $(this);
-                var id = $el.data('id');
-                var $row = $el.closest('tr');
-                AIPS.Utilities.confirm(aipsAdminL10n.deleteSectionConfirm, 'Confirm', [
-                    { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                    { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                        $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
-                            if (response.success) {
-                                $row.fadeOut(function(){ $(this).remove(); });
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteSectionFailed, 'error');
-                            }
-                        }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
-                    }}
-                ]);
-            });
+            $(document).on('click', '.aips-delete-section', this.deleteSection);
         },
 
+        /**
+         * Copy the `data-clipboard-text` value of the clicked button to the
+         * user's clipboard.
+         *
+         * On success, briefly swaps the button label to "Copied!" (or swaps the
+         * dashicon to a checkmark for icon-only `.aips-copy-btn-small` buttons).
+         * Falls back to `document.execCommand('copy')` when the Clipboard API
+         * is unavailable.
+         *
+         * @param {Event} e - Click event from an `.aips-copy-btn` element.
+         */
         copyToClipboard: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -403,6 +267,14 @@
             });
         },
 
+        /**
+         * Test the connection to the configured AI engine.
+         *
+         * Sends an AJAX request to the `aips_test_connection` action and
+         * displays a success or error status message next to the button.
+         *
+         * @param {Event} e - Click event from the `#aips-test-connection` button.
+         */
         testConnection: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -437,6 +309,16 @@
             });
         },
 
+        /**
+         * Switch to the tab identified by the clicked `.nav-tab`'s `data-tab`
+         * attribute.
+         *
+         * Updates `window.location.hash`, toggles `.nav-tab-active` and ARIA
+         * attributes on the tab links, and shows/hides the corresponding
+         * `.aips-tab-content` panel.
+         *
+         * @param {Event} e - Click event from a `.nav-tab` element.
+         */
         switchTab: function(e) {
             e.preventDefault();
             var tabId = $(this).data('tab');
@@ -466,6 +348,16 @@
                 .attr('aria-hidden', 'false');
         },
         
+        /**
+         * Switch to an AIPS sub-tab identified by the clicked `.aips-tab-link`'s
+         * `data-tab` attribute.
+         *
+         * Toggles the `.active` class on the tab links, shows the matching
+         * `.aips-tab-content` panel, and fires the custom `aips:tabSwitch` event
+         * on `document` so other modules can react.
+         *
+         * @param {Event} e - Click event from an `.aips-tab-link` element.
+         */
         switchAipsTab: function(e) {
             e.preventDefault();
             var tabId = $(e.currentTarget).data('tab');
@@ -483,6 +375,15 @@
             $(document).trigger('aips:tabSwitch', [tabId]);
         },
 
+        /**
+         * Append the current URL hash to a form's `action` attribute before
+         * submission so that the active tab is preserved after the page reloads.
+         *
+         * Bound to the `submit` event on `.aips-post-review-filters` and
+         * `form[action*="aips-generated-posts"]`.
+         *
+         * @param {Event} e - Submit event from the form element.
+         */
         preserveTabOnSubmit: function(e) {
             // Append current hash to form action to preserve active tab
             var hash = window.location.hash;
@@ -498,6 +399,14 @@
             }
         },
 
+        /**
+         * Reset and open the template modal in "Add New" mode.
+         *
+         * Clears the form, resets the media selection and AI variables panel,
+         * initialises the wizard to step 1, and displays the modal.
+         *
+         * @param {Event} e - Click event from an `.aips-add-template-btn` element.
+         */
         openTemplateModal: function(e) {
             e.preventDefault();
             $('#aips-template-form')[0].reset();
@@ -514,6 +423,15 @@
             $('#aips-template-modal').show();
         },
 
+        /**
+         * Fetch a template's data via AJAX and open the modal in "Edit" mode.
+         *
+         * Reads the template ID from the clicked element's `data-id` attribute,
+         * then populates every form field (including media selection and voice)
+         * before showing the modal at wizard step 1.
+         *
+         * @param {Event} e - Click event from an `.aips-edit-template` element.
+         */
         editTemplate: function(e) {
             e.preventDefault();
             var id = $(this).data('id');
@@ -569,6 +487,14 @@
             });
         },
 
+        /**
+         * Duplicate an existing template via AJAX after user confirmation.
+         *
+         * Shows a confirmation dialog, then sends the `aips_clone_template`
+         * AJAX action. Reloads the page on success.
+         *
+         * @param {Event} e - Click event from an `.aips-clone-template` element.
+         */
         cloneTemplate: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -604,6 +530,16 @@
             ]);
         },
 
+        /**
+         * Delete a template using a two-click soft-confirm pattern.
+         *
+         * The first click changes the button label to "Click again to confirm"
+         * and sets a 3-second auto-reset timer. The second click (within the
+         * window) sends the `aips_delete_template` AJAX action and removes the
+         * table row on success.
+         *
+         * @param {Event} e - Click event from an `.aips-delete-template` element.
+         */
         deleteTemplate: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -662,6 +598,15 @@
             });
         },
 
+        /**
+         * Validate and save the template form via AJAX.
+         *
+         * Runs HTML5 form validation before submitting. On success, stores the
+         * returned template ID and switches the wizard to the post-save actions
+         * panel via `showPostSaveActions()`.
+         *
+         * @param {Event} e - Click event from an `.aips-save-template` element.
+         */
         saveTemplate: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -716,6 +661,15 @@
             });
         },
 
+        /**
+         * Save the current template form as an inactive draft.
+         *
+         * Requires at least the template name to be filled in. Sends the
+         * `aips_save_template` AJAX action with `is_active=0` and reloads the
+         * page on success.
+         *
+         * @param {Event} e - Click event from an `.aips-save-draft-template` element.
+         */
         saveDraftTemplate: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -771,6 +725,16 @@
             });
         },
 
+        /**
+         * Run a one-off test generation using the current template form values.
+         *
+         * Requires a non-empty content prompt. Sends the `aips_test_template`
+         * AJAX action with `post_quantity` forced to 1, then displays the
+         * generated title, excerpt, content, and optional image prompt in the
+         * test-result modal.
+         *
+         * @param {Event} e - Click event from an `.aips-test-template` element.
+         */
         testTemplate: function(e) {
             e.preventDefault();
             
@@ -841,6 +805,16 @@
             });
         },
 
+        /**
+         * Immediately generate a post from a template without waiting for its
+         * scheduled run.
+         *
+         * Sends the `aips_run_now` AJAX action with the template ID taken from
+         * the clicked element's `data-id` attribute. Displays the success modal
+         * with an optional edit link on success.
+         *
+         * @param {Event} e - Click event from an `.aips-run-now` element.
+         */
         runNow: function(e) {
             e.preventDefault();
             var id = $(this).data('id');
@@ -879,6 +853,15 @@
             });
         },
 
+        /**
+         * Search for voices matching the current input value and repopulate the
+         * `#voice_id` select element.
+         *
+         * Sends the `aips_search_voices` AJAX action. The currently selected
+         * value is preserved across the repopulation.
+         *
+         * Bound to the `keyup` event on `#voice_search`.
+         */
         searchVoices: function() {
             var search = $(this).val();
             $.ajax({
@@ -903,6 +886,14 @@
             });
         },
 
+        /**
+         * Reset and open the voice modal in "Add New" mode.
+         *
+         * Clears the voice form, empties the hidden ID field, sets the modal
+         * title to "Add New Voice", and displays the modal.
+         *
+         * @param {Event} e - Click event from an `.aips-add-voice-btn` element.
+         */
         openVoiceModal: function(e) {
             e.preventDefault();
             $('#aips-voice-form')[0].reset();
@@ -911,6 +902,14 @@
             $('#aips-voice-modal').show();
         },
 
+        /**
+         * Fetch a voice's data via AJAX and open the voice modal in "Edit" mode.
+         *
+         * Reads the voice ID from the clicked element's `data-id` attribute,
+         * then populates every voice form field before showing the modal.
+         *
+         * @param {Event} e - Click event from an `.aips-edit-voice` element.
+         */
         editVoice: function(e) {
             e.preventDefault();
             var id = $(this).data('id');
@@ -938,6 +937,14 @@
             });
         },
 
+        /**
+         * Confirm and permanently delete a voice via AJAX.
+         *
+         * Shows a confirmation dialog. On confirmation, sends the
+         * `aips_delete_voice` AJAX action and fades out the table row on success.
+         *
+         * @param {Event} e - Click event from an `.aips-delete-voice` element.
+         */
         deleteVoice: function(e) {
             e.preventDefault();
             var $el = $(this);
@@ -966,6 +973,14 @@
             ]);
         },
 
+        /**
+         * Validate and save the voice form via AJAX.
+         *
+         * Runs HTML5 form validation before submitting. Sends the
+         * `aips_save_voice` AJAX action and reloads the page on success.
+         *
+         * @param {Event} e - Click event from an `.aips-save-voice` element.
+         */
         saveVoice: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -1004,6 +1019,14 @@
             });
         },
 
+        /**
+         * Reset and open the schedule modal in "Add New" mode.
+         *
+         * Clears the schedule form, empties the hidden ID field, sets the
+         * modal title to "Add New Schedule", and displays the modal.
+         *
+         * @param {Event} e - Click event from an `.aips-add-schedule-btn` element.
+         */
         openScheduleModal: function(e) {
             e.preventDefault();
             $('#aips-schedule-form')[0].reset();
@@ -1054,6 +1077,15 @@
             $('#aips-schedule-modal').show();
         },
 
+        /**
+         * Copy an existing schedule's settings into the "Add New" modal.
+         *
+         * Reads all schedule data from the row's `data-*` attributes, populates
+         * the form fields (leaving `schedule_id` and `start_time` blank so a
+         * new schedule is created), and shows the modal titled "Clone Schedule".
+         *
+         * @param {Event} e - Click event from an `.aips-clone-schedule` element.
+         */
         cloneSchedule: function(e) {
             e.preventDefault();
 
@@ -1084,6 +1116,14 @@
             $('#aips-schedule-modal').show();
         },
 
+        /**
+         * Validate and save the schedule form via AJAX.
+         *
+         * Runs HTML5 form validation before submitting. Sends the
+         * `aips_save_schedule` AJAX action and reloads the page on success.
+         *
+         * @param {Event} e - Click event from an `.aips-save-schedule` element.
+         */
         saveSchedule: function(e) {
             e.preventDefault();
             
@@ -1129,6 +1169,15 @@
             });
         },
 
+        /**
+         * Confirm and permanently delete a schedule via AJAX.
+         *
+         * Shows a confirmation dialog. On confirmation, sends the
+         * `aips_delete_schedule` AJAX action and fades out the table row on
+         * success.
+         *
+         * @param {Event} e - Click event from an `.aips-delete-schedule` element.
+         */
         deleteSchedule: function(e) {
             e.preventDefault();
 
@@ -1213,6 +1262,15 @@
             });
         },
 
+        /**
+         * Toggle a schedule's active/inactive status via AJAX.
+         *
+         * Reads the schedule ID and the new checked state from the toggle
+         * checkbox, then updates the adjacent status badge and icon to reflect
+         * the server-confirmed state. Reverts the checkbox on AJAX error.
+         *
+         * Bound to the `change` event on `.aips-toggle-schedule`.
+         */
         toggleSchedule: function() {
             var $toggle = $(this);
             var id = $toggle.data('id');
@@ -1257,12 +1315,29 @@
             });
         },
 
+        /**
+         * Sync all individual schedule checkboxes with the "select all" state.
+         *
+         * Reads the checked state of `#cb-select-all-schedules` and applies it
+         * to every `.aips-schedule-checkbox`, then updates bulk-action controls.
+         *
+         * Bound to the `change` event on `#cb-select-all-schedules`.
+         */
         toggleAllSchedules: function() {
             var isChecked = $(this).prop('checked');
             $('.aips-schedule-checkbox').prop('checked', isChecked);
             AIPS.updateScheduleBulkActions();
         },
 
+        /**
+         * Keep the "select all" checkbox in sync with individual row selections.
+         *
+         * Checks whether every `.aips-schedule-checkbox` is checked and updates
+         * `#cb-select-all-schedules` accordingly, then refreshes bulk-action
+         * controls.
+         *
+         * Bound to the `change` event on `.aips-schedule-checkbox`.
+         */
         toggleScheduleSelection: function() {
             var total = $('.aips-schedule-checkbox').length;
             var checked = $('.aips-schedule-checkbox:checked').length;
@@ -1270,18 +1345,37 @@
             AIPS.updateScheduleBulkActions();
         },
 
+        /**
+         * Check every schedule row checkbox and update bulk-action controls.
+         *
+         * Sets all `.aips-schedule-checkbox` and `#cb-select-all-schedules` to
+         * checked, then calls `updateScheduleBulkActions`.
+         */
         selectAllSchedules: function() {
             $('.aips-schedule-checkbox').prop('checked', true);
             $('#cb-select-all-schedules').prop('checked', true);
             AIPS.updateScheduleBulkActions();
         },
 
+        /**
+         * Uncheck every schedule row checkbox and update bulk-action controls.
+         *
+         * Sets all `.aips-schedule-checkbox` and `#cb-select-all-schedules` to
+         * unchecked, then calls `updateScheduleBulkActions`.
+         */
         unselectAllSchedules: function() {
             $('.aips-schedule-checkbox').prop('checked', false);
             $('#cb-select-all-schedules').prop('checked', false);
             AIPS.updateScheduleBulkActions();
         },
 
+        /**
+         * Update the schedule bulk-action toolbar to reflect the current
+         * selection count.
+         *
+         * Enables or disables the Apply and Unselect-All buttons, and shows or
+         * hides the "N selected" label based on the number of checked rows.
+         */
         updateScheduleBulkActions: function() {
             var count = $('.aips-schedule-checkbox:checked').length;
             var $applyBtn = $('#aips-schedule-bulk-apply');
@@ -1298,6 +1392,16 @@
             }
         },
 
+        /**
+         * Dispatch the selected bulk action against all checked schedule rows.
+         *
+         * Supported actions: `delete`, `pause`, `activate`, `run_now`.
+         * For `delete` and `run_now`, a confirmation dialog is shown first.
+         * For `run_now`, the estimated post count is fetched via AJAX before
+         * the confirm to give the user an accurate preview.
+         *
+         * @param {Event} e - Click event from `#aips-schedule-bulk-apply`.
+         */
         applyScheduleBulkAction: function(e) {
             e.preventDefault();
 
@@ -1370,6 +1474,15 @@
             }
         },
 
+        /**
+         * Delete multiple schedules at once via the `aips_bulk_delete_schedules`
+         * AJAX action.
+         *
+         * On success, fades out each affected table row, unchecks the "select
+         * all" checkbox, and refreshes the bulk-action toolbar.
+         *
+         * @param {Array<string>} ids - Array of schedule ID strings to delete.
+         */
         bulkDeleteSchedules: function(ids) {
             var $applyBtn = $('#aips-schedule-bulk-apply');
             $applyBtn.prop('disabled', true).text('Deleting...');
@@ -1406,6 +1519,16 @@
             });
         },
 
+        /**
+         * Activate or pause multiple schedules at once via the
+         * `aips_bulk_toggle_schedules` AJAX action.
+         *
+         * On success, updates the toggle checkbox and status badge for each
+         * affected row to reflect the new state.
+         *
+         * @param {Array<string>} ids      - Array of schedule ID strings to update.
+         * @param {number}        isActive - `1` to activate, `0` to pause.
+         */
         bulkToggleSchedules: function(ids, isActive) {
             var $applyBtn = $('#aips-schedule-bulk-apply');
             $applyBtn.prop('disabled', true).text(isActive ? 'Activating...' : 'Pausing...');
@@ -1460,6 +1583,15 @@
             });
         },
 
+        /**
+         * Immediately run multiple schedules at once via the
+         * `aips_bulk_run_now_schedules` AJAX action.
+         *
+         * Shows a persistent success toast with a longer duration on success to
+         * give the user time to read the result.
+         *
+         * @param {Array<string>} ids - Array of schedule ID strings to run.
+         */
         bulkRunNowSchedules: function(ids) {
             var $applyBtn = $('#aips-schedule-bulk-apply');
             $applyBtn.prop('disabled', true).text('Running...');
@@ -1489,6 +1621,16 @@
             });
         },
 
+        /**
+         * Confirm and clear history entries, optionally filtered by status.
+         *
+         * Reads the optional `data-status` attribute from the clicked button to
+         * scope the clear to a specific status (e.g. "failed"). Shows a
+         * confirmation dialog, then sends the `aips_clear_history` AJAX action
+         * and reloads the page on success.
+         *
+         * @param {Event} e - Click event from an `.aips-clear-history` element.
+         */
         clearHistory: function(e) {
             e.preventDefault();
 
@@ -1521,6 +1663,15 @@
             ]);
         },
 
+        /**
+         * Retry a failed history entry via the `aips_retry_generation` AJAX
+         * action.
+         *
+         * Reads the history entry ID from the clicked element's `data-id`
+         * attribute. Shows a success toast and reloads the page on success.
+         *
+         * @param {Event} e - Click event from an `.aips-retry-generation` element.
+         */
         retryGeneration: function(e) {
             e.preventDefault();
 
@@ -1555,6 +1706,18 @@
             });
         },
 
+        /**
+         * Apply the current status filter and search term to the history list.
+         *
+         * Reads `#aips-filter-status` and `#aips-history-search-input`, updates
+         * the browser URL via `history.pushState` (without reloading), then
+         * calls `reloadHistory` to fetch the filtered results via AJAX.
+         *
+         * Bound to the `click` event on `#aips-filter-btn` and
+         * `#aips-history-search-btn`.
+         *
+         * @param {Event} e - Click event from the filter or search button.
+         */
         filterHistory: function(e) {
             e.preventDefault();
 
@@ -1587,6 +1750,16 @@
             AIPS.reloadHistory(e, 1);
         },
 
+        /**
+         * Export the current history view as a downloadable file.
+         *
+         * Builds a hidden `<form>` with the current status filter and search
+         * term, submits it as a POST to the `aips_export_history` AJAX action,
+         * and immediately removes the form. The server responds with file
+         * download headers.
+         *
+         * @param {Event} e - Click event from `#aips-export-history-btn`.
+         */
         exportHistory: function(e) {
             e.preventDefault();
 
@@ -1632,6 +1805,18 @@
             form.appendTo('body').submit().remove();
         },
 
+        /**
+         * Load a specific page of the history list.
+         *
+         * Reads the target page number from the clicked element's `data-page`
+         * attribute. Ignores disabled buttons and missing page values, then
+         * delegates to `reloadHistory`.
+         *
+         * Bound to the `click` event on `.aips-history-page-link`,
+         * `.aips-history-page-prev`, and `.aips-history-page-next`.
+         *
+         * @param {Event} e - Click event from a history page-navigation element.
+         */
         loadHistoryPage: function(e) {
             e.preventDefault();
 
@@ -1650,6 +1835,18 @@
             AIPS.reloadHistory(e, parseInt(page, 10));
         },
 
+        /**
+         * Fetch and render a page of history entries via AJAX.
+         *
+         * Sends the current status filter, search term, and page number to the
+         * `aips_reload_history` action. On success, updates the table body,
+         * pagination, and stats widgets without a full page reload. Shows a
+         * spinner on the Reload button when triggered from that button.
+         *
+         * @param {Event|null} e     - The triggering event, or `null` when called
+         *                             programmatically.
+         * @param {number}     paged - 1-based page number to load. Defaults to 1.
+         */
         reloadHistory: function(e, paged) {
             if (e) {
                 e.preventDefault();
@@ -1750,6 +1947,52 @@
             });
         },
 
+        /**
+         * Submit the history filter when the Enter key is pressed inside the
+         * search input.
+         *
+         * Delegates to `filterHistory` when `e.which === 13`.
+         *
+         * Bound to the `keypress` event on `#aips-history-search-input`.
+         *
+         * @param {Event} e - Keypress event.
+         */
+        handleHistorySearchKeypress: function(e) {
+            if (e.which == 13) {
+                AIPS.filterHistory(e);
+            }
+        },
+
+        /**
+         * Handle a click on a legacy `#aips-history-pagination` anchor tag.
+         *
+         * Extracts the `paged` query parameter from the anchor's `href` and
+         * delegates to `reloadHistory` with that page number.
+         *
+         * Bound to the `click` event on `#aips-history-pagination a`.
+         *
+         * @param {Event} e - Click event from a pagination anchor.
+         */
+        handleHistoryPaginationClick: function(e) {
+            e.preventDefault();
+            var href = $(this).attr('href');
+            var match = href.match(/paged=(\d+)/);
+            var page = match ? parseInt(match[1]) : 1;
+            AIPS.reloadHistory(e, page);
+        },
+
+        /**
+         * Show or hide the featured-image settings block based on the state of
+         * the `#generate_featured_image` checkbox.
+         *
+         * When the checkbox is checked, also calls
+         * `toggleFeaturedImageSourceFields` to ensure the correct sub-field
+         * panel is visible.
+         *
+         * Bound to the `change` event on `#generate_featured_image`.
+         *
+         * @param {Event} [e] - Change event (optional when called programmatically).
+         */
         toggleImagePrompt: function(e) {
             var isChecked = $('#generate_featured_image').is(':checked');
 
@@ -1761,6 +2004,16 @@
             }
         },
 
+        /**
+         * Show the correct featured-image source sub-panel based on the current
+         * value of `#featured_image_source`.
+         *
+         * Hides all `.aips-image-source` panels, then shows only the one that
+         * matches the selected source (`ai_prompt`, `unsplash`, or
+         * `media_library`).
+         *
+         * Bound to the `change` event on `#featured_image_source`.
+         */
         toggleFeaturedImageSourceFields: function() {
             var source = $('#featured_image_source').val();
 
@@ -1775,6 +2028,16 @@
             }
         },
 
+        /**
+         * Store the given media attachment IDs in the hidden field and update
+         * the preview text.
+         *
+         * Accepts either an array of IDs or a comma-separated string. Filters
+         * out empty values before storing. Updates `#featured_image_media_ids`
+         * and `#featured_image_media_preview`.
+         *
+         * @param {Array<number|string>|string} ids - Attachment IDs to select.
+         */
         setMediaSelection: function(ids) {
             var parsedIds = [];
 
@@ -1790,6 +2053,16 @@
             $('#featured_image_media_preview').text(parsedIds.length ? parsedIds.join(', ') : 'No images selected.');
         },
 
+        /**
+         * Open the WordPress media library frame and update the featured-image
+         * selection when the user confirms their choice.
+         *
+         * Creates the `wp.media` frame lazily on the first call and reuses it
+         * on subsequent calls. On selection, passes the chosen attachment IDs
+         * to `setMediaSelection`.
+         *
+         * @param {Event} e - Click event from `#featured_image_media_select`.
+         */
         openMediaLibrary: function(e) {
             e.preventDefault();
 
@@ -1821,6 +2094,14 @@
             AIPS.mediaFrame.open();
         },
 
+        /**
+         * Clear the current featured-image media selection.
+         *
+         * Delegates to `setMediaSelection([])` to empty the hidden field and
+         * reset the preview text.
+         *
+         * @param {Event} [e] - Click event (optional when called programmatically).
+         */
         clearMediaSelection: function(e) {
             if (e) {
                 e.preventDefault();
@@ -1828,6 +2109,15 @@
             AIPS.setMediaSelection([]);
         },
 
+        /**
+         * Filter the templates table in real time by the typed search term.
+         *
+         * Matches against the `.column-name` and `.column-category` cells of
+         * each row. Shows a "no results" notice and hides the table when no rows
+         * match a non-empty term.
+         *
+         * Bound to the `keyup` and `search` events on `#aips-template-search`.
+         */
         filterTemplates: function() {
             var term = $('#aips-template-search').val().toLowerCase().trim();
             var $rows = $('.aips-templates-list tbody tr');
@@ -1864,11 +2154,25 @@
             }
         },
 
+        /**
+         * Clear the template search input and re-run the filter to show all rows.
+         *
+         * @param {Event} e - Click event from `#aips-template-search-clear` or
+         *                    `.aips-clear-search-btn`.
+         */
         clearTemplateSearch: function(e) {
             e.preventDefault();
             $('#aips-template-search').val('').trigger('keyup');
         },
 
+        /**
+         * Filter the schedules table in real time by the typed search term.
+         *
+         * Matches against the `.column-template`, `.column-structure`, and
+         * `.column-frequency` cells of each row.
+         *
+         * Bound to the `keyup` and `search` events on `#aips-schedule-search`.
+         */
         filterSchedules: function() {
             var term = $('#aips-schedule-search').val().toLowerCase().trim();
             var $rows = $('.aips-schedule-table tbody tr');
@@ -1906,11 +2210,24 @@
             }
         },
 
+        /**
+         * Clear the schedule search input and re-run the filter to show all rows.
+         *
+         * @param {Event} e - Click event from `#aips-schedule-search-clear` or
+         *                    `.aips-clear-schedule-search-btn`.
+         */
         clearScheduleSearch: function(e) {
             e.preventDefault();
             $('#aips-schedule-search').val('').trigger('keyup');
         },
 
+        /**
+         * Filter the voices table in real time by the typed search term.
+         *
+         * Matches against the `.column-name` cell of each row.
+         *
+         * Bound to the `keyup` and `search` events on `#aips-voice-search`.
+         */
         filterVoices: function() {
             var term = $('#aips-voice-search').val().toLowerCase().trim();
             var $rows = $('.aips-voices-list tbody tr');
@@ -1946,11 +2263,25 @@
             }
         },
 
+        /**
+         * Clear the voice search input and re-run the filter to show all rows.
+         *
+         * @param {Event} e - Click event from `#aips-voice-search-clear` or
+         *                    `.aips-clear-voice-search-btn`.
+         */
         clearVoiceSearch: function(e) {
             e.preventDefault();
             $('#aips-voice-search').val('').trigger('keyup');
         },
 
+        /**
+         * Filter the prompt sections table in real time by the typed search term.
+         *
+         * Matches against the `.column-name`, `.column-key code`, and
+         * `.column-description` cells of each row.
+         *
+         * Bound to the `keyup` and `search` events on `#aips-section-search`.
+         */
         filterSections: function() {
             var term = $('#aips-section-search').val().toLowerCase().trim();
             var $rows = $('.aips-sections-list tbody tr');
@@ -1988,11 +2319,26 @@
             }
         },
 
+        /**
+         * Clear the section search input and re-run the filter to show all rows.
+         *
+         * @param {Event} e - Click event from `#aips-section-search-clear` or
+         *                    `.aips-clear-section-search-btn`.
+         */
         clearSectionSearch: function(e) {
             e.preventDefault();
             $('#aips-section-search').val('').trigger('keyup');
         },
 
+        /**
+         * Filter the article structures table in real time by the typed search
+         * term.
+         *
+         * Matches against the `.column-name` and `.column-description` cells of
+         * each row.
+         *
+         * Bound to the `keyup` and `search` events on `#aips-structure-search`.
+         */
         filterStructures: function() {
             var term = $('#aips-structure-search').val().toLowerCase().trim();
             var $rows = $('.aips-structures-list tbody tr');
@@ -2029,11 +2375,25 @@
             }
         },
 
+        /**
+         * Clear the structure search input and re-run the filter to show all rows.
+         *
+         * @param {Event} e - Click event from `#aips-structure-search-clear` or
+         *                    `.aips-clear-structure-search-btn`.
+         */
         clearStructureSearch: function(e) {
             e.preventDefault();
             $('#aips-structure-search').val('').trigger('keyup');
         },
 
+        /**
+         * Filter the authors table in real time by the typed search term.
+         *
+         * Matches against the `.column-name` and `.column-field` cells of each
+         * row.
+         *
+         * Bound to the `keyup` and `search` events on `#aips-author-search`.
+         */
         filterAuthors: function() {
             var term = $('#aips-author-search').val().toLowerCase().trim();
             var $rows = $('.aips-authors-table tbody tr');
@@ -2070,11 +2430,26 @@
             }
         },
 
+        /**
+         * Clear the author search input and re-run the filter to show all rows.
+         *
+         * @param {Event} e - Click event from `#aips-author-search-clear` or
+         *                    `.aips-clear-author-search-btn`.
+         */
         clearAuthorSearch: function(e) {
             e.preventDefault();
             $('#aips-author-search').val('').trigger('keyup');
         },
 
+        /**
+         * Open the template posts modal and load the first page of posts.
+         *
+         * Stores the template ID on the modal element so pagination calls can
+         * access it without re-reading the triggering element.
+         *
+         * @param {Event} e - Click event from an `.aips-view-template-posts`
+         *                    element.
+         */
         openTemplatePostsModal: function(e) {
             e.preventDefault();
             var id = $(this).data('id');
@@ -2082,6 +2457,15 @@
             AIPS.loadTemplatePosts(id, 1);
         },
 
+        /**
+         * Load another page of posts inside the template posts modal.
+         *
+         * Reads the target page number from the clicked `.aips-modal-page`
+         * element's `data-page` attribute and calls `loadTemplatePosts` with the
+         * template ID stored on the modal.
+         *
+         * @param {Event} e - Click event from an `.aips-modal-page` element.
+         */
         paginateTemplatePosts: function(e) {
             e.preventDefault();
             var page = $(this).data('page');
@@ -2089,6 +2473,16 @@
             AIPS.loadTemplatePosts(id, page);
         },
 
+        /**
+         * Fetch and render a page of posts generated from a specific template.
+         *
+         * Sends the `aips_get_template_posts` AJAX action and injects the
+         * returned HTML into `#aips-template-posts-content`. Displays an inline
+         * error message if the request fails.
+         *
+         * @param {number} id   - The template ID to load posts for.
+         * @param {number} page - 1-based page number to fetch.
+         */
         loadTemplatePosts: function(id, page) {
             $('#aips-template-posts-content').html('<p class="aips-loading">Loading...</p>');
 
@@ -2114,6 +2508,16 @@
             });
         },
 
+        /**
+         * Open the generation-details modal and fetch full detail data for a
+         * history entry.
+         *
+         * Reads the history entry ID from the clicked element's `data-id`
+         * attribute. Shows a loading indicator while the `aips_get_history_details`
+         * AJAX request is in flight, then hands the response to `renderDetails`.
+         *
+         * @param {Event} e - Click event from an `.aips-view-details` element.
+         */
         viewDetails: function(e) {
             e.preventDefault();
             var id = $(this).data('id');
@@ -2151,6 +2555,17 @@
             });
         },
 
+        /**
+         * Populate the generation-details modal with the fetched history data.
+         *
+         * Builds and injects HTML for the summary table (status, title, timing,
+         * error), generated prompt and content, template snapshot, voice
+         * snapshot, individual AI API calls (request/response pairs), and any
+         * logged errors.
+         *
+         * @param {Object} data - The `response.data` payload from the
+         *                        `aips_get_history_details` AJAX action.
+         */
         renderDetails: function(data) {
             var log = data.generation_log || {};
             
@@ -2281,6 +2696,253 @@
             $('#aips-details-content').show();
         },
 
+        // Article Structures handlers
+
+        /**
+         * Reset and open the article structure modal in "Add New" mode.
+         *
+         * Clears the structure form, empties the hidden ID field, sets the
+         * modal title to "Add New Article Structure", and displays the modal.
+         *
+         * @param {Event} e - Click event from an `.aips-add-structure-btn` element.
+         */
+        openAddStructureModal: function(e) {
+            e.preventDefault();
+            $('#aips-structure-form')[0].reset();
+            $('#structure_id').val('');
+            $('#aips-structure-modal-title').text('Add New Article Structure');
+            $('#aips-structure-modal').show();
+        },
+
+        /**
+         * Save the article structure form via AJAX.
+         *
+         * Sends the `aips_save_structure` AJAX action with all structure form
+         * fields. Reloads the page on success or shows a toast on failure.
+         *
+         * Bound to the `click` event on `.aips-save-structure`.
+         */
+        saveStructure: function() {
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Saving...');
+
+            var data = {
+                action: 'aips_save_structure',
+                nonce: aipsAjax.nonce,
+                structure_id: $('#structure_id').val(),
+                name: $('#structure_name').val(),
+                description: $('#structure_description').val(),
+                prompt_template: $('#prompt_template').val(),
+                sections: $('#structure_sections').val() || [],
+                is_active: $('#structure_is_active').is(':checked') ? 1 : 0,
+                is_default: $('#structure_is_default').is(':checked') ? 1 : 0,
+            };
+
+            $.post(aipsAjax.ajaxUrl, data, function(response){
+                $btn.prop('disabled', false).text('Save Structure');
+                if (response.success) {
+                    location.reload();
+                } else {
+                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveStructureFailed, 'error');
+                }
+            }).fail(function(){
+                $btn.prop('disabled', false).text('Save Structure');
+                AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+            });
+        },
+
+        /**
+         * Fetch an article structure's data via AJAX and open the modal in
+         * "Edit" mode.
+         *
+         * Reads the structure ID from the clicked element's `data-id` attribute.
+         * Parses the `structure_data` JSON field to populate the prompt template
+         * and sections fields.
+         *
+         * Bound to the `click` event on `.aips-edit-structure`.
+         */
+        editStructure: function() {
+            var id = $(this).data('id');
+            $.post(aipsAjax.ajaxUrl, {action: 'aips_get_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                if (response.success) {
+                    var s = response.data.structure;
+                    var structureData = {};
+
+                    if (s.structure_data) {
+                        try {
+                            structureData = JSON.parse(s.structure_data) || {};
+                        } catch (e) {
+                            console.error('Invalid structure_data JSON for structure ID ' + s.id, e);
+                            structureData = {};
+                        }
+                    }
+
+                    $('#structure_id').val(s.id);
+                    $('#structure_name').val(s.name);
+                    $('#structure_description').val(s.description);
+                    $('#prompt_template').val(structureData.prompt_template || '');
+                    var sections = structureData.sections || [];
+                    $('#structure_sections').val(sections);
+                    $('#structure_is_active').prop('checked', s.is_active == 1);
+                    $('#structure_is_default').prop('checked', s.is_default == 1);
+                    $('#aips-structure-modal-title').text('Edit Article Structure');
+                    $('#aips-structure-modal').show();
+                } else {
+                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadStructureFailed, 'error');
+                }
+            }).fail(function(){
+                AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
+            });
+        },
+
+        /**
+         * Confirm and permanently delete an article structure via AJAX.
+         *
+         * Shows a confirmation dialog. On confirmation, sends the
+         * `aips_delete_structure` AJAX action and fades out the table row on
+         * success.
+         *
+         * Bound to the `click` event on `.aips-delete-structure`.
+         */
+        deleteStructure: function() {
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteStructureConfirm, 'Confirm', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                        if (response.success) {
+                            $row.fadeOut(function(){ $(this).remove(); });
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteStructureFailed, 'error');
+                        }
+                    }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                }}
+            ]);
+        },
+
+        // Prompt Sections handlers
+
+        /**
+         * Reset and open the prompt section modal in "Add New" mode.
+         *
+         * Clears the section form, empties the hidden ID field, sets the modal
+         * title to "Add New Prompt Section", and displays the modal.
+         *
+         * @param {Event} e - Click event from an `.aips-add-section-btn` element.
+         */
+        openAddSectionModal: function(e) {
+            e.preventDefault();
+            $('#aips-section-form')[0].reset();
+            $('#section_id').val('');
+            $('#aips-section-modal-title').text('Add New Prompt Section');
+            $('#aips-section-modal').show();
+        },
+
+        /**
+         * Save the prompt section form via AJAX.
+         *
+         * Sends the `aips_save_prompt_section` AJAX action with all section form
+         * fields. Reloads the page on success or shows a toast on failure.
+         *
+         * Bound to the `click` event on `.aips-save-section`.
+         */
+        saveSection: function() {
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Saving...');
+
+            var data = {
+                action: 'aips_save_prompt_section',
+                nonce: aipsAjax.nonce,
+                section_id: $('#section_id').val(),
+                name: $('#section_name').val(),
+                section_key: $('#section_key').val(),
+                description: $('#section_description').val(),
+                content: $('#section_content').val(),
+                is_active: $('#section_is_active').is(':checked') ? 1 : 0
+            };
+
+            $.post(aipsAjax.ajaxUrl, data, function(response){
+                $btn.prop('disabled', false).text('Save Section');
+                if (response.success) {
+                    location.reload();
+                } else {
+                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveSectionFailed, 'error');
+                }
+            }).fail(function(){
+                $btn.prop('disabled', false).text('Save Section');
+                AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+            });
+        },
+
+        /**
+         * Fetch a prompt section's data via AJAX and open the modal in "Edit"
+         * mode.
+         *
+         * Reads the section ID from the clicked element's `data-id` attribute
+         * and populates all section form fields.
+         *
+         * Bound to the `click` event on `.aips-edit-section`.
+         */
+        editSection: function() {
+            var id = $(this).data('id');
+            $.post(aipsAjax.ajaxUrl, {action: 'aips_get_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                if (response.success) {
+                    var s = response.data.section;
+                    $('#section_id').val(s.id);
+                    $('#section_name').val(s.name);
+                    $('#section_key').val(s.section_key);
+                    $('#section_description').val(s.description);
+                    $('#section_content').val(s.content);
+                    $('#section_is_active').prop('checked', s.is_active == 1);
+                    $('#aips-section-modal-title').text('Edit Prompt Section');
+                    $('#aips-section-modal').show();
+                } else {
+                    AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadSectionFailed, 'error');
+                }
+            }).fail(function(){
+                AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
+            });
+        },
+
+        /**
+         * Confirm and permanently delete a prompt section via AJAX.
+         *
+         * Shows a confirmation dialog. On confirmation, sends the
+         * `aips_delete_prompt_section` AJAX action and fades out the table row
+         * on success.
+         *
+         * Bound to the `click` event on `.aips-delete-section`.
+         */
+        deleteSection: function() {
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteSectionConfirm, 'Confirm', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                        if (response.success) {
+                            $row.fadeOut(function(){ $(this).remove(); });
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteSectionFailed, 'error');
+                        }
+                    }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                }}
+            ]);
+        },
+
+        /**
+         * Escape a plain-text string for safe insertion as HTML content.
+         *
+         * Uses a temporary `<div>` element and the browser's own `textContent`
+         * setter to perform the escaping, which handles all HTML special
+         * characters correctly without a manual entity map.
+         *
+         * @param  {string} text - Raw text to escape.
+         * @return {string} HTML-safe string, or an empty string if `text` is falsy.
+         */
         escapeHtml: function(text) {
             if (!text) return '';
             var div = document.createElement('div');
@@ -2319,6 +2981,13 @@
             });
         },
 
+        /**
+         * Close the nearest ancestor `.aips-modal` of the clicked element, or
+         * hide all open modals if the click did not originate from inside one.
+         *
+         * Bound to the `click` event on `.aips-modal-close` and called directly
+         * by the modal-backdrop and Escape-key handlers.
+         */
         closeModal: function() {
             var $target = $(this).closest('.aips-modal');
             if ($target.length) {
@@ -2486,6 +3155,18 @@
         },
 
         // Wizard Navigation Functions
+
+        /**
+         * Navigate the template-creation wizard to a specific step.
+         *
+         * Hides all `.aips-wizard-step-content` panels and shows the one
+         * matching `step`. Updates the progress indicator (marking earlier steps
+         * as completed), toggles the Back/Next/Save buttons, and stores the
+         * current step in `AIPS.currentWizardStep`. Calls `updateWizardSummary`
+         * when advancing to the final step.
+         *
+         * @param {number} step - 1-based step index to navigate to (1–5).
+         */
         wizardGoToStep: function(step) {
             var totalSteps = 5;
             
@@ -2527,6 +3208,14 @@
             AIPS.currentWizardStep = step;
         },
 
+        /**
+         * Advance the wizard to the next step after validating the current one.
+         *
+         * Calls `validateWizardStep` for the current step and only proceeds if
+         * validation passes. Does nothing when already on the last step.
+         *
+         * @param {Event} e - Click event from an `.aips-wizard-next` element.
+         */
         wizardNext: function(e) {
             e.preventDefault();
             var currentStep = AIPS.currentWizardStep || 1;
@@ -2541,6 +3230,13 @@
             }
         },
 
+        /**
+         * Go back to the previous wizard step.
+         *
+         * Does nothing when already on step 1.
+         *
+         * @param {Event} e - Click event from an `.aips-wizard-back` element.
+         */
         wizardBack: function(e) {
             e.preventDefault();
             var currentStep = AIPS.currentWizardStep || 1;
@@ -2550,6 +3246,16 @@
             }
         },
 
+        /**
+         * Validate the required fields for a given wizard step.
+         *
+         * Step 1 requires a template name; step 3 requires a content prompt.
+         * Steps 2, 4, and 5 have no required fields. Shows an error toast and
+         * focuses the first invalid field when validation fails.
+         *
+         * @param  {number}  step - The 1-based wizard step number to validate.
+         * @return {boolean} `true` if validation passes, `false` otherwise.
+         */
         validateWizardStep: function(step) {
             var isValid = true;
             var errorMessage = '';
@@ -2589,6 +3295,13 @@
             return isValid;
         },
 
+        /**
+         * Populate the wizard's final summary step with the current form values.
+         *
+         * Reads template name, description, title prompt, content prompt, voice,
+         * post quantity, and featured-image settings, then updates the
+         * corresponding `#summary_*` elements.
+         */
         updateWizardSummary: function() {
             // Update summary display with current form values
             $('#summary_name').text($('#template_name').val() || '-');
@@ -2617,23 +3330,47 @@
             }
         },
 
+        /**
+         * Sync all individual history checkboxes with the "select all" state.
+         *
+         * Bound to the `change` event on `#cb-select-all-1`.
+         */
         toggleAllHistory: function() {
             var isChecked = $(this).prop('checked');
             $('.aips-history-table input[name="history[]"]').prop('checked', isChecked);
             AIPS.updateDeleteButton();
         },
 
+        /**
+         * Keep the history "select all" checkbox in sync with individual row
+         * selections and update the delete button state.
+         *
+         * Bound to the `change` event on `.aips-history-table input[name="history[]"]`.
+         */
         toggleHistorySelection: function() {
             var allChecked = $('.aips-history-table input[name="history[]"]').length === $('.aips-history-table input[name="history[]"]:checked').length;
             $('#cb-select-all-1').prop('checked', allChecked);
             AIPS.updateDeleteButton();
         },
 
+        /**
+         * Enable or disable the "Delete Selected" button based on the current
+         * history row selection count.
+         */
         updateDeleteButton: function() {
             var count = $('.aips-history-table input[name="history[]"]:checked').length;
             $('#aips-delete-selected-btn').prop('disabled', count === 0);
         },
 
+        /**
+         * Confirm and bulk-delete the selected history entries via AJAX.
+         *
+         * Collects IDs from all checked `input[name="history[]"]` checkboxes,
+         * shows a confirmation dialog, then sends the `aips_bulk_delete_history`
+         * AJAX action and reloads the page on success.
+         *
+         * @param {Event} e - Click event from `#aips-delete-selected-btn`.
+         */
         deleteSelectedHistory: function(e) {
             e.preventDefault();
             var ids = [];
@@ -2675,11 +3412,26 @@
         },
 
         // AI Variables feature methods
+
+        /**
+         * Perform an initial scan of all `.aips-ai-var-input` fields and
+         * populate the AI variables panel.
+         *
+         * Called on modal open and whenever the template form is loaded with
+         * existing data so the panel reflects the current state immediately.
+         */
         initAIVariablesScanner: function() {
             // Initial scan when modal opens or form loads
             AIPS.scanAllAIVariables();
         },
 
+        /**
+         * Scan all `.aips-ai-var-input` fields, collect unique AI variable names,
+         * and update the AI variables panel.
+         *
+         * Deduplicates variable names across all inputs before passing the list
+         * to `updateAIVariablesPanel`.
+         */
         scanAllAIVariables: function() {
             var allVariables = [];
             $('.aips-ai-var-input').each(function() {
@@ -2694,6 +3446,16 @@
             AIPS.updateAIVariablesPanel(allVariables);
         },
 
+        /**
+         * Extract custom `{{variable}}` tokens from a text string.
+         *
+         * Matches all `{{...}}` patterns, trims whitespace from each name, and
+         * skips names that appear in the `SYSTEM_VARIABLES` list or have already
+         * been collected. Returns a deduplicated array of unique variable names.
+         *
+         * @param  {string}          text - The text to scan for variable tokens.
+         * @return {Array<string>}        Array of unique custom variable names.
+         */
         extractAIVariables: function(text) {
             var variables = [];
             var regex = /\{\{([^}]+)\}\}/g;
@@ -2710,6 +3472,15 @@
             return variables;
         },
 
+        /**
+         * Render clickable `{{variable}}` tag chips in the AI variables panel.
+         *
+         * Hides the panel when `variables` is empty; otherwise builds an HTML
+         * string of `.aips-ai-var-tag` spans with `data-variable` attributes and
+         * injects it into `#aips-ai-variables-list`, then shows the panel.
+         *
+         * @param {Array<string>} variables - List of variable names to display.
+         */
         updateAIVariablesPanel: function(variables) {
             var $panel = $('.aips-ai-variables-panel');
             var $list = $('#aips-ai-variables-list');
@@ -2732,6 +3503,18 @@
             $panel.show();
         },
 
+        /**
+         * Fetch a fully rendered preview of the current template's prompts and
+         * display them in the collapsible preview drawer.
+         *
+         * Expands the drawer if it is currently collapsed, shows a loading
+         * indicator, then sends the `aips_preview_template_prompts` AJAX action
+         * with the current form values. On success, populates the content, title,
+         * excerpt, and (optionally) image prompt sections along with voice and
+         * structure metadata.
+         *
+         * @param {Event} e - Click event from an `.aips-preview-prompts` element.
+         */
         previewPrompts: function(e) {
             e.preventDefault();
             
@@ -2816,6 +3599,15 @@
             });
         },
 
+        /**
+         * Toggle the prompt preview drawer open or closed.
+         *
+         * Adds/removes the `.expanded` class on `#aips-preview-drawer` and
+         * slides the `.aips-preview-drawer-content` panel accordingly.
+         *
+         * @param {Event} [e] - Click event from `.aips-preview-drawer-handle`
+         *                      (optional when called programmatically).
+         */
         togglePreviewDrawer: function(e) {
             if (e) {
                 e.preventDefault();
@@ -2833,6 +3625,16 @@
             }
         },
 
+        /**
+         * Copy the `{{variable}}` token stored in a clicked `.aips-ai-var-tag`'s
+         * `data-variable` attribute to the clipboard.
+         *
+         * Briefly applies the `.aips-ai-var-copied` CSS class to provide visual
+         * feedback. Falls back to `document.execCommand('copy')` when the
+         * Clipboard API is unavailable.
+         *
+         * @param {Event} e - Click event from an `.aips-ai-var-tag` element.
+         */
         copyAIVariable: function(e) {
             e.preventDefault();
             var $tag = $(this);

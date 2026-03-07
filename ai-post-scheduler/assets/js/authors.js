@@ -12,10 +12,18 @@
 	const AuthorsModule = {
 		currentAuthorId: null,
 
+		/**
+		 * Initialise the Authors module by binding all event listeners.
+		 */
 		init: function () {
 			this.bindEvents();
 		},
 
+		/**
+		 * Register all delegated and direct jQuery event listeners for the
+		 * Authors admin page, including modal triggers, topic actions, and bulk
+		 * operations.
+		 */
 		bindEvents: function () {
 			// Add Author Button
 			$('.aips-add-author-btn').on('click', this.openAddModal.bind(this));
@@ -68,6 +76,15 @@
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
 		},
 
+		/**
+		 * Reset and open the author modal in "Add New" mode.
+		 *
+		 * Clears the form, empties the hidden `#author_id` field, sets the
+		 * modal title to the localised "Add New Author" string, and fades the
+		 * modal in.
+		 *
+		 * @param {Event} e - Click event from an `.aips-add-author-btn` element.
+		 */
 		openAddModal: function (e) {
 			e.preventDefault();
 			$('#aips-author-modal-title').text(aipsAuthorsL10n.addNewAuthor);
@@ -76,6 +93,16 @@
 			$('#aips-author-modal').fadeIn();
 		},
 
+		/**
+		 * Load and display an author's data in the modal for editing.
+		 *
+		 * Reads the author ID from the clicked element's `data-id` attribute,
+		 * shows a loading title, then sends the `aips_get_author` AJAX action.
+		 * On success, populates every form field with the returned author data.
+		 * Hides the modal and shows an error toast if the request fails.
+		 *
+		 * @param {Event} e - Click event from an `.aips-edit-author` element.
+		 */
 		editAuthor: function (e) {
 			e.preventDefault();
 			const authorId = $(e.currentTarget).data('id');
@@ -126,6 +153,15 @@
 			});
 		},
 
+		/**
+		 * Serialize and save the author form via the `aips_save_author` AJAX action.
+		 *
+		 * Disables the submit button while the request is in flight.
+		 * Shows a success toast and reloads the page after 1 second on success,
+		 * or shows an error toast on failure.
+		 *
+		 * @param {Event} e - Submit event from `#aips-author-form`.
+		 */
 		saveAuthor: function (e) {
 			e.preventDefault();
 
@@ -158,6 +194,15 @@
 			});
 		},
 
+		/**
+		 * Confirm and permanently delete an author via `aips_delete_author`.
+		 *
+		 * Shows a confirmation dialog. On confirmation, sends the AJAX delete
+		 * request. Reloads the page after 1 second on success or shows an error
+		 * toast on failure.
+		 *
+		 * @param {Event} e - Click event from an `.aips-delete-author` element.
+		 */
 		deleteAuthor: function (e) {
 			e.preventDefault();
 			const authorId = $(e.currentTarget).data('id');
@@ -196,6 +241,15 @@
 			]);
 		},
 
+		/**
+		 * Confirm and immediately trigger topic generation for an author.
+		 *
+		 * Reads the author ID from the clicked element's `data-id` attribute,
+		 * shows a confirmation dialog, then sends `aips_generate_topics_now`.
+		 * Reloads the page after 1 second on success.
+		 *
+		 * @param {Event} e - Click event from an `.aips-generate-topics-now` element.
+		 */
 		generateTopicsNow: function (e) {
 			e.preventDefault();
 
@@ -241,6 +295,15 @@
 			]);
 		},
 
+		/**
+		 * Open the topics modal for an author and load the "pending" tab.
+		 *
+		 * Stores the author ID, shows a loading message, resets the tab state
+		 * to "pending", updates the bulk-action dropdown for that tab, and
+		 * calls `loadTopics('pending')`.
+		 *
+		 * @param {Event} e - Click event from an `.aips-view-author` element.
+		 */
 		viewTopics: function (e) {
 			e.preventDefault();
 
@@ -261,6 +324,16 @@
 			this.loadTopics('pending');
 		},
 
+		/**
+		 * Fetch topics for the current author filtered by status.
+		 *
+		 * Sends the `aips_get_author_topics` AJAX action. On success, calls
+		 * `renderTopics` with the returned topics and `updateTopicCounts` with
+		 * the per-status counts. Shows an error message inline on failure.
+		 *
+		 * @param {string} status - The topic status tab to load
+		 *                          (`'pending'`, `'approved'`, or `'rejected'`).
+		 */
 		loadTopics: function (status) {
 			$.ajax({
 				url: ajaxurl,
@@ -285,6 +358,18 @@
 			});
 		},
 
+		/**
+		 * Build and inject the topics HTML table into `#aips-topics-content`.
+		 *
+		 * Renders a WordPress-style `widefat` table with checkboxes, topic
+		 * titles (with an inline edit input), generated-at dates, and
+		 * context-sensitive action buttons (quick approve/reject, edit, generate
+		 * post). Also renders collapsible detail rows for reviewed topics.
+		 *
+		 * @param {Array<Object>} topics - Array of topic data objects from the server.
+		 * @param {string}        status - Active tab status
+		 *                                 (`'pending'`, `'approved'`, or `'rejected'`).
+		 */
 		renderTopics: function (topics, status) {
 			if (!topics || topics.length === 0) {
 				$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.noTopicsFound + '</p>');
@@ -372,6 +457,14 @@
 			$('#aips-topics-content').html(html);
 		},
 
+		/**
+		 * Update the per-status topic count badges in the modal tab bar.
+		 *
+		 * @param {Object} counts           - Map of status string → count number.
+		 * @param {number} [counts.pending] - Number of pending topics.
+		 * @param {number} [counts.approved] - Number of approved topics.
+		 * @param {number} [counts.rejected] - Number of rejected topics.
+		 */
 		updateTopicCounts: function (counts) {
 			$('#pending-count').text(counts.pending || 0);
 			$('#approved-count').text(counts.approved || 0);
@@ -404,6 +497,17 @@
 			this.updateBulkActionDropdown(status);
 		},
 
+		/**
+		 * Repopulate the bulk-action dropdowns with options appropriate for the
+		 * given tab status.
+		 *
+		 * Clears all non-default options first, then adds the relevant actions:
+		 * pending → Approve / Reject / Delete; approved → Generate Now / Delete;
+		 * rejected → Delete; feedback → Delete.
+		 *
+		 * @param {string} status - The active tab (`'pending'`, `'approved'`,
+		 *                          `'rejected'`, or `'feedback'`).
+		 */
 		updateBulkActionDropdown: function (status) {
 			const $dropdowns = $('.aips-bulk-action-select');
 			
@@ -432,6 +536,14 @@
 			});
 		},
 
+		/**
+		 * Toggle the collapsible detail row immediately below a topic row.
+		 *
+		 * Slides the adjacent `.aips-topic-detail-row` up or down and updates
+		 * the expand button's `aria-expanded` attribute and dashicon accordingly.
+		 *
+		 * @param {Event} e - Click event from an `.aips-topic-expand-btn` element.
+		 */
 		toggleTopicDetail: function (e) {
 			e.preventDefault();
 			const $button = $(e.currentTarget);
@@ -456,6 +568,15 @@
 			}
 		},
 
+		/**
+		 * Open the feedback modal pre-configured for approving a topic.
+		 *
+		 * Sets the hidden `#feedback_topic_id` and `#feedback_action` fields,
+		 * updates the modal title and input placeholder, and fades the feedback
+		 * modal in.
+		 *
+		 * @param {Event} e - Click event from an `.aips-approve-topic` element.
+		 */
 		approveTopic: function (e) {
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('id');
@@ -469,6 +590,15 @@
 			$('#aips-feedback-modal').fadeIn();
 		},
 
+		/**
+		 * Open the feedback modal pre-configured for rejecting a topic.
+		 *
+		 * Sets the hidden `#feedback_topic_id` and `#feedback_action` fields,
+		 * updates the modal title and input placeholder, and fades the feedback
+		 * modal in.
+		 *
+		 * @param {Event} e - Click event from an `.aips-reject-topic` element.
+		 */
 		rejectTopic: function (e) {
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('id');
@@ -482,6 +612,15 @@
 			$('#aips-feedback-modal').fadeIn();
 		},
 
+		/**
+		 * Approve a topic immediately without opening the feedback modal.
+		 *
+		 * Sends `aips_approve_topic` with `skip_feedback: true`. Disables all
+		 * buttons in the row while the request is in flight. On success, reloads
+		 * the pending topics list; on failure, re-enables the buttons.
+		 *
+		 * @param {Event} e - Click event from an `.aips-quick-approve-topic` element.
+		 */
 		quickApproveTopic: function (e) {
 			e.preventDefault();
 			const $btn = $(e.currentTarget);
@@ -519,6 +658,15 @@
 			});
 		},
 
+		/**
+		 * Reject a topic immediately without opening the feedback modal.
+		 *
+		 * Sends `aips_reject_topic` with `skip_feedback: true`. Disables all
+		 * buttons in the row while the request is in flight. On success, reloads
+		 * the pending topics list; on failure, re-enables the buttons.
+		 *
+		 * @param {Event} e - Click event from an `.aips-quick-reject-topic` element.
+		 */
 		quickRejectTopic: function (e) {
 			e.preventDefault();
 			const $btn = $(e.currentTarget);
@@ -556,6 +704,16 @@
 			});
 		},
 
+		/**
+		 * Submit the topic feedback form (approve or reject with a reason).
+		 *
+		 * Reads the topic ID, action, and reason from the feedback modal form.
+		 * Sends either `aips_approve_topic` or `aips_reject_topic` depending on
+		 * the `#feedback_action` value. Closes and resets the modal on success
+		 * and reloads the pending topic list.
+		 *
+		 * @param {Event} e - Submit event from `#aips-feedback-form`.
+		 */
 		submitFeedback: function (e) {
 			e.preventDefault();
 
@@ -590,6 +748,13 @@
 			});
 		},
 
+		/**
+		 * Fetch and display all feedback entries for the current author.
+		 *
+		 * Shows a loading message, then sends `aips_get_author_feedback`. On
+		 * success, passes the feedback array to `renderFeedback`. Shows an
+		 * inline message if no author is selected or the request fails.
+		 */
 		loadFeedback: function () {
 			if (!this.currentAuthorId) {
 				$('#aips-topics-content').html('<p>No author selected.</p>');
@@ -620,6 +785,15 @@
 			});
 		},
 
+		/**
+		 * Build and inject the feedback HTML table into `#aips-topics-content`.
+		 *
+		 * Renders a WordPress-style table showing topic title, approve/reject
+		 * action badge, reason, user name, and date for each feedback item.
+		 * Shows a "no feedback yet" message when the array is empty.
+		 *
+		 * @param {Array<Object>} feedback - Array of feedback objects from the server.
+		 */
 		renderFeedback: function (feedback) {
 			if (feedback.length === 0) {
 				$('#aips-topics-content').html('<p>No feedback yet.</p>');
@@ -650,6 +824,15 @@
 			$('#aips-topics-content').html(html);
 		},
 
+		/**
+		 * Confirm and permanently delete a single topic via `aips_delete_topic`.
+		 *
+		 * Shows a confirmation dialog. On confirmation, sends the AJAX request
+		 * and reloads the currently active tab's topics on success, or shows an
+		 * error toast on failure.
+		 *
+		 * @param {Event} e - Click event from an `.aips-delete-topic` element.
+		 */
 		deleteTopic: function (e) {
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('id');
@@ -690,6 +873,15 @@
 			]);
 		},
 
+		/**
+		 * Switch a topic row into inline-edit mode.
+		 *
+		 * Hides the `.topic-title` span and shows the `.topic-title-edit` text
+		 * input in the same cell. Hides the original edit button and appends Save
+		 * and Cancel buttons to the `.topic-actions` cell.
+		 *
+		 * @param {Event} e - Click event from an `.aips-edit-topic` element.
+		 */
 		editTopic: function (e) {
 			e.preventDefault();
 			const $btn = $(e.currentTarget);
@@ -707,6 +899,15 @@
 			);
 		},
 
+		/**
+		 * Persist an inline topic title edit via `aips_edit_topic`.
+		 *
+		 * Validates that the new title is non-empty, then sends the AJAX request.
+		 * On success, updates the `.topic-title` span text and restores the row
+		 * to its normal (non-editing) state. Shows an error toast on failure.
+		 *
+		 * @param {Event} e - Click event from an `.aips-save-topic` element.
+		 */
 		saveTopic: function (e) {
 			e.preventDefault();
 			const $row = $(e.currentTarget).closest('tr');
@@ -743,6 +944,14 @@
 			});
 		},
 
+		/**
+		 * Discard an in-progress inline topic title edit and restore the row.
+		 *
+		 * Re-shows the `.topic-title` span, hides the text input, restores the
+		 * edit button, and removes the transient Save / Cancel buttons.
+		 *
+		 * @param {Event} e - Click event from an `.aips-cancel-edit-topic` element.
+		 */
 		cancelEditTopic: function (e) {
 			e.preventDefault();
 			const $row = $(e.currentTarget).closest('tr');
@@ -752,6 +961,15 @@
 			$row.find('.aips-save-topic, .aips-cancel-edit-topic').remove();
 		},
 
+		/**
+		 * Confirm and immediately generate a post from an approved topic.
+		 *
+		 * Shows a confirmation dialog, then sends `aips_generate_post_from_topic`.
+		 * On success, shows a success toast and reloads the currently active tab.
+		 * Re-enables the button on failure.
+		 *
+		 * @param {Event} e - Click event from an `.aips-generate-post-now` element.
+		 */
 		generatePostNow: function (e) {
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('id');
@@ -796,6 +1014,14 @@
 			]);
 		},
 
+		/**
+		 * Open the topic-log modal and start loading logs for the given topic.
+		 *
+		 * Sets a loading message in `#aips-topic-logs-content`, fades the logs
+		 * modal in, and delegates to `loadTopicLogs`.
+		 *
+		 * @param {Event} e - Click event from an `.aips-view-topic-log` element.
+		 */
 		viewTopicLog: function (e) {
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('id');
@@ -806,6 +1032,14 @@
 			this.loadTopicLogs(topicId);
 		},
 
+		/**
+		 * Fetch the action log for a topic via `aips_get_topic_logs`.
+		 *
+		 * On success, passes the returned logs array to `renderTopicLogs`.
+		 * Shows an inline error message if the request fails.
+		 *
+		 * @param {number} topicId - The topic ID whose logs to load.
+		 */
 		loadTopicLogs: function (topicId) {
 			$.ajax({
 				url: ajaxurl,
@@ -830,6 +1064,15 @@
 			});
 		},
 
+		/**
+		 * Build and inject the topic-log HTML table into `#aips-topic-logs-content`.
+		 *
+		 * Renders a WordPress-style table with action badge, user name, date,
+		 * and notes columns. Shows a "no logs found" message when the array is
+		 * empty.
+		 *
+		 * @param {Array<Object>} logs - Array of log entry objects from the server.
+		 */
 		renderTopicLogs: function (logs) {
 			if (!logs || logs.length === 0) {
 				$('#aips-topic-logs-content').html('<p>' + aipsAuthorsL10n.noLogsFound + '</p>');
@@ -856,6 +1099,15 @@
 			$('#aips-topic-logs-content').html(html);
 		},
 		
+		/**
+		 * Open the topic-posts modal and start loading posts for the given topic.
+		 *
+		 * Reads the topic ID from the clicked element's `data-topic-id` attribute,
+		 * sets a loading message, fades the posts modal in, and delegates to
+		 * `loadTopicPosts`.
+		 *
+		 * @param {Event} e - Click event from an `.aips-post-count-badge` element.
+		 */
 		viewTopicPosts: function (e) {
 			e.preventDefault();
 			e.stopPropagation();
@@ -868,6 +1120,14 @@
 			this.loadTopicPosts(topicId);
 		},
 		
+		/**
+		 * Fetch posts generated from a topic via `aips_get_topic_posts`.
+		 *
+		 * Updates the modal title with the topic title, then delegates to
+		 * `renderTopicPosts`. Shows an inline error on failure.
+		 *
+		 * @param {number} topicId - The topic ID whose posts to load.
+		 */
 		loadTopicPosts: function (topicId) {
 			$.ajax({
 				url: ajaxurl,
@@ -899,6 +1159,15 @@
 			});
 		},
 		
+		/**
+		 * Build and inject the topic-posts HTML table into `#aips-topic-posts-content`.
+		 *
+		 * Renders a WordPress-style table with post ID, title, generated date,
+		 * published date, and action links (Edit Post / View Post). Shows a
+		 * "no posts found" message when the array is empty.
+		 *
+		 * @param {Array<Object>} posts - Array of post objects from the server.
+		 */
 		renderTopicPosts: function (posts) {
 			if (!posts || posts.length === 0) {
 				$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
@@ -934,16 +1203,39 @@
 			$('#aips-topic-posts-content').html(html);
 		},
 
+		/**
+		 * Sync all `.aips-topic-checkbox` elements with the "select all" checkbox.
+		 *
+		 * @param {Event} e - Change event from an `.aips-select-all-topics` element.
+		 */
 		toggleSelectAll: function (e) {
 			const isChecked = $(e.currentTarget).prop('checked');
 			$('.aips-topic-checkbox').prop('checked', isChecked);
 		},
 
+		/**
+		 * Sync all `.aips-feedback-checkbox` elements with the "select all"
+		 * checkbox on the Feedback tab.
+		 *
+		 * @param {Event} e - Change event from an `.aips-select-all-feedback` element.
+		 */
 		toggleSelectAllFeedback: function (e) {
 			const isChecked = $(e.currentTarget).prop('checked');
 			$('.aips-feedback-checkbox').prop('checked', isChecked);
 		},
 
+		/**
+		 * Apply the selected bulk action to all checked topics or feedback items.
+		 *
+		 * Validates that an action and at least one item are selected, shows a
+		 * localised confirmation dialog, then fires the appropriate AJAX action
+		 * (`aips_bulk_approve_topics`, `aips_bulk_reject_topics`,
+		 * `aips_bulk_delete_topics`, `aips_bulk_generate_topics`, or
+		 * `aips_bulk_delete_feedback`). Reloads the active tab's content on
+		 * success.
+		 *
+		 * @param {Event} e - Click event from an `.aips-bulk-action-execute` element.
+		 */
 		executeBulkAction: function (e) {
 			e.preventDefault();
 
@@ -1072,6 +1364,21 @@
 			]);
 		},
 
+		/**
+		 * Build a localised confirmation message for a bulk action.
+		 *
+		 * Selects the message template from a map keyed by action name,
+		 * substitutes the item count for the `%d` placeholder, and substitutes
+		 * the action name for the `%s` placeholder when no specific template
+		 * exists.
+		 *
+		 * @param  {string} action    - The bulk action key (`'approve'`, `'reject'`,
+		 *                              `'delete'`, or `'generate_now'`).
+		 * @param  {number} count     - The number of selected items.
+		 * @param  {string} activeTab - The currently active tab (used to pick the
+		 *                              right delete message for feedback vs. topics).
+		 * @return {string} The formatted confirmation message.
+		 */
 		getBulkConfirmMessage: function (action, count, activeTab) {
 			const messages = {
 				approve: aipsAuthorsL10n.confirmBulkApprove || 'Are you sure you want to approve %d topics?',
@@ -1085,11 +1392,27 @@
 			return template.replace('%d', count).replace('%s', action);
 		},
 
+		/**
+		 * Fade out all open `.aips-modal` elements.
+		 *
+		 * @param {Event} e - Click event from an `.aips-modal-close` element.
+		 */
 		closeModals: function (e) {
 			e.preventDefault();
 			$('.aips-modal').fadeOut();
 		},
 
+		/**
+		 * Escape a value for safe insertion as HTML text content.
+		 *
+		 * Converts the input to a string and replaces the five characters that
+		 * are significant in HTML (`&`, `<`, `>`, `"`, `'`) with their entity
+		 * equivalents. Returns an empty string for `null`, `undefined`, or on
+		 * any unexpected error.
+		 *
+		 * @param  {*}      text - Value to escape (coerced to string if needed).
+		 * @return {string} HTML-safe string.
+		 */
 		escapeHtml: function (text) {
 			try {
 				// Handle null, undefined, or non-string values
@@ -1175,10 +1498,18 @@
 	
 	// Generation Queue Module
 	const GenerationQueueModule = {
+		/**
+		 * Initialise the Generation Queue module by binding all event listeners.
+		 */
 		init: function () {
 			this.bindEvents();
 		},
 
+		/**
+		 * Register delegated event listeners for the Generation Queue tab,
+		 * including main-tab switching, queue-item selection, and bulk-action
+		 * execution.
+		 */
 		bindEvents: function () {
 			// Main page tab switching
 			$(document).on('click', '.aips-authors-tab-link', this.switchMainTab.bind(this));
@@ -1188,6 +1519,16 @@
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
 		},
 
+		/**
+		 * Switch between the "Authors List" and "Generation Queue" main tabs.
+		 *
+		 * Validates the target tab ID against an allow-list to prevent XSS via
+		 * injected `data-tab` values. Updates `.aips-authors-tab-link` active
+		 * state, shows the matching `.aips-authors-tab-content`, and loads
+		 * queue data when switching to the generation-queue tab.
+		 *
+		 * @param {Event} e - Click event from an `.aips-authors-tab-link` element.
+		 */
 		switchMainTab: function (e) {
 			e.preventDefault();
 			const $tab = $(e.currentTarget);
@@ -1213,6 +1554,13 @@
 			}
 		},
 
+		/**
+		 * Fetch approved topics in the generation queue via `aips_get_generation_queue`.
+		 *
+		 * Shows a loading message in `#aips-queue-topics-list`, then delegates
+		 * to `renderQueueTopics` on success or shows an inline error message on
+		 * failure.
+		 */
 		loadQueueTopics: function () {
 			$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.loadingQueue || 'Loading queue...') + '</p>');
 
@@ -1238,6 +1586,15 @@
 			});
 		},
 
+		/**
+		 * Build and inject the queue HTML table into `#aips-queue-topics-list`.
+		 *
+		 * Renders a WordPress-style table with checkboxes, topic title, author
+		 * name, field/niche, and approved date columns. Shows a "no topics in
+		 * queue" message when the array is empty.
+		 *
+		 * @param {Array<Object>} topics - Array of queue-entry objects from the server.
+		 */
 		renderQueueTopics: function (topics) {
 			if (!topics || topics.length === 0) {
 				$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.noQueueTopics || 'No approved topics in the queue yet.') + '</p>');
@@ -1267,11 +1624,27 @@
 			$('#aips-queue-topics-list').html(html);
 		},
 
+		/**
+		 * Sync all `.aips-queue-topic-checkbox` elements with the "select all"
+		 * checkbox in the queue table.
+		 *
+		 * @param {Event} e - Change event from an `.aips-queue-select-all` element.
+		 */
 		toggleQueueSelectAll: function (e) {
 			const isChecked = $(e.currentTarget).prop('checked');
 			$('.aips-queue-topic-checkbox').prop('checked', isChecked);
 		},
 
+		/**
+		 * Dispatch the selected queue bulk action against all checked topics.
+		 *
+		 * Validates that an action and at least one topic are selected, then
+		 * delegates to the appropriate handler method. Currently only
+		 * `'generate_now'` is supported.
+		 *
+		 * @param {Event} e - Click event from an `.aips-queue-bulk-action-execute`
+		 *                    element.
+		 */
 		executeQueueBulkAction: function (e) {
 			e.preventDefault();
 
@@ -1303,6 +1676,15 @@
 			}
 		},
 
+		/**
+		 * Confirm and immediately generate posts for a set of queue topics.
+		 *
+		 * Shows a localised confirmation dialog with the selected count. On
+		 * confirmation, sends `aips_bulk_generate_from_queue` and reloads the
+		 * queue on success.
+		 *
+		 * @param {Array<string>} topicIds - Array of topic ID strings to generate.
+		 */
 		generateNowFromQueue: function (topicIds) {
 			const confirmMessage = (aipsAuthorsL10n.confirmGenerateFromQueue || 'Generate posts now for %d selected topic(s)?').replace('%d', topicIds.length);
 			const $button = $('.aips-queue-bulk-action-execute');

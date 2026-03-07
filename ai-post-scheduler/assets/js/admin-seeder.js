@@ -37,6 +37,18 @@ jQuery(document).ready(function($) {
         ]);
     });
 
+    /**
+     * Recursively process a queue of seeder tasks one item at a time.
+     *
+     * Shifts the first task off the array, appends a progress message to
+     * `#aips-seeder-log`, and sends the `aips_process_seeder` AJAX action.
+     * On both success and error it calls itself again with the remaining queue
+     * so all tasks run sequentially. Marks the form as complete and re-enables
+     * the submit button when the queue is empty.
+     *
+     * @param {Array<Object>} queue - Array of task objects, each with `type`,
+     *                                `count`, `label`, and `keywords` properties.
+     */
     function processQueue(queue) {
         if (queue.length === 0) {
             $log.append('<div><strong>All Done!</strong></div>');

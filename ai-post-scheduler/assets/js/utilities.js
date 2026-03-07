@@ -15,6 +15,12 @@
 
     window.AIPS.Utilities = {
 
+        /**
+         * Placeholder initialisation hook for the Utilities namespace.
+         *
+         * Called on `document.ready`. Currently a no-op; reserved for any
+         * future setup that must run once the DOM is ready.
+         */
         init: function() {
             // Nothing needed on init currently; reserved for future use.
         },
@@ -86,6 +92,17 @@
         _positionToastContainer: function($container) {
             var self = this;
 
+            /**
+             * Recalculate and apply the horizontal centre position of the
+             * toast container based on the current bounding rect of the
+             * `.aips-page-container` element (or `#wpcontent` as a fallback).
+             *
+             * Called immediately and again on every debounced `resize` event so
+             * the container stays centred when the window or admin sidebar changes
+             * size.
+             *
+             * @private
+             */
             function reposition() {
                 var el = document.querySelector('.aips-page-container') ||
                          document.getElementById('wpcontent');
@@ -159,6 +176,14 @@
 
             var $footer = $('<div class="aips-confirm-footer"></div>');
 
+            /**
+             * Animate the dialog overlay out and remove it from the DOM.
+             *
+             * Also unbinds the `keydown.aips-confirm` event handler that was
+             * registered to close the dialog on Escape.
+             *
+             * @private
+             */
             function closeDialog() {
                 $overlay.addClass('aips-confirm-closing');
                 setTimeout(function() { $overlay.remove(); }, 200);

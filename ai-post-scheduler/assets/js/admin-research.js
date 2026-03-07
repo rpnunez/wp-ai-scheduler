@@ -5,6 +5,16 @@
         let selectedTopics = [];
 
         // Local helper for HTML escaping to prevent XSS
+        /**
+         * Escape a value for safe insertion as HTML text content.
+         *
+         * Converts the value to a string and replaces `&`, `<`, `>`, `"`, and `'`
+         * with their corresponding HTML entities. Returns an empty string for
+         * `null` or `undefined` inputs.
+         *
+         * @param  {*}      text - Value to escape (coerced to string if needed).
+         * @return {string} HTML-safe string.
+         */
         function escapeHtml(text) {
             if (text === null || text === undefined) return '';
             return String(text)
@@ -60,6 +70,18 @@
         });
 
         // Display research results
+        /**
+         * Render the research-result summary into `#research-results-content`.
+         *
+         * Builds an HTML snippet showing the number of saved topics and the niche,
+         * followed by an ordered list of the top-ranked topics with scores and
+         * optional reasoning. Slides the `#research-results` panel into view.
+         *
+         * @param {Object}        data            - The `response.data` from `aips_research_topics`.
+         * @param {number}        data.saved_count - Total topics saved by this research run.
+         * @param {string}        data.niche       - The niche that was researched.
+         * @param {Array<Object>} data.top_topics  - Array of top-ranked topic objects.
+         */
         function displayResearchResults(data) {
             const $container = $('#research-results-content');
             // Security: Escape HTML using local escapeHtml helper
@@ -111,6 +133,18 @@
         });
 
         // Display topics table
+        /**
+         * Render the full topics table (or an empty-state panel) in
+         * `#topics-container`.
+         *
+         * Builds a `<table>` with checkboxes, score badges, keywords, and action
+         * buttons for each topic. Also appends an initially hidden "no results"
+         * empty state for the in-page search filter. Shows or hides the
+         * `#bulk-schedule-section` depending on whether any topics are present.
+         * Re-applies the current search term if `#filter-search` is non-empty.
+         *
+         * @param {Array<Object>} topics - Array of topic objects from the server.
+         */
         function displayTopicsTable(topics) {
             if (!topics || topics.length === 0) {
                 // Check if filters are active
@@ -198,6 +232,15 @@
         }
 
         // Search Filter Logic
+        /**
+         * Filter the visible topics table rows against the current search query.
+         *
+         * Shows or hides the `#filter-search-clear` button, toggles rows based
+         * on whether the topic text cell contains the query, and shows the
+         * `#topics-search-empty` empty-state element when no rows match.
+         *
+         * Bound to the `keyup` and `search` events on `#filter-search`.
+         */
         function filterTopics() {
             const query = $('#filter-search').val().toLowerCase();
             const $rows = $('.aips-topics-table tbody tr');
@@ -235,6 +278,10 @@
         });
 
         // Helper function to clear search
+        /**
+         * Clear the `#filter-search` input and re-trigger the search event to
+         * restore all hidden topic rows, then return focus to the field.
+         */
         function clearSearch() {
             $('#filter-search').val('').trigger('search');
             $('#filter-search').focus();
@@ -255,6 +302,13 @@
         });
 
         // Update selected topics
+        /**
+         * Rebuild the `selectedTopics` array from currently checked
+         * `.topic-checkbox` elements.
+         *
+         * Called on every individual or "select all" checkbox change so that
+         * the bulk-schedule form always has an up-to-date list of IDs.
+         */
         function updateSelectedTopics() {
             selectedTopics = $('.topic-checkbox:checked').map(function() {
                 return $(this).val();
@@ -407,6 +461,17 @@
         });
 
         // Render Gap Cards
+        /**
+         * Render the gap-analysis results as a grid of priority-coded cards.
+         *
+         * Clears the `#gap-results-container .aips-gap-grid` and rebuilds it
+         * from the `gaps` array. Each card shows the priority badge, missing
+         * topic title, reason, search intent, and a "Generate Ideas" button
+         * that triggers an AJAX-backed idea-generation flow. Slides the
+         * container into view on completion.
+         *
+         * @param {Array<Object>} gaps - Array of gap objects returned by the server.
+         */
         function renderGapResults(gaps) {
             const $container = $('#gap-results-container');
             const $grid = $container.find('.aips-gap-grid');
