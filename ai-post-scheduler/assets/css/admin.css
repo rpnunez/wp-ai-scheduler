@@ -1070,7 +1070,7 @@
 
 /* Form that participates in flex layout without introducing a block */
 .aips-filter-form {
-    display: contents;
+    display: flex;
 }
 
 .aips-button-group {
