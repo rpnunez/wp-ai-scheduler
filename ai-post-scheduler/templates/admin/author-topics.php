@@ -151,7 +151,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 						<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
 						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 					</select>
-					<button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+					<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
@@ -170,7 +170,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 							<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
 							<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 						</select>
-						<button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+						<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
 					</div>
 				</div>
 			</div>
