@@ -29,13 +29,10 @@ class AIPS_Settings {
     /**
      * Add menu pages to the WordPress admin dashboard.
      *
-     * Implements Proposal B navigation structure with logical grouped sections:
-     * - Dashboard (top level)
-     * - Content Studio: Templates, Voices, Article Structures
-     * - Planning: Authors, Research
-     * - Publishing: Schedule, Generated Posts
-     * - Monitoring: History (includes Activity)
-     * - System: Settings, System Status, Seeder, Dev Tools
+     * Registers a traditional flat submenu structure:
+     * Dashboard, Templates, Voices, Article Structures, Authors, Research,
+     * Schedule, Schedule Calendar, Generated Posts, History,
+     * Settings, System Status, Seeder, Dev Tools (when enabled).
      *
      * @return void
      */
@@ -50,7 +47,7 @@ class AIPS_Settings {
             'dashicons-schedule',
             30
         );
-        
+
         // Dashboard (top level)
         add_submenu_page(
             'ai-post-scheduler',
@@ -61,9 +58,6 @@ class AIPS_Settings {
             array($this, 'render_dashboard_page')
         );
 
-        // Content Studio section
-        $this->add_section_header('ai-post-scheduler', __('Content Studio', 'ai-post-scheduler'));
-        
         add_submenu_page(
             'ai-post-scheduler',
             __('Templates', 'ai-post-scheduler'),
@@ -72,7 +66,7 @@ class AIPS_Settings {
             'aips-templates',
             array($this, 'render_templates_page')
         );
-        
+
         add_submenu_page(
             'ai-post-scheduler',
             __('Voices', 'ai-post-scheduler'),
@@ -81,7 +75,7 @@ class AIPS_Settings {
             'aips-voices',
             array($this, 'render_voices_page')
         );
-        
+
         add_submenu_page(
             'ai-post-scheduler',
             __('Article Structures', 'ai-post-scheduler'),
@@ -91,9 +85,6 @@ class AIPS_Settings {
             array($this, 'render_structures_page')
         );
 
-        // Planning section
-        $this->add_section_header('ai-post-scheduler', __('Planning', 'ai-post-scheduler'));
-        
         add_submenu_page(
             'ai-post-scheduler',
             __('Authors', 'ai-post-scheduler'),
@@ -102,19 +93,16 @@ class AIPS_Settings {
             'aips-authors',
             array($this, 'render_authors_page')
         );
-        
-         add_submenu_page(
-             'ai-post-scheduler',
-             __('Research', 'ai-post-scheduler'),
-             __('Research', 'ai-post-scheduler'),
-             'manage_options',
-             'aips-research',
-             array($this, 'render_research_page')
-         );
 
-        // Publishing section
-        $this->add_section_header('ai-post-scheduler', __('Publishing', 'ai-post-scheduler'));
-        
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Research', 'ai-post-scheduler'),
+            __('Research', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-research',
+            array($this, 'render_research_page')
+        );
+
         add_submenu_page(
             'ai-post-scheduler',
             __('Schedule', 'ai-post-scheduler'),
@@ -123,16 +111,16 @@ class AIPS_Settings {
             'aips-schedule',
             array($this, 'render_schedule_page')
         );
-      
+
         add_submenu_page(
-              'ai-post-scheduler',
-              __('Schedule Calendar', 'ai-post-scheduler'),
-              __('Schedule Calendar', 'ai-post-scheduler'),
-              'manage_options',
-              'aips-schedule-calendar',
-              array($this, 'render_schedule_calendar_page')
-          );
-        
+            'ai-post-scheduler',
+            __('Schedule Calendar', 'ai-post-scheduler'),
+            __('Schedule Calendar', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-schedule-calendar',
+            array($this, 'render_schedule_calendar_page')
+        );
+
         add_submenu_page(
             'ai-post-scheduler',
             __('Generated Posts', 'ai-post-scheduler'),
@@ -142,9 +130,6 @@ class AIPS_Settings {
             array($this, 'render_generated_posts_page')
         );
 
-        // Monitoring section
-        $this->add_section_header('ai-post-scheduler', __('Monitoring', 'ai-post-scheduler'));
-        
         add_submenu_page(
             'ai-post-scheduler',
             __('History', 'ai-post-scheduler'),
@@ -154,9 +139,6 @@ class AIPS_Settings {
             array($this, 'render_history_page')
         );
 
-        // System section
-        $this->add_section_header('ai-post-scheduler', __('System', 'ai-post-scheduler'));
-        
         add_submenu_page(
             'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
@@ -165,7 +147,7 @@ class AIPS_Settings {
             'aips-settings',
             array($this, 'render_settings_page')
         );
-        
+
         add_submenu_page(
             'ai-post-scheduler',
             __('System Status', 'ai-post-scheduler'),
@@ -194,58 +176,6 @@ class AIPS_Settings {
                 array($this, 'render_dev_tools_page')
             );
         }
-    }
-    
-    /**
-     * Add a non-clickable section header to the submenu.
-     *
-     * Creates a visual separator/header in the admin menu for grouping related pages.
-     * Section headers are styled to be non-interactive with CSS.
-     *
-     * @param string $parent_slug The slug of the parent menu.
-     * @param string $title The title of the section header.
-     * @return void
-     */
-    private function add_section_header($parent_slug, $title) {
-        global $submenu;
-        
-        if (isset($submenu[$parent_slug])) {
-            // Create a unique slug for this section header
-            $section_slug = 'aips-section-' . sanitize_title($title);
-            
-            // Register a submenu page with a redirect callback
-            add_submenu_page(
-                $parent_slug,
-                $title,
-                $title,
-                'manage_options',
-                $section_slug,
-                array($this, 'redirect_section_header')
-            );
-            
-            // Find and update the menu class
-            if (isset($submenu[$parent_slug])) {
-                foreach ($submenu[$parent_slug] as $key => $item) {
-                    if ($item[2] === $section_slug) {
-                        $submenu[$parent_slug][$key][4] = 'aips-menu-section-header';
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    
-    /**
-     * Redirect section header access to dashboard.
-     *
-     * If someone tries to access a section header URL directly, redirect them
-     * to the dashboard to prevent permission errors.
-     *
-     * @return void
-     */
-    public function redirect_section_header() {
-        wp_safe_redirect(admin_url('admin.php?page=ai-post-scheduler'));
-        exit;
     }
     
     /**
