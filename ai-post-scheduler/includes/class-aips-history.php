@@ -188,6 +188,8 @@ class AIPS_History {
      *
      * Returns the latest items HTML (table body only), pagination HTML, and stats
      * so the client can refresh the view without a full page reload.
+     * Supports optional date-range filtering via `date_from` and `date_to` POST
+     * parameters (expected format: 'YYYY-MM-DD').
      */
     public function ajax_reload_history() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -197,14 +199,20 @@ class AIPS_History {
         }
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
-        $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
-        $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
+        $search_query  = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $template_id   = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+        $date_from     = isset($_POST['date_from']) ? sanitize_text_field($_POST['date_from']) : '';
+        $date_to       = isset($_POST['date_to']) ? sanitize_text_field($_POST['date_to']) : '';
+        $paged         = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
 
         $history = $this->get_history(array(
-            'page' => $paged,
-            'status' => $status_filter,
-            'search' => $search_query,
-            'fields' => 'list',
+            'page'        => $paged,
+            'status'      => $status_filter,
+            'search'      => $search_query,
+            'template_id' => $template_id,
+            'date_from'   => $date_from,
+            'date_to'     => $date_to,
+            'fields'      => 'list',
         ));
 
         $stats = $this->get_stats();
@@ -280,18 +288,24 @@ class AIPS_History {
         }
 
         $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
-        $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $search_query  = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $template_id   = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+        $date_from     = isset($_POST['date_from']) ? sanitize_text_field($_POST['date_from']) : '';
+        $date_to       = isset($_POST['date_to']) ? sanitize_text_field($_POST['date_to']) : '';
 
         // Get max records limit from configuration
         $config = AIPS_Config::get_instance();
         $max_records = (int) $config->get_option('history_export_max_records', 10000);
 
-        // Fetch all matching records
+        // Fetch all matching records (including any active date range filter).
         $history = $this->get_history(array(
-            'page' => 1,
-            'per_page' => $max_records,
-            'status' => $status_filter,
-            'search' => $search_query,
+            'page'        => 1,
+            'per_page'    => $max_records,
+            'status'      => $status_filter,
+            'search'      => $search_query,
+            'template_id' => $template_id,
+            'date_from'   => $date_from,
+            'date_to'     => $date_to,
         ));
 
         $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
@@ -336,20 +350,36 @@ class AIPS_History {
         exit;
     }
 
+    /**
+     * Render the History admin page.
+     *
+     * Reads status, search, template_id, date_from, and date_to from the request
+     * query string and passes them into the template so the filter UI is
+     * pre-populated on load.
+     */
     public function render_page() {
-        $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+        $current_page  = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
-        $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        
+        $search_query  = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+        $template_id   = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
+        $date_from     = isset($_GET['date_from']) ? sanitize_text_field($_GET['date_from']) : '';
+        $date_to       = isset($_GET['date_to']) ? sanitize_text_field($_GET['date_to']) : '';
+
         $history = $this->get_history(array(
-            'page' => $current_page,
-            'status' => $status_filter,
-            'search' => $search_query,
-            'fields' => 'list',
+            'page'        => $current_page,
+            'status'      => $status_filter,
+            'search'      => $search_query,
+            'template_id' => $template_id,
+            'date_from'   => $date_from,
+            'date_to'     => $date_to,
+            'fields'      => 'list',
         ));
-        
+
         $stats = $this->get_stats();
-        
+
+        // Load templates for the filter dropdown (only those with history records).
+        $filter_templates = $this->repository->get_templates_for_filter();
+
         // Pass handler to template for helper methods
         $history_handler = $this;
 

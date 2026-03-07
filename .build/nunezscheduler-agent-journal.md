@@ -86,3 +86,27 @@
 **Improvement:** Optimized the workflow from saving a template to scheduling it by introducing a `quickSchedule` action. Now, clicking "Schedule This Template" inside the "Next Steps" wizard directs to the schedules page and immediately triggers the "Add New Schedule" modal with the template field pre-selected.
 **Files Modified:** ai-post-scheduler/assets/js/admin.js
 **Outcome:** Enhances efficiency for the user by streamlining the multi-step navigation process directly to task execution context.
+
+## 2025-07-15 - History Date Range Filter Optimization
+**Target Feature:** History & Analytics
+**Improvement:** Added date-range quick-filter capability to the History page — the most critical missing search dimension for a time-series log of AI generation activity. Previously, the History page only allowed filtering by status and keyword search; there was no way to scope the view to a specific time window without manually inspecting all rows. Users with large histories (e.g. daily scheduled generation) had no quick path to answer "What happened this week?" or "How many posts did I generate this month?"
+
+The improvement introduces three one-click date preset buttons ("Today", "Last 7 Days", "Last 30 Days") in the filter bar, alongside a "Clear Date" button when a preset is active. The active preset is visually highlighted and persists across paginated navigation, export, and search operations.
+
+**Technical Details:**
+1. **Repository** (`class-aips-history-repository.php`): Added `date_from` and `date_to` parameters to `get_history()`. Each is validated against a strict `YYYY-MM-DD` regex before being added to the WHERE clause as `DATE(h.created_at) >= %s` / `<= %s`. Added full DocBlock to `get_history()`.
+2. **History Handler** (`class-aips-history.php`): Updated `ajax_reload_history()` to accept and forward `date_from`/`date_to` from the POST payload. Updated `ajax_export_history()` to forward the date range to `get_history()` so exported CSVs respect the active date filter. Updated `render_page()` to read `date_from`/`date_to` from `$_GET` and pass them into the history query and template scope. Added DocBlocks to new/updated methods.
+3. **Template** (`templates/admin/history.php`): Added `$date_from`, `$date_to`, and `$active_date_preset` variables to the preamble. Added three preset buttons and a conditional "Clear Date" button inside a new `.aips-date-range-filters` group with a visual `.aips-filter-divider` separator. Hidden `<input>` elements (`#aips-date-from`, `#aips-date-to`) carry the active date range through AJAX calls. Active preset state is reflected via `aips-btn-active` CSS class applied server-side on initial render.
+4. **JavaScript** (`assets/js/admin.js`): Added `applyDatePreset()` function with DocBlock — computes `date_from`/`date_to` from the selected preset, writes them into the hidden inputs, manages the active CSS state, and triggers `filterHistory`. Added `clearDatePreset()` function with DocBlock — resets hidden inputs, removes active state, removes "Clear Date" button. Updated `filterHistory()`, `reloadHistory()`, and `exportHistory()` to read and pass `date_from`/`date_to` so all three operations honour the active date range.
+5. **CSS** (`assets/css/admin.css`): Added `.aips-filter-divider`, `.aips-date-range-filters`, `.aips-btn.aips-btn-active` (and hover), and `.aips-btn.aips-date-preset-clear` styles.
+
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-history-repository.php` — `get_history()` date_from/date_to support + DocBlock
+- `ai-post-scheduler/includes/class-aips-history.php` — `ajax_reload_history`, `ajax_export_history`, `render_page` updated; DocBlocks added
+- `ai-post-scheduler/templates/admin/history.php` — Date preset filter UI, hidden inputs, active state
+- `ai-post-scheduler/assets/js/admin.js` — `applyDatePreset`, `clearDatePreset` functions; `filterHistory`, `reloadHistory`, `exportHistory` updated
+- `ai-post-scheduler/assets/css/admin.css` — Date filter UI styles
+
+**Verification:** `php -l` passes on all PHP files. History-related test suite (43 tests) shows identical results (19 errors, 6 failures) before and after the changes — confirming zero regressions introduced. All pre-existing failures are due to a missing WordPress test environment (`$stats` undefined in template when run without WP_UNITTEST context) — not related to this work.
+
+**Outcome:** Users can now answer "What happened today?" or "How did generation perform this week?" in a single click, without scrolling through unfiltered history. The date filter is fully integrated with export (CSV exports only the filtered window), search, status filter, and pagination — creating a coherent, composable filtering experience. This directly addresses the "Limited filtering and search capabilities" pain point identified in `docs/major-features-analysis.md` under History & Analytics.

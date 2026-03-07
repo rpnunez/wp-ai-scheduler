@@ -43,36 +43,43 @@ class AIPS_History_Repository {
     }
     
     /**
-     * Get paginated history with optional filtering.
+     * Retrieve paginated history items with optional filtering.
+     *
+     * Supports filtering by status, search term, template ID, and date range.
      *
      * @param array $args {
      *     Optional. Query arguments.
      *
      *     @type int    $per_page    Number of items per page. Default 20.
      *     @type int    $page        Current page number. Default 1.
-     *     @type string $status      Filter by status. Default empty.
-     *     @type string $search      Search term for title. Default empty.
-     *     @type int    $template_id Filter by template ID. Default 0.
-     *     @type string $orderby     Column to order by. Default 'created_at'.
-     *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
+     *     @type string $status      Filter by status ('completed', 'failed', 'processing'). Default ''.
+     *     @type string $search      Filter by generated title (LIKE). Default ''.
+     *     @type int    $template_id Filter by template ID. Default 0 (no filter).
+     *     @type string $date_from   Start date (inclusive) in 'YYYY-MM-DD' format. Default ''.
+     *     @type string $date_to     End date (inclusive) in 'YYYY-MM-DD' format. Default ''.
+     *     @type string $orderby     Column to sort by. Default 'created_at'.
+     *     @type string $order       Sort direction ('ASC' or 'DESC'). Default 'DESC'.
+     *     @type string $fields      Field set to return ('all' or 'list'). Default 'all'.
      * }
      * @return array {
-     *     @type array $items        Array of history items.
-     *     @type int   $total        Total number of items.
+     *     @type array $items        Array of history item objects.
+     *     @type int   $total        Total number of matching items.
      *     @type int   $pages        Total number of pages.
      *     @type int   $current_page Current page number.
      * }
      */
     public function get_history($args = array()) {
         $defaults = array(
-            'per_page' => 20,
-            'page' => 1,
-            'status' => '',
-            'search' => '',
+            'per_page'    => 20,
+            'page'        => 1,
+            'status'      => '',
+            'search'      => '',
             'template_id' => 0,
-            'orderby' => 'created_at',
-            'order' => 'DESC',
-            'fields' => 'all',
+            'date_from'   => '',
+            'date_to'     => '',
+            'orderby'     => 'created_at',
+            'order'       => 'DESC',
+            'fields'      => 'all',
         );
         
         $args = wp_parse_args($args, $defaults);
@@ -103,7 +110,24 @@ class AIPS_History_Repository {
             $where_clauses[] = "h.generated_title LIKE %s";
             $where_args[] = '%' . $this->wpdb->esc_like($args['search']) . '%';
         }
-        
+
+        // Date range filtering: restrict to rows whose created_at falls within [date_from, date_to] using index-friendly comparisons.
+        if (!empty($args['date_from'])) {
+            $date_from = sanitize_text_field($args['date_from']);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_from)) {
+                $where_clauses[] = "h.created_at >= %s";
+                $where_args[] = $date_from . ' 00:00:00';
+            }
+        }
+
+        if (!empty($args['date_to'])) {
+            $date_to = sanitize_text_field($args['date_to']);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to)) {
+                $where_clauses[] = "h.created_at <= %s";
+                $where_args[] = $date_to . ' 23:59:59';
+            }
+        }
+
         $where_sql = implode(' AND ', $where_clauses);
 
         // Validate orderby and order
@@ -144,6 +168,25 @@ class AIPS_History_Repository {
         );
     }
     
+    /**
+     * Get templates that have at least one history record.
+     *
+     * Used to populate the template filter dropdown on the History page so that
+     * only relevant templates are shown.
+     *
+     * @return array Array of objects with `id` and `name` properties, ordered by name.
+     */
+    public function get_templates_for_filter() {
+        $templates_table = $this->wpdb->prefix . 'aips_templates';
+
+        return $this->wpdb->get_results(
+            "SELECT DISTINCT t.id, t.name
+             FROM {$this->table_name} h
+             INNER JOIN {$templates_table} t ON h.template_id = t.id
+             ORDER BY t.name ASC"
+        );
+    }
+
     /**
      * Get a single history item by ID.
      *

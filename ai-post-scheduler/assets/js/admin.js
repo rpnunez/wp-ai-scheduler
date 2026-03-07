@@ -93,6 +93,11 @@
                     AIPS.filterHistory(e);
                 }
             });
+            // Date range quick-filter preset buttons
+            $(document).on('click', '.aips-date-preset', this.applyDatePreset);
+            $(document).on('click', '#aips-date-preset-clear', this.clearDatePreset);
+            // Template filter dropdown — trigger reload immediately on change
+            $(document).on('change', '#aips-filter-template', this.filterHistory);
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
             // History Pagination
@@ -1556,16 +1561,25 @@
         filterHistory: function(e) {
             e.preventDefault();
 
-            var status = $('#aips-filter-status').val();
-            var search = $('#aips-history-search-input').val();
+            var status     = $('#aips-filter-status').val();
+            var templateId = $('#aips-filter-template').val() || $('#aips-filter-template-id').val() || '';
+            var search     = $('#aips-history-search-input').val();
+            var dateFrom   = $('#aips-date-from').val();
+            var dateTo     = $('#aips-date-to').val();
 
             // Update URL without reloading
             var url = new URL(window.location.href);
-            
+
             if (status) {
                 url.searchParams.set('status', status);
             } else {
                 url.searchParams.delete('status');
+            }
+
+            if (templateId) {
+                url.searchParams.set('template_id', templateId);
+            } else {
+                url.searchParams.delete('template_id');
             }
 
             if (search) {
@@ -1574,12 +1588,20 @@
                 url.searchParams.delete('s');
             }
 
+            if (dateFrom) {
+                url.searchParams.set('date_from', dateFrom);
+            } else {
+                url.searchParams.delete('date_from');
+            }
+
+            if (dateTo) {
+                url.searchParams.set('date_to', dateTo);
+            } else {
+                url.searchParams.delete('date_to');
+            }
+
             url.searchParams.delete('paged');
-            // If we are in the main history page, don't set tab param unless needed.
-            // But if we are in a tab, we might need it.
-            // The existing logic enforced tab=history.
-            // However, simply reloading via AJAX is better.
-            
+
             window.history.pushState({path: url.toString()}, '', url.toString());
 
             AIPS.reloadHistory(e, 1);
@@ -1588,28 +1610,31 @@
         exportHistory: function(e) {
             e.preventDefault();
 
-            var status = $('#aips-filter-status').val();
-            var search = $('#aips-history-search-input').val();
-            
+            var status     = $('#aips-filter-status').val();
+            var templateId = $('#aips-filter-template').val() || $('#aips-filter-template-id').val() || '';
+            var search     = $('#aips-history-search-input').val();
+            var dateFrom   = $('#aips-date-from').val();
+            var dateTo     = $('#aips-date-to').val();
+
             // Create a form and submit it with POST
             var form = $('<form>', {
                 'method': 'POST',
                 'action': aipsAjax.ajaxUrl,
                 'target': '_self'
             });
-            
+
             form.append($('<input>', {
                 'type': 'hidden',
                 'name': 'action',
                 'value': 'aips_export_history'
             }));
-            
+
             form.append($('<input>', {
                 'type': 'hidden',
                 'name': 'nonce',
                 'value': aipsAjax.nonce
             }));
-            
+
             if (status) {
                 form.append($('<input>', {
                     'type': 'hidden',
@@ -1617,7 +1642,15 @@
                     'value': status
                 }));
             }
-            
+
+            if (templateId) {
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'template_id',
+                    'value': templateId
+                }));
+            }
+
             if (search) {
                 form.append($('<input>', {
                     'type': 'hidden',
@@ -1625,7 +1658,23 @@
                     'value': search
                 }));
             }
-            
+
+            if (dateFrom) {
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'date_from',
+                    'value': dateFrom
+                }));
+            }
+
+            if (dateTo) {
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'date_to',
+                    'value': dateTo
+                }));
+            }
+
             // Append form to body, submit, and remove
             form.appendTo('body').submit().remove();
         },
@@ -1648,14 +1697,106 @@
             AIPS.reloadHistory(e, parseInt(page, 10));
         },
 
+        /**
+         * Apply a date-range quick-filter preset (Today, Last 7 Days, Last 30 Days).
+         *
+         * Computes the appropriate date_from / date_to values in YYYY-MM-DD format,
+         * writes them into the hidden inputs, marks the clicked button as active,
+         * and triggers a fresh history reload.
+         *
+         * @param {jQuery.Event} e Click event from a .aips-date-preset button.
+         */
+        applyDatePreset: function(e) {
+            e.preventDefault();
+
+            var preset = $(e.currentTarget).data('preset');
+            var today  = new Date();
+
+            /**
+             * Format a Date object as YYYY-MM-DD.
+             *
+             * @param {Date} d
+             * @return {string}
+             */
+            function formatDate(d) {
+                var y  = d.getFullYear();
+                var m  = String(d.getMonth() + 1).padStart(2, '0');
+                var dy = String(d.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + dy;
+            }
+
+            var todayStr = formatDate(today);
+            var dateFrom = todayStr;
+            var dateTo   = todayStr;
+
+            if (preset === '7days') {
+                var d7 = new Date(today);
+                d7.setDate(d7.getDate() - 6);
+                dateFrom = formatDate(d7);
+            } else if (preset === '30days') {
+                var d30 = new Date(today);
+                d30.setDate(d30.getDate() - 29);
+                dateFrom = formatDate(d30);
+            }
+
+            // Store in hidden inputs for all subsequent AJAX calls
+            $('#aips-date-from').val(dateFrom);
+            $('#aips-date-to').val(dateTo);
+
+            // Update active button state
+            $('.aips-date-preset').removeClass('aips-btn-active');
+            $(e.currentTarget).addClass('aips-btn-active');
+
+            // Show clear button if not already present
+            if (!$('#aips-date-preset-clear').length) {
+                var clearBtn = $('<button>', {
+                    type:   'button',
+                    id:     'aips-date-preset-clear',
+                    class:  'aips-btn aips-btn-sm aips-date-preset-clear',
+                    title:  'Clear date filter',
+                    html:   '<span class="dashicons dashicons-no-alt"></span> Clear Date'
+                });
+                $('.aips-date-range-filters').append(clearBtn);
+            }
+
+            AIPS.filterHistory(e);
+        },
+
+        /**
+         * Clear the active date-range quick-filter and reload the full history.
+         *
+         * Resets the hidden date inputs, removes the active state from preset
+         * buttons, hides the "Clear Date" button, and triggers a history reload.
+         *
+         * @param {jQuery.Event} e Click event from #aips-date-preset-clear.
+         */
+        clearDatePreset: function(e) {
+            e.preventDefault();
+
+            // Reset hidden date inputs
+            $('#aips-date-from').val('');
+            $('#aips-date-to').val('');
+
+            // Remove active state from all preset buttons
+            $('.aips-date-preset').removeClass('aips-btn-active');
+
+            // Remove clear button
+            $('#aips-date-preset-clear').remove();
+
+            AIPS.filterHistory(e);
+        },
+
         reloadHistory: function(e, paged) {
             if (e) {
                 e.preventDefault();
             }
 
-            var status = $('#aips-filter-status').val();
-            var search = $('#aips-history-search-input').val();
-            var $btn = $('#aips-reload-history-btn');            
+            var status     = $('#aips-filter-status').val();
+            var templateId = $('#aips-filter-template').val() || $('#aips-filter-template-id').val() || '';
+            var search     = $('#aips-history-search-input').val();
+            var dateFrom   = $('#aips-date-from').val();
+            var dateTo     = $('#aips-date-to').val();
+            var $btn = $('#aips-reload-history-btn');
             var isReloadBtn = $btn.length && e && $(e.currentTarget).is('#aips-reload-history-btn');
             var originalHtml;
 
@@ -1674,11 +1815,14 @@
                 type: 'POST',
                 dataType: 'json',
                 data: {
-                    action: 'aips_reload_history',
-                    nonce: aipsAjax.nonce,
-                    status: status,
-                    search: search,
-                    paged: paged
+                    action:      'aips_reload_history',
+                    nonce:       aipsAjax.nonce,
+                    status:      status,
+                    template_id: templateId,
+                    search:      search,
+                    date_from:   dateFrom,
+                    date_to:     dateTo,
+                    paged:     paged
                 },
                 success: function(response) {
                     if (!response.success) {
