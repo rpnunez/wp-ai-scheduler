@@ -128,10 +128,10 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             <th scope="row" class="check-column">
                                 <input type="checkbox" class="aips-schedule-checkbox" name="schedule[]" value="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php echo esc_attr(sprintf(__('Select schedule %s', 'ai-post-scheduler'), $schedule->template_name ?: $schedule->id)); ?>">
                             </th>
-                            <td>
+                            <td class="column-template">
                                 <div class="cell-primary"><?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?></div>
                             </td>
-                            <td>
+                            <td class="column-structure">
                                 <div>
                                     <?php echo esc_html($structure_display); ?>
                                     <?php if (!empty($schedule->rotation_pattern)): ?>
@@ -139,7 +139,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                                     <?php endif; ?>
                                 </div>
                             </td>
-                            <td>
+                            <td class="column-frequency">
                                 <span class="aips-badge aips-badge-info">
                                     <?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->frequency))); ?>
                                 </span>

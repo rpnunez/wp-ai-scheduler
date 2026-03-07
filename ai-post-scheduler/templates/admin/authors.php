@@ -62,7 +62,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
 
                 <!-- Authors Table -->
                 <div class="aips-panel-body no-padding">
-                    <table class="aips-table">
+                    <table class="aips-table aips-authors-table">
                         <thead>
                             <tr>
                                 <th><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
@@ -81,10 +81,10 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                 $posts_count = count($posts);
                             ?>
                                 <tr data-author-id="<?php echo esc_attr($author->id); ?>">
-                                    <td>
+                                    <td class="column-name">
                                         <div class="cell-primary"><?php echo esc_html($author->name); ?></div>
                                     </td>
-                                    <td>
+                                    <td class="column-field">
                                         <?php echo esc_html($author->field_niche); ?>
                                     </td>
                                     <td>

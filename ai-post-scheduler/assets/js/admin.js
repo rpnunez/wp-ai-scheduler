@@ -1851,9 +1851,9 @@
 
         filterSchedules: function() {
             var term = $('#aips-schedule-search').val().toLowerCase().trim();
-            var $rows = $('.aips-schedules-container table tbody tr');
+            var $rows = $('.aips-schedule-table tbody tr');
             var $noResults = $('#aips-schedule-search-no-results');
-            var $table = $('.aips-schedules-container table');
+            var $table = $('.aips-schedule-table');
             var $clearBtn = $('#aips-schedule-search-clear');
             var hasVisible = false;
 
@@ -2016,9 +2016,9 @@
 
         filterAuthors: function() {
             var term = $('#aips-author-search').val().toLowerCase().trim();
-            var $rows = $('.aips-authors-list tbody tr');
+            var $rows = $('.aips-authors-table tbody tr');
             var $noResults = $('#aips-author-search-no-results');
-            var $table = $('.aips-authors-list table');
+            var $table = $('.aips-authors-table');
             var $clearBtn = $('#aips-author-search-clear');
             var hasVisible = false;
 
