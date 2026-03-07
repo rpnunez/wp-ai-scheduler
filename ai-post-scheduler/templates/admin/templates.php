@@ -52,13 +52,13 @@ if (!defined('ABSPATH')) {
             </div>
             
             <!-- Templates Table -->
-            <div class="aips-panel-body no-padding">
+            <div class="aips-panel-body no-padding aips-templates-list">
                 <table class="aips-table">
                     <thead>
                         <tr>
-                            <th><?php esc_html_e('Template Name', 'ai-post-scheduler'); ?></th>
+                            <th class="column-name"><?php esc_html_e('Template Name', 'ai-post-scheduler'); ?></th>
                             <th><?php esc_html_e('Post Status', 'ai-post-scheduler'); ?></th>
-                            <th><?php esc_html_e('Category', 'ai-post-scheduler'); ?></th>
+                            <th class="column-category"><?php esc_html_e('Category', 'ai-post-scheduler'); ?></th>
                             <th><?php esc_html_e('Statistics', 'ai-post-scheduler'); ?></th>
                             <th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
                             <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
@@ -78,7 +78,7 @@ if (!defined('ABSPATH')) {
                             $pending_stats = isset($all_pending_stats[$template->id]) ? $all_pending_stats[$template->id] : array('today' => 0, 'week' => 0, 'month' => 0);
                         ?>
                         <tr data-template-id="<?php echo esc_attr($template->id); ?>">
-                            <td>
+                            <td class="column-name">
                                 <div class="cell-primary"><?php echo esc_html($template->name); ?></div>
                             </td>
                             <td>
@@ -86,7 +86,7 @@ if (!defined('ABSPATH')) {
                                     <?php echo esc_html(ucfirst($template->post_status)); ?>
                                 </span>
                             </td>
-                            <td>
+                            <td class="column-category">
                                 <?php 
                                 if ($template->post_category) {
                                     $cat = get_category($template->post_category);
