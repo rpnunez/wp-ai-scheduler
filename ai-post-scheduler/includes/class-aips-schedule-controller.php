@@ -255,12 +255,13 @@ class AIPS_Schedule_Controller {
         $updated = $repository->set_active_bulk($ids, $is_active);
 
         if ($updated !== false) {
+            $count = (int) $updated ?: count($ids);
             $action_label = $is_active ? __('activated', 'ai-post-scheduler') : __('paused', 'ai-post-scheduler');
             wp_send_json_success(array(
                 'message' => sprintf(
                     /* translators: 1: number of schedules, 2: action label (activated/paused) */
-                    _n('%1$d schedule %2$s successfully.', '%1$d schedules %2$s successfully.', count($ids), 'ai-post-scheduler'),
-                    count($ids),
+                    _n('%1$d schedule %2$s successfully.', '%1$d schedules %2$s successfully.', $count, 'ai-post-scheduler'),
+                    $count,
                     $action_label
                 ),
                 'updated' => $updated,

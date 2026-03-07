@@ -1380,6 +1380,7 @@
                             $toggle.prop('checked', isActive === 1);
                             $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
                             $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
+                            // nodeType === 3 = TEXT_NODE; removes leftover status text without touching child elements
                             $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
 
                             if (isActive) {
