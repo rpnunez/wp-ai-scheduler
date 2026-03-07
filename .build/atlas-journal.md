@@ -1323,3 +1323,30 @@ The situation resulted in "unexpected title prompts" as reported, with duplicate
 This refactoring resolves the "unexpected title prompts" issue by eliminating duplicate implementations and establishing a clear, single source of truth for prompt building. The Prompt Builder now owns all prompt construction logic (title, excerpt, content), while the Generator focuses on orchestrating the AI generation workflow. The change follows SOLID principles, improves testability and maintainability, and maintains 100% backward compatibility with no breaking changes to public APIs or generated content.
 
 ---
+
+## 2026-03-02 - Extract Repositories to PSR-4 Namespace Structure
+
+**Context:** As outlined in `docs/PSR4_REFACTORING_PLAN.md`, the AI Post Scheduler plugin is migrating from a custom prefix-based class loading system (`class-aips-*.php`) to a modern PSR-4 compliant structure inside `src/`. The first phase targets the Repository layer, which has the fewest external dependencies and forms the foundational data access layer.
+
+**Decision:** Applied "PSR-4 Autoloading" and "Namespaces" to all 13 existing repository classes.
+* Created `src/Repositories/` directory.
+* Moved all repository classes from `includes/class-aips-*.php` to `src/Repositories/PascalCaseRepository.php`.
+* Removed `AIPS_` prefix from class names and added `namespace AIPS\Repositories;`.
+* Reordered `if (!defined('ABSPATH'))` checks to appear after the `namespace` declaration.
+* Created `includes/compatibility-loader.php` providing `class_alias()` mappings from new namespaced classes to legacy `AIPS_*` names to ensure 100% backward compatibility.
+* Updated `ai-post-scheduler.php` to require the compatibility loader and initialize Composer autoloading.
+* Updated `tests/bootstrap.php` to include the compatibility loader so existing tests resolve legacy names correctly.
+
+**Consequence:**
+* **Pros:**
+  - Standardized modern PHP structure for the data layer.
+  - Better tooling support (IDE auto-completion, static analysis) via namespacing.
+  - Performance improvements using Composer's optimized autoloader instead of custom file-scanning logic.
+  - Backward compatibility fully maintained through class aliases.
+* **Cons:**
+  - Temporary minor fragmentation between namespaced and non-namespaced code during the transition period.
+  - Additional files for compatibility loader.
+* **Trade-offs:**
+  - Chose `class_alias` over immediate global refactoring of all `new AIPS_...()` calls to avoid a massive, risky pull request affecting the entire codebase simultaneously. The rest of the codebase will gradually migrate to PSR-4 in subsequent phases.
+
+**Tests:** Verified via `composer test`. All 472 existing assertions ran successfully with the exact same output as before the migration, proving the `class_alias` approach correctly bridged the new PSR-4 classes with legacy caller tests.
