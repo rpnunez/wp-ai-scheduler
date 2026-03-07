@@ -107,15 +107,18 @@
                 ];
             }
 
-            var self = this;
+
+            var headingId = 'aips-confirm-heading-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
 
             // Build the overlay
-            var $overlay = $('<div class="aips-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="aips-confirm-heading"></div>');
+            var $overlay = $('<div></div>')
+                .addClass('aips-confirm-overlay')
+                .attr({ role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': headingId });
 
             var $dialog = $('<div class="aips-confirm-dialog"></div>');
 
             var $header = $('<div class="aips-confirm-header"></div>')
-                .append($('<h3 id="aips-confirm-heading" class="aips-confirm-heading"></h3>').text(heading));
+                .append($('<h3></h3>').attr({ id: headingId, 'class': 'aips-confirm-heading' }).text(heading));
 
             var $body = $('<div class="aips-confirm-body"></div>')
                 .append($('<p class="aips-confirm-message"></p>').text(message));
@@ -179,7 +182,6 @@
 
     $(document).ready(function() {
         AIPS.Utilities.init();
-        console.log('AIPS: hello from utilities.js');
     });
 
 })(jQuery);

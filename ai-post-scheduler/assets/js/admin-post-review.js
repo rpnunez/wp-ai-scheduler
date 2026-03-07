@@ -43,13 +43,14 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        var msg = response.data.message || aipsPostReviewL10n.publishSuccess;
+                        var rawMsg = response.data.message || aipsPostReviewL10n.publishSuccess;
+                        var safeMsg = $('<div>').text(rawMsg).html();
                         if (response.data.post_id) {
-                            var editUrl = 'post.php?post=' + response.data.post_id + '&action=edit';
-                            msg += ' <a href="' + editUrl + '" target="_blank">Edit Post</a>';
-                            AIPS.Utilities.showToast(msg, 'success', { isHtml: true });
+                            var editUrl = 'post.php?post=' + encodeURIComponent(response.data.post_id) + '&action=edit';
+                            var safeLink = '<a href="' + editUrl.replace(/"/g, '&quot;') + '" target="_blank">Edit Post</a>';
+                            AIPS.Utilities.showToast(safeMsg + ' ' + safeLink, 'success', { isHtml: true });
                         } else {
-                            AIPS.Utilities.showToast(msg, 'success');
+                            AIPS.Utilities.showToast(safeMsg, 'success');
                         }
 
                         row.fadeOut(400, function() {
