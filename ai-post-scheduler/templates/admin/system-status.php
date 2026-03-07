@@ -132,6 +132,9 @@ if (!defined('ABSPATH')) {
                     <h3 style="margin-top: 0;"><?php esc_html_e('Export', 'ai-post-scheduler'); ?></h3>
                     <p><?php esc_html_e('Download a backup of all plugin data in the selected format.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-btn-group">
+                        <label for="aips-export-format" class="screen-reader-text">
+                            <?php esc_html_e('Export format', 'ai-post-scheduler'); ?>
+                        </label>
                         <select id="aips-export-format" class="aips-form-select">
                             <?php foreach ($export_formats as $key => $label) : ?>
                                 <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
@@ -149,6 +152,9 @@ if (!defined('ABSPATH')) {
                     <h3 style="margin-top: 0;"><?php esc_html_e('Import', 'ai-post-scheduler'); ?></h3>
                     <p><?php esc_html_e('Restore plugin data from a previously exported file. This will overwrite existing data.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-btn-group">
+                        <label for="aips-import-format" class="screen-reader-text">
+                            <?php esc_html_e('Import format', 'ai-post-scheduler'); ?>
+                        </label>
                         <select id="aips-import-format" class="aips-form-select">
                             <?php foreach ($import_formats as $key => $label) : ?>
                                 <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
