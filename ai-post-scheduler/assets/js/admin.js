@@ -647,6 +647,21 @@
             var $btn = $(this);
             var $form = $('#aips-template-form');
 
+            // Cross-step validation for wizard
+            if (!$('#template_name').val().trim()) {
+                AIPS.Utilities.showToast(aipsAdminL10n.templateNameRequired || 'Template Name is required.', 'warning');
+                AIPS.wizardGoToStep(1);
+                $('#template_name').focus();
+                return;
+            }
+
+            if (!$('#prompt_template').val().trim()) {
+                AIPS.Utilities.showToast(aipsAdminL10n.contentPromptRequired || 'Content Prompt is required.', 'warning');
+                AIPS.wizardGoToStep(3);
+                $('#prompt_template').focus();
+                return;
+            }
+
             if (!$form[0].checkValidity()) {
                 $form[0].reportValidity();
                 return;
@@ -2495,12 +2510,12 @@
             
             if (step === totalSteps) {
                 $('.aips-wizard-next').hide();
-                $('.aips-save-template').show();
+                $('.aips-save-template').show().removeClass('button-secondary').addClass('button-primary');
                 // Update summary
                 AIPS.updateWizardSummary();
             } else {
                 $('.aips-wizard-next').show();
-                $('.aips-save-template').hide();
+                $('.aips-save-template').show().removeClass('button-primary').addClass('button-secondary');
             }
             
             // Store current step
