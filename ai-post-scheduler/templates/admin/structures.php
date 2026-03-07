@@ -23,11 +23,11 @@ if (!isset($sections) || !is_array($sections)) {
 					<p class="aips-page-description"><?php esc_html_e('Define how your AI-generated content is organized with customizable article structures and sections.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-page-actions">
-					<button class="aips-btn aips-btn-secondary aips-add-section-btn">
+					<button type="button" class="aips-btn aips-btn-secondary aips-add-section-btn">
 						<span class="dashicons dashicons-plus-alt2"></span>
 						<?php esc_html_e('Add Structure Section', 'ai-post-scheduler'); ?>
 					</button>
-					<button class="aips-btn aips-btn-primary aips-add-structure-btn">
+					<button type="button" class="aips-btn aips-btn-primary aips-add-structure-btn">
 						<span class="dashicons dashicons-plus-alt2"></span>
 						<?php esc_html_e('Add New Structure', 'ai-post-scheduler'); ?>
 					</button>
