@@ -8,48 +8,6 @@
 (function ($) {
 	'use strict';
 
-	// Shared utility for showing toast notifications
-	const showToast = function (message, type = 'info', duration = 5000) {
-		const iconMap = {
-			success: '✓',
-			error: '✕',
-			warning: '⚠',
-			info: 'ℹ'
-		};
-
-		// Ensure toast container exists
-		let $container = $('#aips-toast-container');
-		if (!$container.length) {
-			$container = $('<div id="aips-toast-container"></div>');
-			$('body').append($container);
-		}
-
-		const closeLabel = ( window.aipsAuthorsL10n && aipsAuthorsL10n.toastCloseLabel ) ? aipsAuthorsL10n.toastCloseLabel : 'Close';
-
-		const $toast = $('<div class="aips-toast ' + type + '">')
-			.append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
-			.append('<div class="aips-toast-message">' + $('<div>').text(message).html() + '</div>')
-			.append('<button class="aips-toast-close" aria-label="' + String(closeLabel).replace(/"/g, '&quot;') + '">&times;</button>');
-
-		$container.append($toast);
-
-		// Close on click
-		$toast.find('.aips-toast-close').on('click', function() {
-			$toast.addClass('closing');
-			setTimeout(() => $toast.remove(), 300);
-		});
-
-		// Auto close
-		if (duration > 0) {
-			setTimeout(() => {
-				if ($toast.length) {
-					$toast.addClass('closing');
-					setTimeout(() => $toast.remove(), 300);
-				}
-			}, duration);
-		}
-	};
-
 	// Authors Module
 	const AuthorsModule = {
 		currentAuthorId: null,
@@ -153,13 +111,13 @@
 						$('#post_generation_frequency').val(author.post_generation_frequency);
 						$('#is_active').prop('checked', author.is_active == 1);
 					} else {
-						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
 
 						$('#aips-author-modal').fadeOut();
 					}
 				},
 				error: () => {
-					showToast(aipsAuthorsL10n.errorLoading, 'error');
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorLoading, 'error');
 
 					$('#aips-author-modal').fadeOut();
 				}
@@ -182,15 +140,15 @@
 				data: formData + '&action=aips_save_author&nonce=' + aipsAuthorsL10n.nonce,
 				success: (response) => {
 					if (response.success) {
-						showToast(response.data.message || aipsAuthorsL10n.authorSaved, 'success');
+						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.authorSaved, 'success');
 
 						setTimeout(() => location.reload(), 1000);
 					} else {
-						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
 					}
 				},
 				error: () => {
-					showToast(aipsAuthorsL10n.errorSaving, 'error');
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorSaving, 'error');
 				},
 				complete: () => {
 					$submitBtn.prop('disabled', false).text(aipsAuthorsL10n.saveAuthor);
@@ -202,7 +160,7 @@
 			e.preventDefault();
 			const authorId = $(e.currentTarget).data('id');
 
-			if (!confirm(aipsAuthorsL10n.confirmDelete)) {
+			if (!AIPS.Utilities.confirm(aipsAuthorsL10n.confirmDelete)) {
 				return;
 			}
 
@@ -216,15 +174,15 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						showToast(response.data.message || aipsAuthorsL10n.authorDeleted, 'success');
+						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.authorDeleted, 'success');
 
 						setTimeout(() => location.reload(), 1000);
 					} else {
-						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting, 'error');
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeleting, 'error');
 					}
 				},
 				error: () => {
-					showToast(aipsAuthorsL10n.errorDeleting, 'error');
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeleting, 'error');
 				}
 			});
 		},
@@ -234,7 +192,7 @@
 
 			const authorId = $(e.currentTarget).data('id');
 
-			if (!confirm(aipsAuthorsL10n.confirmGenerateTopics)) {
+			if (!AIPS.Utilities.confirm(aipsAuthorsL10n.confirmGenerateTopics)) {
 				return;
 			}
 
@@ -252,15 +210,15 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						showToast(response.data.message || aipsAuthorsL10n.topicsGenerated, 'success');
+						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicsGenerated, 'success');
 
 						setTimeout(() => location.reload(), 1000);
 					} else {
-						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating, 'error');
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating, 'error');
 					}
 				},
 				error: () => {
-					showToast(aipsAuthorsL10n.errorGenerating, 'error');
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating, 'error');
 				},
 				complete: () => {
 					$btn.prop('disabled', false).text(aipsAuthorsL10n.generateTopicsNow);
@@ -508,11 +466,11 @@
 
 						this.loadTopics('pending');
 					} else {
-						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSaving, 'error');
 					}
 				},
 				error: () => {
-					showToast(action === 'approve' ? aipsAuthorsL10n.errorApproving : aipsAuthorsL10n.errorRejecting, 'error');
+					AIPS.Utilities.showToast(action === 'approve' ? aipsAuthorsL10n.errorApproving : aipsAuthorsL10n.errorRejecting, 'error');
 				}
 			});
 		},
@@ -581,7 +539,7 @@
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('id');
 
-			if (!confirm(aipsAuthorsL10n.confirmDeleteTopic)) {
+			if (!AIPS.Utilities.confirm(aipsAuthorsL10n.confirmDeleteTopic)) {
 				return;
 			}
 
@@ -598,11 +556,11 @@
 						const activeTab = $('.aips-tab-link.active').data('tab');
 						this.loadTopics(activeTab);
 					} else {
-						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeletingTopic, 'error');
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorDeletingTopic, 'error');
 					}
 				},
 				error: () => {
-					showToast(aipsAuthorsL10n.errorDeletingTopic, 'error');
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeletingTopic, 'error');
 				}
 			});
 		},
@@ -631,7 +589,7 @@
 			const newTitle = $row.find('.topic-title-edit').val();
 
 			if (!newTitle.trim()) {
-				showToast(aipsAuthorsL10n.topicTitleRequired, 'warning');
+				AIPS.Utilities.showToast(aipsAuthorsL10n.topicTitleRequired, 'warning');
 				return;
 			}
 
@@ -651,11 +609,11 @@
 						$row.find('.aips-edit-topic').show();
 						$row.find('.aips-save-topic, .aips-cancel-edit-topic').remove();
 					} else {
-						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSavingTopic);
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorSavingTopic);
 					}
 				},
 				error: () => {
-					showToast(aipsAuthorsL10n.errorSavingTopic, 'error');
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorSavingTopic, 'error');
 				}
 			});
 		},
@@ -673,7 +631,7 @@
 			e.preventDefault();
 			const topicId = $(e.currentTarget).data('id');
 
-			if (!confirm(aipsAuthorsL10n.confirmGeneratePost)) {
+			if (!AIPS.Utilities.confirm(aipsAuthorsL10n.confirmGeneratePost)) {
 				return;
 			}
 
@@ -690,16 +648,16 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						showToast(aipsAuthorsL10n.postGenerated, 'success');
+						AIPS.Utilities.showToast(aipsAuthorsL10n.postGenerated, 'success');
 						const activeTab = $('.aips-tab-link.active').data('tab');
 						this.loadTopics(activeTab);
 					} else {
-						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost, 'error');
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGeneratingPost, 'error');
 						$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
 					}
 				},
 				error: () => {
-					showToast(aipsAuthorsL10n.errorGeneratingPost, 'error');
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingPost, 'error');
 					$btn.prop('disabled', false).text(aipsAuthorsL10n.generatePostNow);
 				}
 			});
@@ -863,7 +821,7 @@
 			const activeTab = $('.aips-tab-link.active').data('tab');
 
 			if (!action) {
-				showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
+				AIPS.Utilities.showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
 				return;
 			}
 
@@ -883,13 +841,13 @@
 				const message = activeTab === 'feedback' 
 					? (aipsAuthorsL10n.noFeedbackSelected || 'Please select at least one feedback item.')
 					: (aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
-				showToast(message, 'warning');
+				AIPS.Utilities.showToast(message, 'warning');
 				return;
 			}
 
 			// Confirm action
 			const confirmMessage = this.getBulkConfirmMessage(action, ids.length, activeTab);
-			if (!confirm(confirmMessage)) {
+			if (!AIPS.Utilities.confirm(confirmMessage)) {
 				return;
 			}
 
@@ -907,7 +865,7 @@
 						feedback_ids: ids
 					};
 				} else {
-					showToast('Invalid bulk action for feedback.', 'error');
+					AIPS.Utilities.showToast('Invalid bulk action for feedback.', 'error');
 					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
 					return;
 				}
@@ -926,7 +884,7 @@
 						ajaxAction = 'aips_bulk_generate_topics';
 						break;
 					default:
-						showToast('Invalid bulk action.', 'error');
+						AIPS.Utilities.showToast('Invalid bulk action.', 'error');
 						$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
 						return;
 				}
@@ -944,7 +902,7 @@
 				data: data,
 				success: (response) => {
 					if (response.success) {
-						showToast(response.data.message, 'success');
+						AIPS.Utilities.showToast(response.data.message, 'success');
 						// Reload content for current tab
 						if (activeTab === 'feedback') {
 							this.loadFeedback();
@@ -952,11 +910,11 @@
 							this.loadTopics(activeTab);
 						}
 					} else {
-						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 					}
 				},
 				error: () => {
-					showToast(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.', 'error');
 				},
 				complete: () => {
 					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
@@ -1177,7 +1135,7 @@
 			const action = $('#aips-queue-bulk-action-select').val();
 
 			if (!action) {
-				showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
+				AIPS.Utilities.showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
 				return;
 			}
 
@@ -1188,7 +1146,7 @@
 			});
 
 			if (topicIds.length === 0) {
-				showToast(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.', 'warning');
+				AIPS.Utilities.showToast(aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.', 'warning');
 				return;
 			}
 
@@ -1198,14 +1156,14 @@
 					this.generateNowFromQueue(topicIds);
 					break;
 				default:
-					showToast(aipsAuthorsL10n.invalidAction || 'Invalid action.', 'error');
+					AIPS.Utilities.showToast(aipsAuthorsL10n.invalidAction || 'Invalid action.', 'error');
 			}
 		},
 
 		generateNowFromQueue: function (topicIds) {
 			const confirmMessage = (aipsAuthorsL10n.confirmGenerateFromQueue || 'Generate posts now for %d selected topic(s)?').replace('%d', topicIds.length);
 			
-			if (!confirm(confirmMessage)) {
+			if (!AIPS.Utilities.confirm(confirmMessage)) {
 				return;
 			}
 
@@ -1222,16 +1180,16 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						showToast(response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.', 'success');
+						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.', 'success');
 						
 						// Reload the queue
 						this.loadQueueTopics();
 					} else {
-						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
 					}
 				},
 				error: () => {
-					showToast(aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating posts.', 'error');
 				},
 				complete: () => {
 					$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');

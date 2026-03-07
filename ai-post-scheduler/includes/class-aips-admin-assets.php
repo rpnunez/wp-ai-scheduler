@@ -44,9 +44,21 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
+            'aips-utilities-script',
+            AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
+            'closeLabel' => __('Close notification', 'ai-post-scheduler'),
+        ));
+
+        wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery'),
+            array('jquery', 'aips-utilities-script'),
             AIPS_VERSION,
             true
         );
@@ -88,7 +100,7 @@ class AIPS_Admin_Assets {
 			wp_enqueue_script(
 				'aips-authors-script',
 				AIPS_PLUGIN_URL . 'assets/js/authors.js',
-				array('jquery'),
+				array('jquery', 'aips-utilities-script'),
 				AIPS_VERSION,
 				true
 			);
@@ -179,7 +191,6 @@ class AIPS_Admin_Assets {
 				'logUser' => __('User', 'ai-post-scheduler'),
 				'logDate' => __('Date', 'ai-post-scheduler'),
 				'logDetails' => __('Details', 'ai-post-scheduler'),
-				'toastCloseLabel' => __('Close notification', 'ai-post-scheduler'),
 			));
 
 			// On the Author Topics page, initialize the topics view with the current author
