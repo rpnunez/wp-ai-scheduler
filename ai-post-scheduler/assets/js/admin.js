@@ -2202,7 +2202,10 @@
             var preselectId = $modal.data('preselect-template') || urlParams.get('schedule_template');
             if (!preselectId) return;
 
-            $('#aips-schedule-form')[0].reset();
+            var $form = $('#aips-schedule-form');
+            if (!$form.length) return;
+
+            $form[0].reset();
             $('#schedule_id').val('');
             $('#schedule_template').val(preselectId);
             $('#aips-schedule-modal-title').text('Add New Schedule');
