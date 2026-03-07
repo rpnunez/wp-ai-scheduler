@@ -468,6 +468,25 @@
 	border-bottom: none;
 }
 
+/* Schedule table: checkbox column */
+.aips-schedule-table thead .check-column {
+	width: 2.5rem;
+	text-align: center;
+	padding: var(--aips-space-3) var(--aips-space-4);
+}
+
+.aips-schedule-table tbody .check-column {
+	text-align: center;
+	padding: var(--aips-space-4);
+}
+
+/* Bulk action selected count label */
+.aips-selected-count {
+	font-size: 0.85em;
+	color: var(--aips-gray-600);
+	margin-left: var(--aips-space-1);
+}
+
 /* Action buttons: horizontal layout with labels */
 .aips-btn-group {
 	display: flex;
