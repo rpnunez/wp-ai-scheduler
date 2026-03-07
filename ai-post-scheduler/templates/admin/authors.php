@@ -55,9 +55,29 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
             <div class="aips-content-panel">
                 <!-- Filter Bar -->
                 <div class="aips-filter-bar">
-                    <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
-                    <input type="search" id="aips-author-search" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search authors...', 'ai-post-scheduler'); ?>">
-                    <button type="button" id="aips-author-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <div class="aips-filter-left">
+                        <span class="aips-result-count">
+                            <?php
+                            $authors_count = count( $authors );
+                            printf(
+                                esc_html(
+                                    _n(
+                                        '%s author',
+                                        '%s authors',
+                                        $authors_count,
+                                        'ai-post-scheduler'
+                                    )
+                                ),
+                                number_format_i18n( $authors_count )
+                            );
+                            ?>
+                        </span>
+                    </div>
+                    <div class="aips-filter-right">
+                        <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
+                        <input type="search" id="aips-author-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search authors...', 'ai-post-scheduler'); ?>">
+                        <button type="button" id="aips-author-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    </div>
                 </div>
 
                 <!-- Authors Table -->
