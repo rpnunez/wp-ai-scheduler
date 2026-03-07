@@ -27,7 +27,22 @@ if (!defined('ABSPATH')) {
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
                 <div class="aips-filter-left">
-                    <span class="aips-result-count"><?php printf(esc_html__('%d templates', 'ai-post-scheduler'), count($templates)); ?></span>
+                    <span class="aips-result-count">
+                        <?php
+                        $template_count = count( $templates );
+                        printf(
+                            esc_html(
+                                _n(
+                                    '%s template',
+                                    '%s templates',
+                                    $template_count,
+                                    'ai-post-scheduler'
+                                )
+                            ),
+                            number_format_i18n( $template_count )
+                        );
+                        ?>
+                    </span>
                 </div>
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
