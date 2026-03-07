@@ -1257,10 +1257,10 @@
 		GenerationQueueModule.init();
 
 		// On the Author Topics full-page view, auto-load topics for the current author.
-		// The author ID is passed via aipsAuthorsL10n.currentAuthorId (set by PHP when
-		// the page param is 'aips-author-topics'), so no inline script injection is needed.
-		if ( typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.currentAuthorId ) {
-			AuthorsModule.currentAuthorId = aipsAuthorsL10n.currentAuthorId;
+		// The author ID is passed via aipsAuthorContext.authorId (set by PHP when the
+		// page param is 'aips-author-topics'), so no inline script injection is needed.
+		if ( typeof aipsAuthorContext !== 'undefined' && aipsAuthorContext.authorId ) {
+			AuthorsModule.currentAuthorId = aipsAuthorContext.authorId;
 			AuthorsModule.updateBulkActionDropdown('pending');
 			AuthorsModule.loadTopics('pending');
 		}

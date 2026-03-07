@@ -193,7 +193,12 @@ class AIPS_Admin_Assets {
 				'logUser' => __('User', 'ai-post-scheduler'),
 				'logDate' => __('Date', 'ai-post-scheduler'),
 				'logDetails' => __('Details', 'ai-post-scheduler'),
-				'currentAuthorId' => $page_author_id,
+			));
+
+			// Pass page-context data (not i18n) in a separate object so it stays
+			// semantically distinct from the translation strings above.
+			wp_localize_script('aips-authors-script', 'aipsAuthorContext', array(
+				'authorId' => $page_author_id,
 			));
 		}
 
