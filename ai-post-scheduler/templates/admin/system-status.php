@@ -157,7 +157,7 @@ if (!defined('ABSPATH')) {
                         <label for="aips-import-file" class="screen-reader-text">
                             <?php esc_html_e('Import file', 'ai-post-scheduler'); ?>
                         </label>
-                        <input type="file" id="aips-import-file" accept=".sql,.json" style="display: inline-block; vertical-align: middle;">
+                        <input type="file" id="aips-import-file" style="display: inline-block; vertical-align: middle;">
                         <button type="button" class="aips-btn aips-btn-secondary aips-import-data">
                             <span class="dashicons dashicons-upload"></span>
                             <?php esc_html_e('Import Data', 'ai-post-scheduler'); ?>
