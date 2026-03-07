@@ -73,6 +73,13 @@
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
 
+            // Schedule Bulk Actions
+            $(document).on('change', '#cb-select-all-schedules', this.toggleAllSchedules);
+            $(document).on('change', '.aips-schedule-checkbox', this.toggleScheduleSelection);
+            $(document).on('click', '#aips-schedule-select-all', this.selectAllSchedules);
+            $(document).on('click', '#aips-schedule-unselect-all', this.unselectAllSchedules);
+            $(document).on('click', '#aips-schedule-bulk-apply', this.applyScheduleBulkAction);
+
             $(document).on('click', '.aips-clear-history', this.clearHistory);
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
             $(document).on('click', '#aips-filter-btn', this.filterHistory);
@@ -1209,6 +1216,220 @@
                     $toggle.prop('checked', !isActive);
 
                     alert('An error occurred. Please try again.');
+                }
+            });
+        },
+
+        toggleAllSchedules: function() {
+            var isChecked = $(this).prop('checked');
+            $('.aips-schedule-checkbox').prop('checked', isChecked);
+            AIPS.updateScheduleBulkActions();
+        },
+
+        toggleScheduleSelection: function() {
+            var total = $('.aips-schedule-checkbox').length;
+            var checked = $('.aips-schedule-checkbox:checked').length;
+            $('#cb-select-all-schedules').prop('checked', total > 0 && checked === total);
+            AIPS.updateScheduleBulkActions();
+        },
+
+        selectAllSchedules: function() {
+            $('.aips-schedule-checkbox').prop('checked', true);
+            $('#cb-select-all-schedules').prop('checked', true);
+            AIPS.updateScheduleBulkActions();
+        },
+
+        unselectAllSchedules: function() {
+            $('.aips-schedule-checkbox').prop('checked', false);
+            $('#cb-select-all-schedules').prop('checked', false);
+            AIPS.updateScheduleBulkActions();
+        },
+
+        updateScheduleBulkActions: function() {
+            var count = $('.aips-schedule-checkbox:checked').length;
+            var $applyBtn = $('#aips-schedule-bulk-apply');
+            var $unselectBtn = $('#aips-schedule-unselect-all');
+            var $countLabel = $('#aips-schedule-selected-count');
+
+            $applyBtn.prop('disabled', count === 0);
+            $unselectBtn.prop('disabled', count === 0);
+
+            if (count > 0) {
+                $countLabel.text(count + ' selected').show();
+            } else {
+                $countLabel.hide();
+            }
+        },
+
+        applyScheduleBulkAction: function(e) {
+            e.preventDefault();
+
+            var action = $('#aips-schedule-bulk-action').val();
+            if (!action) {
+                AIPS.showToast('Please select a bulk action.', 'warning');
+                return;
+            }
+
+            var ids = [];
+            $('.aips-schedule-checkbox:checked').each(function() {
+                ids.push($(this).val());
+            });
+
+            if (ids.length === 0) {
+                AIPS.showToast('Please select at least one schedule.', 'warning');
+                return;
+            }
+
+            if (action === 'delete') {
+                var deleteMsg = ids.length === 1
+                    ? 'Are you sure you want to delete 1 schedule?'
+                    : 'Are you sure you want to delete ' + ids.length + ' schedules?';
+                if (!confirm(deleteMsg)) {
+                    return;
+                }
+                AIPS.bulkDeleteSchedules(ids);
+            } else if (action === 'pause') {
+                AIPS.bulkToggleSchedules(ids, 0);
+            } else if (action === 'activate') {
+                AIPS.bulkToggleSchedules(ids, 1);
+            } else if (action === 'run_now') {
+                // Fetch estimated post count then confirm
+                $.ajax({
+                    url: aipsAjax.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'aips_get_schedules_post_count',
+                        nonce: aipsAjax.nonce,
+                        ids: ids
+                    },
+                    success: function(response) {
+                        var count = response.success ? (response.data.count || ids.length) : ids.length;
+                        var runMsg = 'This will generate an estimated ' + count + ' post' + (count !== 1 ? 's' : '') + '. Are you sure?';
+                        if (confirm(runMsg)) {
+                            AIPS.bulkRunNowSchedules(ids);
+                        }
+                    },
+                    error: function() {
+                        var runMsg = 'This will run ' + ids.length + ' schedule' + (ids.length !== 1 ? 's' : '') + '. Are you sure?';
+                        if (confirm(runMsg)) {
+                            AIPS.bulkRunNowSchedules(ids);
+                        }
+                    }
+                });
+            }
+        },
+
+        bulkDeleteSchedules: function(ids) {
+            var $applyBtn = $('#aips-schedule-bulk-apply');
+            $applyBtn.prop('disabled', true).text('Deleting...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_delete_schedules',
+                    nonce: aipsAjax.nonce,
+                    ids: ids
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.showToast(response.data.message, 'success');
+                        ids.forEach(function(id) {
+                            $('tr[data-schedule-id="' + id + '"]').fadeOut(function() {
+                                $(this).remove();
+                            });
+                        });
+                        $('#cb-select-all-schedules').prop('checked', false);
+                        AIPS.updateScheduleBulkActions();
+                    } else {
+                        AIPS.showToast(response.data.message || 'Failed to delete schedules.', 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                },
+                complete: function() {
+                    $applyBtn.prop('disabled', false).text('Apply');
+                }
+            });
+        },
+
+        bulkToggleSchedules: function(ids, isActive) {
+            var $applyBtn = $('#aips-schedule-bulk-apply');
+            $applyBtn.prop('disabled', true).text(isActive ? 'Activating...' : 'Pausing...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_toggle_schedules',
+                    nonce: aipsAjax.nonce,
+                    ids: ids,
+                    is_active: isActive
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.showToast(response.data.message, 'success');
+                        ids.forEach(function(id) {
+                            var $row = $('tr[data-schedule-id="' + id + '"]');
+                            var $toggle = $row.find('.aips-toggle-schedule');
+                            var $wrapper = $row.find('.aips-schedule-status-wrapper');
+                            var $badge = $wrapper.find('.aips-badge');
+                            var $icon = $badge.find('.dashicons');
+
+                            $toggle.prop('checked', isActive === 1);
+                            $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
+                            $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
+                            $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
+
+                            if (isActive) {
+                                $badge.addClass('aips-badge-success');
+                                $icon.addClass('dashicons-yes-alt');
+                                $icon.after(' Active');
+                            } else {
+                                $badge.addClass('aips-badge-neutral');
+                                $icon.addClass('dashicons-minus');
+                                $icon.after(' Inactive');
+                            }
+                            $row.data('is-active', isActive);
+                        });
+                    } else {
+                        AIPS.showToast(response.data.message || 'Failed to update schedules.', 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                },
+                complete: function() {
+                    $applyBtn.prop('disabled', false).text('Apply');
+                }
+            });
+        },
+
+        bulkRunNowSchedules: function(ids) {
+            var $applyBtn = $('#aips-schedule-bulk-apply');
+            $applyBtn.prop('disabled', true).text('Running...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_run_now_schedules',
+                    nonce: aipsAjax.nonce,
+                    ids: ids
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.showToast(response.data.message, 'success', { duration: 8000 });
+                    } else {
+                        AIPS.showToast(response.data.message || 'Bulk run failed.', 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                },
+                complete: function() {
+                    $applyBtn.prop('disabled', false).text('Apply');
                 }
             });
         },
