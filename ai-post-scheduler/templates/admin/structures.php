@@ -99,6 +99,7 @@ if (!isset($sections) || !is_array($sections)) {
 			<?php endif; ?>
 		</div>
 	</div>
+	</div>
 
 	<div id="aips-structure-sections-tab" class="aips-tab-content" style="display:none;">
 		<h2>
