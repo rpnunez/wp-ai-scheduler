@@ -80,6 +80,90 @@ if (!defined('ABSPATH')) {
                     </div>
                 </div>
             <?php endforeach; ?>
+
+            <!-- Database Management -->
+            <div class="aips-content-panel" style="margin-bottom: 20px;">
+                <div class="aips-panel-header">
+                    <h2>
+                        <span class="dashicons dashicons-database" style="margin-right: 5px;"></span>
+                        <?php esc_html_e('Database Management', 'ai-post-scheduler'); ?>
+                    </h2>
+                </div>
+                <div class="aips-panel-body">
+                    <p><?php esc_html_e("Use these tools to repair, reinstall, or wipe the plugin's database tables. Destructive actions require confirmation.", 'ai-post-scheduler'); ?></p>
+
+                    <div class="aips-btn-group" style="margin-bottom: 16px;">
+                        <button type="button" class="aips-btn aips-btn-secondary aips-repair-db">
+                            <span class="dashicons dashicons-hammer"></span>
+                            <?php esc_html_e('Repair DB Tables', 'ai-post-scheduler'); ?>
+                        </button>
+
+                        <button type="button" class="aips-btn aips-btn-secondary aips-reinstall-db">
+                            <span class="dashicons dashicons-update"></span>
+                            <?php esc_html_e('Reinstall DB Tables', 'ai-post-scheduler'); ?>
+                        </button>
+
+                        <button type="button" class="aips-btn aips-btn-danger aips-wipe-db">
+                            <span class="dashicons dashicons-trash"></span>
+                            <?php esc_html_e('Wipe Plugin Data', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+
+                    <div>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="aips-backup-db" value="1">
+                            <?php esc_html_e('Back up data before reinstalling (data will be restored afterwards)', 'ai-post-scheduler'); ?>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Management -->
+            <div class="aips-content-panel" style="margin-bottom: 20px;">
+                <div class="aips-panel-header">
+                    <h2>
+                        <span class="dashicons dashicons-migrate" style="margin-right: 5px;"></span>
+                        <?php esc_html_e('Data Management', 'ai-post-scheduler'); ?>
+                    </h2>
+                </div>
+                <div class="aips-panel-body">
+
+                    <!-- Export -->
+                    <h3 style="margin-top: 0;"><?php esc_html_e('Export', 'ai-post-scheduler'); ?></h3>
+                    <p><?php esc_html_e('Download a backup of all plugin data in the selected format.', 'ai-post-scheduler'); ?></p>
+                    <div class="aips-btn-group">
+                        <select id="aips-export-format" class="aips-form-select">
+                            <?php foreach ($export_formats as $key => $label) : ?>
+                                <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" class="aips-btn aips-btn-secondary aips-export-data">
+                            <span class="dashicons dashicons-download"></span>
+                            <?php esc_html_e('Export Data', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+
+                    <hr style="margin: 20px 0;">
+
+                    <!-- Import -->
+                    <h3 style="margin-top: 0;"><?php esc_html_e('Import', 'ai-post-scheduler'); ?></h3>
+                    <p><?php esc_html_e('Restore plugin data from a previously exported file. This will overwrite existing data.', 'ai-post-scheduler'); ?></p>
+                    <div class="aips-btn-group">
+                        <select id="aips-import-format" class="aips-form-select">
+                            <?php foreach ($import_formats as $key => $label) : ?>
+                                <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="file" id="aips-import-file" accept=".sql,.json" style="display: inline-block; vertical-align: middle;">
+                        <button type="button" class="aips-btn aips-btn-secondary aips-import-data">
+                            <span class="dashicons dashicons-upload"></span>
+                            <?php esc_html_e('Import Data', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
     </div>
 </div>

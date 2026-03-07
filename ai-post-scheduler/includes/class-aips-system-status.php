@@ -7,6 +7,9 @@ class AIPS_System_Status {
 
     public function render_page() {
         $system_info = $this->get_system_info();
+        $data_management = new AIPS_Data_Management();
+        $export_formats = $data_management->get_export_formats();
+        $import_formats = $data_management->get_import_formats();
         include AIPS_PLUGIN_DIR . 'templates/admin/system-status.php';
     }
 
