@@ -134,20 +134,20 @@ class AIPS_History_Repository {
             $where_args[] = '%' . $this->wpdb->esc_like($args['search']) . '%';
         }
 
-        // Date range filtering: restrict to rows whose created_at falls within [date_from, date_to].
+        // Date range filtering: restrict to rows whose created_at falls within [date_from, date_to] using index-friendly comparisons.
         if (!empty($args['date_from'])) {
             $date_from = sanitize_text_field($args['date_from']);
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_from)) {
-                $where_clauses[] = "DATE(h.created_at) >= %s";
-                $where_args[] = $date_from;
+                $where_clauses[] = "h.created_at >= %s";
+                $where_args[] = $date_from . ' 00:00:00';
             }
         }
 
         if (!empty($args['date_to'])) {
             $date_to = sanitize_text_field($args['date_to']);
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to)) {
-                $where_clauses[] = "DATE(h.created_at) <= %s";
-                $where_args[] = $date_to;
+                $where_clauses[] = "h.created_at <= %s";
+                $where_args[] = $date_to . ' 23:59:59';
             }
         }
 
