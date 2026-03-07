@@ -45,6 +45,8 @@
 			$(document).on('click', '.aips-tab-link', this.switchTab.bind(this));
 
 			// Topic actions
+			$(document).on('click', '.aips-quick-approve-topic', this.quickApproveTopic.bind(this));
+			$(document).on('click', '.aips-quick-reject-topic', this.quickRejectTopic.bind(this));
 			$(document).on('click', '.aips-approve-topic', this.approveTopic.bind(this));
 			$(document).on('click', '.aips-reject-topic', this.rejectTopic.bind(this));
 			$(document).on('click', '.aips-delete-topic', this.deleteTopic.bind(this));
@@ -319,13 +321,21 @@
 
 				// Actions based on status
 				if (status === 'pending') {
-					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.approve + '</button> ';
-					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.reject + '</button> ';
+					// Quick Approve/Reject with secondary feedback option
+					html += '<div class="aips-btn-group">';
+					html += '<button class="button aips-quick-approve-topic" data-id="' + topic.id + '" title="' + this.escapeHtml(aipsAuthorsL10n.approve || 'Approve') + '">' + this.escapeHtml(aipsAuthorsL10n.approve || 'Approve') + '</button>';
+					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
+					html += '</div>';
+
+					html += '<div class="aips-btn-group">';
+					html += '<button class="button aips-quick-reject-topic" data-id="' + topic.id + '" title="' + this.escapeHtml(aipsAuthorsL10n.reject || 'Reject') + '">' + this.escapeHtml(aipsAuthorsL10n.reject || 'Reject') + '</button>';
+					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
+					html += '</div>';
 				} else if (status === 'approved') {
-					html += '<button class="button aips-generate-post-now" data-id="' + topic.id + '">' + aipsAuthorsL10n.generatePostNow + '</button> ';
+					html += '<button class="button aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button> ';
 				}
 
-				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.edit + '</button>';
+				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
 				html += '</td></tr>';
 				
 				// Add collapsible detail row
@@ -452,6 +462,80 @@
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
 			$('#aips-feedback-modal').fadeIn();
+		},
+
+		quickApproveTopic: function (e) {
+			e.preventDefault();
+			const $btn = $(e.currentTarget);
+			const topicId = $btn.data('id');
+			const $row = $btn.closest('tr');
+			const $rowBtns = $row.find('button');
+
+			$rowBtns.prop('disabled', true);
+			$btn.text(aipsAuthorsL10n.processing || 'Processing...');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_approve_topic',
+					nonce: aipsAuthorsL10n.nonce,
+					topic_id: topicId,
+					skip_feedback: true
+				},
+				success: (response) => {
+					if (response.success) {
+						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicApproved || 'Topic approved.', 'success');
+						this.loadTopics('pending');
+					} else {
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorApproving || 'Error approving topic.', 'error');
+						$rowBtns.prop('disabled', false);
+						$btn.text(aipsAuthorsL10n.approve || 'Approve');
+					}
+				},
+				error: () => {
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorApproving || 'Error approving topic.', 'error');
+					$rowBtns.prop('disabled', false);
+					$btn.text(aipsAuthorsL10n.approve || 'Approve');
+				}
+			});
+		},
+
+		quickRejectTopic: function (e) {
+			e.preventDefault();
+			const $btn = $(e.currentTarget);
+			const topicId = $btn.data('id');
+			const $row = $btn.closest('tr');
+			const $rowBtns = $row.find('button');
+
+			$rowBtns.prop('disabled', true);
+			$btn.text(aipsAuthorsL10n.processing || 'Processing...');
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_reject_topic',
+					nonce: aipsAuthorsL10n.nonce,
+					topic_id: topicId,
+					skip_feedback: true
+				},
+				success: (response) => {
+					if (response.success) {
+						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicRejected || 'Topic rejected.', 'success');
+						this.loadTopics('pending');
+					} else {
+						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
+						$rowBtns.prop('disabled', false);
+						$btn.text(aipsAuthorsL10n.reject || 'Reject');
+					}
+				},
+				error: () => {
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
+					$rowBtns.prop('disabled', false);
+					$btn.text(aipsAuthorsL10n.reject || 'Reject');
+				}
+			});
 		},
 
 		submitFeedback: function (e) {

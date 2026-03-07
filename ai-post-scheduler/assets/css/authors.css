@@ -133,6 +133,18 @@
 	margin-bottom: 5px;
 }
 
+/* Feedback icon button — icon-only, compact */
+.topic-actions .aips-topic-feedback-icon {
+	display: block;
+	line-height: 1;
+}
+
+.topic-actions .aips-approve-topic,
+.topic-actions .aips-reject-topic {
+	padding: 3px 6px;
+	min-width: 0;
+}
+
 /* Empty State */
 .aips-empty-state {
 	text-align: center;
