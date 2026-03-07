@@ -70,6 +70,7 @@ class AIPS_History_Repository {
             'status' => '',
             'search' => '',
             'template_id' => 0,
+            'author_id' => 0,
             'orderby' => 'created_at',
             'order' => 'DESC',
             'fields' => 'all',
@@ -97,6 +98,11 @@ class AIPS_History_Repository {
         if (!empty($args['template_id'])) {
             $where_clauses[] = "h.template_id = %d";
             $where_args[] = $args['template_id'];
+        }
+
+        if (!empty($args['author_id'])) {
+            $where_clauses[] = "h.author_id = %d";
+            $where_args[] = $args['author_id'];
         }
 
         if (!empty($args['search'])) {
