@@ -121,6 +121,10 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                                 <span class="dashicons dashicons-visibility"></span>
                                                 <?php esc_html_e('View Topics', 'ai-post-scheduler'); ?>
                                             </a>
+                                            <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-sm aips-btn-secondary">
+                                                <span class="dashicons dashicons-admin-post"></span>
+                                                <?php esc_html_e("View Author's Posts", 'ai-post-scheduler'); ?>
+                                            </a>
                                             <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit author', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-edit"></span>
                                             </button>

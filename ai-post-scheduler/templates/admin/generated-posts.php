@@ -38,11 +38,33 @@ if (!defined('ABSPATH')) {
 			<div class="aips-content-panel">
 				<!-- Filter Bar -->
 				<div class="aips-filter-bar">
-					<form method="get" class="search-form" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+					<form method="get" class="search-form" style="display: flex; align-items: center; gap: 8px; margin: 0; flex-wrap: wrap;">
 						<input type="hidden" name="page" value="aips-generated-posts">
 						<label class="screen-reader-text" for="post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 						<input type="search" id="post-search-input" name="s" value="<?php echo esc_attr($search_query); ?>" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
-						<input type="submit" id="search-submit" class="aips-btn aips-btn-secondary" value="<?php esc_attr_e('Search Posts', 'ai-post-scheduler'); ?>">
+						<?php if (!empty($authors)): ?>
+						<label class="screen-reader-text" for="aips-filter-author"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>
+						<select name="author_id" id="aips-filter-author" class="aips-form-select">
+							<option value=""><?php esc_html_e('All Authors', 'ai-post-scheduler'); ?></option>
+							<?php foreach ($authors as $a): ?>
+							<option value="<?php echo esc_attr($a->id); ?>" <?php selected($author_id, $a->id); ?>>
+								<?php echo esc_html($a->name); ?>
+							</option>
+							<?php endforeach; ?>
+						</select>
+						<?php endif; ?>
+						<?php if (!empty($templates)): ?>
+						<label class="screen-reader-text" for="aips-filter-template-generated"><?php esc_html_e('Filter by Template:', 'ai-post-scheduler'); ?></label>
+						<select name="template_id" id="aips-filter-template-generated" class="aips-form-select">
+							<option value=""><?php esc_html_e('All Templates', 'ai-post-scheduler'); ?></option>
+							<?php foreach ($templates as $template): ?>
+							<option value="<?php echo esc_attr($template->id); ?>" <?php selected($template_id, $template->id); ?>>
+								<?php echo esc_html($template->name); ?>
+							</option>
+							<?php endforeach; ?>
+						</select>
+						<?php endif; ?>
+						<input type="submit" id="aips-filter-submit" class="aips-btn aips-btn-secondary" value="<?php esc_attr_e('Filter', 'ai-post-scheduler'); ?>">
 					</form>
 				</div>
 
@@ -139,6 +161,11 @@ if (!defined('ABSPATH')) {
 								'next_text' => '&raquo;',
 								'total' => $history['pages'],
 								'current' => $current_page,
+								'add_args' => array_filter(array(
+									'author_id' => $author_id ? $author_id : false,
+									'template_id' => $template_id ? $template_id : false,
+									's' => $search_query ? $search_query : false,
+								)),
 							));
 							if ($page_links) {
 								echo '<span class="displaying-num">' . sprintf(
