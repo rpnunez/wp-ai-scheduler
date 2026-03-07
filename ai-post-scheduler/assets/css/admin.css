@@ -137,6 +137,8 @@
 	max-width: var(--aips-container-xl);
 	margin: var(--aips-space-6) auto;
 	padding: 0 var(--aips-space-5);
+	position: relative;
+	z-index: 1;
 }
 
 /* Page Header Block */
@@ -919,6 +921,8 @@
 
 .aips-wrap {
     max-width: 1200px;
+    position: relative;
+    z-index: 1;
 }
 
 .aips-dashboard {
