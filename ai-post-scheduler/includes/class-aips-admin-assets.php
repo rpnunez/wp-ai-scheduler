@@ -93,7 +93,7 @@ class AIPS_Admin_Assets {
 			wp_enqueue_style(
 				'aips-authors-style',
 				AIPS_PLUGIN_URL . 'assets/css/authors.css',
-				array(),
+				array('aips-admin-style'),
 				AIPS_VERSION
 			);
 
