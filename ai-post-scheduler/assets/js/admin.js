@@ -1170,13 +1170,13 @@
                             msg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
                         }
 
-                        AIPS.showToast(msg, 'success', { isHtml: true, duration: 8000 });
+                        AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
                     } else {
-                        AIPS.showToast(response.data.message || 'Generation failed.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || 'Generation failed.', 'error');
                     }
                 },
                 error: function() {
-                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -1279,7 +1279,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showToast(response.data.message, 'success');
 
                         location.reload();
                     } else {

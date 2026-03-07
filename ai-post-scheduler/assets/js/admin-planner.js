@@ -290,7 +290,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showToast(response.data.message, 'success');
                         // Clear list after successful scheduling
                          $('#topics-list').html('');
                          $('#planner-results').slideUp();

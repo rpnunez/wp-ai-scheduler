@@ -317,7 +317,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showToast(response.data.message, 'success');
                         selectedTopics = [];
                         $('.topic-checkbox').prop('checked', false);
                         $('#select-all-topics').prop('checked', false);
@@ -459,7 +459,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        AIPS.Utilities.showToast(response.data.message, 'success');
                         // Switch to Trending tab and reload
                         $('.aips-tab-link[data-tab="trending"]').trigger('click');
                         // Wait for tab switch then reload

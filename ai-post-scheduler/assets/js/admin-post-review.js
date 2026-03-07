@@ -43,18 +43,13 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        if (window.AIPS && window.AIPS.showToast) {
-                            var msg = response.data.message || aipsPostReviewL10n.publishSuccess;
-                            // Add Edit link if available (requires extra data from backend, but standard message is fine)
-                            if (response.data.post_id) {
-                                var editUrl = 'post.php?post=' + response.data.post_id + '&action=edit';
-                                msg += ' <a href="' + editUrl + '" target="_blank">Edit Post</a>';
-                                AIPS.Utilities.showToast(msg, 'success', { isHtml: true });
-                            } else {
-                                AIPS.Utilities.showToast(msg, 'success');
-                            }
+                        var msg = response.data.message || aipsPostReviewL10n.publishSuccess;
+                        if (response.data.post_id) {
+                            var editUrl = 'post.php?post=' + response.data.post_id + '&action=edit';
+                            msg += ' <a href="' + editUrl + '" target="_blank">Edit Post</a>';
+                            AIPS.Utilities.showToast(msg, 'success', { isHtml: true });
                         } else {
-                            AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishSuccess, 'success');
+                            AIPS.Utilities.showToast(msg, 'success');
                         }
 
                         row.fadeOut(400, function() {
