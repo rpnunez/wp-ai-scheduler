@@ -270,9 +270,11 @@
         showProgressBar: function(options) {
             options = options || {};
 
-            var l10n = window.aipsAuthorsL10n || {};
+            // Use caller-supplied strings → aipsUtilitiesL10n (always available on every
+            // AIPS admin page) → bare English fallbacks.  Never couple to aipsAuthorsL10n.
+            var l10n = options.l10n || window.aipsUtilitiesL10n || {};
 
-            var title        = options.title        || l10n.generatingPostsTitle || 'Processing\u2026';
+            var title        = options.title        || 'Processing\u2026';
             var message      = options.message      || '';
             var totalSeconds = options.totalSeconds  > 0 ? options.totalSeconds : 30;
             var stallAt      = (options.stallAt !== undefined) ? options.stallAt : 92;
@@ -282,9 +284,11 @@
             // ── Build DOM ──────────────────────────────────────────────────
             var headingId = 'aips-progress-heading-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
 
+            // The overlay is a modal container; aria-live does NOT belong here
+            // (it would cause every descendant text change to be announced).
             var $overlay = $('<div></div>')
                 .addClass('aips-confirm-overlay aips-progress-overlay')
-                .attr({ role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': headingId, 'aria-live': 'polite' });
+                .attr({ role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': headingId });
 
             var $dialog = $('<div class="aips-confirm-dialog aips-progress-dialog"></div>');
 
@@ -309,8 +313,14 @@
             $barWrap.append($barFill);
             $body.append($barWrap);
 
-            var $statusLine = $('<p class="aips-progress-status" role="status" aria-live="polite"></p>');
+            // Visual-only countdown (updated every 500 ms, no aria-live).
+            var $statusLine = $('<p class="aips-progress-status"></p>');
             $body.append($statusLine);
+
+            // Separate hidden live region updated at most every 5 s so screen
+            // readers get occasional progress announcements without being spammed.
+            var $liveRegion = $('<span class="screen-reader-text" aria-live="polite" aria-atomic="true"></span>');
+            $body.append($liveRegion);
 
             $dialog.append($header, $body);
             $overlay.append($dialog);
@@ -321,10 +331,13 @@
             setTimeout(function() {
                 $dialog.focus();
             }, 0);
+
             // ── Timer helpers ──────────────────────────────────────────────
-            var startTime   = Date.now();
+            var startTime        = Date.now();
             var tickInterval;
-            var closed      = false;
+            var closed           = false;
+            var lastAnnounceTime = 0;
+            var ANNOUNCE_INTERVAL_MS = 5000; // announce to screen readers at most every 5 s
 
             /**
              * Format seconds into a human-readable string using l10n keys when
@@ -358,11 +371,23 @@
 
                 var elapsed  = (Date.now() - startTime) / 1000;
                 var progress = Math.min((elapsed / totalSeconds) * 100, stallAt);
-                $barFill.css('width', progress.toFixed(1) + '%');
+                var pct      = progress.toFixed(1);
+
+                $barFill.css('width', pct + '%').attr('aria-valuenow', Math.round(progress));
 
                 var remaining = Math.max(0, totalSeconds - elapsed);
-                var tpl = l10n.estimatedTimeRemaining || 'Estimated time remaining: %s';
-                $statusLine.text(tpl.replace('%s', formatTime(remaining)));
+                var tpl       = l10n.estimatedTimeRemaining || 'Estimated time remaining: %s';
+                var timeText  = tpl.replace('%s', formatTime(remaining));
+
+                // Update the visible countdown on every tick.
+                $statusLine.text(timeText);
+
+                // Only update the screen-reader live region every 5 s.
+                var now = Date.now();
+                if (now - lastAnnounceTime >= ANNOUNCE_INTERVAL_MS) {
+                    $liveRegion.text(timeText);
+                    lastAnnounceTime = now;
+                }
             }
 
             tickInterval = setInterval(tick, 500);
@@ -379,13 +404,11 @@
             function complete(completionMessage, type) {
                 if (closed) { return; }
                 clearInterval(tickInterval);
-                $barFill.css('width', '100%');
+                $barFill.css('width', '100%').attr('aria-valuenow', '100');
 
-                if (completionMessage) {
-                    $statusLine.text(completionMessage);
-                } else {
-                    $statusLine.text(l10n.generationComplete || 'Generation complete!');
-                }
+                var msg = completionMessage || l10n.generationComplete || 'Generation complete!';
+                $statusLine.text(msg);
+                $liveRegion.text(msg); // Announce completion immediately.
 
                 // Close the modal after a short pause so the user sees 100%.
                 setTimeout(function() { cancel(); }, 1200);
