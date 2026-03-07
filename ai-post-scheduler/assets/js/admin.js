@@ -2134,26 +2134,31 @@
         toggleQuickSchedule: function(e) {
             e.preventDefault();
 
-            var $trigger       = $(e.currentTarget);
-            var $formContainer = $('#aips-quick-schedule-form-container');
-            var $buttonsGrid   = $('.aips-next-steps-grid');
-            var isOpen         = $formContainer.is(':visible');
+            var $trigger            = $(e.currentTarget);
+            var $formContainer      = $('#aips-quick-schedule-form-container');
+            var $buttonsGrid        = $('.aips-next-steps-grid');
+            var $quickScheduleBtn   = $('#aips-quick-schedule-btn');
+            var isOpen              = $formContainer.is(':visible');
 
             if (isOpen) {
                 $formContainer.slideUp(200, function() {
-                    // Return focus to the trigger after closing
-                    if ($trigger && $trigger.length) {
-                        $trigger.attr('aria-expanded', 'false');
-                        $trigger.focus();
+                    // Update ARIA state on the quick schedule button when closing
+                    if ($quickScheduleBtn && $quickScheduleBtn.length) {
+                        $quickScheduleBtn.attr('aria-expanded', 'false');
                     }
                 });
-                $buttonsGrid.slideDown(200);
+                $buttonsGrid.slideDown(200, function() {
+                    // Return focus to the quick schedule button after the grid is visible
+                    if ($quickScheduleBtn && $quickScheduleBtn.length) {
+                        $quickScheduleBtn.focus();
+                    }
+                });
             } else {
                 $buttonsGrid.slideUp(200);
                 $formContainer.slideDown(200, function() {
-                    // Update ARIA state on the trigger
-                    if ($trigger && $trigger.length) {
-                        $trigger.attr('aria-expanded', 'true');
+                    // Update ARIA state on the quick schedule button when opening
+                    if ($quickScheduleBtn && $quickScheduleBtn.length) {
+                        $quickScheduleBtn.attr('aria-expanded', 'true');
                     }
 
                     // Move focus to the first interactive control in the form
