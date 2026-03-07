@@ -18,7 +18,7 @@
             // Validate
             var topic = $('#topic').val().trim();
             if (!topic) {
-                alert('Please enter a topic.');
+                AIPS.Utilities.showToast('Please enter a topic.', 'warning');
                 return;
             }
 

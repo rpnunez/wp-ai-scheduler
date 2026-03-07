@@ -301,35 +301,38 @@
 		 */
 		publishPost: function() {
 			if (!window.AIPS.currentActivityPostId) return;
-			
-			if (!confirm(aipsActivityL10n.confirmPublish)) return;
-			
-			const $btn = $('#aips-post-publish-btn');
-			$btn.prop('disabled', true).text('Publishing...');
-			
-			$.ajax({
-				url: aipsActivityL10n.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_publish_draft',
-					nonce: aipsActivityL10n.nonce,
-					post_id: window.AIPS.currentActivityPostId
-				},
-				success: function(response) {
-					if (response.success) {
-						alert(aipsActivityL10n.publishSuccess);
-						window.AIPS.closeActivityModal();
-						window.AIPS.loadActivity(); // Refresh feed
-					} else {
-						alert(response.data.message || aipsActivityL10n.publishError);
-						$btn.prop('disabled', false).text('Publish Post');
-					}
-				},
-				error: function() {
-					alert(aipsActivityL10n.publishError);
-					$btn.prop('disabled', false).text('Publish Post');
-				}
-			});
+
+			AIPS.Utilities.confirm(aipsActivityL10n.confirmPublish, 'Notice', [
+				{ label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+				{ label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function() {
+					const $btn = $('#aips-post-publish-btn');
+					$btn.prop('disabled', true).text('Publishing...');
+
+					$.ajax({
+						url: aipsActivityL10n.ajaxUrl,
+						type: 'POST',
+						data: {
+							action: 'aips_publish_draft',
+							nonce: aipsActivityL10n.nonce,
+							post_id: window.AIPS.currentActivityPostId
+						},
+						success: function(response) {
+							if (response.success) {
+								AIPS.Utilities.showToast(aipsActivityL10n.publishSuccess, 'success');
+								window.AIPS.closeActivityModal();
+								window.AIPS.loadActivity();
+							} else {
+								AIPS.Utilities.showToast(response.data.message || aipsActivityL10n.publishError, 'error');
+								$btn.prop('disabled', false).text('Publish Post');
+							}
+						},
+						error: function() {
+							AIPS.Utilities.showToast(aipsActivityL10n.publishError, 'error');
+							$btn.prop('disabled', false).text('Publish Post');
+						}
+					});
+				}}
+			]);
 		},
 		
 		/**
@@ -337,38 +340,41 @@
 		 */
 		publishPostQuick: function(e) {
 			e.stopPropagation();
-			
+
 			const postId = $(this).closest('.aips-activity-item').data('post-id');
-			if (!postId || !confirm(aipsActivityL10n.confirmPublish)) {
-				return;
-			}
-			
+			if (!postId) return;
+
 			const $item = $('.aips-activity-item[data-post-id="' + postId + '"]');
 			const $btn = $item.find('.aips-quick-publish');
-			
-			$btn.prop('disabled', true).text('Publishing...');
-			
-			$.ajax({
-				url: aipsActivityL10n.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_publish_draft',
-					nonce: aipsActivityL10n.nonce,
-					post_id: postId
-				},
-				success: function(response) {
-					if (response.success) {
-						window.AIPS.loadActivity(); // Refresh feed
-					} else {
-						alert(response.data.message || aipsActivityL10n.publishError);
-						$btn.prop('disabled', false).text('Publish');
-					}
-				},
-				error: function() {
-					alert(aipsActivityL10n.publishError);
-					$btn.prop('disabled', false).text('Publish');
-				}
-			});
+
+			AIPS.Utilities.confirm(aipsActivityL10n.confirmPublish, 'Notice', [
+				{ label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+				{ label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function() {
+					$btn.prop('disabled', true).text('Publishing...');
+
+					$.ajax({
+						url: aipsActivityL10n.ajaxUrl,
+						type: 'POST',
+						data: {
+							action: 'aips_publish_draft',
+							nonce: aipsActivityL10n.nonce,
+							post_id: postId
+						},
+						success: function(response) {
+							if (response.success) {
+								window.AIPS.loadActivity();
+							} else {
+								AIPS.Utilities.showToast(response.data.message || aipsActivityL10n.publishError, 'error');
+								$btn.prop('disabled', false).text('Publish');
+							}
+						},
+						error: function() {
+							AIPS.Utilities.showToast(aipsActivityL10n.publishError, 'error');
+							$btn.prop('disabled', false).text('Publish');
+						}
+					});
+				}}
+			]);
 		},
 		
 		/**
