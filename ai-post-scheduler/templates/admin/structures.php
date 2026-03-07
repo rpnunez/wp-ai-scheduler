@@ -130,7 +130,15 @@ if (!isset($sections) || !is_array($sections)) {
 			<?php if (!empty($sections)): ?>
 			<div class="aips-filter-bar">
 				<div class="aips-filter-left">
-					<span class="aips-result-count"><?php printf(esc_html__('%d sections', 'ai-post-scheduler'), count($sections)); ?></span>
+					<span class="aips-result-count">
+						<?php
+						$section_count = count( $sections );
+						printf(
+							esc_html( _n( '%s section', '%s sections', $section_count, 'ai-post-scheduler' ) ),
+							number_format_i18n( $section_count )
+						);
+						?>
+					</span>
 				</div>
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-section-search"><?php esc_html_e('Search Sections:', 'ai-post-scheduler'); ?></label>
