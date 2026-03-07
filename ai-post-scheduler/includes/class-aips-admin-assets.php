@@ -20,21 +20,20 @@ class AIPS_Admin_Assets {
     }
 
     /**
-     * Enqueue admin styles and scripts.
+     * Enqueue global admin styles and scripts shared across all plugin pages.
      *
-     * Loads CSS and JS assets only on plugin-specific pages.
+     * Registers and enqueues assets that are required on every AIPS admin screen:
+     * the shared stylesheet (admin.css), the utilities helper library
+     * (utilities.js / aips-utilities-script), the core admin script
+     * (admin.js / aips-admin-script), and their associated localization data.
      *
-     * @param string $hook The current admin page hook.
+     * This method is intentionally separate so that it can be called independently
+     * or overridden by child/extending classes without touching page-specific logic.
+     *
      * @return void
      */
-    public function enqueue_admin_assets($hook) {
-        if (strpos($hook, 'ai-post-scheduler') === false && strpos($hook, 'aips-') === false) {
-            return;
-        }
-
+    public function enqueue_global_assets() {
         wp_enqueue_media();
-
-        // Global Admin Styles and Scripts
 
         wp_enqueue_style(
             'aips-admin-style',
@@ -87,6 +86,22 @@ class AIPS_Admin_Assets {
             'runScheduleConfirm' => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
             'scheduleRunning' => __('Running...', 'ai-post-scheduler'),
         ));
+    }
+
+    /**
+     * Enqueue admin styles and scripts.
+     *
+     * Loads CSS and JS assets only on plugin-specific pages.
+     *
+     * @param string $hook The current admin page hook.
+     * @return void
+     */
+    public function enqueue_admin_assets($hook) {
+        if (strpos($hook, 'ai-post-scheduler') === false && strpos($hook, 'aips-') === false) {
+            return;
+        }
+
+        $this->enqueue_global_assets();
 
 		// Enqueue Authors-specific assets
 		if (strpos($hook, 'aips-authors') !== false || strpos($hook, 'aips-author-topics') !== false) {
