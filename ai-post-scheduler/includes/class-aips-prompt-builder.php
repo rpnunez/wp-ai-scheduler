@@ -349,7 +349,7 @@ class AIPS_Prompt_Builder {
      * @return string
      */
     private function get_output_instructions() {
-        return 'Output the response for use as a WordPress post with HTML tags, using <h2> for section titles, <pre> tags for code samples. Be sure to end the post with a concise summary.';
+        return 'Return ONLY valid HTML suitable for WordPress post_content. Do not use Markdown syntax, Markdown headings, or fenced code blocks. Use semantic HTML tags (such as <h2>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, and <pre><code> for code samples). End the article with a concise summary in HTML.';
     }
 
     /**

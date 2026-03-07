@@ -200,6 +200,143 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 		$this->assertSame('Generated content', $captured_data['content']);
 		$this->assertSame($template, $captured_data['template']);
 	}
+
+	/**
+	 * Ensure markdown content is converted to HTML before post creation.
+	 *
+	 * @return void
+	 */
+	public function test_markdown_content_is_normalized_to_html_before_post_create() {
+		$logger = new class {
+			public function log($message, $level = 'info', $context = array()) {
+			}
+		};
+
+		$ai_service = new class {
+			private $call_count = 0;
+
+			public function is_available() {
+				return true;
+			}
+
+			public function generate_text($prompt, $options = array()) {
+				$this->call_count++;
+
+				if ($this->call_count === 1) {
+					return "## Heading\n\n- Item one\n- Item two\n\nParagraph with **bold** text.";
+				}
+
+				if ($this->call_count === 2) {
+					return 'Generated Title';
+				}
+
+				return 'Generated excerpt';
+			}
+		};
+
+		$template_processor = new class {
+			public function process($value, $topic = null) {
+				return str_replace('{{topic}}', $topic, $value);
+			}
+		};
+
+		$prompt_builder = new class {
+			public function build_content_prompt($context) {
+				return 'Content prompt for ' . $context->get_topic();
+			}
+
+			public function build_content_context($context) {
+				return 'Content context';
+			}
+
+			public function build_title_prompt($context, $x = null, $y = null, $content = '', $use_conversation_context = false) {
+				return 'Title prompt for ' . $context->get_topic();
+			}
+
+			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
+				return 'Excerpt prompt for ' . $title;
+			}
+		};
+
+		$history_service = new class {
+			public function create($type, $data = array()) {
+				return new class {
+					public function get_id() {
+						return 101;
+					}
+
+					public function with_session($context) {
+						return $this;
+					}
+
+					public function record($type, $message, $data = null, $result = null, $metadata = array()) {
+					}
+
+					public function complete_failure($error, $metadata = array()) {
+					}
+
+					public function complete_success($data = array()) {
+					}
+				};
+			}
+		};
+
+		$captured_data = null;
+
+		add_action(
+			'aips_post_generation_before_post_create',
+			function($data) use (&$captured_data) {
+				$captured_data = $data;
+			},
+			10,
+			1
+		);
+
+		$post_creator = new class {
+			public function create_post($data) {
+				return 654;
+			}
+
+			public function set_featured_image($post_id, $attachment_id) {
+			}
+		};
+
+		$generator = new AIPS_Generator(
+			$logger,
+			$ai_service,
+			$template_processor,
+			null,
+			new class {
+			},
+			$post_creator,
+			$history_service,
+			$prompt_builder
+		);
+
+		$template = (object) array(
+			'id' => 8,
+			'prompt_template' => 'Prompt for {{topic}}',
+			'title_prompt' => 'Title for {{topic}}',
+			'post_status' => 'draft',
+			'post_category' => '',
+			'post_tags' => '',
+			'post_author' => 1,
+			'post_quantity' => 1,
+			'generate_featured_image' => false,
+			'image_prompt' => '',
+		);
+
+		$result = $generator->generate_post($template, null, 'Markdown Test');
+
+		$this->assertSame(654, $result);
+		$this->assertIsArray($captured_data);
+		$this->assertStringContainsString('<h2>Heading</h2>', $captured_data['content']);
+		$this->assertStringContainsString('<ul><li>Item one</li><li>Item two</li></ul>', $captured_data['content']);
+		$this->assertStringContainsString('<strong>bold</strong>', $captured_data['content']);
+		$this->assertStringNotContainsString('## Heading', $captured_data['content']);
+
+		remove_all_actions('aips_post_generation_before_post_create');
+	}
 	
 	/**
 	 * Test chatbot conversational flow maintains chatId across steps.
