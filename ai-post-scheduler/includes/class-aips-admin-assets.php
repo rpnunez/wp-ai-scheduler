@@ -44,9 +44,17 @@ class AIPS_Admin_Assets {
         );
 
         wp_enqueue_script(
+            'aips-utilities-script',
+            AIPS_PLUGIN_URL . 'assets/js/utilities.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
-            array('jquery'),
+            array('jquery', 'aips-utilities-script'),
             AIPS_VERSION,
             true
         );
@@ -88,7 +96,7 @@ class AIPS_Admin_Assets {
 			wp_enqueue_script(
 				'aips-authors-script',
 				AIPS_PLUGIN_URL . 'assets/js/authors.js',
-				array('jquery'),
+				array('jquery', 'aips-utilities-script'),
 				AIPS_VERSION,
 				true
 			);

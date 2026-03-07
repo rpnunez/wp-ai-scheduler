@@ -46,11 +46,11 @@
                         displayResearchResults(response.data);
                         $('#load-topics').trigger('click'); // Refresh topics list
                     } else {
-                        alert('Error: ' + response.data.message);
+                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert(aipsResearchL10n.researchError);
+                    AIPS.Utilities.showToast(aipsResearchL10n.researchError, 'error');
                 },
                 complete: function() {
                     $submit.prop('disabled', false).removeClass('is-loading');
@@ -104,7 +104,7 @@
                     if (response.success) {
                         displayTopicsTable(response.data.topics);
                     } else {
-                        alert('Error: ' + response.data.message);
+                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
                 }
             });
@@ -263,28 +263,29 @@
 
         // Delete topic
         $(document).on('click', '.delete-topic', function() {
-            if (!confirm(aipsResearchL10n.deleteTopicConfirm)) {
-                return;
-            }
-
-            const topicId = $(this).data('id');
-
-            $.ajax({
-                url: ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_trending_topic',
-                    nonce: $('#aips_nonce').val(),
-                    topic_id: topicId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $('#load-topics').trigger('click');
-                    } else {
-                        alert('Error: ' + response.data.message);
-                    }
-                }
-            });
+            var $el = $(this);
+            var topicId = $el.data('id');
+            AIPS.Utilities.confirm(aipsResearchL10n.deleteTopicConfirm, 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_delete_trending_topic',
+                            nonce: $('#aips_nonce').val(),
+                            topic_id: topicId
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $('#load-topics').trigger('click');
+                            } else {
+                                AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                            }
+                        }
+                    });
+                }}
+            ]);
         });
 
         // Bulk schedule
@@ -292,7 +293,7 @@
             e.preventDefault();
 
             if (selectedTopics.length === 0) {
-                alert(aipsResearchL10n.selectTopicSchedule);
+                AIPS.Utilities.showToast(aipsResearchL10n.selectTopicSchedule, 'warning');
                 return;
             }
 
@@ -316,16 +317,16 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                         selectedTopics = [];
                         $('.topic-checkbox').prop('checked', false);
                         $('#select-all-topics').prop('checked', false);
                     } else {
-                        alert('Error: ' + response.data.message);
+                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert(aipsResearchL10n.schedulingError);
+                    AIPS.Utilities.showToast(aipsResearchL10n.schedulingError, 'error');
                 },
                 complete: function() {
                     $submit.prop('disabled', false).removeClass('is-loading');
@@ -373,7 +374,7 @@
             const $spinner = $btn.next('.spinner');
 
             if (!niche) {
-                alert('Please enter a target niche.');
+                AIPS.Utilities.showToast('Please enter a target niche.', 'warning');
                 return;
             }
 
@@ -392,11 +393,11 @@
                     if (response.success) {
                         renderGapResults(response.data.gaps);
                     } else {
-                        alert('Error: ' + response.data.message);
+                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred during gap analysis.');
+                    AIPS.Utilities.showToast('An error occurred during gap analysis.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -458,7 +459,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                         // Switch to Trending tab and reload
                         $('.aips-tab-link[data-tab="trending"]').trigger('click');
                         // Wait for tab switch then reload
@@ -466,11 +467,11 @@
                             $('#load-topics').trigger('click');
                         }, 500);
                     } else {
-                        alert('Error: ' + response.data.message);
+                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred while generating topics.');
+                    AIPS.Utilities.showToast('An error occurred while generating topics.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Generate Ideas');

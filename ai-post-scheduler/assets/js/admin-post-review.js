@@ -27,12 +27,11 @@
             var postId = $(this).data('post-id');
             var row = $(this).closest('tr');
 
-            if (!confirm(aipsPostReviewL10n.confirmPublish)) {
-                return;
-            }
-
             var button = $(this);
-            button.prop('disabled', true).text(aipsPostReviewL10n.loading || 'Publishing...');
+            AIPS.Utilities.confirm(aipsPostReviewL10n.confirmPublish, 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    button.prop('disabled', true).text(aipsPostReviewL10n.loading || 'Publishing...');
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -50,12 +49,12 @@
                             if (response.data.post_id) {
                                 var editUrl = 'post.php?post=' + response.data.post_id + '&action=edit';
                                 msg += ' <a href="' + editUrl + '" target="_blank">Edit Post</a>';
-                                AIPS.showToast(msg, 'success', { isHtml: true });
+                                AIPS.Utilities.showToast(msg, 'success', { isHtml: true });
                             } else {
-                                AIPS.showToast(msg, 'success');
+                                AIPS.Utilities.showToast(msg, 'success');
                             }
                         } else {
-                            alert(response.data.message || aipsPostReviewL10n.publishSuccess);
+                            AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishSuccess, 'success');
                         }
 
                         row.fadeOut(400, function() {
@@ -64,23 +63,17 @@
                             checkEmptyState();
                         });
                     } else {
-                        if (window.AIPS && window.AIPS.showToast) {
-                            AIPS.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
-                        } else {
-                            alert(response.data.message || aipsPostReviewL10n.publishError);
-                        }
+                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
                         button.prop('disabled', false).text(aipsPostReviewL10n.publish || 'Publish');
                     }
                 },
                 error: function() {
-                    if (window.AIPS && window.AIPS.showToast) {
-                        AIPS.showToast(aipsPostReviewL10n.publishError, 'error');
-                    } else {
-                        alert(aipsPostReviewL10n.publishError);
-                    }
+                    AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
                     button.prop('disabled', false).text(aipsPostReviewL10n.publish || 'Publish');
                 }
             });
+                }}
+            ]);
         });
 
         // Delete single post
@@ -90,12 +83,11 @@
             var historyId = $(this).data('history-id');
             var row = $(this).closest('tr');
 
-            if (!confirm(aipsPostReviewL10n.confirmDelete)) {
-                return;
-            }
-
             var button = $(this);
-            button.prop('disabled', true).text(aipsPostReviewL10n.deleting || 'Deleting...');
+            AIPS.Utilities.confirm(aipsPostReviewL10n.confirmDelete, 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    button.prop('disabled', true).text(aipsPostReviewL10n.deleting || 'Deleting...');
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -108,11 +100,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        if (window.AIPS && window.AIPS.showToast) {
-                            AIPS.showToast(response.data.message || aipsPostReviewL10n.deleteSuccess, 'success');
-                        } else {
-                            alert(response.data.message || aipsPostReviewL10n.deleteSuccess);
-                        }
+                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteSuccess, 'success');
 
                         row.fadeOut(400, function() {
                             $(this).remove();
@@ -120,23 +108,17 @@
                             checkEmptyState();
                         });
                     } else {
-                        if (window.AIPS && window.AIPS.showToast) {
-                            AIPS.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
-                        } else {
-                            alert(response.data.message || aipsPostReviewL10n.deleteError);
-                        }
+                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
                         button.prop('disabled', false).text(aipsPostReviewL10n.delete || 'Delete');
                     }
                 },
                 error: function() {
-                    if (window.AIPS && window.AIPS.showToast) {
-                        AIPS.showToast(aipsPostReviewL10n.deleteError, 'error');
-                    } else {
-                        alert(aipsPostReviewL10n.deleteError);
-                    }
+                    AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
                     button.prop('disabled', false).text(aipsPostReviewL10n.delete || 'Delete');
                 }
             });
+                }}
+            ]);
         });
 
         // Regenerate post
@@ -145,12 +127,11 @@
             var historyId = $(this).data('history-id');
             var row = $(this).closest('tr');
 
-            if (!confirm(aipsPostReviewL10n.confirmRegenerate)) {
-                return;
-            }
-
             var button = $(this);
-            button.prop('disabled', true).text(aipsPostReviewL10n.regenerating || 'Regenerating...');
+            AIPS.Utilities.confirm(aipsPostReviewL10n.confirmRegenerate, 'Notice', [
+                { label: 'No, cancel',     className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, regenerate', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    button.prop('disabled', true).text(aipsPostReviewL10n.regenerating || 'Regenerating...');
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -164,11 +145,7 @@
                     if (response.success) {
                         // Show generic "Started" message instead of "Success"
                         var msg = response.data.message || aipsPostReviewL10n.regenerateSuccess;
-                        if (window.AIPS && window.AIPS.showToast) {
-                            AIPS.showToast(msg + ' Check History for progress.', 'success');
-                        } else {
-                            alert(msg);
-                        }
+                        AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success');
 
                         // We still remove the row because the post is deleted
                         row.fadeOut(400, function() {
@@ -177,23 +154,17 @@
                             checkEmptyState();
                         });
                     } else {
-                        if (window.AIPS && window.AIPS.showToast) {
-                            AIPS.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
-                        } else {
-                            alert(response.data.message || aipsPostReviewL10n.regenerateError);
-                        }
+                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
                         button.prop('disabled', false).text(aipsPostReviewL10n.regenerate || 'Re-generate');
                     }
                 },
                 error: function() {
-                    if (window.AIPS && window.AIPS.showToast) {
-                        AIPS.showToast(aipsPostReviewL10n.regenerateError, 'error');
-                    } else {
-                        alert(aipsPostReviewL10n.regenerateError);
-                    }
+                    AIPS.Utilities.showToast(aipsPostReviewL10n.regenerateError, 'error');
                     button.prop('disabled', false).text(aipsPostReviewL10n.regenerate || 'Re-generate');
                 }
             });
+                }}
+            ]);
         });
 
         // Bulk actions
@@ -207,7 +178,7 @@
 
             var checkedBoxes = $('.aips-post-checkbox:checked');
             if (checkedBoxes.length === 0) {
-                alert(aipsPostReviewL10n.noPostsSelected);
+                AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
                 return;
             }
 
@@ -223,10 +194,9 @@
             var count = checkedBoxes.length;
             var confirmMsg = aipsPostReviewL10n.confirmBulkPublish.replace('%d', count);
 
-            if (!confirm(confirmMsg)) {
-                return;
-            }
-
+            AIPS.Utilities.confirm(confirmMsg, 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function() {
             var postIds = [];
             checkedBoxes.each(function() {
                 postIds.push($(this).data('post-id'));
@@ -243,11 +213,7 @@
                 success: function(response) {
                     if (response.success) {
                         var msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
-                        if (window.AIPS && window.AIPS.showToast) {
-                            AIPS.showToast(msg, 'success');
-                        } else {
-                            alert(msg);
-                        }
+                        AIPS.Utilities.showToast(msg, 'success');
 
                         checkedBoxes.each(function() {
                             $(this).closest('tr').fadeOut(400, function() {
@@ -257,21 +223,15 @@
                             });
                         });
                     } else {
-                        if (window.AIPS && window.AIPS.showToast) {
-                            AIPS.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
-                        } else {
-                            alert(response.data.message || aipsPostReviewL10n.publishError);
-                        }
+                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
                     }
                 },
                 error: function() {
-                    if (window.AIPS && window.AIPS.showToast) {
-                        AIPS.showToast(aipsPostReviewL10n.publishError, 'error');
-                    } else {
-                        alert(aipsPostReviewL10n.publishError);
-                    }
+                    AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
                 }
             });
+                }}
+            ]);
         }
 
         // Bulk delete
@@ -279,10 +239,9 @@
             var count = checkedBoxes.length;
             var confirmMsg = aipsPostReviewL10n.confirmBulkDelete.replace('%d', count);
 
-            if (!confirm(confirmMsg)) {
-                return;
-            }
-
+            AIPS.Utilities.confirm(confirmMsg, 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
             var items = [];
             checkedBoxes.each(function() {
                 items.push({
@@ -302,11 +261,7 @@
                 success: function(response) {
                     if (response.success) {
                         var msg = aipsPostReviewL10n.bulkDeleteSuccess.replace('%d', response.data.count || count);
-                        if (window.AIPS && window.AIPS.showToast) {
-                            AIPS.showToast(msg, 'success');
-                        } else {
-                            alert(msg);
-                        }
+                        AIPS.Utilities.showToast(msg, 'success');
 
                         checkedBoxes.each(function() {
                             $(this).closest('tr').fadeOut(400, function() {
@@ -316,21 +271,15 @@
                             });
                         });
                     } else {
-                        if (window.AIPS && window.AIPS.showToast) {
-                            AIPS.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
-                        } else {
-                            alert(response.data.message || aipsPostReviewL10n.deleteError);
-                        }
+                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
                     }
                 },
                 error: function() {
-                    if (window.AIPS && window.AIPS.showToast) {
-                        AIPS.showToast(aipsPostReviewL10n.deleteError, 'error');
-                    } else {
-                        alert(aipsPostReviewL10n.deleteError);
-                    }
+                    AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
                 }
             });
+                }}
+            ]);
         }
 
         // Reload posts

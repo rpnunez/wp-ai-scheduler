@@ -13,7 +13,7 @@
             var count = $('#planner-count').val();
 
             if (!niche) {
-                alert('Please enter a niche or topic.');
+                AIPS.Utilities.showToast('Please enter a niche or topic.', 'warning');
                 return;
             }
 
@@ -35,11 +35,11 @@
                         window.AIPS.renderTopics(response.data.topics);
                         $('#planner-results').slideDown();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -192,7 +192,7 @@
             });
 
             if (topics.length === 0) {
-                alert('Please select at least one topic.');
+                AIPS.Utilities.showToast('Please select at least one topic.', 'warning');
                 return;
             }
 
@@ -226,7 +226,7 @@
                     $btn.text('Copied!');
                     setTimeout(function() { $btn.text(originalText); }, 2000);
                 } else {
-                    alert('Unable to copy text automatically. Please select the topics and copy them manually (Ctrl+C or Cmd+C on Mac).');
+                    AIPS.Utilities.showToast('Unable to copy text automatically. Please select the topics and copy them manually (Ctrl+C or Cmd+C on Mac).', 'warning');
                 }
             };
 
@@ -257,7 +257,7 @@
             });
 
             if (topics.length === 0) {
-                alert('Please select at least one topic.');
+                AIPS.Utilities.showToast('Please select at least one topic.', 'warning');
                 return;
             }
 
@@ -265,11 +265,11 @@
             var startDate = $('#bulk-start-date').val();
 
             if (!templateId) {
-                alert('Please select a template.');
+                AIPS.Utilities.showToast('Please select a template.', 'warning');
                 return;
             }
             if (!startDate) {
-                alert('Please select a start date.');
+                AIPS.Utilities.showToast('Please select a start date.', 'warning');
                 return;
             }
 
@@ -290,17 +290,17 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                         // Clear list after successful scheduling
                          $('#topics-list').html('');
                          $('#planner-results').slideUp();
                          $('#planner-niche').val('');
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);

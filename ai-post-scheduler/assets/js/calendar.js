@@ -153,11 +153,11 @@
 						calendarState.events = response.data.events || [];
 						self.renderCalendar();
 					} else {
-						alert(response.data.message || 'Failed to load calendar events.');
+						AIPS.Utilities.showToast(response.data.message || 'Failed to load calendar events.', 'error');
 					}
 				},
 				error: function() {
-					alert('An error occurred while loading calendar events.');
+					AIPS.Utilities.showToast('An error occurred while loading calendar events.', 'error');
 				},
 				complete: function() {
 					$('.aips-calendar-loading').hide();

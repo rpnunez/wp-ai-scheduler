@@ -21,20 +21,20 @@ jQuery(document).ready(function($) {
         if (planner > 0) queue.push({ type: 'planner', count: planner, label: 'Planner Entries', keywords: keywords });
 
         if (queue.length === 0) {
-            alert('Please enter at least one quantity.');
+            AIPS.Utilities.showToast('Please enter at least one quantity.', 'warning');
             return;
         }
 
-        if (!confirm('This will generate dummy data in your database. Are you sure?')) {
-            return;
-        }
-
-        $submitBtn.prop('disabled', true);
-        $spinner.addClass('is-active');
-        $results.show();
-        $log.empty().append('<div>Starting Seeder...</div>');
-
-        processQueue(queue);
+        AIPS.Utilities.confirm('This will generate dummy data in your database. Are you sure?', 'Notice', [
+            { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+            { label: 'Yes, generate', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                $submitBtn.prop('disabled', true);
+                $spinner.addClass('is-active');
+                $results.show();
+                $log.empty().append('<div>Starting Seeder...</div>');
+                processQueue(queue);
+            }}
+        ]);
     });
 
     function processQueue(queue) {
