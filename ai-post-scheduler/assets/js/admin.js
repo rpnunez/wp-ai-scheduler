@@ -14,7 +14,7 @@
             this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
         },
-        
+
         handleInitialTabFromHash: function() {
             // Check for hash in URL and activate the corresponding tab
             var hash = window.location.hash;
@@ -47,6 +47,7 @@
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
 
             // Post-save next steps
+            $(document).on('click', '#aips-quick-schedule-btn', this.quickSchedule);
             $(document).on('click', '#aips-quick-run-now-btn', this.quickRunNow);
             $(document).on('click', '#aips-post-save-done-btn', function() { location.reload(); });
 
@@ -2124,6 +2125,34 @@
         },
 
         /**
+         * Triggers Quick Schedule for the just-saved template from the post-save panel.
+         *
+         * @param {Event} e - Click event.
+         */
+        quickSchedule: function(e) {
+            // Allow modified clicks (Ctrl/Cmd-click, middle-click) to open in a new tab as usual
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+                return;
+            }
+            e.preventDefault();
+            var $btn = $(this);
+            var templateId = $btn.data('template-id');
+
+            if (!templateId) return;
+
+            // Use the aipsAjax.schedulePageUrl if available or fallback
+            var scheduleUrlBase = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
+                ? aipsAjax.schedulePageUrl
+                : 'admin.php?page=aips-schedule';
+
+            // Build the URL safely, handling whether scheduleUrlBase already contains a query string
+            var url = new URL(scheduleUrlBase, window.location.href);
+            url.searchParams.set('schedule_template', templateId);
+            url.hash = 'open_schedule_modal';
+            window.location.href = url.toString();
+        },
+
+        /**
          * Triggers "Run Now" for the just-saved template from the post-save panel.
          *
          * @param {Event} e - Click event.
@@ -2176,20 +2205,57 @@
             var $modal = $('#aips-schedule-modal');
             if (!$modal.length) return;
 
+            // Prefer preselect from data attribute, then fall back to URL query param.
             var preselectId = $modal.data('preselect-template');
-            if (!preselectId) return;
 
-            $('#aips-schedule-form')[0].reset();
+            if (!preselectId) {
+                var urlParams = null;
+
+                try {
+                    // Use URL API when available (already used elsewhere in this file)
+                    // and fall back to URLSearchParams if needed
+                    urlParams = new URL(window.location.href).searchParams;
+                } catch (e) {
+                    try {
+                        urlParams = new URLSearchParams(window.location.search);
+                    } catch (e2) {
+                        urlParams = null;
+                    }
+                }
+
+                if (urlParams) {
+                    preselectId = urlParams.get('schedule_template');
+                }
+            }
+
+            // Only proceed with a valid positive integer template ID
+            var preselectIdNum = parseInt(preselectId, 10);
+            if (!preselectIdNum || preselectIdNum <= 0) return;
+
+            var $form = $('#aips-schedule-form');
+            if (!$form.length) return;
+
+            $form[0].reset();
             $('#schedule_id').val('');
-            $('#schedule_template').val(preselectId);
-            $('#aips-schedule-modal-title').text('Schedule Template');
+            $('#schedule_template').val(preselectIdNum);
+            $('#aips-schedule-modal-title').text('Add New Schedule');
             $modal.show();
 
             // Clean the URL to prevent re-triggering on refresh
             if (window.history && window.history.replaceState) {
-                var cleanUrl = window.location.href.replace(/[?&]schedule_template=\d+/, '');
-                cleanUrl = cleanUrl.replace(/\?$/, '');
-                window.history.replaceState(null, '', cleanUrl);
+                try {
+                    var cleanUrlObj = new URL(window.location.href);
+                    cleanUrlObj.searchParams.delete('schedule_template');
+                    cleanUrlObj.hash = '';
+                    window.history.replaceState(null, '', cleanUrlObj.toString());
+                } catch (e) {
+                    // Fallback to regex cleanup if URL API unavailable
+                    var cleanUrl = window.location.href.replace(/[?&]schedule_template=[^&]*/, '');
+                    cleanUrl = cleanUrl.replace(/\?&/, '?');  // Fix orphaned ?& when param was first
+                    cleanUrl = cleanUrl.replace(/\?$/, '');
+                    cleanUrl = cleanUrl.replace(/#open_schedule_modal$/, '');
+                    window.history.replaceState(null, '', cleanUrl);
+                }
             }
         },
 
