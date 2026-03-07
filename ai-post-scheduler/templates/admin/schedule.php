@@ -60,12 +60,38 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                 <input type="search" id="aips-schedule-search" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search schedules...', 'ai-post-scheduler'); ?>">
                 <button type="button" id="aips-schedule-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
             </div>
+
+            <!-- Bulk Actions Toolbar -->
+            <div class="aips-panel-toolbar">
+                <div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+                    <button type="button" id="aips-schedule-select-all" class="aips-btn aips-btn-secondary aips-btn-sm">
+                        <?php esc_html_e('Select All', 'ai-post-scheduler'); ?>
+                    </button>
+                    <button type="button" id="aips-schedule-unselect-all" class="aips-btn aips-btn-secondary aips-btn-sm" disabled>
+                        <?php esc_html_e('Unselect All', 'ai-post-scheduler'); ?>
+                    </button>
+                    <select id="aips-schedule-bulk-action" class="aips-form-input" style="width: auto;">
+                        <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+                        <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+                        <option value="pause"><?php esc_html_e('Pause', 'ai-post-scheduler'); ?></option>
+                        <option value="activate"><?php esc_html_e('Activate', 'ai-post-scheduler'); ?></option>
+                        <option value="run_now"><?php esc_html_e('Run Now', 'ai-post-scheduler'); ?></option>
+                    </select>
+                    <button type="button" id="aips-schedule-bulk-apply" class="aips-btn aips-btn-primary aips-btn-sm" disabled>
+                        <?php esc_html_e('Apply', 'ai-post-scheduler'); ?>
+                    </button>
+                    <span id="aips-schedule-selected-count" class="aips-selected-count" style="display: none;"></span>
+                </div>
+            </div>
             
             <!-- Schedules Table -->
             <div class="aips-panel-body no-padding">
-                <table class="aips-table">
+                <table class="aips-table aips-schedule-table">
                     <thead>
                         <tr>
+                            <th class="check-column">
+                                <input type="checkbox" id="cb-select-all-schedules" aria-label="<?php esc_attr_e('Select all schedules', 'ai-post-scheduler'); ?>">
+                            </th>
                             <th><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
                             <th><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></th>
                             <th><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
@@ -99,10 +125,13 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             data-rotation-pattern="<?php echo esc_attr($schedule->rotation_pattern); ?>"
                             data-next-run="<?php echo esc_attr($schedule->next_run); ?>"
                             data-is-active="<?php echo esc_attr($schedule->is_active); ?>">
-                            <td>
+                            <th scope="row" class="check-column">
+                                <input type="checkbox" class="aips-schedule-checkbox" name="schedule[]" value="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php echo esc_attr(sprintf(__('Select schedule %s', 'ai-post-scheduler'), $schedule->template_name ?: $schedule->id)); ?>">
+                            </th>
+                            <td class="column-template">
                                 <div class="cell-primary"><?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?></div>
                             </td>
-                            <td>
+                            <td class="column-structure">
                                 <div>
                                     <?php echo esc_html($structure_display); ?>
                                     <?php if (!empty($schedule->rotation_pattern)): ?>
@@ -110,7 +139,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                                     <?php endif; ?>
                                 </div>
                             </td>
-                            <td>
+                            <td class="column-frequency">
                                 <span class="aips-badge aips-badge-info">
                                     <?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->frequency))); ?>
                                 </span>

@@ -10,34 +10,35 @@
         repairDb: function(e) {
             e.preventDefault();
             var $btn = $(this);
-            if (!confirm('Are you sure you want to run the database repair? This will attempt to create missing tables and columns.')) {
-                return;
-            }
+            AIPS.Utilities.confirm('Are you sure you want to run the database repair? This will attempt to create missing tables and columns.', 'Confirm', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, repair', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $btn.prop('disabled', true).text('Repairing...');
 
-            $btn.prop('disabled', true).text('Repairing...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_repair_db',
-                    nonce: aipsAjax.nonce
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        location.reload();
-                    } else {
-                        alert(response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred.');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false).text('Repair DB Tables');
-                }
-            });
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_repair_db',
+                            nonce: aipsAjax.nonce
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                AIPS.Utilities.showToast(response.data.message, 'success');
+                                setTimeout(function() { location.reload(); }, 1500);
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred.', 'error');
+                        },
+                        complete: function() {
+                            $btn.prop('disabled', false).text('Repair DB Tables');
+                        }
+                    });
+                }}
+            ]);
         },
 
         reinstallDb: function(e) {
@@ -46,73 +47,75 @@
             var backup = $('#aips-backup-db').is(':checked');
             var msg = 'Are you sure you want to reinstall the database tables?';
             if (!backup) {
-                msg += '\n\nWARNING: ALL DATA WILL BE LOST unless you check the backup option!';
+                msg += ' WARNING: ALL DATA WILL BE LOST unless you check the backup option!';
             } else {
-                msg += '\n\nData will be backed up and restored.';
+                msg += ' Data will be backed up and restored.';
             }
 
-            if (!confirm(msg)) {
-                return;
-            }
+            AIPS.Utilities.confirm(msg, 'Confirm', [
+                { label: 'No, cancel',    className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, reinstall', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $btn.prop('disabled', true).text('Reinstalling...');
 
-            $btn.prop('disabled', true).text('Reinstalling...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_reinstall_db',
-                    nonce: aipsAjax.nonce,
-                    backup: backup
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        location.reload();
-                    } else {
-                        alert(response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred.');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false).text('Reinstall DB Tables');
-                }
-            });
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_reinstall_db',
+                            nonce: aipsAjax.nonce,
+                            backup: backup
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                AIPS.Utilities.showToast(response.data.message, 'success');
+                                setTimeout(function() { location.reload(); }, 1500);
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred.', 'error');
+                        },
+                        complete: function() {
+                            $btn.prop('disabled', false).text('Reinstall DB Tables');
+                        }
+                    });
+                }}
+            ]);
         },
 
         wipeDb: function(e) {
             e.preventDefault();
             var $btn = $(this);
-            if (!confirm('Are you sure you want to WIPE ALL DATA? This cannot be undone.')) {
-                return;
-            }
+            AIPS.Utilities.confirm('Are you sure you want to WIPE ALL DATA? This cannot be undone.', 'Warning', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, wipe all data', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $btn.prop('disabled', true).text('Wiping...');
 
-            $btn.prop('disabled', true).text('Wiping...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_wipe_db',
-                    nonce: aipsAjax.nonce
-                },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.data.message);
-                        location.reload();
-                    } else {
-                        alert(response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred.');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false).text('Wipe Plugin Data');
-                }
-            });
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_wipe_db',
+                            nonce: aipsAjax.nonce
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                AIPS.Utilities.showToast(response.data.message, 'success');
+                                setTimeout(function() { location.reload(); }, 1500);
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred.', 'error');
+                        },
+                        complete: function() {
+                            $btn.prop('disabled', false).text('Wipe Plugin Data');
+                        }
+                    });
+                }}
+            ]);
         },
 
         exportData: function(e) {
@@ -162,20 +165,16 @@
             var fileInput = $('#aips-import-file')[0];
 
             if (!fileInput.files || !fileInput.files[0]) {
-                alert('Please select a file to import.');
+                AIPS.Utilities.showToast('Please select a file to import.', 'warning');
                 return;
             }
 
-            var confirmMsg = 'WARNING: This will overwrite existing data!\n\n';
-            confirmMsg += 'Have you made a backup of your current data?\n';
-            confirmMsg += 'This action is irreversible.\n\n';
-            confirmMsg += 'Are you sure you want to continue?';
+            var confirmMsg = 'WARNING: This will overwrite existing data! Have you made a backup? This action is irreversible. Are you sure you want to continue?';
 
-            if (!confirm(confirmMsg)) {
-                return;
-            }
-
-            $btn.prop('disabled', true).text('Importing...');
+            AIPS.Utilities.confirm(confirmMsg, 'Warning', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, import', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $btn.prop('disabled', true).text('Importing...');
 
             var formData = new FormData();
             formData.append('action', 'aips_import_data');
@@ -191,20 +190,22 @@
                 contentType: false,
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
-                        location.reload();
+                        AIPS.Utilities.showToast(response.data.message, 'success');
+                        setTimeout(function() { location.reload(); }, 1500);
                     } else {
-                        alert('Import failed: ' + response.data.message);
+                        AIPS.Utilities.showToast('Import failed: ' + response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred during import.');
+                    AIPS.Utilities.showToast('An error occurred during import.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Import Data');
                     fileInput.value = '';
                 }
             });
+                }}
+            ]);
         }
     });
 

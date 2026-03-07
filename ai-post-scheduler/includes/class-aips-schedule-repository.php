@@ -364,6 +364,110 @@ class AIPS_Schedule_Repository {
     }
     
     /**
+     * Delete multiple schedules by ID.
+     *
+     * @param int[] $ids Array of schedule IDs to delete.
+     * @return int Number of rows deleted, or false on failure.
+     */
+    public function delete_bulk(array $ids) {
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $ids = array_map('absint', $ids);
+        $ids = array_filter($ids);
+
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+        $result = $this->wpdb->query(
+            $this->wpdb->prepare(
+                "DELETE FROM {$this->schedule_table} WHERE id IN ($placeholders)",
+                $ids
+            )
+        );
+
+        if ($result !== false) {
+            delete_transient('aips_pending_schedule_stats');
+        }
+
+        return $result;
+    }
+
+    /**
+     * Set the active status for multiple schedules.
+     *
+     * @param int[] $ids       Array of schedule IDs.
+     * @param int   $is_active 1 to activate, 0 to pause.
+     * @return int|false Number of rows updated, or false on failure.
+     */
+    public function set_active_bulk(array $ids, $is_active) {
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $ids = array_map('absint', $ids);
+        $ids = array_filter($ids);
+
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $is_active = $is_active ? 1 : 0;
+        $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+        $query_args = array_merge(array($is_active), $ids);
+        $result = $this->wpdb->query(
+            $this->wpdb->prepare(
+                "UPDATE {$this->schedule_table} SET is_active = %d WHERE id IN ($placeholders)",
+                $query_args
+            )
+        );
+
+        if ($result !== false) {
+            delete_transient('aips_pending_schedule_stats');
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get post count for a set of schedule IDs (sum of template post_quantity).
+     *
+     * Each schedule runs once and generates as many posts as its template's
+     * post_quantity setting specifies (minimum 1).
+     *
+     * @param int[] $ids Array of schedule IDs.
+     * @return int Total number of posts that would be generated.
+     */
+    public function get_post_count_for_schedules(array $ids) {
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $ids = array_map('absint', $ids);
+        $ids = array_filter($ids);
+
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($ids), '%d'));
+        $result = $this->wpdb->get_var(
+            $this->wpdb->prepare(
+                "SELECT SUM(COALESCE(NULLIF(t.post_quantity, 0), 1))
+                 FROM {$this->schedule_table} s
+                 LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
+                 WHERE s.id IN ($placeholders)",
+                $ids
+            )
+        );
+
+        return (int) $result;
+    }
+
+    /**
      * Count schedules by status.
      *
      * @return array {

@@ -116,10 +116,11 @@ class AIPS_Schedule_Processor {
     /**
      * Run a specific schedule immediately.
      *
-     * @param int $schedule_id The schedule ID.
+     * @param int      $schedule_id      The schedule ID.
+     * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
      * @return int|WP_Error Post ID on success, or WP_Error on failure.
      */
-    public function process_single_schedule($schedule_id) {
+    public function process_single_schedule($schedule_id, $quantity_override = null) {
         $schedule = $this->repository->get_by_id($schedule_id);
 
         if (!$schedule) {
@@ -140,7 +141,7 @@ class AIPS_Schedule_Processor {
         $schedule_with_template->schedule_id = $schedule->id;
         $schedule_with_template->name = $template_data->name; // ensure template name is preserved
 
-        return $this->execute_schedule_logic($schedule_with_template, true);
+        return $this->execute_schedule_logic($schedule_with_template, true, $quantity_override);
     }
 
     /**
@@ -191,11 +192,12 @@ class AIPS_Schedule_Processor {
     /**
      * Core logic to execute a schedule.
      *
-     * @param object $schedule  Schedule object (merged with template).
-     * @param bool   $is_manual Whether this is a manual execution.
+     * @param object   $schedule         Schedule object (merged with template).
+     * @param bool     $is_manual        Whether this is a manual execution.
+     * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
      * @return int|WP_Error Post ID or WP_Error.
      */
-    private function execute_schedule_logic($schedule, $is_manual = false) {
+    private function execute_schedule_logic($schedule, $is_manual = false, $quantity_override = null) {
         if (!$is_manual) {
             // Dispatch schedule execution started event
             do_action('aips_schedule_execution_started', $schedule->schedule_id);
@@ -207,8 +209,9 @@ class AIPS_Schedule_Processor {
             ));
         }
 
-        // Apply schedule overrides to template logic
-        $post_quantity = 1; // Always 1 for schedule executions
+        // Use caller-supplied override, or fall back to the template's post_quantity, defaulting to 1.
+        $raw_quantity = $quantity_override ?? ($schedule->post_quantity ?? 1);
+        $post_quantity = max(1, absint($raw_quantity));
 
         // Select article structure for this execution
         $article_structure_id = $this->template_type_selector->select_structure($schedule);

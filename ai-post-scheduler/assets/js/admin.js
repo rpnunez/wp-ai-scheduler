@@ -14,7 +14,7 @@
             this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
         },
-        
+
         handleInitialTabFromHash: function() {
             // Check for hash in URL and activate the corresponding tab
             var hash = window.location.hash;
@@ -47,6 +47,7 @@
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
 
             // Post-save next steps
+            $(document).on('click', '#aips-quick-schedule-btn', this.quickSchedule);
             $(document).on('click', '#aips-quick-run-now-btn', this.quickRunNow);
             $(document).on('click', '#aips-post-save-done-btn', function() { location.reload(); });
 
@@ -72,6 +73,13 @@
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
+
+            // Schedule Bulk Actions
+            $(document).on('change', '#cb-select-all-schedules', this.toggleAllSchedules);
+            $(document).on('change', '.aips-schedule-checkbox', this.toggleScheduleSelection);
+            $(document).on('click', '#aips-schedule-select-all', this.selectAllSchedules);
+            $(document).on('click', '#aips-schedule-unselect-all', this.unselectAllSchedules);
+            $(document).on('click', '#aips-schedule-bulk-apply', this.applyScheduleBulkAction);
 
             $(document).on('click', '.aips-clear-history', this.clearHistory);
             $(document).on('click', '.aips-retry-generation', this.retryGeneration);
@@ -197,11 +205,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message || aipsAdminL10n.saveStructureFailed);
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveStructureFailed, 'error');
                     }
                 }).fail(function(){
                     $btn.prop('disabled', false).text('Save Structure');
-                    alert(aipsAdminL10n.errorTryAgain);
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 });
             });
 
@@ -233,25 +241,30 @@
                         $('#aips-structure-modal-title').text('Edit Article Structure');
                         $('#aips-structure-modal').show();
                     } else {
-                        alert(response.data.message || aipsAdminL10n.loadStructureFailed);
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadStructureFailed, 'error');
                     }
                 }).fail(function(){
-                    alert(aipsAdminL10n.errorOccurred);
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
                 });
             });
 
             // @TODO: Refactor to AIPS.deleteStructure
             $(document).on('click', '.aips-delete-structure', function(){
-                if (!confirm(aipsAdminL10n.deleteStructureConfirm)) return;
-                var id = $(this).data('id');
-                var $row = $(this).closest('tr');
-                $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
-                    if (response.success) {
-                        $row.fadeOut(function(){ $(this).remove(); });
-                    } else {
-                        alert(response.data.message || aipsAdminL10n.deleteStructureFailed);
-                    }
-                }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
+                var $el = $(this);
+                var id = $el.data('id');
+                var $row = $el.closest('tr');
+                AIPS.Utilities.confirm(aipsAdminL10n.deleteStructureConfirm, 'Confirm', [
+                    { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                    { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                        $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                            if (response.success) {
+                                $row.fadeOut(function(){ $(this).remove(); });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteStructureFailed, 'error');
+                            }
+                        }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                    }}
+                ]);
             });
 
             // Prompt Sections UI handlers
@@ -283,11 +296,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message || aipsAdminL10n.saveSectionFailed);
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveSectionFailed, 'error');
                     }
                 }).fail(function(){
                     $btn.prop('disabled', false).text('Save Section');
-                    alert(aipsAdminL10n.errorTryAgain);
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 });
             });
 
@@ -305,24 +318,29 @@
                         $('#aips-section-modal-title').text('Edit Prompt Section');
                         $('#aips-section-modal').show();
                     } else {
-                        alert(response.data.message || aipsAdminL10n.loadSectionFailed);
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.loadSectionFailed, 'error');
                     }
                 }).fail(function(){
-                    alert(aipsAdminL10n.errorOccurred);
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error');
                 });
             });
 
             $(document).on('click', '.aips-delete-section', function(){
-                if (!confirm(aipsAdminL10n.deleteSectionConfirm)) return;
-                var id = $(this).data('id');
-                var $row = $(this).closest('tr');
-                $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
-                    if (response.success) {
-                        $row.fadeOut(function(){ $(this).remove(); });
-                    } else {
-                        alert(response.data.message || aipsAdminL10n.deleteSectionFailed);
-                    }
-                }).fail(function(){ alert(aipsAdminL10n.errorOccurred); });
+                var $el = $(this);
+                var id = $el.data('id');
+                var $row = $el.closest('tr');
+                AIPS.Utilities.confirm(aipsAdminL10n.deleteSectionConfirm, 'Confirm', [
+                    { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                    { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                        $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                            if (response.success) {
+                                $row.fadeOut(function(){ $(this).remove(); });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteSectionFailed, 'error');
+                            }
+                        }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                    }}
+                ]);
             });
         },
 
@@ -519,11 +537,11 @@
                         AIPS.wizardGoToStep(1);
                         $('#aips-template-modal').show();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -536,33 +554,34 @@
             var $btn = $(this);
             var id = $btn.data('id');
 
-            if (!confirm('Are you sure you want to clone this template?')) {
-                return;
-            }
+            AIPS.Utilities.confirm('Are you sure you want to clone this template?', 'Confirm', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, clone', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $btn.prop('disabled', true).text('Cloning...');
 
-            $btn.prop('disabled', true).text('Cloning...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_clone_template',
-                    nonce: aipsAjax.nonce,
-                    template_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        alert(response.data.message);
-                        $btn.prop('disabled', false).text('Clone');
-                    }
-                },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                    $btn.prop('disabled', false).text('Clone');
-                }
-            });
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_clone_template',
+                            nonce: aipsAjax.nonce,
+                            template_id: id
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                location.reload();
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                                $btn.prop('disabled', false).text('Clone');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                            $btn.prop('disabled', false).text('Clone');
+                        }
+                    });
+                }}
+            ]);
         },
 
         deleteTemplate: function(e) {
@@ -604,7 +623,7 @@
                             $(this).remove();
                         });
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                         // Reset button state on error
                         $btn.text($btn.data('original-text'));
                         $btn.removeClass('aips-confirm-delete');
@@ -613,7 +632,7 @@
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                     // Reset button state on error
                     $btn.text($btn.data('original-text'));
                     $btn.removeClass('aips-confirm-delete');
@@ -665,11 +684,11 @@
                         AIPS.lastSavedTemplateId = savedId;
                         AIPS.showPostSaveActions(savedId);
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Template');
@@ -683,7 +702,7 @@
             
             // Validate at least name is provided
             if (!$('#template_name').val().trim()) {
-                alert(aipsAdminL10n.templateNameRequired);
+                AIPS.Utilities.showToast(aipsAdminL10n.templateNameRequired, 'warning');
                 $('#template_name').focus();
                 AIPS.wizardGoToStep(1);
                 return;
@@ -720,11 +739,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).html('<span class="dashicons dashicons-cloud-saved"></span> Save Draft');
@@ -737,7 +756,7 @@
             
             // Validate at least prompt is there
             if (!$('#prompt_template').val().trim()) {
-                alert(aipsAdminL10n.contentPromptRequired || 'Please enter a content prompt first.');
+                AIPS.Utilities.showToast(aipsAdminL10n.contentPromptRequired || 'Please enter a content prompt first.', 'warning');
                 $('#prompt_template').focus();
                 return;
             }
@@ -790,11 +809,11 @@
 
                         $('#aips-test-result-modal').show();
                     } else {
-                        alert(response.data.message || 'Generation failed.');
+                        AIPS.Utilities.showToast(response.data.message || 'Generation failed.', 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).html(originalText);
@@ -828,11 +847,11 @@
                         }
                         $('#aips-post-success-modal').show();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Run Now');
@@ -901,27 +920,30 @@
 
         deleteVoice: function(e) {
             e.preventDefault();
-            if (!confirm('Are you sure you want to delete this voice?')) {
-                return;
-            }
-            var id = $(this).data('id');
-            var $row = $(this).closest('tr');
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_voice',
-                    nonce: aipsAjax.nonce,
-                    voice_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() { $(this).remove(); });
-                    } else {
-                        alert(response.data.message);
-                    }
-                }
-            });
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm('Are you sure you want to delete this voice?', 'Confirm', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_delete_voice',
+                            nonce: aipsAjax.nonce,
+                            voice_id: id
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $row.fadeOut(function() { $(this).remove(); });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                            }
+                        }
+                    });
+                }}
+            ]);
         },
 
         saveVoice: function(e) {
@@ -950,11 +972,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Voice');
@@ -1075,11 +1097,11 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Schedule');
@@ -1090,34 +1112,36 @@
         deleteSchedule: function(e) {
             e.preventDefault();
 
-            if (!confirm('Are you sure you want to delete this schedule?')) {
-                return;
-            }
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
 
-            var id = $(this).data('id');
-            var $row = $(this).closest('tr');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_delete_schedule',
-                    nonce: aipsAjax.nonce,
-                    schedule_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $row.fadeOut(function() {
-                            $(this).remove();
-                        });
-                    } else {
-                        alert(response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                }
-            });
+            AIPS.Utilities.confirm('Are you sure you want to delete this schedule?', 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_delete_schedule',
+                            nonce: aipsAjax.nonce,
+                            schedule_id: id
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $row.fadeOut(function() {
+                                    $(this).remove();
+                                });
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                        }
+                    });
+                }}
+            ]);
         },
 
         /**
@@ -1154,13 +1178,13 @@
                             msg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
                         }
 
-                        AIPS.showToast(msg, 'success', { isHtml: true, duration: 8000 });
+                        AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
                     } else {
-                        AIPS.showToast(response.data.message || 'Generation failed.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || 'Generation failed.', 'error');
                     }
                 },
                 error: function() {
-                    AIPS.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -1208,7 +1232,239 @@
                 error: function() {
                     $toggle.prop('checked', !isActive);
 
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                }
+            });
+        },
+
+        toggleAllSchedules: function() {
+            var isChecked = $(this).prop('checked');
+            $('.aips-schedule-checkbox').prop('checked', isChecked);
+            AIPS.updateScheduleBulkActions();
+        },
+
+        toggleScheduleSelection: function() {
+            var total = $('.aips-schedule-checkbox').length;
+            var checked = $('.aips-schedule-checkbox:checked').length;
+            $('#cb-select-all-schedules').prop('checked', total > 0 && checked === total);
+            AIPS.updateScheduleBulkActions();
+        },
+
+        selectAllSchedules: function() {
+            $('.aips-schedule-checkbox').prop('checked', true);
+            $('#cb-select-all-schedules').prop('checked', true);
+            AIPS.updateScheduleBulkActions();
+        },
+
+        unselectAllSchedules: function() {
+            $('.aips-schedule-checkbox').prop('checked', false);
+            $('#cb-select-all-schedules').prop('checked', false);
+            AIPS.updateScheduleBulkActions();
+        },
+
+        updateScheduleBulkActions: function() {
+            var count = $('.aips-schedule-checkbox:checked').length;
+            var $applyBtn = $('#aips-schedule-bulk-apply');
+            var $unselectBtn = $('#aips-schedule-unselect-all');
+            var $countLabel = $('#aips-schedule-selected-count');
+
+            $applyBtn.prop('disabled', count === 0);
+            $unselectBtn.prop('disabled', count === 0);
+
+            if (count > 0) {
+                $countLabel.text(count + ' selected').show();
+            } else {
+                $countLabel.hide();
+            }
+        },
+
+        applyScheduleBulkAction: function(e) {
+            e.preventDefault();
+
+            var action = $('#aips-schedule-bulk-action').val();
+            if (!action) {
+                AIPS.Utilities.showToast('Please select a bulk action.', 'warning');
+                return;
+            }
+
+            var ids = [];
+            $('.aips-schedule-checkbox:checked').each(function() {
+                ids.push($(this).val());
+            });
+
+            if (ids.length === 0) {
+                AIPS.Utilities.showToast('Please select at least one schedule.', 'warning');
+                return;
+            }
+
+            if (action === 'delete') {
+                var deleteMsg = ids.length === 1
+                    ? 'Are you sure you want to delete 1 schedule?'
+                    : 'Are you sure you want to delete ' + ids.length + ' schedules?';
+                AIPS.Utilities.confirm(
+                    deleteMsg,
+                    'Delete Schedules',
+                    [
+                        { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                        { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() { AIPS.bulkDeleteSchedules(ids); } }
+                    ]
+                );
+            } else if (action === 'pause') {
+                AIPS.bulkToggleSchedules(ids, 0);
+            } else if (action === 'activate') {
+                AIPS.bulkToggleSchedules(ids, 1);
+            } else if (action === 'run_now') {
+                // Fetch estimated post count then confirm
+                $.ajax({
+                    url: aipsAjax.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'aips_get_schedules_post_count',
+                        nonce: aipsAjax.nonce,
+                        ids: ids
+                    },
+                    success: function(response) {
+                        var count = response.success ? (response.data.count || ids.length) : ids.length;
+                        var runMsg = 'This will generate an estimated ' + count + ' post' + (count !== 1 ? 's' : '') + '. Are you sure?';
+                        AIPS.Utilities.confirm(
+                            runMsg,
+                            'Run Schedules Now',
+                            [
+                                { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                                { label: 'Yes, run now', className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
+                            ]
+                        );
+                    },
+                    error: function() {
+                        var runMsg = 'This will run ' + ids.length + ' schedule' + (ids.length !== 1 ? 's' : '') + '. Are you sure?';
+                        AIPS.Utilities.confirm(
+                            runMsg,
+                            'Run Schedules Now',
+                            [
+                                { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                                { label: 'Yes, run now', className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
+                            ]
+                        );
+                    }
+                });
+            }
+        },
+
+        bulkDeleteSchedules: function(ids) {
+            var $applyBtn = $('#aips-schedule-bulk-apply');
+            $applyBtn.prop('disabled', true).text('Deleting...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_delete_schedules',
+                    nonce: aipsAjax.nonce,
+                    ids: ids
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.Utilities.showToast(response.data.message, 'success');
+                        ids.forEach(function(id) {
+                            $('tr[data-schedule-id="' + id + '"]').fadeOut(function() {
+                                $(this).remove();
+                            });
+                        });
+                        $('#cb-select-all-schedules').prop('checked', false);
+                        AIPS.updateScheduleBulkActions();
+                    } else {
+                        AIPS.Utilities.showToast(response.data.message || 'Failed to delete schedules.', 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                },
+                complete: function() {
+                    $applyBtn.text('Apply');
+                    AIPS.updateScheduleBulkActions();
+                }
+            });
+        },
+
+        bulkToggleSchedules: function(ids, isActive) {
+            var $applyBtn = $('#aips-schedule-bulk-apply');
+            $applyBtn.prop('disabled', true).text(isActive ? 'Activating...' : 'Pausing...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_toggle_schedules',
+                    nonce: aipsAjax.nonce,
+                    ids: ids,
+                    is_active: isActive
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.Utilities.showToast(response.data.message, 'success');
+                        ids.forEach(function(id) {
+                            var $row = $('tr[data-schedule-id="' + id + '"]');
+                            var $toggle = $row.find('.aips-toggle-schedule');
+                            var $wrapper = $row.find('.aips-schedule-status-wrapper');
+                            var $badge = $wrapper.find('.aips-badge');
+                            var $icon = $badge.find('.dashicons');
+
+                            $toggle.prop('checked', isActive === 1);
+                            $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
+                            $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
+                            // nodeType === 3 = TEXT_NODE; removes leftover status text without touching child elements
+                            $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
+
+                            if (isActive) {
+                                $badge.addClass('aips-badge-success');
+                                $icon.addClass('dashicons-yes-alt');
+                                $icon.after(' Active');
+                            } else {
+                                $badge.addClass('aips-badge-neutral');
+                                $icon.addClass('dashicons-minus');
+                                $icon.after(' Inactive');
+                            }
+                            $row.data('is-active', isActive);
+                        });
+                    } else {
+                        AIPS.Utilities.showToast(response.data.message || 'Failed to update schedules.', 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                },
+                complete: function() {
+                    $applyBtn.text('Apply');
+                    AIPS.updateScheduleBulkActions();
+                }
+            });
+        },
+
+        bulkRunNowSchedules: function(ids) {
+            var $applyBtn = $('#aips-schedule-bulk-apply');
+            $applyBtn.prop('disabled', true).text('Running...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_run_now_schedules',
+                    nonce: aipsAjax.nonce,
+                    ids: ids
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.Utilities.showToast(response.data.message, 'success', { duration: 8000 });
+                    } else {
+                        AIPS.Utilities.showToast(response.data.message || 'Bulk run failed.', 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                },
+                complete: function() {
+                    $applyBtn.text('Apply');
+                    AIPS.updateScheduleBulkActions();
                 }
             });
         },
@@ -1218,30 +1474,31 @@
 
             var status = $(this).data('status');
             var message = status ? 'Are you sure you want to clear all ' + status + ' history?' : 'Are you sure you want to clear all history?';
-            
-            if (!confirm(message)) {
-                return;
-            }
 
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_clear_history',
-                    nonce: aipsAjax.nonce,
-                    status: status
-                },
-                success: function(response) {
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        alert(response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                }
-            });
+            AIPS.Utilities.confirm(message, 'Notice', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, clear', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_clear_history',
+                            nonce: aipsAjax.nonce,
+                            status: status
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                location.reload();
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message, 'error');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                        }
+                    });
+                }}
+            ]);
         },
 
         retryGeneration: function(e) {
@@ -1262,15 +1519,15 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'success');
 
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Retry');
@@ -1407,7 +1664,7 @@
                 },
                 success: function(response) {
                     if (!response.success) {
-                        alert(response.data && response.data.message ? response.data.message : 'Failed to reload history.');
+                        AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Failed to reload history.', 'error');
 
                         return;
                     }
@@ -1461,7 +1718,7 @@
                     AIPS.updateDeleteButton();
                 },
                 error: function() {
-                    alert('An error occurred while reloading history.');
+                    AIPS.Utilities.showToast('An error occurred while reloading history.', 'error');
                 },
                 complete: function() {
                     if (isReloadBtn && $btn.length) {
@@ -1517,7 +1774,7 @@
             e.preventDefault();
 
             if (typeof wp === 'undefined' || !wp.media) {
-                alert('Media library is not available.');
+                AIPS.Utilities.showToast('Media library is not available.', 'warning');
                 return;
             }
 
@@ -1594,9 +1851,9 @@
 
         filterSchedules: function() {
             var term = $('#aips-schedule-search').val().toLowerCase().trim();
-            var $rows = $('.aips-schedules-container table tbody tr');
+            var $rows = $('.aips-schedule-table tbody tr');
             var $noResults = $('#aips-schedule-search-no-results');
-            var $table = $('.aips-schedules-container table');
+            var $table = $('.aips-schedule-table');
             var $clearBtn = $('#aips-schedule-search-clear');
             var hasVisible = false;
 
@@ -1759,9 +2016,9 @@
 
         filterAuthors: function() {
             var term = $('#aips-author-search').val().toLowerCase().trim();
-            var $rows = $('.aips-authors-list tbody tr');
+            var $rows = $('.aips-authors-table tbody tr');
             var $noResults = $('#aips-author-search-no-results');
-            var $table = $('.aips-authors-list table');
+            var $table = $('.aips-authors-table');
             var $clearBtn = $('#aips-author-search-clear');
             var hasVisible = false;
 
@@ -1859,12 +2116,12 @@
                     if (response.success) {
                         AIPS.renderDetails(response.data);
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                         $('#aips-details-modal').hide();
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                     $('#aips-details-modal').hide();
                 },
                 complete: function() {
@@ -2042,56 +2299,6 @@
             });
         },
 
-        /**
-         * Displays a toast notification in the top-right corner of the screen.
-         *
-         * Accepts plain text or pre-built HTML (for links). Plain-text messages
-         * are auto-escaped; if you pass HTML, set {@code isHtml} to true.
-         *
-         * @param {string}  message  - The message to display.
-         * @param {string}  type     - One of 'success', 'error', 'warning', 'info'.
-         * @param {Object}  [opts]   - Optional settings.
-         * @param {boolean} [opts.isHtml=false]    - If true, message is inserted as raw HTML.
-         * @param {number}  [opts.duration=6000]   - Auto-dismiss delay in ms (0 = no auto-dismiss).
-         */
-        showToast: function(message, type, opts) {
-            type = type || 'info';
-            opts = opts || {};
-            var duration = opts.duration !== undefined ? opts.duration : 6000;
-            var isHtml   = opts.isHtml || false;
-
-            var iconMap = { success: '\u2713', error: '\u2715', warning: '\u26A0', info: '\u2139' };
-
-            var $container = $('#aips-toast-container');
-            if (!$container.length) {
-                $container = $('<div id="aips-toast-container"></div>');
-                $('body').append($container);
-            }
-
-            var safeMessage = isHtml ? message : $('<div>').text(message).html();
-
-            var $toast = $('<div class="aips-toast ' + type + '">')
-                .append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
-                .append('<div class="aips-toast-message">' + safeMessage + '</div>')
-                .append('<button class="aips-toast-close" aria-label="Close">&times;</button>');
-
-            $container.append($toast);
-
-            $toast.find('.aips-toast-close').on('click', function() {
-                $toast.addClass('closing');
-                setTimeout(function() { $toast.remove(); }, 300);
-            });
-
-            if (duration > 0) {
-                setTimeout(function() {
-                    if ($toast.parent().length) {
-                        $toast.addClass('closing');
-                        setTimeout(function() { $toast.remove(); }, 300);
-                    }
-                }, duration);
-            }
-        },
-
         closeModal: function() {
             var $target = $(this).closest('.aips-modal');
             if ($target.length) {
@@ -2121,6 +2328,34 @@
                 : 'admin.php?page=aips-schedule&schedule_template=' + templateId;
             $('#aips-quick-schedule-btn').attr('href', scheduleUrl).data('template-id', templateId);
             $('#aips-quick-run-now-btn').data('template-id', templateId);
+        },
+
+        /**
+         * Triggers Quick Schedule for the just-saved template from the post-save panel.
+         *
+         * @param {Event} e - Click event.
+         */
+        quickSchedule: function(e) {
+            // Allow modified clicks (Ctrl/Cmd-click, middle-click) to open in a new tab as usual
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+                return;
+            }
+            e.preventDefault();
+            var $btn = $(this);
+            var templateId = $btn.data('template-id');
+
+            if (!templateId) return;
+
+            // Use the aipsAjax.schedulePageUrl if available or fallback
+            var scheduleUrlBase = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
+                ? aipsAjax.schedulePageUrl
+                : 'admin.php?page=aips-schedule';
+
+            // Build the URL safely, handling whether scheduleUrlBase already contains a query string
+            var url = new URL(scheduleUrlBase, window.location.href);
+            url.searchParams.set('schedule_template', templateId);
+            url.hash = 'open_schedule_modal';
+            window.location.href = url.toString();
         },
 
         /**
@@ -2156,11 +2391,11 @@
                         }
                         $('#aips-post-success-modal').show();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).html('<span class="dashicons dashicons-controls-play"></span> Run Now');
@@ -2176,20 +2411,57 @@
             var $modal = $('#aips-schedule-modal');
             if (!$modal.length) return;
 
+            // Prefer preselect from data attribute, then fall back to URL query param.
             var preselectId = $modal.data('preselect-template');
-            if (!preselectId) return;
 
-            $('#aips-schedule-form')[0].reset();
+            if (!preselectId) {
+                var urlParams = null;
+
+                try {
+                    // Use URL API when available (already used elsewhere in this file)
+                    // and fall back to URLSearchParams if needed
+                    urlParams = new URL(window.location.href).searchParams;
+                } catch (e) {
+                    try {
+                        urlParams = new URLSearchParams(window.location.search);
+                    } catch (e2) {
+                        urlParams = null;
+                    }
+                }
+
+                if (urlParams) {
+                    preselectId = urlParams.get('schedule_template');
+                }
+            }
+
+            // Only proceed with a valid positive integer template ID
+            var preselectIdNum = parseInt(preselectId, 10);
+            if (!preselectIdNum || preselectIdNum <= 0) return;
+
+            var $form = $('#aips-schedule-form');
+            if (!$form.length) return;
+
+            $form[0].reset();
             $('#schedule_id').val('');
-            $('#schedule_template').val(preselectId);
-            $('#aips-schedule-modal-title').text('Schedule Template');
+            $('#schedule_template').val(preselectIdNum);
+            $('#aips-schedule-modal-title').text('Add New Schedule');
             $modal.show();
 
             // Clean the URL to prevent re-triggering on refresh
             if (window.history && window.history.replaceState) {
-                var cleanUrl = window.location.href.replace(/[?&]schedule_template=\d+/, '');
-                cleanUrl = cleanUrl.replace(/\?$/, '');
-                window.history.replaceState(null, '', cleanUrl);
+                try {
+                    var cleanUrlObj = new URL(window.location.href);
+                    cleanUrlObj.searchParams.delete('schedule_template');
+                    cleanUrlObj.hash = '';
+                    window.history.replaceState(null, '', cleanUrlObj.toString());
+                } catch (e) {
+                    // Fallback to regex cleanup if URL API unavailable
+                    var cleanUrl = window.location.href.replace(/[?&]schedule_template=[^&]*/, '');
+                    cleanUrl = cleanUrl.replace(/\?&/, '?');  // Fix orphaned ?& when param was first
+                    cleanUrl = cleanUrl.replace(/\?$/, '');
+                    cleanUrl = cleanUrl.replace(/#open_schedule_modal$/, '');
+                    window.history.replaceState(null, '', cleanUrl);
+                }
             }
         },
 
@@ -2291,7 +2563,7 @@
             }
             
             if (!isValid && errorMessage) {
-                alert(errorMessage);
+                AIPS.Utilities.showToast(errorMessage, 'error');
             }
             
             return isValid;
@@ -2351,12 +2623,11 @@
 
             if (ids.length === 0) return;
 
-            if (!confirm('Are you sure you want to delete ' + ids.length + ' item(s)?')) {
-                return;
-            }
-
             var $btn = $(this);
-            $btn.prop('disabled', true).text('Deleting...');
+            AIPS.Utilities.confirm('Are you sure you want to delete ' + ids.length + ' item(s)?', 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $btn.prop('disabled', true).text('Deleting...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -2370,15 +2641,17 @@
                     if (response.success) {
                         location.reload();
                     } else {
-                        alert(response.data.message);
+                        AIPS.Utilities.showToast(response.data.message, 'error');
                         $btn.prop('disabled', false).text('Delete Selected');
                     }
                 },
                 error: function() {
-                    alert('An error occurred. Please try again.');
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
                     $btn.prop('disabled', false).text('Delete Selected');
                 }
             });
+                }}
+            ]);
         },
 
         // AI Variables feature methods
