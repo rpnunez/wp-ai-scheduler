@@ -74,6 +74,8 @@ class AIPS_Admin_Assets {
             // Schedule strings
             'runScheduleConfirm' => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
             'scheduleRunning' => __('Running...', 'ai-post-scheduler'),
+            'scheduleActive' => __('Schedule Active', 'ai-post-scheduler'),
+            'closeWizard' => __('Close Wizard', 'ai-post-scheduler'),
         ));
 
 		// Enqueue Authors-specific assets
