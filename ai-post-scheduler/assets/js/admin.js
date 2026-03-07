@@ -1768,7 +1768,7 @@
             AIPS.filterHistory(e);
         },
 
-
+        reloadHistory: function(e, paged) {
             if (e) {
                 e.preventDefault();
             }
