@@ -999,6 +999,59 @@
     border-bottom: 1px solid #f0f0f1;
 }
 
+/* Author-Topics-style stat cards (flat, centered, colored values) */
+.aips-topics-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.aips-topics-stats .aips-stat-card {
+    flex: 1;
+    min-width: 120px;
+    padding: 16px 20px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.aips-topics-stats .aips-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    color: #1d2327;
+}
+
+.aips-topics-stats .aips-stat-label {
+    font-size: 12px;
+    color: #50575e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+.aips-topics-stats .aips-stat-card.aips-stat-info .aips-stat-value {
+    color: #2271b1;
+}
+
+.aips-topics-stats .aips-stat-card.aips-stat-success .aips-stat-value {
+    color: #00a32a;
+}
+
+.aips-topics-stats .aips-stat-card.aips-stat-warning .aips-stat-value {
+    color: #dba617;
+}
+
+.aips-topics-stats .aips-stat-card.aips-stat-muted .aips-stat-value {
+    color: #50575e;
+}
+
 .aips-no-data {
     color: #646970;
     text-align: center;
@@ -2638,33 +2691,44 @@
 
 .aips-tab-nav {
     display: flex;
-    gap: 10px;
-    margin: 0;
+    gap: 0;
+    margin: 20px 0 0;
     padding: 0;
     list-style: none;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #ccd0d4;
 }
 
 .aips-tab-nav li {
     margin: 0;
 }
 
-.aips-tab-nav a {
+.aips-tab-nav a,
+.aips-tab-nav button {
     display: block;
-    padding: 10px 20px;
+    padding: 12px 20px;
     text-decoration: none;
-    color: #555;
+    font-size: 14px;
+    color: #50575e;
     border-bottom: 2px solid transparent;
+    margin-right: 10px;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    cursor: pointer;
     transition: all 0.2s ease;
 }
 
-.aips-tab-nav a:hover {
-    color: #0073aa;
+.aips-tab-nav a:hover,
+.aips-tab-nav button:hover {
+    color: #2271b1;
 }
 
-.aips-tab-nav a.active {
-    color: #0073aa;
-    border-bottom-color: #0073aa;
+.aips-tab-nav a.active,
+.aips-tab-nav button.active {
+    color: #2271b1;
+    border-bottom-color: #2271b1;
+    font-weight: 600;
 }
 
 .aips-tab-content {
@@ -2821,8 +2885,9 @@
         padding: 15px;
     }
     
-    .aips-tab-nav a {
-        padding: 8px 15px;
+    .aips-tab-nav a,
+    .aips-tab-nav button {
+        padding: 8px 12px;
         font-size: 13px;
     }
 }

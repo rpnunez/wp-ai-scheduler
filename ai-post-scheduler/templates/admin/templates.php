@@ -26,9 +26,14 @@ if (!defined('ABSPATH')) {
         <div class="aips-content-panel">
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
-                <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
-                <input type="search" id="aips-template-search" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
-                <button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                <div class="aips-filter-left">
+                    <span class="aips-result-count"><?php printf(esc_html__('%d templates', 'ai-post-scheduler'), count($templates)); ?></span>
+                </div>
+                <div class="aips-filter-right">
+                    <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
+                    <input type="search" id="aips-template-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
+                    <button type="button" id="aips-template-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                </div>
             </div>
             
             <!-- Templates Table -->
