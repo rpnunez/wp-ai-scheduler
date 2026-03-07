@@ -2137,12 +2137,15 @@
             if (!templateId) return;
 
             // Use the aipsAjax.schedulePageUrl if available or fallback
-            var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
+            var scheduleUrlBase = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
                 ? aipsAjax.schedulePageUrl
                 : 'admin.php?page=aips-schedule';
 
-            // Append the template ID parameter to automatically open the schedule modal
-            window.location.href = scheduleUrl + '&schedule_template=' + templateId + '#open_schedule_modal';
+            // Build the URL safely, handling whether scheduleUrlBase already contains a query string
+            var url = new URL(scheduleUrlBase, window.location.href);
+            url.searchParams.set('schedule_template', templateId);
+            url.hash = 'open_schedule_modal';
+            window.location.href = url.toString();
         },
 
         /**
