@@ -35,3 +35,7 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+
+## 2026-01-23 - Author Topics Search and Pagination
+**Learning:** The Author Topics modal loaded all generated topics at once without search or pagination, which could clutter the UI and cause performance issues for authors with numerous topics.
+**Action:** Implemented server-side search and pagination for the Author Topics modal by updating the repository and AJAX controller to accept/process arguments, and modifying the frontend JS to render the controls dynamically.
