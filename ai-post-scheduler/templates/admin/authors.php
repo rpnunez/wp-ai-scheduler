@@ -56,7 +56,22 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                 <!-- Filter Bar -->
                 <div class="aips-filter-bar">
                     <div class="aips-filter-left">
-                        <span class="aips-result-count"><?php printf(esc_html__('%d authors', 'ai-post-scheduler'), count($authors)); ?></span>
+                        <span class="aips-result-count">
+                            <?php
+                            $authors_count = count( $authors );
+                            printf(
+                                esc_html(
+                                    _n(
+                                        '%s author',
+                                        '%s authors',
+                                        $authors_count,
+                                        'ai-post-scheduler'
+                                    )
+                                ),
+                                number_format_i18n( $authors_count )
+                            );
+                            ?>
+                        </span>
                     </div>
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
