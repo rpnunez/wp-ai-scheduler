@@ -2871,11 +2871,6 @@
         max-height: 200px;
     }
 }
-/* ========================================
-   Proposal B Navigation - Section Headers
-   ======================================== */
-
-/* Style for non-clickable section headers in the admin menu */
 /* Settings page inline styles */
 .aips-status-message {
     display: flex;
