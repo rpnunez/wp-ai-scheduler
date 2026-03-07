@@ -20,7 +20,8 @@
         },
 
         /**
-         * Displays a toast notification in the top-right corner of the screen.
+         * Displays a toast notification centered ~1/3 down from the top of the screen,
+         * aligned to the horizontal center of .aips-page-container when present.
          *
          * Accepts plain text or pre-built HTML (for links). Plain-text messages
          * are auto-escaped; if you pass HTML, set `isHtml` to true.
@@ -43,6 +44,7 @@
             if (!$container.length) {
                 $container = $('<div id="aips-toast-container"></div>');
                 $('body').append($container);
+                AIPS.Utilities._positionToastContainer($container);
             }
 
             var closeLabel = (window.aipsUtilitiesL10n && aipsUtilitiesL10n.closeLabel) ? aipsUtilitiesL10n.closeLabel : 'Close notification';
@@ -68,6 +70,37 @@
                     }
                 }, duration);
             }
+        },
+
+        /**
+         * Aligns the toast container's horizontal center to .aips-page-container
+         * (or #wpcontent as a fallback) so toasts appear centered within the
+         * plugin's content area rather than the full viewport.
+         *
+         * Also attaches a debounced window resize listener so the position stays
+         * correct if the browser window is resized or the sidebar is toggled.
+         *
+         * @param {jQuery} $container - The #aips-toast-container element.
+         * @private
+         */
+        _positionToastContainer: function($container) {
+            var self = this;
+
+            function reposition() {
+                var el = document.querySelector('.aips-page-container') ||
+                         document.getElementById('wpcontent');
+                if (!el) { return; }
+                var rect = el.getBoundingClientRect();
+                $container.css('left', Math.round(rect.left + rect.width / 2) + 'px');
+            }
+
+            reposition();
+
+            var resizeTimer;
+            $(window).on('resize.aips-toast', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(reposition, 100);
+            });
         },
 
         /**
