@@ -7,6 +7,16 @@
     // Extend AIPS with Planner functionality
     Object.assign(window.AIPS, {
 
+        /**
+         * Generate blog topics from the AI engine based on a niche/keyword.
+         *
+         * Reads the niche from `#planner-niche` and the desired count from
+         * `#planner-count`, then sends the `aips_generate_topics` AJAX action.
+         * On success, passes the returned topics to `renderTopics` and slides
+         * down the results panel.
+         *
+         * @param {Event} e - Click event from `#btn-generate-topics`.
+         */
         generateTopics: function(e) {
             e.preventDefault();
             var niche = $('#planner-niche').val();
@@ -48,6 +58,16 @@
             });
         },
 
+        /**
+         * Parse a newline-separated list of topics from the manual entry textarea.
+         *
+         * Reads `#planner-manual-topics`, splits on newlines, trims whitespace,
+         * and filters empty lines. Passes the resulting array to `renderTopics`
+         * with `append=true` so existing topics are preserved. Clears the
+         * textarea on success.
+         *
+         * @param {Event} e - Click event from `#btn-parse-manual`.
+         */
         parseManualTopics: function(e) {
             e.preventDefault();
             var text = $('#planner-manual-topics').val();
@@ -62,6 +82,17 @@
             }
         },
 
+        /**
+         * Render an array of topic strings as editable checkbox rows in `#topics-list`.
+         *
+         * Each topic is HTML-escaped before being inserted as an `<input value>`.
+         * When `append` is `true` the new rows are appended to any existing rows;
+         * otherwise the list is replaced entirely. Calls `updateSelectionCount`
+         * after rendering.
+         *
+         * @param {Array<string>} topics - Array of topic title strings to render.
+         * @param {boolean}       [append=false] - If `true`, append rather than replace.
+         */
         renderTopics: function(topics, append) {
             var html = '';
             topics.forEach(function(topic) {
@@ -85,6 +116,15 @@
             window.AIPS.updateSelectionCount();
         },
 
+        /**
+         * Show or hide `.topic-item` rows based on whether their text input
+         * value matches the current `#planner-topic-search` value.
+         *
+         * Only tests `.topic-item` elements that are currently visible.
+         * Calls `updateSelectionCount` after filtering to keep the count accurate.
+         *
+         * Bound to the first `keyup search` listener on `#planner-topic-search`.
+         */
         filterTopics: function() {
             var filter = $('#planner-topic-search').val().toLowerCase();
             $('.topic-item').each(function() {
@@ -98,17 +138,43 @@
             window.AIPS.updateSelectionCount();
         },
 
+        /**
+         * Sync all `.topic-checkbox` elements with the state of the
+         * `#check-all-topics` "select all" checkbox.
+         *
+         * Only `.topic-checkbox:visible` elements are toggled so hidden (filtered)
+         * rows are not accidentally selected.
+         * Calls `updateSelectionCount` to refresh the count label.
+         *
+         * Bound to the `change` event on `#check-all-topics`.
+         */
         toggleAllTopics: function() {
             var isChecked = $(this).is(':checked');
             $('.topic-checkbox:visible').prop('checked', isChecked);
             window.AIPS.updateSelectionCount();
         },
 
+        /**
+         * Update the "N selected" label next to the topic list.
+         *
+         * Counts the number of checked `.topic-checkbox` elements (regardless of
+         * visibility) and updates every `.selection-count` element.
+         */
         updateSelectionCount: function() {
             var count = $('.topic-checkbox:checked').length;
             $('.selection-count').text(count + ' selected');
         },
 
+        /**
+         * Clear all generated topics using a two-click soft-confirm pattern.
+         *
+         * The first click changes the button label to "Click again to confirm" and
+         * starts a 3-second auto-reset timer. The second click (within the window)
+         * empties `#topics-list`, hides the results panel, clears all input fields,
+         * and resets the selection count.
+         *
+         * Bound to the `click` event on `#btn-clear-topics`.
+         */
         clearTopics: function() {
             var $btn = $(this);
             var originalText = $btn.data('original-text') || $btn.text();
@@ -146,6 +212,16 @@
             }
         },
 
+        /**
+         * Filter `.topic-item` rows in real time and manage the clear button.
+         *
+         * Shows or hides the `#planner-topic-search-clear` button depending on
+         * whether the search field is non-empty. Shows an inline empty-state
+         * message when no topics match the term. Removes the empty-state message
+         * when the field is cleared or topics become visible again.
+         *
+         * Bound to the second `keyup search` listener on `#planner-topic-search`.
+         */
         filterTopics: function() {
             var term = $(this).val().toLowerCase();
             var $clearBtn = $('#planner-topic-search-clear');
@@ -178,10 +254,26 @@
             }
         },
 
+        /**
+         * Clear the topic search field and re-trigger the keyup event to
+         * restore all hidden rows.
+         *
+         * Bound to the `click` event on `#planner-topic-search-clear`.
+         */
         clearTopicSearch: function() {
             $('#planner-topic-search').val('').trigger('keyup');
         },
 
+        /**
+         * Copy all checked topic titles to the clipboard as a newline-separated list.
+         *
+         * Collects the trimmed text value of each sibling `.topic-text-input` for
+         * every checked `.topic-checkbox`. Uses the Clipboard API when available,
+         * falling back to `document.execCommand('copy')` for older browsers.
+         * Briefly changes the button label to "Copied!" on success.
+         *
+         * Bound to the `click` event on `#btn-copy-topics`.
+         */
         copySelectedTopics: function() {
             var topics = [];
             $('.topic-checkbox:checked').each(function() {
@@ -244,6 +336,16 @@
             }
         },
 
+        /**
+         * Schedule all checked topics in bulk via the `aips_bulk_schedule` AJAX
+         * action.
+         *
+         * Validates that at least one topic is selected, a template is chosen,
+         * and a start date is provided before sending. Clears the topic list and
+         * hides the results panel on success.
+         *
+         * @param {Event} e - Click event from `#btn-bulk-schedule`.
+         */
         bulkSchedule: function(e) {
             e.preventDefault();
             var topics = [];
