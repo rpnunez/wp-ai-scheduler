@@ -361,10 +361,10 @@
 					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" title="' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '"><span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span></button>';
 					html += '</div>';
 				} else if (status === 'approved') {
-					html += '<button class="button aips-generate-post-now" data-id="' + topic.id + '">' + aipsAuthorsL10n.generatePostNow + '</button> ';
+					html += '<button class="button aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button> ';
 				}
 
-				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.edit + '</button>';
+				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
 				html += '</td></tr>';
 				
 				// Add collapsible detail row
@@ -501,7 +501,7 @@
 				},
 				success: (response) => {
 					if (response.success) {
-						showToast(response.data.message || 'Topic rejected.', 'success');
+						showToast(response.data.message || aipsAuthorsL10n.topicRejected || 'Topic rejected.', 'success');
 						this.loadTopics('pending');
 					} else {
 						showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
