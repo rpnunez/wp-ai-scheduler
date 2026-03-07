@@ -298,17 +298,29 @@
             }
 
             var $barWrap = $('<div class="aips-progress-bar-wrap"></div>');
-            var $barFill = $('<div class="aips-progress-bar-fill"></div>').css('width', '0%');
+            var $barFill = $('<div class="aips-progress-bar-fill"></div>')
+                .attr({
+                    role: 'progressbar',
+                    'aria-valuemin': '0',
+                    'aria-valuemax': '100',
+                    'aria-valuenow': '0'
+                })
+                .css('width', '0%');
             $barWrap.append($barFill);
             $body.append($barWrap);
 
-            var $statusLine = $('<p class="aips-progress-status"></p>');
+            var $statusLine = $('<p class="aips-progress-status" role="status" aria-live="polite"></p>');
             $body.append($statusLine);
 
             $dialog.append($header, $body);
             $overlay.append($dialog);
             $('body').append($overlay);
 
+            // Move keyboard focus into the dialog when it opens.
+            $dialog.attr('tabindex', '-1');
+            setTimeout(function() {
+                $dialog.focus();
+            }, 0);
             // ── Timer helpers ──────────────────────────────────────────────
             var startTime   = Date.now();
             var tickInterval;
