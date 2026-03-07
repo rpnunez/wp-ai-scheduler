@@ -73,13 +73,17 @@ class AIPS_Generated_Posts_Controller {
 		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
 		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;
 		$search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-		
+		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
+		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
+
 		// Get completed history entries with post IDs (for Generated Posts tab)
 		$history = $this->history_repository->get_history(array(
 			'page' => $generated_page,
 			'per_page' => 20,
 			'status' => 'completed',
 			'search' => $search_query,
+			'author_id' => $author_id,
+			'template_id' => $template_id,
 		));
 		
 		// Get schedule data for each post
@@ -118,7 +122,6 @@ class AIPS_Generated_Posts_Controller {
 		}
 		
 		// Get draft posts for Post Review tab
-		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
 		$draft_posts = $this->post_review_repository->get_draft_posts(array(
 			'page' => $review_page,
 			'search' => $search_query,
@@ -132,6 +135,10 @@ class AIPS_Generated_Posts_Controller {
 		// Get templates for filter dropdown
 		$template_repository = new AIPS_Template_Repository();
 		$templates = $template_repository->get_all();
+
+		// Get authors for filter dropdown
+		$authors_repository = new AIPS_Authors_Repository();
+		$authors = $authors_repository->get_all();
 		
 		// Get globally-initialized Post Review handler
 		global $aips_post_review_handler;
