@@ -152,9 +152,6 @@
             $(document).on('click', '#aips-author-search-clear', this.clearAuthorSearch);
             $(document).on('click', '.aips-clear-author-search-btn', this.clearAuthorSearch);
 
-            $(document).on('click', '.aips-view-template-posts', this.openTemplatePostsModal);
-            $(document).on('click', '.aips-modal-page', this.paginateTemplatePosts);
-
             $(document).on('click', '.aips-modal-close', this.closeModal);
             $(document).on('click', '.aips-modal', function(e) {
                 if ($(e.target).hasClass('aips-modal')) {
@@ -2439,73 +2436,6 @@
         clearAuthorSearch: function(e) {
             e.preventDefault();
             $('#aips-author-search').val('').trigger('keyup');
-        },
-
-        /**
-         * Open the template posts modal and load the first page of posts.
-         *
-         * Stores the template ID on the modal element so pagination calls can
-         * access it without re-reading the triggering element.
-         *
-         * @param {Event} e - Click event from an `.aips-view-template-posts`
-         *                    element.
-         */
-        openTemplatePostsModal: function(e) {
-            e.preventDefault();
-            var id = $(this).data('id');
-            $('#aips-template-posts-modal').data('template-id', id).show();
-            AIPS.loadTemplatePosts(id, 1);
-        },
-
-        /**
-         * Load another page of posts inside the template posts modal.
-         *
-         * Reads the target page number from the clicked `.aips-modal-page`
-         * element's `data-page` attribute and calls `loadTemplatePosts` with the
-         * template ID stored on the modal.
-         *
-         * @param {Event} e - Click event from an `.aips-modal-page` element.
-         */
-        paginateTemplatePosts: function(e) {
-            e.preventDefault();
-            var page = $(this).data('page');
-            var id = $('#aips-template-posts-modal').data('template-id');
-            AIPS.loadTemplatePosts(id, page);
-        },
-
-        /**
-         * Fetch and render a page of posts generated from a specific template.
-         *
-         * Sends the `aips_get_template_posts` AJAX action and injects the
-         * returned HTML into `#aips-template-posts-content`. Displays an inline
-         * error message if the request fails.
-         *
-         * @param {number} id   - The template ID to load posts for.
-         * @param {number} page - 1-based page number to fetch.
-         */
-        loadTemplatePosts: function(id, page) {
-            $('#aips-template-posts-content').html('<p class="aips-loading">Loading...</p>');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_get_template_posts',
-                    nonce: aipsAjax.nonce,
-                    template_id: id,
-                    page: page
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $('#aips-template-posts-content').html(response.data.html);
-                    } else {
-                        $('#aips-template-posts-content').html('<p class="aips-error-text">' + response.data.message + '</p>');
-                    }
-                },
-                error: function() {
-                    $('#aips-template-posts-content').html('<p class="aips-error-text">An error occurred.</p>');
-                }
-            });
         },
 
         /**

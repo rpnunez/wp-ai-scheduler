@@ -14,7 +14,6 @@ class AIPS_Templates_Controller {
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
         add_action('wp_ajax_aips_get_template', array($this, 'ajax_get_template'));
         add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
-        add_action('wp_ajax_aips_get_template_posts', array($this, 'ajax_get_template_posts'));
         add_action('wp_ajax_aips_clone_template', array($this, 'ajax_clone_template'));
         add_action('wp_ajax_aips_preview_template_prompts', array($this, 'ajax_preview_template_prompts'));
     }
@@ -214,93 +213,6 @@ class AIPS_Templates_Controller {
             'result' => $result,
             'message' => __('Test generation successful.', 'ai-post-scheduler')
         ));
-    }
-
-    public function ajax_get_template_posts() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
-
-        $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-        $page = isset($_POST['page']) ? absint($_POST['page']) : 1;
-
-        if (!$template_id) {
-            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
-        }
-
-        $history = new AIPS_History();
-        $data = $history->get_history(array(
-            'template_id' => $template_id,
-            'page' => $page,
-            'per_page' => 10,
-            'status' => 'completed'
-        ));
-
-        ob_start();
-        if (!empty($data['items'])): ?>
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
-                        <th><?php esc_html_e('Date', 'ai-post-scheduler'); ?></th>
-                        <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($data['items'] as $item): ?>
-                    <tr>
-                        <td>
-                            <?php if ($item->post_id): ?>
-                                <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" target="_blank">
-                                    <?php echo esc_html($item->generated_title); ?>
-                                </a>
-                            <?php else: ?>
-                                <?php echo esc_html($item->generated_title); ?>
-                            <?php endif; ?>
-                        </td>
-                        <td><?php echo esc_html($item->created_at); ?></td>
-                        <td>
-                            <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" class="button button-small" target="_blank">
-                                <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-                            </a>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-
-            <?php if ($data['pages'] > 1): ?>
-            <div class="aips-pagination" style="margin-top: 10px; text-align: right;">
-                <?php
-                $current = $data['current_page'];
-                $total = $data['pages'];
-
-                if ($current > 1) {
-                    echo '<button type="button" class="button aips-modal-page" data-page="' . ($current - 1) . '">&laquo; ' . esc_html__('Prev', 'ai-post-scheduler') . '</button> ';
-                }
-
-                printf(
-                    '<span class="paging-input">%s %d %s %d</span> ',
-                    esc_html__('Page', 'ai-post-scheduler'),
-                    $current,
-                    esc_html__('of', 'ai-post-scheduler'),
-                    $total
-                );
-
-                if ($current < $total) {
-                    echo '<button type="button" class="button aips-modal-page" data-page="' . ($current + 1) . '">' . esc_html__('Next', 'ai-post-scheduler') . ' &raquo;</button>';
-                }
-                ?>
-            </div>
-            <?php endif; ?>
-        <?php else: ?>
-            <p><?php esc_html_e('No posts generated yet.', 'ai-post-scheduler'); ?></p>
-        <?php endif;
-        $html = ob_get_clean();
-
-        wp_send_json_success(array('html' => $html));
     }
 
     /**
