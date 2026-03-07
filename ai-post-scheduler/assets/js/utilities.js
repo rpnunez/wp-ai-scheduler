@@ -47,12 +47,13 @@
                 AIPS.Utilities._positionToastContainer($container);
             }
 
+            var closeLabel = (window.aipsUtilitiesL10n && aipsUtilitiesL10n.closeLabel) ? aipsUtilitiesL10n.closeLabel : 'Close notification';
             var safeMessage = isHtml ? message : $('<div>').text(message).html();
 
             var $toast = $('<div class="aips-toast ' + type + '">')
-                .append('<span class="aips-toast-icon">' + (iconMap[type] || iconMap.info) + '</span>')
-                .append('<div class="aips-toast-message">' + safeMessage + '</div>')
-                .append('<button class="aips-toast-close" aria-label="Close">&times;</button>');
+              .append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
+              .append('<div class="aips-toast-message">' + safeMessage + '</div>')
+              .append($('<button class="aips-toast-close">&times;</button>').attr('aria-label', closeLabel));
 
             $container.append($toast);
 
