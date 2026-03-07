@@ -43,32 +43,9 @@ class AIPS_History_Repository {
     }
     
     /**
-     * Get paginated history with optional filtering.
-     *
-     * @param array $args {
-     *     Optional. Query arguments.
-     *
-     *     @type int    $per_page    Number of items per page. Default 20.
-     *     @type int    $page        Current page number. Default 1.
-     *     @type string $status      Filter by status. Default empty.
-     *     @type string $search      Search term for title. Default empty.
-     *     @type int    $template_id Filter by template ID. Default 0.
-     *     @type string $orderby     Column to order by. Default 'created_at'.
-     *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
-     * }
-     * @return array {
-     *     @type array $items        Array of history items.
-     *     @type int   $total        Total number of items.
-     *     @type int   $pages        Total number of pages.
-     *     @type int   $current_page Current page number.
-     * }
-     */
-    /**
      * Retrieve paginated history items with optional filtering.
      *
      * Supports filtering by status, search term, template ID, and date range.
-     * The `date_from` and `date_to` parameters accept any value parseable by
-     * MySQL's DATE() function (e.g. 'YYYY-MM-DD').
      *
      * @param array $args {
      *     Optional. Query arguments.
@@ -191,6 +168,25 @@ class AIPS_History_Repository {
         );
     }
     
+    /**
+     * Get templates that have at least one history record.
+     *
+     * Used to populate the template filter dropdown on the History page so that
+     * only relevant templates are shown.
+     *
+     * @return array Array of objects with `id` and `name` properties, ordered by name.
+     */
+    public function get_templates_for_filter() {
+        $templates_table = $this->wpdb->prefix . 'aips_templates';
+
+        return $this->wpdb->get_results(
+            "SELECT DISTINCT t.id, t.name
+             FROM {$this->table_name} h
+             INNER JOIN {$templates_table} t ON h.template_id = t.id
+             ORDER BY t.name ASC"
+        );
+    }
+
     /**
      * Get a single history item by ID.
      *

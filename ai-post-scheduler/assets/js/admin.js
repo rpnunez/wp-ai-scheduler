@@ -96,6 +96,8 @@
             // Date range quick-filter preset buttons
             $(document).on('click', '.aips-date-preset', this.applyDatePreset);
             $(document).on('click', '#aips-date-preset-clear', this.clearDatePreset);
+            // Template filter dropdown — trigger reload immediately on change
+            $(document).on('change', '#aips-filter-template', this.filterHistory);
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
             // History Pagination
@@ -1559,18 +1561,25 @@
         filterHistory: function(e) {
             e.preventDefault();
 
-            var status = $('#aips-filter-status').val();
-            var search = $('#aips-history-search-input').val();
-            var dateFrom = $('#aips-date-from').val();
-            var dateTo   = $('#aips-date-to').val();
+            var status     = $('#aips-filter-status').val();
+            var templateId = $('#aips-filter-template').val() || $('#aips-filter-template-id').val() || '';
+            var search     = $('#aips-history-search-input').val();
+            var dateFrom   = $('#aips-date-from').val();
+            var dateTo     = $('#aips-date-to').val();
 
             // Update URL without reloading
             var url = new URL(window.location.href);
-            
+
             if (status) {
                 url.searchParams.set('status', status);
             } else {
                 url.searchParams.delete('status');
+            }
+
+            if (templateId) {
+                url.searchParams.set('template_id', templateId);
+            } else {
+                url.searchParams.delete('template_id');
             }
 
             if (search) {
@@ -1592,7 +1601,7 @@
             }
 
             url.searchParams.delete('paged');
-            
+
             window.history.pushState({path: url.toString()}, '', url.toString());
 
             AIPS.reloadHistory(e, 1);
@@ -1601,30 +1610,31 @@
         exportHistory: function(e) {
             e.preventDefault();
 
-            var status   = $('#aips-filter-status').val();
-            var search   = $('#aips-history-search-input').val();
-            var dateFrom = $('#aips-date-from').val();
-            var dateTo   = $('#aips-date-to').val();
-            
+            var status     = $('#aips-filter-status').val();
+            var templateId = $('#aips-filter-template').val() || $('#aips-filter-template-id').val() || '';
+            var search     = $('#aips-history-search-input').val();
+            var dateFrom   = $('#aips-date-from').val();
+            var dateTo     = $('#aips-date-to').val();
+
             // Create a form and submit it with POST
             var form = $('<form>', {
                 'method': 'POST',
                 'action': aipsAjax.ajaxUrl,
                 'target': '_self'
             });
-            
+
             form.append($('<input>', {
                 'type': 'hidden',
                 'name': 'action',
                 'value': 'aips_export_history'
             }));
-            
+
             form.append($('<input>', {
                 'type': 'hidden',
                 'name': 'nonce',
                 'value': aipsAjax.nonce
             }));
-            
+
             if (status) {
                 form.append($('<input>', {
                     'type': 'hidden',
@@ -1632,7 +1642,15 @@
                     'value': status
                 }));
             }
-            
+
+            if (templateId) {
+                form.append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'template_id',
+                    'value': templateId
+                }));
+            }
+
             if (search) {
                 form.append($('<input>', {
                     'type': 'hidden',
@@ -1656,7 +1674,7 @@
                     'value': dateTo
                 }));
             }
-            
+
             // Append form to body, submit, and remove
             form.appendTo('body').submit().remove();
         },
@@ -1773,11 +1791,12 @@
                 e.preventDefault();
             }
 
-            var status   = $('#aips-filter-status').val();
-            var search   = $('#aips-history-search-input').val();
-            var dateFrom = $('#aips-date-from').val();
-            var dateTo   = $('#aips-date-to').val();
-            var $btn = $('#aips-reload-history-btn');            
+            var status     = $('#aips-filter-status').val();
+            var templateId = $('#aips-filter-template').val() || $('#aips-filter-template-id').val() || '';
+            var search     = $('#aips-history-search-input').val();
+            var dateFrom   = $('#aips-date-from').val();
+            var dateTo     = $('#aips-date-to').val();
+            var $btn = $('#aips-reload-history-btn');
             var isReloadBtn = $btn.length && e && $(e.currentTarget).is('#aips-reload-history-btn');
             var originalHtml;
 
@@ -1796,12 +1815,13 @@
                 type: 'POST',
                 dataType: 'json',
                 data: {
-                    action:    'aips_reload_history',
-                    nonce:     aipsAjax.nonce,
-                    status:    status,
-                    search:    search,
-                    date_from: dateFrom,
-                    date_to:   dateTo,
+                    action:      'aips_reload_history',
+                    nonce:       aipsAjax.nonce,
+                    status:      status,
+                    template_id: templateId,
+                    search:      search,
+                    date_from:   dateFrom,
+                    date_to:     dateTo,
                     paged:     paged
                 },
                 success: function(response) {

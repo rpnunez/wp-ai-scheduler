@@ -2480,7 +2480,8 @@
 }
 
 /* =========================================================
-   Toast Notification Styles (global) */
+   Toast Notification Styles (global)
+   ========================================================= */
 #aips-toast-container {
     position: fixed;
     top: 30vh;

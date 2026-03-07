@@ -8,16 +8,18 @@ if (!defined('ABSPATH')) {
 $current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
 $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '');
+$template_id   = isset($template_id) ? absint($template_id) : (isset($_GET['template_id']) ? absint($_GET['template_id']) : 0);
 $date_from     = isset($date_from) ? $date_from : (isset($_GET['date_from']) ? sanitize_text_field($_GET['date_from']) : '');
 $date_to       = isset($date_to) ? $date_to : (isset($_GET['date_to']) ? sanitize_text_field($_GET['date_to']) : '');
 
 if (isset($history_handler)) {
     $history = $history_handler->get_history(array(
-        'page'      => $current_page,
-        'status'    => $status_filter,
-        'search'    => $search_query,
-        'date_from' => $date_from,
-        'date_to'   => $date_to,
+        'page'        => $current_page,
+        'status'      => $status_filter,
+        'search'      => $search_query,
+        'template_id' => $template_id,
+        'date_from'   => $date_from,
+        'date_to'     => $date_to,
     ));
 }
 
@@ -107,6 +109,14 @@ if (!empty($date_from) || !empty($date_to)) {
                         <option value="failed" <?php selected($status_filter, 'failed'); ?>><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option>
                         <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
                     </select>
+                    <?php if (!empty($filter_templates)): ?>
+                    <select id="aips-filter-template" class="aips-form-select">
+                        <option value=""><?php esc_html_e('All Templates', 'ai-post-scheduler'); ?></option>
+                        <?php foreach ($filter_templates as $tmpl): ?>
+                            <option value="<?php echo esc_attr($tmpl->id); ?>" <?php selected($template_id, $tmpl->id); ?>><?php echo esc_html($tmpl->name); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php endif; ?>
                     <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-filter-btn" title="<?php esc_attr_e('Filter', 'ai-post-scheduler'); ?>">
                         <span class="dashicons dashicons-filter"></span>
                         <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
@@ -147,6 +157,7 @@ if (!empty($date_from) || !empty($date_to)) {
                     <!-- Hidden inputs carry the active date range through AJAX calls -->
                     <input type="hidden" id="aips-date-from" value="<?php echo esc_attr($date_from); ?>">
                     <input type="hidden" id="aips-date-to"   value="<?php echo esc_attr($date_to); ?>">
+                    <input type="hidden" id="aips-filter-template-id" value="<?php echo esc_attr($template_id); ?>">
                 </div>
                 <div class="aips-filter-right">
                     <input type="search" id="aips-history-search-input" name="s" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
