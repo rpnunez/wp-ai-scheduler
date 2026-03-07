@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-02-16
+
+### Changed
+
+- **PSR-4 Migration**: All 77 plugin classes migrated from flat `includes/` structure to PSR-4 namespaced `src/` directory using Composer autoloading.
+  - New namespace hierarchy: `AIPS\Repositories`, `AIPS\Services`, `AIPS\Controllers`, `AIPS\Generators`, `AIPS\Models`, `AIPS\Admin`, etc.
+  - Backward compatibility: Old `AIPS_*` class names work via `includes/compatibility-loader.php` class aliases.
+  - Deprecation timeline: v2.0 (aliases work), v2.1 (optional notices), v3.0 (breaking removal).
+  - Documentation: `docs/psr-4-refactor/ARCHITECTURE.md`, `MIGRATION_GUIDE.md`, `PSR4_CLASS_MAPPING.md`.
+
+### Removed
+
+- Redundant `require_once` calls for `AIPS_Logger` in plugin activation and `AIPS_Topic_Context` in MCP bridge. Classes now load via Composer + compatibility layer only.
+
+---
+
 ## [Unreleased]
 
 ### Added

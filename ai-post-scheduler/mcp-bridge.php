@@ -878,9 +878,14 @@ class AIPS_MCP_Bridge {
 				return new WP_Error('topic_not_found', 'Author topic not found');
 			}
 			
-			// Create topic context
-			require_once AIPS_PLUGIN_DIR . 'includes/class-aips-topic-context.php';
-			$context = new AIPS_Topic_Context($author_topic);
+			$authors_repo = new AIPS_Authors_Repository();
+			$author = $authors_repo->get_by_id($author_topic->author_id);
+			if (!$author) {
+				return new WP_Error('author_not_found', 'Author for topic not found');
+			}
+			
+			// Create topic context (loaded via Composer + compatibility layer)
+			$context = new AIPS_Topic_Context($author, $author_topic);
 			
 		} elseif (!empty($params['template_id'])) {
 			// Use template directly

@@ -3,7 +3,7 @@
  * Plugin Name: AI Post Scheduler
  * Plugin URI: https://example.com/ai-post-scheduler
  * Description: Schedule AI-generated posts using Meow Apps AI Engine
- * Version: 1.7.0
+ * Version: 2.0.0
  * Author: Your Name
  * Author URI: https://example.com
  * License: GPL v2 or later
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIPS_VERSION', '1.7.0');
+define('AIPS_VERSION', '2.0.0');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -53,8 +53,16 @@ final class AI_Post_Scheduler {
     }
     
     private function includes() {
-        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
-        AIPS_Autoloader::register();
+        // Load Composer PSR-4 autoloader (try plugin vendor first, then project root)
+        $autoload = file_exists(AIPS_PLUGIN_DIR . 'vendor/autoload.php')
+            ? AIPS_PLUGIN_DIR . 'vendor/autoload.php'
+            : dirname(__DIR__) . '/vendor/autoload.php';
+        if (file_exists($autoload)) {
+            require_once $autoload;
+        }
+
+        // Load backward compatibility layer (class aliases for old AIPS_* names)
+        require_once AIPS_PLUGIN_DIR . 'includes/compatibility-loader.php';
     }
     
     private function init_hooks() {
@@ -63,11 +71,6 @@ final class AI_Post_Scheduler {
     }
     
     public function activate() {
-        // Ensure logger is available
-        if (!class_exists('AIPS_Logger')) {
-            require_once AIPS_PLUGIN_DIR . 'includes/class-aips-logger.php';
-        }
-
         $logger = new AIPS_Logger();
 
         $logger->log('Running plugin activation.');
