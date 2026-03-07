@@ -479,17 +479,6 @@
             });
         });
 
-        // Tab Switching Logic (if not already handled globally)
-        $('.aips-tab-link').on('click', function(e) {
-            e.preventDefault();
-            const tab = $(this).data('tab');
-            
-            $('.aips-tab-link').removeClass('active');
-            $(this).addClass('active');
-            
-            $('.aips-tab-content').hide();
-            $('#' + tab + '-tab').show();
-        });
     });
 
 })(jQuery);

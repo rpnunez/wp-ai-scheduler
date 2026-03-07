@@ -42,7 +42,7 @@
 			$('#aips-feedback-form').on('submit', this.submitFeedback.bind(this));
 
 			// Tab switching in topics modal
-			$(document).on('click', '.aips-tab-link', this.switchTab.bind(this));
+			$(document).on('aips:tabSwitch', this.onTabSwitch.bind(this));
 
 			// Topic actions
 			$(document).on('click', '.aips-quick-approve-topic', this.quickApproveTopic.bind(this));
@@ -378,15 +378,19 @@
 			$('#rejected-count').text(counts.rejected || 0);
 		},
 
-		switchTab: function (e) {
-			e.preventDefault();
-			const $tab = $(e.currentTarget);
-			const status = $tab.data('tab');
+		/**
+		 * Handles the custom aips:tabSwitch event fired by admin.js after a .aips-tab-link click.
+		 *
+		 * @param {jQuery.Event} e      - The jQuery event object.
+		 * @param {string}       status - The tab ID (data-tab value) of the newly active tab.
+		 */
+		onTabSwitch: function (e, status) {
+			// Only handle authors-page-specific behaviour
+			if (!$('#aips-topics-content').length) {
+				return;
+			}
 
-			$('.aips-tab-link').removeClass('active');
-			$tab.addClass('active');
-
-			// Add fade transition
+			// Add fade transition and reload content for the selected tab
 			$('#aips-topics-content').fadeOut(200, () => {
 				if (status === 'feedback') {
 					this.loadFeedback();

@@ -160,6 +160,7 @@
 
             // Tabs
             $(document).on('click', '.nav-tab', this.switchTab);
+            $(document).on('click', '.aips-tab-link', this.switchAipsTab);
             
             // Preserve tab hash on form submissions
             $(document).on('submit', '.aips-post-review-filters, form[action*="aips-generated-posts"]', this.preserveTabOnSubmit);
@@ -463,6 +464,23 @@
                 .attr('aria-hidden', 'false');
         },
         
+        switchAipsTab: function(e) {
+            e.preventDefault();
+            var tabId = $(e.currentTarget).data('tab');
+
+            // Update active state on all .aips-tab-link elements
+            $('.aips-tab-link').removeClass('active');
+            $(e.currentTarget).addClass('active');
+
+            // Show the corresponding tab content
+            $('.aips-tab-content').hide();
+            $('#' + tabId + '-tab').show();
+
+            // Notify other modules of the tab switch.
+            // Passes tabId (string) as the first argument: $(document).on('aips:tabSwitch', function(e, tabId) { ... })
+            $(document).trigger('aips:tabSwitch', [tabId]);
+        },
+
         preserveTabOnSubmit: function(e) {
             // Append current hash to form action to preserve active tab
             var hash = window.location.hash;
