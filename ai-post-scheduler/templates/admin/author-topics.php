@@ -89,6 +89,10 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
 					</button>
+					<a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-secondary">
+						<span class="dashicons dashicons-admin-post"></span>
+						<?php esc_html_e('View Generated Posts', 'ai-post-scheduler'); ?>
+					</a>
 				</div>
 			</div>
 		</div>
