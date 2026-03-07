@@ -7,6 +7,15 @@
     // Extend AIPS with DB Management functionality
     Object.assign(window.AIPS, {
 
+        /**
+         * Confirm and run the database repair routine.
+         *
+         * Shows a confirmation dialog, then sends the `aips_repair_db` AJAX
+         * action which attempts to create any missing tables or columns.
+         * Reloads the page after a short delay on success.
+         *
+         * @param {Event} e - Click event from an `.aips-repair-db` element.
+         */
         repairDb: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -41,6 +50,16 @@
             ]);
         },
 
+        /**
+         * Confirm and reinstall all plugin database tables.
+         *
+         * Reads the `#aips-backup-db` checkbox to decide whether to back up
+         * existing data first. Shows a confirmation dialog with an appropriate
+         * warning, then sends the `aips_reinstall_db` AJAX action.
+         * Reloads the page after a short delay on success.
+         *
+         * @param {Event} e - Click event from an `.aips-reinstall-db` element.
+         */
         reinstallDb: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -84,6 +103,15 @@
             ]);
         },
 
+        /**
+         * Confirm and permanently delete all plugin data.
+         *
+         * Shows a warning confirmation dialog (this action cannot be undone),
+         * then sends the `aips_wipe_db` AJAX action.
+         * Reloads the page after a short delay on success.
+         *
+         * @param {Event} e - Click event from an `.aips-wipe-db` element.
+         */
         wipeDb: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -118,6 +146,16 @@
             ]);
         },
 
+        /**
+         * Export plugin data as a downloadable file.
+         *
+         * Reads the desired format from `#aips-export-format`, builds a hidden
+         * `<form>` with the selected format and security nonce, submits it to the
+         * `aips_export_data` AJAX action (which responds with file-download headers),
+         * then removes the form and re-enables the button after a short delay.
+         *
+         * @param {Event} e - Click event from an `.aips-export-data` element.
+         */
         exportData: function(e) {
             e.preventDefault();
             var $btn = $(this);
@@ -158,6 +196,16 @@
             }, 1000);
         },
 
+        /**
+         * Confirm and import plugin data from a user-selected file.
+         *
+         * Validates that a file has been chosen via `#aips-import-file`, shows a
+         * destructive-data-loss warning dialog, then sends a multipart AJAX
+         * request to the `aips_import_data` action using `FormData`.
+         * Reloads the page after a short delay on success.
+         *
+         * @param {Event} e - Click event from an `.aips-import-data` element.
+         */
         importData: function(e) {
             e.preventDefault();
             var $btn = $(this);

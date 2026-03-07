@@ -17,11 +17,21 @@
 	var templateColors = ['color-1', 'color-2', 'color-3'];
 
 	Object.assign(AIPS, {
+		/**
+		 * Bootstrap the calendar widget.
+		 *
+		 * Registers all delegated event listeners and fetches the initial
+		 * calendar events for the current month.
+		 */
 		initCalendar: function() {
 			this.bindCalendarEvents();
 			this.loadCalendarEvents();
 		},
 
+		/**
+		 * Register all delegated event listeners for calendar navigation,
+		 * view switching, event clicking, and modal close actions.
+		 */
 		bindCalendarEvents: function() {
 			// Navigation
 			$(document).on('click', '.aips-calendar-prev', this.calendarPrevious.bind(this));
@@ -38,6 +48,14 @@
 			$(document).on('click', '.aips-calendar-modal-close, .aips-calendar-modal-overlay', this.closeEventModal.bind(this));
 		},
 
+		/**
+		 * Navigate the calendar backward by one period (month, week, or day).
+		 *
+		 * Updates `calendarState` to reflect the new period and triggers an
+		 * AJAX reload via `loadCalendarEvents`.
+		 *
+		 * @param {Event} e - Click event from an `.aips-calendar-prev` element.
+		 */
 		calendarPrevious: function(e) {
 			e.preventDefault();
 			
@@ -67,6 +85,14 @@
 			this.loadCalendarEvents();
 		},
 
+		/**
+		 * Navigate the calendar forward by one period (month, week, or day).
+		 *
+		 * Updates `calendarState` to reflect the new period and triggers an
+		 * AJAX reload via `loadCalendarEvents`.
+		 *
+		 * @param {Event} e - Click event from an `.aips-calendar-next` element.
+		 */
 		calendarNext: function(e) {
 			e.preventDefault();
 			
@@ -96,6 +122,14 @@
 			this.loadCalendarEvents();
 		},
 
+		/**
+		 * Jump the calendar to the current date (today).
+		 *
+		 * Resets `calendarState` to today's year, month, and `selectedDate`,
+		 * then triggers a reload via `loadCalendarEvents`.
+		 *
+		 * @param {Event} e - Click event from an `.aips-calendar-today-btn` element.
+		 */
 		calendarToday: function(e) {
 			e.preventDefault();
 			
@@ -107,6 +141,15 @@
 			this.loadCalendarEvents();
 		},
 
+		/**
+		 * Switch between the month, week, and day calendar views.
+		 *
+		 * Reads the target view from the clicked button's `data-view` attribute.
+		 * Updates the active class on view buttons, hides all view panels, shows
+		 * the selected one, and re-renders the calendar for the new view.
+		 *
+		 * @param {Event} e - Click event from an `.aips-calendar-view-btn` element.
+		 */
 		switchCalendarView: function(e) {
 			e.preventDefault();
 			
@@ -133,6 +176,14 @@
 			this.renderCalendar();
 		},
 
+		/**
+		 * Fetch scheduled-post events for the current calendar period via AJAX.
+		 *
+		 * Shows the loading indicator, hides the calendar view panels, sends the
+		 * `aips_get_calendar_events` action, and on success stores the returned
+		 * events in `calendarState.events` before calling `renderCalendar`. Re-shows
+		 * the appropriate view panel in the `complete` callback.
+		 */
 		loadCalendarEvents: function() {
 			var self = this;
 			
@@ -174,6 +225,10 @@
 			});
 		},
 
+		/**
+		 * Update the calendar header label and delegate to the view-specific
+		 * render method (`renderMonthView`, `renderWeekView`, or `renderDayView`).
+		 */
 		renderCalendar: function() {
 			// Update title
 			var monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -189,6 +244,14 @@
 			}
 		},
 
+		/**
+		 * Render the monthly grid view into `.aips-calendar-days`.
+		 *
+		 * Calculates the first day of the week, fills leading cells with
+		 * days from the previous month (marked as "other-month"), fills the
+		 * current month's days (marking today), and pads trailing cells from the
+		 * next month to complete 6 × 7 = 42 cells.
+		 */
 		renderMonthView: function() {
 			var year = calendarState.currentYear;
 			var month = calendarState.currentMonth;
@@ -238,6 +301,20 @@
 			}
 		},
 
+		/**
+		 * Create and append a single day cell to the month-view grid container.
+		 *
+		 * Adds `.other-month` or `.today` CSS classes as appropriate, renders up
+		 * to three event chips, and appends a "+N more" label when additional
+		 * events exist.
+		 *
+		 * @param {jQuery}  $container    - The `.aips-calendar-days` container.
+		 * @param {number}  dayNumber     - The day-of-month integer to display.
+		 * @param {string}  dateStr       - ISO date string (`YYYY-MM-DD`) for the cell.
+		 * @param {boolean} isOtherMonth  - `true` if this day belongs to the
+		 *                                  previous or next month.
+		 * @param {boolean} isToday       - `true` if this day is today's date.
+		 */
 		renderDay: function($container, dayNumber, dateStr, isOtherMonth, isToday) {
 			var $day = $('<div>')
 				.addClass('aips-calendar-day')
@@ -282,6 +359,13 @@
 			$container.append($day);
 		},
 
+		/**
+		 * Render the weekly grid view into `.aips-calendar-week-grid`.
+		 *
+		 * Generates a day-header row for each day of the week (starting Sunday),
+		 * then iterates through 24 hourly slots adding event chips for any
+		 * schedule events whose start hour matches.
+		 */
 		renderWeekView: function() {
 			var $weekGrid = $('.aips-calendar-week-grid');
 			$weekGrid.empty();
@@ -318,6 +402,12 @@
 			}
 		},
 
+		/**
+		 * Render the daily view into `.aips-calendar-day-grid`.
+		 *
+		 * Iterates through 24 hourly slots for `calendarState.selectedDate`,
+		 * adding event chips for any schedule events whose start hour matches.
+		 */
 		renderDayView: function() {
 			var $dayGrid = $('.aips-calendar-day-grid');
 			$dayGrid.empty();
@@ -343,12 +433,25 @@
 			}
 		},
 
+		/**
+		 * Return all events whose `start` value begins with the given date string.
+		 *
+		 * @param  {string}        dateStr - ISO date string (`YYYY-MM-DD`).
+		 * @return {Array<Object>}         Matching event objects from `calendarState.events`.
+		 */
 		getEventsForDate: function(dateStr) {
 			return calendarState.events.filter(function(event) {
 				return event.start.startsWith(dateStr);
 			});
 		},
 
+		/**
+		 * Return events that fall on a specific date **and** hour.
+		 *
+		 * @param  {string}        dateStr - ISO date string (`YYYY-MM-DD`).
+		 * @param  {number}        hour    - 24-hour integer (0–23).
+		 * @return {Array<Object>}         Matching event objects.
+		 */
 		getEventsForDateTime: function(dateStr, hour) {
 			return calendarState.events.filter(function(event) {
 				if (!event.start.startsWith(dateStr)) {
@@ -359,6 +462,13 @@
 			});
 		},
 
+		/**
+		 * Return an array of seven `Date` objects representing a full week
+		 * (Sunday through Saturday) that contains the given date.
+		 *
+		 * @param  {Date}        date - Any date within the target week.
+		 * @return {Array<Date>}      Seven `Date` objects, index 0 = Sunday.
+		 */
 		getWeekDates: function(date) {
 			var dates = [];
 			var day = date.getDay();
@@ -373,12 +483,32 @@
 			return dates;
 		},
 
+		/**
+		 * Format a `Date` object as an ISO `YYYY-MM-DD` string.
+		 *
+		 * @param  {Date}   date - The date to format.
+		 * @return {string}      ISO date string.
+		 */
 		formatDate: function(date) {
 			return date.getFullYear() + '-' + 
 				   String(date.getMonth() + 1).padStart(2, '0') + '-' + 
 				   String(date.getDate()).padStart(2, '0');
 		},
 
+		/**
+		 * Build a jQuery event chip element for a single calendar event.
+		 *
+		 * Assigns one of three template-based color classes (or a default class)
+		 * based on the event's `template_id`. Stores the full event object as
+		 * jQuery data on the element so `showEventDetails` can read it.
+		 *
+		 * @param  {Object} event           - Calendar event data object.
+		 * @param  {string} event.start     - Start datetime string (`YYYY-MM-DD HH:MM:SS`).
+		 * @param  {string} event.title     - Display title.
+		 * @param  {number} event.id        - Event ID.
+		 * @param  {number} event.template_id - Template ID used for colour coding.
+		 * @return {jQuery}                 The `.aips-calendar-event` element.
+		 */
 		createEventElement: function(event) {
 			var time = event.start.split(' ')[1];
 			var shortTime = time ? time.substring(0, 5) : '';
@@ -415,6 +545,16 @@
 			return $event;
 		},
 
+		/**
+		 * Populate the event-detail modal with data from the clicked chip and
+		 * fade the modal in.
+		 *
+		 * Reads the event object from the element's jQuery data store, formats
+		 * the start datetime with `toLocaleString`, and updates the modal's
+		 * template, time, frequency, topic, category, and author labels.
+		 *
+		 * @param {Event} e - Click event from an `.aips-calendar-event` element.
+		 */
 		showEventDetails: function(e) {
 			e.stopPropagation();
 			
@@ -441,6 +581,13 @@
 			$('#aips-calendar-event-modal').fadeIn(200);
 		},
 
+		/**
+		 * Fade the calendar event-detail modal out.
+		 *
+		 * @param {Event} [e] - Click event from `.aips-calendar-modal-close` or
+		 *                      `.aips-calendar-modal-overlay` (optional when
+		 *                      called programmatically).
+		 */
 		closeEventModal: function(e) {
 			if (e) {
 				e.preventDefault();

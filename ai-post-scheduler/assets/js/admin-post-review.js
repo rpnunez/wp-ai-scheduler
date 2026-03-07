@@ -186,6 +186,16 @@
         });
 
         // Bulk publish
+        /**
+         * Bulk-publish the selected draft posts via `aips_bulk_publish_posts`.
+         *
+         * Shows a confirmation dialog with the post count. On confirmation,
+         * collects the post IDs from the checked boxes and sends them to the
+         * server. Fades out each published row and refreshes the draft count and
+         * empty-state check on success.
+         *
+         * @param {jQuery} checkedBoxes - The set of checked `.aips-post-checkbox` elements.
+         */
         function bulkPublish(checkedBoxes) {
             var count = checkedBoxes.length;
             var confirmMsg = aipsPostReviewL10n.confirmBulkPublish.replace('%d', count);
@@ -231,6 +241,16 @@
         }
 
         // Bulk delete
+        /**
+         * Bulk-delete the selected draft posts via `aips_bulk_delete_draft_posts`.
+         *
+         * Shows a confirmation dialog with the post count. On confirmation,
+         * builds an array of `{post_id, history_id}` objects and sends them to
+         * the server. Fades out each deleted row and refreshes the draft count and
+         * empty-state check on success.
+         *
+         * @param {jQuery} checkedBoxes - The set of checked `.aips-post-checkbox` elements.
+         */
         function bulkDelete(checkedBoxes) {
             var count = checkedBoxes.length;
             var confirmMsg = aipsPostReviewL10n.confirmBulkDelete.replace('%d', count);
@@ -285,12 +305,27 @@
         });
 
         // Update draft count
+        /**
+         * Refresh the `#aips-draft-count` badge with the number of currently
+         * visible table rows.
+         *
+         * Called after any row is removed (published, deleted, or regenerated)
+         * so the count stays accurate without a full page reload.
+         */
         function updateDraftCount() {
             var visibleRows = $('.aips-post-review-table tbody tr:visible').length;
             $('#aips-draft-count').text(visibleRows);
         }
 
         // Check if table is empty and show empty state
+        /**
+         * Show or hide the empty-state placeholder based on whether any table
+         * rows remain visible.
+         *
+         * When all rows have been removed, hides the table and pagination
+         * controls and injects (or reveals) an `.aips-empty-state` element with
+         * a friendly "no draft posts" message.
+         */
         function checkEmptyState() {
             var visibleRows = $('.aips-post-review-table tbody tr:visible').length;
 
@@ -312,6 +347,16 @@
         }
 
         // Preview Post Function
+        /**
+         * Open the post-preview modal and load the rendered post content.
+         *
+         * Resets the modal to a loading state, then sends the
+         * `aips_get_draft_post_preview` AJAX action. On success, builds and
+         * injects an HTML preview (title, featured image, excerpt, body content,
+         * and an optional edit link) into `#aips-preview-content-container`.
+         *
+         * @param {number} postId - The WordPress post ID to preview.
+         */
         function previewPost(postId) {
             var modal = $('#aips-post-preview-modal');
             var contentContainer = $('#aips-preview-content-container');
