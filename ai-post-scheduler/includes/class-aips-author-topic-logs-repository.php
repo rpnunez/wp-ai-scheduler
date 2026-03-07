@@ -159,23 +159,28 @@ class AIPS_Author_Topic_Logs_Repository {
 	}
 	
 	/**
-	 * Get all generated posts for a specific author.
+	 * Count the number of generated posts for a specific author.
+	 *
+	 * More efficient than get_generated_posts_by_author() when only the count is needed,
+	 * as it issues a COUNT(*) query instead of fetching all rows.
 	 *
 	 * @param int $author_id Author ID.
-	 * @return array Array of log objects with post information.
+	 * @return int Number of generated posts.
 	 */
-	public function get_generated_posts_by_author($author_id) {
+	public function count_generated_posts_by_author($author_id) {
 		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
-		
-		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT l.*, t.topic_title, t.author_id 
+
+		$count = $this->wpdb->get_var($this->wpdb->prepare(
+			"SELECT COUNT(*) 
 			FROM {$this->table_name} l
 			INNER JOIN {$topics_table} t ON l.author_topic_id = t.id
-			WHERE t.author_id = %d 
+			WHERE t.author_id = %d
 			AND l.action = 'post_generated'
-			AND l.post_id IS NOT NULL
-			ORDER BY l.created_at DESC",
+			AND l.post_id IS NOT NULL",
 			$author_id
 		));
+
+		return (int) $count;
 	}
 }
+
