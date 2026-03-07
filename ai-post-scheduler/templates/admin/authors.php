@@ -257,6 +257,18 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
             </div>
 
             <div class="form-group">
+                <label for="voice_tone"><?php esc_html_e('Tone', 'ai-post-scheduler'); ?></label>
+                <input type="text" id="voice_tone" name="voice_tone" placeholder="<?php esc_attr_e('e.g., Professional, Witty, Academic', 'ai-post-scheduler'); ?>">
+                <p class="description"><?php esc_html_e('Specify the tone of voice for the generated content', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label for="writing_style"><?php esc_html_e('Writing Style', 'ai-post-scheduler'); ?></label>
+                <input type="text" id="writing_style" name="writing_style" placeholder="<?php esc_attr_e('e.g., Tutorial, Opinion Piece, Case Study', 'ai-post-scheduler'); ?>">
+                <p class="description"><?php esc_html_e('Specify the writing style for the generated content', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
                 <label for="topic_generation_quantity"><?php esc_html_e('Number of Topics to Generate', 'ai-post-scheduler'); ?></label>
                 <input type="number" id="topic_generation_quantity" name="topic_generation_quantity" value="5" min="1" max="20">
             </div>

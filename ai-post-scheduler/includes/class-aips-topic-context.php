@@ -87,6 +87,14 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	public function get_content_prompt() {
 		$prompt = "Write a comprehensive blog post about: {$this->topic->topic_title}\n\nField/Niche: {$this->author->field_niche}";
 		
+		if (!empty($this->author->voice_tone)) {
+			$prompt .= "\n\nTone: {$this->author->voice_tone}";
+		}
+		
+		if (!empty($this->author->writing_style)) {
+			$prompt .= "\n\nWriting Style: {$this->author->writing_style}";
+		}
+		
 		if (!empty($this->expanded_context)) {
 			$prompt .= "\n\n" . $this->expanded_context;
 		}
@@ -272,6 +280,8 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 			'post_tags' => $this->get_post_tags(),
 			'post_author' => $this->get_post_author(),
 			'article_structure_id' => $this->get_article_structure_id(),
+			'voice_tone' => isset($this->author->voice_tone) ? $this->author->voice_tone : '',
+			'writing_style' => isset($this->author->writing_style) ? $this->author->writing_style : '',
 		);
 	}
 }
