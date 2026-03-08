@@ -155,7 +155,7 @@ class AIPS_Admin_Bar {
 				'parent' => 'aips-toolbar-notifications',
 				'title'  => '<span class="aips-toolbar-empty">' . esc_html__('No new notifications', 'ai-post-scheduler') . '</span>',
 				'href'   => false,
-				'meta'   => array('class' => 'aips-toolbar-no-notifications'),
+				'meta'   => array('class' => 'aips-toolbar-no-notifications ab-empty-item'),
 			));
 		} else {
 			// Header row with "Mark all as read"
@@ -169,7 +169,7 @@ class AIPS_Admin_Bar {
 					. esc_html__('Mark all as read', 'ai-post-scheduler')
 					. '</button>',
 				'href'   => false,
-				'meta'   => array('class' => 'aips-toolbar-notif-header'),
+				'meta'   => array('class' => 'aips-toolbar-notif-header ab-empty-item'),
 			));
 
 			foreach ($notifications as $notif) {
@@ -192,7 +192,7 @@ class AIPS_Admin_Bar {
 					'title'  => $node_title,
 					'href'   => false,
 					'meta'   => array(
-						'class'       => 'aips-toolbar-notification',
+						'class'         => 'aips-toolbar-notification ab-empty-item',
 						'data-notif-id' => absint($notif->id),
 					),
 				));

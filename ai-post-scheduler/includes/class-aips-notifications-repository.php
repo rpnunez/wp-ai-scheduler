@@ -140,7 +140,7 @@ class AIPS_Notifications_Repository {
 
 		return (int) $this->wpdb->query(
 			$this->wpdb->prepare(
-				"DELETE FROM {$this->table} WHERE is_read = 1 AND created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+				"DELETE FROM {$this->table} WHERE is_read = 1 AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
 				$days
 			)
 		);
