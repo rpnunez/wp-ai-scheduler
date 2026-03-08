@@ -109,19 +109,60 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        // If schedule_id is provided, use the scheduler to run the schedule logic
+        // If schedule_id is provided, use the scheduler to run the schedule logic.
+        // Generate as many posts as the template's post_quantity specifies.
         $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
         if ($schedule_id) {
-            $result = $this->scheduler->run_schedule_now($schedule_id);
-            if (is_wp_error($result)) {
-                wp_send_json_error(array('message' => $result->get_error_message()));
-            } else {
-                 wp_send_json_success(array(
-                    'message' => __('Schedule executed successfully!', 'ai-post-scheduler'),
-                    'post_ids' => array($result),
-                    'edit_url' => get_edit_post_link($result, 'raw')
-                ));
+            // Determine how many posts this schedule should generate.
+            $post_quantity = 1;
+            $schedule_repo = new AIPS_Schedule_Repository();
+            $schedule_data = $schedule_repo->get_by_id($schedule_id);
+            if ($schedule_data && isset($schedule_data->template_id) && $schedule_data->template_id) {
+                $template_repo = new AIPS_Template_Repository();
+                $template_data = $template_repo->get_by_id($schedule_data->template_id);
+                if ($template_data && !empty($template_data->post_quantity)) {
+                    $post_quantity = max(1, absint($template_data->post_quantity));
+                }
             }
+
+            $post_ids = array();
+            $errors   = array();
+
+            for ($i = 0; $i < $post_quantity; $i++) {
+                $result = $this->scheduler->run_schedule_now($schedule_id);
+                if (is_wp_error($result)) {
+                    $errors[] = $result->get_error_message();
+                } else {
+                    $post_ids[] = $result;
+                }
+            }
+
+            if (empty($post_ids) && !empty($errors)) {
+                $error_msg = count($errors) > 1
+                    ? __('All generation attempts failed.', 'ai-post-scheduler')
+                    : $errors[0];
+                wp_send_json_error(array('message' => $error_msg, 'errors' => $errors));
+                return;
+            }
+
+            $message = sprintf(
+                _n('%d post generated successfully!', '%d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
+                count($post_ids)
+            );
+
+            if (!empty($errors)) {
+                $message .= ' ' . sprintf(
+                    _n('(%d failed)', '(%d failed)', count($errors), 'ai-post-scheduler'),
+                    count($errors)
+                );
+            }
+
+            wp_send_json_success(array(
+                'message'  => $message,
+                'post_ids' => $post_ids,
+                'errors'   => $errors,
+                'edit_url' => !empty($post_ids) ? get_edit_post_link($post_ids[0], 'raw') : '',
+            ));
             return;
         }
 

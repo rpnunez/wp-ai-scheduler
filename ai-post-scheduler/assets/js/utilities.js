@@ -247,10 +247,12 @@
          * @param {number}   [options.stallAt]       - Percentage at which the bar pauses to wait for
          *                                             the real completion signal (0–99). Default 92.
          *
-         * @returns {{ complete: function(string, string): void,
-         *             cancel:   function(): void }}
+         * @returns {{ complete:    function(string, string): void,
+         *             cancel:     function(): void,
+         *             setMessage: function(string): void }}
          *   `complete(message, type)` — jump the bar to 100 %, show `message`, close after 1.2 s.
          *   `cancel()`               — close the modal immediately without animation.
+         *   `setMessage(text)`       — update the description shown above the progress bar.
          *
          * @example
          * var ctrl = AIPS.Utilities.showProgressBar({
@@ -444,12 +446,6 @@
                 $description.text(text);
             }
 
-            /**
-             * Controller for the progress modal.
-             *
-             * @returns {{ complete: function(string, string): void, cancel: function(): void, setMessage: function(string): void }} 
-             * An object with methods to complete, cancel, or update the progress message.
-             */
             return { complete: complete, cancel: cancel, setMessage: setMessage };
         }
     };
