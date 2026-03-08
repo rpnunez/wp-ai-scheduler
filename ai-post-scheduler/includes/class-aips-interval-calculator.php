@@ -62,6 +62,12 @@ class AIPS_Interval_Calculator {
             'type' => 'fixed'
         );
 
+        $intervals['weekdays'] = array(
+            'interval' => 86400, // Calendar-based; actual next run skips weekends.
+            'display' => __('Every Weekday', 'ai-post-scheduler'),
+            'type' => 'calendar'
+        );
+
         $intervals['weekly'] = array(
             'interval' => 604800,
             'display' => __('Once Weekly', 'ai-post-scheduler'),
@@ -209,6 +215,9 @@ class AIPS_Interval_Calculator {
                 
             case 'daily':
                 return strtotime('+1 day', $base_time);
+
+            case 'weekdays':
+                return $this->calculate_next_weekday_timestamp($base_time);
                 
             case 'weekly':
                 return strtotime('+1 week', $base_time);
@@ -224,6 +233,23 @@ class AIPS_Interval_Calculator {
         }
     }
     
+    /**
+     * Calculate next run time for weekday-only schedules (Monday-Friday).
+     *
+     * @param int $base_time The base timestamp to calculate from.
+     * @return int The next weekday timestamp, preserving time.
+     */
+    private function calculate_next_weekday_timestamp($base_time) {
+        $next = strtotime('+1 day', $base_time);
+
+        // Skip Saturday (6) and Sunday (7).
+        while (in_array((int) date('N', $next), array(6, 7), true)) {
+            $next = strtotime('+1 day', $next);
+        }
+
+        return $next;
+    }
+
     /**
      * Calculate next run time for day-specific intervals (e.g., "every_monday").
      *

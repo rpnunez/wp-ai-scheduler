@@ -290,4 +290,25 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $expected = date('Y-m-d 10:00:00', strtotime('+1 day', strtotime($start)));
         $this->assertEquals($expected, $next);
     }
+    /**
+     * Test weekdays interval exists.
+     */
+    public function test_weekdays_interval_exists() {
+        $intervals = $this->calculator->get_intervals();
+
+        $this->assertArrayHasKey('weekdays', $intervals);
+        $this->assertEquals(86400, $intervals['weekdays']['interval']);
+        $this->assertEquals('calendar', $intervals['weekdays']['type']);
+    }
+
+    /**
+     * Test calculate_next_run for weekdays skips weekend.
+     */
+    public function test_calculate_next_run_weekdays_skips_weekend() {
+        // Friday June 14, 2030 10:00:00 -> Monday June 17, 2030 10:00:00
+        $start = '2030-06-14 10:00:00';
+        $next = $this->calculator->calculate_next_run('weekdays', $start);
+
+        $this->assertEquals('2030-06-17 10:00:00', $next);
+    }
 }

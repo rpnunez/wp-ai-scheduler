@@ -294,6 +294,12 @@ $preselect_template_id = isset($_GET['schedule_template']) ? absint($_GET['sched
                     </div>
                     
                     <div class="aips-form-row">
+                        <label for="schedule_natural_language"><?php esc_html_e('Natural Language (Optional)', 'ai-post-scheduler'); ?></label>
+                        <input type="text" id="schedule_natural_language" name="natural_schedule" class="regular-text" placeholder="<?php esc_attr_e('e.g., every weekday at 8 AM', 'ai-post-scheduler'); ?>">
+                        <p class="description"><?php esc_html_e('If provided, this overrides Frequency and Start Time.', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    
+                    <div class="aips-form-row">
                         <label for="schedule_start_time"><?php esc_html_e('Start Time', 'ai-post-scheduler'); ?></label>
                         <input type="datetime-local" id="schedule_start_time" name="start_time">
                         <p class="description"><?php esc_html_e('Leave empty to start from now', 'ai-post-scheduler'); ?></p>

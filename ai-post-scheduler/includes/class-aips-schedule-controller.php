@@ -36,10 +36,23 @@ class AIPS_Schedule_Controller {
             'topic' => isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '',
             'article_structure_id' => isset($_POST['article_structure_id']) && $_POST['article_structure_id'] !== '' ? absint($_POST['article_structure_id']) : null,
             'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? sanitize_text_field($_POST['rotation_pattern']) : null,
+            'natural_schedule' => isset($_POST['natural_schedule']) ? sanitize_text_field($_POST['natural_schedule']) : '',
         );
 
         if (empty($data['template_id'])) {
             wp_send_json_error(array('message' => __('Please select a template.', 'ai-post-scheduler')));
+        }
+
+        if (!empty($data['natural_schedule'])) {
+            $natural_parser = new AIPS_Natural_Schedule_Parser();
+            $parsed_schedule = $natural_parser->parse($data['natural_schedule']);
+
+            if (is_wp_error($parsed_schedule)) {
+                wp_send_json_error(array('message' => $parsed_schedule->get_error_message()));
+            }
+
+            $data['frequency'] = $parsed_schedule['frequency'];
+            $data['start_time'] = $parsed_schedule['start_time'];
         }
 
         $interval_calculator = new AIPS_Interval_Calculator();

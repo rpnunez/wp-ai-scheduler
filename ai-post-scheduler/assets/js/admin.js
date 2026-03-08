@@ -1028,6 +1028,7 @@
             e.preventDefault();
             $('#aips-schedule-form')[0].reset();
             $('#schedule_id').val('');
+            $('#schedule_natural_language').val('');
             $('#aips-schedule-modal-title').text('Add New Schedule');
             $('#aips-schedule-modal').show();
         },
@@ -1055,6 +1056,7 @@
             $('#schedule_id').val(scheduleId);
             $('#schedule_template').val(templateId);
             $('#schedule_frequency').val(frequency);
+            $('#schedule_natural_language').val('');
             $('#schedule_topic').val(topic || '');
             $('#article_structure_id').val(articleStructureId || '');
             $('#rotation_pattern').val(rotationPattern || '');
@@ -1101,6 +1103,7 @@
             // Populate form
             $('#schedule_template').val(templateId);
             $('#schedule_frequency').val(frequency);
+            $('#schedule_natural_language').val('');
             $('#schedule_topic').val(topic);
             $('#article_structure_id').val(articleStructureId);
             $('#rotation_pattern').val(rotationPattern);
@@ -1144,6 +1147,7 @@
                     schedule_id: $('#schedule_id').val(),
                     template_id: $('#schedule_template').val(),
                     frequency: $('#schedule_frequency').val(),
+                    natural_schedule: $('#schedule_natural_language').val(),
                     start_time: $('#schedule_start_time').val(),
                     topic: $('#schedule_topic').val(),
                     article_structure_id: $('#article_structure_id').val(),
