@@ -145,7 +145,7 @@ cd ai-post-scheduler && composer test
 - `AIPS_Article_Structure_Repository` — article structure templates
 - `AIPS_Prompt_Section_Repository` — reusable prompt sections
 - `AIPS_Trending_Topics_Repository` — researched trending topics
-- `AIPS_Post_Review_Repository` — post review workflow
+- `AIPS_Post_Review_Repository` — post review workflow (uses `aips_history` and `wp_posts`; no dedicated `aips_post_reviews` table)
 - `AIPS_Feedback_Repository` — topic feedback storage
 
 #### Controller Pattern (AJAX Endpoints)
@@ -176,7 +176,7 @@ do_action('aips_post_generation_failed', $template_id, $error_message, $topic);
 do_action('aips_schedule_execution_started', $schedule_id);
 do_action('aips_schedule_execution_completed', $schedule_id, $post_id);
 do_action('aips_schedule_execution_failed', $schedule_id, $error_message);
-do_action('aips_trending_topic_scheduled', $schedule_id, $topic, $template_id);
+do_action('aips_trending_topic_scheduled', $schedule_data); // single array: template_id, frequency, next_run, is_active, topic
 do_action('aips_planner_topics_generated', $topics, $niche);
 ```
 See `docs/HOOKS.md` for the full list of actions and filters.
@@ -231,7 +231,6 @@ All tables use the WordPress table prefix (e.g., `wp_`). Schema managed by `AIPS
 | `aips_author_topics` | Per-author topic queue |
 | `aips_author_topic_logs` | Author topic generation logs |
 | `aips_topic_feedback` | Topic feedback (thumbs up/down) |
-| `aips_post_reviews` | Post review workflow records |
 
 ### Adding a Database Table
 1. Add the table name to `AIPS_DB_Manager::$tables` (no `migrations/` directory exists)
@@ -243,7 +242,9 @@ All tables use the WordPress table prefix (e.g., `wp_`). Schema managed by `AIPS
 ## Admin Pages and Assets
 
 ### Admin Menu (15 pages, all registered in `AIPS_Settings::add_menu_pages()`)
-Dashboard, Templates, Voices, Article Structures, Prompt Sections, Authors, Author Topics, Research, Schedule, Calendar, Generated Posts, History, Activity, Settings, System Status, Seeder, Dev Tools (hidden unless `aips_developer_mode` option is set)
+Dashboard, Templates, Voices, Article Structures, Authors, Author Topics (hidden from navigation), Research, Schedule, Schedule Calendar, Generated Posts, History, Settings, System Status, Seeder, Dev Tools (hidden unless `aips_developer_mode` option is set)
+
+> **Note**: `render_prompt_sections_page()` and `render_activity_page()` methods exist in `AIPS_Settings` but are not registered as `add_submenu_page()` entries.
 
 ### Asset Enqueueing (`AIPS_Admin_Assets`)
 Assets load only on pages where `$hook` contains `ai-post-scheduler` or `aips-`:
@@ -270,6 +271,8 @@ The `AIPS_Template_Processor` replaces `{{variable}}` placeholders in prompts:
 | `{{day}}` | Current day name |
 | `{{time}}` | Current time (H:i) |
 | `{{site_name}}` | WordPress site name |
+| `{{site_description}}` | WordPress site tagline/description (`get_bloginfo('description')`) |
+| `{{random_number}}` | Random integer between 1 and 1000 (`rand(1, 1000)`) |
 | `{{topic}}` | The topic string for this generation |
 | `{{title}}` | Alias for `{{topic}}` |
 
@@ -339,11 +342,15 @@ $generator = new AIPS_Generator($logger, $ai_service, $template_processor, ...);
 ## CI/CD
 
 ### GitHub Actions Workflows
-- **`phpunit-tests-wp-build.yml`**: Full PHPUnit suite on PHP 8.2 with MySQL + WordPress test library (primary CI)
-- **`phpunit-tests-3-build.yml`**: Alternative PHPUnit build (PHP 8.2)
+- **`phpunit-tests.yml`**: Primary PHPUnit suite on PHP 8.2 with MySQL + WordPress test library
+- **`phpunit-tests-wp-build.yml`**: WordPress build-focused PHPUnit suite on PHP 8.2 (structurally similar to `phpunit-tests.yml`)
+- **`phpunit-tests-3-build.yml`**: Additional PHPUnit build variant on PHP 8.2
 - **`ci-pr.yml`**: Quick PR checks — composer validate, PHPCS lint (if installed), PHPStan (if installed), unit tests
 - **`qodana_code_quality.yml`**: Qodana code quality analysis
 - **`copilot-setup-steps.yml`**: Pre-installs Composer deps for Copilot agent sessions
+- **`feature-agent.yml`**: Workflow for feature agent automation
+- **`feature-analysis.yml`**: Workflow for feature analysis tasks
+- **`test-composite-index.yml`**: Targeted tests for composite index scenarios
 
 All workflows target **PHP 8.2 only**.
 
@@ -374,7 +381,7 @@ The plugin ships `mcp-bridge.php` — a JSON-RPC 2.0 style API bridge that expos
 
 | File | Location | Content |
 |------|----------|---------|
-| `FEATURE_LIST.md` | `docs/` | Full inventory of 19 features, 13 DB tables, 15 admin pages |
+| `FEATURE_LIST.md` | `docs/` | Full inventory of 19 features, 12 DB tables, 15 admin pages |
 | `HOOKS.md` | `docs/` | All `aips_*` action and filter hooks with arguments |
 | `MIGRATIONS.md` | `docs/` | DB migration history and notes |
 | `SETUP.md` | `docs/` | Post-clone setup instructions |
