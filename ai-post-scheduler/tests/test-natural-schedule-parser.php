@@ -14,6 +14,10 @@ class Test_AIPS_Natural_Schedule_Parser extends WP_UnitTestCase {
             require_once dirname( __DIR__ ) . '/includes/class-aips-natural-schedule-parser.php';
         }
 
+        if ( ! class_exists( 'AIPS_Natural_Schedule_Parser' ) ) {
+            require_once dirname( __DIR__ ) . '/includes/class-aips-natural-schedule-parser.php';
+        }
+
         $this->parser = new AIPS_Natural_Schedule_Parser();
     }
 
