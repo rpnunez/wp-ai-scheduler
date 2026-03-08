@@ -231,22 +231,41 @@ class AIPS_Schedule_Processor {
         // Load the schedule's persistent lifecycle history container (or create one if missing)
         $history = $this->get_or_create_schedule_history($schedule->schedule_id);
 
-        $history->record(
-            'activity',
-            $log_activity_msg,
-            array(
-                'event_type' => $event_type,
-                'event_status' => 'success',
-            ),
-            null,
-            array(
-                'schedule_id' => $schedule->schedule_id,
-                'template_id' => $schedule->template_id,
-                'frequency' => $schedule->frequency,
-                'topic' => isset($schedule->topic) ? $schedule->topic : '',
-                'article_structure_id' => $article_structure_id,
-            )
-        );
+        if ($history) {
+            $history->record(
+                'activity',
+                $log_activity_msg,
+                array(
+                    'event_type' => $event_type,
+                    'event_status' => 'success',
+                ),
+                null,
+                array(
+                    'schedule_id'    => $schedule->schedule_id,
+                    'template_id'    => $schedule->template_id,
+                    'frequency'      => $schedule->frequency,
+                    'topic'          => isset($schedule->topic) ? $schedule->topic : '',
+                    'article_structure_id' => $article_structure_id,
+                )
+            );
+        } else {
+            // If the history container could not be created/loaded, avoid fatal errors and log a warning.
+            if (isset($this->logger)) {
+                $this->logger->log(
+                    'Failed to initialize schedule history container.',
+                    'warning',
+                    array(
+                        'schedule_id'    => $schedule->schedule_id,
+                        'template_id'    => $schedule->template_id,
+                        'frequency'      => $schedule->frequency,
+                        'topic'          => isset($schedule->topic) ? $schedule->topic : '',
+                        'article_structure_id' => $article_structure_id,
+                        'event_type'     => $event_type,
+                        'is_manual'      => $is_manual,
+                    )
+                );
+            }
+        }
 
         // Construct Template Object for Generator
         // The generator expects an object with specific properties
