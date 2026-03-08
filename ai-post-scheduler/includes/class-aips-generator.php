@@ -858,8 +858,8 @@ class AIPS_Generator {
             return '';
         }
 
-        if ($this->markdown_parser->is_markdown($normalized_content) && !$this->markdown_parser->contains_html($normalized_content)) {
-            $normalized_content = $this->markdown_parser->parse($normalized_content);
+        if ( $this->markdown_parser && $this->markdown_parser->is_markdown( $normalized_content ) && ! $this->markdown_parser->contains_html( $normalized_content ) ) {
+            $normalized_content = $this->markdown_parser->parse( $normalized_content );
         }
 
         return wp_kses_post($normalized_content);
