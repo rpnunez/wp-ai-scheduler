@@ -23,6 +23,11 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     // Load article structures for the dropdown
     $structures_repository = new AIPS_Article_Structure_Repository();
     $article_structures = $structures_repository->get_all(true); // Get active structures only
+
+    // Pre-build interval options for the topic generation frequency dropdown.
+    $topic_freq_calculator = new AIPS_Interval_Calculator();
+    $topic_freq_options    = $topic_freq_calculator->get_all_interval_displays();
+    $default_topic_generation_frequency = 'weekly';
 }
 ?>
 <div class="wrap aips-wrap">
@@ -301,11 +306,14 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
             <div class="form-group">
                 <label for="topic_generation_frequency"><?php esc_html_e('Topic Generation Frequency', 'ai-post-scheduler'); ?></label>
                 <select id="topic_generation_frequency" name="topic_generation_frequency">
-                    <option value="daily"><?php esc_html_e('Daily', 'ai-post-scheduler'); ?></option>
-                    <option value="weekly" selected><?php esc_html_e('Weekly', 'ai-post-scheduler'); ?></option>
-                    <option value="biweekly"><?php esc_html_e('Bi-weekly', 'ai-post-scheduler'); ?></option>
-                    <option value="monthly"><?php esc_html_e('Monthly', 'ai-post-scheduler'); ?></option>
+                    <option value="manual"><?php esc_html_e('Manual Only', 'ai-post-scheduler'); ?></option>
+                    <?php foreach ( $topic_freq_options as $freq_key => $freq_label ) : ?>
+                        <option value="<?php echo esc_attr( $freq_key ); ?>" <?php selected( $freq_key, $default_topic_generation_frequency ); ?>>
+                            <?php echo esc_html( $freq_label ); ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
+                <p class="description"><?php esc_html_e( 'Select "Manual Only" to generate topics on demand without any automated schedule.', 'ai-post-scheduler' ); ?></p>
             </div>
 
             <div class="form-group">

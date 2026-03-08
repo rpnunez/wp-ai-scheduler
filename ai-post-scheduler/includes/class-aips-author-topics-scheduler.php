@@ -170,6 +170,11 @@ class AIPS_Author_Topics_Scheduler {
 	 * @param object $author Author object from database.
 	 */
 	private function update_author_schedule($author) {
+		// Authors with 'manual' frequency should never have an automated next run.
+		if ( $author->topic_generation_frequency === 'manual' ) {
+			return;
+		}
+
 		// Calculate next run time based on frequency
 		$next_run = $this->interval_calculator->calculate_next_run($author->topic_generation_frequency);
 		
