@@ -89,7 +89,10 @@ if (!defined('ABSPATH')) {
                                 </td>
                                 <td><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->next_run))); ?></td>
                                 <td>
-                                    <span class="aips-badge aips-badge-info"><?php echo esc_html(ucfirst($item->frequency)); ?></span>
+                                    <span class="aips-badge aips-badge-info">
+                                        <span class="dashicons dashicons-update-alt"></span>
+                                        <?php echo esc_html(ucfirst($item->frequency)); ?>
+                                    </span>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -146,15 +149,20 @@ if (!defined('ABSPATH')) {
                                 <td>
                                     <?php
                                     $status_class = 'neutral';
+                                    $status_icon = 'dashicons-minus';
                                     if ($item->status === 'completed') {
                                         $status_class = 'success';
+                                        $status_icon = 'dashicons-yes-alt';
                                     } elseif ($item->status === 'failed') {
                                         $status_class = 'error';
+                                        $status_icon = 'dashicons-dismiss';
                                     } elseif ($item->status === 'pending') {
                                         $status_class = 'warning';
+                                        $status_icon = 'dashicons-clock';
                                     }
                                     ?>
                                     <span class="aips-badge aips-badge-<?php echo esc_attr($status_class); ?>">
+                                        <span class="dashicons <?php echo esc_attr($status_icon); ?>"></span>
                                         <?php echo esc_html(ucfirst($item->status)); ?>
                                     </span>
                                 </td>

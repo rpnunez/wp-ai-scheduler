@@ -106,6 +106,7 @@ if (!defined('ABSPATH')) {
 								</td>
 								<td>
 									<span class="aips-badge aips-badge-neutral">
+										<span class="dashicons dashicons-admin-post"></span>
 										<?php echo esc_html($post_data['source']); ?>
 									</span>
 								</td>

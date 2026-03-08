@@ -35,3 +35,7 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+
+## 2026-03-08 - Modern Status Badges
+**Learning:** `PHASE_0_VISUAL_AUDIT.md` recommended redesigning the status badges with modern pill shapes and icons to better communicate state (Active, Error, Warning, etc.).
+**Action:** Updated `.aips-badge` in `admin.css` to use `border-radius: var(--aips-radius-full)` and updated all main admin templates (`dashboard.php`, `generated-posts.php`, `post-review.php`, `schedule.php`, `structures.php`, `templates.php`) to embed context-appropriate dashicons (`dashicons-yes-alt`, `dashicons-clock`, `dashicons-dismiss`, `dashicons-star-filled`) inside the badges.

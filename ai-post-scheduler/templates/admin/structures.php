@@ -96,7 +96,10 @@ if (!isset($sections) || !is_array($sections)) {
 						</td>
 						<td class="column-default">
 							<?php if ($structure->is_default): ?>
-								<span class="aips-badge aips-badge-info"><?php esc_html_e('Default', 'ai-post-scheduler'); ?></span>
+								<span class="aips-badge aips-badge-info">
+									<span class="dashicons dashicons-star-filled"></span>
+									<?php esc_html_e('Default', 'ai-post-scheduler'); ?>
+								</span>
 							<?php else: ?>
 								<span class="cell-meta">—</span>
 							<?php endif; ?>

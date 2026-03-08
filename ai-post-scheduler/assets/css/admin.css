@@ -551,7 +551,7 @@
 	padding: var(--aips-space-1) var(--aips-space-3);
 	font-size: var(--aips-text-xs);
 	font-weight: var(--aips-font-medium);
-	border-radius: var(--aips-radius-base);
+	border-radius: var(--aips-radius-full);
 	line-height: var(--aips-leading-tight);
 }
 

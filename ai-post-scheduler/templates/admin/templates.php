@@ -82,7 +82,16 @@ if (!defined('ABSPATH')) {
                                 <div class="cell-primary"><?php echo esc_html($template->name); ?></div>
                             </td>
                             <td>
+                                <?php
+                                $status_icon = 'dashicons-edit';
+                                if ($template->post_status === 'publish') {
+                                    $status_icon = 'dashicons-yes-alt';
+                                } elseif ($template->post_status === 'pending') {
+                                    $status_icon = 'dashicons-clock';
+                                }
+                                ?>
                                 <span class="aips-badge aips-badge-neutral">
+                                    <span class="dashicons <?php echo esc_attr($status_icon); ?>"></span>
                                     <?php echo esc_html(ucfirst($template->post_status)); ?>
                                 </span>
                             </td>
