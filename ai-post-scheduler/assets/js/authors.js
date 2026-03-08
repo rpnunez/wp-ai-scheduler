@@ -1858,5 +1858,17 @@
 			AuthorsModule.updateBulkActionDropdown('pending');
 			AuthorsModule.loadTopics('pending');
 		}
+
+		// Deep-link: on the Authors list page, open the Edit modal directly when
+		// an author_id is provided in the URL (e.g., redirected from "Edit Author").
+		if ( typeof aipsAuthorContext !== 'undefined' && aipsAuthorContext.deepLinkAuthorId ) {
+			const deepLinkId = parseInt( aipsAuthorContext.deepLinkAuthorId, 10 );
+			const $editBtn = $( '.aips-edit-author' ).filter( function () {
+				return parseInt( $( this ).data( 'id' ), 10 ) === deepLinkId;
+			} );
+			if ( $editBtn.length ) {
+				$editBtn.first().trigger( 'click' );
+			}
+		}
 	});
 })(jQuery);
