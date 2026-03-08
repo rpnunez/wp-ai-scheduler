@@ -414,11 +414,12 @@
 				// Potential duplicate warning badge
 				if (topic.potential_duplicate) {
 					const dupLabel = aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate';
+					const safeDupLabel = this.escapeHtml(dupLabel);
 					const dupTitle = topic.duplicate_match
-						? dupLabel + ': ' + this.escapeHtml(topic.duplicate_match)
-						: this.escapeHtml(dupLabel);
+						? safeDupLabel + ': ' + this.escapeHtml(topic.duplicate_match)
+						: safeDupLabel;
 					html += ' <span class="aips-duplicate-badge" title="' + dupTitle + '">';
-					html += '<span class="dashicons dashicons-warning"></span> ' + this.escapeHtml(dupLabel) + '</span>';
+					html += '<span class="dashicons dashicons-warning"></span> ' + safeDupLabel + '</span>';
 				}
 
 				// Last feedback badge — shows prior approval/rejection history for context
