@@ -45,11 +45,6 @@ class AIPS_Authors_Controller {
 	private $topics_scheduler;
 	
 	/**
-	 * @var AIPS_Interval_Calculator Calculator for scheduling intervals
-	 */
-	private $interval_calculator;
-	
-	/**
 	 * Initialize the controller.
 	 */
 	public function __construct() {
@@ -58,7 +53,6 @@ class AIPS_Authors_Controller {
 		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository = new AIPS_Feedback_Repository();
 		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
-		$this->interval_calculator = new AIPS_Interval_Calculator();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));
@@ -113,10 +107,11 @@ class AIPS_Authors_Controller {
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		
-		// Calculate initial run times if creating new author
+		// Set initial run times to now so first execution is not skipped
 		if (!$author_id) {
-			$data['topic_generation_next_run'] = current_time('mysql');
-			$data['post_generation_next_run'] = current_time('mysql');
+			$now = current_time('mysql');
+			$data['topic_generation_next_run'] = $now;
+			$data['post_generation_next_run'] = $now;
 		}
 		
 		// Save or update
