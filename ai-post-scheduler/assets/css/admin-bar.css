@@ -1,0 +1,168 @@
+/**
+ * AI Post Scheduler – Admin Toolbar Styles
+ */
+
+/* -------------------------------------------------------
+   Root node
+------------------------------------------------------- */
+#wpadminbar #wp-admin-bar-aips-toolbar > .ab-item {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+#wpadminbar #wp-admin-bar-aips-toolbar .aips-toolbar-icon {
+	font-size: 18px;
+	line-height: 1;
+	margin-right: 2px;
+	vertical-align: middle;
+}
+
+/* Notification badge on the root node */
+#wpadminbar .aips-toolbar-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 4px;
+	border-radius: 9px;
+	background: #d63638;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1;
+	margin-left: 4px;
+	vertical-align: middle;
+}
+
+/* -------------------------------------------------------
+   Dropdown container
+------------------------------------------------------- */
+#wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper {
+	min-width: 320px;
+}
+
+/* -------------------------------------------------------
+   Quick-links group
+------------------------------------------------------- */
+#wpadminbar #wp-admin-bar-aips-toolbar-links {
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	padding-bottom: 4px;
+	margin-bottom: 4px;
+}
+
+#wpadminbar #wp-admin-bar-aips-toolbar-links .ab-item .dashicons {
+	font-size: 16px;
+	vertical-align: middle;
+	margin-right: 4px;
+}
+
+/* -------------------------------------------------------
+   Notifications group
+------------------------------------------------------- */
+#wpadminbar .aips-toolbar-group-notifications {
+	max-height: 320px;
+	overflow-y: auto;
+}
+
+/* Notifications header row */
+#wpadminbar .aips-toolbar-notif-header > .ab-item {
+	display: flex !important;
+	align-items: center;
+	justify-content: space-between;
+	padding: 6px 12px;
+	cursor: default;
+	pointer-events: none; /* clicks handled by inner buttons */
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+#wpadminbar .aips-toolbar-notif-heading {
+	pointer-events: none;
+}
+
+/* "Mark all as read" button inside header */
+#wpadminbar .aips-mark-all-read {
+	pointer-events: all;
+	background: none;
+	border: 1px solid rgba(255, 255, 255, 0.4);
+	border-radius: 3px;
+	color: rgba(255, 255, 255, 0.8);
+	cursor: pointer;
+	font-size: 11px;
+	padding: 2px 6px;
+	line-height: 1.4;
+}
+
+#wpadminbar .aips-mark-all-read:hover {
+	background: rgba(255, 255, 255, 0.15);
+	color: #fff;
+}
+
+/* Individual notification rows */
+#wpadminbar .aips-toolbar-notification > .ab-item {
+	display: flex !important;
+	align-items: flex-start;
+	gap: 8px;
+	white-space: normal;
+	padding: 8px 12px;
+	line-height: 1.4;
+	cursor: default;
+}
+
+#wpadminbar .aips-toolbar-notification > .ab-item:hover {
+	background: rgba(255, 255, 255, 0.07);
+}
+
+#wpadminbar .aips-notif-message {
+	flex: 1;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.9);
+	word-break: break-word;
+}
+
+#wpadminbar .aips-notif-message a {
+	color: #72aee6;
+	text-decoration: underline;
+}
+
+#wpadminbar .aips-notif-message a:hover {
+	color: #a8d0f0;
+}
+
+/* Mark-as-read button */
+#wpadminbar .aips-mark-read {
+	background: none;
+	border: none;
+	color: rgba(255, 255, 255, 0.5);
+	cursor: pointer;
+	padding: 0;
+	flex-shrink: 0;
+	line-height: 1;
+}
+
+#wpadminbar .aips-mark-read:hover {
+	color: #4ab866;
+}
+
+#wpadminbar .aips-mark-read .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 1;
+}
+
+/* "No new notifications" row */
+#wpadminbar .aips-toolbar-no-notifications > .ab-item {
+	cursor: default;
+}
+
+#wpadminbar .aips-toolbar-empty {
+	color: rgba(255, 255, 255, 0.5);
+	font-style: italic;
+	font-size: 12px;
+}
