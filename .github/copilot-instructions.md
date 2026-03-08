@@ -242,7 +242,7 @@ All tables use the WordPress table prefix (e.g., `wp_`). Schema managed by `AIPS
 ## Admin Pages and Assets
 
 ### Admin Menu (15 pages, all registered in `AIPS_Settings::add_menu_pages()`)
-Dashboard, Templates, Voices, Article Structures, Prompt Sections, Authors, Author Topics, Research, Schedule, Calendar, Generated Posts, History, Activity, Settings, System Status, Seeder, Dev Tools (hidden unless `aips_developer_mode` option is set)
+Dashboard, Templates, Voices, Article Structures, Authors, Author Topics (hidden page, `parent_slug` null), Research, Schedule, Calendar, Generated Posts, History, Settings, System Status, Seeder, Dev Tools (hidden unless `aips_developer_mode` option is set)
 
 ### Asset Enqueueing (`AIPS_Admin_Assets`)
 Assets load only on pages where `$hook` contains `ai-post-scheduler` or `aips-`:
