@@ -444,6 +444,12 @@
                 $description.text(text);
             }
 
+            /**
+             * Controller for the progress modal.
+             *
+             * @returns {{ complete: function(string, string): void, cancel: function(): void, setMessage: function(string): void }} 
+             * An object with methods to complete, cancel, or update the progress message.
+             */
             return { complete: complete, cancel: cancel, setMessage: setMessage };
         }
     };
