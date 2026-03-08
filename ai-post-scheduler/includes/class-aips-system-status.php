@@ -238,7 +238,7 @@ class AIPS_System_Status {
         $file_lines = explode("\n", $content);
 
         // If we didn't read the whole file, the first line might be partial, so skip it
-        if ($offset > 0 && !empty($file_lines)) {
+        if ($offset > 0 && count($file_lines) > 1) {
             array_shift($file_lines);
         }
 
