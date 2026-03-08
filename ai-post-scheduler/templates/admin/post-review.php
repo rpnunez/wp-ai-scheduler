@@ -154,7 +154,10 @@ $templates = $template_repository->get_all();
 								</td>
 								<td class="column-template">
 									<?php if ($item->template_name): ?>
-										<span class="aips-badge aips-badge-info"><?php echo esc_html($item->template_name); ?></span>
+										<span class="aips-badge aips-badge-info">
+											<span class="dashicons dashicons-layout"></span>
+											<?php echo esc_html($item->template_name); ?>
+										</span>
 									<?php else: ?>
 										<span class="aips-table-meta">-</span>
 									<?php endif; ?>

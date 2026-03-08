@@ -141,6 +141,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             </td>
                             <td class="column-frequency">
                                 <span class="aips-badge aips-badge-info">
+                                    <span class="dashicons dashicons-update-alt"></span>
                                     <?php echo esc_html(ucfirst(str_replace('_', ' ', $schedule->frequency))); ?>
                                 </span>
                             </td>
