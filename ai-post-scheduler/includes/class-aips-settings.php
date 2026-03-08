@@ -579,7 +579,9 @@ class AIPS_Settings {
      * @return void
      */
     public function topic_similarity_threshold_field_callback() {
-        $value = (float) get_option('aips_topic_similarity_threshold', 0.8);
+        $raw = get_option('aips_topic_similarity_threshold', 0.8);
+        // Normalize on read so the UI always reflects the effective runtime value.
+        $value = is_numeric($raw) ? min(1.0, max(0.1, (float) $raw)) : 0.8;
         ?>
         <input
             type="number"

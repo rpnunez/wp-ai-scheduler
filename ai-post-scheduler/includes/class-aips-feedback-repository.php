@@ -285,6 +285,47 @@ class AIPS_Feedback_Repository {
 	}
 
 	/**
+	 * Get feedback statistics for multiple authors in a single query.
+	 *
+	 * @param int[] $author_ids Array of author IDs.
+	 * @return array Associative array keyed by author_id with 'total', 'approved', 'rejected' counts.
+	 */
+	public function get_statistics_bulk(array $author_ids) {
+		$author_ids = array_filter(array_map('absint', $author_ids));
+		if (empty($author_ids)) {
+			return array();
+		}
+
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$placeholders = implode(',', array_fill(0, count($author_ids), '%d'));
+
+		$sql = "SELECT
+				t.author_id,
+				COUNT(*) as total,
+				SUM(CASE WHEN f.action = 'approved' THEN 1 ELSE 0 END) as approved,
+				SUM(CASE WHEN f.action = 'rejected' THEN 1 ELSE 0 END) as rejected
+			FROM {$this->table_name} f
+			INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
+			WHERE t.author_id IN ({$placeholders})
+			GROUP BY t.author_id";
+
+		$rows = $this->wpdb->get_results(
+			$this->wpdb->prepare($sql, $author_ids)
+		);
+
+		$result = array();
+		foreach ($rows as $row) {
+			$result[(int) $row->author_id] = array(
+				'total'    => (int) $row->total,
+				'approved' => (int) $row->approved,
+				'rejected' => (int) $row->rejected,
+			);
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Get latest feedback entry for each topic ID.
 	 *
 	 * @param array $topic_ids Topic IDs.

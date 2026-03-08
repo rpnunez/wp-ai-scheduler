@@ -18,8 +18,10 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     if (!empty($authors)) {
         $topics_repository = new AIPS_Author_Topics_Repository();
         $logs_repository = new AIPS_Author_Topic_Logs_Repository();
+        // Bulk-fetch feedback stats and policy flags to avoid N+1 queries.
         $feedback_repository = new AIPS_Feedback_Repository();
-        $penalty_service = new AIPS_Topic_Penalty_Service();
+        $author_ids = array_map(function($a) { return $a->id; }, $authors);
+        $all_feedback_stats = $feedback_repository->get_statistics_bulk($author_ids);
     }
 
     // Load article structures for the dropdown
@@ -101,13 +103,12 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                 $status_counts = $topics_repository->get_status_counts($author->id);
                                 $total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
                                 $posts_count = $logs_repository->count_generated_posts_by_author($author->id);
-                                $policy_flags = $penalty_service->get_author_policy_flags($author->id);
-                                if ( ! is_array( $policy_flags ) ) {
-                                    $policy_flags = array();
-                                }
+                                // Read policy flags directly from already-loaded author details (no extra DB query).
+                                $author_details = !empty($author->details) ? json_decode($author->details, true) : array();
+                                $policy_flags = (is_array($author_details) && isset($author_details['policy_flags']) && is_array($author_details['policy_flags'])) ? $author_details['policy_flags'] : array();
                                 $policy_flags_count = count($policy_flags);
-                                // Quality indicator data
-                                $feedback_stats = $feedback_repository->get_statistics($author->id);
+                                // Quality indicator data — use pre-fetched bulk stats.
+                                $feedback_stats = isset($all_feedback_stats[$author->id]) ? $all_feedback_stats[$author->id] : array('total' => 0, 'approved' => 0, 'rejected' => 0);
                                 $feedback_total = (int) $feedback_stats['total'];
                                 $feedback_approved = (int) $feedback_stats['approved'];
                                 $approval_rate = $feedback_total > 0 ? round(($feedback_approved / $feedback_total) * 100) : null;
@@ -166,15 +167,12 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                     <td class="column-quality">
                                         <?php
                                         if ($quality_state === 'critical') {
-                                            $indicator_color = '#d63638';
                                             $indicator_icon = 'dashicons-dismiss';
                                             $indicator_label = __('Critical', 'ai-post-scheduler');
                                         } elseif ($quality_state === 'warning') {
-                                            $indicator_color = '#dba617';
                                             $indicator_icon = 'dashicons-warning';
                                             $indicator_label = __('Warning', 'ai-post-scheduler');
                                         } else {
-                                            $indicator_color = '#00a32a';
                                             $indicator_icon = 'dashicons-heart';
                                             $indicator_label = __('Healthy', 'ai-post-scheduler');
                                         }
@@ -183,9 +181,8 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                             class="aips-quality-indicator aips-quality-<?php echo esc_attr($quality_state); ?>"
                                             title="<?php echo esc_attr($quality_tooltip); ?>"
                                             aria-label="<?php echo esc_attr($quality_tooltip); ?>"
-                                            style="display: inline-flex; align-items: center; gap: 4px; color: <?php echo esc_attr($indicator_color); ?>; font-weight: 600; font-size: 12px; cursor: default;"
                                         >
-                                            <span class="dashicons <?php echo esc_attr($indicator_icon); ?>" style="font-size: 16px; width: 16px; height: 16px;"></span>
+                                            <span class="dashicons <?php echo esc_attr($indicator_icon); ?>"></span>
                                             <?php echo esc_html($indicator_label); ?>
                                         </span>
                                     </td>

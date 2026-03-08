@@ -180,7 +180,8 @@ class AIPS_Topic_Expansion_Service {
 		}
 		
 		// Find nearest neighbors and filter by configured similarity threshold
-		$threshold = (float) get_option('aips_topic_similarity_threshold', 0.8);
+		$raw_threshold = get_option('aips_topic_similarity_threshold', 0.8);
+		$threshold = is_numeric($raw_threshold) ? min(1.0, max(0.1, (float) $raw_threshold)) : 0.8;
 		$neighbors = $this->embeddings_service->find_nearest_neighbors($target_embedding, $candidates, $limit);
 
 		return array_values(array_filter($neighbors, function($neighbor) use ($threshold) {

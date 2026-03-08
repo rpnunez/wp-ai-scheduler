@@ -300,6 +300,138 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that a topic with borderline similarity IS flagged when threshold is lowered.
+	 *
+	 * Similarity 0.75 is above 0.70 threshold → should be flagged.
+	 */
+	public function test_borderline_topic_flagged_with_lower_threshold() {
+		update_option( 'aips_topic_similarity_threshold', 0.70 );
+
+		$embedding = array( 1.0, 0.0, 0.0 );
+
+		$existing_topic = (object) array(
+			'id'          => 10,
+			'topic_title' => 'Somewhat Similar Topic',
+			'status'      => 'approved',
+			'metadata'    => wp_json_encode( array( 'embedding' => $embedding ) ),
+		);
+
+		// Similarity = 0.75 — above the 0.70 threshold but below the default 0.8.
+		$embeddings_service = new class( $embedding ) {
+			private $emb;
+			public function __construct( $e ) { $this->emb = $e; }
+			public function is_embeddings_supported() { return true; }
+			public function generate_embedding( $text ) { return $this->emb; }
+			public function calculate_similarity( $a, $b ) { return 0.75; }
+		};
+
+		$new_topic_data = array(
+			array( 'title' => 'Borderline Duplicate Topic', 'score' => 60 ),
+		);
+
+		$bulk_topics = array(
+			(object) array(
+				'id'          => 100,
+				'author_id'   => 1,
+				'topic_title' => 'Borderline Duplicate Topic',
+				'status'      => 'pending',
+				'score'       => 45, // 60 - 15
+				'metadata'    => wp_json_encode( array( 'potential_duplicate' => true ) ),
+				'generated_at' => current_time( 'mysql' ),
+			),
+		);
+
+		$topics_repo = $this->make_topics_repository( array( $existing_topic ), $bulk_topics );
+
+		$generator = new AIPS_Author_Topics_Generator(
+			$this->make_ai_service( $new_topic_data ),
+			$this->make_logger(),
+			$topics_repo,
+			new class { public function log_post_generation( $a, $b, $c ) {} },
+			$embeddings_service
+		);
+
+		$generator->generate_topics( $this->make_author() );
+
+		$inserted = $topics_repo->bulk_inserted;
+		$this->assertNotEmpty( $inserted );
+
+		// Score should be reduced because similarity (0.75) exceeds the lowered threshold (0.70).
+		$this->assertEquals( 45, $inserted[0]['score'], 'Score should be reduced when similarity exceeds lowered threshold' );
+
+		$meta = json_decode( $inserted[0]['metadata'], true );
+		$this->assertTrue( $meta['potential_duplicate'], 'Topic should be flagged as potential duplicate at lower threshold' );
+
+		delete_option( 'aips_topic_similarity_threshold' );
+	}
+
+	/**
+	 * Test that a topic with borderline similarity is NOT flagged when threshold is raised.
+	 *
+	 * Similarity 0.75 is below 0.90 threshold → should NOT be flagged.
+	 */
+	public function test_borderline_topic_not_flagged_with_higher_threshold() {
+		update_option( 'aips_topic_similarity_threshold', 0.90 );
+
+		$embedding = array( 1.0, 0.0, 0.0 );
+
+		$existing_topic = (object) array(
+			'id'          => 10,
+			'topic_title' => 'Similar But Not Enough',
+			'status'      => 'approved',
+			'metadata'    => wp_json_encode( array( 'embedding' => $embedding ) ),
+		);
+
+		// Similarity = 0.75 — below the 0.90 threshold.
+		$embeddings_service = new class( $embedding ) {
+			private $emb;
+			public function __construct( $e ) { $this->emb = $e; }
+			public function is_embeddings_supported() { return true; }
+			public function generate_embedding( $text ) { return $this->emb; }
+			public function calculate_similarity( $a, $b ) { return 0.75; }
+		};
+
+		$new_topic_data = array(
+			array( 'title' => 'Moderately Similar Topic', 'score' => 60 ),
+		);
+
+		$bulk_topics = array(
+			(object) array(
+				'id'          => 100,
+				'author_id'   => 1,
+				'topic_title' => 'Moderately Similar Topic',
+				'status'      => 'pending',
+				'score'       => 60,
+				'metadata'    => wp_json_encode( array( 'potential_duplicate' => false ) ),
+				'generated_at' => current_time( 'mysql' ),
+			),
+		);
+
+		$topics_repo = $this->make_topics_repository( array( $existing_topic ), $bulk_topics );
+
+		$generator = new AIPS_Author_Topics_Generator(
+			$this->make_ai_service( $new_topic_data ),
+			$this->make_logger(),
+			$topics_repo,
+			new class { public function log_post_generation( $a, $b, $c ) {} },
+			$embeddings_service
+		);
+
+		$generator->generate_topics( $this->make_author() );
+
+		$inserted = $topics_repo->bulk_inserted;
+		$this->assertNotEmpty( $inserted );
+
+		// Score should remain at 60 because similarity (0.75) is below the raised threshold (0.90).
+		$this->assertEquals( 60, $inserted[0]['score'], 'Score should NOT be reduced when similarity is below raised threshold' );
+
+		$meta = json_decode( $inserted[0]['metadata'], true );
+		$this->assertFalse( $meta['potential_duplicate'], 'Topic should NOT be flagged when similarity is below raised threshold' );
+
+		delete_option( 'aips_topic_similarity_threshold' );
+	}
+
+	/**
 	 * Test that score does not go below 0 when reduced.
 	 */
 	public function test_score_does_not_go_below_zero() {
