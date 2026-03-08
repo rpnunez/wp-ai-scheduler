@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 $authors_page_url = admin_url('admin.php?page=aips-authors');
-$author_page_url = esc_url( add_query_arg( array( 'page' => 'aips-authors', 'author_id' => $author_id ), admin_url( 'admin.php' ) ) );
+$author_page_url = add_query_arg( array( 'page' => 'aips-authors', 'author_id' => $author_id ), admin_url( 'admin.php' ) );
 
 if (!$author_id) {
 	?>
