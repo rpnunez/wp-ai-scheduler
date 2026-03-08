@@ -25,7 +25,7 @@
 
 This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **78 core classes** organized into **9 functional categories**.
 
-- **Total Lines of Code**: 23,808
+- **Total Lines of Code**: 24,301
 - **Total Features**: 78
 - **Categories**: Core Generation, Scheduling & Automation, Content Management, Data Management, User Interface, AI Integration, Database, Configuration, Utilities
 
@@ -114,8 +114,8 @@ flowchart TD
     Author_Post_Generator --> Generator
     Component_Regeneration_Service --> Generator
     Component_Regeneration_Service --> Generation_Context_Factory
-    Generator --> Generation_Logger
     Generator --> Generation_Session
+    Generator --> Generation_Logger
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
@@ -146,9 +146,10 @@ flowchart TD
     Scheduler["Scheduler"]
 
     Schedule_Controller --> Scheduler
+    Schedule_Controller --> Schedule_Repository
     Schedule_Processor --> Schedule_Repository
-    Scheduler --> Schedule_Repository
     Scheduler --> Schedule_Processor
+    Scheduler --> Schedule_Repository
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
@@ -516,7 +517,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Admin_Assets`
 
-**Lines of Code**: 403
+**Lines of Code**: 447
 
 **Technical Details**:
 
@@ -591,7 +592,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Author_Post_Generator`
 
-**Lines of Code**: 341
+**Lines of Code**: 358
 
 **Technical Details**:
 
@@ -624,11 +625,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Author_Topic_Logs_Repository`
 
-**Lines of Code**: 182
+**Lines of Code**: 187
 
 **Technical Details**:
 
-- **Public Methods** (10): `__construct()`, `get_by_topic()`, `get_by_id()`, `create()`, `log_approval()`, `log_rejection()`, `log_post_generation()`, `log_edit()`, `get_by_post()`, `get_generated_posts_by_author()`
+- **Public Methods** (10): `__construct()`, `get_by_topic()`, `get_by_id()`, `create()`, `log_approval()`, `log_rejection()`, `log_post_generation()`, `log_edit()`, `get_by_post()`, `count_generated_posts_by_author()`
 - **Database Operations**: Uses Wpdb, Has Repository
 
 **Missing Functionality**:
@@ -649,15 +650,15 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Author_Topics_Controller`
 
-**Lines of Code**: 905
+**Lines of Code**: 967
 
 **Technical Details**:
 
-- **Public Methods** (20): `__construct()`, `ajax_approve_topic()`, `ajax_reject_topic()`, `ajax_edit_topic()`, `ajax_delete_topic()`, `ajax_generate_post_from_topic()`, `ajax_get_topic_logs()`, `ajax_bulk_approve_topics()`, `ajax_bulk_reject_topics()`, `ajax_bulk_delete_topics()`, ... and 10 more
+- **Public Methods** (21): `__construct()`, `ajax_approve_topic()`, `ajax_reject_topic()`, `ajax_edit_topic()`, `ajax_delete_topic()`, `ajax_generate_post_from_topic()`, `ajax_get_topic_logs()`, `ajax_bulk_approve_topics()`, `ajax_bulk_reject_topics()`, `ajax_bulk_delete_topics()`, ... and 11 more
 - **Dependencies** (7): `AIPS_Author_Post_Generator`, `AIPS_Author_Topic_Logs_Repository`, `AIPS_Author_Topics_Repository`, `AIPS_Feedback_Repository`, `AIPS_History_Service`, `AIPS_Topic_Expansion_Service`, `AIPS_Topic_Penalty_Service`
-- **Action Hooks** (19): `wp_ajax_aips_approve_topic`, `wp_ajax_aips_delete_topic`, `wp_ajax_aips_edit_topic`, `wp_ajax_aips_generate_post_from_topic`, `wp_ajax_aips_reject_topic`, ... and 14 more
-- **AJAX Handlers**: `wp_ajax_aips_approve_topic`, `wp_ajax_aips_reject_topic`, `wp_ajax_aips_edit_topic`, `wp_ajax_aips_delete_topic`, `wp_ajax_aips_generate_post_from_topic`, `wp_ajax_aips_get_topic_logs`, `wp_ajax_aips_get_topic_feedback`, `wp_ajax_aips_bulk_approve_topics`, `wp_ajax_aips_bulk_reject_topics`, `wp_ajax_aips_bulk_delete_topics`, `wp_ajax_aips_bulk_generate_topics`, `wp_ajax_aips_bulk_delete_feedback`, `wp_ajax_aips_regenerate_post`, `wp_ajax_aips_delete_generated_post`, `wp_ajax_aips_get_similar_topics`, `wp_ajax_aips_suggest_related_topics`, `wp_ajax_aips_compute_topic_embeddings`, `wp_ajax_aips_get_generation_queue`, `wp_ajax_aips_bulk_generate_from_queue`
-- **Database Operations**: Has Repository
+- **Action Hooks** (20): `wp_ajax_aips_approve_topic`, `wp_ajax_aips_delete_topic`, `wp_ajax_aips_edit_topic`, `wp_ajax_aips_generate_post_from_topic`, `wp_ajax_aips_reject_topic`, ... and 15 more
+- **AJAX Handlers**: `wp_ajax_aips_approve_topic`, `wp_ajax_aips_reject_topic`, `wp_ajax_aips_edit_topic`, `wp_ajax_aips_delete_topic`, `wp_ajax_aips_generate_post_from_topic`, `wp_ajax_aips_get_topic_logs`, `wp_ajax_aips_get_topic_feedback`, `wp_ajax_aips_bulk_approve_topics`, `wp_ajax_aips_bulk_reject_topics`, `wp_ajax_aips_bulk_delete_topics`, `wp_ajax_aips_bulk_generate_topics`, `wp_ajax_aips_bulk_delete_feedback`, `wp_ajax_aips_regenerate_post`, `wp_ajax_aips_delete_generated_post`, `wp_ajax_aips_get_similar_topics`, `wp_ajax_aips_suggest_related_topics`, `wp_ajax_aips_compute_topic_embeddings`, `wp_ajax_aips_get_generation_queue`, `wp_ajax_aips_bulk_generate_from_queue`, `wp_ajax_aips_get_bulk_generate_estimate`
+- **Database Operations**: Uses Wpdb, Has Repository
 
 **Missing Functionality**:
 
@@ -665,10 +666,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 905 lines (may violate SRP)
-2. High coupling - depends on 7 classes
-3. Document all custom hooks in HOOKS.md for third-party developers
-4. Ensure unit tests cover all public methods and edge cases
+1. Consider refactoring - class has 967 lines (may violate SRP)
+2. High method count (21+ methods) - consider splitting responsibilities
+3. High coupling - depends on 7 classes
+4. Document all custom hooks in HOOKS.md for third-party developers
+5. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -1251,7 +1253,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Generated_Posts_Controller`
 
-**Lines of Code**: 443
+**Lines of Code**: 450
 
 **Technical Details**:
 
@@ -1353,7 +1355,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Generator`
 
-**Lines of Code**: 837
+**Lines of Code**: 1058
 
 **Technical Details**:
 
@@ -1370,7 +1372,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 837 lines (may violate SRP)
+1. Consider refactoring - class has 1058 lines (may violate SRP)
 2. High coupling - depends on 12 classes
 3. Document all custom hooks in HOOKS.md for third-party developers
 4. Add comprehensive error handling with specific exception types
@@ -1439,7 +1441,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_History_Repository`
 
-**Lines of Code**: 684
+**Lines of Code**: 690
 
 **Technical Details**:
 
@@ -1452,7 +1454,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 684 lines (may violate SRP)
+1. Consider refactoring - class has 690 lines (may violate SRP)
 2. Ensure unit tests cover all public methods and edge cases
 
 ---
@@ -1892,14 +1894,16 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Schedule_Controller`
 
-**Lines of Code**: 205
+**Lines of Code**: 364
 
 **Technical Details**:
 
-- **Public Methods** (5): `__construct()`, `ajax_save_schedule()`, `ajax_delete_schedule()`, `ajax_toggle_schedule()`, `ajax_run_now()`
-- **Dependencies** (5): `AIPS_Generator`, `AIPS_Interval_Calculator`, `AIPS_Scheduler`, `AIPS_Templates`, `AIPS_Voices`
-- **Action Hooks** (4): `wp_ajax_aips_delete_schedule`, `wp_ajax_aips_run_now`, `wp_ajax_aips_save_schedule`, `wp_ajax_aips_toggle_schedule`
-- **AJAX Handlers**: `wp_ajax_aips_save_schedule`, `wp_ajax_aips_delete_schedule`, `wp_ajax_aips_toggle_schedule`, `wp_ajax_aips_run_now`
+- **Public Methods** (9): `__construct()`, `ajax_save_schedule()`, `ajax_delete_schedule()`, `ajax_toggle_schedule()`, `ajax_run_now()`, `ajax_bulk_delete_schedules()`, `ajax_bulk_toggle_schedules()`, `ajax_bulk_run_now_schedules()`, `ajax_get_schedules_post_count()`
+- **Dependencies** (6): `AIPS_Generator`, `AIPS_Interval_Calculator`, `AIPS_Schedule_Repository`, `AIPS_Scheduler`, `AIPS_Templates`, `AIPS_Voices`
+- **Action Hooks** (8): `wp_ajax_aips_bulk_delete_schedules`, `wp_ajax_aips_delete_schedule`, `wp_ajax_aips_run_now`, `wp_ajax_aips_save_schedule`, `wp_ajax_aips_toggle_schedule`, ... and 3 more
+- **Filter Hooks** (1): `aips_bulk_run_now_limit`
+- **AJAX Handlers**: `wp_ajax_aips_save_schedule`, `wp_ajax_aips_delete_schedule`, `wp_ajax_aips_toggle_schedule`, `wp_ajax_aips_run_now`, `wp_ajax_aips_bulk_delete_schedules`, `wp_ajax_aips_bulk_toggle_schedules`, `wp_ajax_aips_bulk_run_now_schedules`, `wp_ajax_aips_get_schedules_post_count`
+- **Database Operations**: Has Repository
 
 **Missing Functionality**:
 
@@ -1907,9 +1911,10 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Document all custom hooks in HOOKS.md for third-party developers
-2. Ensure unit tests cover all public methods and edge cases
-3. Add comprehensive class-level PHPDoc documentation
+1. High coupling - depends on 6 classes
+2. Document all custom hooks in HOOKS.md for third-party developers
+3. Ensure unit tests cover all public methods and edge cases
+4. Add comprehensive class-level PHPDoc documentation
 
 ---
 
@@ -1921,7 +1926,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Schedule_Processor`
 
-**Lines of Code**: 434
+**Lines of Code**: 437
 
 **Technical Details**:
 
@@ -1948,11 +1953,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Schedule_Repository`
 
-**Lines of Code**: 388
+**Lines of Code**: 492
 
 **Technical Details**:
 
-- **Public Methods** (15): `__construct()`, `get_all()`, `get_by_id()`, `get_due_schedules()`, `get_upcoming()`, `get_by_template()`, `create()`, `update()`, `delete()`, `delete_by_template()`, ... and 5 more
+- **Public Methods** (18): `__construct()`, `get_all()`, `get_by_id()`, `get_due_schedules()`, `get_upcoming()`, `get_by_template()`, `create()`, `update()`, `delete()`, `delete_by_template()`, ... and 8 more
 - **Database Operations**: Uses Wpdb, Has Repository
 
 **Missing Functionality**: None identified
@@ -1971,7 +1976,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Scheduler`
 
-**Lines of Code**: 230
+**Lines of Code**: 231
 
 **Technical Details**:
 
@@ -2084,11 +2089,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Settings`
 
-**Lines of Code**: 935
+**Lines of Code**: 887
 
 **Technical Details**:
 
-- **Public Methods** (35): `__construct()`, `add_menu_pages()`, `redirect_section_header()`, `register_settings()`, `general_section_callback()`, `post_status_field_callback()`, `category_field_callback()`, `ai_model_field_callback()`, `chatbot_id_field_callback()`, `render_dev_tools_page()`, ... and 25 more
+- **Public Methods** (35): `__construct()`, `add_menu_pages()`, `register_settings()`, `general_section_callback()`, `post_status_field_callback()`, `category_field_callback()`, `ai_model_field_callback()`, `chatbot_id_field_callback()`, `render_dev_tools_page()`, `unsplash_access_key_field_callback()`, ... and 25 more
 - **Dependencies** (11): `AIPS_AI_Service`, `AIPS_Article_Structure_Repository`, `AIPS_Dashboard_Controller`, `AIPS_Dev_Tools`, `AIPS_Generated_Posts_Controller`, `AIPS_History`, `AIPS_History_Service`, `AIPS_Prompt_Section_Repository`, `AIPS_System_Status`, `AIPS_Templates`, `AIPS_Voices`
 - **Action Hooks** (5): `admin_init`, `admin_menu`, `wp_ajax_aips_get_activity`, `wp_ajax_aips_get_activity_detail`, `wp_ajax_aips_test_connection`
 - **AJAX Handlers**: `wp_ajax_aips_test_connection`, `wp_ajax_aips_get_activity`, `wp_ajax_aips_get_activity_detail`
@@ -2099,7 +2104,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 935 lines (may violate SRP)
+1. Consider refactoring - class has 887 lines (may violate SRP)
 2. High method count (35+ methods) - consider splitting responsibilities
 3. High coupling - depends on 11 classes
 4. Document all custom hooks in HOOKS.md for third-party developers
@@ -2317,14 +2322,14 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Templates_Controller`
 
-**Lines of Code**: 350
+**Lines of Code**: 262
 
 **Technical Details**:
 
-- **Public Methods** (8): `__construct()`, `ajax_save_template()`, `ajax_delete_template()`, `ajax_get_template()`, `ajax_clone_template()`, `ajax_test_template()`, `ajax_get_template_posts()`, `ajax_preview_template_prompts()`
-- **Dependencies** (5): `AIPS_Generator`, `AIPS_History`, `AIPS_Prompt_Builder`, `AIPS_Template_Context`, `AIPS_Templates`
-- **Action Hooks** (7): `wp_ajax_aips_delete_template`, `wp_ajax_aips_get_template`, `wp_ajax_aips_get_template_posts`, `wp_ajax_aips_save_template`, `wp_ajax_aips_test_template`, ... and 2 more
-- **AJAX Handlers**: `wp_ajax_aips_save_template`, `wp_ajax_aips_delete_template`, `wp_ajax_aips_get_template`, `wp_ajax_aips_test_template`, `wp_ajax_aips_get_template_posts`, `wp_ajax_aips_clone_template`, `wp_ajax_aips_preview_template_prompts`
+- **Public Methods** (7): `__construct()`, `ajax_save_template()`, `ajax_delete_template()`, `ajax_get_template()`, `ajax_clone_template()`, `ajax_test_template()`, `ajax_preview_template_prompts()`
+- **Dependencies** (4): `AIPS_Generator`, `AIPS_Prompt_Builder`, `AIPS_Template_Context`, `AIPS_Templates`
+- **Action Hooks** (6): `wp_ajax_aips_clone_template`, `wp_ajax_aips_delete_template`, `wp_ajax_aips_get_template`, `wp_ajax_aips_save_template`, `wp_ajax_aips_test_template`, ... and 1 more
+- **AJAX Handlers**: `wp_ajax_aips_save_template`, `wp_ajax_aips_delete_template`, `wp_ajax_aips_get_template`, `wp_ajax_aips_test_template`, `wp_ajax_aips_clone_template`, `wp_ajax_aips_preview_template_prompts`
 
 **Missing Functionality**:
 
@@ -2540,16 +2545,16 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 | Class | Lines | File |
 |-------|-------|------|
-| Settings | 935 | `class-aips-settings.php` |
-| Author Topics Controller | 905 | `class-aips-author-topics-controller.php` |
-| Generator | 837 | `class-aips-generator.php` |
+| Generator | 1058 | `class-aips-generator.php` |
+| Author Topics Controller | 967 | `class-aips-author-topics-controller.php` |
+| Settings | 887 | `class-aips-settings.php` |
 | Ai Service | 751 | `class-aips-ai-service.php` |
 | Post Review | 693 | `class-aips-post-review.php` |
-| History Repository | 684 | `class-aips-history-repository.php` |
+| History Repository | 690 | `class-aips-history-repository.php` |
 | Trending Topics Repository | 617 | `class-aips-trending-topics-repository.php` |
 | Db Manager | 600 | `class-aips-db-manager.php` |
+| Schedule Repository | 492 | `class-aips-schedule-repository.php` |
 | Research Service | 485 | `class-aips-research-service.php` |
-| Research Controller | 470 | `class-aips-research-controller.php` |
 
 ### Most Connected Classes (by Dependencies)
 
