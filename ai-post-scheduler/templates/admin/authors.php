@@ -18,6 +18,8 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     if (!empty($authors)) {
         $topics_repository = new AIPS_Author_Topics_Repository();
         $logs_repository = new AIPS_Author_Topic_Logs_Repository();
+        $feedback_repository = new AIPS_Feedback_Repository();
+        $penalty_service = new AIPS_Topic_Penalty_Service();
     }
 
     // Load article structures for the dropdown
@@ -89,6 +91,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                 <th><?php esc_html_e('Field/Niche', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Topics', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></th>
+                                <th><?php esc_html_e('Quality', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
                             </tr>
@@ -98,8 +101,33 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                 $status_counts = $topics_repository->get_status_counts($author->id);
                                 $total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
                                 $posts_count = $logs_repository->count_generated_posts_by_author($author->id);
-                                $author_details = !empty($author->details) ? json_decode($author->details, true) : array();
-                                $policy_flags_count = (is_array($author_details) && !empty($author_details['policy_flags']) && is_array($author_details['policy_flags'])) ? count($author_details['policy_flags']) : 0;
+                                $policy_flags = $penalty_service->get_author_policy_flags($author->id);
+                                $policy_flags_count = count($policy_flags);
+                                // Quality indicator data
+                                $feedback_stats = $feedback_repository->get_statistics($author->id);
+                                $feedback_total = (int) $feedback_stats['total'];
+                                $feedback_approved = (int) $feedback_stats['approved'];
+                                $approval_rate = $feedback_total > 0 ? round(($feedback_approved / $feedback_total) * 100) : null;
+                                // Determine quality state: Green = healthy, Yellow = warning, Red = critical
+                                if ($policy_flags_count >= 3) {
+                                    $quality_state = 'critical';
+                                } elseif ($policy_flags_count >= 1 || ($approval_rate !== null && $approval_rate < 50)) {
+                                    $quality_state = 'warning';
+                                } else {
+                                    $quality_state = 'healthy';
+                                }
+                                // Tooltip text
+                                if ($approval_rate !== null) {
+                                    $tooltip_rate = sprintf(esc_attr__('%d%% Approval Rate', 'ai-post-scheduler'), $approval_rate);
+                                } else {
+                                    $tooltip_rate = esc_attr__('No feedback yet', 'ai-post-scheduler');
+                                }
+                                if ($policy_flags_count > 0) {
+                                    $tooltip_flags = sprintf(esc_attr__('%d Policy Violation(s)', 'ai-post-scheduler'), $policy_flags_count);
+                                } else {
+                                    $tooltip_flags = esc_attr__('No Policy Violations', 'ai-post-scheduler');
+                                }
+                                $quality_tooltip = $tooltip_rate . ' · ' . $tooltip_flags;
                             ?>
                                 <tr data-author-id="<?php echo esc_attr($author->id); ?>">
                                     <td class="column-name">
@@ -123,6 +151,32 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                     </td>
                                     <td>
                                         <strong style="font-size: 14px;"><?php echo esc_html($posts_count); ?></strong>
+                                    </td>
+                                    <td class="column-quality">
+                                        <?php
+                                        if ($quality_state === 'critical') {
+                                            $indicator_color = '#d63638';
+                                            $indicator_icon = 'dashicons-dismiss';
+                                            $indicator_label = __('Critical', 'ai-post-scheduler');
+                                        } elseif ($quality_state === 'warning') {
+                                            $indicator_color = '#dba617';
+                                            $indicator_icon = 'dashicons-warning';
+                                            $indicator_label = __('Warning', 'ai-post-scheduler');
+                                        } else {
+                                            $indicator_color = '#00a32a';
+                                            $indicator_icon = 'dashicons-heart';
+                                            $indicator_label = __('Healthy', 'ai-post-scheduler');
+                                        }
+                                        ?>
+                                        <span
+                                            class="aips-quality-indicator aips-quality-<?php echo esc_attr($quality_state); ?>"
+                                            title="<?php echo esc_attr($quality_tooltip); ?>"
+                                            aria-label="<?php echo esc_attr($quality_tooltip); ?>"
+                                            style="display: inline-flex; align-items: center; gap: 4px; color: <?php echo esc_attr($indicator_color); ?>; font-weight: 600; font-size: 12px; cursor: default;"
+                                        >
+                                            <span class="dashicons <?php echo esc_attr($indicator_icon); ?>" style="font-size: 16px; width: 16px; height: 16px;"></span>
+                                            <?php echo esc_html($indicator_label); ?>
+                                        </span>
                                     </td>
                                     <td>
                                         <?php if ($author->is_active): ?>
