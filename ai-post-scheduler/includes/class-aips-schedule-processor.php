@@ -222,11 +222,8 @@ class AIPS_Schedule_Processor {
             ? sprintf(__('Manual execution of schedule "%s" started', 'ai-post-scheduler'), $schedule->name)
             : sprintf(__('Schedule "%s" started execution', 'ai-post-scheduler'), $schedule->name);
 
-        // Log schedule execution using History Container
-        $history = $this->history_service->create($is_manual ? 'manual_schedule_execution' : 'schedule_execution', array(
-            'schedule_id' => $schedule->schedule_id,
-            'user_id' => $is_manual ? get_current_user_id() : null,
-        ));
+        // Load the schedule's persistent lifecycle history container (or create one if missing)
+        $history = $this->get_or_create_schedule_history($schedule->schedule_id);
 
         $history->record(
             'activity',
@@ -314,28 +311,28 @@ class AIPS_Schedule_Processor {
                 ));
                 $this->logger->log('One-time schedule failed and deactivated', 'info', array('schedule_id' => $schedule->schedule_id));
 
-                // Log separate failure history
-                $fail_history = $this->history_service->create('schedule_execution', array(
-                    'schedule_id' => $schedule->schedule_id,
-                ));
-                $fail_history->record(
-                    'activity',
-                    sprintf(
-                        __('One-time schedule "%s" failed and was deactivated', 'ai-post-scheduler'),
-                        $schedule->name
-                    ),
-                    array(
-                        'event_type' => 'schedule_failed',
-                        'event_status' => 'failed',
-                    ),
-                    null,
-                    array(
-                        'schedule_id' => $schedule->schedule_id,
-                        'template_id' => $schedule->template_id,
-                        'error' => is_wp_error($result) ? $result->get_error_message() : 'Unknown error',
-                        'frequency' => $schedule->frequency,
-                    )
-                );
+                // Log to the schedule's persistent lifecycle history container
+                $fail_history = $this->get_or_create_schedule_history($schedule->schedule_id);
+                if ($fail_history) {
+                    $fail_history->record(
+                        'activity',
+                        sprintf(
+                            __('One-time schedule "%s" failed and was deactivated', 'ai-post-scheduler'),
+                            $schedule->name
+                        ),
+                        array(
+                            'event_type' => 'schedule_failed',
+                            'event_status' => 'failed',
+                        ),
+                        null,
+                        array(
+                            'schedule_id' => $schedule->schedule_id,
+                            'template_id' => $schedule->template_id,
+                            'error' => is_wp_error($result) ? $result->get_error_message() : 'Unknown error',
+                            'frequency' => $schedule->frequency,
+                        )
+                    );
+                }
             }
         } else {
             // For recurring schedules, we ONLY update last_run here.
@@ -432,5 +429,41 @@ class AIPS_Schedule_Processor {
             // Invalidate the schedule execution count cache (Bolt)
             $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
         }
+    }
+
+    /**
+     * Load the schedule's persistent lifecycle history container, or create one if missing.
+     *
+     * @param int $schedule_id Schedule ID.
+     * @return AIPS_History_Container|null Container instance or null on failure.
+     */
+    private function get_or_create_schedule_history($schedule_id) {
+        $schedule = $this->repository->get_by_id($schedule_id);
+
+        if (!$schedule) {
+            return null;
+        }
+
+        $history_repository = new AIPS_History_Repository();
+
+        if (!empty($schedule->schedule_history_id)) {
+            $container = AIPS_History_Container::load_existing($history_repository, $schedule->schedule_history_id);
+            if ($container) {
+                return $container;
+            }
+        }
+
+        // No existing container — create one and attach it to the schedule
+        $container = $this->history_service->create('schedule_lifecycle', array(
+            'schedule_id' => $schedule_id,
+        ));
+
+        if ($container && $container->get_id()) {
+            $this->repository->update($schedule_id, array(
+                'schedule_history_id' => $container->get_id(),
+            ));
+        }
+
+        return $container;
     }
 }

@@ -166,7 +166,7 @@ class AIPS_Scheduler {
                 }
             }
         }
-        
+
         $schedule_data = array(
             'template_id' => absint($data['template_id']),
             'frequency' => $frequency,
@@ -178,11 +178,136 @@ class AIPS_Scheduler {
         );
 
         if (!empty($data['id'])) {
-            $this->repository->update(absint($data['id']), $schedule_data);
-            return absint($data['id']);
+            $schedule_id = absint($data['id']);
+            $existing = $this->repository->get_by_id($schedule_id);
+            $this->repository->update($schedule_id, $schedule_data);
+
+            // Record update event in the schedule's persistent history container
+            $history_container = $this->get_or_create_schedule_history($schedule_id, $existing);
+            if ($history_container) {
+                $user = wp_get_current_user();
+                $user_label = ($user && $user->ID) ? $user->user_login : __('Unknown user', 'ai-post-scheduler');
+
+                // Detect frequency change for a descriptive message
+                $old_frequency = $existing ? $existing->frequency : '';
+                if ($old_frequency && $old_frequency !== $frequency) {
+                    $message = sprintf(
+                        /* translators: 1: old frequency, 2: new frequency, 3: user login */
+                        __('Schedule interval updated from "%1$s" to "%2$s" by %3$s', 'ai-post-scheduler'),
+                        $old_frequency,
+                        $frequency,
+                        $user_label
+                    );
+                } else {
+                    $message = sprintf(
+                        /* translators: 1: user login */
+                        __('Schedule updated by %s', 'ai-post-scheduler'),
+                        $user_label
+                    );
+                }
+
+                $history_container->record(
+                    'activity',
+                    $message,
+                    array(
+                        'event_type' => 'schedule_updated',
+                        'event_status' => 'success',
+                    ),
+                    null,
+                    array(
+                        'schedule_id' => $schedule_id,
+                        'user_id' => ($user ? $user->ID : 0),
+                        'frequency' => $frequency,
+                        'old_frequency' => $old_frequency,
+                    )
+                );
+            }
+
+            return $schedule_id;
         } else {
-            return $this->repository->create($schedule_data);
+            $new_id = $this->repository->create($schedule_data);
+
+            if ($new_id) {
+                // Create a new persistent history container for this schedule
+                $history_container = $this->history_service->create('schedule_lifecycle', array(
+                    'schedule_id' => $new_id,
+                ));
+
+                if ($history_container && $history_container->get_id()) {
+                    // Persist the history container ID on the schedule record
+                    $this->repository->update($new_id, array(
+                        'schedule_history_id' => $history_container->get_id(),
+                    ));
+
+                    $user = wp_get_current_user();
+                    $user_label = ($user && $user->ID) ? $user->user_login : __('Unknown user', 'ai-post-scheduler');
+
+                    $history_container->record(
+                        'activity',
+                        sprintf(
+                            /* translators: 1: frequency, 2: user login */
+                            __('Schedule created to run %1$s by %2$s', 'ai-post-scheduler'),
+                            $frequency,
+                            $user_label
+                        ),
+                        array(
+                            'event_type' => 'schedule_created',
+                            'event_status' => 'success',
+                        ),
+                        null,
+                        array(
+                            'schedule_id' => $new_id,
+                            'user_id' => ($user ? $user->ID : 0),
+                            'frequency' => $frequency,
+                        )
+                    );
+                }
+            }
+
+            return $new_id;
         }
+    }
+
+    /**
+     * Load or create a persistent schedule lifecycle history container.
+     *
+     * If the schedule already has a schedule_history_id, load that container.
+     * Otherwise create a new one and attach it.
+     *
+     * @param int         $schedule_id  Schedule ID.
+     * @param object|null $schedule     Optional existing schedule record (avoids extra DB query).
+     * @return AIPS_History_Container|null Container instance or null on failure.
+     */
+    private function get_or_create_schedule_history($schedule_id, $schedule = null) {
+        if ($schedule === null) {
+            $schedule = $this->repository->get_by_id($schedule_id);
+        }
+
+        if (!$schedule) {
+            return null;
+        }
+
+        $history_repository = new AIPS_History_Repository();
+
+        if (!empty($schedule->schedule_history_id)) {
+            $container = AIPS_History_Container::load_existing($history_repository, $schedule->schedule_history_id);
+            if ($container) {
+                return $container;
+            }
+        }
+
+        // No existing container — create one and attach it
+        $container = $this->history_service->create('schedule_lifecycle', array(
+            'schedule_id' => $schedule_id,
+        ));
+
+        if ($container && $container->get_id()) {
+            $this->repository->update($schedule_id, array(
+                'schedule_history_id' => $container->get_id(),
+            ));
+        }
+
+        return $container;
     }
 
     public function save_schedule_bulk($schedules) {
@@ -194,7 +319,40 @@ class AIPS_Scheduler {
     }
 
     public function toggle_active($id, $is_active) {
-        return $this->repository->set_active($id, $is_active);
+        $existing = $this->repository->get_by_id($id);
+        $result = $this->repository->set_active($id, $is_active);
+
+        if ($result !== false) {
+            // Record enable/disable event in the schedule's persistent history container
+            $history_container = $this->get_or_create_schedule_history($id, $existing);
+            if ($history_container) {
+                $user = wp_get_current_user();
+                $user_label = ($user && $user->ID) ? $user->user_login : __('Unknown user', 'ai-post-scheduler');
+                $action_label = $is_active ? __('enabled', 'ai-post-scheduler') : __('disabled', 'ai-post-scheduler');
+
+                $history_container->record(
+                    'activity',
+                    sprintf(
+                        /* translators: 1: enabled/disabled, 2: user login */
+                        __('Schedule %1$s by %2$s', 'ai-post-scheduler'),
+                        $action_label,
+                        $user_label
+                    ),
+                    array(
+                        'event_type' => $is_active ? 'schedule_enabled' : 'schedule_disabled',
+                        'event_status' => 'success',
+                    ),
+                    null,
+                    array(
+                        'schedule_id' => $id,
+                        'user_id' => ($user ? $user->ID : 0),
+                        'is_active' => (int) $is_active,
+                    )
+                );
+            }
+        }
+
+        return $result;
     }
     
     /**

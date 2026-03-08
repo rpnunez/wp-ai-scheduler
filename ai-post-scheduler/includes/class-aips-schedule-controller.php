@@ -18,6 +18,7 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_bulk_toggle_schedules', array($this, 'ajax_bulk_toggle_schedules'));
         add_action('wp_ajax_aips_bulk_run_now_schedules', array($this, 'ajax_bulk_run_now_schedules'));
         add_action('wp_ajax_aips_get_schedules_post_count', array($this, 'ajax_get_schedules_post_count'));
+        add_action('wp_ajax_aips_get_schedule_history', array($this, 'ajax_get_schedule_history'));
     }
 
     public function ajax_save_schedule() {
@@ -359,5 +360,58 @@ class AIPS_Schedule_Controller {
         $count = $repository->get_post_count_for_schedules($ids);
 
         wp_send_json_success(array('count' => $count));
+    }
+
+    /**
+     * AJAX handler to fetch the history log for a specific schedule.
+     *
+     * Returns all activity-type history entries associated with the schedule's
+     * persistent lifecycle history container.
+     */
+    public function ajax_get_schedule_history() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $schedule_id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
+        if (!$schedule_id) {
+            wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
+        }
+
+        $schedule_repository = new AIPS_Schedule_Repository();
+        $schedule = $schedule_repository->get_by_id($schedule_id);
+
+        if (!$schedule) {
+            wp_send_json_error(array('message' => __('Schedule not found.', 'ai-post-scheduler')));
+        }
+
+        if (empty($schedule->schedule_history_id)) {
+            wp_send_json_success(array('entries' => array()));
+        }
+
+        $history_repository = new AIPS_History_Repository();
+        $logs = $history_repository->get_logs_by_history_id(
+            absint($schedule->schedule_history_id),
+            array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
+        );
+
+        $entries = array();
+        foreach ($logs as $log) {
+            $details = $log->details ? json_decode($log->details, true) : array();
+            $entries[] = array(
+                'id' => absint($log->id),
+                'timestamp' => esc_html($log->timestamp),
+                'log_type' => esc_html($log->log_type),
+                'history_type_id' => absint($log->history_type_id),
+                'message' => isset($details['message']) ? esc_html($details['message']) : '',
+                'event_type' => isset($details['input']['event_type']) ? esc_html($details['input']['event_type']) : '',
+                'event_status' => isset($details['input']['event_status']) ? esc_html($details['input']['event_status']) : '',
+                'context' => isset($details['context']) ? $details['context'] : array(),
+            );
+        }
+
+        wp_send_json_success(array('entries' => $entries));
     }
 }
