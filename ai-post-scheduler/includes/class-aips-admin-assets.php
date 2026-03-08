@@ -223,8 +223,10 @@ class AIPS_Admin_Assets {
 
 			// Pass page-context data (not i18n) in a separate object so it stays
 			// semantically distinct from the translation strings above.
+			$deep_link_author_id = ( strpos( $hook, 'aips-authors' ) !== false && strpos( $hook, 'aips-author-topics' ) === false ) ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
 			wp_localize_script('aips-authors-script', 'aipsAuthorContext', array(
-				'authorId' => $page_author_id,
+				'authorId'        => $page_author_id,
+				'deepLinkAuthorId' => $deep_link_author_id,
 			));
 		}
 
