@@ -31,6 +31,14 @@ class AIPS_Natural_Schedule_Parser {
         $reference_timestamp = $reference_timestamp ?: current_time('timestamp');
         $time_parts = $this->extract_time_parts($normalized);
 
+        // If the input appears to specify a time but we could not parse it,
+        // return an explicit error instead of silently falling back to the reference time.
+        if ($time_parts === null && preg_match('/\b(?:at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?|at\s+(?:noon|midnight)|noon|midnight)\b/', $normalized)) {
+            return new WP_Error(
+                'invalid_schedule_time',
+                __('The time in your schedule phrase could not be understood. Please use a time like "8am" or "14:30".', 'ai-post-scheduler')
+            );
+        }
         $days = array(
             'monday' => 1,
             'tuesday' => 2,
