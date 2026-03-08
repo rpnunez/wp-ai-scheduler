@@ -174,6 +174,8 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 			'post_generation_frequency'  => 'daily',
 		);
 
+		// Sync request nonce with POST so check_ajax_referer() validates this payload.
+		$_REQUEST['nonce'] = $_POST['nonce'];
 		$response = $this->capture_ajax(array($controller, 'ajax_save_author'));
 
 		$after = current_time('mysql');
