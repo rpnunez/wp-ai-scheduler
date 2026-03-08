@@ -18,6 +18,19 @@ class AIPS_Structures_Controller {
         add_action('wp_ajax_aips_toggle_structure_active', array($this, 'ajax_toggle_structure_active'));
     }
 
+    /**
+     * Render the article structures admin page.
+     */
+    public function render_page() {
+        $structure_repo = new AIPS_Article_Structure_Repository();
+        $section_repo = new AIPS_Prompt_Section_Repository();
+
+        $structures = $structure_repo->get_all(false);
+        $sections = $section_repo->get_all(false);
+
+        include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
+    }
+
     public function ajax_get_structures() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -148,4 +161,3 @@ class AIPS_Structures_Controller {
         wp_send_json_success(array('message' => __('Structure status updated.', 'ai-post-scheduler')));
     }
 }
-

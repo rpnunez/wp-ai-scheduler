@@ -183,6 +183,7 @@ class AIPS_History {
         wp_send_json_success($response);
     }
 
+
     /**
      * AJAX handler to reload the history table and updated stats.
      *

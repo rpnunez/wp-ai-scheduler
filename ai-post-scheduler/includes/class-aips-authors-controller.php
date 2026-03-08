@@ -70,6 +70,13 @@ class AIPS_Authors_Controller {
 		add_action('wp_ajax_aips_generate_topics_now', array($this, 'ajax_generate_topics_now'));
 		add_action('wp_ajax_aips_get_topic_posts', array($this, 'ajax_get_topic_posts'));
 	}
+
+	/**
+	 * Render the authors admin page.
+	 */
+	public function render_page() {
+		include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
+	}
 	
 	/**
 	 * AJAX handler for saving an author.

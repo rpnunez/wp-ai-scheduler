@@ -39,6 +39,16 @@ class AIPS_Prompt_Sections_Controller {
 		add_action('wp_ajax_aips_toggle_prompt_section_active', array($this, 'ajax_toggle_section_active'));
 	}
 
+	/**
+	 * Render the prompt sections admin page.
+	 */
+	public function render_page() {
+		$section_repo = new AIPS_Prompt_Section_Repository();
+		$sections = $section_repo->get_all(false);
+
+		include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
+	}
+
 	public function ajax_get_sections() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 

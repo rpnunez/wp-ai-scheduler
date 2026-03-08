@@ -68,6 +68,13 @@ class AIPS_Research_Controller {
         // Scheduled research cron
         add_action('aips_scheduled_research', array($this, 'run_scheduled_research'));
     }
+
+    /**
+     * Render the research admin page.
+     */
+    public function render_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
+    }
     
     /**
      * AJAX handler: Research trending topics.

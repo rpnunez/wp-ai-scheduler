@@ -16,6 +16,13 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_run_now', array($this, 'ajax_run_now'));
     }
 
+    /**
+     * Render the schedule admin page.
+     */
+    public function render_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
+    }
+
     public function ajax_save_schedule() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 

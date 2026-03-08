@@ -28,6 +28,13 @@ class AIPS_Seeder_Admin {
         );
     }
 
+    /**
+     * Render the seeder admin page.
+     */
+    public function render_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/seeder.php';
+    }
+
     public function ajax_process_seeder() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
