@@ -879,12 +879,6 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     $files = [
         'class-aips-logger.php',
         'class-aips-config.php',
-        'class-aips-db-manager.php',
-        'class-aips-history-repository.php',
-        'class-aips-schedule-repository.php',
-        'class-aips-template-repository.php',
-        'class-aips-article-structure-repository.php',
-        'class-aips-prompt-section-repository.php',
         'class-aips-template-processor.php',
         'class-aips-prompt-builder.php',
         'class-aips-article-structure-manager.php',
@@ -908,7 +902,6 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-system-status.php',
         'class-aips-templates.php',
         'class-aips-upgrades.php',
-        'class-aips-voices-repository.php',
         'class-aips-voices.php',
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
@@ -918,6 +911,29 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     foreach ($files as $file) {
         if (file_exists($includes_dir . $file)) {
             require_once $includes_dir . $file;
+        }
+    }
+
+    // Create class aliases for PSR-4 refactored classes
+    $aliases = array(
+        'AIPS_DB_Manager'                   => 'AIPS\\Repositories\\DBManager',
+        'AIPS_Article_Structure_Repository' => 'AIPS\\Repositories\\ArticleStructureRepository',
+        'AIPS_Author_Topic_Logs_Repository' => 'AIPS\\Repositories\\AuthorTopicLogsRepository',
+        'AIPS_Author_Topics_Repository'     => 'AIPS\\Repositories\\AuthorTopicsRepository',
+        'AIPS_Authors_Repository'           => 'AIPS\\Repositories\\AuthorsRepository',
+        'AIPS_Feedback_Repository'          => 'AIPS\\Repositories\\FeedbackRepository',
+        'AIPS_History_Repository'           => 'AIPS\\Repositories\\HistoryRepository',
+        'AIPS_Post_Review_Repository'       => 'AIPS\\Repositories\\PostReviewRepository',
+        'AIPS_Prompt_Section_Repository'    => 'AIPS\\Repositories\\PromptSectionRepository',
+        'AIPS_Schedule_Repository'          => 'AIPS\\Repositories\\ScheduleRepository',
+        'AIPS_Template_Repository'          => 'AIPS\\Repositories\\TemplateRepository',
+        'AIPS_Trending_Topics_Repository'   => 'AIPS\\Repositories\\TrendingTopicsRepository',
+        'AIPS_Voices_Repository'            => 'AIPS\\Repositories\\VoicesRepository',
+    );
+
+    foreach ($aliases as $old_name => $new_name) {
+        if (class_exists($new_name) && !class_exists($old_name, false)) {
+            class_alias($new_name, $old_name);
         }
     }
 }

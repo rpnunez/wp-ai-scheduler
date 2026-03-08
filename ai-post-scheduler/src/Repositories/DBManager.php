@@ -1,9 +1,11 @@
 <?php
+namespace AIPS\Repositories;
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class AIPS_DB_Manager {
+class DBManager {
 
     private static $tables = array(
         'aips_history',
