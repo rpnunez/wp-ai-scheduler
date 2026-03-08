@@ -283,4 +283,45 @@ class AIPS_Feedback_Repository {
 		
 		return $stats;
 	}
+
+	/**
+	 * Get latest feedback entry for each topic ID.
+	 *
+	 * @param array $topic_ids Topic IDs.
+	 * @return array Associative array keyed by topic ID with feedback objects.
+	 */
+	public function get_latest_by_topics($topic_ids) {
+		$topic_ids = array_filter(array_map('absint', (array) $topic_ids));
+		if (empty($topic_ids)) {
+			return array();
+		}
+
+		$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
+		$sql = "
+			SELECT f.*
+			FROM {$this->table_name} f
+			INNER JOIN (
+				SELECT author_topic_id, MAX(created_at) AS latest_created_at
+				FROM {$this->table_name}
+				WHERE author_topic_id IN ({$placeholders})
+				GROUP BY author_topic_id
+			) latest
+			ON latest.author_topic_id = f.author_topic_id
+			AND latest.latest_created_at = f.created_at
+			ORDER BY f.author_topic_id ASC
+		";
+
+		$prepared = $this->wpdb->prepare($sql, $topic_ids);
+		$rows = $this->wpdb->get_results($prepared);
+
+		$result = array();
+		foreach ($rows as $row) {
+			$result[(int) $row->author_topic_id] = $row;
+		}
+
+		return $result;
+	}
 }
+
+
+

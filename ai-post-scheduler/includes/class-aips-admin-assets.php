@@ -446,3 +446,4 @@ class AIPS_Admin_Assets {
         }
     }
 }
+

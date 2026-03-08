@@ -677,12 +677,12 @@ class AIPS_Author_Topics_Controller {
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		
-		if (!$author_id) {
-			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
-		}
-		
 		$expansion_service = new AIPS_Topic_Expansion_Service();
-		$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
+		if ($author_id > 0) {
+			$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
+		} else {
+			$stats = $expansion_service->batch_compute_all_approved_embeddings();
+		}
 		
 		wp_send_json_success(array(
 			'message' => sprintf(
@@ -698,6 +698,7 @@ class AIPS_Author_Topics_Controller {
 	/**
 	 * AJAX handler for getting all approved topics for the generation queue.
 	 */
+	
 	public function ajax_get_generation_queue() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		

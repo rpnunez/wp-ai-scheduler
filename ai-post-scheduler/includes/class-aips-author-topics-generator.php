@@ -41,18 +41,25 @@ class AIPS_Author_Topics_Generator {
 	private $logs_repository;
 	
 	/**
+	 * @var AIPS_Embeddings_Service Embeddings service for fuzzy duplicate checks
+	 */
+	private $embeddings_service;
+	
+	/**
 	 * Initialize the generator.
 	 *
 	 * @param object|null $ai_service AI service instance (optional for testing).
 	 * @param object|null $logger Logger instance (optional for testing).
 	 * @param object|null $topics_repository Topics repository (optional for testing).
 	 * @param object|null $logs_repository Logs repository (optional for testing).
+	 * @param object|null $embeddings_service Embeddings service (optional for testing).
 	 */
-	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null) {
+	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null) {
 		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
 		$this->logger = $logger ?: new AIPS_Logger();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
+		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
 	}
 	
 	/**
@@ -92,6 +99,9 @@ class AIPS_Author_Topics_Generator {
 			$this->logger->log("No topics parsed from AI response for author {$author->id}", 'warning');
 			return new WP_Error('no_topics_parsed', 'Failed to parse topics from AI response');
 		}
+		
+		// Flag semantically similar candidates before they reach editorial review.
+		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics);
 		
 		// Save topics to database
 		$saved_topics = array();
@@ -325,6 +335,83 @@ class AIPS_Author_Topics_Generator {
 	}
 	
 	/**
+	 * Flag semantically similar generated topics as potential duplicates.
+	 *
+	 * @param object $author Author object.
+	 * @param array  $topics Generated topic arrays.
+	 * @return array Topics with updated metadata and score adjustments.
+	 */
+	private function apply_fuzzy_duplicate_flags($author, $topics) {
+		if (empty($topics) || !$this->embeddings_service->is_embeddings_supported()) {
+			return $topics;
+		}
+
+		$existing_topics = $this->topics_repository->get_by_author($author->id);
+		if (empty($existing_topics)) {
+			return $topics;
+		}
+
+		$candidate_existing = array();
+		foreach ($existing_topics as $existing_topic) {
+			$metadata = !empty($existing_topic->metadata) ? json_decode($existing_topic->metadata, true) : array();
+			if (!is_array($metadata) || empty($metadata['embedding']) || !is_array($metadata['embedding'])) {
+				continue;
+			}
+
+			$candidate_existing[] = array(
+				'topic_title' => $existing_topic->topic_title,
+				'embedding' => $metadata['embedding'],
+			);
+		}
+
+		if (empty($candidate_existing)) {
+			return $topics;
+		}
+
+		$threshold = 0.92;
+		foreach ($topics as &$topic) {
+			$text = isset($topic['topic_title']) ? (string) $topic['topic_title'] : '';
+			if (empty($text)) {
+				continue;
+			}
+
+			$embedding = $this->embeddings_service->generate_embedding($text);
+			if (is_wp_error($embedding) || !is_array($embedding)) {
+				continue;
+			}
+
+			$best_similarity = 0;
+			$best_match = '';
+			foreach ($candidate_existing as $existing) {
+				$similarity = $this->embeddings_service->calculate_similarity($embedding, $existing['embedding']);
+				if (!is_wp_error($similarity) && $similarity > $best_similarity) {
+					$best_similarity = $similarity;
+					$best_match = (string) $existing['topic_title'];
+				}
+			}
+
+			$metadata = isset($topic['metadata']) ? json_decode($topic['metadata'], true) : array();
+			if (!is_array($metadata)) {
+				$metadata = array();
+			}
+			$metadata['embedding'] = $embedding;
+
+			if ($best_similarity >= $threshold) {
+				$metadata['potential_duplicate'] = true;
+				$metadata['duplicate_similarity'] = round($best_similarity, 4);
+				$metadata['duplicate_match'] = $best_match;
+				$topic['score'] = max(0, ((int) (isset($topic['score']) ? $topic['score'] : 50)) - 15);
+			} else {
+				$metadata['potential_duplicate'] = false;
+			}
+
+			$topic['metadata'] = wp_json_encode($metadata);
+		}
+		unset($topic);
+
+		return $topics;
+	}
+	/**
 	 * Get feedback context summary for an author.
 	 *
 	 * This is used to provide context for topic generation.
@@ -349,3 +436,8 @@ class AIPS_Author_Topics_Generator {
 		return $context;
 	}
 }
+
+
+
+
+

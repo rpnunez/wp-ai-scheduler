@@ -231,8 +231,13 @@ class AIPS_Authors_Controller {
 		
 		$topics = $this->topics_repository->get_by_author($author_id, $status);
 		$status_counts = $this->topics_repository->get_status_counts($author_id);
+		$topic_ids = array();
+		foreach ($topics as $topic) {
+			$topic_ids[] = (int) $topic->id;
+		}
+		$latest_feedback_by_topic = $this->feedback_repository->get_latest_by_topics($topic_ids);
 		
-		// Add post count to each topic
+		// Add post count and latest feedback summary to each topic.
 		foreach ($topics as &$topic) {
 			$logs = $this->logs_repository->get_by_topic($topic->id);
 			$post_count = 0;
@@ -242,14 +247,36 @@ class AIPS_Authors_Controller {
 				}
 			}
 			$topic->post_count = $post_count;
+			
+			$topic->last_feedback = null;
+			if (isset($latest_feedback_by_topic[(int) $topic->id])) {
+				$feedback = $latest_feedback_by_topic[(int) $topic->id];
+				$topic->last_feedback = array(
+					'action' => $feedback->action,
+					'reason_category' => $feedback->reason_category,
+					'reason' => $feedback->reason,
+					'created_at' => $feedback->created_at,
+				);
+			}
+			
+			$topic->potential_duplicate = false;
+			$topic->duplicate_match = '';
+			if (!empty($topic->metadata)) {
+				$metadata = json_decode($topic->metadata, true);
+				if (is_array($metadata) && !empty($metadata['potential_duplicate'])) {
+					$topic->potential_duplicate = true;
+					$topic->duplicate_match = isset($metadata['duplicate_match']) ? (string) $metadata['duplicate_match'] : '';
+				}
+			}
 		}
+		unset($topic);
 		
 		wp_send_json_success(array(
 			'topics' => $topics,
 			'status_counts' => $status_counts
 		));
 	}
-	
+
 	/**
 	 * AJAX handler for getting author generated posts.
 	 */
@@ -394,3 +421,4 @@ class AIPS_Authors_Controller {
 		));
 	}
 }
+

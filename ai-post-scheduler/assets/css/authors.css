@@ -614,3 +614,14 @@
 	}
 }
 
+
+/* Similar suggestions and feedback context */
+#aips-similar-suggestions .description,
+.aips-topic-score {
+	color: #646970;
+	font-size: 12px;
+}
+
+.aips-topic-inline-feedback {
+	margin-top: 8px;
+}

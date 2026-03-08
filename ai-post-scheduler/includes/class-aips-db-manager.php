@@ -597,3 +597,4 @@ class AIPS_DB_Manager {
         }
     }
 }
+

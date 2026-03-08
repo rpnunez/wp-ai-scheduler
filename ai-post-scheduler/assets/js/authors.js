@@ -348,12 +348,19 @@
 					if (response.success) {
 						this.renderTopics(response.data.topics, status);
 						this.updateTopicCounts(response.data.status_counts);
+						if (status === 'pending') {
+							this.renderSimilarSuggestionsPanel();
+						} else {
+							$('#aips-similar-suggestions').hide().empty();
+						}
 					} else {
 						$('#aips-topics-content').html('<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingTopics) + '</p>');
+						$('#aips-similar-suggestions').hide().empty();
 					}
 				},
 				error: () => {
 					$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.errorLoadingTopics + '</p>');
+					$('#aips-similar-suggestions').hide().empty();
 				}
 			});
 		},
@@ -465,6 +472,41 @@
 		 * @param {number} [counts.approved] - Number of approved topics.
 		 * @param {number} [counts.rejected] - Number of rejected topics.
 		 */
+		renderSimilarSuggestionsPanel: function () {
+			const $panel = $('#aips-similar-suggestions');
+			if (!$panel.length || !this.currentAuthorId) {
+				return;
+			}
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_suggest_related_topics',
+					nonce: aipsAuthorsL10n.nonce,
+					author_id: this.currentAuthorId,
+					limit: 5
+				},
+				success: (response) => {
+					if (!response.success || !response.data || !Array.isArray(response.data.suggestions) || response.data.suggestions.length === 0) {
+						$panel.hide().empty();
+						return;
+					}
+					let html = '<div class="aips-content-panel" style="padding: 12px 16px;">';
+					html += '<strong>' + this.escapeHtml('Similar Suggestions') + '</strong>';
+					html += '<ul style="margin: 8px 0 0 18px;">';
+					response.data.suggestions.forEach(item => {
+						const score = typeof item.similarity_score === 'number' ? Math.round(item.similarity_score * 100) : 0;
+						html += '<li>' + this.escapeHtml(item.topic_title || '') + ' <span class="description">(' + score + '%)</span></li>';
+					});
+					html += '</ul></div>';
+					$panel.html(html).show();
+				},
+				error: () => {
+					$panel.hide().empty();
+				}
+			});
+		},
 		updateTopicCounts: function (counts) {
 			$('#pending-count').text(counts.pending || 0);
 			$('#approved-count').text(counts.approved || 0);
@@ -720,6 +762,7 @@
 			const topicId = $('#feedback_topic_id').val();
 			const action = $('#feedback_action').val();
 			const reason = $('#feedback_reason').val();
+			const reasonCategory = $('#feedback_reason_category').val() || 'other';
 
 			const ajaxAction = action === 'approve' ? 'aips_approve_topic' : 'aips_reject_topic';
 
@@ -730,7 +773,9 @@
 					action: ajaxAction,
 					nonce: aipsAuthorsL10n.nonce,
 					topic_id: topicId,
-					reason: reason
+					reason: reason,
+					reason_category: reasonCategory,
+					source: 'manual_ui'
 				},
 				success: (response) => {
 					if (response.success) {
@@ -755,6 +800,7 @@
 		 * success, passes the feedback array to `renderFeedback`. Shows an
 		 * inline message if no author is selected or the request fails.
 		 */
+		
 		loadFeedback: function () {
 			if (!this.currentAuthorId) {
 				$('#aips-topics-content').html('<p>No author selected.</p>');
@@ -1872,3 +1918,18 @@
 		}
 	});
 })(jQuery);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

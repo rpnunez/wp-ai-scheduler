@@ -314,4 +314,33 @@ class AIPS_Topic_Expansion_Service {
 		
 		return $stats;
 	}
+
+	/**
+	 * Batch compute embeddings for all approved topics across all authors.
+	 *
+	 * @return array Statistics about the batch operation.
+	 */
+	public function batch_compute_all_approved_embeddings() {
+		$authors_repository = new AIPS_Authors_Repository();
+		$authors = $authors_repository->get_all();
+
+		$stats = array(
+			'total' => 0,
+			'success' => 0,
+			'failed' => 0,
+			'skipped' => 0
+		);
+
+		foreach ($authors as $author) {
+			$author_stats = $this->batch_compute_approved_embeddings((int) $author->id);
+			$stats['total'] += (int) $author_stats['total'];
+			$stats['success'] += (int) $author_stats['success'];
+			$stats['failed'] += (int) $author_stats['failed'];
+			$stats['skipped'] += (int) $author_stats['skipped'];
+		}
+
+		return $stats;
+	}
 }
+
+
