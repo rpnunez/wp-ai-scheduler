@@ -121,14 +121,22 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                 }
                                 // Tooltip text
                                 if ($approval_rate !== null) {
-                                    $tooltip_rate = sprintf(esc_attr__('%d%% Approval Rate', 'ai-post-scheduler'), $approval_rate);
+                                    $tooltip_rate = sprintf(__('%d%% Approval Rate', 'ai-post-scheduler'), $approval_rate);
                                 } else {
-                                    $tooltip_rate = esc_attr__('No feedback yet', 'ai-post-scheduler');
+                                    $tooltip_rate = __('No feedback yet', 'ai-post-scheduler');
                                 }
                                 if ($policy_flags_count > 0) {
-                                    $tooltip_flags = sprintf(esc_attr__('%d Policy Violation(s)', 'ai-post-scheduler'), $policy_flags_count);
+                                    $tooltip_flags = sprintf(
+                                        _n(
+                                            '%d Policy Violation',
+                                            '%d Policy Violations',
+                                            $policy_flags_count,
+                                            'ai-post-scheduler'
+                                        ),
+                                        $policy_flags_count
+                                    );
                                 } else {
-                                    $tooltip_flags = esc_attr__('No Policy Violations', 'ai-post-scheduler');
+                                    $tooltip_flags = __('No Policy Violations', 'ai-post-scheduler');
                                 }
                                 $quality_tooltip = $tooltip_rate . ' · ' . $tooltip_flags;
                             ?>
