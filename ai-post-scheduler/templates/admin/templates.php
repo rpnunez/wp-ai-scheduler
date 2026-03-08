@@ -478,10 +478,10 @@ if (!defined('ABSPATH')) {
                             <p class="description" style="font-size: 14px; margin-bottom: 24px;"><?php esc_html_e('Your template is ready. What would you like to do next?', 'ai-post-scheduler'); ?></p>
                             
                             <div class="aips-next-steps-grid" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; max-width: 600px; margin: 0 auto;">
-                                <a href="#" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px; text-decoration: none;">
+                                <button type="button" id="aips-quick-schedule-btn" class="aips-btn aips-btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
                                     <span class="dashicons dashicons-calendar-alt"></span>
                                     <?php esc_html_e('Schedule This Template', 'ai-post-scheduler'); ?>
-                                </a>
+                                </button>
                                 <button type="button" id="aips-quick-run-now-btn" class="aips-btn aips-btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 14px;">
                                     <span class="dashicons dashicons-controls-play"></span>
                                     <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
@@ -490,6 +490,42 @@ if (!defined('ABSPATH')) {
                                     <span class="dashicons dashicons-dismiss"></span>
                                     <?php esc_html_e('Done', 'ai-post-scheduler'); ?>
                                 </button>
+                            </div>
+
+                            <!-- Inline Schedule Form -->
+                            <div id="aips-inline-schedule-form" style="display: none; margin-top: 24px; text-align: left; background: #fff; padding: 20px; border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
+                                <h4 style="margin-top: 0;"><?php esc_html_e('Quick Schedule', 'ai-post-scheduler'); ?></h4>
+                                <input type="hidden" id="quick_schedule_template_id" name="quick_schedule_template_id" value="">
+                                <div class="aips-form-columns">
+                                    <div class="aips-form-row">
+                                        <label for="quick_schedule_frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></label>
+                                        <?php
+                                        $interval_calculator = new AIPS_Interval_Calculator();
+                                        $intervals = $interval_calculator->get_intervals();
+                                        ?>
+                                        <select id="quick_schedule_frequency" name="quick_schedule_frequency">
+                                            <?php foreach ($intervals as $key => $interval_data): ?>
+                                                <option value="<?php echo esc_attr($key); ?>" <?php selected($key, 'daily'); ?>>
+                                                    <?php echo esc_html($interval_data['display']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="aips-form-row">
+                                        <label for="quick_schedule_start_time"><?php esc_html_e('Next Run (Optional)', 'ai-post-scheduler'); ?></label>
+                                        <input type="datetime-local" id="quick_schedule_start_time" name="quick_schedule_start_time" class="regular-text">
+                                    </div>
+                                </div>
+                                <div class="aips-form-row">
+                                    <label class="aips-checkbox-label">
+                                        <input type="checkbox" id="quick_schedule_is_active" name="quick_schedule_is_active" value="1" checked>
+                                        <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
+                                    </label>
+                                </div>
+                                <div style="margin-top: 16px; display: flex; gap: 10px;">
+                                    <button type="button" id="aips-submit-quick-schedule" class="button button-primary"><?php esc_html_e('Save Schedule', 'ai-post-scheduler'); ?></button>
+                                    <button type="button" id="aips-cancel-quick-schedule" class="button"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -47,6 +47,9 @@
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
 
             // Post-save next steps
+            $(document).on('click', '#aips-quick-schedule-btn', this.quickScheduleOpen);
+            $(document).on('click', '#aips-submit-quick-schedule', this.quickScheduleSubmit);
+            $(document).on('click', '#aips-cancel-quick-schedule', this.quickScheduleCancel);
             $(document).on('click', '#aips-quick-run-now-btn', this.quickRunNow);
             $(document).on('click', '#aips-post-save-done-btn', function() { location.reload(); });
 
@@ -2116,11 +2119,80 @@
             $('.aips-wizard-progress').hide();
             $('.aips-wizard-footer').hide();
 
-            var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
-                ? aipsAjax.schedulePageUrl + '&schedule_template=' + templateId
-                : 'admin.php?page=aips-schedule&schedule_template=' + templateId;
-            $('#aips-quick-schedule-btn').attr('href', scheduleUrl).data('template-id', templateId);
+            $('#aips-quick-schedule-btn').data('template-id', templateId);
+            $('#quick_schedule_template_id').val(templateId);
             $('#aips-quick-run-now-btn').data('template-id', templateId);
+        },
+
+        /**
+         * Opens the inline Quick Schedule form in the post-save panel.
+         *
+         * @param {Event} e - Click event.
+         */
+        quickScheduleOpen: function(e) {
+            e.preventDefault();
+            $('.aips-next-steps-grid').hide();
+            $('#aips-inline-schedule-form').slideDown(200);
+        },
+
+        /**
+         * Cancels the inline Quick Schedule form.
+         *
+         * @param {Event} e - Click event.
+         */
+        quickScheduleCancel: function(e) {
+            e.preventDefault();
+            $('#aips-inline-schedule-form').slideUp(200, function() {
+                $('.aips-next-steps-grid').fadeIn(200);
+            });
+        },
+
+        /**
+         * Submits the inline Quick Schedule form via AJAX.
+         *
+         * @param {Event} e - Click event.
+         */
+        quickScheduleSubmit: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var templateId = $('#quick_schedule_template_id').val();
+
+            if (!templateId) return;
+
+            $btn.prop('disabled', true).text('Saving...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_save_schedule',
+                    nonce: aipsAjax.nonce,
+                    template_id: templateId,
+                    frequency: $('#quick_schedule_frequency').val(),
+                    start_time: $('#quick_schedule_start_time').val(),
+                    is_active: $('#quick_schedule_is_active').is(':checked') ? 1 : 0
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.showToast(response.data.message || 'Schedule saved successfully.', 'success');
+
+                        // Hide form and show success state
+                        $('#aips-inline-schedule-form').slideUp(200, function() {
+                            $('.aips-next-steps-grid').fadeIn(200);
+                            $('#aips-quick-schedule-btn').hide();
+                            $('#aips-save-success-title').text('Template and Schedule Saved!');
+                        });
+                    } else {
+                        alert(response.data && response.data.message ? response.data.message : 'Error saving schedule.');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text('Save Schedule');
+                }
+            });
         },
 
         /**
