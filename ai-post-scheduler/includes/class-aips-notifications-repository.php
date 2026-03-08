@@ -48,7 +48,7 @@ class AIPS_Notifications_Repository {
 				'message'    => sanitize_textarea_field($message),
 				'url'        => esc_url_raw($url),
 				'is_read'    => 0,
-				'created_at' => current_time('mysql'),
+				'created_at' => current_time('mysql', true),
 			),
 			array('%s', '%s', '%s', '%d', '%s')
 		);
