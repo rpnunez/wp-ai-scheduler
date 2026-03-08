@@ -118,7 +118,7 @@ class AIPS_Schedule_Processor {
      *
      * @param int      $schedule_id      The schedule ID.
      * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
-     * @return int|WP_Error Post ID on success, or WP_Error on failure.
+     * @return int[]|WP_Error Array of generated post IDs on success (partial success returns non-empty array), or WP_Error if all attempts fail.
      */
     public function process_single_schedule($schedule_id, $quantity_override = null) {
         $schedule = $this->repository->get_by_id($schedule_id);
@@ -192,10 +192,14 @@ class AIPS_Schedule_Processor {
     /**
      * Core logic to execute a schedule.
      *
+     * Generates $post_quantity posts for the schedule, logging success and failure
+     * for each individual post. Returns an array of generated post IDs on full or
+     * partial success, or a WP_Error if every attempt fails.
+     *
      * @param object   $schedule         Schedule object (merged with template).
      * @param bool     $is_manual        Whether this is a manual execution.
      * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
-     * @return int|WP_Error Post ID or WP_Error.
+     * @return int[]|WP_Error Array of generated post IDs, or WP_Error if all attempts fail.
      */
     private function execute_schedule_logic($schedule, $is_manual = false, $quantity_override = null) {
         if (!$is_manual) {
@@ -262,51 +266,58 @@ class AIPS_Schedule_Processor {
             'article_structure_id' => $article_structure_id,
         );
 
-        // Allow schedule to override certain template properties if they exist in schedule object (from join)
-        // Currently the schedule table doesn't have post_status etc override columns, but if it did, they would be in $schedule
-        // The only override is 'topic'
-
         $topic = isset($schedule->topic) ? $schedule->topic : null;
         $creation_method = $is_manual ? 'manual' : 'scheduled';
-        
-        // Create context with creation_method
-        $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
-        $result = $this->generator->generate_post($context);
+
+        // Generate $post_quantity posts, collecting successes and failures.
+        $post_ids = array();
+        $errors   = array();
+
+        for ($i = 0; $i < $post_quantity; $i++) {
+            $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
+            $single_result = $this->generator->generate_post($context);
+
+            if (is_wp_error($single_result)) {
+                $errors[] = $single_result;
+                $this->handle_execution_failure($schedule, $single_result, $history, $is_manual);
+            } else {
+                $post_ids[] = $single_result;
+                $this->handle_execution_success($schedule, $single_result, $history, $is_manual);
+            }
+        }
 
         // Handle Post-Execution Logic (Cleanup/Updates)
         if (!$is_manual) {
-            $this->handle_post_execution_cleanup($schedule, $result);
+            $first_error = !empty($errors) ? $errors[0] : null;
+            $this->handle_post_execution_cleanup($schedule, $post_ids, $first_error);
         } else {
-             // For manual runs, we invalidate cache but don't delete one-time schedules automatically?
-             // The original code for run_schedule_now didn't delete one-time schedules or update next_run.
-             // It just invalidated the cache.
-             $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+            $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
         }
 
-        // Handle Logging and Events based on Result
-        if (is_wp_error($result)) {
-            $this->handle_execution_failure($schedule, $result, $history, $is_manual);
-        } else {
-            $this->handle_execution_success($schedule, $result, $history, $is_manual);
+        // Return all generated post IDs on (partial) success, or the first error if all failed.
+        if (!empty($post_ids)) {
+            return $post_ids;
         }
 
-        return $result;
+        return !empty($errors) ? $errors[0] : new WP_Error('generation_failed', __('Post generation failed.', 'ai-post-scheduler'));
     }
 
     /**
      * Handle cleanup after automated execution (delete one-time, update recurring).
      *
-     * @param object $schedule
-     * @param mixed  $result
+     * @param object        $schedule
+     * @param int[]         $post_ids    Post IDs that were successfully created.
+     * @param WP_Error|null $first_error The first generation error, if any.
      */
-    private function handle_post_execution_cleanup($schedule, $result) {
+    private function handle_post_execution_cleanup($schedule, array $post_ids, $first_error = null) {
+        $success = !empty($post_ids);
         if ($schedule->frequency === 'once') {
-            if (!is_wp_error($result)) {
-                // If it's a one-time schedule and successful, delete it
+            if ($success) {
+                // If it's a one-time schedule and at least one post was generated, delete it
                 $this->repository->delete($schedule->schedule_id);
                 $this->logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
             } else {
-                // If failed, deactivate it and set status to 'failed' to prevent infinite daily retries
+                // If all attempts failed, deactivate it and set status to 'failed' to prevent infinite daily retries
                 $this->repository->update($schedule->schedule_id, array(
                     'is_active' => 0,
                     'status' => 'failed',
@@ -332,7 +343,7 @@ class AIPS_Schedule_Processor {
                     array(
                         'schedule_id' => $schedule->schedule_id,
                         'template_id' => $schedule->template_id,
-                        'error' => is_wp_error($result) ? $result->get_error_message() : 'Unknown error',
+                        'error' => ($first_error instanceof WP_Error) ? $first_error->get_error_message() : 'Unknown error',
                         'frequency' => $schedule->frequency,
                     )
                 );

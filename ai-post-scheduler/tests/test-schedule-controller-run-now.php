@@ -33,7 +33,7 @@ class Test_AIPS_Schedule_Controller_Run_Now extends WP_UnitTestCase {
         $this->scheduler->expects($this->once())
             ->method('run_schedule_now')
             ->with(123)
-            ->willReturn(456); // Post ID
+            ->willReturn(array(456)); // Array of post IDs
 
         try {
             $this->controller->ajax_run_now();

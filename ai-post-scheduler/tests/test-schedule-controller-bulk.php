@@ -103,10 +103,16 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 	/**
 	 * Call a controller method and capture its JSON output.
 	 *
+	 * Syncs $_REQUEST['nonce'] from $_POST['nonce'] so that the check_ajax_referer
+	 * mock in bootstrap.php can verify the nonce correctly.
+	 *
 	 * @param callable $callable
 	 * @return array Decoded JSON response.
 	 */
 	private function call_ajax( callable $callable ) {
+		if ( isset( $_POST['nonce'] ) ) {
+			$_REQUEST['nonce'] = $_POST['nonce'];
+		}
 		ob_start();
 		try {
 			$callable();
@@ -274,10 +280,10 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 		wp_set_current_user( $this->admin_user_id );
 		$ids = $this->create_test_schedules( 2 );
 
-		// Scheduler returns a post ID for each schedule
+		// Scheduler returns an array of post IDs for each schedule
 		$this->scheduler->expects( $this->exactly( 2 ) )
 			->method( 'run_schedule_now' )
-			->willReturnOnConsecutiveCalls( 101, 102 );
+			->willReturnOnConsecutiveCalls( array( 101 ), array( 102 ) );
 
 		$_POST['nonce'] = wp_create_nonce( 'aips_ajax_nonce' );
 		$_POST['ids']   = $ids;
@@ -298,7 +304,7 @@ class Test_AIPS_Schedule_Controller_Bulk extends WP_UnitTestCase {
 		$this->scheduler->expects( $this->exactly( 2 ) )
 			->method( 'run_schedule_now' )
 			->willReturnOnConsecutiveCalls(
-				201,
+				array( 201 ),
 				new WP_Error( 'gen_fail', 'AI generation failed' )
 			);
 

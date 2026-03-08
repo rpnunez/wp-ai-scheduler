@@ -19,8 +19,9 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
      *
      * @param object   $schedule         The schedule object returned by the repository.
      * @param object   $template         The template object returned by the repository.
-     * @param int      $expected_post_id The post ID the mock generator should return.
-     * @param int|null $expected_qty     The post_quantity expected inside the AIPS_Template_Context.
+     * @param int      $expected_post_id The post ID the mock generator should return for each call.
+     * @param int|null $expected_qty     The post_quantity expected inside the AIPS_Template_Context,
+     *                                   also used as the expected number of generate_post() calls.
      * @return AIPS_Scheduler
      */
     private function build_scheduler_with_mocks($schedule, $template, $expected_post_id, $expected_qty = null) {
@@ -48,13 +49,15 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
 
         $this->scheduler->set_template_repository($mock_template_repo);
 
-        // Generator mock — generate_post receives a single AIPS_Template_Context argument.
+        // Generator mock — generate_post is called once per post in the quantity loop.
+        $expected_calls = $expected_qty ?? 1;
+
         $mock_generator = $this->getMockBuilder('AIPS_Generator')
             ->disableOriginalConstructor()
             ->onlyMethods(array('generate_post'))
             ->getMock();
 
-        $mock_generator->expects($this->once())
+        $mock_generator->expects($this->exactly($expected_calls))
             ->method('generate_post')
             ->with(
                 $this->callback(function($context) use ($expected_qty) {
@@ -75,7 +78,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
     }
 
     /**
-     * Verifies that run_schedule_now() uses the template's post_quantity (not a hard-coded 1).
+     * Verifies that run_schedule_now() calls generate_post() post_quantity times and returns all post IDs.
      */
     public function test_run_schedule_now_uses_template_post_quantity() {
         $schedule = (object) array(
@@ -90,7 +93,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
         $template = (object) array(
             'id' => 456,
             'name' => 'Manual Test Template',
-            'post_quantity' => 5, // Should now be honoured, not overridden to 1
+            'post_quantity' => 5,
             'is_active' => 1
         );
 
@@ -101,11 +104,14 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
         if (is_wp_error($result)) {
             $this->fail('Unexpected WP_Error: ' . $result->get_error_message());
         }
-        $this->assertEquals(123, $result);
+        $this->assertIsArray($result);
+        $this->assertCount(5, $result);
+        $this->assertEquals(array_fill(0, 5, 123), $result);
     }
 
     /**
-     * Verifies that a caller-supplied quantity_override takes precedence over the template's post_quantity.
+     * Verifies that a caller-supplied quantity_override takes precedence over the template's post_quantity
+     * and that the returned array contains exactly that many post IDs.
      */
     public function test_run_schedule_now_respects_quantity_override() {
         $schedule = (object) array(
@@ -132,7 +138,9 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
         if (is_wp_error($result)) {
             $this->fail('Unexpected WP_Error: ' . $result->get_error_message());
         }
-        $this->assertEquals(123, $result);
+        $this->assertIsArray($result);
+        $this->assertCount(3, $result);
+        $this->assertEquals(array_fill(0, 3, 123), $result);
     }
 
     /**

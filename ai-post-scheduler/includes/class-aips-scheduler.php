@@ -213,7 +213,7 @@ class AIPS_Scheduler {
      *
      * @param int      $schedule_id      The schedule ID.
      * @param int|null $quantity_override Optional number of posts to generate, overriding the template's post_quantity.
-     * @return int|WP_Error Post ID on success, or WP_Error on failure.
+     * @return int[]|WP_Error Array of generated post IDs on success (partial success returns non-empty array), or WP_Error if all attempts fail.
      */
     public function run_schedule_now($schedule_id, $quantity_override = null) {
         return $this->processor->process_single_schedule($schedule_id, $quantity_override);
