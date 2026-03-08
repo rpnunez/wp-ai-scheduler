@@ -898,7 +898,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-topic-context.php',
         'class-aips-generation-session.php',
         'class-aips-post-creator.php',
+        'class-aips-markdown-parser.php',
         'class-aips-generator.php',
+        // History service layer
+        'class-aips-history-type.php',
+        'class-aips-history-container.php',
+        'class-aips-history-service.php',
+        'class-aips-schedule-processor.php',
         'class-aips-scheduler.php',
         'class-aips-schedule-controller.php',
         'class-aips-planner.php',
@@ -913,10 +919,6 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
-        // History service layer
-        'class-aips-history-type.php',
-        'class-aips-history-container.php',
-        'class-aips-history-service.php',
         // Author-related classes
         'class-aips-authors-repository.php',
         'class-aips-author-topics-repository.php',
