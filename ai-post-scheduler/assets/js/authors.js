@@ -772,7 +772,7 @@
 			const topicId = $(e.currentTarget).data('topic-id');
 			
 			$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
-			$('#aips-topic-posts-modal').fadeIn();
+			$('#aips-topic-posts-modal').data('topic-id', topicId).fadeIn();
 			
 			this.loadTopicPosts(topicId);
 		},
@@ -833,8 +833,10 @@
 					html += '<a href="' + this.sanitizeUrl(post.edit_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
 				}
 				if (post.post_url && post.post_status === 'publish') {
-					html += '<a href="' + this.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
+					html += '<a href="' + this.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a> ';
 				}
+				html += '<button type="button" class="button aips-regenerate-post" data-post-id="' + this.escapeHtml(post.post_id) + '">' + (aipsAuthorsL10n.regenerate || 'Regenerate') + '</button> ';
+				html += '<button type="button" class="button aips-delete-generated-post" data-post-id="' + this.escapeHtml(post.post_id) + '">' + (aipsAuthorsL10n.delete || 'Delete') + '</button>';
 				html += '</td>';
 				html += '</tr>';
 			});
