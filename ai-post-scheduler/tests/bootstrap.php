@@ -913,6 +913,19 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
+        // History service layer
+        'class-aips-history-type.php',
+        'class-aips-history-container.php',
+        'class-aips-history-service.php',
+        // Author-related classes
+        'class-aips-authors-repository.php',
+        'class-aips-author-topics-repository.php',
+        'class-aips-author-topic-logs-repository.php',
+        'class-aips-feedback-repository.php',
+        'class-aips-topic-penalty-service.php',
+        'class-aips-topic-expansion-service.php',
+        'class-aips-author-post-generator.php',
+        'class-aips-author-topics-controller.php',
     ];
     
     foreach ($files as $file) {

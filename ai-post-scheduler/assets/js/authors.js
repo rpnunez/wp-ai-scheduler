@@ -1322,7 +1322,14 @@
 							};
 						}
 
-						// Execute bulk action
+						// For generate_now: fetch a time estimate first, open a progress
+						// bar modal, then run the (potentially long) generation request.
+						if (action === 'generate_now') {
+							this._runBulkGenerateWithProgress($button, ids, data, activeTab);
+							return;
+						}
+
+						// Execute all other bulk actions normally (no progress bar needed)
 						$.ajax({
 							url: ajaxurl,
 							type: 'POST',
@@ -1390,6 +1397,109 @@
 			};
 			const template = messages[action] || 'Are you sure you want to %s %d items?';
 			return template.replace('%d', count).replace('%s', action);
+		},
+
+		/**
+		 * Fetch a per-post time estimate, open a progress-bar modal, and then
+		 * fire the bulk-generate AJAX request.
+		 *
+		 * The estimate is obtained from `aips_get_bulk_generate_estimate` (which
+		 * averages recent `_aips_post_generation_total_time` post-meta values).
+		 * A conservative fallback of 30 s/post is used if the endpoint is
+		 * unavailable or returns no historical data.  The estimate already
+		 * reflects real-world wall-clock time that includes AI API latency,
+		 * resilience retries, and any random back-off delays.
+		 *
+		 * @param {jQuery} $button     - The Execute button element.
+		 * @param {Array}  ids         - Array of topic ID strings.
+		 * @param {Object} ajaxData    - POST data for the generation request.
+		 * @param {string} activeTab   - Currently active tab name.
+		 */
+		_runBulkGenerateWithProgress: function ($button, ids, ajaxData, activeTab) {
+			const DEFAULT_PER_POST_SECONDS = 30;
+
+			// Fetch the time estimate, then show progress bar + start generation.
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_get_bulk_generate_estimate',
+					nonce: aipsAuthorsL10n.nonce
+				},
+				success: (estimateResponse) => {
+					let perPost = DEFAULT_PER_POST_SECONDS;
+					if (estimateResponse && estimateResponse.success && estimateResponse.data && estimateResponse.data.per_post_seconds > 0) {
+						perPost = estimateResponse.data.per_post_seconds;
+					}
+					this._launchBulkGenerateProgress($button, ids, ajaxData, activeTab, perPost);
+				},
+				error: () => {
+					// Fallback: proceed with default estimate
+					this._launchBulkGenerateProgress($button, ids, ajaxData, activeTab, DEFAULT_PER_POST_SECONDS);
+				}
+			});
+		},
+
+		/**
+		 * Open the progress-bar modal and dispatch the bulk-generation request.
+		 *
+		 * @param {jQuery} $button         - The Execute button element.
+		 * @param {Array}  ids             - Array of topic ID strings.
+		 * @param {Object} ajaxData        - POST data for the generation request.
+		 * @param {string} activeTab       - Currently active tab name.
+		 * @param {number} perPostSeconds  - Estimated seconds per post.
+		 */
+		_launchBulkGenerateProgress: function ($button, ids, ajaxData, activeTab, perPostSeconds) {
+			// Enforce a minimum duration so the progress bar is visible even for a
+			// single very fast generation (avoids a flash that closes immediately).
+			const MIN_PROGRESS_SECONDS = 10;
+			const totalSeconds = Math.max(perPostSeconds * ids.length, MIN_PROGRESS_SECONDS);
+
+			const progressBar = AIPS.Utilities.showProgressBar({
+				title:        aipsAuthorsL10n.generatingPostsTitle   || 'Generating Posts',
+				message:      aipsAuthorsL10n.generatingPostsMessage || 'Please wait while your posts are being generated. This may take a few minutes.',
+				totalSeconds: totalSeconds
+			});
+
+			// Reset helper called when the request finishes.
+			const resetUI = () => {
+				$button.prop('disabled', false).text(aipsAuthorsL10n.execute || 'Execute');
+				$('.aips-bulk-action-select').val('');
+				$('.aips-select-all-topics').prop('checked', false);
+				$('.aips-topic-checkbox').prop('checked', false);
+			};
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: ajaxData,
+				success: (response) => {
+					if (response.success) {
+						progressBar.complete(response.data.message, 'success');
+						// Reload topic list after the modal closes (~1.2 s).
+						setTimeout(() => {
+							this.loadTopics(activeTab);
+							AIPS.Utilities.showToast(response.data.message, 'success');
+						}, 1400);
+					} else {
+						const errMsg = (response.data && response.data.message)
+							? response.data.message
+							: (aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.');
+						progressBar.complete(errMsg, 'error');
+						setTimeout(() => {
+							AIPS.Utilities.showToast(errMsg, 'error');
+						}, 1400);
+					}
+				},
+				error: () => {
+					const errMsg = aipsAuthorsL10n.errorBulkAction || 'Error executing bulk action.';
+					progressBar.complete(errMsg, 'error');
+					setTimeout(() => {
+						AIPS.Utilities.showToast(errMsg, 'error');
+					}, 1400);
+				},
+				complete: resetUI
+			});
 		},
 
 		/**
