@@ -201,6 +201,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                                     <button class="aips-btn aips-btn-sm aips-btn-ghost aips-run-now-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Run now', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-controls-play"></span>
                                     </button>
+                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-view-schedule-history" data-id="<?php echo esc_attr($schedule->id); ?>" data-name="<?php echo esc_attr($schedule->template_name ?: $schedule->id); ?>" aria-label="<?php esc_attr_e('View history', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('View History', 'ai-post-scheduler'); ?>">
+                                        <span class="dashicons dashicons-backup"></span>
+                                    </button>
                                     <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-admin-page"></span>
                                     </button>
@@ -342,6 +345,28 @@ $preselect_template_id = isset($_GET['schedule_template']) ? absint($_GET['sched
                 <button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
                 <button type="button" class="button button-primary aips-save-schedule"><?php esc_html_e('Save Schedule', 'ai-post-scheduler'); ?></button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule History Modal -->
+<div id="aips-schedule-history-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-schedule-history-modal-title">
+    <div class="aips-modal-content aips-modal-large">
+        <div class="aips-modal-header">
+            <h2 id="aips-schedule-history-modal-title"><?php esc_html_e('Schedule History', 'ai-post-scheduler'); ?></h2>
+            <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+        </div>
+        <div class="aips-modal-body">
+            <div id="aips-schedule-history-loading" style="text-align: center; padding: 20px;">
+                <span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span>
+                <span class="screen-reader-text"><?php esc_html_e('Loading history...', 'ai-post-scheduler'); ?></span>
+            </div>
+            <div id="aips-schedule-history-empty" class="aips-empty-state" style="display: none; padding: 40px 20px;">
+                <div class="dashicons dashicons-backup aips-empty-state-icon" aria-hidden="true"></div>
+                <h3 class="aips-empty-state-title"><?php esc_html_e('No History Yet', 'ai-post-scheduler'); ?></h3>
+                <p class="aips-empty-state-description"><?php esc_html_e('No history events have been recorded for this schedule yet.', 'ai-post-scheduler'); ?></p>
+            </div>
+            <ul id="aips-schedule-history-list" class="aips-history-timeline" style="display: none; margin: 0; padding: 0; list-style: none;"></ul>
         </div>
     </div>
 </div>

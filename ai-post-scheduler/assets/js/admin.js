@@ -96,6 +96,7 @@
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
+            $(document).on('click', '.aips-view-schedule-history', this.viewScheduleHistory);
 
             // Schedule Bulk Actions
             $(document).on('change', '#cb-select-all-schedules', this.toggleAllSchedules);
@@ -1312,6 +1313,107 @@
             });
         },
 
+        /**
+         * Open the Schedule History modal and load history entries for the given schedule.
+         *
+         * Fetches all activity/error log entries from the schedule's persistent
+         * lifecycle history container via AJAX and renders a timeline list.
+         *
+         * @param {Event} e - Click event from an `.aips-view-schedule-history` element.
+         */
+        viewScheduleHistory: function(e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var scheduleId = $btn.data('id');
+            var scheduleName = $btn.data('name') || scheduleId;
+
+            if (!scheduleId) {
+                return;
+            }
+
+            var $modal = $('#aips-schedule-history-modal');
+            var $title = $modal.find('#aips-schedule-history-modal-title');
+            var $loading = $modal.find('#aips-schedule-history-loading');
+            var $empty = $modal.find('#aips-schedule-history-empty');
+            var $list = $modal.find('#aips-schedule-history-list');
+
+            // Reset state
+            $title.text('Schedule History: ' + scheduleName);
+            $loading.show();
+            $empty.hide();
+            $list.hide().empty();
+            $modal.show();
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_schedule_history',
+                    nonce: aipsAjax.nonce,
+                    schedule_id: scheduleId
+                },
+                success: function(response) {
+                    $loading.hide();
+
+                    if (!response.success) {
+                        AIPS.Utilities.showToast(response.data.message || 'Failed to load history.', 'error');
+                        $modal.hide();
+                        return;
+                    }
+
+                    var entries = response.data.entries;
+
+                    if (!entries || entries.length === 0) {
+                        $empty.show();
+                        return;
+                    }
+
+                    var iconMap = {
+                        'schedule_created':  { icon: 'dashicons-plus-alt',        cls: 'aips-timeline-created'  },
+                        'schedule_updated':  { icon: 'dashicons-edit',             cls: 'aips-timeline-updated'  },
+                        'schedule_enabled':  { icon: 'dashicons-yes-alt',          cls: 'aips-timeline-enabled'  },
+                        'schedule_disabled': { icon: 'dashicons-minus',            cls: 'aips-timeline-disabled' },
+                        'schedule_executed': { icon: 'dashicons-controls-play',    cls: 'aips-timeline-executed' },
+                        'manual_schedule_started':   { icon: 'dashicons-controls-play', cls: 'aips-timeline-executed' },
+                        'manual_schedule_completed': { icon: 'dashicons-yes',           cls: 'aips-timeline-success'  },
+                        'manual_schedule_failed':    { icon: 'dashicons-warning',        cls: 'aips-timeline-error'    },
+                        'schedule_failed':   { icon: 'dashicons-warning',          cls: 'aips-timeline-error'    },
+                        'post_published':    { icon: 'dashicons-media-document',   cls: 'aips-timeline-success'  },
+                        'post_draft':        { icon: 'dashicons-media-document',   cls: 'aips-timeline-draft'    },
+                        'post_generated':    { icon: 'dashicons-media-document',   cls: 'aips-timeline-draft'    },
+                    };
+                    var defaultIcon = { icon: 'dashicons-info', cls: '' };
+
+                    entries.forEach(function(entry) {
+                        var info = iconMap[entry.event_type] || defaultIcon;
+                        var isError = (entry.history_type_id === 2 || entry.event_status === 'failed');
+                        if (isError && !info.cls) {
+                            info = { icon: 'dashicons-warning', cls: 'aips-timeline-error' };
+                        }
+
+                        var $item = $('<li>', { 'class': 'aips-timeline-item ' + info.cls });
+                        var $icon = $('<span>', { 'class': 'aips-timeline-icon', 'aria-hidden': 'true' })
+                            .append($('<span>', { 'class': 'dashicons ' + info.icon }));
+                        var $content = $('<div>', { 'class': 'aips-timeline-content' });
+                        var $msg = $('<p>', { 'class': 'aips-timeline-message' }).text(entry.message || entry.log_type);
+                        var $time = $('<time>', { 'class': 'aips-timeline-timestamp', 'datetime': entry.timestamp })
+                            .text(entry.timestamp);
+
+                        $content.append($msg).append($time);
+                        $item.append($icon).append($content);
+                        $list.append($item);
+                    });
+
+                    $list.show();
+                },
+                error: function() {
+                    $loading.hide();
+                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    $modal.hide();
+                }
+            });
+        },
         /**
          * Sync all individual schedule checkboxes with the "select all" state.
          *

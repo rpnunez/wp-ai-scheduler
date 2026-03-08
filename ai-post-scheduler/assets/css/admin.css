@@ -3148,3 +3148,69 @@ width: 20px !important;
 height: 20px !important;
 margin-right: 8px;
 }
+
+
+/* ==========================================================================
+   Schedule History Timeline
+   ========================================================================== */
+
+.aips-history-timeline {
+    padding: 8px 0;
+}
+
+.aips-timeline-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--aips-border, #e2e8f0);
+    align-items: flex-start;
+}
+
+.aips-timeline-item:last-child {
+    border-bottom: none;
+}
+
+.aips-timeline-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--aips-surface, #f8fafc);
+    border: 1px solid var(--aips-border, #e2e8f0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.aips-timeline-icon .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+}
+
+.aips-timeline-created .aips-timeline-icon  { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+.aips-timeline-updated .aips-timeline-icon  { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+.aips-timeline-enabled .aips-timeline-icon  { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+.aips-timeline-disabled .aips-timeline-icon { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+.aips-timeline-executed .aips-timeline-icon { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }
+.aips-timeline-success .aips-timeline-icon  { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+.aips-timeline-draft .aips-timeline-icon    { background: #fef9c3; border-color: #fde68a; color: #92400e; }
+.aips-timeline-error .aips-timeline-icon    { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+
+.aips-timeline-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.aips-timeline-message {
+    margin: 0 0 2px;
+    font-size: 13px;
+    color: var(--aips-text, #1e293b);
+    word-break: break-word;
+}
+
+.aips-timeline-timestamp {
+    font-size: 11px;
+    color: var(--aips-text-muted, #94a3b8);
+}
