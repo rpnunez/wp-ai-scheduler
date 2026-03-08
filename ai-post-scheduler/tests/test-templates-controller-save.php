@@ -101,4 +101,27 @@ class Test_AIPS_Templates_Controller_Save extends WP_UnitTestCase {
 		$this->assertNotNull($this->templates_stub->saved_data);
 		$this->assertSame(1, $this->templates_stub->saved_data['generate_featured_image']);
 	}
+
+	public function test_ajax_save_template_defaults_generate_featured_image_to_zero_when_absent() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Template with default image flag';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		// Intentionally do not set $_POST['generate_featured_image'] to simulate an unchecked checkbox.
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_template();
+		} catch (WPAjaxDieStopException $e) {
+			// Expected for wp_send_json_* in tests.
+		} catch (WPAjaxDieContinueException $e) {
+			// Some environments throw continue exceptions for AJAX responses.
+		}
+		$output = ob_get_clean();
+
+		$response = json_decode($output, true);
+		$this->assertTrue($response['success']);
+		$this->assertNotNull($this->templates_stub->saved_data);
+		$this->assertSame(0, $this->templates_stub->saved_data['generate_featured_image']);
+	}
 }
