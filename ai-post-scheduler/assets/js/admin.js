@@ -1319,7 +1319,7 @@
                                 setTimeout(function() {
                                     var toastMsg = AIPS.escapeHtml(completionMsg);
                                     if (response.data.edit_url) {
-                                        toastMsg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
+                                        toastMsg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank" rel="noopener noreferrer">Edit Post</a>';
                                     }
                                     AIPS.Utilities.showToast(toastMsg, 'success', { isHtml: true, duration: 8000 });
                                 }, PROGRESS_MODAL_CLOSE_DELAY);
