@@ -411,6 +411,7 @@ class AIPS_Author_Topics_Generator {
 
 		return $topics;
 	}
+	
 	/**
 	 * Get feedback context summary for an author.
 	 *
