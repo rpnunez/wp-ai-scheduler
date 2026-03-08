@@ -920,6 +920,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
         // Author-related classes
+        'class-aips-authors-repository.php',
         'class-aips-author-topics-repository.php',
         'class-aips-author-topic-logs-repository.php',
         'class-aips-feedback-repository.php',
