@@ -44,9 +44,9 @@ Use this file for PHP changes in `includes/*.php`.
 - Baseline coding standards:
 - Follow WordPress coding standards and plugin conventions used in this repository.
 - Start plugin PHP files with the ABSPATH guard: `if (!defined('ABSPATH')) { exit; }`.
-- Use tabs for indentation and `array()` syntax for PHP 7.4 compatibility.
+- Use tabs for indentation and `array()` syntax, matching the existing WordPress-style code in this plugin.
 - Sanitize all inputs and escape all output with context-appropriate WordPress helpers.
 - Verify nonces for state-changing requests.
-- Preserve backward compatibility with PHP 7.4 and WordPress 5.8+.
+- Target PHP 8.2+ and WordPress 5.8+ (per plugin header and `composer.json`).
 - Prefer small, focused changes and avoid broad refactors unless requested.
 - Add or update PHPUnit tests in `ai-post-scheduler/tests/` when behavior changes.
