@@ -2687,6 +2687,53 @@
     border-top: 1px solid var(--aips-gray-100);
 }
 
+/* ==========================================================================
+   Progress Bar Modal (AIPS.Utilities.showProgressBar)
+   ========================================================================== */
+
+.aips-progress-overlay {
+    /* Inherit the confirm-overlay backdrop – just prevent backdrop clicks from closing */
+    cursor: default;
+}
+
+.aips-progress-dialog {
+    max-width: 480px;
+    cursor: default;
+}
+
+.aips-progress-body {
+    padding-bottom: var(--aips-space-6);
+}
+
+.aips-progress-description {
+    margin-bottom: var(--aips-space-4);
+}
+
+.aips-progress-bar-wrap {
+    width: 100%;
+    height: 10px;
+    background: var(--aips-gray-100);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: var(--aips-space-3);
+}
+
+.aips-progress-bar-fill {
+    height: 100%;
+    background: var(--aips-primary);
+    border-radius: 9999px;
+    transition: width 0.5s ease-in-out;
+    width: 0%;
+}
+
+.aips-progress-status {
+    margin: 0;
+    font-size: var(--aips-text-sm);
+    color: var(--aips-gray-500);
+    text-align: center;
+    min-height: 1.4em;
+}
+
 /* Session Info Styles */
 .aips-session-info {
     margin-bottom: 20px;

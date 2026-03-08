@@ -257,4 +257,137 @@ class AIPS_Author_Topics_Bulk_Actions_Test extends WP_UnitTestCase {
 			$this->assertNotNull($topic);
 		}
 	}
+
+	// =========================================================================
+	// Tests for ajax_get_bulk_generate_estimate
+	// =========================================================================
+
+	/**
+	 * Non-admin users should receive a permission-denied error.
+	 */
+	public function test_ajax_get_bulk_generate_estimate_permission_denied() {
+		wp_set_current_user($this->subscriber_user_id);
+
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+
+		ob_start();
+		try {
+			$this->controller->ajax_get_bulk_generate_estimate();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$this->assertFalse($response['success']);
+		$this->assertEquals('Permission denied.', $response['data']['message']);
+	}
+
+	/**
+	 * When no historical data exists (get_col returns empty), the endpoint must
+	 * return the 30-second default and sample_size = 0.
+	 */
+	public function test_ajax_get_bulk_generate_estimate_returns_default_when_no_samples() {
+		wp_set_current_user($this->admin_user_id);
+
+		// Ensure the wpdb mock returns no historical times.
+		global $wpdb;
+		$original_wpdb = $wpdb;
+		$wpdb = new class {
+			public $prefix   = 'wp_';
+			public $postmeta = 'wp_postmeta';
+			public function prepare($query, ...$args) { return $query; }
+			public function get_col($query = null, $x = 0) { return array(); }
+		};
+
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+
+		ob_start();
+		try {
+			$this->controller->ajax_get_bulk_generate_estimate();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$wpdb = $original_wpdb;
+
+		$this->assertTrue($response['success']);
+		$this->assertEquals(30, $response['data']['per_post_seconds']);
+		$this->assertEquals(0,  $response['data']['sample_size']);
+	}
+
+	/**
+	 * When samples exist, the endpoint must return ceil(average) and the correct
+	 * sample_size.
+	 *
+	 * E.g. [10.0, 20.0, 30.0] → avg = 20.0 → per_post_seconds = 20.
+	 */
+	public function test_ajax_get_bulk_generate_estimate_averages_samples() {
+		wp_set_current_user($this->admin_user_id);
+
+		global $wpdb;
+		$original_wpdb = $wpdb;
+		$wpdb = new class {
+			public $prefix   = 'wp_';
+			public $postmeta = 'wp_postmeta';
+			public function prepare($query, ...$args) { return $query; }
+			public function get_col($query = null, $x = 0) {
+				return array('10.0', '20.0', '30.0');
+			}
+		};
+
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+
+		ob_start();
+		try {
+			$this->controller->ajax_get_bulk_generate_estimate();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$wpdb = $original_wpdb;
+
+		$this->assertTrue($response['success']);
+		// avg(10, 20, 30) = 20 → ceil(20) = 20
+		$this->assertEquals(20, $response['data']['per_post_seconds']);
+		$this->assertEquals(3,  $response['data']['sample_size']);
+	}
+
+	/**
+	 * Fractional averages should be rounded UP via ceil().
+	 *
+	 * E.g. [10.0, 11.0] → avg = 10.5 → per_post_seconds = 11.
+	 */
+	public function test_ajax_get_bulk_generate_estimate_ceil_rounds_up() {
+		wp_set_current_user($this->admin_user_id);
+
+		global $wpdb;
+		$original_wpdb = $wpdb;
+		$wpdb = new class {
+			public $prefix   = 'wp_';
+			public $postmeta = 'wp_postmeta';
+			public function prepare($query, ...$args) { return $query; }
+			public function get_col($query = null, $x = 0) {
+				return array('10.0', '11.0');
+			}
+		};
+
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+
+		ob_start();
+		try {
+			$this->controller->ajax_get_bulk_generate_estimate();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$response = json_decode(ob_get_clean(), true);
+
+		$wpdb = $original_wpdb;
+
+		$this->assertTrue($response['success']);
+		// avg(10, 11) = 10.5 → ceil(10.5) = 11
+		$this->assertEquals(11, $response['data']['per_post_seconds']);
+		$this->assertEquals(2,  $response['data']['sample_size']);
+	}
 }
