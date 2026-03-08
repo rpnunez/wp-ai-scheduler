@@ -11,7 +11,6 @@ class Test_AIPS_Markdown_Parser extends WP_UnitTestCase {
 
     public function setUp(): void {
         parent::setUp();
-        require_once dirname(dirname(__FILE__)) . '/includes/class-aips-markdown-parser.php';
         $this->parser = new AIPS_Markdown_Parser();
     }
 
