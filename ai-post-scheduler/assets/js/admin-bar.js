@@ -61,7 +61,7 @@
 					// If no notification rows left, show "no notifications"
 					if ($('#wpadminbar li.aips-toolbar-notification').length === 0) {
 						$('#wp-admin-bar-aips-toolbar-notifications-header').remove();
-						$('#wp-admin-bar-aips-toolbar-notifications').append(
+						$('#wp-admin-bar-aips-toolbar-notifications .ab-submenu').append(
 							'<li id="wp-admin-bar-aips-toolbar-no-notifications" class="aips-toolbar-no-notifications">'
 							+ '<span class="ab-item aips-toolbar-empty">'
 							+ ($('<div>').text(wp.i18n ? wp.i18n.__('No new notifications', 'ai-post-scheduler') : 'No new notifications').html())
