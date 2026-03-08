@@ -25,6 +25,8 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $generate_featured_image = isset($_POST['generate_featured_image']) ? $_POST['generate_featured_image'] : 0;
+
         $data = array(
             'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
             'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
@@ -34,7 +36,7 @@ class AIPS_Templates_Controller {
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
             'post_quantity' => isset($_POST['post_quantity']) ? absint($_POST['post_quantity']) : 1,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
-            'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
+            'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field($_POST['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field($_POST['featured_image_media_ids']) : '',
@@ -164,6 +166,8 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $generate_featured_image = isset($_POST['generate_featured_image']) ? $_POST['generate_featured_image'] : 0;
+
         // Collect template data from POST
         $data = array(
             'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
@@ -175,7 +179,7 @@ class AIPS_Templates_Controller {
             'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
             'post_quantity' => 1,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
-            'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
+            'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field($_POST['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field($_POST['featured_image_media_ids']) : '',
@@ -232,6 +236,8 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $generate_featured_image = isset($_POST['generate_featured_image']) ? $_POST['generate_featured_image'] : 0;
+
         // Collect template data from POST
         $template_data = (object) array(
             'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
@@ -239,7 +245,7 @@ class AIPS_Templates_Controller {
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
             'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
-            'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
+            'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
         );
 
@@ -257,5 +263,19 @@ class AIPS_Templates_Controller {
         $result = $prompt_builder->build_prompts($template_data, null, $voice);
 
         wp_send_json_success($result);
+    }
+
+    /**
+     * Normalize checkbox/radio-like values to an integer flag for persistence.
+     *
+     * @param mixed $value Raw request value.
+     * @return int 1 when enabled, 0 when disabled.
+     */
+    private function normalize_boolean_flag($value) {
+        if (is_array($value)) {
+            $value = reset($value);
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
     }
 }
