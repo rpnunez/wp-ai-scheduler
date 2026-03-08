@@ -290,9 +290,20 @@ class AIPS_Schedule_Processor {
         if (!$is_manual) {
             $first_error = !empty($errors) ? $errors[0] : null;
             $this->handle_post_execution_cleanup($schedule, $post_ids, $first_error);
-        } else {
-            $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+
+            // Fire a single per-schedule-run hook after all posts have been attempted.
+            if (!empty($post_ids)) {
+                // Fires once per schedule execution with all generated post IDs.
+                do_action('aips_schedule_execution_completed', $schedule->schedule_id, $post_ids);
+            } else {
+                // Every attempt failed: fire the failure hook once with the first error message.
+                $error_msg = !empty($errors) ? $errors[0]->get_error_message() : __('Post generation failed.', 'ai-post-scheduler');
+                do_action('aips_schedule_execution_failed', $schedule->schedule_id, $error_msg);
+            }
         }
+
+        // Invalidate the schedule execution count cache once per schedule run.
+        $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
 
         // Return all generated post IDs on (partial) success, or the first error if all failed.
         if (!empty($post_ids)) {
@@ -386,10 +397,8 @@ class AIPS_Schedule_Processor {
             )
         );
 
-        if (!$is_manual) {
-            // Dispatch schedule execution failed event
-            do_action('aips_schedule_execution_failed', $schedule->schedule_id, $error_msg);
-        }
+        // Note: aips_schedule_execution_failed is fired once per schedule run in
+        // execute_schedule_logic after the generation loop — not once per failed post.
     }
 
     /**
@@ -436,12 +445,8 @@ class AIPS_Schedule_Processor {
             );
         }
 
-        if (!$is_manual) {
-            // Dispatch schedule execution completed event
-            do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
-
-            // Invalidate the schedule execution count cache (Bolt)
-            $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
-        }
+        // Note: aips_schedule_execution_completed is fired once per schedule run in
+        // execute_schedule_logic after the generation loop — not once per generated post.
+        // invalidate_count_cache is also handled there.
     }
 }
