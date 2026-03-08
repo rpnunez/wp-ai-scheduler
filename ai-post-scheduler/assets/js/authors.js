@@ -395,7 +395,11 @@
 				return;
 			}
 
-			let html = '<span class="displaying-num" style="margin-right: 10px;">' + total + ' items</span>';
+			const itemsLabelSingular = (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.itemsLabelSingular) ? aipsAuthorsL10n.itemsLabelSingular : 'item';
+			const itemsLabelPlural = (typeof aipsAuthorsL10n !== 'undefined' && aipsAuthorsL10n.itemsLabelPlural) ? aipsAuthorsL10n.itemsLabelPlural : 'items';
+			const itemsLabel = (parseInt(total, 10) === 1) ? itemsLabelSingular : itemsLabelPlural;
+
+			let html = '<span class="displaying-num" style="margin-right: 10px;">' + total + ' ' + itemsLabel + '</span>';
 			html += '<span class="pagination-links">';
 
 			// Previous button
