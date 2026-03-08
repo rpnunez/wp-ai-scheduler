@@ -235,6 +235,11 @@ class AIPS_Schedule_Repository {
             $update_data['status'] = sanitize_text_field($data['status']);
             $format[] = '%s';
         }
+
+        if (isset($data['schedule_history_id'])) {
+            $update_data['schedule_history_id'] = !empty($data['schedule_history_id']) ? absint($data['schedule_history_id']) : null;
+            $format[] = '%d';
+        }
         
         if (empty($update_data)) {
             return false;
