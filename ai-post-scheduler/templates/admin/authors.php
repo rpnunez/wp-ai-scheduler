@@ -102,6 +102,9 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                 $total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
                                 $posts_count = $logs_repository->count_generated_posts_by_author($author->id);
                                 $policy_flags = $penalty_service->get_author_policy_flags($author->id);
+                                if ( ! is_array( $policy_flags ) ) {
+                                    $policy_flags = array();
+                                }
                                 $policy_flags_count = count($policy_flags);
                                 // Quality indicator data
                                 $feedback_stats = $feedback_repository->get_statistics($author->id);
