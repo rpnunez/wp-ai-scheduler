@@ -13,10 +13,10 @@ if (!defined('ABSPATH')) {
  * - Tracking a per-request generation session for observability
  */
 class AIPS_Generator {
-    
+
     private $ai_service;
     private $logger;
-    
+
     /**
      * @var AIPS_History_Service History service for unified logging
      */
@@ -26,12 +26,12 @@ class AIPS_Generator {
      * @var AIPS_History_Repository History repository for logger
      */
     private $history_repository;
-    
+
     /**
      * @var AIPS_History_Container|null Current history container
      */
     private $current_history;
-    
+
     /**
      * @var AIPS_Generation_Logger Handles logging logic.
      */
@@ -42,7 +42,12 @@ class AIPS_Generator {
     private $structure_manager;
     private $post_creator;
     private $prompt_builder;
-    
+
+    /**
+     * @var AIPS_Markdown_Parser Markdown parser
+     */
+    private $markdown_parser;
+
     /**
      * Constructor.
      *
@@ -57,6 +62,7 @@ class AIPS_Generator {
      * @param object|null $post_creator
      * @param object|null $history_service
      * @param object|null $prompt_builder
+     * @param object|null $markdown_parser
      */
     public function __construct(
         $logger = null,
@@ -66,7 +72,8 @@ class AIPS_Generator {
         $structure_manager = null,
         $post_creator = null,
         $history_service = null,
-        $prompt_builder = null
+        $prompt_builder = null,
+        $markdown_parser = null
     ) {
         $this->logger = $logger ?: new AIPS_Logger();
         $this->ai_service = $ai_service ?: new AIPS_AI_Service();
@@ -77,11 +84,12 @@ class AIPS_Generator {
         $this->history_service = $history_service ?: new AIPS_History_Service();
         $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
+        $this->markdown_parser = $markdown_parser ?: new AIPS_Markdown_Parser();
 
         // Initialize logger wrapper
         $this->generation_logger = new AIPS_Generation_Logger($this->logger, $this->history_service, new AIPS_Generation_Session());
     }
-    
+
     /**
      * Check if AI is available in the configured AI service.
      *
@@ -90,7 +98,7 @@ class AIPS_Generator {
     public function is_available() {
         return $this->ai_service->is_available();
     }
-    
+
     /**
      * Generate content using AI.
      *
@@ -116,9 +124,9 @@ class AIPS_Generator {
                 array('component' => $log_type)
             );
         }
-        
+
         $result = $this->ai_service->generate_text($prompt, $options);
-        
+
         if (is_wp_error($result)) {
             // Log the error
             if ($this->current_history) {
@@ -133,7 +141,7 @@ class AIPS_Generator {
                     array('component' => $log_type, 'error' => $result->get_error_message())
                 );
             }
-            
+
             $this->logger->log($result->get_error_message(), 'error', array(
                 'component' => $log_type,
                 'prompt_length' => strlen($prompt)
@@ -149,17 +157,17 @@ class AIPS_Generator {
                     array('component' => $log_type)
                 );
             }
-            
+
             $this->logger->log('Content generated successfully', 'info', array(
                 'component' => $log_type,
                 'prompt_length' => strlen($prompt),
                 'response_length' => strlen($result)
             ));
         }
-        
+
         return $result;
     }
-    
+
     /**
      * Resolve AI Variables for a template.
      *
@@ -176,7 +184,7 @@ class AIPS_Generator {
         $context = new AIPS_Template_Context($template, $voice, null);
         return $this->resolve_ai_variables_from_context($context, $content);
     }
-    
+
     /**
      * Resolve AI Variables from a generation context.
      *
@@ -190,7 +198,7 @@ class AIPS_Generator {
     private function resolve_ai_variables_from_context($context, $content) {
         // Get the title prompt from context
         $title_prompt = $context->get_title_prompt();
-        
+
         // For template contexts with voice, voice takes precedence
         if ($context->get_type() === 'template' && $context->get_voice_id()) {
             $voice_obj = $context->get_voice();
@@ -198,35 +206,35 @@ class AIPS_Generator {
                 $title_prompt = $voice_obj->title_prompt;
             }
         }
-        
+
         // Extract AI variables from the title prompt
         $ai_variables = $this->template_processor->extract_ai_variables($title_prompt);
-        
+
         if (empty($ai_variables)) {
             return array();
         }
-        
+
         // Build context from content prompt and generated content.
         // Use smart truncation to preserve context from both beginning and end of content.
         $context_str = "Content Prompt: " . $context->get_content_prompt() . "\n\n";
         $context_str .= "Generated Article Content:\n" . $this->smart_truncate_content($content, 2000);
-        
+
         // Build the prompt to resolve AI variables
         $resolve_prompt = $this->template_processor->build_ai_variables_prompt($ai_variables, $context_str);
-        
+
         // Call AI to resolve the variables.
         // Max tokens of 200 is sufficient for JSON responses with typical variable values.
         $options = array('max_tokens' => 200);
         $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
-        
+
         if (is_wp_error($result)) {
             $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
             return array();
         }
-        
+
         // Parse the AI response to extract variable values
         $resolved_values = $this->template_processor->parse_ai_variables_response($result, $ai_variables);
-        
+
         if (empty($resolved_values)) {
             // AI call succeeded but we could not extract any variable values.
             // This usually indicates invalid JSON or an unexpected response format.
@@ -240,10 +248,10 @@ class AIPS_Generator {
                 'resolved'   => $resolved_values,
             ));
         }
-        
+
         return $resolved_values;
     }
-    
+
     /**
      * Smart truncate content to preserve key information from both beginning and end.
      *
@@ -258,34 +266,34 @@ class AIPS_Generator {
      */
     private function smart_truncate_content($content, $max_length = 2000) {
         $content_length = mb_strlen($content);
-        
+
         // If content fits within limit, return as-is
         if ($content_length <= $max_length) {
             return $content;
         }
-        
+
         // Define separator and calculate its length
         $separator = "\n\n[...]\n\n";
         $separator_length = mb_strlen($separator);
-        
+
         // Ensure minimum length to avoid negative values
         $min_length = $separator_length + 40; // At least 20 chars on each end
         if ($max_length < $min_length) {
             $max_length = $min_length;
         }
-        
+
         // Calculate how much to take from each end
         // Take 60% from the beginning (introductions, key points) and 40% from the end (conclusions)
         $available_length = $max_length - $separator_length;
         $start_length = (int) ($available_length * 0.6);
         $end_length = $available_length - $start_length;
-        
+
         $start_content = mb_substr($content, 0, $start_length);
         $end_content = mb_substr($content, -$end_length);
-        
+
         return $start_content . $separator . $end_content;
     }
-    
+
     /**
      * Generate a post title based on the generated content, template, and optional voice/topic.
      *
@@ -306,7 +314,7 @@ class AIPS_Generator {
         $context = new AIPS_Template_Context($template, $voice, $topic);
         return $this->generate_title_from_context($context, $content, $ai_variables, $options);
     }
-    
+
     /**
      * Generate a post title from a generation context.
      *
@@ -325,11 +333,11 @@ class AIPS_Generator {
 
         // Request title from AI service
         $result = $this->generate_content($prompt, $options, 'title');
-        
+
         if (is_wp_error($result)) {
             return $result;
         }
-        
+
         $title = trim($result);
 
         // Strip surrounding quotes from AI responses
@@ -337,7 +345,7 @@ class AIPS_Generator {
 
         return $title;
     }
-    
+
     /**
      * Generate an excerpt (short summary) for a post.
      *
@@ -355,25 +363,25 @@ class AIPS_Generator {
     public function generate_excerpt($title, $content, $voice = null, $topic = null, $options = array()) {
         // Delegate prompt building to Prompt Builder
         $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice, $topic);
-        
+
         // Set token limit for excerpt generation
         //$options['max_tokens'] = 150;
-        
+
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
-        
+
         if (is_wp_error($result)) {
             // Return a safe empty excerpt when excerpt generation fails
             return '';
         }
-        
+
         $excerpt = trim($result);
         $excerpt = preg_replace('/^["\']|["\']$/', '', $excerpt);
 
         return $excerpt;
         //return substr($excerpt, 0, 160);
     }
-    
+
     /**
      * Generate an excerpt from a generation context.
      *
@@ -389,29 +397,29 @@ class AIPS_Generator {
         if ($context->get_type() === 'template' && $context->get_voice_id()) {
             $voice_obj = $context->get_voice();
         }
-        
+
         $topic_str = $context->get_topic();
-        
+
         // Delegate prompt building to Prompt Builder
         $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice_obj, $topic_str);
-        
+
         // Set token limit for excerpt generation
         $options['max_tokens'] = 150;
-        
+
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
-        
+
         if (is_wp_error($result)) {
             // Return a safe empty excerpt when excerpt generation fails
             return '';
         }
-        
+
         $excerpt = trim($result);
         $excerpt = preg_replace('/^["\']|["\']$/', '', $excerpt);
 
         return substr($excerpt, 0, 160);
     }
-    
+
     /**
      * Generate a preview of a post from a context without creating it in WordPress.
      *
@@ -502,13 +510,13 @@ class AIPS_Generator {
         if ($template_or_context instanceof AIPS_Generation_Context) {
             return $this->generate_post_from_context($template_or_context);
         }
-        
+
         // Legacy template-based approach - convert to context and delegate
         $template = $template_or_context;
         $context = new AIPS_Template_Context($template, $voice, $topic);
         return $this->generate_post_from_context($context);
     }
-    
+
     /**
      * Generate a post from a Generation Context.
      *
@@ -520,11 +528,11 @@ class AIPS_Generator {
     private function generate_post_from_context($context) {
         // Dispatch post generation started event
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
-        
+
         // Create new history container using new API
         // Extract source information from context
         $history_metadata = array();
-        
+
         if ($context->get_type() === 'template') {
             $history_metadata['template_id'] = $context->get_id();
         } elseif ($context->get_type() === 'topic') {
@@ -537,18 +545,18 @@ class AIPS_Generator {
                 }
             }
         }
-        
+
         // Get creation_method from context, default to 'manual' if not specified
         $creation_method = $context->get_creation_method() ?: 'manual';
         $history_metadata['creation_method'] = $creation_method;
-        
+
         $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
-        
+
         if (!$this->current_history->get_id()) {
             // Fallback if history creation fails (though unlikely)
             $this->logger->log('Failed to create history record', 'error');
         }
-        
+
         // Build the full content prompt from context
         $content_prompt = $this->prompt_builder->build_content_prompt($context);
 
@@ -572,7 +580,7 @@ class AIPS_Generator {
 
         // Ask AI to generate the article body
         $content = $this->generate_content($content_prompt, $content_options, 'content');
-        
+
         if (is_wp_error($content)) {
             $this->current_history->record_error($content->get_error_message(), array(
                 'component' => 'content',
@@ -583,10 +591,10 @@ class AIPS_Generator {
                 'component' => 'content',
                 'prompt' => $content_prompt,
             ));
-            
+
             // Dispatch post generation failed event
             do_action('aips_post_generation_failed', $context->get_id(), $content->get_error_message(), $context->get_topic());
-            
+
             return $content;
         }
 
@@ -627,7 +635,7 @@ class AIPS_Generator {
                 );
             }
         }
-        
+
         if (is_wp_error($title) || $has_unresolved_placeholders) {
             // Fall back to a safe default title when AI fails or leaves unresolved variables.
             $base_title = __('AI Generated Post', 'ai-post-scheduler');
@@ -637,14 +645,14 @@ class AIPS_Generator {
                 // Include topic in fallback title for context, truncated for safety
                 $base_title .= ': ' . mb_substr($topic_str, 0, 50) . (mb_strlen($topic_str) > 50 ? '...' : '');
             }
-            
+
             $title = $base_title . ' - ' . date('Y-m-d H:i:s');
         }
-        
+
         // Use actual generated content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
         $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context);
-        
+
         // Use Post Creator Service to save the generated post in WP
         $post_creation_data = array(
             'title' => $title,
@@ -661,7 +669,7 @@ class AIPS_Generator {
         do_action('aips_post_generation_before_post_create', $post_creation_data);
 
         $post_id = $this->post_creator->create_post($post_creation_data);
-        
+
         if (is_wp_error($post_id)) {
             // Use new history API to complete with failure
             $this->current_history->complete_failure($post_id->get_error_message(), array(
@@ -669,20 +677,20 @@ class AIPS_Generator {
                 'title' => $title,
                 'content_length' => strlen($content),
             ));
-            
+
             return $post_id;
         }
-        
+
         // Handle featured image generation/selection.
         $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title);
-        
+
         // Use new history API to complete with success
         $this->current_history->complete_success(array(
             'post_id' => $post_id,
             'generated_title' => $title,
             'generated_content' => $content,
         ));
-        
+
         // Log activity
         $this->current_history->record(
             'activity',
@@ -695,14 +703,14 @@ class AIPS_Generator {
                 'context_id' => $context->get_id(),
             )
         );
-        
+
         $this->generation_logger->log('Post generated successfully', 'info', array(
             'post_id' => $post_id,
             'context_type' => $context->get_type(),
             'context_id' => $context->get_id(),
             'title' => $title
         ));
-        
+
         // Trigger hook for other systems to respond to the new post
         // For backward compatibility, extract template if it's a template context
         if ($context->get_type() === 'template') {
@@ -711,10 +719,10 @@ class AIPS_Generator {
         } else {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id());
         }
-        
+
         $this->history_id = null;
         $this->generation_logger->set_history_id(null);
-      
+
         return $post_id;
     }
 
@@ -749,7 +757,7 @@ class AIPS_Generator {
         if ($featured_image_source === 'unsplash') {
             $keywords = $context->get_unsplash_keywords();
             $topic_str = $context->get_topic();
-            
+
             $processed_keywords = $this->template_processor->process($keywords, $topic_str);
             $featured_image_result = $this->image_service->fetch_and_upload_unsplash_image($processed_keywords, $title);
 
@@ -771,7 +779,7 @@ class AIPS_Generator {
             $image_prompt = $context->get_image_prompt();
             $topic_str = $context->get_topic();
             $processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
-            
+
             // Log AI request for featured image
             if ($this->current_history) {
                 $this->current_history->record(
@@ -785,7 +793,7 @@ class AIPS_Generator {
                     array('component' => 'featured_image')
                 );
             }
-            
+
             $featured_image_result = $this->image_service->generate_and_upload_featured_image($processed_image_prompt, $title);
 
             if (!is_wp_error($featured_image_result)) {
@@ -843,206 +851,13 @@ class AIPS_Generator {
             return '';
         }
 
-        if ($this->looks_like_markdown_content($normalized_content) && !$this->contains_html_markup($normalized_content)) {
-            $normalized_content = $this->convert_basic_markdown_to_html($normalized_content);
+        if ($this->markdown_parser->is_markdown($normalized_content) && !$this->markdown_parser->contains_html($normalized_content)) {
+            $normalized_content = $this->markdown_parser->parse($normalized_content);
         }
 
         return wp_kses_post($normalized_content);
     }
 
-    /**
-     * Determine if generated text appears to be Markdown.
-     *
-     * @param string $content Generated content.
-     * @return bool
-     */
-    private function looks_like_markdown_content($content) {
-        $markdown_patterns = array(
-            '/^#{1,6}\s+/m',
-            '/^\s*[-*+]\s+/m',
-            '/^\s*\d+\.\s+/m',
-            '/```[\s\S]*?```/m',
-            '/\[[^\]]+\]\([^\)]+\)/',
-            '/^\|.+\|\s*$/m',
-        );
-
-        foreach ($markdown_patterns as $pattern) {
-            if (preg_match($pattern, $content)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Determine if generated text already contains HTML markup.
-     *
-     * @param string $content Generated content.
-     * @return bool
-     */
-    private function contains_html_markup($content) {
-        return preg_match('/<\s*\/?\s*[a-z][^>]*>/i', $content) === 1;
-    }
-
-    /**
-     * Convert common Markdown structures into HTML for WordPress post content.
-     *
-     * @param string $content Markdown text.
-     * @return string HTML output.
-     */
-    private function convert_basic_markdown_to_html($content) {
-        $content = str_replace(array("\r\n", "\r"), "\n", $content);
-        $lines = explode("\n", $content);
-        $output = array();
-        $paragraph_lines = array();
-        $list_items = array();
-        $list_type = '';
-        $in_code_block = false;
-        $code_language = '';
-        $code_lines = array();
-
-        foreach ($lines as $line) {
-            if (preg_match('/^```\s*([a-zA-Z0-9_-]+)?\s*$/', $line, $fence_match)) {
-                if ($in_code_block) {
-                    $code_class = $code_language !== '' ? ' class="language-' . esc_attr($code_language) . '"' : '';
-                    $output[] = '<pre><code' . $code_class . '>' . esc_html(implode("\n", $code_lines)) . '</code></pre>';
-                    $in_code_block = false;
-                    $code_language = '';
-                    $code_lines = array();
-                } else {
-                    $this->flush_markdown_paragraph($paragraph_lines, $output);
-                    $this->flush_markdown_list($list_items, $list_type, $output);
-                    $in_code_block = true;
-                    $code_language = isset($fence_match[1]) ? trim($fence_match[1]) : '';
-                }
-                continue;
-            }
-
-            if ($in_code_block) {
-                $code_lines[] = $line;
-                continue;
-            }
-
-            if (trim($line) === '') {
-                $this->flush_markdown_paragraph($paragraph_lines, $output);
-                $this->flush_markdown_list($list_items, $list_type, $output);
-                continue;
-            }
-
-            if (preg_match('/^(#{1,6})\s+(.+)$/', $line, $heading_match)) {
-                $this->flush_markdown_paragraph($paragraph_lines, $output);
-                $this->flush_markdown_list($list_items, $list_type, $output);
-                $heading_level = strlen($heading_match[1]);
-                $heading_text = $this->format_inline_markdown($heading_match[2]);
-                $output[] = '<h' . $heading_level . '>' . $heading_text . '</h' . $heading_level . '>';
-                continue;
-            }
-
-            if (preg_match('/^\s*[-*+]\s+(.+)$/', $line, $unordered_match)) {
-                $this->flush_markdown_paragraph($paragraph_lines, $output);
-                if ($list_type !== '' && $list_type !== 'ul') {
-                    $this->flush_markdown_list($list_items, $list_type, $output);
-                }
-                $list_type = 'ul';
-                $list_items[] = $this->format_inline_markdown($unordered_match[1]);
-                continue;
-            }
-
-            if (preg_match('/^\s*\d+\.\s+(.+)$/', $line, $ordered_match)) {
-                $this->flush_markdown_paragraph($paragraph_lines, $output);
-                if ($list_type !== '' && $list_type !== 'ol') {
-                    $this->flush_markdown_list($list_items, $list_type, $output);
-                }
-                $list_type = 'ol';
-                $list_items[] = $this->format_inline_markdown($ordered_match[1]);
-                continue;
-            }
-
-            if (preg_match('/^>\s*(.+)$/', $line, $quote_match)) {
-                $this->flush_markdown_paragraph($paragraph_lines, $output);
-                $this->flush_markdown_list($list_items, $list_type, $output);
-                $output[] = '<blockquote><p>' . $this->format_inline_markdown($quote_match[1]) . '</p></blockquote>';
-                continue;
-            }
-
-            if ($list_type !== '') {
-                $this->flush_markdown_list($list_items, $list_type, $output);
-            }
-
-            $paragraph_lines[] = trim($line);
-        }
-
-        if ($in_code_block) {
-            $code_class = $code_language !== '' ? ' class="language-' . esc_attr($code_language) . '"' : '';
-            $output[] = '<pre><code' . $code_class . '>' . esc_html(implode("\n", $code_lines)) . '</code></pre>';
-        }
-
-        $this->flush_markdown_paragraph($paragraph_lines, $output);
-        $this->flush_markdown_list($list_items, $list_type, $output);
-
-        return implode("\n", $output);
-    }
-
-    /**
-     * Flush buffered paragraph lines into HTML output.
-     *
-     * @param array $paragraph_lines Paragraph line buffer.
-     * @param array $output Output buffer.
-     * @return void
-     */
-    private function flush_markdown_paragraph(&$paragraph_lines, &$output) {
-        if (empty($paragraph_lines)) {
-            return;
-        }
-
-        $paragraph = implode(' ', $paragraph_lines);
-        $output[] = '<p>' . $this->format_inline_markdown($paragraph) . '</p>';
-        $paragraph_lines = array();
-    }
-
-    /**
-     * Flush buffered list items into HTML output.
-     *
-     * @param array  $list_items List item buffer.
-     * @param string $list_type  List type (ul|ol).
-     * @param array  $output     Output buffer.
-     * @return void
-     */
-    private function flush_markdown_list(&$list_items, &$list_type, &$output) {
-        if (empty($list_items) || empty($list_type)) {
-            $list_items = array();
-            $list_type = '';
-            return;
-        }
-
-        $output[] = '<' . $list_type . '><li>' . implode('</li><li>', $list_items) . '</li></' . $list_type . '>';
-        $list_items = array();
-        $list_type = '';
-    }
-
-    /**
-     * Convert simple inline Markdown syntax to HTML.
-     *
-     * @param string $text Text fragment.
-     * @return string
-     */
-    private function format_inline_markdown($text) {
-        $formatted = esc_html(trim($text));
-
-        $formatted = preg_replace('/`([^`]+)`/', '<code>$1</code>', $formatted);
-        $formatted = preg_replace('/\*\*([^*]+)\*\*/', '<strong>$1</strong>', $formatted);
-        $formatted = preg_replace('/__([^_]+)__/', '<strong>$1</strong>', $formatted);
-        $formatted = preg_replace('/(?<!\*)\*([^*]+)\*(?!\*)/', '<em>$1</em>', $formatted);
-        $formatted = preg_replace('/(?<!_)_([^_]+)_(?!_)/', '<em>$1</em>', $formatted);
-
-        $formatted = preg_replace_callback('/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/', function($matches) {
-            return '<a href="' . esc_url($matches[2]) . '">' . $matches[1] . '</a>';
-        }, $formatted);
-
-        return $formatted;
-    }
-    
     /**
      * Set the history container for logging
      *

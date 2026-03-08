@@ -1323,3 +1323,9 @@ The situation resulted in "unexpected title prompts" as reported, with duplicate
 This refactoring resolves the "unexpected title prompts" issue by eliminating duplicate implementations and establishing a clear, single source of truth for prompt building. The Prompt Builder now owns all prompt construction logic (title, excerpt, content), while the Generator focuses on orchestrating the AI generation workflow. The change follows SOLID principles, improves testability and maintainability, and maintains 100% backward compatibility with no breaking changes to public APIs or generated content.
 
 ---
+
+## 2024-11-20 - [Extract Markdown Parser from Generator]
+**Context:** The `AIPS_Generator` class contained logic for formatting and parsing Markdown into HTML (e.g. `looks_like_markdown_content`, `convert_basic_markdown_to_html`, etc.). This violated the Single Responsibility Principle as the Generator should focus solely on orchestrating AI generation, not string manipulation or markdown conversion.
+**Decision:** Extracted the Markdown parsing logic into a new, dedicated `AIPS_Markdown_Parser` service class. Injected this service into `AIPS_Generator` as an optional dependency via the constructor to maintain backwards compatibility.
+**Consequence:** `AIPS_Generator` is leaner and more focused. `AIPS_Markdown_Parser` can now be reused elsewhere and tested independently. The constructor signature of `AIPS_Generator` was modified, but optional parameters ensure no breaking changes for existing instantiations.
+**Tests:** Created `test-aips-markdown-parser.php` which validates `is_markdown`, `contains_html`, and `parse` methods. All tests passed.
