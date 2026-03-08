@@ -217,6 +217,7 @@ class AIPS_Admin_Assets {
 				'generatingPostsTitle' => __('Generating Posts', 'ai-post-scheduler'),
 				'generatingPostsMessage' => __('Please wait while your posts are being generated. This may take a few minutes.', 'ai-post-scheduler'),
 				'generationCompletePartial' => __('%d post(s) generated, %d failed.', 'ai-post-scheduler'),
+				'similarSuggestions' => __('Similar Suggestions', 'ai-post-scheduler'),
 			));
 
 			// Pass page-context data (not i18n) in a separate object so it stays

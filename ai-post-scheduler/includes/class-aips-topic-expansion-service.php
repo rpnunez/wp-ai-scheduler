@@ -31,6 +31,11 @@ class AIPS_Topic_Expansion_Service {
 	private $topics_repository;
 	
 	/**
+	 * @var AIPS_Authors_Repository Authors repository
+	 */
+	private $authors_repository;
+	
+	/**
 	 * @var AIPS_Logger Logger instance
 	 */
 	private $logger;
@@ -38,10 +43,11 @@ class AIPS_Topic_Expansion_Service {
 	/**
 	 * Initialize the topic expansion service.
 	 */
-	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null) {
+	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null, $authors_repository = null) {
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logger = $logger ?: new AIPS_Logger();
+		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
 	}
 	
 	/**
@@ -321,8 +327,7 @@ class AIPS_Topic_Expansion_Service {
 	 * @return array Statistics about the batch operation.
 	 */
 	public function batch_compute_all_approved_embeddings() {
-		$authors_repository = new AIPS_Authors_Repository();
-		$authors = $authors_repository->get_all();
+		$authors = $this->authors_repository->get_all();
 
 		$stats = array(
 			'total' => 0,

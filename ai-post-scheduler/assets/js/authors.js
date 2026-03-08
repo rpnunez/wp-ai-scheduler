@@ -465,12 +465,11 @@
 		},
 
 		/**
-		 * Update the per-status topic count badges in the modal tab bar.
+		 * Fetch and render semantic topic suggestions for the current author.
 		 *
-		 * @param {Object} counts           - Map of status string → count number.
-		 * @param {number} [counts.pending] - Number of pending topics.
-		 * @param {number} [counts.approved] - Number of approved topics.
-		 * @param {number} [counts.rejected] - Number of rejected topics.
+		 * Calls the `aips_suggest_related_topics` AJAX action and populates the
+		 * `#aips-similar-suggestions` panel with the returned suggestions.
+		 * If the request returns no results the panel is hidden and emptied.
 		 */
 		renderSimilarSuggestionsPanel: function () {
 			const $panel = $('#aips-similar-suggestions');
@@ -493,7 +492,7 @@
 						return;
 					}
 					let html = '<div class="aips-content-panel" style="padding: 12px 16px;">';
-					html += '<strong>' + this.escapeHtml('Similar Suggestions') + '</strong>';
+					html += '<strong>' + this.escapeHtml(aipsAuthorsL10n.similarSuggestions || 'Similar Suggestions') + '</strong>';
 					html += '<ul style="margin: 8px 0 0 18px;">';
 					response.data.suggestions.forEach(item => {
 						const score = typeof item.similarity_score === 'number' ? Math.round(item.similarity_score * 100) : 0;
@@ -507,6 +506,15 @@
 				}
 			});
 		},
+
+		/**
+		 * Update the per-status topic count badges in the modal tab bar.
+		 *
+		 * @param {Object} counts           - Map of status string → count number.
+		 * @param {number} [counts.pending] - Number of pending topics.
+		 * @param {number} [counts.approved] - Number of approved topics.
+		 * @param {number} [counts.rejected] - Number of rejected topics.
+		 */
 		updateTopicCounts: function (counts) {
 			$('#pending-count').text(counts.pending || 0);
 			$('#approved-count').text(counts.approved || 0);
