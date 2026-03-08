@@ -231,7 +231,6 @@ All tables use the WordPress table prefix (e.g., `wp_`). Schema managed by `AIPS
 | `aips_author_topics` | Per-author topic queue |
 | `aips_author_topic_logs` | Author topic generation logs |
 | `aips_topic_feedback` | Topic feedback (thumbs up/down) |
-| `aips_post_reviews` | Post review workflow records |
 
 ### Adding a Database Table
 1. Add the table name to `AIPS_DB_Manager::$tables` (no `migrations/` directory exists)
