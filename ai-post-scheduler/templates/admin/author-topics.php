@@ -82,9 +82,9 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 					</p>
 				</div>
 				<div class="aips-page-actions">
-					<a href="<?php echo esc_url($author_page_url); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-arrow-left-alt"></span>
-						<?php esc_html_e('Back to Author', 'ai-post-scheduler'); ?>
+					<a href="<?php echo $author_page_url; ?>" class="aips-btn aips-btn-secondary">
+						<span class="dashicons dashicons-edit"></span>
+						<?php esc_html_e('Edit Author', 'ai-post-scheduler'); ?>
 					</a>
 					<button class="aips-btn aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
 						<span class="dashicons dashicons-update"></span>
