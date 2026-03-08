@@ -150,7 +150,7 @@ cd ai-post-scheduler && composer test
 
 #### Controller Pattern (AJAX Endpoints)
 - Controllers register AJAX hooks in their constructors via `add_action('wp_ajax_...')`.
-- **CRITICAL**: Controllers are instantiated once in `AI_Post_Scheduler::init()`. Never instantiate a controller again inside a render callback (e.g., in `add_submenu_page`) — this causes duplicate AJAX hook registrations. Store the controller reference after initial instantiation and pass it to the render callback via `use` in a closure, or use static render methods on the controller class.
+- **Guideline**: Controllers SHOULD be instantiated once in `AI_Post_Scheduler::init()`. Avoid instantiating a controller again inside a render callback (e.g., in `add_submenu_page`), as this can cause duplicate AJAX hook registrations and inconsistent state. Store the controller reference after initial instantiation and pass it to the render callback via `use` in a closure, or use static render methods on the controller class. There are a few existing legacy exceptions (e.g., in `AIPS_Settings::render_dashboard_page()` and `render_generated_posts_page()`); treat these as tech debt and do not copy this pattern in new code.
 - All AJAX handlers call `check_ajax_referer('aips_ajax_nonce', 'nonce')` and `current_user_can('manage_options')`.
 
 #### Admin Menu (AIPS_Settings)
