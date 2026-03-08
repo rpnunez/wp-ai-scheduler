@@ -52,7 +52,7 @@ class AIPS_Topic_Penalty_Service {
 	public function __construct($topics_repository = null, $authors_repository = null, $logger = null) {
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
-		$this->logger = $logger ?: new AIPS_Logger();
+		$this->logger = $logger ?: AIPS_Logger::get_instance();
 	}
 	
 	/**

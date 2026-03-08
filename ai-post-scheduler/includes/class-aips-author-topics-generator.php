@@ -50,7 +50,7 @@ class AIPS_Author_Topics_Generator {
 	 */
 	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null) {
 		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
-		$this->logger = $logger ?: new AIPS_Logger();
+		$this->logger = $logger ?: AIPS_Logger::get_instance();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 	}

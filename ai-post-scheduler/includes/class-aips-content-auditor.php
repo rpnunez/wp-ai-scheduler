@@ -37,7 +37,7 @@ class AIPS_Content_Auditor {
      */
     public function __construct($ai_service = null, $logger = null) {
         $this->ai_service = $ai_service ?: new AIPS_AI_Service();
-        $this->logger = $logger ?: new AIPS_Logger();
+        $this->logger = $logger ?: AIPS_Logger::get_instance();
     }
 
     /**

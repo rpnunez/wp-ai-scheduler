@@ -43,7 +43,7 @@ class AIPS_Research_Service {
      */
     public function __construct($ai_service = null) {
         $this->ai_service = $ai_service ?: new AIPS_AI_Service();
-        $this->logger = new AIPS_Logger();
+        $this->logger = AIPS_Logger::get_instance();
         $this->config = AIPS_Config::get_instance();
     }
 

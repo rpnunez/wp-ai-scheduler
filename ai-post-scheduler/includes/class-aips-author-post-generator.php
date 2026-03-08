@@ -70,7 +70,7 @@ class AIPS_Author_Post_Generator {
 		$this->topics_repository = new AIPS_Author_Topics_Repository();
 		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
 		$this->generator = new AIPS_Generator();
-		$this->logger = new AIPS_Logger();
+		$this->logger = AIPS_Logger::get_instance();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->expansion_service = new AIPS_Topic_Expansion_Service();
 		$this->history_service = new AIPS_History_Service();

@@ -74,7 +74,7 @@ class AIPS_Schedule_Processor {
         $this->history_service = $history_service ?: new AIPS_History_Service();
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->template_type_selector = $template_type_selector ?: new AIPS_Template_Type_Selector();
-        $this->logger = $logger ?: new AIPS_Logger();
+        $this->logger = $logger ?: AIPS_Logger::get_instance();
     }
 
     /**

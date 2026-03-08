@@ -1323,3 +1323,22 @@ The situation resulted in "unexpected title prompts" as reported, with duplicate
 This refactoring resolves the "unexpected title prompts" issue by eliminating duplicate implementations and establishing a clear, single source of truth for prompt building. The Prompt Builder now owns all prompt construction logic (title, excerpt, content), while the Generator focuses on orchestrating the AI generation workflow. The change follows SOLID principles, improves testability and maintainability, and maintains 100% backward compatibility with no breaking changes to public APIs or generated content.
 
 ---
+
+## 2026-03-02 - Three Core Efficiency Improvements
+
+**Challenge:** Multiple inefficiencies were identified that caused unnecessary overhead on every WordPress request:
+1. `AIPS_Config::get_option()` called `get_option()` on every access — even repeated calls within the same request hit the WordPress options infrastructure.
+2. `AIPS_History_Repository::get_all_template_stats()` ran a `GROUP BY` SQL query on every call, unlike the already-cached `get_stats()` method.
+3. `AIPS_Logger` was instantiated fresh in 16 service constructors across the codebase, each time calling `wp_upload_dir()`, `get_option('aips_enable_logging')`, and `get_option('aips_log_secret')`.
+
+**Decision:**
+1. **Config in-memory cache** — Added a private `$options_cache` array to the `AIPS_Config` singleton. `get_option()` now stores results in this map on first access and returns the cached value on subsequent calls. `set_option()` updates both the DB and the cache to keep them in sync.
+2. **`get_all_template_stats()` transient cache** — Wrapped the `GROUP BY` query in a transient keyed `aips_all_template_stats` (1-hour TTL, same as `aips_history_stats`). All write paths (`create`, `update`, `delete`, `delete_bulk`, `delete_by_status`, `clear_history`) now also delete this transient — consistent with the existing invalidation pattern for `aips_history_stats`.
+3. **`AIPS_Logger` singleton** — Added `AIPS_Logger::get_instance()` static factory. Updated all 16 default-fallback usages (`$logger ?: new AIPS_Logger()` / `$this->logger = new AIPS_Logger()`) in the includes directory to call `AIPS_Logger::get_instance()`. Direct instantiation (`new AIPS_Logger()`) still works for test injection and backward compatibility.
+
+**Impact:**
+- Reduces redundant `get_option()` / `wpdb` round-trips on every page load.
+- Keeps the existing caching contract consistent across all repository read methods.
+- Avoids repeated filesystem and options lookups triggered by the logger constructor; now there is at most one logger construction per request.
+- 18 new targeted tests added (`Test_AIPS_Efficiency_Improvements`); all pass. Pre-existing test failures unchanged.
+- Zero breaking changes to public APIs.
