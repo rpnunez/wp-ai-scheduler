@@ -51,6 +51,12 @@ Fires once per schedule execution run after all post generation attempts have co
     *   `int $schedule_id`: The ID of the schedule.
     *   `int[] $post_ids`: Array of post IDs that were successfully created in this run.
 
+#### `aips_generate_staggered_post`
+WP Cron event hook. Fires for each post that could not be generated in the synchronous run because the schedule's `post_quantity` exceeded the **Max Posts Per Run** setting. Each event generates exactly one post for the given schedule. Events are spaced apart by the **Stagger Interval** setting (default: 5 minutes).
+
+*   **Arguments:**
+    *   `int $schedule_id`: The ID of the schedule for which to generate the staggered post.
+
 ### Research & Trending Topics
 
 #### `aips_trending_topic_scheduled`

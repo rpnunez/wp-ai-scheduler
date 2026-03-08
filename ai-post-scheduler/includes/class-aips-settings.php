@@ -228,6 +228,12 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_review_notifications_email', array(
             'sanitize_callback' => 'sanitize_email'
         ));
+        register_setting('aips_settings', 'aips_max_posts_per_run', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_stagger_interval_minutes', array(
+            'sanitize_callback' => 'absint'
+        ));
         
         add_settings_section(
             'aips_general_section',
@@ -312,6 +318,22 @@ class AIPS_Settings {
             'aips_review_notifications_email',
             __('Notifications Email Address', 'ai-post-scheduler'),
             array($this, 'review_notifications_email_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_max_posts_per_run',
+            __('Max Posts Per Run', 'ai-post-scheduler'),
+            array($this, 'max_posts_per_run_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_stagger_interval_minutes',
+            __('Stagger Interval (Minutes)', 'ai-post-scheduler'),
+            array($this, 'stagger_interval_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -504,6 +526,38 @@ class AIPS_Settings {
         ?>
         <input type="email" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
         <p class="description"><?php esc_html_e('Email address to receive notifications about posts awaiting review.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the max posts per run setting field.
+     *
+     * Controls how many posts are generated synchronously in a single schedule run.
+     * If a schedule's post_quantity exceeds this limit, the remaining posts are
+     * queued as staggered WP Cron jobs.
+     *
+     * @return void
+     */
+    public function max_posts_per_run_field_callback() {
+        $value = max(1, absint(get_option('aips_max_posts_per_run', 2)));
+        ?>
+        <input type="number" name="aips_max_posts_per_run" value="<?php echo esc_attr($value); ?>" min="1" max="100" class="small-text">
+        <p class="description"><?php esc_html_e('Maximum posts to generate in a single synchronous run. When a schedule\'s post quantity exceeds this limit, the extra posts are generated automatically in the background via WP Cron.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the stagger interval setting field.
+     *
+     * Controls the number of minutes between each staggered WP Cron post generation job.
+     *
+     * @return void
+     */
+    public function stagger_interval_field_callback() {
+        $value = max(1, absint(get_option('aips_stagger_interval_minutes', 5)));
+        ?>
+        <input type="number" name="aips_stagger_interval_minutes" value="<?php echo esc_attr($value); ?>" min="1" max="60" class="small-text">
+        <p class="description"><?php esc_html_e('Minutes between each background (staggered) post generation job. Applies when post quantity exceeds the Max Posts Per Run limit.', 'ai-post-scheduler'); ?></p>
         <?php
     }
     

@@ -81,6 +81,8 @@ class AIPS_Config {
             'aips_enable_circuit_breaker' => false,
             'aips_circuit_breaker_threshold' => 5,
             'aips_circuit_breaker_timeout' => 300,
+            'aips_max_posts_per_run' => 2,
+            'aips_stagger_interval_minutes' => 5,
         );
     }
     

@@ -145,6 +145,41 @@ class AIPS_Schedule_Processor {
     }
 
     /**
+     * Generate a single staggered post for a schedule.
+     *
+     * Called by the `aips_generate_staggered_post` WP Cron event to produce one post
+     * for the given schedule without advancing next_run or re-triggering stagger logic
+     * (quantity_override = 1 is always within the max_per_run limit).
+     *
+     * @param int $schedule_id The schedule ID.
+     * @return void
+     */
+    public function process_staggered_post($schedule_id) {
+        $schedule = $this->repository->get_by_id($schedule_id);
+
+        if (!$schedule) {
+            // Schedule was deleted (e.g. one-time schedule already cleaned up) — skip gracefully.
+            $this->logger->log('Staggered post skipped: schedule not found.', 'info', array('schedule_id' => absint($schedule_id)));
+            return;
+        }
+
+        $template_data = $this->template_repository->get_by_id($schedule->template_id);
+
+        if (!$template_data) {
+            $this->logger->log('Staggered post skipped: template not found.', 'warning', array('schedule_id' => absint($schedule_id), 'template_id' => $schedule->template_id));
+            return;
+        }
+
+        $schedule_with_template = (object) array_merge((array) $template_data, (array) $schedule);
+        $schedule_with_template->schedule_id = $schedule->id;
+        $schedule_with_template->name = $template_data->name;
+
+        // Generate exactly 1 post in automated mode. quantity_override=1 ensures
+        // the stagger logic in execute_schedule_logic is never re-triggered.
+        $this->execute_schedule_logic($schedule_with_template, false, 1);
+    }
+
+    /**
      * Execute a schedule with locking mechanism.
      *
      * @param object $schedule Schedule object (merged with template).
@@ -269,11 +304,17 @@ class AIPS_Schedule_Processor {
         $topic = isset($schedule->topic) ? $schedule->topic : null;
         $creation_method = $is_manual ? 'manual' : 'scheduled';
 
-        // Generate $post_quantity posts, collecting successes and failures.
+        // Determine how many posts to generate immediately vs. stagger via WP Cron.
+        // Use max(1, ...) to ensure the limit is always at least 1.
+        $max_per_run = max(1, absint(get_option('aips_max_posts_per_run', 2)));
+        $stagger_interval_minutes = max(1, absint(get_option('aips_stagger_interval_minutes', 5)));
+        $immediate_qty = min($post_quantity, $max_per_run);
+
+        // Generate $immediate_qty posts now, collecting successes and failures.
         $post_ids = array();
         $errors   = array();
 
-        for ($i = 0; $i < $post_quantity; $i++) {
+        for ($i = 0; $i < $immediate_qty; $i++) {
             $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
             $single_result = $this->generator->generate_post($context);
 
@@ -284,6 +325,21 @@ class AIPS_Schedule_Processor {
                 $post_ids[] = $single_result;
                 $this->handle_execution_success($schedule, $single_result, $history, $is_manual);
             }
+        }
+
+        // Schedule any remaining posts via WP Cron, staggered by the configured interval.
+        $staggered_count = $post_quantity - $immediate_qty;
+        if ($staggered_count > 0) {
+            $base_time = time();
+            for ($j = 0; $j < $staggered_count; $j++) {
+                $delay = ($j + 1) * $stagger_interval_minutes * MINUTE_IN_SECONDS;
+                wp_schedule_single_event($base_time + $delay, 'aips_generate_staggered_post', array($schedule->schedule_id));
+            }
+            $this->logger->log(
+                sprintf('Scheduled %d staggered post(s) for schedule %d (%d min apart)', $staggered_count, $schedule->schedule_id, $stagger_interval_minutes),
+                'info',
+                array('schedule_id' => $schedule->schedule_id, 'staggered_count' => $staggered_count, 'interval_minutes' => $stagger_interval_minutes)
+            );
         }
 
         // Handle Post-Execution Logic (Cleanup/Updates)

@@ -59,6 +59,7 @@ class AIPS_Scheduler {
         );
 
         add_action('aips_generate_scheduled_posts', array($this, 'process_scheduled_posts'));
+        add_action('aips_generate_staggered_post', array($this, 'generate_single_staggered_post'));
         add_filter('cron_schedules', array($this, 'add_cron_intervals'));
     }
 
@@ -226,5 +227,19 @@ class AIPS_Scheduler {
      */
     public function process_scheduled_posts() {
         $this->processor->process_due_schedules();
+    }
+
+    /**
+     * WP Cron handler for the `aips_generate_staggered_post` event.
+     *
+     * Generates a single post for the given schedule. Called automatically by WP Cron
+     * when a schedule's post_quantity exceeds the Max Posts Per Run setting, allowing
+     * excess posts to be produced in the background at configured intervals.
+     *
+     * @param int $schedule_id The schedule ID.
+     * @return void
+     */
+    public function generate_single_staggered_post($schedule_id) {
+        $this->processor->process_staggered_post((int) $schedule_id);
     }
 }
