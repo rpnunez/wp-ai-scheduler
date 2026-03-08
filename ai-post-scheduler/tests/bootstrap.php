@@ -926,6 +926,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-topic-expansion-service.php',
         'class-aips-author-post-generator.php',
         'class-aips-author-topics-controller.php',
+        'class-aips-natural-schedule-parser.php',
     ];
     
     foreach ($files as $file) {
