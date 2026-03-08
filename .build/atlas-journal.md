@@ -1324,7 +1324,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 
 ---
 
-## 2024-11-20 - [Extract Markdown Parser from Generator]
+## 2026-03-08 - [Extract Markdown Parser from Generator]
 **Context:** The `AIPS_Generator` class contained logic for formatting and parsing Markdown into HTML (e.g. `looks_like_markdown_content`, `convert_basic_markdown_to_html`, etc.). This violated the Single Responsibility Principle as the Generator should focus solely on orchestrating AI generation, not string manipulation or markdown conversion.
 **Decision:** Extracted the Markdown parsing logic into a new, dedicated `AIPS_Markdown_Parser` service class. Injected this service into `AIPS_Generator` as an optional dependency via the constructor to maintain backwards compatibility.
 **Consequence:** `AIPS_Generator` is leaner and more focused. `AIPS_Markdown_Parser` can now be reused elsewhere and tested independently. The constructor signature of `AIPS_Generator` was modified, but optional parameters ensure no breaking changes for existing instantiations.
