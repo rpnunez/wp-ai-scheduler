@@ -25,6 +25,7 @@
 
 .topic-checkbox {
     margin-right: 10px !important;
+    flex-shrink: 0;
 }
 
 .topic-text-input {
@@ -34,6 +35,26 @@
     padding: 3px 5px;
     font-size: 14px;
     color: #1d2327;
+    flex-grow: 1;
+}
+
+.aips-remove-topic-btn {
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    margin-left: 5px;
+    color: #a00;
+    cursor: pointer;
+    flex-shrink: 0;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.aips-remove-topic-btn:hover {
+    background: #fee;
+    color: #d00;
 }
 
 .topic-text-input:hover {

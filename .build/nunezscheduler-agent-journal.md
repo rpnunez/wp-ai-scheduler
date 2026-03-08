@@ -86,3 +86,11 @@
 **Improvement:** Optimized the workflow from saving a template to scheduling it by introducing a `quickSchedule` action. Now, clicking "Schedule This Template" inside the "Next Steps" wizard directs to the schedules page and immediately triggers the "Add New Schedule" modal with the template field pre-selected.
 **Files Modified:** ai-post-scheduler/assets/js/admin.js
 **Outcome:** Enhances efficiency for the user by streamlining the multi-step navigation process directly to task execution context.
+
+## 2026-03-08 - Planner Topic Workflow Optimization
+**Target Feature:** Planner (Bulk Topic Scheduling)
+**Improvement:** Added a dedicated "Remove Topic" button to each dynamically generated topic row in the planner list. Previously, users could only check/uncheck topics before scheduling, but not explicitly trim down the list to visually declutter unwanted ideas before submission. By appending a clear `&times;` icon, users can instantly delete an item, improving the feature's visual flow and feedback before making scheduling decisions. The script intelligently collapses the results panel dynamically when the list becomes completely empty.
+**Files Modified:**
+- `ai-post-scheduler/assets/js/admin-planner.js`
+- `ai-post-scheduler/assets/css/planner.css`
+**Outcome:** Users can visually trim their generated or parsed topic lists dynamically to focus only on the strong ideas before scheduling them, improving the usability of bulk actions.
