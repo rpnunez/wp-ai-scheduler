@@ -121,10 +121,13 @@ class AIPS_Topic_Expansion_Service {
 	/**
 	 * Find similar topics to a given topic.
 	 *
-	 * @param int $topic_id      The topic ID to find similar topics for.
-	 * @param int $author_id     Author ID to limit search to.
-	 * @param int $limit         Number of similar topics to return.
-	 * @param string $status     Optional. Filter by status (pending, approved, rejected).
+	 * Results are filtered by the `aips_topic_similarity_threshold` setting (default 0.8),
+	 * so the returned count may be less than `$limit` when few neighbors meet the threshold.
+	 *
+	 * @param int    $topic_id  The topic ID to find similar topics for.
+	 * @param int    $author_id Author ID to limit search to.
+	 * @param int    $limit     Maximum number of similar topics to return.
+	 * @param string $status    Optional. Filter by status (pending, approved, rejected).
 	 * @return array Array of similar topics with similarity scores.
 	 */
 	public function find_similar_topics($topic_id, $author_id, $limit = 5, $status = null) {
@@ -176,8 +179,14 @@ class AIPS_Topic_Expansion_Service {
 			}
 		}
 		
-		// Find nearest neighbors
-		return $this->embeddings_service->find_nearest_neighbors($target_embedding, $candidates, $limit);
+		// Find nearest neighbors and filter by configured similarity threshold
+		$raw_threshold = get_option('aips_topic_similarity_threshold', 0.8);
+		$threshold = is_numeric($raw_threshold) ? min(1.0, max(0.1, (float) $raw_threshold)) : 0.8;
+		$neighbors = $this->embeddings_service->find_nearest_neighbors($target_embedding, $candidates, $limit);
+
+		return array_values(array_filter($neighbors, function($neighbor) use ($threshold) {
+			return isset($neighbor['similarity']) && $neighbor['similarity'] >= $threshold;
+		}));
 	}
 	
 	/**

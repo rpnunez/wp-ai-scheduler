@@ -614,7 +614,6 @@
 	}
 }
 
-
 /* Similar suggestions and feedback context */
 #aips-similar-suggestions .description,
 .aips-topic-score {
@@ -624,6 +623,34 @@
 
 .aips-topic-inline-feedback {
 	margin-top: 8px;
+}
+
+/* Author Quality Indicator */
+.aips-quality-indicator {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-weight: 600;
+	font-size: 12px;
+	cursor: default;
+}
+
+.aips-quality-indicator .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.aips-quality-healthy {
+	color: #00a32a;
+}
+
+.aips-quality-warning {
+	color: #dba617;
+}
+
+.aips-quality-critical {
+	color: #d63638;
 }
 
 /* Feedback history badge */
