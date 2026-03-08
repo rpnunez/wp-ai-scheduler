@@ -53,7 +53,7 @@ class AIPS_Templates {
             'voice_id' => isset($data['voice_id']) ? absint($data['voice_id']) : null,
             'post_quantity' => isset($data['post_quantity']) ? absint($data['post_quantity']) : 1,
             'image_prompt' => isset($data['image_prompt']) ? wp_kses_post($data['image_prompt']) : '',
-            'generate_featured_image' => isset($data['generate_featured_image']) ? 1 : 0,
+            'generate_featured_image' => filter_var(isset($data['generate_featured_image']) ? $data['generate_featured_image'] : 0, FILTER_VALIDATE_BOOLEAN) ? 1 : 0,
             'featured_image_source' => $featured_image_source,
             'featured_image_unsplash_keywords' => isset($data['featured_image_unsplash_keywords']) ? sanitize_textarea_field($data['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => $media_ids,
