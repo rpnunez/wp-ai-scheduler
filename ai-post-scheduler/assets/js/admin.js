@@ -1414,49 +1414,6 @@
                 }
             });
         },
-            var $toggle = $(this);
-            var id = $toggle.data('id');
-            var isActive = $toggle.is(':checked') ? 1 : 0;
-            var $wrapper = $toggle.closest('.aips-schedule-status-wrapper');
-            var $badge = $wrapper.find('.aips-badge');
-            var $icon = $badge.find('.dashicons');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_toggle_schedule',
-                    nonce: aipsAjax.nonce,
-                    schedule_id: id,
-                    is_active: isActive
-                },
-                success: function() {
-                    $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
-                    $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
-
-                    // Remove all text nodes (avoids picking wrong node when whitespace creates multiple)
-                    $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
-
-                    if (isActive) {
-                        $badge.addClass('aips-badge-success');
-                        $icon.addClass('dashicons-yes-alt');
-                        $icon.after(' Active');
-                    } else {
-                        $badge.addClass('aips-badge-neutral');
-                        $icon.addClass('dashicons-minus');
-                        $icon.after(' Inactive');
-                    }
-
-                    $toggle.closest('tr').data('is-active', isActive);
-                },
-                error: function() {
-                    $toggle.prop('checked', !isActive);
-
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
-                }
-            });
-        },
-
         /**
          * Sync all individual schedule checkboxes with the "select all" state.
          *
