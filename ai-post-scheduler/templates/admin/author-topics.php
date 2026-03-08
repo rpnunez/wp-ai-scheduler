@@ -15,6 +15,7 @@ if (!defined('ABSPATH')) {
 
 $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 $authors_page_url = admin_url('admin.php?page=aips-authors');
+$author_page_url = add_query_arg( array( 'page' => 'aips-authors', 'author_id' => $author_id ), admin_url( 'admin.php' ) );
 
 if (!$author_id) {
 	?>
@@ -81,9 +82,9 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 					</p>
 				</div>
 				<div class="aips-page-actions">
-					<a href="<?php echo esc_url($authors_page_url); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-arrow-left-alt"></span>
-						<?php esc_html_e('Back to Authors', 'ai-post-scheduler'); ?>
+					<a href="<?php echo $author_page_url; ?>" class="aips-btn aips-btn-secondary">
+						<span class="dashicons dashicons-edit"></span>
+						<?php esc_html_e('Edit Author', 'ai-post-scheduler'); ?>
 					</a>
 					<button class="aips-btn aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
 						<span class="dashicons dashicons-update"></span>
