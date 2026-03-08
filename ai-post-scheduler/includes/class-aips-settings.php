@@ -24,6 +24,8 @@ class AIPS_Settings {
         add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
         add_action('wp_ajax_aips_get_activity', array($this, 'ajax_get_activity'));
         add_action('wp_ajax_aips_get_activity_detail', array($this, 'ajax_get_activity_detail'));
+        add_filter('parent_file', array($this, 'fix_author_topics_parent_file'));
+        add_filter('submenu_file', array($this, 'fix_author_topics_submenu_file'));
     }
     
     /**
@@ -188,6 +190,40 @@ class AIPS_Settings {
         }
     }
     
+    /**
+     * Expand the "AI Post Scheduler" top-level menu when on the hidden Author Topics page.
+     *
+     * WordPress collapses the parent menu when a page is registered with null parent_slug.
+     * This filter overrides that behaviour so the plugin menu stays open.
+     *
+     * @param string $parent_file The current parent file slug.
+     * @return string
+     */
+    public function fix_author_topics_parent_file($parent_file) {
+        $page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+        if ($page === 'aips-author-topics') {
+            return 'ai-post-scheduler';
+        }
+        return $parent_file;
+    }
+
+    /**
+     * Highlight the "Authors" submenu item when on the hidden Author Topics page.
+     *
+     * Because the Author Topics page is registered with a null parent, WordPress
+     * does not activate any submenu item. This filter makes "Authors" appear active.
+     *
+     * @param string $submenu_file The current submenu file slug.
+     * @return string
+     */
+    public function fix_author_topics_submenu_file($submenu_file) {
+        $page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+        if ($page === 'aips-author-topics') {
+            return 'aips-authors';
+        }
+        return $submenu_file;
+    }
+
     /**
      * Register plugin settings and fields.
      *
