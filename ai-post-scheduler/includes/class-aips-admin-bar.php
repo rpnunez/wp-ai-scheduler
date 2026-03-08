@@ -78,7 +78,12 @@ class AIPS_Admin_Bar {
 			return;
 		}
 
-		$unread_count = $this->repository->count_unread();
+		$cache_key   = 'aips_unread_count_' . get_current_user_id();
+		$unread_count = wp_cache_get($cache_key, 'aips_admin_bar');
+		if (false === $unread_count) {
+			$unread_count = $this->repository->count_unread();
+			wp_cache_set($cache_key, $unread_count, 'aips_admin_bar');
+		}
 
 		// ---------- Root node (icon + badge) ----------
 		$badge = '';
