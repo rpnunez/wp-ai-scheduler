@@ -215,8 +215,11 @@ class AIPS_Admin_Bar {
 			wp_send_json_error(array('message' => __('Invalid notification ID.', 'ai-post-scheduler')));
 		}
 
-		$this->repository->mark_as_read($id);
+		$updated = $this->repository->mark_as_read($id);
 
+		if (!$updated) {
+			wp_send_json_error(array('message' => __('Notification could not be updated or was already read.', 'ai-post-scheduler')));
+		}
 		wp_send_json_success(array(
 			'unread_count' => $this->repository->count_unread(),
 		));
