@@ -141,13 +141,15 @@ class AIPS_DB_Manager {
             last_run datetime DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             status varchar(20) DEFAULT 'active',
+            schedule_history_id bigint(20) DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY template_id (template_id),
             KEY article_structure_id (article_structure_id),
             KEY next_run (next_run),
             KEY is_active_next_run (is_active, next_run),
-            KEY status (status)
+            KEY status (status),
+            KEY schedule_history_id (schedule_history_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_voices (
