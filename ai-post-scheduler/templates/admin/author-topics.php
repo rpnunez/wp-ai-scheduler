@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 $authors_page_url = admin_url('admin.php?page=aips-authors');
-$author_page_url = esc_url( add_query_arg( array( 'page' => 'aips-authors', 'author_id' => $author_id ), admin_url( 'admin.php' ) ) );
+$author_page_url = add_query_arg( array( 'page' => 'aips-authors', 'author_id' => $author_id ), admin_url( 'admin.php' ) );
 
 if (!$author_id) {
 	?>
@@ -82,7 +82,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 					</p>
 				</div>
 				<div class="aips-page-actions">
-					<a href="<?php echo $author_page_url; ?>" class="aips-btn aips-btn-secondary">
+					<a href="<?php echo esc_url($author_page_url); ?>" class="aips-btn aips-btn-secondary">
 						<span class="dashicons dashicons-arrow-left-alt"></span>
 						<?php esc_html_e('Back to Author', 'ai-post-scheduler'); ?>
 					</a>
