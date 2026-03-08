@@ -222,7 +222,6 @@ class AIPS_Admin_Assets {
 				'previouslyApproved' => __('Previously Approved', 'ai-post-scheduler'),
 				'previouslyRejected' => __('Previously Rejected', 'ai-post-scheduler'),
 				'potentialDuplicate' => __('Potential Duplicate', 'ai-post-scheduler'),
-				'similarTo' => __('Similar to', 'ai-post-scheduler'),
 			));
 
 			// Pass page-context data (not i18n) in a separate object so it stays
