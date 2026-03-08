@@ -43,7 +43,7 @@ Use this file for PHP changes in `includes/*.php`.
 
 - Baseline coding standards:
 - Follow WordPress coding standards and plugin conventions used in this repository.
-- Start plugin PHP files with the ABSPATH guard: `if ( ! defined( 'ABSPATH' ) ) { exit; }`.
+- Start plugin PHP files with the ABSPATH guard: `if (!defined('ABSPATH')) { exit; }`.
 - Use tabs for indentation and `array()` syntax for PHP 7.4 compatibility.
 - Sanitize all inputs and escape all output with context-appropriate WordPress helpers.
 - Verify nonces for state-changing requests.
