@@ -176,7 +176,7 @@ do_action('aips_post_generation_failed', $template_id, $error_message, $topic);
 do_action('aips_schedule_execution_started', $schedule_id);
 do_action('aips_schedule_execution_completed', $schedule_id, $post_id);
 do_action('aips_schedule_execution_failed', $schedule_id, $error_message);
-do_action('aips_trending_topic_scheduled', $schedule_id, $topic, $template_id);
+do_action('aips_trending_topic_scheduled', $schedule_data);
 do_action('aips_planner_topics_generated', $topics, $niche);
 ```
 See `docs/HOOKS.md` for the full list of actions and filters.
