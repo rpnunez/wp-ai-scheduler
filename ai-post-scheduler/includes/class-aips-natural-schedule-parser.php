@@ -31,9 +31,16 @@ class AIPS_Natural_Schedule_Parser {
         $reference_timestamp = $reference_timestamp ?: current_time('timestamp');
         $time_parts = $this->extract_time_parts($normalized);
 
+        // Propagate any validation error (e.g. out-of-range AM/PM hour) from extract_time_parts.
+        if (is_wp_error($time_parts)) {
+            return $time_parts;
+        }
+
         // If the input appears to specify a time but we could not parse it,
         // return an explicit error instead of silently falling back to the reference time.
-        if ($time_parts === null && preg_match('/\b(?:at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?|at\s+(?:noon|midnight)|noon|midnight)\b/', $normalized)) {
+        // Detect any "at" followed by a structured time pattern (digits with optional colon/digits and optional am/pm),
+        // or the literal words noon/midnight, to catch malformed inputs like "at 14:3" or "at 25:00".
+        if ($time_parts === null && preg_match('/\bat\s+\d{1,2}(?::\d{1,2})?(?:\s*(?:am|pm))?\b|\bnoon\b|\bmidnight\b/', $normalized)) {
             return new WP_Error(
                 'invalid_schedule_time',
                 __('The time in your schedule phrase could not be understood. Please use a time like "8am" or "14:30".', 'ai-post-scheduler')
@@ -119,7 +126,7 @@ class AIPS_Natural_Schedule_Parser {
     /**
      * Extract a time component from text.
      *
-     * @return array|null Array with keys hour/minute or null when omitted.
+     * @return array|WP_Error|null Array with keys hour/minute, WP_Error on invalid input, or null when omitted.
      */
     private function extract_time_parts($normalized) {
         if (preg_match('/\bmidnight\b/', $normalized)) {
@@ -130,10 +137,19 @@ class AIPS_Natural_Schedule_Parser {
             return array('hour' => 12, 'minute' => 0);
         }
 
-        if (preg_match('/\bat\s+([0-1]?\d|2[0-3])(?::([0-5]\d))?\s*(am|pm)\b/', $normalized, $m)) {
+        // AM/PM branch: capture any 1-2 digit hour so we can validate the range explicitly.
+        if (preg_match('/\bat\s+(\d{1,2})(?::([0-5]\d))?\s*(am|pm)\b/', $normalized, $m)) {
             $hour = (int) $m[1];
             $minute = isset($m[2]) && $m[2] !== '' ? (int) $m[2] : 0;
             $ampm = $m[3];
+
+            // AM/PM is only meaningful for hours 1-12.
+            if ($hour < 1 || $hour > 12) {
+                return new WP_Error(
+                    'invalid_schedule_time',
+                    __('The time in your schedule phrase could not be understood. Please use a time like "8am" or "14:30".', 'ai-post-scheduler')
+                );
+            }
 
             if ($ampm === 'am' && $hour === 12) {
                 $hour = 0;

@@ -9,6 +9,11 @@ class Test_AIPS_Natural_Schedule_Parser extends WP_UnitTestCase {
 
     public function setUp(): void {
         parent::setUp();
+
+        if ( ! class_exists( 'AIPS_Natural_Schedule_Parser' ) ) {
+            require_once dirname( __DIR__ ) . '/includes/class-aips-natural-schedule-parser.php';
+        }
+
         $this->parser = new AIPS_Natural_Schedule_Parser();
     }
 
@@ -47,5 +52,51 @@ class Test_AIPS_Natural_Schedule_Parser extends WP_UnitTestCase {
 
         $this->assertInstanceOf('WP_Error', $parsed);
         $this->assertEquals('unsupported_schedule_text', $parsed->get_error_code());
+    }
+
+    public function test_parse_out_of_range_ampm_hour_returns_error() {
+        $parsed = $this->parser->parse('daily at 13 pm');
+
+        $this->assertInstanceOf('WP_Error', $parsed);
+        $this->assertEquals('invalid_schedule_time', $parsed->get_error_code());
+    }
+
+    public function test_parse_zero_hour_ampm_returns_error() {
+        $parsed = $this->parser->parse('weekly at 0 am');
+
+        $this->assertInstanceOf('WP_Error', $parsed);
+        $this->assertEquals('invalid_schedule_time', $parsed->get_error_code());
+    }
+
+    public function test_parse_malformed_minute_returns_error() {
+        $parsed = $this->parser->parse('daily at 14:3');
+
+        $this->assertInstanceOf('WP_Error', $parsed);
+        $this->assertEquals('invalid_schedule_time', $parsed->get_error_code());
+    }
+
+    public function test_parse_out_of_range_24h_hour_returns_error() {
+        $parsed = $this->parser->parse('weekly at 25:00');
+
+        $this->assertInstanceOf('WP_Error', $parsed);
+        $this->assertEquals('invalid_schedule_time', $parsed->get_error_code());
+    }
+
+    public function test_parse_12_am_is_midnight() {
+        $reference = strtotime('2030-06-12 06:00:00');
+        $parsed = $this->parser->parse('daily at 12 AM', $reference);
+
+        $this->assertIsArray($parsed);
+        $this->assertEquals('daily', $parsed['frequency']);
+        $this->assertEquals('00:00:00', date('H:i:s', strtotime($parsed['start_time'])));
+    }
+
+    public function test_parse_12_pm_is_noon() {
+        $reference = strtotime('2030-06-12 06:00:00');
+        $parsed = $this->parser->parse('daily at 12 PM', $reference);
+
+        $this->assertIsArray($parsed);
+        $this->assertEquals('daily', $parsed['frequency']);
+        $this->assertEquals('12:00:00', date('H:i:s', strtotime($parsed['start_time'])));
     }
 }
