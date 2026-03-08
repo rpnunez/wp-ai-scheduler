@@ -52,7 +52,19 @@ if (!defined('ABSPATH')) {
                     <span class="aips-summary-label"><?php esc_html_e('Active Templates', 'ai-post-scheduler'); ?></span>
                 </div>
             </div>
-            
+
+            <?php if ($pending_review_count > 0): ?>
+            <div class="aips-summary-card warning">
+                <a href="<?php echo esc_url(admin_url('admin.php?page=aips-generated-posts') . '#aips-pending-review'); ?>" class="aips-summary-card-link" aria-label="<?php esc_attr_e('View posts pending review', 'ai-post-scheduler'); ?>">
+                    <div class="dashicons dashicons-visibility aips-summary-icon" aria-hidden="true"></div>
+                    <div class="aips-summary-content">
+                        <span class="aips-summary-number"><?php echo esc_html($pending_review_count); ?></span>
+                        <span class="aips-summary-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
+                    </div>
+                </a>
+            </div>
+            <?php endif; ?>
+
             <?php if ($failed_count > 0): ?>
             <div class="aips-summary-card error">
                 <div class="dashicons dashicons-warning aips-summary-icon" aria-hidden="true"></div>
@@ -116,7 +128,7 @@ if (!defined('ABSPATH')) {
                 <div class="aips-panel-header">
                     <h2 class="aips-panel-title"><?php esc_html_e('Recent Activity', 'ai-post-scheduler'); ?></h2>
                     <?php if (!empty($recent_posts)): ?>
-                    <a href="<?php echo esc_url(add_query_arg('tab', 'history', admin_url('admin.php?page=aips-templates'))); ?>" class="aips-btn aips-btn-ghost aips-btn-sm">
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=aips-history')); ?>" class="aips-btn aips-btn-ghost aips-btn-sm">
                         <?php esc_html_e('View All', 'ai-post-scheduler'); ?> &rarr;
                     </a>
                     <?php endif; ?>
@@ -193,6 +205,18 @@ if (!defined('ABSPATH')) {
                         <span class="dashicons dashicons-edit"></span>
                         <?php esc_html_e('View Generated Posts', 'ai-post-scheduler'); ?>
                     </a>
+                    <?php if ($pending_review_count > 0): ?>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=aips-generated-posts') . '#aips-pending-review'); ?>" class="aips-btn aips-btn-primary">
+                        <span class="dashicons dashicons-visibility"></span>
+                        <?php
+                        /* translators: %d: number of draft posts awaiting review */
+                        printf(
+                            esc_html(_n('Review %d Draft', 'Review %d Drafts', $pending_review_count, 'ai-post-scheduler')),
+                            (int) $pending_review_count
+                        );
+                        ?>
+                    </a>
+                    <?php endif; ?>
                     <a href="<?php echo esc_url(admin_url('admin.php?page=aips-authors')); ?>" class="aips-btn aips-btn-secondary">
                         <span class="dashicons dashicons-admin-users"></span>
                         <?php esc_html_e('Manage Authors', 'ai-post-scheduler'); ?>

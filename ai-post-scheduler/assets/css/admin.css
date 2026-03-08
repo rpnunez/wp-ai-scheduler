@@ -347,6 +347,22 @@
 	border-left: 3px solid var(--aips-error);
 }
 
+/* Clickable stat card — the inner <a> fills the card without default link styles */
+.aips-summary-card-link {
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-4);
+	text-decoration: none;
+	color: inherit;
+	width: 100%;
+}
+
+.aips-summary-card-link:hover,
+.aips-summary-card-link:focus {
+	text-decoration: none;
+	color: inherit;
+}
+
 .aips-summary-icon {
 	font-size: 32px;
 	width: 40px;

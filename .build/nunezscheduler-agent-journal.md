@@ -86,3 +86,16 @@
 **Improvement:** Optimized the workflow from saving a template to scheduling it by introducing a `quickSchedule` action. Now, clicking "Schedule This Template" inside the "Next Steps" wizard directs to the schedules page and immediately triggers the "Add New Schedule" modal with the template field pre-selected.
 **Files Modified:** ai-post-scheduler/assets/js/admin.js
 **Outcome:** Enhances efficiency for the user by streamlining the multi-step navigation process directly to task execution context.
+
+## 2026-03-08 - Dashboard Pending Review Visibility Optimization
+**Target Feature:** Dashboard
+**Improvement:** Added "Pending Review" awareness to the Dashboard, eliminating the need for users to manually navigate to the Generated Posts page to discover if there are AI-created drafts waiting for their approval. Specifically:
+1. **New "Pending Review" stat card** — When `AIPS_Post_Review_Repository::get_draft_count()` returns a non-zero value, a yellow-accented warning card appears in the status summary row. The entire card is a link that jumps directly to the Pending Review tab (`aips-generated-posts#aips-pending-review`), enabling single-click access from the dashboard.
+2. **"Review N Draft(s)" quick action button** — When pending drafts exist, a primary-styled `Review N Draft(s)` button is injected into the Quick Actions panel, providing an always-visible call-to-action during active content generation periods.
+3. **Fixed broken "View All" link** — The Recent Activity panel's "View All" link was pointing to `admin.php?page=aips-templates&tab=history` (a non-existent tab on the Templates page). Corrected to `admin.php?page=aips-history` — the actual dedicated History page.
+4. **CSS: `.aips-summary-card-link`** — Added a reset rule that strips default anchor decoration from the clickable stat card without changing the card's visual layout (inherits flex + color from the parent card).
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-dashboard-controller.php` — Instantiates `AIPS_Post_Review_Repository` and exposes `$pending_review_count` to the template.
+- `ai-post-scheduler/templates/admin/dashboard.php` — Pending Review stat card, Review Drafts quick action, fixed "View All" URL.
+- `ai-post-scheduler/assets/css/admin.css` — `.aips-summary-card-link` reset styles.
+**Outcome:** A user returning to their dashboard after scheduled generation runs can now immediately see how many posts are awaiting review and reach them in a single click — reducing the "Generation done → review posts" journey from 3–4 navigation steps to 1. Follows the "Flow is Function" principle: the dashboard is now a true actionable overview rather than a read-only stats page.
