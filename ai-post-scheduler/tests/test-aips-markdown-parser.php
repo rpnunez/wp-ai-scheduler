@@ -2,7 +2,7 @@
 /**
  * Tests for the Markdown Parser utility.
  *
- * @package AI_Post_Scheduler\Tests
+ * @package AI_Post_Scheduler
  */
 
 class Test_AIPS_Markdown_Parser extends WP_UnitTestCase {
