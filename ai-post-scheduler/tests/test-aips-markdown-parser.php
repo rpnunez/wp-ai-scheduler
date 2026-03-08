@@ -42,4 +42,25 @@ class Test_AIPS_Markdown_Parser extends WP_UnitTestCase {
         $this->assertStringContainsString('<ul><li>Item 1</li><li>Item 2</li></ul>', $html);
         $this->assertStringContainsString('<p>Just a paragraph.</p>', $html);
     }
+
+    public function test_parse_applies_inline_bold_formatting() {
+        $markdown = "This is **bold** text.";
+        $html     = $this->parser->parse( $markdown );
+
+        $this->assertStringContainsString( '<strong>bold</strong>', $html );
+    }
+
+    public function test_parse_applies_inline_italic_formatting() {
+        $markdown = "This is _italic_ text.";
+        $html     = $this->parser->parse( $markdown );
+
+        $this->assertStringContainsString( '<em>italic</em>', $html );
+    }
+
+    public function test_parse_applies_inline_code_formatting() {
+        $markdown = "Use `code()` here.";
+        $html     = $this->parser->parse( $markdown );
+
+        $this->assertStringContainsString( '<code>code()</code>', $html );
+    }
 }
