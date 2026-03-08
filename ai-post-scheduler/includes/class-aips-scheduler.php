@@ -31,6 +31,11 @@ class AIPS_Scheduler {
     private $history_service;
 
     /**
+     * @var AIPS_History_Repository Repository for history operations
+     */
+    private $history_repository;
+
+    /**
      * @var AIPS_Schedule_Processor Processor for executing schedules
      */
     private $processor;
@@ -42,7 +47,8 @@ class AIPS_Scheduler {
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->repository = new AIPS_Schedule_Repository();
         $this->template_repository = new AIPS_Template_Repository();
-        $this->history_service = new AIPS_History_Service();
+        $this->history_repository = new AIPS_History_Repository();
+        $this->history_service = new AIPS_History_Service($this->history_repository);
         $this->template_type_selector = new AIPS_Template_Type_Selector();
         
         // Instantiate the processor with dependencies
@@ -287,7 +293,7 @@ class AIPS_Scheduler {
             return null;
         }
 
-        $history_repository = new AIPS_History_Repository();
+        $history_repository = $this->history_repository;
 
         if (!empty($schedule->schedule_history_id)) {
             $container = AIPS_History_Container::load_existing($history_repository, $schedule->schedule_history_id);

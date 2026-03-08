@@ -36,6 +36,11 @@ class AIPS_Schedule_Processor {
     private $history_service;
 
     /**
+     * @var AIPS_History_Repository
+     */
+    private $history_repository;
+
+    /**
      * @var AIPS_Interval_Calculator
      */
     private $interval_calculator;
@@ -71,7 +76,8 @@ class AIPS_Schedule_Processor {
         $this->repository = $repository ?: new AIPS_Schedule_Repository();
         $this->template_repository = $template_repository ?: new AIPS_Template_Repository();
         $this->generator = $generator ?: new AIPS_Generator();
-        $this->history_service = $history_service ?: new AIPS_History_Service();
+        $this->history_repository = new AIPS_History_Repository();
+        $this->history_service = $history_service ?: new AIPS_History_Service($this->history_repository);
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->template_type_selector = $template_type_selector ?: new AIPS_Template_Type_Selector();
         $this->logger = $logger ?: new AIPS_Logger();
@@ -444,10 +450,8 @@ class AIPS_Schedule_Processor {
             return null;
         }
 
-        $history_repository = new AIPS_History_Repository();
-
         if (!empty($schedule->schedule_history_id)) {
-            $container = AIPS_History_Container::load_existing($history_repository, $schedule->schedule_history_id);
+            $container = AIPS_History_Container::load_existing($this->history_repository, $schedule->schedule_history_id);
             if ($container) {
                 return $container;
             }
