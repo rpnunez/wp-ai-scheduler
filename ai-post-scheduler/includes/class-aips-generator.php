@@ -75,26 +75,26 @@ class AIPS_Generator {
         $prompt_builder = null,
         $markdown_parser = null
     ) {
-    	$this->logger = $logger ?: new AIPS_Logger();
-    	$this->ai_service = $ai_service ?: new AIPS_AI_Service();
-    	$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-    	$this->image_service = $image_service ?: new AIPS_Image_Service( $this->ai_service );
-    	$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
-    	$this->post_creator = $post_creator ?: new AIPS_Post_Creator();
-    	$this->history_service = $history_service ?: new AIPS_History_Service();
-    	$this->history_repository = new AIPS_History_Repository();
-    	$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
+        $this->logger             = $logger ?: new AIPS_Logger();
+        $this->ai_service         = $ai_service ?: new AIPS_AI_Service();
+        $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
+        $this->image_service      = $image_service ?: new AIPS_Image_Service( $this->ai_service );
+        $this->structure_manager  = $structure_manager ?: new AIPS_Article_Structure_Manager();
+        $this->post_creator       = $post_creator ?: new AIPS_Post_Creator();
+        $this->history_service    = $history_service ?: new AIPS_History_Service();
+        $this->history_repository = new AIPS_History_Repository();
+        $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
 
-    	if ( $markdown_parser ) {
-    		$this->markdown_parser = $markdown_parser;
-    	} elseif ( class_exists( 'AIPS_Markdown_Parser' ) ) {
-    		$this->markdown_parser = new AIPS_Markdown_Parser();
-    	} else {
-    		$this->markdown_parser = null;
-    	}
+        if ( $markdown_parser ) {
+            $this->markdown_parser = $markdown_parser;
+        } elseif ( class_exists( 'AIPS_Markdown_Parser' ) ) {
+            $this->markdown_parser = new AIPS_Markdown_Parser();
+        } else {
+            $this->markdown_parser = null;
+        }
 
-    	// Initialize logger wrapper
-    	$this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
+        // Initialize logger wrapper
+        $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
     }
 
     /**
