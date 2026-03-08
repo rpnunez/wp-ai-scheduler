@@ -81,3 +81,8 @@
 - `wp-ai-scheduler/ai-post-scheduler/includes/class-aips-generation-context-factory.php`
 **Outcome:** The `AIPS_Component_Regeneration_Service` is now a much leaner orchestrator, delegating data fetching and object creation to specialized classes. This improves code clarity, testability, and maintainability, aligning with the "Flow is Function" philosophy by ensuring the underlying code structure is logical and efficient.
 **Verification Status:** Blocked. The project's test suite requires a Docker environment, which was not running or accessible. Multiple attempts to run the tests via `make test` and `docker-compose exec` failed. A final attempt to run `phpunit` directly on the host failed due to missing WordPress and database dependencies. The refactoring is complete, but could not be verified.
+## 2026-03-08 - Authors Feature Optimization
+**Target Feature:** Authors generated post view
+**Improvement:** Allowed regenerating and deleting generated posts from the topic posts modal directly.
+**Files Modified:** `ai-post-scheduler/assets/js/authors.js`, `ai-post-scheduler/includes/class-aips-admin-assets.php`
+**Outcome:** Improved workflow efficiency by allowing users to manage generated posts without leaving the author topics view.

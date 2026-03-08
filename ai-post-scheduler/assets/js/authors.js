@@ -100,10 +100,14 @@
 			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
 			$(document).on('click', '.aips-select-all-feedback', this.toggleSelectAllFeedback.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
-			
+
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
-			
+
+			// Topic post actions
+			$(document).on('click', '.aips-regenerate-post', this.regeneratePost.bind(this));
+			$(document).on('click', '.aips-delete-post', this.deleteGeneratedPost.bind(this));
+
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
 		},
@@ -275,14 +279,14 @@
 			this.currentAuthorId = authorId;
 
 			$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.loadingTopics + '</p>');
-			
+
 			// Reset tabs to pending
 			$('.aips-tab-link').removeClass('active');
 			$('.aips-tab-link[data-tab="pending"]').addClass('active');
-			
+
 			// Update bulk action dropdown for pending tab
 			this.updateBulkActionDropdown('pending');
-			
+
 			$('#aips-topics-modal').fadeIn();
 
 			this.loadTopics('pending');
@@ -333,14 +337,14 @@
 				html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
 				html += '</button> ';
 				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
-				
+
 				// Add post count badge if there are any posts
 				if (topic.post_count && topic.post_count > 0) {
 					html += ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + aipsAuthorsL10n.viewPosts + '">';
 					html += '<span class="dashicons dashicons-admin-post"></span> ' + topic.post_count;
 					html += '</span>';
 				}
-				
+
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
 				html += '</td>';
 				html += '<td>' + topic.generated_at + '</td>';
@@ -356,7 +360,7 @@
 
 				html += '<button class="button aips-edit-topic" data-id="' + topic.id + '">' + aipsAuthorsL10n.edit + '</button>';
 				html += '</td></tr>';
-				
+
 				// Add collapsible detail row
 				html += '<tr class="aips-topic-detail-row" data-topic-id="' + topic.id + '" style="display:none;">';
 				html += '<td colspan="4" class="aips-topic-detail-cell">';
@@ -407,12 +411,12 @@
 
 		updateBulkActionDropdown: function (status) {
 			const $dropdowns = $('.aips-bulk-action-select');
-			
+
 			// Clear existing options except the default one
 			$dropdowns.each(function() {
 				const $dropdown = $(this);
 				$dropdown.find('option:not(:first)').remove();
-				
+
 				// Add options based on the active tab
 				if (status === 'pending') {
 					// Pending Review tab: Approve, Reject, Delete
@@ -520,7 +524,7 @@
 		loadFeedback: function () {
 			if (!this.currentAuthorId) {
 				$('#aips-topics-content').html('<p>No author selected.</p>');
-				
+
 				return;
 			}
 
@@ -764,19 +768,23 @@
 			html += '</tbody></table>';
 			$('#aips-topic-logs-content').html(html);
 		},
-		
+
 		viewTopicPosts: function (e) {
 			e.preventDefault();
 			e.stopPropagation();
-			
+
 			const topicId = $(e.currentTarget).data('topic-id');
-			
+
 			$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
 			$('#aips-topic-posts-modal').fadeIn();
-			
+
+			// Store topic ID on modal for later use (e.g. regenerate/delete buttons)
+			$('#aips-posts-modal').data('topic-id', topicId);
+			$('#aips-topic-posts-modal').data('topic-id', topicId);
+
 			this.loadTopicPosts(topicId);
 		},
-		
+
 		loadTopicPosts: function (topicId) {
 			$.ajax({
 				url: ajaxurl,
@@ -790,11 +798,11 @@
 					if (response.success) {
 						const topic = response.data.topic;
 						const posts = response.data.posts;
-						
+
 						$('#aips-topic-posts-modal-title').text(
 							aipsAuthorsL10n.postsGeneratedFrom + ': ' + this.escapeHtml(topic.topic_title)
 						);
-						
+
 						this.renderTopicPosts(posts);
 					} else {
 						$('#aips-topic-posts-content').html(
@@ -807,13 +815,13 @@
 				}
 			});
 		},
-		
+
 		renderTopicPosts: function (posts) {
 			if (!posts || posts.length === 0) {
 				$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
 				return;
 			}
-			
+
 			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
 			html += '<th>' + aipsAuthorsL10n.postId + '</th>';
 			html += '<th>' + aipsAuthorsL10n.postTitle + '</th>';
@@ -821,7 +829,7 @@
 			html += '<th>' + aipsAuthorsL10n.datePublished + '</th>';
 			html += '<th>' + aipsAuthorsL10n.actions + '</th>';
 			html += '</tr></thead><tbody>';
-			
+
 			posts.forEach(post => {
 				html += '<tr>';
 				html += '<td>' + this.escapeHtml(post.post_id) + '</td>';
@@ -838,7 +846,7 @@
 				html += '</td>';
 				html += '</tr>';
 			});
-			
+
 			html += '</tbody></table>';
 			$('#aips-topic-posts-content').html(html);
 		},
@@ -880,7 +888,7 @@
 			}
 
 			if (ids.length === 0) {
-				const message = activeTab === 'feedback' 
+				const message = activeTab === 'feedback'
 					? (aipsAuthorsL10n.noFeedbackSelected || 'Please select at least one feedback item.')
 					: (aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
 				showToast(message, 'warning');
@@ -975,7 +983,7 @@
 			const messages = {
 				approve: aipsAuthorsL10n.confirmBulkApprove || 'Are you sure you want to approve %d topics?',
 				reject: aipsAuthorsL10n.confirmBulkReject || 'Are you sure you want to reject %d topics?',
-				delete: activeTab === 'feedback' 
+				delete: activeTab === 'feedback'
 					? (aipsAuthorsL10n.confirmBulkDeleteFeedback || 'Are you sure you want to delete %d feedback items? This action cannot be undone.')
 					: (aipsAuthorsL10n.confirmBulkDelete || 'Are you sure you want to delete %d topics? This action cannot be undone.'),
 				generate_now: aipsAuthorsL10n.confirmBulkGenerate || 'Are you sure you want to generate posts for %d topics?'
@@ -995,10 +1003,10 @@
 				if (text === null || text === undefined) {
 					return '';
 				}
-				
+
 				// Convert to string if not already
 				const str = String(text);
-				
+
 				const map = {
 					'&': '&amp;',
 					'<': '&lt;',
@@ -1026,25 +1034,25 @@
 				if (!url) {
 					return '';
 				}
-				
+
 				// Convert to string and trim whitespace
 				const urlStr = String(url).trim();
-				
+
 				if (!urlStr) {
 					return '';
 				}
-				
+
 				// Check for dangerous protocols (case-insensitive)
 				const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
 				const lowerUrl = urlStr.toLowerCase();
-				
+
 				for (const protocol of dangerousProtocols) {
 					if (lowerUrl.startsWith(protocol)) {
 						console.warn('Dangerous URL protocol detected:', protocol);
 						return '';
 					}
 				}
-				
+
 				// For absolute URLs, validate with URL constructor
 				if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
 					try {
@@ -1056,12 +1064,12 @@
 						return '';
 					}
 				}
-				
+
 				// For relative URLs (WordPress admin paths), return as-is after validation
 				if (urlStr.startsWith('/')) {
 					return urlStr;
 				}
-				
+
 				// Reject anything else
 				console.warn('URL does not match allowed patterns:', urlStr);
 				return '';
@@ -1071,7 +1079,7 @@
 			}
 		}
 	};
-	
+
 	// Generation Queue Module
 	const GenerationQueueModule = {
 		init: function () {
@@ -1081,7 +1089,7 @@
 		bindEvents: function () {
 			// Main page tab switching
 			$(document).on('click', '.aips-authors-tab-link', this.switchMainTab.bind(this));
-			
+
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
@@ -1204,7 +1212,7 @@
 
 		generateNowFromQueue: function (topicIds) {
 			const confirmMessage = (aipsAuthorsL10n.confirmGenerateFromQueue || 'Generate posts now for %d selected topic(s)?').replace('%d', topicIds.length);
-			
+
 			if (!confirm(confirmMessage)) {
 				return;
 			}
@@ -1223,7 +1231,7 @@
 				success: (response) => {
 					if (response.success) {
 						showToast(response.data.message || aipsAuthorsL10n.postsGenerated || 'Posts generated successfully.', 'success');
-						
+
 						// Reload the queue
 						this.loadQueueTopics();
 					} else {
