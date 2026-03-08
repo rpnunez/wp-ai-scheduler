@@ -178,6 +178,9 @@ final class AI_Post_Scheduler {
             new AIPS_Authors_Controller();
             new AIPS_Author_Topics_Controller();
 
+            // AI Edit + Calendar controllers (AJAX endpoints)
+            new AIPS_AI_Edit_Controller();
+            new AIPS_Calendar_Controller();
             // Dev Tools
             if (get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();
