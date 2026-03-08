@@ -625,3 +625,70 @@
 .aips-topic-inline-feedback {
 	margin-top: 8px;
 }
+
+/* Feedback history badge */
+.aips-feedback-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 2px 7px;
+	margin-left: 6px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	vertical-align: middle;
+	cursor: default;
+}
+
+.aips-feedback-badge .dashicons {
+	font-size: 12px;
+	width: 12px;
+	height: 12px;
+}
+
+.aips-feedback-badge-approved {
+	background-color: #d4edda;
+	color: #155724;
+	border: 1px solid #c3e6cb;
+}
+
+.aips-feedback-badge-rejected {
+	background-color: #f8d7da;
+	color: #721c24;
+	border: 1px solid #f5c6cb;
+}
+
+/* Potential duplicate warning badge */
+.aips-duplicate-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 2px 7px;
+	margin-left: 6px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	background-color: #fff3cd;
+	color: #856404;
+	border: 1px solid #ffc107;
+	vertical-align: middle;
+	cursor: default;
+}
+
+.aips-duplicate-badge .dashicons {
+	font-size: 12px;
+	width: 12px;
+	height: 12px;
+}
+
+/* Feedback detail inside the collapsible row */
+.aips-detail-feedback .aips-feedback-badge,
+.aips-detail-duplicate .aips-duplicate-badge {
+	margin-left: 4px;
+}
+
+.aips-feedback-date {
+	font-size: 11px;
+	color: #646970;
+	margin-left: 6px;
+}

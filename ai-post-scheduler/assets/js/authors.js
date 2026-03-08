@@ -410,6 +410,29 @@
 					html += '<span class="dashicons dashicons-admin-post"></span> ' + topic.post_count;
 					html += '</span>';
 				}
+
+				// Potential duplicate warning badge
+				if (topic.potential_duplicate) {
+					const dupLabel = aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate';
+					const dupTitle = topic.duplicate_match
+						? dupLabel + ': ' + this.escapeHtml(topic.duplicate_match)
+						: this.escapeHtml(dupLabel);
+					html += ' <span class="aips-duplicate-badge" title="' + dupTitle + '">';
+					html += '<span class="dashicons dashicons-warning"></span> ' + this.escapeHtml(dupLabel) + '</span>';
+				}
+
+				// Last feedback badge — shows prior approval/rejection history for context
+				if (topic.last_feedback) {
+					const fbAction = topic.last_feedback.action;
+					const fbLabel = fbAction === 'rejected'
+						? (aipsAuthorsL10n.previouslyRejected || 'Previously Rejected')
+						: (aipsAuthorsL10n.previouslyApproved || 'Previously Approved');
+					const fbTitle = topic.last_feedback.reason
+						? this.escapeHtml(fbLabel) + ': ' + this.escapeHtml(topic.last_feedback.reason)
+						: this.escapeHtml(fbLabel);
+					html += ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '">';
+					html += '<span class="dashicons dashicons-admin-comments"></span> ' + this.escapeHtml(fbLabel) + '</span>';
+				}
 				
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
 
@@ -456,6 +479,33 @@
 				}
 				if (topic.reviewed_at && topic.reviewed_by) {
 					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + this.escapeHtml(String(topic.reviewed_at)) + ' by User ID ' + this.escapeHtml(String(topic.reviewed_by)) + '</div>';
+				}
+				// Last feedback full detail
+				if (topic.last_feedback) {
+					const fbAction = topic.last_feedback.action;
+					const fbLabel = fbAction === 'rejected'
+						? (aipsAuthorsL10n.reject || 'Rejected')
+						: (aipsAuthorsL10n.approve || 'Approved');
+					html += '<div class="aips-detail-section aips-detail-feedback">';
+					html += '<strong>' + this.escapeHtml(aipsAuthorsL10n.lastFeedback || 'Last Feedback') + ':</strong>';
+					html += ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '">' + this.escapeHtml(fbLabel) + '</span>';
+					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
+						html += ' <em>(' + this.escapeHtml(topic.last_feedback.reason_category) + ')</em>';
+					}
+					if (topic.last_feedback.reason) {
+						html += ' — ' + this.escapeHtml(topic.last_feedback.reason);
+					}
+					if (topic.last_feedback.created_at) {
+						html += ' <span class="aips-feedback-date">' + this.escapeHtml(String(topic.last_feedback.created_at)) + '</span>';
+					}
+					html += '</div>';
+				}
+				// Potential duplicate full detail
+				if (topic.potential_duplicate && topic.duplicate_match) {
+					html += '<div class="aips-detail-section aips-detail-duplicate">';
+					html += '<strong>' + this.escapeHtml(aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate') + ':</strong>';
+					html += ' <em>' + this.escapeHtml(topic.duplicate_match) + '</em>';
+					html += '</div>';
 				}
 				html += '</div></td></tr>';
 			});
