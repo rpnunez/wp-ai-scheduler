@@ -164,25 +164,26 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 
 		$controller = new AIPS_Authors_Controller();
 
-		$before = current_time('mysql');
+		try {
+			$controller = new AIPS_Authors_Controller();
 
-		$_POST = array(
-			'nonce'                      => wp_create_nonce('aips_ajax_nonce'),
-			'name'                       => 'Test Author New',
-			'field_niche'                => 'Technology',
-			'topic_generation_frequency' => 'weekly',
-			'post_generation_frequency'  => 'daily',
-		);
+			$before = current_time('mysql');
 
-		// Sync request nonce with POST so check_ajax_referer() validates this payload.
-		$_REQUEST['nonce'] = $_POST['nonce'];
-		$response = $this->capture_ajax(array($controller, 'ajax_save_author'));
+			$_POST = array(
+				'nonce'                      => wp_create_nonce('aips_ajax_nonce'),
+				'name'                       => 'Test Author New',
+				'field_niche'                => 'Technology',
+				'topic_generation_frequency' => 'weekly',
+				'post_generation_frequency'  => 'daily',
+			);
 
-		$after = current_time('mysql');
+			$response = $this->capture_ajax(array($controller, 'ajax_save_author'));
 
-		// Always restore original wpdb.
-		$wpdb = $original_wpdb;
-
+			$after = current_time('mysql');
+		} finally {
+			// Always restore original wpdb, even if an exception is thrown.
+			$wpdb = $original_wpdb;
+		}
 		$this->assertTrue($response['success'], 'Expected success response for new author save.');
 
 		$this->assertNotNull(
