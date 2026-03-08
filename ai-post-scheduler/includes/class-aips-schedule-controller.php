@@ -399,16 +399,29 @@ class AIPS_Schedule_Controller {
 
         $entries = array();
         foreach ($logs as $log) {
-            $details = $log->details ? json_decode($log->details, true) : array();
+            $details = array();
+
+            if (!empty($log->details)) {
+                $decoded_details = json_decode($log->details, true);
+                if (is_array($decoded_details)) {
+                    $details = $decoded_details;
+                }
+            }
+
+            $input = array();
+            if (isset($details['input']) && is_array($details['input'])) {
+                $input = $details['input'];
+            }
+
             $entries[] = array(
                 'id' => absint($log->id),
                 'timestamp' => esc_html($log->timestamp),
                 'log_type' => esc_html($log->log_type),
                 'history_type_id' => absint($log->history_type_id),
                 'message' => isset($details['message']) ? esc_html($details['message']) : '',
-                'event_type' => isset($details['input']['event_type']) ? esc_html($details['input']['event_type']) : '',
-                'event_status' => isset($details['input']['event_status']) ? esc_html($details['input']['event_status']) : '',
-                'context' => isset($details['context']) ? $details['context'] : array(),
+                'event_type' => isset($input['event_type']) ? esc_html($input['event_type']) : '',
+                'event_status' => isset($input['event_status']) ? esc_html($input['event_status']) : '',
+                'context' => (isset($details['context']) && is_array($details['context'])) ? $details['context'] : array(),
             );
         }
 
