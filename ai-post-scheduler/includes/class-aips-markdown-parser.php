@@ -5,7 +5,7 @@
  * Provides functionality to convert basic Markdown syntax into HTML
  * suitable for WordPress post content.
  *
- * @package AI_Post_Scheduler\Markdown
+ * @package AI_Post_Scheduler
  * @since 2.0.0
  */
 
