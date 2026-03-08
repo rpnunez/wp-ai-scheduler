@@ -2,7 +2,11 @@
 /**
  * Test AIPS_Generation_Logger
  *
- * Tests for the generation logger class.
+ * @deprecated 2.1.0 AIPS_Generation_Logger is deprecated. Use AIPS_History_Container directly.
+ * 
+ * These tests are maintained for backward compatibility but the class itself
+ * has been deprecated in favor of using AIPS_History_Container directly via
+ * AIPS_History_Service.
  *
  * @package AI_Post_Scheduler
  * @subpackage Tests

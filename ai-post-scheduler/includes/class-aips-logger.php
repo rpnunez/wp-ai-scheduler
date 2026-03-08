@@ -3,6 +3,20 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * AIPS_Logger
+ * 
+ * Legacy file-based logger maintained for backward compatibility and debugging.
+ * For structured logging within the plugin, use AIPS_History_Container via AIPS_History_Service.
+ * 
+ * This logger provides:
+ * - File-based logging to /wp-content/uploads/aips-logs/
+ * - PHP error_log output when WP_DEBUG is enabled
+ * - Log file management (clear, retrieve)
+ * 
+ * @package AI_Post_Scheduler
+ * @since 1.0.0
+ */
 class AIPS_Logger {
     
     private $log_file;
@@ -58,6 +72,17 @@ class AIPS_Logger {
         $this->dir_checked = true;
     }
     
+    /**
+     * Log a message to file and optionally to PHP error_log.
+     * 
+     * Note: For structured logging within generation processes, prefer using
+     * AIPS_History_Container via AIPS_History_Service which provides thread-safe
+     * UUID-based tracking with full context.
+     * 
+     * @param string $message Log message
+     * @param string $level Log level (info, error, warning, debug)
+     * @param array $context Optional context data
+     */
     public function log($message, $level = 'info', $context = array()) {
         if (!$this->enabled) {
             return;
@@ -76,7 +101,7 @@ class AIPS_Logger {
         );
         
         if (!empty($context)) {
-            $log_entry .= ' | Context: ' . json_encode($context);
+            $log_entry .= ' | Context: ' . wp_json_encode($context);
         }
         
         $log_entry .= PHP_EOL;

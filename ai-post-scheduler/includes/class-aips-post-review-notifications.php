@@ -96,9 +96,7 @@ class AIPS_Post_Review_Notifications {
 					$to_email,
 					$draft_count
 				),
-				array('event_type' => 'review_notification_sent', 'event_status' => 'success'),
-				null,
-				array('to_email' => $to_email, 'draft_count' => $draft_count)
+				array('event_type' => 'review_notification_sent', 'event_status' => 'success', 'to_email' => $to_email, 'draft_count' => $draft_count)
 			);
 		}
 	}
