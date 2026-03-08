@@ -104,6 +104,7 @@
                 html += '<div class="topic-item">';
                 html += '<input type="checkbox" class="topic-checkbox" checked>';
                 html += '<input type="text" class="topic-text-input" value="' + safeTopic + '" aria-label="Edit topic title">';
+                html += '<button type="button" class="aips-remove-topic-btn" title="Remove Topic" aria-label="Remove Topic"><span class="dashicons dashicons-dismiss"></span></button>';
                 html += '</div>';
             });
 
@@ -114,6 +115,29 @@
             }
 
             window.AIPS.updateSelectionCount();
+        },
+
+        /**
+         * Remove a specific topic row from `#topics-list`
+         *
+         * Bound to the `click` event on `.aips-remove-topic-btn`.
+         * Calls `updateSelectionCount` after removal.
+         *
+         * @param {Event} e - Click event from `.aips-remove-topic-btn`.
+         */
+        removeTopic: function(e) {
+            e.preventDefault();
+            $(this).closest('.topic-item').remove();
+            window.AIPS.updateSelectionCount();
+
+            // Check if topics list is empty and handle empty state if needed
+            var visibleCount = $('#topics-list .topic-item:visible').length;
+            if (visibleCount === 0) {
+                var term = $('#planner-topic-search').val().toLowerCase();
+                if (!term) {
+                    $('#planner-results').slideUp();
+                }
+            }
         },
 
         /**
@@ -422,6 +446,7 @@
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
+        $(document).on('click', '.aips-remove-topic-btn', window.AIPS.removeTopic);
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('click', '#planner-topic-search-clear', window.AIPS.clearTopicSearch);
     });
