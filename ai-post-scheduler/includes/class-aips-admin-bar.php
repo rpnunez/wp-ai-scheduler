@@ -235,11 +235,24 @@ class AIPS_Admin_Bar {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		$this->repository->mark_all_as_read();
+		$result       = $this->repository->mark_all_as_read();
+		$unread_count = $this->repository->count_unread();
 
-		wp_send_json_success(array(
-			'unread_count' => 0,
-		));
+		// If the repository reported a failure and there are still unread notifications, return an error.
+		if (false === $result && $unread_count > 0) {
+			wp_send_json_error(
+				array(
+					'message'      => __('Failed to mark notifications as read. Please try again.', 'ai-post-scheduler'),
+					'unread_count' => $unread_count,
+				)
+			);
+		}
+
+		wp_send_json_success(
+			array(
+				'unread_count' => $unread_count,
+			)
+		);
 	}
 
 	/**
