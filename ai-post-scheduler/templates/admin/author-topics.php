@@ -158,7 +158,6 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 
 			<!-- Topics Content -->
 			<div class="aips-panel-body no-padding">
-			<div id="aips-similar-suggestions" class="aips-similar-suggestions" style="display: none; margin: 0 20px 12px;"></div>
 				<div id="aips-topics-content" style="padding: 0 20px 20px;">
 					<p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
 				</div>

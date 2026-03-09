@@ -614,11 +614,40 @@
 	}
 }
 
-/* Similar suggestions and feedback context */
-#aips-similar-suggestions .description,
-.aips-topic-score {
-	color: #646970;
-	font-size: 12px;
+/* Inline similarity indicator for pending topic rows */
+.aips-topic-similarity-slot {
+	display: inline-flex;
+	margin-left: 8px;
+	vertical-align: middle;
+}
+
+.aips-topic-similarity-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.4;
+	border: 1px solid transparent;
+}
+
+.aips-topic-similarity-high {
+	background: #fbeaea;
+	border-color: #e7b0b0;
+	color: #8f1010;
+}
+
+.aips-topic-similarity-medium {
+	background: #fff4e5;
+	border-color: #ffd7a3;
+	color: #9a4d00;
+}
+
+.aips-topic-similarity-low {
+	background: #f0f6fc;
+	border-color: #c5d9ef;
+	color: #114a7a;
 }
 
 .aips-topic-inline-feedback {

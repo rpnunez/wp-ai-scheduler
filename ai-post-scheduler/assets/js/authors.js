@@ -31,9 +31,6 @@
 			// Edit Author Button
 			$(document).on('click', '.aips-edit-author', this.editAuthor.bind(this));
 
-			// View Topics Button
-			$(document).on('click', '.aips-view-author', this.viewTopics.bind(this));
-
 			// Generate Topics Now Button
 			$(document).on('click', '.aips-generate-topics-now', this.generateTopicsNow.bind(this));
 
@@ -296,35 +293,6 @@
 		},
 
 		/**
-		 * Open the topics modal for an author and load the "pending" tab.
-		 *
-		 * Stores the author ID, shows a loading message, resets the tab state
-		 * to "pending", updates the bulk-action dropdown for that tab, and
-		 * calls `loadTopics('pending')`.
-		 *
-		 * @param {Event} e - Click event from an `.aips-view-author` element.
-		 */
-		viewTopics: function (e) {
-			e.preventDefault();
-
-			const authorId = $(e.currentTarget).data('id');
-			this.currentAuthorId = authorId;
-
-			$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.loadingTopics + '</p>');
-			
-			// Reset tabs to pending
-			$('.aips-tab-link').removeClass('active');
-			$('.aips-tab-link[data-tab="pending"]').addClass('active');
-			
-			// Update bulk action dropdown for pending tab
-			this.updateBulkActionDropdown('pending');
-			
-			$('#aips-topics-modal').fadeIn();
-
-			this.loadTopics('pending');
-		},
-
-		/**
 		 * Fetch topics for the current author filtered by status.
 		 *
 		 * Sends the `aips_get_author_topics` AJAX action. On success, calls
@@ -349,18 +317,14 @@
 						this.renderTopics(response.data.topics, status);
 						this.updateTopicCounts(response.data.status_counts);
 						if (status === 'pending') {
-							this.renderSimilarSuggestionsPanel();
-						} else {
-							$('#aips-similar-suggestions').hide().empty();
+							this.renderInlineSimilarityIndicators();
 						}
 					} else {
 						$('#aips-topics-content').html('<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingTopics) + '</p>');
-						$('#aips-similar-suggestions').hide().empty();
 					}
 				},
 				error: () => {
 					$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.errorLoadingTopics + '</p>');
-					$('#aips-similar-suggestions').hide().empty();
 				}
 			});
 		},
@@ -403,6 +367,7 @@
 				}
 
 				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
+				html += '<span class="aips-topic-similarity-slot" data-topic-id="' + topic.id + '"></span>';
 				
 				// Add post count badge if there are any posts
 				if (topic.post_count && topic.post_count > 0) {
@@ -516,17 +481,17 @@
 		},
 
 		/**
-		 * Fetch and render semantic topic suggestions for the current author.
+		 * Fetch semantic similarity suggestions and render them inline in topic rows.
 		 *
-		 * Calls the `aips_suggest_related_topics` AJAX action and populates the
-		 * `#aips-similar-suggestions` panel with the returned suggestions.
-		 * If the request returns no results the panel is hidden and emptied.
+		 * Calls the `aips_suggest_related_topics` AJAX action, then appends a
+		 * color-coded percentage badge to each matching pending topic row.
 		 */
-		renderSimilarSuggestionsPanel: function () {
-			const $panel = $('#aips-similar-suggestions');
-			if (!$panel.length || !this.currentAuthorId) {
+		renderInlineSimilarityIndicators: function () {
+			if (!this.currentAuthorId) {
 				return;
 			}
+
+			$('.aips-topic-similarity-slot').empty();
 
 			$.ajax({
 				url: ajaxurl,
@@ -539,23 +504,47 @@
 				},
 				success: (response) => {
 					if (!response.success || !response.data || !Array.isArray(response.data.suggestions) || response.data.suggestions.length === 0) {
-						$panel.hide().empty();
 						return;
 					}
-					let html = '<div class="aips-content-panel" style="padding: 12px 16px;">';
-					html += '<strong>' + this.escapeHtml(aipsAuthorsL10n.similarSuggestions || 'Similar Suggestions') + '</strong>';
-					html += '<ul style="margin: 8px 0 0 18px;">';
-					response.data.suggestions.forEach(item => {
-						const score = typeof item.similarity_score === 'number' ? Math.round(item.similarity_score * 100) : 0;
-						html += '<li>' + this.escapeHtml(item.topic_title || '') + ' <span class="description">(' + score + '%)</span></li>';
+
+					response.data.suggestions.forEach((item) => {
+						const topicId = parseInt(item.topic_id, 10);
+						const rawScore = typeof item.similarity_score === 'number' ? item.similarity_score : parseFloat(item.similarity_score);
+						const score = Number.isFinite(rawScore) ? Math.round(rawScore * 100) : 0;
+
+						if (!topicId || score <= 0) {
+							return;
+						}
+
+						const badgeClass = this.getSimilarityBadgeClass(score);
+						const label = this.escapeHtml((aipsAuthorsL10n.similarityLabel || 'Similarity') + ': ' + score + '%');
+						const $slot = $('.aips-topic-similarity-slot[data-topic-id="' + topicId + '"]');
+
+						if ($slot.length) {
+							$slot.html('<span class="aips-topic-similarity-badge ' + badgeClass + '" title="' + label + '">' + label + '</span>');
+						}
 					});
-					html += '</ul></div>';
-					$panel.html(html).show();
 				},
-				error: () => {
-					$panel.hide().empty();
-				}
+				error: () => {}
 			});
+		},
+
+		/**
+		 * Return the CSS class for a similarity percentage.
+		 *
+		 * @param {number} scorePercent - Similarity score from 0 to 100.
+		 * @returns {string} CSS class name.
+		 */
+		getSimilarityBadgeClass: function (scorePercent) {
+			if (scorePercent > 75) {
+				return 'aips-topic-similarity-high';
+			}
+
+			if (scorePercent > 50) {
+				return 'aips-topic-similarity-medium';
+			}
+
+			return 'aips-topic-similarity-low';
 		},
 
 		/**
