@@ -402,27 +402,21 @@
 				
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
 
-				// Feedback buttons displayed inline below the topic title (pending only)
-				if (status === 'pending') {
-					html += '<div class="aips-topic-inline-feedback">';
-					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '">';
-					html += '<span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span> ' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '</button>';
-					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '">';
-					html += '<span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span> ' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '</button>';
-					html += '</div>';
-				}
-
 				html += '</td>';
 				html += '<td>' + topic.generated_at + '</td>';
 				html += '<td class="topic-actions">';
 
 				// Actions based on status
 				if (status === 'pending') {
-					// Quick Approve, Quick Reject, and Edit in a single row
+					// Pending actions: quick actions, feedback actions, and edit
 					html += '<div class="aips-btn-group">';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-approve-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.quickApprove || 'Quick Approve') + '</button>';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-reject-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.quickReject || 'Quick Reject') + '</button>';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
+					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
+					html += '</div>';
+					html += '<div class="aips-btn-group" style="margin-top: 6px;">';
+					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '</button>';
+					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '</button>';
 					html += '</div>';
 				} else if (status === 'approved') {
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button> ';
