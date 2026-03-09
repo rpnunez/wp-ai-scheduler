@@ -247,10 +247,12 @@
          * @param {number}   [options.stallAt]       - Percentage at which the bar pauses to wait for
          *                                             the real completion signal (0–99). Default 92.
          *
-         * @returns {{ complete: function(string, string): void,
-         *             cancel:   function(): void }}
+         * @returns {{ complete:    function(string, string): void,
+         *             cancel:     function(): void,
+         *             setMessage: function(string): void }}
          *   `complete(message, type)` — jump the bar to 100 %, show `message`, close after 1.2 s.
          *   `cancel()`               — close the modal immediately without animation.
+         *   `setMessage(text)`       — update the description shown above the progress bar.
          *
          * @example
          * var ctrl = AIPS.Utilities.showProgressBar({
@@ -297,8 +299,10 @@
 
             var $body = $('<div class="aips-confirm-body aips-progress-body"></div>');
 
+            var $description = null;
             if (message) {
-                $body.append($('<p class="aips-confirm-message aips-progress-description"></p>').text(message));
+                $description = $('<p class="aips-confirm-message aips-progress-description"></p>').text(message);
+                $body.append($description);
             }
 
             var $barWrap = $('<div class="aips-progress-bar-wrap"></div>');
@@ -425,7 +429,24 @@
                 setTimeout(function() { $overlay.remove(); }, 200);
             }
 
-            return { complete: complete, cancel: cancel };
+            /**
+             * Update the description text shown above the progress bar.
+             *
+             * Creates the description paragraph if it was not present when the
+             * modal was opened (i.e. no initial `message` option was supplied).
+             *
+             * @param {string} text - New description text to display.
+             */
+            function setMessage(text) {
+                if (closed) { return; }
+                if (!$description) {
+                    $description = $('<p class="aips-confirm-message aips-progress-description"></p>');
+                    $body.prepend($description);
+                }
+                $description.text(text);
+            }
+
+            return { complete: complete, cancel: cancel, setMessage: setMessage };
         }
     };
 

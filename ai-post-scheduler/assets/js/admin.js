@@ -1212,7 +1212,13 @@
         },
 
         /**
-         * Triggers immediate execution of a specific schedule via its schedule_id.
+         * Triggers immediate execution of a specific schedule via its schedule_id,
+         * showing a progress-bar modal with a "Generating X of Y posts" counter.
+         *
+         * First fetches the expected post count for the schedule, then opens the
+         * progress-bar modal and fires the run-now AJAX request.  The description
+         * line inside the modal is updated at regular intervals to simulate
+         * per-post progress ("Generating 2 of 3 posts", etc.).
          *
          * @param {Event} e - Click event from the Run Now button.
          */
@@ -1226,36 +1232,121 @@
                 return;
             }
 
+            var DEFAULT_PER_POST_SECONDS  = 30;
+            var MIN_PROGRESS_SECONDS      = 10;
+            var PROGRESS_MODAL_CLOSE_DELAY = 1400; // ms to wait after complete() before toast
+
             $btn.prop('disabled', true);
             $btn.find('.dashicons').removeClass('dashicons-controls-play').addClass('dashicons-update aips-spin');
 
+            // Step 1: Fetch the expected post count for this schedule so we can
+            // display an accurate "Generating X of Y posts" message.
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'aips_run_now',
+                    action: 'aips_get_schedules_post_count',
                     nonce: aipsAjax.nonce,
-                    schedule_id: scheduleId
+                    ids: [scheduleId]
                 },
-                success: function(response) {
-                    if (response.success) {
-                        var msg = AIPS.escapeHtml(response.data.message || 'Post generated successfully!');
-
-                        if (response.data.edit_url) {
-                            msg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
+                complete: function(countXhr) {
+                    var postCount = 1;
+                    try {
+                        var countResp = countXhr.responseJSON;
+                        if (countResp && countResp.success && countResp.data && countResp.data.count > 0) {
+                            postCount = parseInt(countResp.data.count, 10) || 1;
                         }
+                    } catch (ignore) {}
 
-                        AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || 'Generation failed.', 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false);
-                    $btn.find('.dashicons').removeClass('dashicons-update aips-spin').addClass('dashicons-controls-play');
+                    var totalSeconds = Math.max(DEFAULT_PER_POST_SECONDS * postCount, MIN_PROGRESS_SECONDS);
+                    var postOfTpl    = aipsAdminL10n.generatingPostsOf || 'Generating %1$d of %2$d posts';
+
+                    var initialMsg = postOfTpl
+                        .replace('%1$d', 1)
+                        .replace('%2$d', postCount);
+
+                    // Step 2: Open the progress-bar modal.
+                    var progressBar = AIPS.Utilities.showProgressBar({
+                        title:        aipsAdminL10n.generatingPostsTitle || 'Generating Posts',
+                        message:      initialMsg,
+                        totalSeconds: totalSeconds
+                    });
+
+                    // Step 3: Simulate per-post counter updates based on elapsed time.
+                    var startTime       = Date.now();
+                    var shownPost       = 1;
+                    var secPerPost      = totalSeconds / postCount;
+                    var counterInterval = setInterval(function() {
+                        if (shownPost >= postCount) {
+                            clearInterval(counterInterval);
+                            return;
+                        }
+                        var elapsed       = (Date.now() - startTime) / 1000;
+                        var estimatedPost = Math.min(Math.floor(elapsed / secPerPost) + 1, postCount);
+                        if (estimatedPost > shownPost) {
+                            shownPost = estimatedPost;
+                            progressBar.setMessage(
+                                postOfTpl
+                                    .replace('%1$d', shownPost)
+                                    .replace('%2$d', postCount)
+                            );
+                        }
+                    }, 500);
+
+                    // Step 4: Fire the run-now request.
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_run_now',
+                            nonce: aipsAjax.nonce,
+                            schedule_id: scheduleId
+                        },
+                        success: function(response) {
+                            clearInterval(counterInterval);
+
+                            // Snap the counter to the final value before completing.
+                            progressBar.setMessage(
+                                postOfTpl
+                                    .replace('%1$d', postCount)
+                                    .replace('%2$d', postCount)
+                            );
+
+                            if (response.success) {
+                                var completionMsg = response.data.message || 'Schedule executed successfully!';
+                                progressBar.complete(completionMsg, 'success');
+
+                                // Show a toast with an optional edit link after the modal closes.
+                                setTimeout(function() {
+                                    var toastMsg = AIPS.escapeHtml(completionMsg);
+                                    if (response.data.edit_url) {
+                                        toastMsg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank" rel="noopener noreferrer">Edit Post</a>';
+                                    }
+                                    AIPS.Utilities.showToast(toastMsg, 'success', { isHtml: true, duration: 8000 });
+                                }, PROGRESS_MODAL_CLOSE_DELAY);
+                            } else {
+                                var errMsg = response.data.message || 'Generation failed.';
+                                progressBar.complete(errMsg, 'error');
+                                setTimeout(function() {
+                                    AIPS.Utilities.showToast(errMsg, 'error');
+                                }, PROGRESS_MODAL_CLOSE_DELAY);
+                            }
+                        },
+                        error: function() {
+                            clearInterval(counterInterval);
+                            var errMsg = 'An error occurred. Please try again.';
+                            progressBar.complete(errMsg, 'error');
+                            setTimeout(function() {
+                                AIPS.Utilities.showToast(errMsg, 'error');
+                            }, PROGRESS_MODAL_CLOSE_DELAY);
+                        },
+                        complete: function() {
+                            // Ensure the interval is stopped regardless of success/error outcome.
+                            clearInterval(counterInterval);
+                            $btn.prop('disabled', false);
+                            $btn.find('.dashicons').removeClass('dashicons-update aips-spin').addClass('dashicons-controls-play');
+                        }
+                    });
                 }
             });
         },

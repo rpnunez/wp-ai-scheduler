@@ -666,6 +666,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('_n')) {
+        function _n($single, $plural, $number, $domain = 'default') {
+            return $number === 1 ? $single : $plural;
+        }
+    }
+
     if (!function_exists('wp_parse_str')) {
         function wp_parse_str($string, &$array) {
             parse_str($string, $array);
