@@ -17,7 +17,8 @@ class AIPS_DB_Manager {
         'aips_authors',
         'aips_author_topics',
         'aips_author_topic_logs',
-        'aips_topic_feedback'
+        'aips_topic_feedback',
+        'aips_notifications'
     );
 
     public function __construct() {
@@ -62,6 +63,7 @@ class AIPS_DB_Manager {
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
+        $table_notifications  = $tables['aips_notifications'];
 
         $sql = array();
 
@@ -287,6 +289,19 @@ class AIPS_DB_Manager {
             KEY user_id (user_id),
             KEY reason_category (reason_category),
             KEY source (source),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_notifications (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            type varchar(100) NOT NULL,
+            message text NOT NULL,
+            url varchar(500) DEFAULT NULL,
+            is_read tinyint(1) NOT NULL DEFAULT 0,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY type (type),
+            KEY is_read (is_read),
             KEY created_at (created_at)
         ) $charset_collate;";
 
