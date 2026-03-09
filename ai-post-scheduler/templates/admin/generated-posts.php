@@ -237,20 +237,24 @@ if (!defined('ABSPATH')) {
 
 				<div class="aips-panel-body">
 				<?php if (!empty($draft_posts['items'])): ?>
-		<form id="aips-post-review-form" method="post">
-			<div class="tablenav top">
-				<div class="alignleft actions bulkactions">
-					<select name="bulk_action" id="bulk-action-selector-top">
-						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-						<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
-						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-					</select>
-					<button type="button" id="aips-bulk-action-btn" class="button action"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
-				</div>
-				<div class="alignright">
-					<button type="button" class="button" id="aips-reload-posts-btn"><?php esc_html_e('Reload', 'ai-post-scheduler'); ?></button>
-				</div>
+		<div class="aips-panel-toolbar" id="aips-post-review-toolbar">
+			<div class="aips-toolbar-left">
+				<label class="screen-reader-text" for="bulk-action-selector-top"><?php esc_html_e('Select bulk action', 'ai-post-scheduler'); ?></label>
+				<select name="bulk_action" id="bulk-action-selector-top" class="aips-form-select">
+					<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+					<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
+					<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+				</select>
+				<button type="button" id="aips-bulk-action-btn" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
 			</div>
+			<div class="aips-toolbar-right">
+				<button type="button" id="aips-reload-posts-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
+					<span class="dashicons dashicons-update"></span>
+					<?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+		</div>
+		<form id="aips-post-review-form" method="post">
 			
 			<table class="wp-list-table widefat fixed striped aips-post-review-table">
 				<thead>

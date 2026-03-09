@@ -217,6 +217,12 @@ class AIPS_Admin_Assets {
 				'generatingPostsTitle' => __('Generating Posts', 'ai-post-scheduler'),
 				'generatingPostsMessage' => __('Please wait while your posts are being generated. This may take a few minutes.', 'ai-post-scheduler'),
 				'generationCompletePartial' => __('%d post(s) generated, %d failed.', 'ai-post-scheduler'),
+				// Topic search strings (author-topics full-page view)
+				'topicSingular' => __('topic', 'ai-post-scheduler'),
+				'topicPlural' => __('topics', 'ai-post-scheduler'),
+				'description' => __('Description', 'ai-post-scheduler'),
+				'rationale' => __('Rationale', 'ai-post-scheduler'),
+				'reviewed' => __('Reviewed', 'ai-post-scheduler'),
 			));
 
 			// Pass page-context data (not i18n) in a separate object so it stays

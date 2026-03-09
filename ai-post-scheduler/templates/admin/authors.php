@@ -197,27 +197,30 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         <!-- Generation Queue Tab Content -->
         <div id="generation-queue-tab" class="aips-authors-tab-content" style="display: none;">
             <div class="aips-content-panel">
+                <!-- Bulk Actions Toolbar -->
+                <div class="aips-panel-toolbar">
+                    <div class="aips-toolbar-left">
+                        <label class="screen-reader-text" for="aips-queue-bulk-action-select"><?php esc_html_e('Select bulk action', 'ai-post-scheduler'); ?></label>
+                        <select id="aips-queue-bulk-action-select" class="aips-form-select aips-queue-bulk-action-select">
+                            <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+                            <option value="generate_now"><?php esc_html_e('Generate Now', 'ai-post-scheduler'); ?></option>
+                        </select>
+                        <button class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+                    </div>
+                </div>
+
                 <div class="aips-panel-body">
                     <p class="description" style="margin-bottom: 20px;">
                         <?php esc_html_e('This queue shows all approved topics across all authors, ready for post generation. Topics are processed in the order they were approved.', 'ai-post-scheduler'); ?>
                     </p>
-                    
-                    <!-- Bulk Actions -->
-                    <div class="aips-bulk-actions" style="margin-bottom: 15px;">
-                        <select id="aips-queue-bulk-action-select" class="aips-form-select aips-queue-bulk-action-select">
-                            <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-                    <option value="generate_now"><?php esc_html_e('Generate Now', 'ai-post-scheduler'); ?></option>
-                </select>
-                <button class="button aips-queue-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
-            </div>
 
-            <!-- Queue Topics List -->
-            <div id="aips-queue-topics-list">
-                <p><?php esc_html_e('Loading queue...', 'ai-post-scheduler'); ?></p>
+                    <!-- Queue Topics List -->
+                    <div id="aips-queue-topics-list">
+                        <p><?php esc_html_e('Loading queue...', 'ai-post-scheduler'); ?></p>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
     </div><!-- .aips-page-container -->
 </div><!-- .wrap.aips-wrap -->
 
@@ -346,28 +349,34 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                 </div>
         
                 <div class="aips-topics-list-container">
-                    <div class="aips-bulk-actions">
-                        <select class="aips-bulk-action-select">
-                            <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-                            <option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
-                            <option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
-                            <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-                        </select>
-                        <button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+                    <div class="aips-panel-toolbar">
+                        <div class="aips-toolbar-left">
+                            <label class="screen-reader-text" for="aips-topics-bulk-action-top"><?php esc_html_e('Select bulk action', 'ai-post-scheduler'); ?></label>
+                            <select class="aips-bulk-action-select aips-form-select" id="aips-topics-bulk-action-top">
+                                <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+                                <option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
+                                <option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
+                                <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+                            </select>
+                            <button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+                        </div>
                     </div>
         
                     <div id="aips-topics-content">
                         <p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
                     </div>
         
-                    <div class="aips-bulk-actions">
-                        <select class="aips-bulk-action-select">
-                            <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-                            <option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
-                            <option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
-                            <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-                        </select>
-                        <button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+                    <div class="aips-panel-toolbar">
+                        <div class="aips-toolbar-left">
+                            <label class="screen-reader-text" for="aips-topics-bulk-action-bottom"><?php esc_html_e('Select bulk action', 'ai-post-scheduler'); ?></label>
+                            <select class="aips-bulk-action-select aips-form-select" id="aips-topics-bulk-action-bottom">
+                                <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+                                <option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
+                                <option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
+                                <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+                            </select>
+                            <button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+                        </div>
                     </div>
                 </div>
             </div>

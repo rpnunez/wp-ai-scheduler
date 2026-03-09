@@ -331,7 +331,7 @@
 
             if (visibleRows === 0) {
                 $('.aips-post-review-table').hide();
-                $('.tablenav').hide();
+                $('#aips-post-review-toolbar').hide();
 
                 if ($('.aips-empty-state').length === 0) {
                     var emptyStateHtml = '<div class="aips-empty-state">' +

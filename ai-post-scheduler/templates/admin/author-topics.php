@@ -143,10 +143,30 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				</button>
 			</div>
 
-			<!-- Bulk Actions (top) -->
-			<div class="aips-panel-body" style="padding-bottom: 0;">
-				<div class="aips-bulk-actions">
-					<select class="aips-bulk-action-select">
+			<!-- Filter Bar -->
+			<div class="aips-filter-bar">
+				<div class="aips-filter-left">
+					<span id="aips-topics-result-count" class="aips-result-count">
+						<?php
+						printf(
+							esc_html( _n( '%s topic', '%s topics', $total_topics, 'ai-post-scheduler' ) ),
+							number_format_i18n( $total_topics )
+						);
+						?>
+					</span>
+				</div>
+				<div class="aips-filter-right">
+					<label class="screen-reader-text" for="aips-topic-search"><?php esc_html_e('Search Topics:', 'ai-post-scheduler'); ?></label>
+					<input type="search" id="aips-topic-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
+					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+				</div>
+			</div>
+
+			<!-- Bulk Actions Toolbar (top) -->
+			<div class="aips-panel-toolbar">
+				<div class="aips-toolbar-left">
+					<label class="screen-reader-text" for="aips-topic-bulk-action-top"><?php esc_html_e('Select bulk action', 'ai-post-scheduler'); ?></label>
+					<select class="aips-bulk-action-select aips-form-select" id="aips-topic-bulk-action-top">
 						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 						<option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
 						<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
@@ -162,10 +182,11 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 					<p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
 				</div>
 
-				<!-- Bulk Actions (bottom) -->
-				<div style="padding: 0 20px 20px;">
-					<div class="aips-bulk-actions">
-						<select class="aips-bulk-action-select">
+				<!-- Bulk Actions Toolbar (bottom) -->
+				<div class="aips-panel-toolbar">
+					<div class="aips-toolbar-left">
+						<label class="screen-reader-text" for="aips-topic-bulk-action-bottom"><?php esc_html_e('Select bulk action', 'ai-post-scheduler'); ?></label>
+						<select class="aips-bulk-action-select aips-form-select" id="aips-topic-bulk-action-bottom">
 							<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 							<option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
 							<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>

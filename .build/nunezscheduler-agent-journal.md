@@ -86,3 +86,29 @@
 **Improvement:** Optimized the workflow from saving a template to scheduling it by introducing a `quickSchedule` action. Now, clicking "Schedule This Template" inside the "Next Steps" wizard directs to the schedules page and immediately triggers the "Add New Schedule" modal with the template field pre-selected.
 **Files Modified:** ai-post-scheduler/assets/js/admin.js
 **Outcome:** Enhances efficiency for the user by streamlining the multi-step navigation process directly to task execution context.
+
+## 2026-03-09 - Unified Page-level Filters & Actions
+**Target Feature:** Cross-Page UI Consistency (Schedules, Templates, History, Generated Posts, Authors, Author Topics, Article Structures, Structure Sections)
+**Improvement:** Unified the "Page-level Filters & Actions" — search filter bar, bulk actions toolbar, and result count — across all relevant admin pages to share the same HTML structure, CSS classes, and visual positioning. Every page now uses the standard `aips-filter-bar` / `aips-filter-left` / `aips-filter-right` pattern for search and the `aips-panel-toolbar` / `aips-toolbar-left` / `aips-toolbar-right` pattern for bulk actions.
+
+**Specific changes:**
+- **schedule.php**: Added `aips-filter-left` (with result count) and `aips-filter-right` (search input + clear button) structure to the filter bar. Removed redundant `aips-btn-group aips-btn-group-inline` classes from toolbar-left.
+- **sections.php**: Added `aips-filter-left` (with result count) and `aips-filter-right` (search input + clear button) wrapping to the bare search input.
+- **generated-posts.php**: Converted the Pending Review tab's WordPress-native `tablenav`/`alignleft`/`alignright` bulk actions block to `aips-panel-toolbar`/`aips-toolbar-left`/`aips-toolbar-right` with the `aips-btn` button system. Moved toolbar outside the form element.
+- **authors.php**: Converted the Generation Queue tab's `aips-bulk-actions` inline-styled div to `aips-panel-toolbar`. Converted both instances of `aips-bulk-actions` in the Author Topics modal's list container to `aips-panel-toolbar`.
+- **author-topics.php**: Added a full filter bar (`aips-filter-bar` with `aips-filter-left` result count + `aips-filter-right` search input) above the bulk actions. Converted both `aips-bulk-actions` (top and bottom) to `aips-panel-toolbar`/`aips-toolbar-left`.
+- **admin-post-review.js**: Updated `.tablenav` selector to `#aips-post-review-toolbar` to scope the hide/show logic to the correct element.
+- **authors.js**: Added `filterTopics()` and `clearTopicSearch()` methods to `AuthorsModule`; registered their event handlers in `bindEvents()`; updates result count after `renderTopics()` runs; clears search on tab switch via `onTabSwitch()`.
+- **class-aips-admin-assets.php**: Added `topicSingular`, `topicPlural`, `description`, `rationale`, and `reviewed` to `aipsAuthorsL10n` for use by the new search functions.
+
+**Files Modified:**
+- `ai-post-scheduler/templates/admin/schedule.php`
+- `ai-post-scheduler/templates/admin/sections.php`
+- `ai-post-scheduler/templates/admin/generated-posts.php`
+- `ai-post-scheduler/templates/admin/authors.php`
+- `ai-post-scheduler/templates/admin/author-topics.php`
+- `ai-post-scheduler/assets/js/admin-post-review.js`
+- `ai-post-scheduler/assets/js/authors.js`
+- `ai-post-scheduler/includes/class-aips-admin-assets.php`
+
+**Outcome:** All list pages (Schedules, Templates, History, Generated Posts, Authors, Author Topics, Article Structures, Structure Sections) now present a consistent, predictable "Page-level Filters & Actions" area — search on the right, result count on the left, and bulk actions in a toolbar row below the filter bar — making the admin interface more intuitive and professional.

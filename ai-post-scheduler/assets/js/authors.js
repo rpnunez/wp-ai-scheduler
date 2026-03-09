@@ -68,6 +68,10 @@
 			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
 			$(document).on('click', '.aips-select-all-feedback', this.toggleSelectAllFeedback.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
+
+			// Topic search (author-topics full-page view)
+			$(document).on('keyup search', '#aips-topic-search', this.filterTopics.bind(this));
+			$(document).on('click', '#aips-topic-search-clear', this.clearTopicSearch.bind(this));
 			
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
@@ -455,6 +459,13 @@
 
 			html += '</tbody></table>';
 			$('#aips-topics-content').html(html);
+
+			// Update the result count in the filter bar (author-topics full-page view).
+			var $countEl = $('#aips-topics-result-count');
+			if ($countEl.length) {
+				var count = topics.length;
+				$countEl.text(count + ' ' + (count === 1 ? (aipsAuthorsL10n.topicSingular || 'topic') : (aipsAuthorsL10n.topicPlural || 'topics')));
+			}
 		},
 
 		/**
@@ -469,6 +480,67 @@
 			$('#pending-count').text(counts.pending || 0);
 			$('#approved-count').text(counts.approved || 0);
 			$('#rejected-count').text(counts.rejected || 0);
+		},
+
+		/**
+		 * Filter the topics table in real time by the typed search term.
+		 *
+		 * Matches against the `.topic-title` text of each `.aips-topic-row`. Shows or
+		 * hides rows accordingly and updates the result count in `#aips-topics-result-count`.
+		 * Also shows/hides the clear button based on whether there is a search term.
+		 *
+		 * Bound to the `keyup` and `search` events on `#aips-topic-search`.
+		 */
+		filterTopics: function () {
+			var term = $('#aips-topic-search').val().toLowerCase().trim();
+			var $rows = $('#aips-topics-content').find('.aips-topic-row');
+			var $clearBtn = $('#aips-topic-search-clear');
+			var visibleCount = 0;
+
+			if (term.length > 0) {
+				$clearBtn.show();
+			} else {
+				$clearBtn.hide();
+			}
+
+			$rows.each(function () {
+				var $row = $(this);
+				var title = $row.find('.topic-title').text().toLowerCase();
+				var topicId = $row.data('topic-id');
+
+				if (title.indexOf(term) > -1) {
+					$row.show();
+					// Also show associated detail row if it exists
+					$('[data-topic-id="' + topicId + '"].aips-topic-detail-row').show();
+					visibleCount++;
+				} else {
+					$row.hide();
+					$('[data-topic-id="' + topicId + '"].aips-topic-detail-row').hide();
+				}
+			});
+
+			// Update result count
+			var $countEl = $('#aips-topics-result-count');
+			if ($countEl.length) {
+				if (term.length > 0) {
+					$countEl.text(visibleCount + ' ' + (visibleCount === 1 ? (aipsAuthorsL10n.topicSingular || 'topic') : (aipsAuthorsL10n.topicPlural || 'topics')));
+				} else {
+					var totalCount = $rows.length;
+					$countEl.text(totalCount + ' ' + (totalCount === 1 ? (aipsAuthorsL10n.topicSingular || 'topic') : (aipsAuthorsL10n.topicPlural || 'topics')));
+				}
+			}
+		},
+
+		/**
+		 * Clear the topic search input and re-run the filter to show all rows.
+		 *
+		 * @param {Event} e - Click event from `#aips-topic-search-clear`.
+		 */
+		clearTopicSearch: function (e) {
+			if (e) {
+				e.preventDefault();
+			}
+			$('#aips-topic-search').val('').trigger('keyup');
 		},
 
 		/**
@@ -492,6 +564,9 @@
 				}
 				$('#aips-topics-content').fadeIn(200);
 			});
+
+			// Clear topic search input when switching tabs (author-topics full-page view).
+			this.clearTopicSearch();
 
 			// Update bulk action dropdown options based on tab
 			this.updateBulkActionDropdown(status);
