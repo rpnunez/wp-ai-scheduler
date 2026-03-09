@@ -115,8 +115,8 @@ class AIPS_Authors_Controller {
 		
 		// Calculate initial run times if creating new author
 		if (!$author_id) {
-			$data['topic_generation_next_run'] = $this->interval_calculator->calculate_next_run($data['topic_generation_frequency']);
-			$data['post_generation_next_run'] = $this->interval_calculator->calculate_next_run($data['post_generation_frequency']);
+			$data['topic_generation_next_run'] = current_time('mysql');
+			$data['post_generation_next_run'] = current_time('mysql');
 		}
 		
 		// Save or update
