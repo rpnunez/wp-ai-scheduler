@@ -859,7 +859,6 @@
 		 * success, passes the feedback array to `renderFeedback`. Shows an
 		 * inline message if no author is selected or the request fails.
 		 */
-		
 		loadFeedback: function () {
 			if (!this.currentAuthorId) {
 				$('#aips-topics-content').html('<p>No author selected.</p>');
@@ -1977,18 +1976,3 @@
 		}
 	});
 })(jQuery);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
