@@ -437,8 +437,3 @@ class AIPS_Author_Topics_Generator {
 		return $context;
 	}
 }
-
-
-
-
-
