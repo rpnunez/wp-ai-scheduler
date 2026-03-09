@@ -926,6 +926,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-feedback-repository.php',
         'class-aips-topic-penalty-service.php',
         'class-aips-topic-expansion-service.php',
+        'class-aips-author-topics-generator.php',
+        'class-aips-author-topics-scheduler.php',
+        'class-aips-authors-controller.php',
         'class-aips-author-post-generator.php',
         'class-aips-author-topics-controller.php',
     ];
