@@ -68,9 +68,7 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 			}
 
 			public function insert($table, $data, $format = null) {
-				$is_authors_table = strpos($table, 'aips_authors') !== false
-					&& strpos($table, 'author_topic') === false;
-				if ($is_authors_table) {
+				if ($table === $this->prefix . 'aips_authors') {
 					$this->inserted = $data;
 				}
 				$result          = $this->delegate->insert($table, $data, $format);
@@ -79,9 +77,7 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 			}
 
 			public function update($table, $data, $where, $format = null, $where_format = null) {
-				$is_authors_table = strpos($table, 'aips_authors') !== false
-					&& strpos($table, 'author_topic') === false;
-				if ($is_authors_table) {
+				if ($table === $this->prefix . 'aips_authors') {
 					$this->updated = $data;
 				}
 				return $this->delegate->update($table, $data, $where, $format, $where_format);
@@ -162,8 +158,6 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 		$proxy = $this->make_capturing_wpdb();
 		$wpdb  = $proxy;
 
-		$controller = new AIPS_Authors_Controller();
-
 		try {
 			$controller = new AIPS_Authors_Controller();
 
@@ -237,20 +231,23 @@ class AIPS_Authors_Controller_Save_Test extends WP_UnitTestCase {
 		$proxy = $this->make_capturing_wpdb();
 		$wpdb  = $proxy;
 
-		$controller = new AIPS_Authors_Controller();
+		try {
+			$controller = new AIPS_Authors_Controller();
 
-		$_POST = array(
-			'nonce'                      => wp_create_nonce('aips_ajax_nonce'),
-			'author_id'                  => 42,
-			'name'                       => 'Test Author Existing',
-			'field_niche'                => 'Science',
-			'topic_generation_frequency' => 'weekly',
-			'post_generation_frequency'  => 'daily',
-		);
+			$_POST = array(
+				'nonce'                      => wp_create_nonce('aips_ajax_nonce'),
+				'author_id'                  => 42,
+				'name'                       => 'Test Author Existing',
+				'field_niche'                => 'Science',
+				'topic_generation_frequency' => 'weekly',
+				'post_generation_frequency'  => 'daily',
+			);
 
-		$response = $this->capture_ajax(array($controller, 'ajax_save_author'));
-
-		$wpdb = $original_wpdb;
+			$response = $this->capture_ajax(array($controller, 'ajax_save_author'));
+		} finally {
+			// Always restore original wpdb, even if an exception is thrown.
+			$wpdb = $original_wpdb;
+		}
 
 		$this->assertTrue($response['success'], 'Expected success response for author update.');
 
