@@ -667,31 +667,75 @@ class AIPS_Author_Topics_Controller {
 	
 	/**
 	 * AJAX handler for computing topic embeddings.
+	 *
+	 * Instead of running synchronously, this handler schedules background jobs
+	 * so the request returns immediately. When author_id is 0 it schedules one
+	 * job per active author; otherwise it schedules a single job for the given
+	 * author. Jobs are dispatched via Action Scheduler when available and fall
+	 * back to wp_schedule_single_event otherwise.
 	 */
 	public function ajax_compute_topic_embeddings() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
-		
+
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
-		
-		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		
-		if (!$author_id) {
-			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+
+		$author_id  = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		$batch_size = isset($_POST['batch_size']) ? max(1, absint($_POST['batch_size'])) : 20;
+
+		$queued_authors = array();
+		$delay          = 2;
+
+		if ($author_id === 0) {
+			// Schedule one background job per active author.
+			$authors_repository = new AIPS_Authors_Repository();
+			$authors            = $authors_repository->get_all(true);
+
+			foreach ($authors as $author) {
+				$args = array(
+					'author_id'         => (int) $author->id,
+					'batch_size'        => $batch_size,
+					'last_processed_id' => 0,
+				);
+				if (function_exists('as_schedule_single_action')) {
+					as_schedule_single_action(time() + $delay, 'aips_process_author_embeddings', array($args));
+				} else {
+					wp_schedule_single_event(time() + $delay, 'aips_process_author_embeddings', array($args));
+				}
+				$queued_authors[] = (int) $author->id;
+				$delay           += 2;
+			}
+
+			wp_send_json_success(array(
+				'message'        => sprintf(
+					/* translators: %d: number of authors queued */
+					__('Scheduled embedding jobs for %d author(s). Processing will run in the background.', 'ai-post-scheduler'),
+					count($queued_authors)
+				),
+				'queued_authors' => $queued_authors,
+			));
 		}
-		
-		$expansion_service = new AIPS_Topic_Expansion_Service();
-		$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
-		
+
+		// Single author: schedule one job.
+		$args = array(
+			'author_id'         => $author_id,
+			'batch_size'        => $batch_size,
+			'last_processed_id' => 0,
+		);
+		if (function_exists('as_schedule_single_action')) {
+			as_schedule_single_action(time() + $delay, 'aips_process_author_embeddings', array($args));
+		} else {
+			wp_schedule_single_event(time() + $delay, 'aips_process_author_embeddings', array($args));
+		}
+
 		wp_send_json_success(array(
-			'message' => sprintf(
-				__('Computed embeddings: %d successful, %d failed, %d skipped (already existed).', 'ai-post-scheduler'),
-				$stats['success'],
-				$stats['failed'],
-				$stats['skipped']
+			'message'        => sprintf(
+				/* translators: %d: author ID */
+				__('Scheduled embedding job for author %d. Processing will run in the background.', 'ai-post-scheduler'),
+				$author_id
 			),
-			'stats' => $stats
+			'queued_authors' => array($author_id),
 		));
 	}
 	

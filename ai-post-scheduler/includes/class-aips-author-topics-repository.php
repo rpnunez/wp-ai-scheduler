@@ -230,6 +230,31 @@ class AIPS_Author_Topics_Repository {
 	}
 	
 	/**
+	 * Get a batch of approved topics for an author for embedding computation.
+	 *
+	 * Uses ID-based pagination (id > $after_id) to avoid slow OFFSET queries on
+	 * large tables. Topics are ordered by id ASC so each batch advances the cursor.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $limit     Maximum number of topics to return. Default 20.
+	 * @param int $after_id  Return only topics whose id is greater than this value. Default 0.
+	 * @return array Array of approved topic objects.
+	 */
+	public function get_approved_for_embeddings_batch($author_id, $limit = 20, $after_id = 0) {
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT * FROM {$this->table_name}
+			WHERE author_id = %d
+			AND status = 'approved'
+			AND id > %d
+			ORDER BY id ASC
+			LIMIT %d",
+			$author_id,
+			$after_id,
+			$limit
+		));
+	}
+
+	/**
 	 * Get approved topics for an author (for post generation).
 	 *
 	 * @param int $author_id Author ID.

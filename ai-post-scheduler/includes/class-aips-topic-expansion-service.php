@@ -279,6 +279,58 @@ class AIPS_Topic_Expansion_Service {
 	}
 	
 	/**
+	 * Process a single batch of approved topics for embedding computation.
+	 *
+	 * Uses ID-based pagination to avoid slow OFFSET queries. Processes topics
+	 * with id > $last_processed_id so each call safely advances the cursor.
+	 * Topics that already have an embedding stored in their metadata are skipped.
+	 *
+	 * @param int $author_id         Author ID.
+	 * @param int $batch_size        Number of topics to process in this batch. Default 20.
+	 * @param int $last_processed_id Return only topics with id greater than this value. Default 0.
+	 * @return array {
+	 *     @type int  $success            Number of topics for which an embedding was successfully computed.
+	 *     @type int  $failed             Number of topics for which embedding computation failed.
+	 *     @type int  $skipped            Number of topics that already had an embedding (skipped).
+	 *     @type int  $processed_count    Total topics inspected in this batch.
+	 *     @type int  $last_processed_id  Highest topic id seen in this batch (use as cursor for next call).
+	 *     @type bool $done               True when the batch returned fewer rows than $batch_size,
+	 *                                    meaning no more topics remain for this author.
+	 * }
+	 */
+	public function process_approved_embeddings_batch($author_id, $batch_size = 20, $last_processed_id = 0) {
+		$topics = $this->topics_repository->get_approved_for_embeddings_batch($author_id, $batch_size, $last_processed_id);
+
+		$stats = array(
+			'success'           => 0,
+			'failed'            => 0,
+			'skipped'           => 0,
+			'processed_count'   => count($topics),
+			'last_processed_id' => $last_processed_id,
+			'done'              => count($topics) < $batch_size,
+		);
+
+		foreach ($topics as $topic) {
+			$stats['last_processed_id'] = max($stats['last_processed_id'], (int) $topic->id);
+
+			$existing_embedding = $this->get_topic_embedding($topic->id);
+			if ($existing_embedding) {
+				$stats['skipped']++;
+				continue;
+			}
+
+			$result = $this->compute_topic_embedding($topic->id);
+			if (is_wp_error($result)) {
+				$stats['failed']++;
+			} else {
+				$stats['success']++;
+			}
+		}
+
+		return $stats;
+	}
+
+	/**
 	 * Batch compute embeddings for all approved topics of an author.
 	 *
 	 * @param int $author_id Author ID.
