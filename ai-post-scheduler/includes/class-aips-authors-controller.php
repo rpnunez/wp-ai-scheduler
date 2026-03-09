@@ -296,11 +296,17 @@ class AIPS_Authors_Controller {
 		}
 		
 		$result = $this->topics_scheduler->generate_now($author_id);
-		
+
 		if (is_wp_error($result)) {
 			wp_send_json_error(array('message' => $result->get_error_message()));
 		}
-		
+
+		// Create admin bar notification for manual topic generation
+		$author = $this->repository->get_by_id($author_id);
+		if ($author && is_array($result)) {
+			AIPS_Admin_Bar::notify_author_topics_generated($author->name, count($result), $author_id);
+		}
+
 		wp_send_json_success(array(
 			'message' => __('Topics generated successfully.', 'ai-post-scheduler'),
 			'topics' => $result
