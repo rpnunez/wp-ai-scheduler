@@ -1,4 +1,4 @@
-name: Feature Agent - Update Feature Report
+name: Docs - Update Feature Report
 
 on:
   schedule:
@@ -111,3 +111,4 @@ jobs:
         run: |
           echo "✓ Feature report is up to date - no Pull Request needed"
           echo "The feature documentation already reflects the current codebase state."
+
