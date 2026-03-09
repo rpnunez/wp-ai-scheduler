@@ -35,3 +35,6 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+## 2026-03-09 - Add Clear Filters to Search Bars
+**Learning:** Always ensure existing JS expects the DOM elements you're adding, especially when fixing missing UI components that JavaScript expects to be there.
+**Action:** Double-check both HTML and JS files to verify the full lifecycle of a component (creation, event binding, visibility toggling) is complete.
