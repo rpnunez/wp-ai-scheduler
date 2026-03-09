@@ -102,7 +102,7 @@ jobs:
           ---
 
           *Generated at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')*  
-          *Workflow: [Feature Agent](.github/workflows/agents/feature-agent.yml)*" \
+          *Workflow: [Feature Agent](.github/workflows/feature-agent.yml)*" \
                       --base main \
                       --head "${BRANCH_NAME}"
       
@@ -111,4 +111,3 @@ jobs:
         run: |
           echo "✓ Feature report is up to date - no Pull Request needed"
           echo "The feature documentation already reflects the current codebase state."
-
