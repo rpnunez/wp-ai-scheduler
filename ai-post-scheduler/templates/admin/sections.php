@@ -37,7 +37,7 @@ if (!isset($sections) || !is_array($sections)) {
 
 			<!-- Table -->
 			<div class="aips-panel-body no-padding">
-				<table class="aips-table">
+				<table class="aips-table aips-sections-list">
 					<thead>
 						<tr>
 							<th class="column-name"><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
