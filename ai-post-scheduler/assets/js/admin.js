@@ -610,6 +610,21 @@
             var $btn = $(this);
             var $form = $('#aips-template-form');
 
+            // Cross-step validation: Check if required fields across all steps are filled
+            if (!$('#template_name').val().trim()) {
+                AIPS.Utilities.showToast(aipsAdminL10n.templateNameRequired, 'warning');
+                AIPS.wizardGoToStep(1);
+                $('#template_name').focus();
+                return;
+            }
+
+            if (!$('#prompt_template').val().trim()) {
+                AIPS.Utilities.showToast(aipsAdminL10n.contentPromptRequired, 'warning');
+                AIPS.wizardGoToStep(3);
+                $('#prompt_template').focus();
+                return;
+            }
+
             if (!$form[0].checkValidity()) {
                 $form[0].reportValidity();
                 return;
@@ -3195,7 +3210,8 @@
          * matching `step`. Updates the progress indicator (marking earlier steps
          * as completed), toggles the Back/Next/Save buttons, and stores the
          * current step in `AIPS.currentWizardStep`. Calls `updateWizardSummary`
-         * when advancing to the final step.
+         * when advancing to the final step. Also toggles the 'Save Template'
+         * button styling between primary and secondary depending on the current step.
          *
          * @param {number} step - 1-based step index to navigate to (1–5).
          */
@@ -3228,12 +3244,12 @@
             
             if (step === totalSteps) {
                 $('.aips-wizard-next').hide();
-                $('.aips-save-template').show();
+                $('.aips-save-template').removeClass('button-secondary').addClass('button-primary');
                 // Update summary
                 AIPS.updateWizardSummary();
             } else {
                 $('.aips-wizard-next').show();
-                $('.aips-save-template').hide();
+                $('.aips-save-template').removeClass('button-primary').addClass('button-secondary');
             }
             
             // Store current step
