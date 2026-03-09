@@ -318,6 +318,39 @@ class AIPS_Feedback_Repository_Test extends WP_UnitTestCase {
 		$this->assertEquals('rejected', $result[$topic2_id]->action);
 	}
 
+	public function test_get_latest_by_topics_prefers_highest_id_when_created_at_ties() {
+		global $wpdb;
+		$feedback_table = $wpdb->prefix . 'aips_topic_feedback';
+
+		$shared_timestamp = '2000-01-01 00:00:00';
+
+		$wpdb->insert($feedback_table, array(
+			'author_topic_id' => $this->test_topic_id,
+			'action'          => 'rejected',
+			'user_id'         => 1,
+			'reason'          => 'Earlier row with tied timestamp',
+			'reason_category' => 'other',
+			'source'          => 'UI',
+			'created_at'      => $shared_timestamp,
+		));
+
+		$wpdb->insert($feedback_table, array(
+			'author_topic_id' => $this->test_topic_id,
+			'action'          => 'approved',
+			'user_id'         => 1,
+			'reason'          => 'Later row with tied timestamp',
+			'reason_category' => 'other',
+			'source'          => 'UI',
+			'created_at'      => $shared_timestamp,
+		));
+
+		$result = $this->repository->get_latest_by_topics(array($this->test_topic_id));
+
+		$this->assertArrayHasKey($this->test_topic_id, $result);
+		$this->assertEquals('approved', $result[$this->test_topic_id]->action);
+		$this->assertEquals('Later row with tied timestamp', $result[$this->test_topic_id]->reason);
+	}
+
 	public function test_get_latest_by_topics_returns_empty_for_no_ids() {
 		$result = $this->repository->get_latest_by_topics(array());
 		$this->assertIsArray($result);

@@ -342,13 +342,13 @@ class AIPS_Feedback_Repository {
 			SELECT f.*
 			FROM {$this->table_name} f
 			INNER JOIN (
-				SELECT author_topic_id, MAX(created_at) AS latest_created_at
+				SELECT author_topic_id, MAX(id) AS latest_id
 				FROM {$this->table_name}
 				WHERE author_topic_id IN ({$placeholders})
 				GROUP BY author_topic_id
 			) latest
 			ON latest.author_topic_id = f.author_topic_id
-			AND latest.latest_created_at = f.created_at
+			AND latest.latest_id = f.id
 			ORDER BY f.author_topic_id ASC
 		";
 
