@@ -689,9 +689,10 @@
             var $btn = $(this);
             
             // Validate at least name is provided
-            if (!$('#template_name').val().trim()) {
-                AIPS.Utilities.showToast(aipsAdminL10n.templateNameRequired, 'warning');
-                $('#template_name').focus();
+            var nameRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 1; })[0];
+            if (nameRule && !$(nameRule.selector).val().trim()) {
+                AIPS.Utilities.showToast(aipsAdminL10n[nameRule.messageKey], 'warning');
+                $(nameRule.selector).focus();
                 AIPS.wizardGoToStep(1);
                 return;
             }
@@ -753,9 +754,10 @@
             e.preventDefault();
             
             // Validate at least prompt is there
-            if (!$('#prompt_template').val().trim()) {
-                AIPS.Utilities.showToast(aipsAdminL10n.contentPromptRequired || 'Please enter a content prompt first.', 'warning');
-                $('#prompt_template').focus();
+            var promptRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 3; })[0];
+            if (promptRule && !$(promptRule.selector).val().trim()) {
+                AIPS.Utilities.showToast(aipsAdminL10n[promptRule.messageKey], 'warning');
+                $(promptRule.selector).focus();
                 return;
             }
 
@@ -3299,7 +3301,7 @@
          * Return the first wizard step that contains an unfilled required field,
          * or `null` if all required fields are valid.
          *
-         * Iterates `WIZARD_REQUIRED_FIELDS` in step order. Used by both
+         * Iterates `WIZARD_REQUIRED_FIELDS` in declaration order. Used by both
          * `validateWizardStep` (per-step Next-click validation) and
          * `saveTemplate` (full pre-save validation across all steps).
          *
