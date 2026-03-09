@@ -698,7 +698,6 @@ class AIPS_Author_Topics_Controller {
 	/**
 	 * AJAX handler for getting all approved topics for the generation queue.
 	 */
-	
 	public function ajax_get_generation_queue() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		
