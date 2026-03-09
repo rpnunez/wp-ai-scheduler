@@ -113,10 +113,17 @@ class AIPS_Authors_Controller {
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		
-		// Calculate initial run times if creating new author
-		if (!$author_id) {
-			$data['topic_generation_next_run'] = $this->interval_calculator->calculate_next_run($data['topic_generation_frequency']);
-			$data['post_generation_next_run'] = $this->interval_calculator->calculate_next_run($data['post_generation_frequency']);
+		// Set topic generation next run based on frequency.
+		// 'manual' means no automated schedule — leave next_run as NULL.
+		if ( $data['topic_generation_frequency'] === 'manual' ) {
+			$data['topic_generation_next_run'] = null;
+		} else {
+			$data['topic_generation_next_run'] = $this->interval_calculator->calculate_next_run( $data['topic_generation_frequency'] );
+		}
+
+		// Calculate initial post generation run time only when creating a new author.
+		if ( ! $author_id ) {
+			$data['post_generation_next_run'] = $this->interval_calculator->calculate_next_run( $data['post_generation_frequency'] );
 		}
 		
 		// Save or update
