@@ -1,4 +1,4 @@
-name: Feature Agent - Update Feature Report
+name: Docs - Update Feature Report
 
 on:
   schedule:
@@ -102,7 +102,7 @@ jobs:
           ---
 
           *Generated at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')*  
-          *Workflow: [Feature Agent](.github/workflows/agents/feature-agent.yml)*" \
+          *Workflow: [Feature Agent](.github/workflows/feature-agent.yml)*" \
                       --base main \
                       --head "${BRANCH_NAME}"
       
