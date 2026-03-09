@@ -693,16 +693,7 @@ class AIPS_Author_Topics_Controller {
 			$authors            = $authors_repository->get_all(true);
 
 			foreach ($authors as $author) {
-				$args = array(
-					'author_id'         => (int) $author->id,
-					'batch_size'        => $batch_size,
-					'last_processed_id' => 0,
-				);
-				if (function_exists('as_schedule_single_action')) {
-					as_schedule_single_action(time() + $delay, 'aips_process_author_embeddings', array($args));
-				} else {
-					wp_schedule_single_event(time() + $delay, 'aips_process_author_embeddings', array($args));
-				}
+				$this->schedule_embeddings_job((int) $author->id, $batch_size, 0, $delay);
 				$queued_authors[] = (int) $author->id;
 				$delay           += 2;
 			}
@@ -718,16 +709,7 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		// Single author: schedule one job.
-		$args = array(
-			'author_id'         => $author_id,
-			'batch_size'        => $batch_size,
-			'last_processed_id' => 0,
-		);
-		if (function_exists('as_schedule_single_action')) {
-			as_schedule_single_action(time() + $delay, 'aips_process_author_embeddings', array($args));
-		} else {
-			wp_schedule_single_event(time() + $delay, 'aips_process_author_embeddings', array($args));
-		}
+		$this->schedule_embeddings_job($author_id, $batch_size, 0, $delay);
 
 		wp_send_json_success(array(
 			'message'        => sprintf(
@@ -737,6 +719,30 @@ class AIPS_Author_Topics_Controller {
 			),
 			'queued_authors' => array($author_id),
 		));
+	}
+
+	/**
+	 * Schedule a single background embedding job for one author.
+	 *
+	 * Uses Action Scheduler (as_schedule_single_action) when available and falls
+	 * back to wp_schedule_single_event otherwise.
+	 *
+	 * @param int $author_id         Author to process.
+	 * @param int $batch_size        Topics to process per run.
+	 * @param int $last_processed_id ID-based cursor for ID > pagination.
+	 * @param int $delay             Seconds from now to run the job.
+	 */
+	private function schedule_embeddings_job($author_id, $batch_size, $last_processed_id, $delay = 2) {
+		$args = array(
+			'author_id'         => $author_id,
+			'batch_size'        => $batch_size,
+			'last_processed_id' => $last_processed_id,
+		);
+		if (function_exists('as_schedule_single_action')) {
+			as_schedule_single_action(time() + $delay, 'aips_process_author_embeddings', array($args));
+		} else {
+			wp_schedule_single_event(time() + $delay, 'aips_process_author_embeddings', array($args));
+		}
 	}
 	
 	/**

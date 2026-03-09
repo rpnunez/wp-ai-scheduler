@@ -91,17 +91,7 @@ class AIPS_Embeddings_Cron {
 			set_transient($transient_key, $stats['last_processed_id'], HOUR_IN_SECONDS);
 
 			// Re-schedule for the next batch.
-			$next_args = array(
-				'author_id'         => $author_id,
-				'batch_size'        => $batch_size,
-				'last_processed_id' => $stats['last_processed_id'],
-			);
-
-			if (function_exists('as_schedule_single_action')) {
-				as_schedule_single_action(time() + self::RESCHEDULE_DELAY, 'aips_process_author_embeddings', array($next_args));
-			} else {
-				wp_schedule_single_event(time() + self::RESCHEDULE_DELAY, 'aips_process_author_embeddings', array($next_args));
-			}
+			$this->schedule_embeddings_job($author_id, $batch_size, $stats['last_processed_id']);
 		} else {
 			// Processing complete for this author: clean up transient and fire hook.
 			delete_transient($transient_key);
@@ -112,6 +102,30 @@ class AIPS_Embeddings_Cron {
 			 * @param int $author_id The author whose embeddings were just completed.
 			 */
 			do_action('aips_author_embeddings_completed', $author_id);
+		}
+	}
+
+	/**
+	 * Schedule a single background embedding job for one author.
+	 *
+	 * Uses Action Scheduler (as_schedule_single_action) when available and falls
+	 * back to wp_schedule_single_event otherwise.
+	 *
+	 * @param int $author_id         Author to process.
+	 * @param int $batch_size        Topics to process per run.
+	 * @param int $last_processed_id ID-based cursor for id > pagination.
+	 * @param int $delay             Seconds from now to run the job. Default RESCHEDULE_DELAY.
+	 */
+	protected function schedule_embeddings_job($author_id, $batch_size, $last_processed_id, $delay = self::RESCHEDULE_DELAY) {
+		$args = array(
+			'author_id'         => $author_id,
+			'batch_size'        => $batch_size,
+			'last_processed_id' => $last_processed_id,
+		);
+		if (function_exists('as_schedule_single_action')) {
+			as_schedule_single_action(time() + $delay, 'aips_process_author_embeddings', array($args));
+		} else {
+			wp_schedule_single_event(time() + $delay, 'aips_process_author_embeddings', array($args));
 		}
 	}
 }
