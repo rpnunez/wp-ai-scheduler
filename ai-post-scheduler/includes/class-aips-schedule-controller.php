@@ -117,10 +117,15 @@ class AIPS_Schedule_Controller {
             if (is_wp_error($result)) {
                 wp_send_json_error(array('message' => $result->get_error_message()));
             } else {
-                 wp_send_json_success(array(
-                    'message' => __('Schedule executed successfully!', 'ai-post-scheduler'),
-                    'post_ids' => array($result),
-                    'edit_url' => get_edit_post_link($result, 'raw')
+                // $result is an array of generated post IDs
+                $count = count($result);
+                wp_send_json_success(array(
+                    'message' => sprintf(
+                        _n('%d post generated successfully!', '%d posts generated successfully!', $count, 'ai-post-scheduler'),
+                        $count
+                    ),
+                    'post_ids' => $result,
+                    'edit_url' => !empty($result) ? get_edit_post_link($result[0], 'raw') : ''
                 ));
             }
             return;
@@ -312,7 +317,8 @@ class AIPS_Schedule_Controller {
                     $result->get_error_message()
                 );
             } else {
-                $post_ids[] = $result;
+                // $result is an array of generated post IDs for this schedule
+                $post_ids = array_merge($post_ids, $result);
             }
         }
 

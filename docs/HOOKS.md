@@ -38,18 +38,24 @@ Fires when a specific schedule item begins execution.
     *   `int $schedule_id`: The ID of the schedule being executed.
 
 #### `aips_schedule_execution_failed`
-Fires when a schedule item fails to execute.
+Fires once per schedule execution run when **all** post generation attempts for that run fail.
 
 *   **Arguments:**
     *   `int $schedule_id`: The ID of the schedule.
-    *   `string $error_message`: The error message.
+    *   `string $error_message`: The error message from the first failed attempt.
 
 #### `aips_schedule_execution_completed`
-Fires when a schedule item is successfully executed.
+Fires once per schedule execution run after all post generation attempts have completed, when at least one post was generated successfully (partial success counts).
 
 *   **Arguments:**
     *   `int $schedule_id`: The ID of the schedule.
-    *   `int $result`: The result of the execution (post ID).
+    *   `int[] $post_ids`: Array of post IDs that were successfully created in this run.
+
+#### `aips_generate_staggered_post`
+WP Cron event hook. Fires for each post that could not be generated in the synchronous run because the schedule's `post_quantity` exceeded the **Max Posts Per Run** setting. Each event generates exactly one post for the given schedule. Events are spaced apart by the **Stagger Interval** setting (default: 5 minutes).
+
+*   **Arguments:**
+    *   `int $schedule_id`: The ID of the schedule for which to generate the staggered post.
 
 ### Research & Trending Topics
 

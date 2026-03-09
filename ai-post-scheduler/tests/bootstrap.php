@@ -93,6 +93,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!defined('HOUR_IN_SECONDS')) {
         define('HOUR_IN_SECONDS', 3600);
     }
+
+    if (!defined('MINUTE_IN_SECONDS')) {
+        define('MINUTE_IN_SECONDS', 60);
+    }
     
     // Mock WordPress functions if not available
     if (!function_exists('esc_html__')) {
@@ -231,6 +235,24 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                     unset($GLOBALS['aips_test_hooks']['filters'][$hook_name][$priority]);
                 }
             }
+            return true;
+        }
+    }
+
+    if (!isset($GLOBALS['aips_test_scheduled_events'])) {
+        $GLOBALS['aips_test_scheduled_events'] = array();
+    }
+
+    if (!function_exists('wp_schedule_single_event')) {
+        /**
+         * Mock wp_schedule_single_event: records scheduled events in a global array for assertions.
+         */
+        function wp_schedule_single_event($timestamp, $hook, $args = array(), $wp_error = false) {
+            $GLOBALS['aips_test_scheduled_events'][] = array(
+                'timestamp' => $timestamp,
+                'hook'      => $hook,
+                'args'      => $args,
+            );
             return true;
         }
     }
@@ -663,6 +685,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('__')) {
         function __($text, $domain = 'default') {
             return $text;
+        }
+    }
+
+    if (!function_exists('_n')) {
+        function _n($single, $plural, $number, $domain = 'default') {
+            return $number === 1 ? $single : $plural;
         }
     }
 
