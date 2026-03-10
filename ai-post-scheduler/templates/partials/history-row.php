@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 <tr>
     <th scope="row" class="check-column">
         <label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->id); ?>"><?php esc_html_e('Select Item', 'ai-post-scheduler'); ?></label>
-        <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" name="history[]" value="<?php echo esc_attr($item->id); ?>">
+        <input id="cb-select-<?php echo esc_attr($item->id); ?>" type="checkbox" class="aips-history-cb" name="history[]" value="<?php echo esc_attr($item->id); ?>">
     </th>
     <td class="column-title">
         <?php if ($item->post_id): ?>
@@ -69,6 +69,12 @@ if (!defined('ABSPATH')) {
     </td>
     <td class="column-actions">
         <div class="aips-btn-group aips-btn-group-inline">
+
+        <button class="aips-btn aips-btn-sm aips-btn-primary aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>">
+            <span class="dashicons dashicons-list-view"></span>
+            <?php esc_html_e('View Logs', 'ai-post-scheduler'); ?>
+        </button>
+
         <?php if ($item->post_id): ?>
             <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" class="aips-btn aips-btn-sm aips-btn-secondary" target="_blank" title="<?php esc_attr_e('View Post', 'ai-post-scheduler'); ?>">
                 <span class="dashicons dashicons-external"></span>
@@ -81,18 +87,18 @@ if (!defined('ABSPATH')) {
             </button>
         <?php endif; ?>
 
-        <button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-details" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Details', 'ai-post-scheduler'); ?>">
-            <span class="dashicons dashicons-info"></span>
-            <?php esc_html_e('Details', 'ai-post-scheduler'); ?>
-        </button>
-        
         <?php if ($item->status === 'failed' && $item->template_id): ?>
             <button class="aips-btn aips-btn-sm aips-btn-secondary aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('Retry Generation', 'ai-post-scheduler'); ?>">
                 <span class="dashicons dashicons-update"></span>
-            <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
-        </button>
+                <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
+            </button>
         <?php endif; ?>
+
+        <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-history" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete history container', 'ai-post-scheduler'); ?>">
+            <span class="dashicons dashicons-trash"></span>
+        </button>
 
         </div>
     </td>
 </tr>
+

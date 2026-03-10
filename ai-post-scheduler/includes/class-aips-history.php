@@ -20,6 +20,7 @@ class AIPS_History {
         add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
         add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
         add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
+        add_action('wp_ajax_aips_get_history_logs', array($this, 'ajax_get_history_logs'));
         add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
         add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
         add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
@@ -181,6 +182,71 @@ class AIPS_History {
         );
         
         wp_send_json_success($response);
+    }
+
+    /**
+     * AJAX handler to retrieve all log entries for a specific history container.
+     *
+     * Returns every row from aips_history_log for the given history_id, plus
+     * summary data from the history record itself, so the modal can display
+     * the complete picture of that generation run.
+     *
+     * @return void
+     */
+    public function ajax_get_history_logs() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+
+        if (!$history_id) {
+            wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
+        }
+
+        $history_item = $this->repository->get_by_id($history_id);
+
+        if (!$history_item) {
+            wp_send_json_error(array('message' => __('History container not found.', 'ai-post-scheduler')));
+        }
+
+        $raw_logs = $this->repository->get_logs_by_history_id($history_id);
+
+        $logs = array();
+        foreach ($raw_logs as $log) {
+            $details = array();
+            if (!empty($log->details)) {
+                $decoded = json_decode($log->details, true);
+                if (is_array($decoded)) {
+                    $details = $decoded;
+                }
+            }
+
+            $logs[] = array(
+                'id'               => (int) $log->id,
+                'log_type'         => $log->log_type,
+                'history_type_id'  => (int) $log->history_type_id,
+                'type_label'       => AIPS_History_Type::get_label((int) $log->history_type_id),
+                'timestamp'        => $log->timestamp,
+                'details'          => $details,
+            );
+        }
+
+        wp_send_json_success(array(
+            'container' => array(
+                'id'              => (int) $history_item->id,
+                'status'          => $history_item->status,
+                'generated_title' => $history_item->generated_title,
+                'template_name'   => isset($history_item->template_name) ? $history_item->template_name : '',
+                'created_at'      => $history_item->created_at,
+                'completed_at'    => $history_item->completed_at,
+                'error_message'   => $history_item->error_message,
+                'post_id'         => $history_item->post_id ? (int) $history_item->post_id : null,
+            ),
+            'logs'      => $logs,
+        ));
     }
 
     /**
