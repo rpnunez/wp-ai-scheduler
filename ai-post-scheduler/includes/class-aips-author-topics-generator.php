@@ -66,9 +66,10 @@ class AIPS_Author_Topics_Generator {
 	 * Generate topics for an author.
 	 *
 	 * @param object $author Author object from database.
+	 * @param AIPS_History_Container|null $history_container Optional history container for logging.
 	 * @return array|WP_Error Array of generated topics or WP_Error on failure.
 	 */
-	public function generate_topics($author) {
+	public function generate_topics($author, $history_container = null) {
 		if (!$author || !isset($author->id)) {
 			return new WP_Error('invalid_author', 'Invalid author object provided');
 		}
@@ -81,6 +82,14 @@ class AIPS_Author_Topics_Generator {
 		// Build the prompt with feedback loop context
 		$prompt = $this->build_topic_generation_prompt($author);
 		
+		if ($history_container) {
+			$history_container->record('ai_request', 'Generating topics for author', array(
+				'prompt' => $prompt,
+				'author_id' => $author->id,
+				'quantity' => $author->topic_generation_quantity
+			));
+		}
+
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
 			'max_tokens' => 2000,
@@ -89,7 +98,14 @@ class AIPS_Author_Topics_Generator {
 		
 		if (is_wp_error($response)) {
 			$this->logger->log("Failed to generate topics for author {$author->id}: " . $response->get_error_message(), 'error');
+			if ($history_container) {
+				$history_container->record_error($response->get_error_message());
+			}
 			return $response;
+		}
+
+		if ($history_container) {
+			$history_container->record('ai_response', 'Topics generated successfully', null, $response);
 		}
 		
 		// Parse the JSON response into database-ready topics
@@ -101,7 +117,7 @@ class AIPS_Author_Topics_Generator {
 		}
 		
 		// Flag semantically similar candidates before they reach editorial review.
-		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics);
+		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics, $history_container);
 		
 		// Save topics to database
 		$saved_topics = array();
@@ -339,9 +355,10 @@ class AIPS_Author_Topics_Generator {
 	 *
 	 * @param object $author Author object.
 	 * @param array  $topics Generated topic arrays.
+	 * @param AIPS_History_Container|null $history_container Optional history container.
 	 * @return array Topics with updated metadata and score adjustments.
 	 */
-	private function apply_fuzzy_duplicate_flags($author, $topics) {
+	private function apply_fuzzy_duplicate_flags($author, $topics, $history_container = null) {
 		if (empty($topics) || !$this->embeddings_service->is_embeddings_supported()) {
 			return $topics;
 		}
@@ -375,7 +392,7 @@ class AIPS_Author_Topics_Generator {
 				continue;
 			}
 
-			$embedding = $this->embeddings_service->generate_embedding($text);
+			$embedding = $this->embeddings_service->generate_embedding($text, array(), $history_container);
 			if (is_wp_error($embedding) || !is_array($embedding)) {
 				continue;
 			}

@@ -92,19 +92,23 @@ class AIPS_Author_Topics_Scheduler {
 	 * @return bool True on success, false on failure.
 	 */
 	public function generate_topics_for_author($author) {
+		// Create history container at the start to track the entire process
+		$history = $this->history_service->create('author_topic_generation', array(
+			'author_id' => $author->id,
+		));
+
 		$this->logger->log("Generating topics for author: {$author->name} (ID: {$author->id})", 'info');
+		$history->record('info', "Generating topics for author: {$author->name}");
 		
 		// Generate topics using the generator
-		$result = $this->topics_generator->generate_topics($author);
+		$result = $this->topics_generator->generate_topics($author, $history);
 		
 		if (is_wp_error($result)) {
 			$this->logger->log("Failed to generate topics for author {$author->id}: " . $result->get_error_message(), 'error');
+			$history->record_error($result->get_error_message());
 			
 			// Log using History Container
-			$fail_history = $this->history_service->create('author_topic_generation', array(
-				'author_id' => $author->id,
-			));
-			$fail_history->record(
+			$history->record(
 				'activity',
 				sprintf(
 					__('Failed to generate topics for author "%s": %s', 'ai-post-scheduler'),
@@ -124,6 +128,7 @@ class AIPS_Author_Topics_Scheduler {
 					'error' => $result->get_error_message(),
 				)
 			);
+			$history->complete_failure($result->get_error_message());
 			
 			// Still update the schedule to avoid getting stuck
 			$this->update_author_schedule($author);
@@ -136,10 +141,8 @@ class AIPS_Author_Topics_Scheduler {
 		// Log successful topic generation using History Container
 		// $result is an array of topic data on success
 		$topic_count = is_array($result) ? count($result) : 0;
-		$success_history = $this->history_service->create('author_topic_generation', array(
-			'author_id' => $author->id,
-		));
-		$success_history->record(
+		
+		$history->record(
 			'activity',
 			sprintf(
 				__('Generated %d topics for author "%s"', 'ai-post-scheduler'),
@@ -159,6 +162,7 @@ class AIPS_Author_Topics_Scheduler {
 				'requested_quantity' => $author->topic_generation_quantity,
 			)
 		);
+		$history->complete_success(array('topics_generated' => $topic_count));
 		
 		$this->logger->log("Successfully generated topics for author {$author->id}", 'info');
 
@@ -195,6 +199,21 @@ class AIPS_Author_Topics_Scheduler {
 			return new WP_Error('invalid_author', 'Author not found');
 		}
 		
-		return $this->topics_generator->generate_topics($author);
+		// Create history container for manual generation
+		$history = $this->history_service->create('author_topic_generation', array(
+			'author_id' => $author->id,
+			'source' => 'manual_ui'
+		));
+		$history->record_user_action('manual_topic_generation', "User manually triggered topic generation for author: {$author->name}");
+		
+		$result = $this->topics_generator->generate_topics($author, $history);
+
+		if (is_wp_error($result)) {
+			$history->complete_failure($result->get_error_message());
+		} else {
+			$history->complete_success(array('topics_generated' => count($result)));
+		}
+
+		return $result;
 	}
 }
