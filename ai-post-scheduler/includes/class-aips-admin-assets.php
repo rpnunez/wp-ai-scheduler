@@ -459,5 +459,23 @@ class AIPS_Admin_Assets {
                 true
             );
         }
+
+        // Workflows Page Scripts
+        if (strpos($hook, 'aips-workflows') !== false) {
+            wp_enqueue_script(
+                'aips-admin-workflows',
+                AIPS_PLUGIN_URL . 'assets/js/admin-workflows.js',
+                array('jquery', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-workflows', 'aipsWorkflowsL10n', array(
+                'confirmDelete'        => __('Delete this workflow? This cannot be undone.', 'ai-post-scheduler'),
+                'confirmDeleteHeading' => __('Delete Workflow', 'ai-post-scheduler'),
+                'cancelLabel'          => __('Cancel', 'ai-post-scheduler'),
+                'deleteLabel'          => __('Delete', 'ai-post-scheduler'),
+            ));
+        }
     }
 }
