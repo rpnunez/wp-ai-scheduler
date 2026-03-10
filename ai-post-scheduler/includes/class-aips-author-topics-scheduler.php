@@ -172,6 +172,9 @@ class AIPS_Author_Topics_Scheduler {
 	private function update_author_schedule($author) {
 		// Authors with 'manual' frequency should never have an automated next run.
 		if ( $author->topic_generation_frequency === 'manual' ) {
+			// Ensure any legacy or manually-set next run is cleared so manual authors are not picked up by cron.
+			$this->authors_repository->update_topic_generation_schedule( $author->id, null );
+			$this->logger->log( "Cleared topic generation schedule for manual author {$author->id}", 'info' );
 			return;
 		}
 
