@@ -32,7 +32,7 @@ class AIPS_Generator {
      */
     private $current_history;
 
-    /**
+    private $template_processor;
     private $image_service;
     private $structure_manager;
     private $post_creator;
@@ -42,6 +42,8 @@ class AIPS_Generator {
      * @var AIPS_Markdown_Parser Markdown parser
      */
     private $markdown_parser;
+
+    private $history_id;
 
     /**
      * Constructor.
@@ -544,32 +546,34 @@ class AIPS_Generator {
         // Dispatch post generation started event
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
 
-        // Create new history container using new API
-        // Extract source information from context
-        $history_metadata = array();
+        // If a history container is already set (e.g., by a schedule processor),
+        // use it. Otherwise, create a new one for this specific post generation.
+        if (!$this->current_history) {
+            $history_metadata = array();
 
-        if ($context->get_type() === 'template') {
-            $history_metadata['template_id'] = $context->get_id();
-        } elseif ($context->get_type() === 'topic') {
-            // For topic context, store author_id and topic_id
-            $history_metadata['topic_id'] = $context->get_id();
-            if (method_exists($context, 'get_author')) {
-                $author = $context->get_author();
-                if ($author && isset($author->id)) {
-                    $history_metadata['author_id'] = $author->id;
+            if ($context->get_type() === 'template') {
+                $history_metadata['template_id'] = $context->get_id();
+            } elseif ($context->get_type() === 'topic') {
+                $history_metadata['topic_id'] = $context->get_id();
+                if (method_exists($context, 'get_author')) {
+                    $author = $context->get_author();
+                    if ($author && isset($author->id)) {
+                        $history_metadata['author_id'] = $author->id;
+                    }
                 }
             }
+
+            $creation_method = $context->get_creation_method() ?: 'manual';
+            $history_metadata['creation_method'] = $creation_method;
+
+            $this->current_history = $this->history_service->create('post_generation', $history_metadata);
         }
 
-        // Get creation_method from context, default to 'manual' if not specified
-        $creation_method = $context->get_creation_method() ?: 'manual';
-        $history_metadata['creation_method'] = $creation_method;
-
-        $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
+        // Attach a generation session to the history container.
+        $this->current_history->with_session($context);
 
         if (!$this->current_history->get_id()) {
-            // Fallback if history creation fails (though unlikely)
-            $this->logger->log('Failed to create history record', 'error');
+            $this->logger->log('Failed to create or attach to a history record', 'error');
         }
 
         // Build the full content prompt from context
