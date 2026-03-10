@@ -202,7 +202,7 @@ class AIPS_Admin_Assets {
 				'logUser' => __('User', 'ai-post-scheduler'),
 				'logDate' => __('Date', 'ai-post-scheduler'),
 				'logDetails' => __('Details', 'ai-post-scheduler'),
-				// Quick action strings
+				// Action strings
 				'processing' => __('Processing...', 'ai-post-scheduler'),
 				'topicApproved' => __('Topic approved.', 'ai-post-scheduler'),
 				'topicRejected' => __('Topic rejected.', 'ai-post-scheduler'),
@@ -217,6 +217,13 @@ class AIPS_Admin_Assets {
 				'generatingPostsTitle' => __('Generating Posts', 'ai-post-scheduler'),
 				'generatingPostsMessage' => __('Please wait while your posts are being generated. This may take a few minutes.', 'ai-post-scheduler'),
 				'generationCompletePartial' => __('%d post(s) generated, %d failed.', 'ai-post-scheduler'),
+				// Feedback history and duplicate detection
+	            'similarSuggestions' => __('Similar Suggestions', 'ai-post-scheduler'),
+	            'similarityLabel' => __('Similarity', 'ai-post-scheduler'),
+	            'lastFeedback' => __('Last Feedback', 'ai-post-scheduler'),
+	            'previouslyApproved' => __('Previously Approved', 'ai-post-scheduler'),
+	            'previouslyRejected' => __('Previously Rejected', 'ai-post-scheduler'),
+	            'potentialDuplicate' => __('Potential Duplicate', 'ai-post-scheduler'),
 			));
 
 			// Pass page-context data (not i18n) in a separate object so it stays
