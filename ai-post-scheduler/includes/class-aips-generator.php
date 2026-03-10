@@ -396,6 +396,7 @@ class AIPS_Generator {
      * @param string                  $content The article content to summarize.
      * @param AIPS_Generation_Context $context Generation context.
      * @param array                   $options AI options.
+     * @param bool|null               $generation_success Output parameter. Set to true on success, false on failure.
      * @return string Short excerpt string (max 160 chars). Empty string on failure.
      */
     private function generate_excerpt_from_context($title, $content, $context, $options = array(), &$generation_success = null) {
@@ -704,8 +705,7 @@ class AIPS_Generator {
         $component_statuses['featured_image'] = (bool) $featured_image_success;
 
         $generation_incomplete = in_array(false, $component_statuses, true);
-        update_post_meta($post_id, 'aips_post_generation_incomplete', $generation_incomplete ? 'true' : 'false');
-        update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode($component_statuses));
+        $this->post_creator->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
         // Use new history API to complete with success
         $this->current_history->complete_success(array(

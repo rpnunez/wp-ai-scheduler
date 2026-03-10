@@ -29,6 +29,9 @@ class AIPS_Post_Creator {
      *     @type string $title    Post title.
      *     @type string $content  Post content.
      *     @type string $excerpt  Post excerpt.
+     *     @type bool   $generation_incomplete Optional. Whether post generation is incomplete (e.g., featured image failed).
+     *     @type array  $component_statuses Optional. Per-component generation status map.
+     *                                   Supported keys: post_title, post_excerpt, featured_image, post_content (bool values).
      *     @type string $focus_keyword Optional. Primary SEO focus keyword/keyphrase.
      *     @type string $meta_description Optional. SEO meta description content.
      *     @type string $seo_title Optional. SEO title override for plugins.
@@ -83,7 +86,13 @@ class AIPS_Post_Creator {
             return $post_id;
         }
 
-        $this->persist_generation_status_meta($post_id, $data);
+        if (isset($data['generation_incomplete']) || isset($data['component_statuses'])) {
+            $this->update_generation_status_meta(
+                $post_id,
+                isset($data['component_statuses']) && is_array($data['component_statuses']) ? $data['component_statuses'] : null,
+                isset($data['generation_incomplete']) ? (bool) $data['generation_incomplete'] : null
+            );
+        }
 
         // Handle Tags
         if (!empty($post_tags)) {
@@ -251,34 +260,32 @@ class AIPS_Post_Creator {
     }
 
     /**
-     * Persist per-component generation status metadata on the post.
+     * Update per-component generation status metadata on a post.
      *
      * @param int   $post_id Post ID.
-     * @param array $data    Creation payload.
+     * @param array|null $component_statuses Optional component status map.
+     * @param bool|null  $generation_incomplete Optional explicit flag; when null, inferred from component statuses.
      * @return void
      */
-    private function persist_generation_status_meta($post_id, $data) {
-        if (empty($post_id) || !is_array($data)) {
+    public function update_generation_status_meta($post_id, $component_statuses = null, $generation_incomplete = null) {
+        if (empty($post_id)) {
             return;
         }
 
-        $component_statuses = null;
-        if (isset($data['component_statuses']) && is_array($data['component_statuses'])) {
-            $component_statuses = array(
-                'post_title' => !empty($data['component_statuses']['post_title']),
-                'post_excerpt' => !empty($data['component_statuses']['post_excerpt']),
-                'featured_image' => !empty($data['component_statuses']['featured_image']),
-                'post_content' => !empty($data['component_statuses']['post_content']),
+        $normalized_statuses = null;
+        if (is_array($component_statuses)) {
+            $normalized_statuses = array(
+                'post_title'     => !empty($component_statuses['post_title']),
+                'post_excerpt'   => !empty($component_statuses['post_excerpt']),
+                'featured_image' => !empty($component_statuses['featured_image']),
+                'post_content'   => !empty($component_statuses['post_content']),
             );
 
-            update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode($component_statuses));
+            update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode($normalized_statuses));
         }
 
-        $generation_incomplete = null;
-        if (isset($data['generation_incomplete'])) {
-            $generation_incomplete = (bool) $data['generation_incomplete'];
-        } elseif (is_array($component_statuses)) {
-            $generation_incomplete = in_array(false, $component_statuses, true);
+        if ($generation_incomplete === null && is_array($normalized_statuses)) {
+            $generation_incomplete = in_array(false, $normalized_statuses, true);
         }
 
         if ($generation_incomplete !== null) {
