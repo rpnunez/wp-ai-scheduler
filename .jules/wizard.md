@@ -35,3 +35,7 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+
+## 2025-02-17 - Clear Filters Spell
+Learning: Adding small UI elements like "Clear Filters" directly inside search fields significantly enhances workflow efficiency by preventing manual backspacing, thus avoiding user friction.
+Action: Continue to look for input fields that require manual, repeated text manipulation and enhance them with functional icons or buttons using existing CSS classes like `.aips-btn-secondary`.
