@@ -283,4 +283,89 @@ class AIPS_Feedback_Repository {
 		
 		return $stats;
 	}
+
+	/**
+	 * Get feedback statistics for multiple authors in a single query.
+	 *
+	 * @param int[] $author_ids Array of author IDs.
+	 * @return array Associative array keyed by author_id with 'total', 'approved', 'rejected' counts.
+	 */
+	public function get_statistics_bulk(array $author_ids) {
+		$author_ids = array_filter(array_map('absint', $author_ids));
+		if (empty($author_ids)) {
+			return array();
+		}
+
+		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$placeholders = implode(',', array_fill(0, count($author_ids), '%d'));
+
+		$sql = "SELECT
+				t.author_id,
+				COUNT(*) as total,
+				SUM(CASE WHEN f.action = 'approved' THEN 1 ELSE 0 END) as approved,
+				SUM(CASE WHEN f.action = 'rejected' THEN 1 ELSE 0 END) as rejected
+			FROM {$this->table_name} f
+			INNER JOIN {$topics_table} t ON f.author_topic_id = t.id
+			WHERE t.author_id IN ({$placeholders})
+			GROUP BY t.author_id";
+
+		$rows = $this->wpdb->get_results(
+			$this->wpdb->prepare($sql, $author_ids)
+		);
+
+		$result = array();
+		foreach ($rows as $row) {
+			$result[(int) $row->author_id] = array(
+				'total'    => (int) $row->total,
+				'approved' => (int) $row->approved,
+				'rejected' => (int) $row->rejected,
+			);
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Get the latest feedback entry for each topic ID.
+	 *
+	 * "Latest" is determined by highest feedback row ID (auto-increment),
+	 * which matches existing tests and the repository's current write pattern.
+	 *
+	 * @param array $topic_ids Topic IDs.
+	 * @return array Associative array keyed by topic ID with feedback objects.
+	 */
+	public function get_latest_by_topics($topic_ids) {
+		$topic_ids = array_filter(array_map('absint', (array) $topic_ids));
+		if (empty($topic_ids)) {
+			return array();
+		}
+
+		$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
+		$sql = "
+			SELECT f.*
+			FROM {$this->table_name} f
+			INNER JOIN (
+				SELECT author_topic_id, MAX(id) AS latest_id
+				FROM {$this->table_name}
+				WHERE author_topic_id IN ({$placeholders})
+				GROUP BY author_topic_id
+			) latest
+			ON latest.author_topic_id = f.author_topic_id
+			AND latest.latest_id = f.id
+			ORDER BY f.author_topic_id ASC
+		";
+
+		$prepared = $this->wpdb->prepare($sql, $topic_ids);
+		$rows = $this->wpdb->get_results($prepared);
+
+		$result = array();
+		foreach ($rows as $row) {
+			$result[(int) $row->author_topic_id] = $row;
+		}
+
+		return $result;
+	}
 }
+
+
+
