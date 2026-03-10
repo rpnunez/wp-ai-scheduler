@@ -330,9 +330,11 @@ class AIPS_Author_Topics_Repository {
 				FROM {$this->table_name} t
 				INNER JOIN {$authors_table} a ON t.author_id = a.id
 				WHERE t.status = %s 
-				ORDER BY t.reviewed_at ASC",
+				ORDER BY t.score DESC, t.reviewed_at ASC",
 				'approved'
 			)
 		);
 	}
 }
+
+
