@@ -7,6 +7,13 @@
     // System variables that should not be treated as AI Variables
     var SYSTEM_VARIABLES = ['date', 'year', 'month', 'day', 'time', 'site_name', 'site_description', 'random_number', 'topic', 'title'];
 
+    // Required-field rules for the template wizard, shared by validateWizardStep and getFirstInvalidStep.
+    // Each entry maps a 1-based step number to its required field selector and l10n message key.
+    var WIZARD_REQUIRED_FIELDS = [
+        { step: 1, selector: '#template_name',   messageKey: 'templateNameRequired' },
+        { step: 3, selector: '#prompt_template', messageKey: 'contentPromptRequired' }
+    ];
+
     Object.assign(AIPS, {
         /**
          * Bootstrap the AIPS admin interface.
@@ -610,18 +617,12 @@
             var $btn = $(this);
             var $form = $('#aips-template-form');
 
-            // Cross-step validation: Check if required fields across all steps are filled
-            if (!$('#template_name').val().trim()) {
-                AIPS.Utilities.showToast(aipsAdminL10n.templateNameRequired, 'warning');
-                AIPS.wizardGoToStep(1);
-                $('#template_name').focus();
-                return;
-            }
-
-            if (!$('#prompt_template').val().trim()) {
-                AIPS.Utilities.showToast(aipsAdminL10n.contentPromptRequired, 'warning');
-                AIPS.wizardGoToStep(3);
-                $('#prompt_template').focus();
+            // Cross-step validation: navigate to the first step with an unfilled required field.
+            var invalid = AIPS.getFirstInvalidStep();
+            if (invalid) {
+                AIPS.Utilities.showToast(invalid.message, 'warning');
+                AIPS.wizardGoToStep(invalid.step);
+                $(invalid.selector).focus();
                 return;
             }
 
@@ -688,9 +689,10 @@
             var $btn = $(this);
             
             // Validate at least name is provided
-            if (!$('#template_name').val().trim()) {
-                AIPS.Utilities.showToast(aipsAdminL10n.templateNameRequired, 'warning');
-                $('#template_name').focus();
+            var nameRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 1; })[0];
+            if (nameRule && !$(nameRule.selector).val().trim()) {
+                AIPS.Utilities.showToast(aipsAdminL10n[nameRule.messageKey], 'warning');
+                $(nameRule.selector).focus();
                 AIPS.wizardGoToStep(1);
                 return;
             }
@@ -752,9 +754,10 @@
             e.preventDefault();
             
             // Validate at least prompt is there
-            if (!$('#prompt_template').val().trim()) {
-                AIPS.Utilities.showToast(aipsAdminL10n.contentPromptRequired || 'Please enter a content prompt first.', 'warning');
-                $('#prompt_template').focus();
+            var promptRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 3; })[0];
+            if (promptRule && !$(promptRule.selector).val().trim()) {
+                AIPS.Utilities.showToast(aipsAdminL10n[promptRule.messageKey], 'warning');
+                $(promptRule.selector).focus();
                 return;
             }
 
@@ -3208,10 +3211,10 @@
          *
          * Hides all `.aips-wizard-step-content` panels and shows the one
          * matching `step`. Updates the progress indicator (marking earlier steps
-         * as completed), toggles the Back/Next/Save buttons, and stores the
-         * current step in `AIPS.currentWizardStep`. Calls `updateWizardSummary`
-         * when advancing to the final step. Also toggles the 'Save Template'
-         * button styling between primary and secondary depending on the current step.
+         * as completed), toggles Back/Next button visibility, and updates the
+         * Save button style (primary on the final step, secondary on all
+         * others). Stores the current step in `AIPS.currentWizardStep`. Calls
+         * `updateWizardSummary` when advancing to the final step.
          *
          * @param {number} step - 1-based step index to navigate to (1–5).
          */
@@ -3295,52 +3298,45 @@
         },
 
         /**
+         * Return the first wizard step that contains an unfilled required field,
+         * or `null` if all required fields are valid.
+         *
+         * Iterates `WIZARD_REQUIRED_FIELDS` in declaration order. Used by both
+         * `validateWizardStep` (per-step Next-click validation) and
+         * `saveTemplate` (full pre-save validation across all steps).
+         *
+         * @return {{ step: number, selector: string, message: string }|null}
+         */
+        getFirstInvalidStep: function() {
+            for (var i = 0; i < WIZARD_REQUIRED_FIELDS.length; i++) {
+                var rule = WIZARD_REQUIRED_FIELDS[i];
+                if (!$(rule.selector).val().trim()) {
+                    return { step: rule.step, selector: rule.selector, message: aipsAdminL10n[rule.messageKey] };
+                }
+            }
+            return null;
+        },
+
+        /**
          * Validate the required fields for a given wizard step.
          *
-         * Step 1 requires a template name; step 3 requires a content prompt.
-         * Steps 2, 4, and 5 have no required fields. Shows an error toast and
-         * focuses the first invalid field when validation fails.
+         * Required fields are defined centrally in `WIZARD_REQUIRED_FIELDS`.
+         * Steps with no required fields always pass. Shows an error toast and
+         * focuses the invalid field when validation fails.
          *
          * @param  {number}  step - The 1-based wizard step number to validate.
          * @return {boolean} `true` if validation passes, `false` otherwise.
          */
         validateWizardStep: function(step) {
-            var isValid = true;
-            var errorMessage = '';
-            
-            switch(step) {
-                case 1:
-                    // Validate name (required)
-                    if (!$('#template_name').val().trim()) {
-                        errorMessage = aipsAdminL10n.templateNameRequired;
-                        isValid = false;
-                        $('#template_name').focus();
-                    }
-                    break;
-                case 2:
-                    // Title prompt is optional, so no validation needed
-                    break;
-                case 3:
-                    // Validate content prompt (required)
-                    if (!$('#prompt_template').val().trim()) {
-                        errorMessage = aipsAdminL10n.contentPromptRequired;
-                        isValid = false;
-                        $('#prompt_template').focus();
-                    }
-                    break;
-                case 4:
-                    // Featured image settings are optional
-                    break;
-                case 5:
-                    // Final step, just display summary
-                    break;
+            for (var i = 0; i < WIZARD_REQUIRED_FIELDS.length; i++) {
+                var rule = WIZARD_REQUIRED_FIELDS[i];
+                if (rule.step === step && !$(rule.selector).val().trim()) {
+                    AIPS.Utilities.showToast(aipsAdminL10n[rule.messageKey], 'error');
+                    $(rule.selector).focus();
+                    return false;
+                }
             }
-            
-            if (!isValid && errorMessage) {
-                AIPS.Utilities.showToast(errorMessage, 'error');
-            }
-            
-            return isValid;
+            return true;
         },
 
         /**
