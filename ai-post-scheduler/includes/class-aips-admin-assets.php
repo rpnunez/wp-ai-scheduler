@@ -52,7 +52,14 @@ class AIPS_Admin_Assets {
         );
 
         wp_localize_script('aips-utilities-script', 'aipsUtilitiesL10n', array(
-            'closeLabel' => __('Close notification', 'ai-post-scheduler'),
+            'closeLabel'               => __('Close notification', 'ai-post-scheduler'),
+            // Progress-bar modal strings (used by AIPS.Utilities.showProgressBar on every admin page)
+            'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
+            'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
+            'seconds'                  => __('seconds', 'ai-post-scheduler'),
+            'minute'                   => __('1 minute', 'ai-post-scheduler'),
+            'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
+            'minutesSeconds'           => __('%dm %ds', 'ai-post-scheduler'),
         ));
 
         wp_enqueue_script(
@@ -201,12 +208,23 @@ class AIPS_Admin_Assets {
 				'topicRejected' => __('Topic rejected.', 'ai-post-scheduler'),
 				'approveWithFeedback' => __('Approve with Feedback', 'ai-post-scheduler'),
 				'rejectWithFeedback' => __('Reject with Feedback', 'ai-post-scheduler'),
+				// Bulk generate
+				'generateNow' => __('Generate Now', 'ai-post-scheduler'),
+				'confirmBulkGenerate' => __('Are you sure you want to generate posts for %d topics?', 'ai-post-scheduler'),
+				'noFeedbackSelected' => __('Please select at least one feedback item.', 'ai-post-scheduler'),
+				'errorBulkAction' => __('Error executing bulk action.', 'ai-post-scheduler'),
+				// Progress bar modal strings (page-specific content; time-display strings are in aipsUtilitiesL10n)
+				'generatingPostsTitle' => __('Generating Posts', 'ai-post-scheduler'),
+				'generatingPostsMessage' => __('Please wait while your posts are being generated. This may take a few minutes.', 'ai-post-scheduler'),
+				'generationCompletePartial' => __('%d post(s) generated, %d failed.', 'ai-post-scheduler'),
 			));
 
 			// Pass page-context data (not i18n) in a separate object so it stays
 			// semantically distinct from the translation strings above.
+			$deep_link_author_id = ( strpos( $hook, 'aips-authors' ) !== false && strpos( $hook, 'aips-author-topics' ) === false ) ? absint( filter_input( INPUT_GET, 'author_id', FILTER_VALIDATE_INT ) ) : 0;
 			wp_localize_script('aips-authors-script', 'aipsAuthorContext', array(
-				'authorId' => $page_author_id,
+				'authorId'        => $page_author_id,
+				'deepLinkAuthorId' => $deep_link_author_id,
 			));
 		}
 

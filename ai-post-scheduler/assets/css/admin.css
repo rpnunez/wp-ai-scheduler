@@ -999,10 +999,78 @@
     border-bottom: 1px solid #f0f0f1;
 }
 
+/* Author-Topics-style stat cards (flat, centered, colored values) */
+.aips-topics-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.aips-topics-stats .aips-stat-card {
+    flex: 1;
+    min-width: 120px;
+    padding: 16px 20px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.aips-topics-stats .aips-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    color: #1d2327;
+}
+
+.aips-topics-stats .aips-stat-label {
+    font-size: 12px;
+    color: #50575e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+.aips-topics-stats .aips-stat-card.aips-stat-info .aips-stat-value {
+    color: #2271b1;
+}
+
+.aips-topics-stats .aips-stat-card.aips-stat-success .aips-stat-value {
+    color: #00a32a;
+}
+
+.aips-topics-stats .aips-stat-card.aips-stat-warning .aips-stat-value {
+    color: #dba617;
+}
+
+.aips-topics-stats .aips-stat-card.aips-stat-muted .aips-stat-value {
+    color: #50575e;
+}
+
 .aips-no-data {
     color: #646970;
     text-align: center;
     padding: 20px;
+}
+
+/* Inline checkbox label within filter bars */
+.aips-filter-label-inline {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #50575e;
+}
+
+/* Form that participates in flex layout without introducing a block */
+.aips-filter-form {
+    display: flex;
 }
 
 .aips-button-group {
@@ -2619,6 +2687,53 @@
     border-top: 1px solid var(--aips-gray-100);
 }
 
+/* ==========================================================================
+   Progress Bar Modal (AIPS.Utilities.showProgressBar)
+   ========================================================================== */
+
+.aips-progress-overlay {
+    /* Inherit the confirm-overlay backdrop – just prevent backdrop clicks from closing */
+    cursor: default;
+}
+
+.aips-progress-dialog {
+    max-width: 480px;
+    cursor: default;
+}
+
+.aips-progress-body {
+    padding-bottom: var(--aips-space-6);
+}
+
+.aips-progress-description {
+    margin-bottom: var(--aips-space-4);
+}
+
+.aips-progress-bar-wrap {
+    width: 100%;
+    height: 10px;
+    background: var(--aips-gray-100);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: var(--aips-space-3);
+}
+
+.aips-progress-bar-fill {
+    height: 100%;
+    background: var(--aips-primary);
+    border-radius: 9999px;
+    transition: width 0.5s ease-in-out;
+    width: 0%;
+}
+
+.aips-progress-status {
+    margin: 0;
+    font-size: var(--aips-text-sm);
+    color: var(--aips-gray-500);
+    text-align: center;
+    min-height: 1.4em;
+}
+
 /* Session Info Styles */
 .aips-session-info {
     margin-bottom: 20px;
@@ -2639,32 +2754,42 @@
 .aips-tab-nav {
     display: flex;
     gap: 10px;
-    margin: 0;
+    margin: 20px 0 0;
     padding: 0;
     list-style: none;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #ccd0d4;
 }
 
 .aips-tab-nav li {
     margin: 0;
 }
 
-.aips-tab-nav a {
+.aips-tab-nav a,
+.aips-tab-nav button {
     display: block;
-    padding: 10px 20px;
+    padding: 12px 20px;
     text-decoration: none;
-    color: #555;
+    font-size: 14px;
+    color: #50575e;
     border-bottom: 2px solid transparent;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    cursor: pointer;
     transition: all 0.2s ease;
 }
 
-.aips-tab-nav a:hover {
-    color: #0073aa;
+.aips-tab-nav a:hover,
+.aips-tab-nav button:hover {
+    color: #2271b1;
 }
 
-.aips-tab-nav a.active {
-    color: #0073aa;
-    border-bottom-color: #0073aa;
+.aips-tab-nav a.active,
+.aips-tab-nav button.active {
+    color: #2271b1;
+    border-bottom-color: #2271b1;
+    font-weight: 600;
 }
 
 .aips-tab-content {
@@ -2821,8 +2946,9 @@
         padding: 15px;
     }
     
-    .aips-tab-nav a {
-        padding: 8px 15px;
+    .aips-tab-nav a,
+    .aips-tab-nav button {
+        padding: 8px 12px;
         font-size: 13px;
     }
 }
@@ -3021,4 +3147,70 @@ font-size: 20px !important;
 width: 20px !important;
 height: 20px !important;
 margin-right: 8px;
+}
+
+
+/* ==========================================================================
+   Schedule History Timeline
+   ========================================================================== */
+
+.aips-history-timeline {
+    padding: 8px 0;
+}
+
+.aips-timeline-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--aips-border, #e2e8f0);
+    align-items: flex-start;
+}
+
+.aips-timeline-item:last-child {
+    border-bottom: none;
+}
+
+.aips-timeline-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--aips-surface, #f8fafc);
+    border: 1px solid var(--aips-border, #e2e8f0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.aips-timeline-icon .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+}
+
+.aips-timeline-created .aips-timeline-icon  { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+.aips-timeline-updated .aips-timeline-icon  { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+.aips-timeline-enabled .aips-timeline-icon  { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+.aips-timeline-disabled .aips-timeline-icon { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+.aips-timeline-executed .aips-timeline-icon { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }
+.aips-timeline-success .aips-timeline-icon  { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+.aips-timeline-draft .aips-timeline-icon    { background: #fef9c3; border-color: #fde68a; color: #92400e; }
+.aips-timeline-error .aips-timeline-icon    { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+
+.aips-timeline-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.aips-timeline-message {
+    margin: 0 0 2px;
+    font-size: 13px;
+    color: var(--aips-text, #1e293b);
+    word-break: break-word;
+}
+
+.aips-timeline-timestamp {
+    font-size: 11px;
+    color: var(--aips-text-muted, #94a3b8);
 }

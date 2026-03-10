@@ -177,13 +177,10 @@ final class AI_Post_Scheduler {
             // Authors feature controllers
             new AIPS_Authors_Controller();
             new AIPS_Author_Topics_Controller();
-            
-            // AI Edit controller (for component-level regeneration)
+
+            // AI Edit + Calendar controllers (AJAX endpoints)
             new AIPS_AI_Edit_Controller();
-
-            // Calendar controller
             new AIPS_Calendar_Controller();
-
             // Dev Tools
             if (get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();
@@ -195,6 +192,9 @@ final class AI_Post_Scheduler {
         new AIPS_Author_Topics_Scheduler();
         new AIPS_Author_Post_Generator();
         new AIPS_Post_Review_Notifications();
+
+        // Admin toolbar (visible on both admin and frontend for users with manage_options)
+        new AIPS_Admin_Bar();
     }
 }
 

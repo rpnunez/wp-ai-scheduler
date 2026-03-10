@@ -80,6 +80,7 @@ class AIPS_Author_Topics_Controller {
 		add_action('wp_ajax_aips_compute_topic_embeddings', array($this, 'ajax_compute_topic_embeddings'));
 		add_action('wp_ajax_aips_get_generation_queue', array($this, 'ajax_get_generation_queue'));
 		add_action('wp_ajax_aips_bulk_generate_from_queue', array($this, 'ajax_bulk_generate_from_queue'));
+		add_action('wp_ajax_aips_get_bulk_generate_estimate', array($this, 'ajax_get_bulk_generate_estimate'));
 	}
 	
 	/**
@@ -905,6 +906,61 @@ class AIPS_Author_Topics_Controller {
 		
 		wp_send_json_success(array(
 			'message' => sprintf(__('%d feedback item(s) deleted successfully.', 'ai-post-scheduler'), $success_count)
+		));
+	}
+
+	/**
+	 * AJAX handler that returns a per-post generation time estimate for the
+	 * bulk-generate progress bar.
+	 *
+	 * Reads up to 20 of the most recently stored `_aips_post_generation_total_time`
+	 * post meta values (written by AIPS_Author_Post_Generator::generate_now()) and
+	 * returns their average as `per_post_seconds`. Falls back to a conservative
+	 * default of 30 seconds when no historical data is available.
+	 */
+	public function ajax_get_bulk_generate_estimate() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		global $wpdb;
+
+		// Retrieve the most recent recorded generation times (up to 20 samples).
+		$times = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT meta_value FROM {$wpdb->postmeta}
+				 WHERE meta_key = %s
+				 ORDER BY meta_id DESC
+				 LIMIT 20",
+				'_aips_post_generation_total_time'
+			)
+		);
+
+		$default_seconds = 30;
+
+		if (!empty($times)) {
+			$numeric_times = array_filter(array_map('floatval', $times), function($v) {
+				return $v > 0;
+			});
+
+			if (!empty($numeric_times)) {
+				$avg = array_sum($numeric_times) / count($numeric_times);
+				$per_post_seconds = (int) ceil($avg);
+			} else {
+				$per_post_seconds = $default_seconds;
+			}
+
+			$sample_size = count($numeric_times);
+		} else {
+			$per_post_seconds = $default_seconds;
+			$sample_size      = 0;
+		}
+
+		wp_send_json_success(array(
+			'per_post_seconds' => $per_post_seconds,
+			'sample_size'      => $sample_size,
 		));
 	}
 }

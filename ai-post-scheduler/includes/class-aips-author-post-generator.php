@@ -292,6 +292,11 @@ class AIPS_Author_Post_Generator {
 	/**
 	 * Manually trigger post generation for a specific topic (e.g., from admin UI).
 	 *
+	 * Records the total wall-clock time for the generation attempt (including any
+	 * AI retries and resilience delays) as `_aips_post_generation_total_time` post
+	 * meta so that the bulk-generation progress bar can build increasingly accurate
+	 * time estimates over time.
+	 *
 	 * @param int $topic_id Topic ID.
 	 * @return int|WP_Error Post ID on success, WP_Error on failure.
 	 */
@@ -308,8 +313,20 @@ class AIPS_Author_Post_Generator {
 			return new WP_Error('invalid_author', 'Author not found');
 		}
 		
+		// Track wall-clock start time so we can record the total generation
+		// duration (including resilience/retry delays) for future estimates.
+		$start_time = microtime(true);
+		
 		// Manual generation
-		return $this->generate_post_from_topic($topic, $author, 'manual');
+		$result = $this->generate_post_from_topic($topic, $author, 'manual');
+		
+		// Store elapsed time in post meta for future progress-bar estimation.
+		if (!is_wp_error($result) && $result > 0) {
+			$elapsed = round(microtime(true) - $start_time, 2);
+			update_post_meta($result, '_aips_post_generation_total_time', $elapsed);
+		}
+		
+		return $result;
 	}
 	
 	/**

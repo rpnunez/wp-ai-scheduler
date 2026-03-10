@@ -45,11 +45,6 @@ class AIPS_Authors_Controller {
 	private $topics_scheduler;
 	
 	/**
-	 * @var AIPS_Interval_Calculator Calculator for scheduling intervals
-	 */
-	private $interval_calculator;
-	
-	/**
 	 * Initialize the controller.
 	 */
 	public function __construct() {
@@ -58,7 +53,6 @@ class AIPS_Authors_Controller {
 		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository = new AIPS_Feedback_Repository();
 		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
-		$this->interval_calculator = new AIPS_Interval_Calculator();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));
@@ -113,10 +107,11 @@ class AIPS_Authors_Controller {
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		
-		// Calculate initial run times if creating new author
+		// Set initial run times to now so first execution is not skipped
 		if (!$author_id) {
-			$data['topic_generation_next_run'] = $this->interval_calculator->calculate_next_run($data['topic_generation_frequency']);
-			$data['post_generation_next_run'] = $this->interval_calculator->calculate_next_run($data['post_generation_frequency']);
+			$now = current_time('mysql');
+			$data['topic_generation_next_run'] = $now;
+			$data['post_generation_next_run'] = $now;
 		}
 		
 		// Save or update
@@ -301,11 +296,17 @@ class AIPS_Authors_Controller {
 		}
 		
 		$result = $this->topics_scheduler->generate_now($author_id);
-		
+
 		if (is_wp_error($result)) {
 			wp_send_json_error(array('message' => $result->get_error_message()));
 		}
-		
+
+		// Create admin bar notification for manual topic generation
+		$author = $this->repository->get_by_id($author_id);
+		if ($author && is_array($result)) {
+			AIPS_Admin_Bar::notify_author_topics_generated($author->name, count($result), $author_id);
+		}
+
 		wp_send_json_success(array(
 			'message' => __('Topics generated successfully.', 'ai-post-scheduler'),
 			'topics' => $result

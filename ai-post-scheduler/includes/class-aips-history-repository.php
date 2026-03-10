@@ -359,6 +359,35 @@ class AIPS_History_Repository {
     }
 
     /**
+     * Get all log entries for a specific history record, ordered by timestamp ascending.
+     *
+     * @param int   $history_id      The history record ID.
+     * @param array $type_filter     Optional array of AIPS_History_Type constants to filter by.
+     * @return array Array of log entry objects.
+     */
+    public function get_logs_by_history_id($history_id, $type_filter = array()) {
+        if (!empty($type_filter)) {
+            $placeholders = implode(', ', array_fill(0, count($type_filter), '%d'));
+            $args = array_merge(array($history_id), $type_filter);
+            return $this->wpdb->get_results(
+                $this->wpdb->prepare(
+                    "SELECT * FROM {$this->table_name_log}
+                     WHERE history_id = %d AND history_type_id IN ($placeholders)
+                     ORDER BY timestamp ASC",
+                    $args
+                )
+            );
+        }
+
+        return $this->wpdb->get_results(
+            $this->wpdb->prepare(
+                "SELECT * FROM {$this->table_name_log} WHERE history_id = %d ORDER BY timestamp ASC",
+                $history_id
+            )
+        );
+    }
+
+    /**
      * Create a new history entry.
      *
      * @param array $data {

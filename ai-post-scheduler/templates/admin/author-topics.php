@@ -15,6 +15,7 @@ if (!defined('ABSPATH')) {
 
 $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 $authors_page_url = admin_url('admin.php?page=aips-authors');
+$author_page_url = add_query_arg( array( 'page' => 'aips-authors', 'author_id' => $author_id ), admin_url( 'admin.php' ) );
 
 if (!$author_id) {
 	?>
@@ -81,14 +82,18 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 					</p>
 				</div>
 				<div class="aips-page-actions">
-					<a href="<?php echo esc_url($authors_page_url); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-arrow-left-alt"></span>
-						<?php esc_html_e('Back to Authors', 'ai-post-scheduler'); ?>
+					<a href="<?php echo $author_page_url; ?>" class="aips-btn aips-btn-secondary">
+						<span class="dashicons dashicons-edit"></span>
+						<?php esc_html_e('Edit Author', 'ai-post-scheduler'); ?>
 					</a>
 					<button class="aips-btn aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
 					</button>
+					<a href="<?php echo esc_url( add_query_arg( array( 'page' => 'aips-generated-posts', 'author_id' => absint( $author->id ) ), admin_url( 'admin.php' ) ) ); ?>" class="aips-btn aips-btn-secondary">
+						<span class="dashicons dashicons-admin-post"></span>
+						<?php esc_html_e('View Generated Posts', 'ai-post-scheduler'); ?>
+					</a>
 				</div>
 			</div>
 		</div>
@@ -147,7 +152,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 						<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
 						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 					</select>
-					<button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+					<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
@@ -166,7 +171,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 							<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
 							<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 						</select>
-						<button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+						<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
 					</div>
 				</div>
 			</div>

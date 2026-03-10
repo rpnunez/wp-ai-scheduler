@@ -14,7 +14,6 @@ class AIPS_Templates_Controller {
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
         add_action('wp_ajax_aips_get_template', array($this, 'ajax_get_template'));
         add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
-        add_action('wp_ajax_aips_get_template_posts', array($this, 'ajax_get_template_posts'));
         add_action('wp_ajax_aips_clone_template', array($this, 'ajax_clone_template'));
         add_action('wp_ajax_aips_preview_template_prompts', array($this, 'ajax_preview_template_prompts'));
     }
@@ -26,6 +25,8 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $generate_featured_image = isset($_POST['generate_featured_image']) ? $_POST['generate_featured_image'] : 0;
+
         $data = array(
             'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
             'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '',
@@ -35,7 +36,7 @@ class AIPS_Templates_Controller {
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
             'post_quantity' => isset($_POST['post_quantity']) ? absint($_POST['post_quantity']) : 1,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
-            'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
+            'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field($_POST['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field($_POST['featured_image_media_ids']) : '',
@@ -165,6 +166,8 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $generate_featured_image = isset($_POST['generate_featured_image']) ? $_POST['generate_featured_image'] : 0;
+
         // Collect template data from POST
         $data = array(
             'id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
@@ -176,7 +179,7 @@ class AIPS_Templates_Controller {
             'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
             'post_quantity' => 1,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
-            'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
+            'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
             'featured_image_unsplash_keywords' => isset($_POST['featured_image_unsplash_keywords']) ? sanitize_textarea_field($_POST['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => isset($_POST['featured_image_media_ids']) ? sanitize_text_field($_POST['featured_image_media_ids']) : '',
@@ -216,93 +219,6 @@ class AIPS_Templates_Controller {
         ));
     }
 
-    public function ajax_get_template_posts() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
-
-        $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-        $page = isset($_POST['page']) ? absint($_POST['page']) : 1;
-
-        if (!$template_id) {
-            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
-        }
-
-        $history = new AIPS_History();
-        $data = $history->get_history(array(
-            'template_id' => $template_id,
-            'page' => $page,
-            'per_page' => 10,
-            'status' => 'completed'
-        ));
-
-        ob_start();
-        if (!empty($data['items'])): ?>
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
-                        <th><?php esc_html_e('Date', 'ai-post-scheduler'); ?></th>
-                        <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($data['items'] as $item): ?>
-                    <tr>
-                        <td>
-                            <?php if ($item->post_id): ?>
-                                <a href="<?php echo esc_url(get_permalink($item->post_id)); ?>" target="_blank">
-                                    <?php echo esc_html($item->generated_title); ?>
-                                </a>
-                            <?php else: ?>
-                                <?php echo esc_html($item->generated_title); ?>
-                            <?php endif; ?>
-                        </td>
-                        <td><?php echo esc_html($item->created_at); ?></td>
-                        <td>
-                            <a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" class="button button-small" target="_blank">
-                                <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
-                            </a>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-
-            <?php if ($data['pages'] > 1): ?>
-            <div class="aips-pagination" style="margin-top: 10px; text-align: right;">
-                <?php
-                $current = $data['current_page'];
-                $total = $data['pages'];
-
-                if ($current > 1) {
-                    echo '<button type="button" class="button aips-modal-page" data-page="' . ($current - 1) . '">&laquo; ' . esc_html__('Prev', 'ai-post-scheduler') . '</button> ';
-                }
-
-                printf(
-                    '<span class="paging-input">%s %d %s %d</span> ',
-                    esc_html__('Page', 'ai-post-scheduler'),
-                    $current,
-                    esc_html__('of', 'ai-post-scheduler'),
-                    $total
-                );
-
-                if ($current < $total) {
-                    echo '<button type="button" class="button aips-modal-page" data-page="' . ($current + 1) . '">' . esc_html__('Next', 'ai-post-scheduler') . ' &raquo;</button>';
-                }
-                ?>
-            </div>
-            <?php endif; ?>
-        <?php else: ?>
-            <p><?php esc_html_e('No posts generated yet.', 'ai-post-scheduler'); ?></p>
-        <?php endif;
-        $html = ob_get_clean();
-
-        wp_send_json_success(array('html' => $html));
-    }
-
     /**
      * Preview the prompts that will be generated for a template.
      *
@@ -320,6 +236,8 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
+        $generate_featured_image = isset($_POST['generate_featured_image']) ? $_POST['generate_featured_image'] : 0;
+
         // Collect template data from POST
         $template_data = (object) array(
             'prompt_template' => isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '',
@@ -327,7 +245,7 @@ class AIPS_Templates_Controller {
             'voice_id' => isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0,
             'article_structure_id' => isset($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : 0,
             'image_prompt' => isset($_POST['image_prompt']) ? wp_kses_post($_POST['image_prompt']) : '',
-            'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
+            'generate_featured_image' => $this->normalize_boolean_flag($generate_featured_image),
             'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
         );
 
@@ -345,5 +263,19 @@ class AIPS_Templates_Controller {
         $result = $prompt_builder->build_prompts($template_data, null, $voice);
 
         wp_send_json_success($result);
+    }
+
+    /**
+     * Normalize checkbox/radio-like values to an integer flag for persistence.
+     *
+     * @param mixed $value Raw request value.
+     * @return int 1 when enabled, 0 when disabled.
+     */
+    private function normalize_boolean_flag($value) {
+        if (is_array($value)) {
+            $value = reset($value);
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
     }
 }
