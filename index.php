@@ -20,7 +20,6 @@ header('Content-Type: text/html; charset=UTF-8');
             color: #1d2327;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 40px 20px;
         }
         .container {
             max-width: 900px;
