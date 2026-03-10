@@ -153,6 +153,15 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Workflows', 'ai-post-scheduler'),
+            __('Workflows', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-workflows',
+            array($this, 'render_workflows_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
             __('Settings', 'ai-post-scheduler'),
             'manage_options',
@@ -741,6 +750,15 @@ class AIPS_Settings {
     public function render_history_page() {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
+    }
+
+    /**
+     * Render the Workflows page.
+     *
+     * @return void
+     */
+    public function render_workflows_page() {
+        AIPS_Workflows::render_page();
     }
     
     /**

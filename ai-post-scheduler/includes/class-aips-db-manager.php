@@ -18,7 +18,8 @@ class AIPS_DB_Manager {
         'aips_author_topics',
         'aips_author_topic_logs',
         'aips_topic_feedback',
-        'aips_notifications'
+        'aips_notifications',
+        'aips_workflows'
     );
 
     public function __construct() {
@@ -64,6 +65,7 @@ class AIPS_DB_Manager {
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
         $table_notifications  = $tables['aips_notifications'];
+        $table_workflows      = $tables['aips_workflows'];
 
         $sql = array();
 
@@ -303,6 +305,20 @@ class AIPS_DB_Manager {
             KEY type (type),
             KEY is_read (is_read),
             KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_workflows (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text,
+            status varchar(50) NOT NULL DEFAULT 'generated',
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY status (status),
+            KEY is_active (is_active),
+            KEY updated_at (updated_at)
         ) $charset_collate;";
 
         return $sql;
