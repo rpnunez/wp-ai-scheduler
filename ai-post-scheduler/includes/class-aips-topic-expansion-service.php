@@ -31,6 +31,11 @@ class AIPS_Topic_Expansion_Service {
 	private $topics_repository;
 	
 	/**
+	 * @var AIPS_Authors_Repository Authors repository
+	 */
+	private $authors_repository;
+	
+	/**
 	 * @var AIPS_Logger Logger instance
 	 */
 	private $logger;
@@ -38,10 +43,11 @@ class AIPS_Topic_Expansion_Service {
 	/**
 	 * Initialize the topic expansion service.
 	 */
-	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null) {
+	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null, $authors_repository = null) {
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logger = $logger ?: new AIPS_Logger();
+		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
 	}
 	
 	/**
@@ -115,10 +121,13 @@ class AIPS_Topic_Expansion_Service {
 	/**
 	 * Find similar topics to a given topic.
 	 *
-	 * @param int $topic_id      The topic ID to find similar topics for.
-	 * @param int $author_id     Author ID to limit search to.
-	 * @param int $limit         Number of similar topics to return.
-	 * @param string $status     Optional. Filter by status (pending, approved, rejected).
+	 * Results are filtered by the `aips_topic_similarity_threshold` setting (default 0.8),
+	 * so the returned count may be less than `$limit` when few neighbors meet the threshold.
+	 *
+	 * @param int    $topic_id  The topic ID to find similar topics for.
+	 * @param int    $author_id Author ID to limit search to.
+	 * @param int    $limit     Maximum number of similar topics to return.
+	 * @param string $status    Optional. Filter by status (pending, approved, rejected).
 	 * @return array Array of similar topics with similarity scores.
 	 */
 	public function find_similar_topics($topic_id, $author_id, $limit = 5, $status = null) {
@@ -170,8 +179,14 @@ class AIPS_Topic_Expansion_Service {
 			}
 		}
 		
-		// Find nearest neighbors
-		return $this->embeddings_service->find_nearest_neighbors($target_embedding, $candidates, $limit);
+		// Find nearest neighbors and filter by configured similarity threshold
+		$raw_threshold = get_option('aips_topic_similarity_threshold', 0.8);
+		$threshold = is_numeric($raw_threshold) ? min(1.0, max(0.1, (float) $raw_threshold)) : 0.8;
+		$neighbors = $this->embeddings_service->find_nearest_neighbors($target_embedding, $candidates, $limit);
+
+		return array_values(array_filter($neighbors, function($neighbor) use ($threshold) {
+			return isset($neighbor['similarity']) && $neighbor['similarity'] >= $threshold;
+		}));
 	}
 	
 	/**
@@ -314,4 +329,32 @@ class AIPS_Topic_Expansion_Service {
 		
 		return $stats;
 	}
+
+	/**
+	 * Batch compute embeddings for all approved topics across all authors.
+	 *
+	 * @return array Statistics about the batch operation.
+	 */
+	public function batch_compute_all_approved_embeddings() {
+		$authors = $this->authors_repository->get_all();
+
+		$stats = array(
+			'total' => 0,
+			'success' => 0,
+			'failed' => 0,
+			'skipped' => 0
+		);
+
+		foreach ($authors as $author) {
+			$author_stats = $this->batch_compute_approved_embeddings((int) $author->id);
+			$stats['total'] += (int) $author_stats['total'];
+			$stats['success'] += (int) $author_stats['success'];
+			$stats['failed'] += (int) $author_stats['failed'];
+			$stats['skipped'] += (int) $author_stats['skipped'];
+		}
+
+		return $stats;
+	}
 }
+
+

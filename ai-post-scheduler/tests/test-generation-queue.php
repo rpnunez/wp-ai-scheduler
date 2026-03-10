@@ -81,10 +81,10 @@ class Test_Generation_Queue extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test queue returns topics ordered by reviewed_at (FIFO)
+	 * Test queue returns topics ordered by score (descending).
 	 */
-	public function test_queue_topics_ordered_by_reviewed_at() {
-		// Create a test author
+	public function test_queue_topics_ordered_by_score_desc() {
+		// Create a test author.
 		$author_id = $this->authors_repository->create(array(
 			'name' => 'Queue Test Author',
 			'field_niche' => 'Order Testing',
@@ -93,40 +93,37 @@ class Test_Generation_Queue extends WP_UnitTestCase {
 
 		$this->assertNotFalse($author_id, 'Failed to create test author');
 
-		// Create topics approved at different times
-		$first_topic_id = $this->topics_repository->create(array(
+		$low_score_topic_id = $this->topics_repository->create(array(
 			'author_id' => $author_id,
-			'topic_title' => 'First Approved',
+			'topic_title' => 'Lower Score Topic',
 			'status' => 'approved',
+			'score' => 40,
 			'reviewed_at' => date('Y-m-d H:i:s', strtotime('-2 hours')),
 		));
 
-		$second_topic_id = $this->topics_repository->create(array(
+		$high_score_topic_id = $this->topics_repository->create(array(
 			'author_id' => $author_id,
-			'topic_title' => 'Second Approved',
+			'topic_title' => 'Higher Score Topic',
 			'status' => 'approved',
+			'score' => 90,
 			'reviewed_at' => date('Y-m-d H:i:s', strtotime('-1 hour')),
 		));
 
-		// Get queue topics
 		$queue_topics = $this->topics_repository->get_all_approved_for_queue();
 
-		// Find positions of our test topics
-		$first_position = -1;
-		$second_position = -1;
-
+		$low_position = -1;
+		$high_position = -1;
 		foreach ($queue_topics as $index => $topic) {
-			if ($topic->id == $first_topic_id) {
-				$first_position = $index;
+			if ($topic->id == $low_score_topic_id) {
+				$low_position = $index;
 			}
-			if ($topic->id == $second_topic_id) {
-				$second_position = $index;
+			if ($topic->id == $high_score_topic_id) {
+				$high_position = $index;
 			}
 		}
 
-		// Verify first topic comes before second topic
-		$this->assertNotEquals(-1, $first_position, 'First topic should be in queue');
-		$this->assertNotEquals(-1, $second_position, 'Second topic should be in queue');
-		$this->assertLessThan($second_position, $first_position, 'First approved topic should come before second in FIFO order');
+		$this->assertNotEquals(-1, $low_position, 'Lower score topic should be in queue');
+		$this->assertNotEquals(-1, $high_position, 'Higher score topic should be in queue');
+		$this->assertLessThan($low_position, $high_position, 'Higher score topic should be prioritized ahead of lower score topic');
 	}
 }

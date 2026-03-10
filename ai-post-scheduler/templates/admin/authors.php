@@ -18,6 +18,10 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     if (!empty($authors)) {
         $topics_repository = new AIPS_Author_Topics_Repository();
         $logs_repository = new AIPS_Author_Topic_Logs_Repository();
+        // Bulk-fetch feedback stats and policy flags to avoid N+1 queries.
+        $feedback_repository = new AIPS_Feedback_Repository();
+        $author_ids = array_map(function($a) { return $a->id; }, $authors);
+        $all_feedback_stats = $feedback_repository->get_statistics_bulk($author_ids);
     }
 
     // Load article structures for the dropdown
@@ -89,6 +93,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                 <th><?php esc_html_e('Field/Niche', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Topics', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></th>
+                                <th><?php esc_html_e('Quality', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
                                 <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
                             </tr>
@@ -98,6 +103,43 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                 $status_counts = $topics_repository->get_status_counts($author->id);
                                 $total_topics = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
                                 $posts_count = $logs_repository->count_generated_posts_by_author($author->id);
+                                // Read policy flags directly from already-loaded author details (no extra DB query).
+                                $author_details = !empty($author->details) ? json_decode($author->details, true) : array();
+                                $policy_flags = (is_array($author_details) && isset($author_details['policy_flags']) && is_array($author_details['policy_flags'])) ? $author_details['policy_flags'] : array();
+                                $policy_flags_count = count($policy_flags);
+                                // Quality indicator data — use pre-fetched bulk stats.
+                                $feedback_stats = isset($all_feedback_stats[$author->id]) ? $all_feedback_stats[$author->id] : array('total' => 0, 'approved' => 0, 'rejected' => 0);
+                                $feedback_total = (int) $feedback_stats['total'];
+                                $feedback_approved = (int) $feedback_stats['approved'];
+                                $approval_rate = $feedback_total > 0 ? round(($feedback_approved / $feedback_total) * 100) : null;
+                                // Determine quality state: Green = healthy, Yellow = warning, Red = critical
+                                if ($policy_flags_count >= 3) {
+                                    $quality_state = 'critical';
+                                } elseif ($policy_flags_count >= 1 || ($approval_rate !== null && $approval_rate < 50)) {
+                                    $quality_state = 'warning';
+                                } else {
+                                    $quality_state = 'healthy';
+                                }
+                                // Tooltip text
+                                if ($approval_rate !== null) {
+                                    $tooltip_rate = sprintf(__('%d%% Approval Rate', 'ai-post-scheduler'), $approval_rate);
+                                } else {
+                                    $tooltip_rate = __('No feedback yet', 'ai-post-scheduler');
+                                }
+                                if ($policy_flags_count > 0) {
+                                    $tooltip_flags = sprintf(
+                                        _n(
+                                            '%d Policy Violation',
+                                            '%d Policy Violations',
+                                            $policy_flags_count,
+                                            'ai-post-scheduler'
+                                        ),
+                                        $policy_flags_count
+                                    );
+                                } else {
+                                    $tooltip_flags = __('No Policy Violations', 'ai-post-scheduler');
+                                }
+                                $quality_tooltip = $tooltip_rate . ' · ' . $tooltip_flags;
                             ?>
                                 <tr data-author-id="<?php echo esc_attr($author->id); ?>">
                                     <td class="column-name">
@@ -122,6 +164,28 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                     <td>
                                         <strong style="font-size: 14px;"><?php echo esc_html($posts_count); ?></strong>
                                     </td>
+                                    <td class="column-quality">
+                                        <?php
+                                        if ($quality_state === 'critical') {
+                                            $indicator_icon = 'dashicons-dismiss';
+                                            $indicator_label = __('Critical', 'ai-post-scheduler');
+                                        } elseif ($quality_state === 'warning') {
+                                            $indicator_icon = 'dashicons-warning';
+                                            $indicator_label = __('Warning', 'ai-post-scheduler');
+                                        } else {
+                                            $indicator_icon = 'dashicons-heart';
+                                            $indicator_label = __('Healthy', 'ai-post-scheduler');
+                                        }
+                                        ?>
+                                        <span
+                                            class="aips-quality-indicator aips-quality-<?php echo esc_attr($quality_state); ?>"
+                                            title="<?php echo esc_attr($quality_tooltip); ?>"
+                                            aria-label="<?php echo esc_attr($quality_tooltip); ?>"
+                                        >
+                                            <span class="dashicons <?php echo esc_attr($indicator_icon); ?>"></span>
+                                            <?php echo esc_html($indicator_label); ?>
+                                        </span>
+                                    </td>
                                     <td>
                                         <?php if ($author->is_active): ?>
                                         <span class="aips-badge aips-badge-success">
@@ -133,6 +197,19 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                             <span class="dashicons dashicons-minus"></span>
                                             <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
                                         </span>
+                                        <?php endif; ?>
+                                        <?php if ($policy_flags_count >= 3): ?>
+                                        <div style="margin-top: 6px;">
+                                            <span class="aips-badge aips-badge-warning">
+                                                <span class="dashicons dashicons-warning"></span>
+                                                <?php
+                                                printf(
+                                                    esc_html__('Policy flags: %d', 'ai-post-scheduler'),
+                                                    (int) $policy_flags_count
+                                                );
+                                                ?>
+                                            </span>
+                                        </div>
                                         <?php endif; ?>
                                     </td>
                                     <td>
@@ -199,7 +276,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
             <div class="aips-content-panel">
                 <div class="aips-panel-body">
                     <p class="description" style="margin-bottom: 20px;">
-                        <?php esc_html_e('This queue shows all approved topics across all authors, ready for post generation. Topics are processed in the order they were approved.', 'ai-post-scheduler'); ?>
+                        <?php esc_html_e('This queue shows all approved topics across all authors, ready for post generation. Topics are prioritized by score (highest first), then by approval date.', 'ai-post-scheduler'); ?>
                     </p>
                     
                     <!-- Bulk Actions -->
@@ -332,76 +409,9 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     </div>
 </div>
 
-<!-- Topics View Modal -->
-<div id="aips-topics-modal" class="aips-modal" style="display: none;">
-    <div class="aips-modal-content aips-modal-large">
-        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-        <h2 id="aips-topics-modal-title"><?php esc_html_e('Author Topics', 'ai-post-scheduler'); ?></h2>
 
-        		<div class="aips-topics-tabs">
-                    <button class="aips-tab-link active" data-tab="pending"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?> (<span id="pending-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="approved"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?> (<span id="approved-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="rejected"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?> (<span id="rejected-count">0</span>)</button>
-                    <button class="aips-tab-link" data-tab="feedback"><?php esc_html_e('Feedback', 'ai-post-scheduler'); ?></button>
-                </div>
-        
-                <div class="aips-topics-list-container">
-                    <div class="aips-bulk-actions">
-                        <select class="aips-bulk-action-select">
-                            <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-                            <option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
-                            <option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
-                            <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-                        </select>
-                        <button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
-                    </div>
-        
-                    <div id="aips-topics-content">
-                        <p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
-                    </div>
-        
-                    <div class="aips-bulk-actions">
-                        <select class="aips-bulk-action-select">
-                            <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-                            <option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
-                            <option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
-                            <option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-                        </select>
-                        <button class="button aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-<!-- Feedback Modal -->
-<div id="aips-feedback-modal" class="aips-modal" style="display: none;">
-    <div class="aips-modal-content">
-        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-        <h2 id="aips-feedback-modal-title"><?php esc_html_e('Provide Feedback', 'ai-post-scheduler'); ?></h2>
-        <form id="aips-feedback-form">
-            <input type="hidden" id="feedback_topic_id" name="topic_id" value="">
-            <input type="hidden" id="feedback_action" name="action_type" value="">
 
-            <div class="form-group">
-                <label for="feedback_reason"><?php esc_html_e('Reason (optional)', 'ai-post-scheduler'); ?></label>
-                <textarea id="feedback_reason" name="reason" rows="4" placeholder="<?php esc_attr_e('Why are you approving/rejecting this topic?', 'ai-post-scheduler'); ?>"></textarea>
-                <p class="description"><?php esc_html_e('Your feedback helps improve future topic generation', 'ai-post-scheduler'); ?></p>
-            </div>
 
-            <div class="form-actions">
-                <button type="submit" class="button button-primary" id="feedback-submit-btn"><?php esc_html_e('Submit', 'ai-post-scheduler'); ?></button>
-                <button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
-            </div>
-        </form>
-    </div>
-</div>
 
-<!-- Topic Posts Modal -->
-<div id="aips-topic-posts-modal" class="aips-modal" style="display: none;">
-    <div class="aips-modal-content aips-modal-large">
-        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-        <h2 id="aips-topic-posts-modal-title"><?php esc_html_e('Posts Generated from Topic', 'ai-post-scheduler'); ?></h2>
-        <div id="aips-topic-posts-content">
-            <p><?php esc_html_e('Loading posts...', 'ai-post-scheduler'); ?></p>
-        </div>
-    </div>
-</div>
+
+
