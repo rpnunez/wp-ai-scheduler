@@ -83,6 +83,8 @@ class AIPS_Post_Creator {
             return $post_id;
         }
 
+        $this->persist_generation_status_meta($post_id, $data);
+
         // Handle Tags
         if (!empty($post_tags)) {
             $tags = array_map('trim', explode(',', $post_tags));
@@ -246,5 +248,41 @@ class AIPS_Post_Creator {
         }
 
         return substr($clean_description, 0, 160);
+    }
+
+    /**
+     * Persist per-component generation status metadata on the post.
+     *
+     * @param int   $post_id Post ID.
+     * @param array $data    Creation payload.
+     * @return void
+     */
+    private function persist_generation_status_meta($post_id, $data) {
+        if (empty($post_id) || !is_array($data)) {
+            return;
+        }
+
+        $component_statuses = null;
+        if (isset($data['component_statuses']) && is_array($data['component_statuses'])) {
+            $component_statuses = array(
+                'post_title' => !empty($data['component_statuses']['post_title']),
+                'post_excerpt' => !empty($data['component_statuses']['post_excerpt']),
+                'featured_image' => !empty($data['component_statuses']['featured_image']),
+                'post_content' => !empty($data['component_statuses']['post_content']),
+            );
+
+            update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode($component_statuses));
+        }
+
+        $generation_incomplete = null;
+        if (isset($data['generation_incomplete'])) {
+            $generation_incomplete = (bool) $data['generation_incomplete'];
+        } elseif (is_array($component_statuses)) {
+            $generation_incomplete = in_array(false, $component_statuses, true);
+        }
+
+        if ($generation_incomplete !== null) {
+            update_post_meta($post_id, 'aips_post_generation_incomplete', $generation_incomplete ? 'true' : 'false');
+        }
     }
 }

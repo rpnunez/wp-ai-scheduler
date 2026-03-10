@@ -398,7 +398,7 @@ class AIPS_Generator {
      * @param array                   $options AI options.
      * @return string Short excerpt string (max 160 chars). Empty string on failure.
      */
-    private function generate_excerpt_from_context($title, $content, $context, $options = array()) {
+    private function generate_excerpt_from_context($title, $content, $context, $options = array(), &$generation_success = null) {
         // For template contexts with voice, pass voice object to prompt builder
         $voice_obj = null;
         if ($context->get_type() === 'template' && $context->get_voice_id()) {
@@ -417,10 +417,12 @@ class AIPS_Generator {
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
 
         if (is_wp_error($result)) {
+            $generation_success = false;
             // Return a safe empty excerpt when excerpt generation fails
             return '';
         }
 
+        $generation_success = true;
         $excerpt = trim($result);
         $excerpt = preg_replace('/^["\']|["\']$/', '', $excerpt);
 
@@ -533,6 +535,13 @@ class AIPS_Generator {
      * @return int|WP_Error ID of created post or WP_Error on failure.
      */
     private function generate_post_from_context($context) {
+        $component_statuses = array(
+            'post_title'     => false,
+            'post_excerpt'   => false,
+            'featured_image' => !$context->should_generate_featured_image(),
+            'post_content'   => false,
+        );
+
         // Dispatch post generation started event
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
 
@@ -593,19 +602,11 @@ class AIPS_Generator {
                 'component' => 'content',
                 'prompt' => $content_prompt,
             ));
-
-            $this->current_history->complete_failure($content->get_error_message(), array(
-                'component' => 'content',
-                'prompt' => $content_prompt,
-            ));
-
-            // Dispatch post generation failed event
-            do_action('aips_post_generation_failed', $context->get_id(), $content->get_error_message(), $context->get_topic());
-
-            return $content;
+            $content = '';
         }
 
         $content = $this->normalize_generated_content_for_wordpress($content);
+        $component_statuses['post_content'] = ($content !== '');
 
         // Resolve AI variables from the title prompt using the generated content
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
@@ -654,11 +655,18 @@ class AIPS_Generator {
             }
 
             $title = $base_title . ' - ' . date('Y-m-d H:i:s');
+            $component_statuses['post_title'] = false;
+        } else {
+            $component_statuses['post_title'] = true;
         }
 
         // Use actual generated content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
-        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context);
+        $excerpt_success = false;
+        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, array(), $excerpt_success);
+        $component_statuses['post_excerpt'] = (bool) $excerpt_success;
+
+        $generation_incomplete = in_array(false, $component_statuses, true);
 
         // Use Post Creator Service to save the generated post in WP
         $post_creation_data = array(
@@ -670,6 +678,8 @@ class AIPS_Generator {
             'focus_keyword' => $context->get_topic() ? $context->get_topic() : $title,
             'meta_description' => $excerpt,
             'seo_title' => $title,
+            'generation_incomplete' => $generation_incomplete,
+            'component_statuses' => $component_statuses,
         );
 
         // Allow integrations to hook before the post is created.
@@ -689,13 +699,21 @@ class AIPS_Generator {
         }
 
         // Handle featured image generation/selection.
-        $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title);
+        $featured_image_success = !$context->should_generate_featured_image();
+        $featured_image_id = $this->set_featured_image_from_context($context, $post_id, $title, $featured_image_success);
+        $component_statuses['featured_image'] = (bool) $featured_image_success;
+
+        $generation_incomplete = in_array(false, $component_statuses, true);
+        update_post_meta($post_id, 'aips_post_generation_incomplete', $generation_incomplete ? 'true' : 'false');
+        update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode($component_statuses));
 
         // Use new history API to complete with success
         $this->current_history->complete_success(array(
             'post_id' => $post_id,
             'generated_title' => $title,
             'generated_content' => $content,
+            'generation_incomplete' => $generation_incomplete,
+            'component_statuses' => $component_statuses,
         ));
 
         // Log activity
@@ -745,10 +763,11 @@ class AIPS_Generator {
      * @param string                  $title   Title of the generated post, used as image alt text/context.
      * @return int|null ID of the featured image attachment or null on failure/disabled.
      */
-    private function set_featured_image_from_context($context, $post_id, $title) {
+    private function set_featured_image_from_context($context, $post_id, $title, &$component_success = null) {
         $featured_image_id = null;
 
         if (!$context->should_generate_featured_image()) {
+            $component_success = true;
             return null;
         }
 
@@ -772,6 +791,7 @@ class AIPS_Generator {
                 $featured_image_id = $featured_image_result;
 
                 $this->post_creator->set_featured_image($post_id, $featured_image_id);
+                $component_success = true;
             }
         } elseif ($featured_image_source === 'media_library') {
             $media_ids = $context->get_media_library_ids();
@@ -781,6 +801,7 @@ class AIPS_Generator {
                 $this->post_creator->set_featured_image($post_id, $featured_image_result);
 
                 $featured_image_id = $featured_image_result;
+                $component_success = true;
             }
         } elseif ($context->get_image_prompt()) {
             $image_prompt = $context->get_image_prompt();
@@ -807,6 +828,7 @@ class AIPS_Generator {
                 $featured_image_id = $featured_image_result;
 
                 $this->post_creator->set_featured_image($post_id, $featured_image_id);
+                $component_success = true;
 
                 // Log successful featured image generation
                 if ($this->current_history) {
@@ -824,6 +846,7 @@ class AIPS_Generator {
         }
 
         if (is_wp_error($featured_image_result)) {
+            $component_success = false;
             $this->generation_logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
 
             // Log featured image generation error

@@ -112,6 +112,49 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
     }
 
     /**
+     * Ensure generation status metadata is stored for partial generations.
+     */
+    public function test_stores_partial_generation_meta_statuses() {
+        global $aips_test_meta;
+
+        $template = (object) array(
+            'post_status' => 'draft',
+            'post_author' => 1,
+            'post_tags' => '',
+        );
+
+        $creator = new AIPS_Post_Creator();
+
+        $post_id = $creator->create_post(array(
+            'title' => 'AI SEO Title',
+            'content' => 'Generated content body.',
+            'excerpt' => 'Generated excerpt body.',
+            'template' => $template,
+            'generation_incomplete' => true,
+            'component_statuses' => array(
+                'post_title' => true,
+                'post_excerpt' => true,
+                'featured_image' => false,
+                'post_content' => true,
+            ),
+        ));
+
+        $this->assertArrayHasKey($post_id, $aips_test_meta);
+        $this->assertSame('true', $aips_test_meta[$post_id]['aips_post_generation_incomplete']);
+
+        $decoded_statuses = json_decode($aips_test_meta[$post_id]['aips_post_generation_component_statuses'], true);
+        $this->assertSame(
+            array(
+                'post_title' => true,
+                'post_excerpt' => true,
+                'featured_image' => false,
+                'post_content' => true,
+            ),
+            $decoded_statuses
+        );
+    }
+
+    /**
      * Activate SEO plugins for tests that rely on plugin-specific meta fields.
      *
      * @return void
