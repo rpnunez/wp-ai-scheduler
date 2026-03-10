@@ -50,8 +50,6 @@
 			$(document).on('aips:tabSwitch', this.onTabSwitch.bind(this));
 
 			// Topic actions
-			$(document).on('click', '.aips-quick-approve-topic', this.quickApproveTopic.bind(this));
-			$(document).on('click', '.aips-quick-reject-topic', this.quickRejectTopic.bind(this));
 			$(document).on('click', '.aips-approve-topic', this.approveTopic.bind(this));
 			$(document).on('click', '.aips-reject-topic', this.rejectTopic.bind(this));
 			$(document).on('click', '.aips-delete-topic', this.deleteTopic.bind(this));
@@ -349,21 +347,60 @@
 
 			let html = '<table class="wp-list-table widefat fixed striped aips-topics-table"><thead><tr>';
 			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>';
-			html += '<th style="width:60%">' + aipsAuthorsL10n.topicTitle + '</th>';
+			html += '<th style="width:60%">' + (aipsAuthorsL10n.topicDetails || 'Topic Details') + '</th>';
 			html += '<th style="width:10%">' + aipsAuthorsL10n.generatedAt + '</th>';
 			html += '<th style="width:30%">' + aipsAuthorsL10n.actions + '</th>';
 			html += '</tr></thead><tbody>';
 
 			topics.forEach(topic => {
-				html += '<tr data-topic-id="' + topic.id + '" class="aips-topic-row">';
+				let detailContentHtml = '';
+				if (topic.topic_description) {
+					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.description || 'Description') + ':</strong> ' + this.escapeHtml(topic.topic_description) + '</div>';
+				}
+				if (topic.topic_rationale) {
+					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.rationale || 'Rationale') + ':</strong> ' + this.escapeHtml(topic.topic_rationale) + '</div>';
+				}
+				if (topic.reviewed_at && topic.reviewed_by) {
+					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + this.escapeHtml(String(topic.reviewed_at)) + ' by User ID ' + this.escapeHtml(String(topic.reviewed_by)) + '</div>';
+				}
+				if (topic.last_feedback) {
+					const feedbackAction = topic.last_feedback.action;
+					const feedbackLabel = feedbackAction === 'rejected'
+						? (aipsAuthorsL10n.reject || 'Rejected')
+						: (aipsAuthorsL10n.approve || 'Approved');
+					detailContentHtml += '<div class="aips-detail-section aips-detail-feedback">';
+					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.lastFeedback || 'Last Feedback') + ':</strong>';
+					detailContentHtml += ' <span class="aips-feedback-badge aips-feedback-badge-' + feedbackAction + '">' + this.escapeHtml(feedbackLabel) + '</span>';
+					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
+						detailContentHtml += ' <em>(' + this.escapeHtml(topic.last_feedback.reason_category) + ')</em>';
+					}
+					if (topic.last_feedback.reason) {
+						detailContentHtml += ' — ' + this.escapeHtml(topic.last_feedback.reason);
+					}
+					if (topic.last_feedback.created_at) {
+						detailContentHtml += ' <span class="aips-feedback-date">' + this.escapeHtml(String(topic.last_feedback.created_at)) + '</span>';
+					}
+					detailContentHtml += '</div>';
+				}
+				if (topic.potential_duplicate && topic.duplicate_match) {
+					detailContentHtml += '<div class="aips-detail-section aips-detail-duplicate">';
+					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate') + ':</strong>';
+					detailContentHtml += ' <em>' + this.escapeHtml(topic.duplicate_match) + '</em>';
+					detailContentHtml += '</div>';
+				}
+
+				const hasDetailContent = detailContentHtml !== '';
+
+				html += '<tr data-topic-id="' + topic.id + '">';
 				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
 				html += '<td class="topic-title-cell">';
+				html += '<div class="aips-topic-row">';
 
-				// Expand button only shown for reviewed topics (not on Pending Review tab)
-				if (status !== 'pending') {
+				// Expand button is only shown when detail content exists.
+				if (hasDetailContent) {
 					html += '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '">';
 					html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
-					html += '</button> ';
+					html += '</button>';
 				}
 
 				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
@@ -401,6 +438,11 @@
 				}
 				
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
+				html += '</div>';
+
+				if (hasDetailContent) {
+					html += '<div class="aips-topic-detail-content" id="aips-topic-details-' + topic.id + '" style="display:none;">' + detailContentHtml + '</div>';
+				}
 
 				html += '</td>';
 				html += '<td>' + topic.generated_at + '</td>';
@@ -408,10 +450,8 @@
 
 				// Actions based on status
 				if (status === 'pending') {
-					// Pending actions: quick actions, feedback actions, and edit
+					// Pending actions: feedback actions and edit
 					html += '<div class="aips-btn-group">';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-approve-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.quickApprove || 'Quick Approve') + '</button>';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-reject-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.quickReject || 'Quick Reject') + '</button>';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
 					html += '</div>';
 					html += '<div class="aips-btn-group" style="margin-top: 6px;">';
@@ -426,48 +466,6 @@
 				}
 
 				html += '</td></tr>';
-				
-				// Add collapsible detail row
-				html += '<tr class="aips-topic-detail-row" data-topic-id="' + topic.id + '" style="display:none;">';
-				html += '<td colspan="4" class="aips-topic-detail-cell">';
-				html += '<div class="aips-topic-detail-content">';
-				if (topic.topic_description) {
-					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.description || 'Description') + ':</strong> ' + this.escapeHtml(topic.topic_description) + '</div>';
-				}
-				if (topic.topic_rationale) {
-					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.rationale || 'Rationale') + ':</strong> ' + this.escapeHtml(topic.topic_rationale) + '</div>';
-				}
-				if (topic.reviewed_at && topic.reviewed_by) {
-					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + this.escapeHtml(String(topic.reviewed_at)) + ' by User ID ' + this.escapeHtml(String(topic.reviewed_by)) + '</div>';
-				}
-				// Last feedback full detail
-				if (topic.last_feedback) {
-					const fbAction = topic.last_feedback.action;
-					const fbLabel = fbAction === 'rejected'
-						? (aipsAuthorsL10n.reject || 'Rejected')
-						: (aipsAuthorsL10n.approve || 'Approved');
-					html += '<div class="aips-detail-section aips-detail-feedback">';
-					html += '<strong>' + this.escapeHtml(aipsAuthorsL10n.lastFeedback || 'Last Feedback') + ':</strong>';
-					html += ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '">' + this.escapeHtml(fbLabel) + '</span>';
-					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
-						html += ' <em>(' + this.escapeHtml(topic.last_feedback.reason_category) + ')</em>';
-					}
-					if (topic.last_feedback.reason) {
-						html += ' — ' + this.escapeHtml(topic.last_feedback.reason);
-					}
-					if (topic.last_feedback.created_at) {
-						html += ' <span class="aips-feedback-date">' + this.escapeHtml(String(topic.last_feedback.created_at)) + '</span>';
-					}
-					html += '</div>';
-				}
-				// Potential duplicate full detail
-				if (topic.potential_duplicate && topic.duplicate_match) {
-					html += '<div class="aips-detail-section aips-detail-duplicate">';
-					html += '<strong>' + this.escapeHtml(aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate') + ':</strong>';
-					html += ' <em>' + this.escapeHtml(topic.duplicate_match) + '</em>';
-					html += '</div>';
-				}
-				html += '</div></td></tr>';
 			});
 
 			html += '</tbody></table>';
@@ -621,9 +619,9 @@
 		},
 
 		/**
-		 * Toggle the collapsible detail row immediately below a topic row.
+		 * Toggle the collapsible detail block inside a topic row.
 		 *
-		 * Slides the adjacent `.aips-topic-detail-row` up or down and updates
+		 * Slides the inline `.aips-topic-detail-content` up or down and updates
 		 * the expand button's `aria-expanded` attribute and dashicon accordingly.
 		 *
 		 * @param {Event} e - Click event from an `.aips-topic-expand-btn` element.
@@ -631,8 +629,8 @@
 		toggleTopicDetail: function (e) {
 			e.preventDefault();
 			const $button = $(e.currentTarget);
-			const $row = $button.closest('tr');
-			const $detailRow = $row.next('.aips-topic-detail-row');
+			const topicId = $button.data('topic-id');
+			const $detailRow = $('#aips-topic-details-' + topicId);
 
 			// If no corresponding detail row is found, do nothing.
 			if (!$detailRow.length) {
@@ -694,98 +692,6 @@
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
 			$('#aips-feedback-modal').fadeIn();
-		},
-
-		/**
-		 * Approve a topic immediately without opening the feedback modal.
-		 *
-		 * Sends `aips_approve_topic` with `skip_feedback: true`. Disables all
-		 * buttons in the row while the request is in flight. On success, reloads
-		 * the pending topics list; on failure, re-enables the buttons.
-		 *
-		 * @param {Event} e - Click event from an `.aips-quick-approve-topic` element.
-		 */
-		quickApproveTopic: function (e) {
-			e.preventDefault();
-			const $btn = $(e.currentTarget);
-			const topicId = $btn.data('id');
-			const $row = $btn.closest('tr');
-			const $rowBtns = $row.find('button');
-
-			$rowBtns.prop('disabled', true);
-			$btn.text(aipsAuthorsL10n.processing || 'Processing...');
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_approve_topic',
-					nonce: aipsAuthorsL10n.nonce,
-					topic_id: topicId,
-					skip_feedback: true
-				},
-				success: (response) => {
-					if (response.success) {
-						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicApproved || 'Topic approved.', 'success');
-						this.loadTopics('pending');
-					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorApproving || 'Error approving topic.', 'error');
-						$rowBtns.prop('disabled', false);
-						$btn.text(aipsAuthorsL10n.quickApprove || 'Quick Approve');
-					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorApproving || 'Error approving topic.', 'error');
-					$rowBtns.prop('disabled', false);
-					$btn.text(aipsAuthorsL10n.quickApprove || 'Quick Approve');
-				}
-			});
-		},
-
-		/**
-		 * Reject a topic immediately without opening the feedback modal.
-		 *
-		 * Sends `aips_reject_topic` with `skip_feedback: true`. Disables all
-		 * buttons in the row while the request is in flight. On success, reloads
-		 * the pending topics list; on failure, re-enables the buttons.
-		 *
-		 * @param {Event} e - Click event from an `.aips-quick-reject-topic` element.
-		 */
-		quickRejectTopic: function (e) {
-			e.preventDefault();
-			const $btn = $(e.currentTarget);
-			const topicId = $btn.data('id');
-			const $row = $btn.closest('tr');
-			const $rowBtns = $row.find('button');
-
-			$rowBtns.prop('disabled', true);
-			$btn.text(aipsAuthorsL10n.processing || 'Processing...');
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_reject_topic',
-					nonce: aipsAuthorsL10n.nonce,
-					topic_id: topicId,
-					skip_feedback: true
-				},
-				success: (response) => {
-					if (response.success) {
-						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicRejected || 'Topic rejected.', 'success');
-						this.loadTopics('pending');
-					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
-						$rowBtns.prop('disabled', false);
-						$btn.text(aipsAuthorsL10n.quickReject || 'Quick Reject');
-					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
-					$rowBtns.prop('disabled', false);
-					$btn.text(aipsAuthorsL10n.quickReject || 'Quick Reject');
-				}
-			});
 		},
 
 		/**

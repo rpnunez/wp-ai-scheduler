@@ -146,12 +146,11 @@ class AIPS_Admin_Assets {
             'loadingTopics' => __('Loading topics...', 'ai-post-scheduler'),
             'noTopicsFound' => __('No topics found.', 'ai-post-scheduler'),
             'topicTitle' => __('Topic Title', 'ai-post-scheduler'),
+            'topicDetails' => __('Topic Details', 'ai-post-scheduler'),
             'generatedAt' => __('Date Topic Generated', 'ai-post-scheduler'),
             'actions' => __('Actions', 'ai-post-scheduler'),
             'approve' => __('Approve', 'ai-post-scheduler'),
             'reject' => __('Reject', 'ai-post-scheduler'),
-            'quickApprove' => __('Quick Approve', 'ai-post-scheduler'),
-            'quickReject' => __('Quick Reject', 'ai-post-scheduler'),
             'edit' => __('Edit', 'ai-post-scheduler'),
             'delete' => __('Delete', 'ai-post-scheduler'),
             'save' => __('Save', 'ai-post-scheduler'),
@@ -202,10 +201,8 @@ class AIPS_Admin_Assets {
             'logUser' => __('User', 'ai-post-scheduler'),
             'logDate' => __('Date', 'ai-post-scheduler'),
             'logDetails' => __('Details', 'ai-post-scheduler'),
-            // Quick action strings
+            // Action strings
             'processing' => __('Processing...', 'ai-post-scheduler'),
-            'topicApproved' => __('Topic approved.', 'ai-post-scheduler'),
-            'topicRejected' => __('Topic rejected.', 'ai-post-scheduler'),
             'approveWithFeedback' => __('Approve with Feedback', 'ai-post-scheduler'),
             'rejectWithFeedback' => __('Reject with Feedback', 'ai-post-scheduler'),
             // Bulk generate

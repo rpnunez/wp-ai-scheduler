@@ -340,17 +340,30 @@
 	height: 18px;
 }
 
-/* Topic Detail Row */
-.aips-topic-detail-row {
-	background-color: #f6f7f7;
+/* Keep topic rows clearly separated and consistently striped */
+.aips-topics-table tr:nth-child(odd) {
+	background-color: #fff !important;
 }
 
-.aips-topic-detail-cell {
-	padding: 15px 20px !important;
-	border-top: 1px solid #c3c4c7;
+.aips-topics-table tr:nth-child(even) {
+	background-color: #f6f7f7 !important;
+}
+
+.aips-topic-row {
+	display: block;
+}
+
+.topic-title-cell .aips-topic-row {
+	margin-bottom: 8px;
 }
 
 .aips-topic-detail-content {
+	display: none;
+	margin-top: 8px;
+	padding: 12px 14px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #fff;
 	line-height: 1.6;
 }
 
