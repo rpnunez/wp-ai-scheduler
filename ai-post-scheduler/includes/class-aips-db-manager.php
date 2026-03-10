@@ -78,6 +78,8 @@ class AIPS_DB_Manager {
             topic_id bigint(20) DEFAULT NULL,
             creation_method varchar(20) DEFAULT NULL,
             status varchar(50) NOT NULL DEFAULT 'pending',
+            workflow_id bigint(20) DEFAULT NULL,
+            workflow_status varchar(50) NOT NULL DEFAULT 'generated',
             prompt text,
             generated_title varchar(500),
             generated_content longtext,
@@ -92,6 +94,8 @@ class AIPS_DB_Manager {
             KEY author_id (author_id),
             KEY topic_id (topic_id),
             KEY status (status),
+            KEY workflow_status (workflow_status),
+            KEY workflow_id (workflow_id),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at)

@@ -65,6 +65,8 @@ class AIPS_Post_Review_Repository {
 			'page' => 1,
 			'search' => '',
 			'template_id' => 0,
+			'workflow_status' => '',
+			'workflow_id' => 0,
 			'orderby' => 'created_at',
 			'order' => 'DESC',
 		);
@@ -87,6 +89,16 @@ class AIPS_Post_Review_Repository {
 		if (!empty($args['template_id'])) {
 			$where_clauses[] = "h.template_id = %d";
 			$where_args[] = $args['template_id'];
+		}
+
+		if (!empty($args['workflow_status'])) {
+			$where_clauses[] = "h.workflow_status = %s";
+			$where_args[] = $args['workflow_status'];
+		}
+
+		if (!empty($args['workflow_id'])) {
+			$where_clauses[] = "h.workflow_id = %d";
+			$where_args[] = $args['workflow_id'];
 		}
 
 		if (!empty($args['search'])) {
@@ -174,5 +186,46 @@ class AIPS_Post_Review_Repository {
 		");
 		
 		return (int) $count;
+	}
+
+	/**
+	 * Update workflow metadata on a history entry.
+	 *
+	 * @param int $history_id
+	 * @param string|null $status
+	 * @param int|null $workflow_id
+	 * @return bool
+	 */
+	public function update_workflow_status($history_id, $status = null, $workflow_id = null) {
+		if (!$history_id) {
+			return false;
+		}
+
+		$data = array();
+		$format = array();
+
+		if ($status !== null) {
+			$data['workflow_status'] = $status;
+			$format[] = '%s';
+		}
+
+		if ($workflow_id !== null) {
+			$data['workflow_id'] = absint($workflow_id);
+			$format[] = '%d';
+		}
+
+		if (empty($data)) {
+			return false;
+		}
+
+		$result = $this->wpdb->update(
+			$this->table_name,
+			$data,
+			array('id' => $history_id),
+			$format,
+			array('%d')
+		);
+
+		return $result !== false;
 	}
 }

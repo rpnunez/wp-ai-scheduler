@@ -62,6 +62,10 @@
 			
 			aiEditState.postId = $btn.data('post-id');
 			aiEditState.historyId = $btn.data('history-id');
+
+			if (typeof window.AIPS !== 'undefined' && typeof window.AIPS.updateWorkflowStatus === 'function' && typeof aipsAIEditL10n !== 'undefined' && aipsAIEditL10n.workflowStatusNeedsReview) {
+				window.AIPS.updateWorkflowStatus(aiEditState.historyId, aipsAIEditL10n.workflowStatusNeedsReview);
+			}
 			
 			$('#aips-ai-edit-modal').show();
 			$('body').addClass('aips-modal-open');

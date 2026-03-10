@@ -23,11 +23,12 @@ class AIPS_Workflows {
      *
      * @param AIPS_Workflow_Repository|null $repo
      */
-    public static function init(AIPS_Workflow_Repository $repo = null) {
-        self::$repo = $repo ?: new AIPS_Workflow_Repository();
-        add_action('admin_post_aips_save_workflow', array(__CLASS__, 'handle_save_workflow'));
-        add_action('admin_post_aips_delete_workflow', array(__CLASS__, 'handle_delete_workflow'));
-    }
+	public static function init(AIPS_Workflow_Repository $repo = null) {
+		self::$repo = $repo ?: new AIPS_Workflow_Repository();
+		add_action('admin_post_aips_save_workflow', array(__CLASS__, 'handle_save_workflow'));
+		add_action('admin_post_aips_delete_workflow', array(__CLASS__, 'handle_delete_workflow'));
+		add_action('wp_ajax_aips_update_workflow_status', array(__CLASS__, 'handle_update_workflow_status'));
+	}
 
     /**
      * Render the Workflows admin page.
@@ -175,12 +176,12 @@ class AIPS_Workflows {
      * @param string $message_key
      * @param array $extra
      */
-    private static function redirect_with_message($message_key, array $extra = array()) {
-        $args = array_merge($extra, array('message' => $message_key));
-        $url = add_query_arg($args, self::get_base_page_url());
-        wp_safe_redirect($url);
-        exit;
-    }
+	private static function redirect_with_message($message_key, array $extra = array()) {
+		$args = array_merge($extra, array('message' => $message_key));
+		$url = add_query_arg($args, self::get_base_page_url());
+		wp_safe_redirect($url);
+		exit;
+	}
 
     /**
      * Return base admin URL for workflows.
@@ -227,11 +228,59 @@ class AIPS_Workflows {
      *
      * @return object|null
      */
-    private static function get_workflow_from_request() {
-        $workflow_id = isset($_GET['workflow_id']) ? absint($_GET['workflow_id']) : 0;
-        if (!$workflow_id) {
-            return null;
-        }
-        return self::get_workflow($workflow_id);
-    }
+	private static function get_workflow_from_request() {
+		$workflow_id = isset($_GET['workflow_id']) ? absint($_GET['workflow_id']) : 0;
+		if (!$workflow_id) {
+			return null;
+		}
+		return self::get_workflow($workflow_id);
+	}
+
+	/**
+	 * Update workflow metadata on a history entry.
+	 *
+	 * @param int $history_id
+	 * @param string|null $status
+	 * @param int|null $workflow_id
+	 * @return bool
+	 */
+	public static function set_history_workflow($history_id, $status = null, $workflow_id = null) {
+		if (!$history_id) {
+			return false;
+		}
+
+		if ($status !== null) {
+			$status = self::sanitize_status($status);
+		}
+
+		$repo = new AIPS_Post_Review_Repository();
+		return $repo->update_workflow_status($history_id, $status, $workflow_id);
+	}
+
+	/**
+	 * AJAX handler for workflow updates.
+	 */
+	public static function handle_update_workflow_status() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+		if (!$history_id) {
+			wp_send_json_error(array('message' => __('Missing history ID.', 'ai-post-scheduler')));
+		}
+
+		$status = isset($_POST['workflow_status']) ? sanitize_key($_POST['workflow_status']) : null;
+		$workflow_id = isset($_POST['workflow_id']) && $_POST['workflow_id'] !== '' ? absint($_POST['workflow_id']) : null;
+
+		$success = self::set_history_workflow($history_id, $status, $workflow_id);
+
+		if (!$success) {
+			wp_send_json_error(array('message' => __('Failed to update workflow status.', 'ai-post-scheduler')));
+		}
+
+		wp_send_json_success(array('message' => __('Workflow status updated.', 'ai-post-scheduler')));
+	}
 }

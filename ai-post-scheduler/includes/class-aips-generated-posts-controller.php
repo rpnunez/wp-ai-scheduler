@@ -75,6 +75,8 @@ class AIPS_Generated_Posts_Controller {
 		$search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
+		$workflow_status = isset($_GET['workflow_status']) ? sanitize_key($_GET['workflow_status']) : '';
+		$workflow_id = isset($_GET['workflow_id']) ? absint($_GET['workflow_id']) : 0;
 
 		// Get completed history entries with post IDs (for Generated Posts tab)
 		$history = $this->history_repository->get_history(array(
@@ -126,6 +128,8 @@ class AIPS_Generated_Posts_Controller {
 			'page' => $review_page,
 			'search' => $search_query,
 			'template_id' => $template_id,
+			'workflow_status' => $workflow_status,
+			'workflow_id' => $workflow_id,
 		));
 		
 		// Pass separate page variables for each tab
@@ -139,6 +143,9 @@ class AIPS_Generated_Posts_Controller {
 		// Get authors for filter dropdown
 		$authors_repository = new AIPS_Authors_Repository();
 		$authors = $authors_repository->get_all();
+
+		$workflow_statuses = AIPS_Workflows::get_statuses();
+		$workflows = AIPS_Workflows::get_all_workflows();
 		
 		// Get globally-initialized Post Review handler
 		global $aips_post_review_handler;

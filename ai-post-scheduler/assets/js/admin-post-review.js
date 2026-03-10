@@ -1,7 +1,57 @@
 (function($) {
     'use strict';
 
+    var workflowStatusLabels = {};
+
+    var applyWorkflowStatusToRow = function($row, status) {
+        if (!$row || !$row.length || !status) {
+            return;
+        }
+
+        var label = workflowStatusLabels[status] || status;
+        var $badge = $row.find('.column-workflow .aips-badge');
+
+        if ($badge.length && label) {
+            $badge.text(label);
+        }
+
+        $row.attr('data-workflow-status', status);
+    };
+
+    var updateWorkflowStatus = function(historyId, status, workflowId) {
+        if (!historyId || !status || typeof aipsPostReviewL10n === 'undefined') {
+            return;
+        }
+
+        $.post(aipsPostReviewL10n.ajaxUrl, {
+            action: 'aips_update_workflow_status',
+            history_id: historyId,
+            workflow_status: status,
+            workflow_id: workflowId || '',
+            nonce: aipsPostReviewL10n.nonce
+        });
+    };
+
     $(document).ready(function() {
+        if (typeof aipsPostReviewL10n !== 'undefined') {
+            workflowStatusLabels = aipsPostReviewL10n.workflowStatusLabels || {};
+        }
+
+        window.AIPS = window.AIPS || {};
+        window.AIPS.updateWorkflowStatus = updateWorkflowStatus;
+
+        $(document).on('click', '.aips-ai-edit-btn', function() {
+            var historyId = $(this).data('history-id');
+            var $row = $(this).closest('tr');
+            if (historyId && aipsPostReviewL10n && aipsPostReviewL10n.workflowStatusNeedsReview) {
+                updateWorkflowStatus(historyId, aipsPostReviewL10n.workflowStatusNeedsReview);
+                applyWorkflowStatusToRow($row, aipsPostReviewL10n.workflowStatusNeedsReview);
+            }
+        });
+
+        /**
+         * Select all checkbox functionality
+         */
 
         // Select all checkbox functionality
         $('#cb-select-all-1').on('change', function() {
@@ -25,10 +75,11 @@
         $(document).on('click', '.aips-publish-post', function(e) {
             e.preventDefault();
             var postId = $(this).data('post-id');
+            var historyId = $(this).data('history-id');
             var row = $(this).closest('tr');
 
-            var button = $(this);
-            AIPS.Utilities.confirm(aipsPostReviewL10n.confirmPublish, 'Notice', [
+        var button = $(this);
+        AIPS.Utilities.confirm(aipsPostReviewL10n.confirmPublish, 'Notice', [
                 { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function() {
                     button.prop('disabled', true).text(aipsPostReviewL10n.loading || 'Publishing...');
@@ -53,6 +104,10 @@
                             AIPS.Utilities.showToast(safeMsg, 'success');
                         }
 
+                        if (historyId && aipsPostReviewL10n.workflowStatusReadyToPublish) {
+                            updateWorkflowStatus(historyId, aipsPostReviewL10n.workflowStatusReadyToPublish);
+                            applyWorkflowStatusToRow(row, aipsPostReviewL10n.workflowStatusReadyToPublish);
+                        }
                         row.fadeOut(400, function() {
                             $(this).remove();
                             updateDraftCount();
@@ -221,6 +276,16 @@
                         var msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
                         AIPS.Utilities.showToast(msg, 'success');
 
+                        if (aipsPostReviewL10n.workflowStatusReadyToPublish) {
+                            checkedBoxes.each(function() {
+                                var $row = $(this).closest('tr');
+                                var historyId = $(this).data('history-id') || $row.data('history-id');
+                                if (historyId) {
+                                    updateWorkflowStatus(historyId, aipsPostReviewL10n.workflowStatusReadyToPublish);
+                                    applyWorkflowStatusToRow($row, aipsPostReviewL10n.workflowStatusReadyToPublish);
+                                }
+                            });
+                        }
                         checkedBoxes.each(function() {
                             $(this).closest('tr').fadeOut(400, function() {
                                 $(this).remove();

@@ -371,6 +371,11 @@ class AIPS_Admin_Assets {
                 'previewTitle' => __('Post Preview', 'ai-post-scheduler'),
                 'loadingPreview' => __('Loading preview...', 'ai-post-scheduler'),
                 'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
+                'workflowStatusGenerated' => AIPS_Workflows::STATUS_GENERATED,
+                'workflowStatusNeedsReview' => AIPS_Workflows::STATUS_NEEDS_REVIEW,
+                'workflowStatusApproved' => AIPS_Workflows::STATUS_APPROVED,
+                'workflowStatusReadyToPublish' => AIPS_Workflows::STATUS_READY_TO_PUBLISH,
+                'workflowStatusLabels' => AIPS_Workflows::get_statuses(),
             ));
             
             // AI Edit Modal (for Generated Posts page)
@@ -400,6 +405,8 @@ class AIPS_Admin_Assets {
                 'saving' => __('Saving...', 'ai-post-scheduler'),
                 'saveSuccess' => __('Post updated successfully!', 'ai-post-scheduler'),
                 'saveError' => __('Failed to update post.', 'ai-post-scheduler'),
+                'workflowStatusNeedsReview' => AIPS_Workflows::STATUS_NEEDS_REVIEW,
+                'workflowStatusLabels' => AIPS_Workflows::get_statuses(),
                 'loadError' => __('Failed to load post components.', 'ai-post-scheduler'),
                 'confirmClose' => __('You have unsaved changes. Are you sure you want to close?', 'ai-post-scheduler'),
                 'noChanges' => __('No changes to save.', 'ai-post-scheduler'),
