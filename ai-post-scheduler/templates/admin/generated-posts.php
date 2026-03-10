@@ -296,7 +296,7 @@ if (!defined('ABSPATH')) {
 				</thead>
 				<tbody>
 					<?php foreach ($draft_posts['items'] as $item): ?>
-					<?php $item_workflow_status = !empty($item->workflow_status) ? $item->workflow_status : AIPS_Workflows::STATUS_GENERATED; ?>
+				<?php $item_workflow_status = !empty($item->workflow_status) ? $item->workflow_status : AIPS_Workflow_Service::STATUS_GENERATED; ?>
 					<tr data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>" data-workflow-status="<?php echo esc_attr($item_workflow_status); ?>">
 						<th scope="row" class="check-column">
 							<label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->post_id); ?>"><?php esc_html_e('Select Post', 'ai-post-scheduler'); ?></label>
@@ -324,7 +324,7 @@ if (!defined('ABSPATH')) {
 							</td>
 							<td class="column-workflow">
 								<span class="aips-badge aips-badge-info">
-									<?php echo esc_html( AIPS_Workflows::get_status_label( $item_workflow_status ) ); ?>
+									<?php echo esc_html( AIPS_Workflow_Service::get_status_label( $item_workflow_status ) ); ?>
 								</span>
 							</td>
 							<td class="column-date">

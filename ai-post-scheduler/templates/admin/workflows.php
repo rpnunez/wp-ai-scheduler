@@ -2,8 +2,7 @@
 if (!defined('ABSPATH')) {
     exit;
 }
-
-$statuses = AIPS_Workflows::get_statuses();
+// $statuses, $workflows, $edit_workflow, and $message are provided by AIPS_Workflow_Controller::render_page().
 ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
@@ -46,7 +45,7 @@ $statuses = AIPS_Workflows::get_statuses();
                                     <td class="column-name cell-primary"><?php echo esc_html($workflow->name); ?></td>
                                     <td><?php echo esc_html($workflow->description); ?></td>
                                     <td>
-                                        <span class="aips-badge aips-badge-info"><?php echo esc_html(AIPS_Workflows::get_status_label($workflow->status)); ?></span>
+                                        <span class="aips-badge aips-badge-info"><?php echo esc_html(AIPS_Workflow_Service::get_status_label($workflow->status)); ?></span>
                                     </td>
                                     <td><?php echo esc_html(mysql2date(get_option('date_format') . ' ' . get_option('time_format'), $workflow->created_at)); ?></td>
                                     <td><?php echo esc_html(mysql2date(get_option('date_format') . ' ' . get_option('time_format'), $workflow->updated_at)); ?></td>
