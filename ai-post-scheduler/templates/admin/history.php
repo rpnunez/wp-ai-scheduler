@@ -79,7 +79,11 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
             </div>
         </div>
 
-        <?php if (!empty($items)): ?>
+        <?php
+        $has_active_filter = !empty($status_filter) || !empty($search_query);
+        $show_panel        = $total_items > 0 || $has_active_filter;
+        ?>
+        <?php if ($show_panel): ?>
         <div class="aips-content-panel">
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
@@ -113,7 +117,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
-                    <button type="button" id="aips-history-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="aips-history-search-clear" class="aips-btn aips-btn-secondary" style="<?php echo $has_active_filter ? '' : 'display: none;'; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
 
@@ -158,9 +162,25 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                         </tr>
                     </thead>
                     <tbody id="aips-history-tbody">
-                        <?php foreach ($items as $item): ?>
-                            <?php include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php'; ?>
-                        <?php endforeach; ?>
+                        <?php if (!empty($items)): ?>
+                            <?php foreach ($items as $item): ?>
+                                <?php include AIPS_PLUGIN_DIR . 'templates/partials/history-row.php'; ?>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="6" style="text-align:center;padding:40px;">
+                                    <span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;" aria-hidden="true"></span>
+                                    <?php esc_html_e('No history containers match your current filters.', 'ai-post-scheduler'); ?>
+                                    <?php if ($has_active_filter): ?>
+                                        <br><br>
+                                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-history-search-btn">
+                                            <span class="dashicons dashicons-dismiss"></span>
+                                            <?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?>
+                                        </button>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                     <tfoot>
                         <tr class="aips-history-pagination-row">
@@ -177,7 +197,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                     </tfoot>
                 </table>
 
-                <!-- No Search Results State -->
+                <!-- No Search Results State (client-side live filter) -->
                 <div id="aips-history-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
                     <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No History Found', 'ai-post-scheduler'); ?></h3>

@@ -212,7 +212,9 @@ class AIPS_History {
             wp_send_json_error(array('message' => __('History container not found.', 'ai-post-scheduler')));
         }
 
-        $raw_logs = $this->repository->get_logs_by_history_id($history_id);
+        // $history_item->log is already populated by get_by_id(); reuse it to
+        // avoid a second trip to aips_history_log.
+        $raw_logs = isset($history_item->log) ? $history_item->log : array();
 
         $logs = array();
         foreach ($raw_logs as $log) {
