@@ -448,11 +448,14 @@ class AIPS_Admin_Assets {
 
             wp_localize_script('aips-admin-history', 'aipsHistoryL10n', array(
                 'loading'              => __('Loading…', 'ai-post-scheduler'),
+                'reloading'            => __('Reloading…', 'ai-post-scheduler'),
                 'loadingLogs'          => __('Loading logs…', 'ai-post-scheduler'),
                 'errorLoading'         => __('Error loading logs.', 'ai-post-scheduler'),
+                'errorReloading'       => __('Failed to reload history.', 'ai-post-scheduler'),
                 'logsModalTitle'       => __('Logs — %s', 'ai-post-scheduler'),
                 'logsHeading'          => __('Log Entries', 'ai-post-scheduler'),
                 'noLogsFound'          => __('No log entries found for this container.', 'ai-post-scheduler'),
+                'noResultsFound'       => __('No history containers match your current filters.', 'ai-post-scheduler'),
                 'labelTitle'           => __('Title', 'ai-post-scheduler'),
                 'labelTemplate'        => __('Template', 'ai-post-scheduler'),
                 'labelStatus'          => __('Status', 'ai-post-scheduler'),
@@ -469,12 +472,16 @@ class AIPS_Admin_Assets {
                 'confirmBulkDelete'    => __('Delete the selected history containers? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmClearAll'      => __('Clear all history? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmClearStatus'   => __('Clear all history entries with this status? This cannot be undone.', 'ai-post-scheduler'),
+                'confirmDeleteLabel'   => __('Yes, delete', 'ai-post-scheduler'),
+                'confirmClearLabel'    => __('Yes, clear', 'ai-post-scheduler'),
+                'cancelLabel'          => __('No, cancel', 'ai-post-scheduler'),
                 'deletedSuccess'       => __('Items deleted successfully.', 'ai-post-scheduler'),
                 'clearedSuccess'       => __('History cleared successfully.', 'ai-post-scheduler'),
                 'errorDeleting'        => __('Error deleting items.', 'ai-post-scheduler'),
                 'errorClearing'        => __('Error clearing history.', 'ai-post-scheduler'),
-                'deleteSelected'       => __('Delete Selected', 'ai-post-scheduler'),
                 'deleting'             => __('Deleting…', 'ai-post-scheduler'),
+                'retrying'             => __('Retrying…', 'ai-post-scheduler'),
+                'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
             ));
         }
 

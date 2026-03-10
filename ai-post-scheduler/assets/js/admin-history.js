@@ -1,8 +1,9 @@
 /**
  * History Page JavaScript
  *
- * Manages the History admin page: search/filter, row selection, bulk delete,
- * and the logs modal that shows all aips_history_log entries for a container.
+ * Manages the History admin page: search/filter, pagination, row selection,
+ * bulk delete, retry, and the logs modal that renders all aips_history_log
+ * entries for a selected history container.
  *
  * @package AI_Post_Scheduler
  * @since 2.1.0
@@ -12,19 +13,26 @@
 	'use strict';
 
 	window.AIPS = window.AIPS || {};
-	var AIPS = window.AIPS;
 
-	Object.assign(AIPS, {
+	/**
+	 * AIPS.History — self-contained module for the History admin page.
+	 *
+	 * Follows the same init() / bindEvents() naming convention used throughout
+	 * this plugin (e.g. authors.js / GenerationQueueModule) so the page can
+	 * be bootstrapped with a single AIPS.History.init() call, without
+	 * polluting the global AIPS namespace with page-specific handlers.
+	 */
+	AIPS.History = {
 
 		/* ------------------------------------------------------------------ */
 		/* State                                                                */
 		/* ------------------------------------------------------------------ */
 
 		/** @type {string} Current status filter value */
-		historyStatusFilter: '',
+		statusFilter: '',
 
-		/** @type {string} Current search query */
-		historySearchQuery: '',
+		/** @type {string} Raw search query as entered by the user */
+		searchQuery: '',
 
 		/* ------------------------------------------------------------------ */
 		/* Init / events                                                        */
@@ -33,52 +41,65 @@
 		/**
 		 * Initialise the History module.
 		 */
-		initHistory: function () {
-			this.bindHistoryEvents();
-			this.historyStatusFilter = $('#aips-filter-status').val() || '';
-			this.historySearchQuery  = $('#aips-history-search-input').val() || '';
+		init: function () {
+			this.statusFilter = $('#aips-filter-status').val() || '';
+			this.searchQuery  = $('#aips-history-search-input').val() || '';
 			this.syncSearchClearButton();
+			this.bindEvents();
 		},
 
 		/**
 		 * Register all event listeners for the History admin page.
 		 */
-		bindHistoryEvents: function () {
-			// Open logs modal when clicking a container row or "View Logs" button.
+		bindEvents: function () {
+			// Open logs modal.
 			$(document).on('click', '.aips-view-history-logs', this.openLogsModal.bind(this));
 
-			// Close modal.
+			// Collapsible log-detail sections inside the modal.
+			$(document).on('click', '.aips-log-toggle', this.toggleLogDetail.bind(this));
+
+			// Close modal via close button or backdrop click.
 			$(document).on('click', '#aips-history-logs-modal .aips-modal-close', this.closeLogsModal.bind(this));
 			$(document).on('click', '#aips-history-logs-modal', this.closeLogsModalOnOverlay.bind(this));
 
-			// Select-all checkbox.
+			// Select-all and individual row checkboxes.
 			$(document).on('change', '#aips-cb-select-all', this.toggleSelectAll.bind(this));
 			$(document).on('change', '.aips-history-cb', this.onRowCheckboxChange.bind(this));
 
 			// Bulk delete.
-			$('#aips-delete-selected-btn').on('click', this.deleteSelected.bind(this));
+			$(document).on('click', '#aips-delete-selected-btn', this.deleteSelected.bind(this));
 
 			// Individual row delete.
 			$(document).on('click', '.aips-delete-history', this.deleteSingleItem.bind(this));
 
+			// Retry failed generation.
+			$(document).on('click', '.aips-retry-generation', this.retryGeneration.bind(this));
+
 			// Clear history (failed / all).
 			$(document).on('click', '.aips-clear-history', this.clearHistory.bind(this));
 
-			// Reload.
-			$('#aips-reload-history-btn').on('click', this.reloadHistory.bind(this));
+			// Reload button.
+			$(document).on('click', '#aips-reload-history-btn', this.onReloadClick.bind(this));
 
-			// Filter button.
-			$('#aips-filter-btn').on('click', this.applyFilter.bind(this));
-			$('#aips-filter-status').on('change', this.applyFilter.bind(this));
+			// Pagination links.
+			$(document).on(
+				'click',
+				'.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next',
+				this.loadPage.bind(this)
+			);
 
-			// Search input — live client-side filter + server reload on Enter.
-			$('#aips-history-search-input').on('input', this.onSearchInput.bind(this));
-			$('#aips-history-search-input').on('keydown', this.onSearchKeydown.bind(this));
-			$('#aips-history-search-clear').on('click', this.clearSearch.bind(this));
-			$('.aips-clear-history-search-btn').on('click', this.clearSearch.bind(this));
+			// Filter button and status dropdown.
+			$(document).on('click', '#aips-filter-btn', this.applyFilter.bind(this));
+			$(document).on('change', '#aips-filter-status', this.applyFilter.bind(this));
+
+			// Search: live client-side row filter + server reload on Enter.
+			$(document).on('input', '#aips-history-search-input', this.onSearchInput.bind(this));
+			$(document).on('keydown', '#aips-history-search-input', this.onSearchKeydown.bind(this));
+			$(document).on('click', '#aips-history-search-clear', this.clearSearch.bind(this));
+			$(document).on('click', '.aips-clear-history-search-btn', this.clearSearch.bind(this));
 
 			// Export CSV.
-			$('#aips-export-history-btn').on('click', this.exportHistory.bind(this));
+			$(document).on('click', '#aips-export-history-btn', this.exportHistory.bind(this));
 		},
 
 		/* ------------------------------------------------------------------ */
@@ -99,10 +120,11 @@
 				return;
 			}
 
-			var $modal   = $('#aips-history-logs-modal');
-			var $content = $('#aips-history-logs-content');
-			var $title   = $('#aips-history-logs-modal-title');
-			var loadingText = aipsHistoryL10n.loadingLogs || 'Loading logs…';
+			var self        = this;
+			var $modal      = $('#aips-history-logs-modal');
+			var $content    = $('#aips-history-logs-content');
+			var $title      = $('#aips-history-logs-modal-title');
+			var loadingText = aipsHistoryL10n.loadingLogs || 'Loading logs\u2026';
 
 			$title.text(loadingText);
 			$content.html('<p>' + loadingText + '</p>');
@@ -118,98 +140,122 @@
 				},
 				success: function (response) {
 					if (!response.success) {
-						$content.html('<p class="notice notice-error">' + (response.data && response.data.message ? response.data.message : (aipsHistoryL10n.errorLoading || 'Error loading logs.')) + '</p>');
+						$content.html(
+							'<p class="notice notice-error">'
+							+ self.esc(response.data && response.data.message ? response.data.message : (aipsHistoryL10n.errorLoading || 'Error loading logs.'))
+							+ '</p>'
+						);
 						return;
 					}
 
 					var container = response.data.container;
 					var logs      = response.data.logs;
 
-					// Update modal title.
 					var title = container.generated_title || ('#' + container.id);
-					$title.text(aipsHistoryL10n.logsModalTitle
-						? aipsHistoryL10n.logsModalTitle.replace('%s', title)
-						: 'Logs — ' + title);
+					$title.text(
+						aipsHistoryL10n.logsModalTitle
+							? aipsHistoryL10n.logsModalTitle.replace('%s', title)
+							: 'Logs \u2014 ' + title
+					);
 
-					$content.html(AIPS.renderLogsModalContent(container, logs));
+					$content.html(self.renderLogsModalContent(container, logs));
 				},
 				error: function () {
-					$content.html('<p class="notice notice-error">' + (aipsHistoryL10n.errorLoading || 'Error loading logs.') + '</p>');
+					$content.html(
+						'<p class="notice notice-error">'
+						+ self.esc(aipsHistoryL10n.errorLoading || 'Error loading logs.')
+						+ '</p>'
+					);
 				}
 			});
 		},
 
 		/**
+		 * Toggle a collapsible log-detail section inside the modal.
+		 *
+		 * @param {Event} e - Click event from an `.aips-log-toggle` element.
+		 */
+		toggleLogDetail: function (e) {
+			e.preventDefault();
+			var targetSelector = $(e.currentTarget).data('target');
+			var $target = $(targetSelector);
+			if ($target.length) {
+				$target.slideToggle(150);
+			}
+		},
+
+		/**
 		 * Build the HTML for the logs modal body.
 		 *
-		 * @param {Object}   container  History container summary fields.
-		 * @param {Object[]} logs       Array of log entry objects.
+		 * @param {Object}   container History container summary fields.
+		 * @param {Object[]} logs      Array of log entry objects.
 		 * @return {string} HTML string.
 		 */
 		renderLogsModalContent: function (container, logs) {
+			var self = this;
 			var html = '';
 
 			// ---- Container summary ----
 			html += '<div class="aips-history-modal-summary">';
-			html += '<table class="aips-table" style="width:100%;margin-bottom:20px;">';
-			html += '<tbody>';
+			html += '<table class="aips-table" style="width:100%;margin-bottom:20px;"><tbody>';
 
 			if (container.generated_title) {
-				html += '<tr><th>' + AIPS.esc(aipsHistoryL10n.labelTitle || 'Title') + '</th><td>' + AIPS.esc(container.generated_title) + '</td></tr>';
+				html += '<tr><th>' + self.esc(aipsHistoryL10n.labelTitle || 'Title') + '</th><td>' + self.esc(container.generated_title) + '</td></tr>';
 			}
 			if (container.template_name) {
-				html += '<tr><th>' + AIPS.esc(aipsHistoryL10n.labelTemplate || 'Template') + '</th><td>' + AIPS.esc(container.template_name) + '</td></tr>';
+				html += '<tr><th>' + self.esc(aipsHistoryL10n.labelTemplate || 'Template') + '</th><td>' + self.esc(container.template_name) + '</td></tr>';
 			}
 
 			var statusClass = container.status === 'completed' ? 'aips-badge-success'
 				: (container.status === 'failed' ? 'aips-badge-error' : 'aips-badge-neutral');
-			html += '<tr><th>' + AIPS.esc(aipsHistoryL10n.labelStatus || 'Status') + '</th>'
-				+ '<td><span class="aips-badge ' + statusClass + '">' + AIPS.esc(container.status) + '</span></td></tr>';
+			html += '<tr><th>' + self.esc(aipsHistoryL10n.labelStatus || 'Status') + '</th>'
+				+ '<td><span class="aips-badge ' + statusClass + '">' + self.esc(container.status) + '</span></td></tr>';
 
 			if (container.created_at) {
-				html += '<tr><th>' + AIPS.esc(aipsHistoryL10n.labelCreated || 'Created') + '</th><td>' + AIPS.esc(container.created_at) + '</td></tr>';
+				html += '<tr><th>' + self.esc(aipsHistoryL10n.labelCreated || 'Created') + '</th><td>' + self.esc(container.created_at) + '</td></tr>';
 			}
 			if (container.completed_at) {
-				html += '<tr><th>' + AIPS.esc(aipsHistoryL10n.labelCompleted || 'Completed') + '</th><td>' + AIPS.esc(container.completed_at) + '</td></tr>';
+				html += '<tr><th>' + self.esc(aipsHistoryL10n.labelCompleted || 'Completed') + '</th><td>' + self.esc(container.completed_at) + '</td></tr>';
 			}
 			if (container.error_message) {
-				html += '<tr><th>' + AIPS.esc(aipsHistoryL10n.labelError || 'Error') + '</th>'
-					+ '<td style="color:#d63638;">' + AIPS.esc(container.error_message) + '</td></tr>';
+				html += '<tr><th>' + self.esc(aipsHistoryL10n.labelError || 'Error') + '</th>'
+					+ '<td style="color:#d63638;">' + self.esc(container.error_message) + '</td></tr>';
 			}
 			if (container.post_id) {
-				html += '<tr><th>' + AIPS.esc(aipsHistoryL10n.labelPostId || 'Post ID') + '</th><td>' + AIPS.esc(String(container.post_id)) + '</td></tr>';
+				html += '<tr><th>' + self.esc(aipsHistoryL10n.labelPostId || 'Post ID') + '</th><td>' + self.esc(String(container.post_id)) + '</td></tr>';
 			}
 
 			html += '</tbody></table></div>';
 
 			// ---- Log entries ----
-			html += '<h3>' + AIPS.esc(aipsHistoryL10n.logsHeading || 'Log Entries') + ' <span class="aips-badge aips-badge-neutral">' + logs.length + '</span></h3>';
+			html += '<h3>' + self.esc(aipsHistoryL10n.logsHeading || 'Log Entries')
+				+ ' <span class="aips-badge aips-badge-neutral">' + logs.length + '</span></h3>';
 
 			if (logs.length === 0) {
-				html += '<p>' + AIPS.esc(aipsHistoryL10n.noLogsFound || 'No log entries found for this container.') + '</p>';
+				html += '<p>' + self.esc(aipsHistoryL10n.noLogsFound || 'No log entries found for this container.') + '</p>';
 				return html;
 			}
 
 			html += '<table class="aips-table aips-history-logs-table" style="width:100%;">';
 			html += '<thead><tr>'
-				+ '<th style="width:150px;">' + AIPS.esc(aipsHistoryL10n.colTimestamp || 'Timestamp') + '</th>'
-				+ '<th style="width:130px;">' + AIPS.esc(aipsHistoryL10n.colType || 'Type') + '</th>'
-				+ '<th style="width:150px;">' + AIPS.esc(aipsHistoryL10n.colLogType || 'Log Type') + '</th>'
-				+ '<th>' + AIPS.esc(aipsHistoryL10n.colDetails || 'Details') + '</th>'
+				+ '<th style="width:150px;">' + self.esc(aipsHistoryL10n.colTimestamp || 'Timestamp') + '</th>'
+				+ '<th style="width:130px;">' + self.esc(aipsHistoryL10n.colType || 'Type') + '</th>'
+				+ '<th style="width:150px;">' + self.esc(aipsHistoryL10n.colLogType || 'Log Type') + '</th>'
+				+ '<th>' + self.esc(aipsHistoryL10n.colDetails || 'Details') + '</th>'
 				+ '</tr></thead><tbody>';
 
 			$.each(logs, function (i, log) {
-				var typeClass = AIPS.historyTypeClass(log.history_type_id);
+				var typeClass = self.typeClass(log.history_type_id);
 				var message   = (log.details && log.details.message) ? log.details.message : '';
 
 				html += '<tr>';
-				html += '<td style="white-space:nowrap;font-size:12px;">' + AIPS.esc(log.timestamp) + '</td>';
-				html += '<td><span class="aips-badge ' + typeClass + '">' + AIPS.esc(log.type_label) + '</span></td>';
-				html += '<td style="font-size:12px;font-family:monospace;">' + AIPS.esc(log.log_type) + '</td>';
+				html += '<td style="white-space:nowrap;font-size:12px;">' + self.esc(log.timestamp) + '</td>';
+				html += '<td><span class="aips-badge ' + typeClass + '">' + self.esc(log.type_label) + '</span></td>';
+				html += '<td style="font-size:12px;font-family:monospace;">' + self.esc(log.log_type) + '</td>';
 				html += '<td>';
 
 				if (message) {
-					html += '<p style="margin:0 0 6px;">' + AIPS.esc(message) + '</p>';
+					html += '<p style="margin:0 0 6px;">' + self.esc(message) + '</p>';
 				}
 
 				// Render extra details (input/output/context) as collapsible.
@@ -224,10 +270,10 @@
 					var rowId = 'aips-log-detail-' + i;
 					html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-log-toggle" '
 						+ 'data-target="#' + rowId + '" style="font-size:11px;">'
-						+ (aipsHistoryL10n.showDetails || 'Show details') + '</button>';
+						+ self.esc(aipsHistoryL10n.showDetails || 'Show details') + '</button>';
 					html += '<div id="' + rowId + '" style="display:none;margin-top:8px;">';
 					html += '<pre style="max-height:200px;overflow:auto;white-space:pre-wrap;font-size:11px;background:#f6f7f7;padding:8px;border-radius:4px;">'
-						+ AIPS.esc(JSON.stringify(extra, null, 2)) + '</pre>';
+						+ self.esc(JSON.stringify(extra, null, 2)) + '</pre>';
 					html += '</div>';
 				}
 
@@ -245,7 +291,7 @@
 		 * @param {number} typeId
 		 * @return {string}
 		 */
-		historyTypeClass: function (typeId) {
+		typeClass: function (typeId) {
 			var map = {
 				1: 'aips-badge-neutral',   // LOG
 				2: 'aips-badge-error',     // ERROR
@@ -297,7 +343,7 @@
 		},
 
 		/**
-		 * Update the Delete Selected button disabled state when a row checkbox changes.
+		 * Sync the select-all checkbox and Delete Selected button on row change.
 		 */
 		onRowCheckboxChange: function () {
 			this.updateDeleteButton();
@@ -307,7 +353,7 @@
 		},
 
 		/**
-		 * Enable or disable the Delete Selected button based on selections.
+		 * Enable or disable the Delete Selected button based on current selections.
 		 */
 		updateDeleteButton: function () {
 			var count = $('.aips-history-cb:checked').length;
@@ -315,9 +361,9 @@
 		},
 
 		/**
-		 * Send bulk-delete request for all checked containers.
+		 * Send a bulk-delete request for all checked containers.
 		 *
-		 * @param {Event} e
+		 * @param {Event} e - Click event from `#aips-delete-selected-btn`.
 		 */
 		deleteSelected: function (e) {
 			e.preventDefault();
@@ -331,44 +377,47 @@
 				return;
 			}
 
-			if (!confirm(aipsHistoryL10n.confirmBulkDelete || 'Delete the selected history containers? This cannot be undone.')) {
-				return;
-			}
-
+			var self     = this;
 			var $btn     = $(e.currentTarget);
 			var origHtml = $btn.html();
-			$btn.prop('disabled', true).html(
-				'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.deleting || 'Deleting…')
-			);
+			var msg      = aipsHistoryL10n.confirmBulkDelete || 'Delete the selected history containers? This cannot be undone.';
 
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_bulk_delete_history',
-					nonce: aipsAjax.nonce,
-					ids: ids
-				},
-				success: function (response) {
-					if (response.success) {
-						if (typeof AIPS.Utilities !== 'undefined') {
-							AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
+			AIPS.Utilities.confirm(msg, 'Notice', [
+				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					$btn.prop('disabled', true).html(
+						'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.deleting || 'Deleting\u2026')
+					);
+
+					$.ajax({
+						url: aipsAjax.ajaxUrl,
+						type: 'POST',
+						data: {
+							action: 'aips_bulk_delete_history',
+							nonce: aipsAjax.nonce,
+							ids: ids
+						},
+						success: function (response) {
+							if (response.success) {
+								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
+								self.reload();
+							} else {
+								AIPS.Utilities.showToast(
+									response.data && response.data.message
+										? response.data.message
+										: (aipsHistoryL10n.errorDeleting || 'Error deleting items.'),
+									'error'
+								);
+								$btn.prop('disabled', false).html(origHtml);
+							}
+						},
+						error: function () {
+							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting items.', 'error');
+							$btn.prop('disabled', false).html(origHtml);
 						}
-						AIPS.reloadHistory();
-					} else {
-						if (typeof AIPS.Utilities !== 'undefined') {
-							AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : (aipsHistoryL10n.errorDeleting || 'Error deleting items.'), 'error');
-						}
-						$btn.prop('disabled', false).html(origHtml);
-					}
-				},
-				error: function () {
-					if (typeof AIPS.Utilities !== 'undefined') {
-						AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting items.', 'error');
-					}
-					$btn.prop('disabled', false).html(origHtml);
-				}
-			});
+					});
+				}}
+			]);
 		},
 
 		/**
@@ -385,34 +434,81 @@
 				return;
 			}
 
-			if (!confirm(aipsHistoryL10n.confirmDelete || 'Delete this history container? This cannot be undone.')) {
-				return;
-			}
+			var self = this;
+			var msg  = aipsHistoryL10n.confirmDelete || 'Delete this history container? This cannot be undone.';
+
+			AIPS.Utilities.confirm(msg, 'Notice', [
+				{ label: aipsHistoryL10n.cancelLabel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: aipsHistoryL10n.confirmDeleteLabel || 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					$.ajax({
+						url: aipsAjax.ajaxUrl,
+						type: 'POST',
+						data: {
+							action: 'aips_bulk_delete_history',
+							nonce: aipsAjax.nonce,
+							ids: [id]
+						},
+						success: function (response) {
+							if (response.success) {
+								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Item deleted.', 'success');
+								self.reload();
+							} else {
+								AIPS.Utilities.showToast(
+									response.data && response.data.message
+										? response.data.message
+										: (aipsHistoryL10n.errorDeleting || 'Error deleting item.'),
+									'error'
+								);
+							}
+						},
+						error: function () {
+							AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting item.', 'error');
+						}
+					});
+				}}
+			]);
+		},
+
+		/* ------------------------------------------------------------------ */
+		/* Retry generation                                                     */
+		/* ------------------------------------------------------------------ */
+
+		/**
+		 * Retry a failed history entry via the `aips_retry_generation` AJAX action.
+		 *
+		 * @param {Event} e - Click event from an `.aips-retry-generation` element.
+		 */
+		retryGeneration: function (e) {
+			e.preventDefault();
+
+			var id       = $(e.currentTarget).data('id');
+			var $btn     = $(e.currentTarget);
+			var origHtml = $btn.html();
+
+			$btn.prop('disabled', true).html(
+				'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.retrying || 'Retrying\u2026')
+			);
 
 			$.ajax({
 				url: aipsAjax.ajaxUrl,
 				type: 'POST',
 				data: {
-					action: 'aips_bulk_delete_history',
+					action: 'aips_retry_generation',
 					nonce: aipsAjax.nonce,
-					ids: [id]
+					history_id: id
 				},
 				success: function (response) {
 					if (response.success) {
-						if (typeof AIPS.Utilities !== 'undefined') {
-							AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Item deleted.', 'success');
-						}
-						AIPS.reloadHistory();
+						AIPS.Utilities.showToast(response.data.message, 'success');
+						location.reload();
 					} else {
-						if (typeof AIPS.Utilities !== 'undefined') {
-							AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : (aipsHistoryL10n.errorDeleting || 'Error deleting item.'), 'error');
-						}
+						AIPS.Utilities.showToast(response.data.message, 'error');
+						$btn.prop('disabled', false).html(origHtml);
 					}
 				},
 				error: function () {
-					if (typeof AIPS.Utilities !== 'undefined') {
-						AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting item.', 'error');
-					}
+					AIPS.Utilities.showToast(aipsHistoryL10n.errorRetrying || 'An error occurred. Please try again.', 'error');
+					$btn.prop('disabled', false).html(origHtml);
 				}
 			});
 		},
@@ -422,7 +518,7 @@
 		/* ------------------------------------------------------------------ */
 
 		/**
-		 * Clear history by status (or all).
+		 * Clear history by status (or all) after an accessible confirmation dialog.
 		 *
 		 * @param {Event} e - Click event from an `.aips-clear-history` element.
 		 */
@@ -431,75 +527,132 @@
 
 			var status = $(e.currentTarget).data('status');
 			var msg    = status
-				? (aipsHistoryL10n.confirmClearStatus || 'Clear all history with this status?')
+				? (aipsHistoryL10n.confirmClearStatus || 'Clear all history entries with this status? This cannot be undone.')
 				: (aipsHistoryL10n.confirmClearAll   || 'Clear all history? This cannot be undone.');
 
-			if (!confirm(msg)) {
-				return;
-			}
+			var self = this;
 
-			$.ajax({
-				url: aipsAjax.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_clear_history',
-					nonce: aipsAjax.nonce,
-					status: status
-				},
-				success: function (response) {
-					if (response.success) {
-						if (typeof AIPS.Utilities !== 'undefined') {
-							AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : (aipsHistoryL10n.clearedSuccess || 'History cleared.'), 'success');
+			AIPS.Utilities.confirm(msg, 'Notice', [
+				{ label: aipsHistoryL10n.cancelLabel    || 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{ label: aipsHistoryL10n.confirmClearLabel || 'Yes, clear', className: 'aips-btn aips-btn-danger-solid', action: function () {
+					$.ajax({
+						url: aipsAjax.ajaxUrl,
+						type: 'POST',
+						data: {
+							action: 'aips_clear_history',
+							nonce: aipsAjax.nonce,
+							status: status
+						},
+						success: function (response) {
+							if (response.success) {
+								AIPS.Utilities.showToast(
+									response.data && response.data.message
+										? response.data.message
+										: (aipsHistoryL10n.clearedSuccess || 'History cleared.'),
+									'success'
+								);
+								self.reload();
+							} else {
+								AIPS.Utilities.showToast(
+									response.data && response.data.message
+										? response.data.message
+										: (aipsHistoryL10n.errorClearing || 'Error clearing history.'),
+									'error'
+								);
+							}
+						},
+						error: function () {
+							AIPS.Utilities.showToast(aipsHistoryL10n.errorClearing || 'Error clearing history.', 'error');
 						}
-						AIPS.reloadHistory();
-					} else {
-						if (typeof AIPS.Utilities !== 'undefined') {
-							AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : (aipsHistoryL10n.errorClearing || 'Error clearing history.'), 'error');
-						}
-					}
-				}
-			});
+					});
+				}}
+			]);
 		},
 
 		/* ------------------------------------------------------------------ */
-		/* Reload / filter / search                                            */
+		/* Reload / pagination / filter / search                               */
 		/* ------------------------------------------------------------------ */
 
 		/**
-		 * Reload the history table via AJAX, applying current filter and search.
+		 * Handle a click on the Reload button.
+		 *
+		 * @param {Event} e
 		 */
-		reloadHistory: function () {
-			var $tbody      = $('#aips-history-tbody');
-			var $pagination = $('.aips-history-pagination-cell');
+		onReloadClick: function (e) {
+			e.preventDefault();
+			this.reload();
+		},
 
+		/**
+		 * Reload the history table via AJAX applying the current filter and search.
+		 *
+		 * @param {number} [paged=1] 1-based page number to load.
+		 */
+		reload: function (paged) {
+			paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
+
+			var self       = this;
+			var $tbody     = $('#aips-history-tbody');
+			var $pagCell   = $('.aips-history-pagination-cell');
+			var $reloadBtn = $('#aips-reload-history-btn');
+			var origHtml   = $reloadBtn.html();
+
+			// Show a loading placeholder in the table body.
 			if ($tbody.length) {
-				$tbody.html('<tr><td colspan="6" style="text-align:center;padding:20px;">'
-					+ (aipsHistoryL10n.loading || 'Loading…') + '</td></tr>');
+				$tbody.html(
+					'<tr><td colspan="6" style="text-align:center;padding:20px;">'
+					+ (aipsHistoryL10n.loading || 'Loading\u2026') + '</td></tr>'
+				);
 			}
+			$reloadBtn.prop('disabled', true).html(
+				'<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> '
+				+ (aipsHistoryL10n.reloading || 'Reloading\u2026')
+			);
 
 			$.ajax({
 				url: aipsAjax.ajaxUrl,
 				type: 'POST',
+				dataType: 'json',
 				data: {
 					action: 'aips_reload_history',
 					nonce: aipsAjax.nonce,
-					status: AIPS.historyStatusFilter,
-					search: AIPS.historySearchQuery,
-					paged: 1
+					status: self.statusFilter,
+					search: self.searchQuery,
+					paged: paged
 				},
 				success: function (response) {
 					if (!response.success) {
+						AIPS.Utilities.showToast(
+							response.data && response.data.message
+								? response.data.message
+								: (aipsHistoryL10n.errorReloading || 'Failed to reload history.'),
+							'error'
+						);
 						return;
 					}
 
+					var itemsHtml = response.data.items_html || '';
+
 					if ($tbody.length) {
-						$tbody.html(response.data.items_html || '');
-					}
-					if ($pagination.length && response.data.pagination_html !== undefined) {
-						$pagination.html(response.data.pagination_html);
+						if (itemsHtml) {
+							$tbody.html(itemsHtml);
+							$('#aips-history-search-no-results').hide();
+						} else {
+							// No results: render a friendly inline empty state.
+							$tbody.html(
+								'<tr><td colspan="6" style="text-align:center;padding:40px;">'
+								+ '<span class="dashicons dashicons-search" style="font-size:32px;color:#ccc;vertical-align:middle;margin-right:8px;"></span>'
+								+ self.esc(aipsHistoryL10n.noResultsFound || 'No history containers match your current filters.')
+								+ '</td></tr>'
+							);
+						}
 					}
 
-					// Update stat cards.
+					if ($pagCell.length && response.data.pagination_html !== undefined) {
+						$pagCell.html(response.data.pagination_html);
+					}
+
+					// Refresh stat cards.
 					var stats = response.data.stats;
 					if (stats) {
 						$('#aips-stat-total').text(stats.total);
@@ -508,15 +661,48 @@
 						$('#aips-stat-success-rate').text(stats.success_rate + '%');
 					}
 
-					// Reset checkboxes / button.
+					// Keep the URL in sync.
+					var url = new URL(window.location.href);
+					if (paged > 1) {
+						url.searchParams.set('paged', paged);
+					} else {
+						url.searchParams.delete('paged');
+					}
+					window.history.replaceState({}, '', url.toString());
+
+					// Reset checkboxes and delete button.
 					$('#aips-cb-select-all').prop('checked', false);
-					AIPS.updateDeleteButton();
+					self.updateDeleteButton();
+				},
+				error: function () {
+					AIPS.Utilities.showToast(aipsHistoryL10n.errorReloading || 'Failed to reload history.', 'error');
+				},
+				complete: function () {
+					$reloadBtn.prop('disabled', false).html(origHtml);
 				}
 			});
 		},
 
 		/**
-		 * Apply the current status filter and trigger a reload.
+		 * Handle a pagination link click.
+		 *
+		 * @param {Event} e - Click event from a pagination element.
+		 */
+		loadPage: function (e) {
+			e.preventDefault();
+			var $btn = $(e.currentTarget);
+			if ($btn.prop('disabled')) {
+				return;
+			}
+			var page = $btn.data('page');
+			if (!page) {
+				return;
+			}
+			this.reload(parseInt(page, 10));
+		},
+
+		/**
+		 * Apply the current status filter and trigger a server reload.
 		 *
 		 * @param {Event} e
 		 */
@@ -524,25 +710,38 @@
 			if (e) {
 				e.preventDefault();
 			}
-			AIPS.historyStatusFilter = $('#aips-filter-status').val() || '';
-			AIPS.reloadHistory();
+			this.statusFilter = $('#aips-filter-status').val() || '';
+
+			// Reflect change in the URL without reloading.
+			var url = new URL(window.location.href);
+			if (this.statusFilter) {
+				url.searchParams.set('status', this.statusFilter);
+			} else {
+				url.searchParams.delete('status');
+			}
+			url.searchParams.delete('paged');
+			window.history.pushState({}, '', url.toString());
+
+			this.reload(1);
 		},
 
 		/**
-		 * Live client-side row filter as the user types in the search box.
+		 * Live client-side row filter as the user types.
+		 * Stores the raw input value in searchQuery so server calls use the
+		 * exact string the user typed (not a lowercased copy).
 		 *
 		 * @param {Event} e
 		 */
 		onSearchInput: function (e) {
-			var query = $(e.target).val().toLowerCase().trim();
-			AIPS.historySearchQuery = query;
-			AIPS.syncSearchClearButton();
+			var rawQuery   = $(e.target).val();
+			this.searchQuery = rawQuery;
+			this.syncSearchClearButton();
 
+			var lowerQuery = rawQuery.toLowerCase().trim();
 			var hasResults = false;
 
 			$('#aips-history-tbody tr').each(function () {
-				var text = $(this).text().toLowerCase();
-				if (text.indexOf(query) !== -1) {
+				if (!lowerQuery || $(this).text().toLowerCase().indexOf(lowerQuery) !== -1) {
 					$(this).show();
 					hasResults = true;
 				} else {
@@ -550,24 +749,34 @@
 				}
 			});
 
-			$('#aips-history-search-no-results').toggle(!hasResults && query.length > 0);
+			$('#aips-history-search-no-results').toggle(!hasResults && lowerQuery.length > 0);
 		},
 
 		/**
-		 * On Enter in the search box, perform a server-side reload.
+		 * Trigger a server-side reload when Enter is pressed in the search box.
 		 *
 		 * @param {Event} e
 		 */
 		onSearchKeydown: function (e) {
 			if (e.key === 'Enter') {
 				e.preventDefault();
-				AIPS.historySearchQuery = $('#aips-history-search-input').val().trim();
-				AIPS.reloadHistory();
+				this.searchQuery = $('#aips-history-search-input').val();
+
+				var url = new URL(window.location.href);
+				if (this.searchQuery) {
+					url.searchParams.set('s', this.searchQuery);
+				} else {
+					url.searchParams.delete('s');
+				}
+				url.searchParams.delete('paged');
+				window.history.pushState({}, '', url.toString());
+
+				this.reload(1);
 			}
 		},
 
 		/**
-		 * Clear the search input and reload.
+		 * Clear the search input and trigger a server reload.
 		 *
 		 * @param {Event} e
 		 */
@@ -576,15 +785,15 @@
 				e.preventDefault();
 			}
 			$('#aips-history-search-input').val('');
-			AIPS.historySearchQuery = '';
-			AIPS.syncSearchClearButton();
+			this.searchQuery = '';
+			this.syncSearchClearButton();
 			$('#aips-history-search-no-results').hide();
 			$('#aips-history-tbody tr').show();
-			AIPS.reloadHistory();
+			this.reload(1);
 		},
 
 		/**
-		 * Show or hide the search clear button based on current input value.
+		 * Show or hide the inline search clear button.
 		 */
 		syncSearchClearButton: function () {
 			var hasValue = $('#aips-history-search-input').val().trim().length > 0;
@@ -596,9 +805,9 @@
 		/* ------------------------------------------------------------------ */
 
 		/**
-		 * Trigger the CSV export.
+		 * Trigger the CSV export via a hidden form POST.
 		 *
-		 * @param {Event} e
+		 * @param {Event} e - Click event from `#aips-export-history-btn`.
 		 */
 		exportHistory: function (e) {
 			e.preventDefault();
@@ -606,8 +815,8 @@
 			var form = $('<form method="POST" action="' + aipsAjax.ajaxUrl + '" style="display:none;"></form>');
 			form.append($('<input type="hidden" name="action" value="aips_export_history">'));
 			form.append($('<input type="hidden" name="nonce">').val(aipsAjax.nonce));
-			form.append($('<input type="hidden" name="status">').val(AIPS.historyStatusFilter));
-			form.append($('<input type="hidden" name="search">').val(AIPS.historySearchQuery));
+			form.append($('<input type="hidden" name="status">').val(this.statusFilter));
+			form.append($('<input type="hidden" name="search">').val(this.searchQuery));
 			$('body').append(form);
 			form.submit();
 			form.remove();
@@ -618,7 +827,7 @@
 		/* ------------------------------------------------------------------ */
 
 		/**
-		 * HTML-escape a string for safe output.
+		 * HTML-escape a string for safe inline output.
 		 *
 		 * @param {string} str
 		 * @return {string}
@@ -634,22 +843,13 @@
 				.replace(/"/g, '&quot;')
 				.replace(/'/g, '&#039;');
 		}
-	});
+	};
 
 	/* ---------------------------------------------------------------------- */
 	/* Document ready                                                          */
 	/* ---------------------------------------------------------------------- */
 	$(document).ready(function () {
-		AIPS.initHistory();
-
-		// Delegated click handler for collapsible log-detail sections inside the modal.
-		$(document).on('click', '.aips-log-toggle', function () {
-			var targetSelector = $(this).data('target');
-			var $target = $(targetSelector);
-			if ($target.length) {
-				$target.slideToggle(150);
-			}
-		});
+		AIPS.History.init();
 	});
 
 })(jQuery);
