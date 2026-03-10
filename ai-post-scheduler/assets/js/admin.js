@@ -120,6 +120,8 @@
             $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
             $(document).on('click', '.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next', this.loadHistoryPage);
             $(document).on('keypress', '#aips-history-search-input', this.handleHistorySearchKeypress);
+            $(document).on('keyup search', '#aips-history-search-input', this.toggleHistorySearchClear);
+            $(document).on('click', '#aips-history-search-clear', this.clearHistorySearch);
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
             // History Pagination
@@ -2078,6 +2080,31 @@
             if (e.which == 13) {
                 AIPS.filterHistory(e);
             }
+        },
+
+        /**
+         * Toggle the history search clear button based on input value length.
+         *
+         * Bound to the `keyup` and `search` events on `#aips-history-search-input`.
+         */
+        toggleHistorySearchClear: function() {
+            var search = $('#aips-history-search-input').val().trim();
+            if (search.length > 0) {
+                $('#aips-history-search-clear').show();
+            } else {
+                $('#aips-history-search-clear').hide();
+            }
+        },
+
+        /**
+         * Clear the history search input and reload the history.
+         *
+         * @param {Event} e - Click event from `#aips-history-search-clear`.
+         */
+        clearHistorySearch: function(e) {
+            e.preventDefault();
+            $('#aips-history-search-input').val('').trigger('keyup');
+            AIPS.filterHistory(e);
         },
 
         /**

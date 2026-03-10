@@ -96,9 +96,7 @@ if (isset($history_handler)) {
                         <span class="dashicons dashicons-search"></span>
                         <?php esc_html_e('Search', 'ai-post-scheduler'); ?>
                     </button>
-                    <?php if (!empty($search_query)): ?>
-                        <a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
-                    <?php endif; ?>
+                    <button type="button" id="aips-history-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="<?php echo empty($search_query) ? 'display: none;' : ''; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
 
