@@ -70,7 +70,7 @@ if (!defined('ABSPATH')) {
     <td class="column-actions">
         <div class="aips-btn-group aips-btn-group-inline">
 
-        <button class="aips-btn aips-btn-sm aips-btn-primary aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>">
+        <button class="aips-btn aips-btn-sm aips-btn-primary aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>">
             <span class="dashicons dashicons-list-view"></span>
             <?php esc_html_e('View Logs', 'ai-post-scheduler'); ?>
         </button>

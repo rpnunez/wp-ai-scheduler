@@ -102,9 +102,10 @@
 			var $modal   = $('#aips-history-logs-modal');
 			var $content = $('#aips-history-logs-content');
 			var $title   = $('#aips-history-logs-modal-title');
+			var loadingText = aipsHistoryL10n.loadingLogs || 'Loading logs…';
 
-			$title.text(aipsHistoryL10n.loadingLogs || 'Loading logs…');
-			$content.html('<p>' + (aipsHistoryL10n.loadingLogs || 'Loading logs…') + '</p>');
+			$title.text(loadingText);
+			$content.html('<p>' + loadingText + '</p>');
 			$modal.fadeIn(200);
 
 			$.ajax({
@@ -334,7 +335,11 @@
 				return;
 			}
 
-			var $btn = $(e.currentTarget).prop('disabled', true).text(aipsHistoryL10n.deleting || 'Deleting…');
+			var $btn     = $(e.currentTarget);
+			var origHtml = $btn.html();
+			$btn.prop('disabled', true).html(
+				'<span class="dashicons dashicons-update"></span> ' + (aipsHistoryL10n.deleting || 'Deleting…')
+			);
 
 			$.ajax({
 				url: aipsAjax.ajaxUrl,
@@ -354,14 +359,14 @@
 						if (typeof AIPS.Utilities !== 'undefined') {
 							AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : (aipsHistoryL10n.errorDeleting || 'Error deleting items.'), 'error');
 						}
-						$btn.prop('disabled', false).text(aipsHistoryL10n.deleteSelected || 'Delete Selected');
+						$btn.prop('disabled', false).html(origHtml);
 					}
 				},
 				error: function () {
 					if (typeof AIPS.Utilities !== 'undefined') {
 						AIPS.Utilities.showToast(aipsHistoryL10n.errorDeleting || 'Error deleting items.', 'error');
 					}
-					$btn.prop('disabled', false).text(aipsHistoryL10n.deleteSelected || 'Delete Selected');
+					$btn.prop('disabled', false).html(origHtml);
 				}
 			});
 		},
@@ -639,7 +644,8 @@
 
 		// Delegated click handler for collapsible log-detail sections inside the modal.
 		$(document).on('click', '.aips-log-toggle', function () {
-			var $target = $($(this).data('target'));
+			var targetSelector = $(this).data('target');
+			var $target = $(targetSelector);
 			if ($target.length) {
 				$target.slideToggle(150);
 			}
