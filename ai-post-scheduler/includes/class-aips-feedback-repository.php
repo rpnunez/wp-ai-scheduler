@@ -326,7 +326,10 @@ class AIPS_Feedback_Repository {
 	}
 
 	/**
-	 * Get latest feedback entry for each topic ID.
+	 * Get the latest feedback entry for each topic ID.
+	 *
+	 * "Latest" is determined by highest feedback row ID (auto-increment),
+	 * which matches existing tests and the repository's current write pattern.
 	 *
 	 * @param array $topic_ids Topic IDs.
 	 * @return array Associative array keyed by topic ID with feedback objects.

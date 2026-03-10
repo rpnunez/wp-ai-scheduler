@@ -216,6 +216,7 @@ class AIPS_Admin_Assets {
             'generationCompletePartial' => __('%d post(s) generated, %d failed.', 'ai-post-scheduler'),
             // Feedback history and duplicate detection
             'similarSuggestions' => __('Similar Suggestions', 'ai-post-scheduler'),
+            'similarityLabel' => __('Similarity', 'ai-post-scheduler'),
             'lastFeedback' => __('Last Feedback', 'ai-post-scheduler'),
             'previouslyApproved' => __('Previously Approved', 'ai-post-scheduler'),
             'previouslyRejected' => __('Previously Rejected', 'ai-post-scheduler'),
