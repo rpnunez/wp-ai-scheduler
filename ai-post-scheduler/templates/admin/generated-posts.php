@@ -180,6 +180,8 @@ if (!defined('ABSPATH')) {
 								'add_args' => array_filter(array(
 									'author_id' => $author_id ? $author_id : false,
 									'template_id' => $template_id ? $template_id : false,
+									'workflow_status' => $workflow_status ? $workflow_status : false,
+									'workflow_id' => $workflow_id ? $workflow_id : false,
 									's' => $search_query ? $search_query : false,
 								)),
 							));
@@ -403,6 +405,12 @@ if (!defined('ABSPATH')) {
               }
               if ($search_query) {
                 $base_url .= '&s=' . urlencode($search_query);
+              }
+              if ($workflow_status) {
+                $base_url .= '&workflow_status=' . urlencode($workflow_status);
+              }
+              if ($workflow_id) {
+                $base_url .= '&workflow_id=' . $workflow_id;
               }
               $hash_fragment = '#aips-pending-review';
 

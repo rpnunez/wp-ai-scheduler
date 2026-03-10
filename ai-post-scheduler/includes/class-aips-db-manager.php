@@ -323,7 +323,8 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY status (status),
             KEY is_active (is_active),
-            KEY updated_at (updated_at)
+            KEY updated_at (updated_at),
+            KEY created_at (created_at)
         ) $charset_collate;";
 
         return $sql;

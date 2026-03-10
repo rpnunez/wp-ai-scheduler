@@ -17,6 +17,7 @@ class AIPS_Workflows {
      * @var AIPS_Workflow_Repository|null
      */
     private static $repo;
+    private static $initialized = false;
 
     /**
      * Initialize hooks and repository.
@@ -24,6 +25,11 @@ class AIPS_Workflows {
      * @param AIPS_Workflow_Repository|null $repo
      */
 	public static function init(AIPS_Workflow_Repository $repo = null) {
+		if (self::$initialized) {
+			return;
+		}
+
+		self::$initialized = true;
 		self::$repo = $repo ?: new AIPS_Workflow_Repository();
 		add_action('admin_post_aips_save_workflow', array(__CLASS__, 'handle_save_workflow'));
 		add_action('admin_post_aips_delete_workflow', array(__CLASS__, 'handle_delete_workflow'));

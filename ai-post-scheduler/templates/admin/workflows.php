@@ -29,7 +29,7 @@ $statuses = AIPS_Workflows::get_statuses();
             </div>
             <div class="aips-panel-body">
                 <?php if (!empty($workflows)): ?>
-                    <table class="aips-table widefat striped">
+                    <table class="aips-table aips-workflows-table">
                         <thead>
                             <tr>
                                 <th><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>

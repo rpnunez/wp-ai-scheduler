@@ -383,6 +383,7 @@ class AIPS_Admin_Assets {
                 'workflowStatusApproved' => AIPS_Workflows::STATUS_APPROVED,
                 'workflowStatusReadyToPublish' => AIPS_Workflows::STATUS_READY_TO_PUBLISH,
                 'workflowStatusLabels' => AIPS_Workflows::get_statuses(),
+                'workflowUpdateError' => __('Failed to update workflow status.', 'ai-post-scheduler'),
             ));
             
             // AI Edit Modal (for Generated Posts page)
