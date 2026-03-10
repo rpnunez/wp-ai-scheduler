@@ -69,6 +69,10 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 			public function get_rejected_summary( $author_id, $limit = 20 ) {
 				return array();
 			}
+
+			public function update( $id, $data ) {
+				return true;
+			}
 		};
 	}
 
@@ -122,7 +126,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
 			public function is_embeddings_supported() { return true; }
-			public function generate_embedding( $text ) { return $this->emb; }
+			public function generate_embedding( $text, $options = array(), $history_container = null ) { return $this->emb; }
 			public function calculate_similarity( $a, $b ) { return 1.0; }
 		};
 
@@ -196,7 +200,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
 			public function is_embeddings_supported() { return true; }
-			public function generate_embedding( $text ) { return $this->emb; }
+			public function generate_embedding( $text, $options = array(), $history_container = null ) { return $this->emb; }
 			public function calculate_similarity( $a, $b ) { return 0.3; }
 		};
 
@@ -250,7 +254,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 	public function test_fuzzy_flagging_skipped_when_embeddings_unsupported() {
 		$embeddings_service = new class {
 			public function is_embeddings_supported() { return false; }
-			public function generate_embedding( $text ) { return array(); }
+			public function generate_embedding( $text, $options = array(), $history_container = null ) { return array(); }
 			public function calculate_similarity( $a, $b ) { return 1.0; }
 		};
 
@@ -321,7 +325,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
 			public function is_embeddings_supported() { return true; }
-			public function generate_embedding( $text ) { return $this->emb; }
+			public function generate_embedding( $text, $options = array(), $history_container = null ) { return $this->emb; }
 			public function calculate_similarity( $a, $b ) { return 0.75; }
 		};
 
@@ -387,7 +391,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
 			public function is_embeddings_supported() { return true; }
-			public function generate_embedding( $text ) { return $this->emb; }
+			public function generate_embedding( $text, $options = array(), $history_container = null ) { return $this->emb; }
 			public function calculate_similarity( $a, $b ) { return 0.75; }
 		};
 
@@ -449,7 +453,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 			private $emb;
 			public function __construct( $e ) { $this->emb = $e; }
 			public function is_embeddings_supported() { return true; }
-			public function generate_embedding( $text ) { return $this->emb; }
+			public function generate_embedding( $text, $options = array(), $history_container = null ) { return $this->emb; }
 			public function calculate_similarity( $a, $b ) { return 0.95; }
 		};
 
