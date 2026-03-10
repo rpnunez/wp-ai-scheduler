@@ -813,7 +813,10 @@ class AIPS_Settings {
      * @return void
      */
     public function render_workflows_page() {
-        AIPS_Workflows::render_page();
+        global $aips_workflow_controller;
+        if ($aips_workflow_controller) {
+            $aips_workflow_controller->render_page();
+        }
     }
     
     /**

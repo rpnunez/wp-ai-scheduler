@@ -173,7 +173,8 @@ final class AI_Post_Scheduler {
             new AIPS_Structures_Controller();
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
             new AIPS_Prompt_Sections_Controller();
-            AIPS_Workflows::init();
+            global $aips_workflow_controller;
+            $aips_workflow_controller = new AIPS_Workflow_Controller();
             
             // Authors feature controllers
             new AIPS_Authors_Controller();
