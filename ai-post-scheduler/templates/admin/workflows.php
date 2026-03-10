@@ -2,8 +2,7 @@
 if (!defined('ABSPATH')) {
     exit;
 }
-
-$statuses = AIPS_Workflows::get_statuses();
+// $statuses, $workflows, $edit_workflow, and $message are provided by AIPS_Workflow_Controller::render_page().
 ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
@@ -46,7 +45,7 @@ $statuses = AIPS_Workflows::get_statuses();
                                     <td class="column-name cell-primary"><?php echo esc_html($workflow->name); ?></td>
                                     <td><?php echo esc_html($workflow->description); ?></td>
                                     <td>
-                                        <span class="aips-badge aips-badge-info"><?php echo esc_html(AIPS_Workflows::get_status_label($workflow->status)); ?></span>
+                                        <span class="aips-badge aips-badge-info"><?php echo esc_html(AIPS_Workflow_Service::get_status_label($workflow->status)); ?></span>
                                     </td>
                                     <td><?php echo esc_html(mysql2date(get_option('date_format') . ' ' . get_option('time_format'), $workflow->created_at)); ?></td>
                                     <td><?php echo esc_html(mysql2date(get_option('date_format') . ' ' . get_option('time_format'), $workflow->updated_at)); ?></td>
@@ -54,7 +53,7 @@ $statuses = AIPS_Workflows::get_statuses();
                                         <a class="aips-btn aips-btn-sm aips-btn-secondary" href="<?php echo esc_url(add_query_arg('workflow_id', $workflow->id, admin_url('admin.php?page=aips-workflows'))); ?>">
                                             <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                                         </a>
-                                        <form class="aips-inline-form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('<?php echo esc_js(__('Delete this workflow? This cannot be undone.', 'ai-post-scheduler')); ?>');">
+                                        <form class="aips-inline-form aips-delete-workflow-form" method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                                             <input type="hidden" name="action" value="aips_delete_workflow">
                                             <input type="hidden" name="workflow_id" value="<?php echo esc_attr($workflow->id); ?>">
                                             <?php wp_nonce_field('aips_delete_workflow'); ?>
