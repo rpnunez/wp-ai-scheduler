@@ -266,4 +266,114 @@ class AIPS_Feedback_Repository_Test extends WP_UnitTestCase {
 		$this->assertEquals(1, $stats['duplicate']['rejected']);
 		$this->assertEquals(1, $stats['policy']['rejected']);
 	}
+
+	public function test_get_latest_by_topics_returns_latest_per_topic() {
+		global $wpdb;
+		$feedback_table = $wpdb->prefix . 'aips_topic_feedback';
+
+		// Create a second topic to test multi-topic lookup.
+		$topic2_data = array(
+			'author_id' => $this->test_author_id,
+			'topic_title' => 'Second Test Topic',
+			'status' => 'pending'
+		);
+		$topic2_id = $this->topics_repository->create($topic2_data);
+
+		// Topic 1: insert two feedback entries with explicit different timestamps
+		// so we can reliably determine which is "latest" without sleeping.
+		$wpdb->insert($feedback_table, array(
+			'author_topic_id' => $this->test_topic_id,
+			'action'          => 'rejected',
+			'user_id'         => 1,
+			'reason'          => 'First entry',
+			'reason_category' => 'other',
+			'source'          => 'UI',
+			'created_at'      => '2000-01-01 00:00:01',
+		));
+		$wpdb->insert($feedback_table, array(
+			'author_topic_id' => $this->test_topic_id,
+			'action'          => 'approved',
+			'user_id'         => 1,
+			'reason'          => 'Second (latest) entry',
+			'reason_category' => 'other',
+			'source'          => 'UI',
+			'created_at'      => '2000-01-01 00:00:02',
+		));
+
+		// Topic 2: a single feedback entry.
+		$this->repository->record_rejection($topic2_id, 1, 'Only entry for topic 2', '');
+
+		$result = $this->repository->get_latest_by_topics(array($this->test_topic_id, $topic2_id));
+
+		// Both topics should be present in the result.
+		$this->assertCount(2, $result);
+		$this->assertArrayHasKey($this->test_topic_id, $result);
+		$this->assertArrayHasKey($topic2_id, $result);
+
+		// Topic 1's latest entry should be the approval (later timestamp).
+		$this->assertEquals('approved', $result[$this->test_topic_id]->action);
+		$this->assertEquals('Second (latest) entry', $result[$this->test_topic_id]->reason);
+
+		// Topic 2's only entry should be the rejection.
+		$this->assertEquals('rejected', $result[$topic2_id]->action);
+	}
+
+	public function test_get_latest_by_topics_prefers_highest_id_when_created_at_ties() {
+		global $wpdb;
+		$feedback_table = $wpdb->prefix . 'aips_topic_feedback';
+
+		$shared_timestamp = '2000-01-01 00:00:00';
+
+		$wpdb->insert($feedback_table, array(
+			'author_topic_id' => $this->test_topic_id,
+			'action'          => 'rejected',
+			'user_id'         => 1,
+			'reason'          => 'Earlier row with tied timestamp',
+			'reason_category' => 'other',
+			'source'          => 'UI',
+			'created_at'      => $shared_timestamp,
+		));
+
+		$wpdb->insert($feedback_table, array(
+			'author_topic_id' => $this->test_topic_id,
+			'action'          => 'approved',
+			'user_id'         => 1,
+			'reason'          => 'Later row with tied timestamp',
+			'reason_category' => 'other',
+			'source'          => 'UI',
+			'created_at'      => $shared_timestamp,
+		));
+
+		$result = $this->repository->get_latest_by_topics(array($this->test_topic_id));
+
+		$this->assertArrayHasKey($this->test_topic_id, $result);
+		$this->assertEquals('approved', $result[$this->test_topic_id]->action);
+		$this->assertEquals('Later row with tied timestamp', $result[$this->test_topic_id]->reason);
+	}
+
+	public function test_get_latest_by_topics_returns_empty_for_no_ids() {
+		$result = $this->repository->get_latest_by_topics(array());
+		$this->assertIsArray($result);
+		$this->assertEmpty($result);
+	}
+
+	public function test_get_latest_by_topics_ignores_topics_without_feedback() {
+		// Create a topic that has no feedback.
+		$topic_no_feedback_data = array(
+			'author_id' => $this->test_author_id,
+			'topic_title' => 'No Feedback Topic',
+			'status' => 'pending'
+		);
+		$no_feedback_id = $this->topics_repository->create($topic_no_feedback_data);
+
+		// Add feedback only to the main test topic.
+		$this->repository->record_approval($this->test_topic_id, 1, 'Has feedback', '');
+
+		$result = $this->repository->get_latest_by_topics(array($this->test_topic_id, $no_feedback_id));
+
+		// Only the topic with feedback should appear.
+		$this->assertCount(1, $result);
+		$this->assertArrayHasKey($this->test_topic_id, $result);
+		$this->assertArrayNotHasKey($no_feedback_id, $result);
+	}
 }

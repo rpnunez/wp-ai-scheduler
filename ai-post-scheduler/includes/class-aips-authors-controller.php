@@ -45,11 +45,6 @@ class AIPS_Authors_Controller {
 	private $topics_scheduler;
 	
 	/**
-	 * @var AIPS_Interval_Calculator Calculator for scheduling intervals
-	 */
-	private $interval_calculator;
-	
-	/**
 	 * Initialize the controller.
 	 */
 	public function __construct() {
@@ -58,7 +53,6 @@ class AIPS_Authors_Controller {
 		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository = new AIPS_Feedback_Repository();
 		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
-		$this->interval_calculator = new AIPS_Interval_Calculator();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));
@@ -113,10 +107,11 @@ class AIPS_Authors_Controller {
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		
-		// Calculate initial run times if creating new author
+		// Set initial run times to now so first execution is not skipped
 		if (!$author_id) {
-			$data['topic_generation_next_run'] = $this->interval_calculator->calculate_next_run($data['topic_generation_frequency']);
-			$data['post_generation_next_run'] = $this->interval_calculator->calculate_next_run($data['post_generation_frequency']);
+			$now = current_time('mysql');
+			$data['topic_generation_next_run'] = $now;
+			$data['post_generation_next_run'] = $now;
 		}
 		
 		// Save or update
@@ -231,8 +226,13 @@ class AIPS_Authors_Controller {
 		
 		$topics = $this->topics_repository->get_by_author($author_id, $status);
 		$status_counts = $this->topics_repository->get_status_counts($author_id);
+		$topic_ids = array();
+		foreach ($topics as $topic) {
+			$topic_ids[] = (int) $topic->id;
+		}
+		$latest_feedback_by_topic = $this->feedback_repository->get_latest_by_topics($topic_ids);
 		
-		// Add post count to each topic
+		// Add post count and latest feedback summary to each topic.
 		foreach ($topics as &$topic) {
 			$logs = $this->logs_repository->get_by_topic($topic->id);
 			$post_count = 0;
@@ -242,14 +242,36 @@ class AIPS_Authors_Controller {
 				}
 			}
 			$topic->post_count = $post_count;
+			
+			$topic->last_feedback = null;
+			if (isset($latest_feedback_by_topic[(int) $topic->id])) {
+				$feedback = $latest_feedback_by_topic[(int) $topic->id];
+				$topic->last_feedback = array(
+					'action' => $feedback->action,
+					'reason_category' => $feedback->reason_category,
+					'reason' => $feedback->reason,
+					'created_at' => $feedback->created_at,
+				);
+			}
+			
+			$topic->potential_duplicate = false;
+			$topic->duplicate_match = '';
+			if (!empty($topic->metadata)) {
+				$metadata = json_decode($topic->metadata, true);
+				if (is_array($metadata) && !empty($metadata['potential_duplicate'])) {
+					$topic->potential_duplicate = true;
+					$topic->duplicate_match = isset($metadata['duplicate_match']) ? (string) $metadata['duplicate_match'] : '';
+				}
+			}
 		}
+		unset($topic);
 		
 		wp_send_json_success(array(
 			'topics' => $topics,
 			'status_counts' => $status_counts
 		));
 	}
-	
+
 	/**
 	 * AJAX handler for getting author generated posts.
 	 */
@@ -400,3 +422,4 @@ class AIPS_Authors_Controller {
 		));
 	}
 }
+
