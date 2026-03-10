@@ -97,7 +97,6 @@ class AIPS_Author_Topics_Controller {
 		$reason = isset($_POST['reason']) ? sanitize_textarea_field($_POST['reason']) : '';
 		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field($_POST['reason_category']) : 'other';
 		$source = isset($_POST['source']) ? sanitize_text_field($_POST['source']) : 'UI';
-		$skip_feedback = isset($_POST['skip_feedback']) ? rest_sanitize_boolean($_POST['skip_feedback']) : false;
 		
 		if (!$topic_id) {
 			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
@@ -112,10 +111,8 @@ class AIPS_Author_Topics_Controller {
 			// Log the approval
 			$this->logs_repository->log_approval($topic_id, get_current_user_id());
 			
-			// Record feedback with reason (skip for quick actions to avoid blank feedback records)
-			if (!$skip_feedback) {
-				$this->feedback_repository->record_approval($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
-			}
+			// Record feedback with reason context.
+			$this->feedback_repository->record_approval($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
 			
 			// Apply reward for approval
 			$this->penalty_service->apply_reward($topic_id, $reason_category);
@@ -168,7 +165,6 @@ class AIPS_Author_Topics_Controller {
 		$reason = isset($_POST['reason']) ? sanitize_textarea_field($_POST['reason']) : '';
 		$reason_category = isset($_POST['reason_category']) ? sanitize_text_field($_POST['reason_category']) : 'other';
 		$source = isset($_POST['source']) ? sanitize_text_field($_POST['source']) : 'UI';
-		$skip_feedback = isset($_POST['skip_feedback']) ? rest_sanitize_boolean($_POST['skip_feedback']) : false;
 		
 		if (!$topic_id) {
 			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
@@ -183,10 +179,8 @@ class AIPS_Author_Topics_Controller {
 			// Log the rejection
 			$this->logs_repository->log_rejection($topic_id, get_current_user_id());
 			
-			// Record feedback with reason (skip for quick actions to avoid blank feedback records)
-			if (!$skip_feedback) {
-				$this->feedback_repository->record_rejection($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
-			}
+			// Record feedback with reason context.
+			$this->feedback_repository->record_rejection($topic_id, get_current_user_id(), $reason, '', $reason_category, $source);
 			
 			// Apply penalty based on reason category
 			$this->penalty_service->apply_penalty($topic_id, $reason_category);
@@ -677,12 +671,12 @@ class AIPS_Author_Topics_Controller {
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 		
-		if (!$author_id) {
-			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
-		}
-		
 		$expansion_service = new AIPS_Topic_Expansion_Service();
-		$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
+		if ($author_id > 0) {
+			$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
+		} else {
+			$stats = $expansion_service->batch_compute_all_approved_embeddings();
+		}
 		
 		wp_send_json_success(array(
 			'message' => sprintf(

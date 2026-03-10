@@ -273,6 +273,10 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_review_notifications_email', array(
             'sanitize_callback' => 'sanitize_email'
         ));
+        register_setting('aips_settings', 'aips_topic_similarity_threshold', array(
+            'sanitize_callback' => array($this, 'sanitize_similarity_threshold'),
+            'default' => 0.8
+        ));
         
         add_settings_section(
             'aips_general_section',
@@ -357,6 +361,14 @@ class AIPS_Settings {
             'aips_review_notifications_email',
             __('Notifications Email Address', 'ai-post-scheduler'),
             array($this, 'review_notifications_email_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_topic_similarity_threshold',
+            __('Topic Similarity Threshold', 'ai-post-scheduler'),
+            array($this, 'topic_similarity_threshold_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -551,7 +563,50 @@ class AIPS_Settings {
         <p class="description"><?php esc_html_e('Email address to receive notifications about posts awaiting review.', 'ai-post-scheduler'); ?></p>
         <?php
     }
-    
+
+    /**
+     * Sanitize the topic similarity threshold value.
+     *
+     * Clamps the value to the valid range [0.1, 1.0].
+     *
+     * @param mixed $value Raw input value.
+     * @return float Sanitized threshold float.
+     */
+    public function sanitize_similarity_threshold($value) {
+        if (!is_numeric($value)) {
+            return 0.8;
+        }
+        $float = (float) $value;
+        return min(1.0, max(0.1, $float));
+    }
+
+    /**
+     * Render the topic similarity threshold field.
+     *
+     * Displays a number input for the semantic duplicate detection threshold.
+     *
+     * @return void
+     */
+    public function topic_similarity_threshold_field_callback() {
+        $raw = get_option('aips_topic_similarity_threshold', 0.8);
+        // Normalize on read so the UI always reflects the effective runtime value.
+        $value = is_numeric($raw) ? min(1.0, max(0.1, (float) $raw)) : 0.8;
+        ?>
+        <input
+            type="number"
+            name="aips_topic_similarity_threshold"
+            value="<?php echo esc_attr($value); ?>"
+            min="0.1"
+            max="1.0"
+            step="0.01"
+            class="small-text"
+        >
+        <p class="description">
+            <?php esc_html_e('Minimum similarity score (0.1–1.0) used to flag new topics as potential duplicates during generation. A higher value requires topics to be more similar before being flagged. Default: 0.8.', 'ai-post-scheduler'); ?>
+        </p>
+        <?php
+    }
+
     /**
      * Render the main dashboard page.
      *

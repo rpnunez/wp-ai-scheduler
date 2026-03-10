@@ -256,7 +256,8 @@ class AIPS_DB_Manager {
             KEY author_id (author_id),
             KEY status (status),
             KEY generated_at (generated_at),
-            KEY author_id_status (author_id, status)
+            KEY author_id_status (author_id, status),
+            KEY status_score_reviewed (status, score, reviewed_at)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_author_topic_logs (
