@@ -34,6 +34,11 @@ class AIPS_Generated_Posts_Controller {
 	 * @var AIPS_Post_Review_Repository Repository for post review data
 	 */
 	private $post_review_repository;
+
+	/**
+	 * @var AIPS_Workflow_Service Service for workflow data
+	 */
+	private $workflow_service;
 	
 	/**
 	 * @var array Cache for template names to avoid N+1 queries
@@ -54,9 +59,10 @@ class AIPS_Generated_Posts_Controller {
 	 * Initialize the controller
 	 */
 	public function __construct() {
-		$this->history_repository = new AIPS_History_Repository();
-		$this->schedule_repository = new AIPS_Schedule_Repository();
+		$this->history_repository    = new AIPS_History_Repository();
+		$this->schedule_repository   = new AIPS_Schedule_Repository();
 		$this->post_review_repository = new AIPS_Post_Review_Repository();
+		$this->workflow_service      = new AIPS_Workflow_Service();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
@@ -144,8 +150,8 @@ class AIPS_Generated_Posts_Controller {
 		$authors_repository = new AIPS_Authors_Repository();
 		$authors = $authors_repository->get_all();
 
-		$workflow_statuses = AIPS_Workflows::get_statuses();
-		$workflows = AIPS_Workflows::get_all_workflows();
+		$workflow_statuses = AIPS_Workflow_Service::get_statuses();
+		$workflows         = $this->workflow_service->get_all_workflows();
 		
 		// Get globally-initialized Post Review handler
 		global $aips_post_review_handler;
