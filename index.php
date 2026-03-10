@@ -7,7 +7,7 @@ header('Content-Type: text/html; charset=UTF-8');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Post Scheduler - WordPress Plugin</title>
+    <title>AI Post Scheduler - WordPress Plugin - by rpnunez</title>
     <style>
         * {
             margin: 0;
