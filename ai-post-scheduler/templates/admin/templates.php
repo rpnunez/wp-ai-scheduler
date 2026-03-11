@@ -544,7 +544,7 @@ if (!defined('ABSPATH')) {
                         <?php esc_html_e('Next', 'ai-post-scheduler'); ?>
                         <span class="dashicons dashicons-arrow-right-alt2"></span>
                     </button>
-                    <button type="button" class="button button-primary aips-save-template" style="display: none;">
+                    <button type="button" class="button button-secondary aips-save-template">
                         <?php esc_html_e('Save Template', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
