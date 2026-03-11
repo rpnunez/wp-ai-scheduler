@@ -158,6 +158,7 @@ final class AI_Post_Scheduler {
             new AIPS_Templates();
             new AIPS_Templates_Controller();
             new AIPS_History();
+            new AIPS_Audit_Subscriber();
             
             // Initialize Post Review handler globally to avoid duplicate AJAX registration
             global $aips_post_review_handler;
