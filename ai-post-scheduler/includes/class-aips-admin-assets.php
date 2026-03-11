@@ -386,6 +386,23 @@ class AIPS_Admin_Assets {
                 'workflowUpdateError' => __('Failed to update workflow status.', 'ai-post-scheduler'),
             ));
             
+            // Workflows script (handles AI-Edit workflow status updates on this page)
+            wp_enqueue_script(
+                'aips-admin-workflows',
+                AIPS_PLUGIN_URL . 'assets/js/admin-workflows.js',
+                array('jquery', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-workflows', 'aipsWorkflowsL10n', array(
+                'ajaxUrl'                  => admin_url('admin-ajax.php'),
+                'nonce'                    => wp_create_nonce('aips_ajax_nonce'),
+                'workflowStatusNeedsReview' => AIPS_Workflow_Service::STATUS_NEEDS_REVIEW,
+                'workflowStatusLabels'     => AIPS_Workflow_Service::get_statuses(),
+                'workflowUpdateError'      => __('Failed to update workflow status.', 'ai-post-scheduler'),
+            ));
+
             // AI Edit Modal (for Generated Posts page)
             wp_enqueue_script(
                 'aips-admin-ai-edit',
@@ -413,8 +430,6 @@ class AIPS_Admin_Assets {
                 'saving' => __('Saving...', 'ai-post-scheduler'),
                 'saveSuccess' => __('Post updated successfully!', 'ai-post-scheduler'),
                 'saveError' => __('Failed to update post.', 'ai-post-scheduler'),
-                'workflowStatusNeedsReview' => AIPS_Workflow_Service::STATUS_NEEDS_REVIEW,
-                'workflowStatusLabels' => AIPS_Workflow_Service::get_statuses(),
                 'loadError' => __('Failed to load post components.', 'ai-post-scheduler'),
                 'confirmClose' => __('You have unsaved changes. Are you sure you want to close?', 'ai-post-scheduler'),
                 'noChanges' => __('No changes to save.', 'ai-post-scheduler'),

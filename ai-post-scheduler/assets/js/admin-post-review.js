@@ -24,10 +24,6 @@
 		bindEvents: function() {
 			var self = this;
 
-			$(document).on('click', '.aips-ai-edit-btn', function(e) {
-				self.handleAiEditClick(e);
-			});
-
 			$(document).on('change', '#cb-select-all-1', function(e) {
 				self.handleSelectAllChange(e);
 			});
@@ -142,31 +138,7 @@
 			}
 		},
 
-		/**
-		 * Handle AI Edit button clicks.
-		 *
-		 * @param {Event} e
-		 */
-		handleAiEditClick: function(e) {
-			if (!e) {
-				return;
-			}
 
-			e.preventDefault();
-			var $button = $(e.currentTarget);
-			var historyId = $button.data('history-id');
-			var $row = $button.closest('tr');
-			var previousStatus = $row.attr('data-workflow-status');
-			var needsReviewStatus = this.l10n.workflowStatusNeedsReview;
-
-			if (historyId && needsReviewStatus) {
-				this.applyWorkflowStatusToRow($row, needsReviewStatus);
-				this.updateWorkflowStatus(historyId, needsReviewStatus, null, {
-					row: $row,
-					previousStatus: previousStatus
-				});
-			}
-		},
 
 		/**
 		 * Handle the select-all checkbox toggle.
