@@ -18,7 +18,8 @@ class AIPS_DB_Manager {
         'aips_author_topics',
         'aips_author_topic_logs',
         'aips_topic_feedback',
-        'aips_notifications'
+        'aips_notifications',
+        'aips_workflows'
     );
 
     public function __construct() {
@@ -64,6 +65,7 @@ class AIPS_DB_Manager {
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
         $table_notifications  = $tables['aips_notifications'];
+        $table_workflows      = $tables['aips_workflows'];
 
         $sql = array();
 
@@ -76,6 +78,8 @@ class AIPS_DB_Manager {
             topic_id bigint(20) DEFAULT NULL,
             creation_method varchar(20) DEFAULT NULL,
             status varchar(50) NOT NULL DEFAULT 'pending',
+            workflow_id bigint(20) DEFAULT NULL,
+            workflow_status varchar(50) NOT NULL DEFAULT 'generated',
             prompt text,
             generated_title varchar(500),
             generated_content longtext,
@@ -90,6 +94,8 @@ class AIPS_DB_Manager {
             KEY author_id (author_id),
             KEY topic_id (topic_id),
             KEY status (status),
+            KEY workflow_status (workflow_status),
+            KEY workflow_id (workflow_id),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
             KEY template_created (template_id, created_at)
@@ -303,6 +309,21 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY type (type),
             KEY is_read (is_read),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_workflows (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text,
+            status varchar(50) NOT NULL DEFAULT 'generated',
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY status (status),
+            KEY is_active (is_active),
+            KEY updated_at (updated_at),
             KEY created_at (created_at)
         ) $charset_collate;";
 

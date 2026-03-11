@@ -62,7 +62,7 @@
 			
 			aiEditState.postId = $btn.data('post-id');
 			aiEditState.historyId = $btn.data('history-id');
-			
+
 			$('#aips-ai-edit-modal').show();
 			$('body').addClass('aips-modal-open');
 			window.AIPS.loadAIEditComponents();

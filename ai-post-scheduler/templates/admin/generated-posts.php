@@ -40,6 +40,8 @@ if (!defined('ABSPATH')) {
 				<div class="aips-filter-bar">
 					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
+						<input type="hidden" name="workflow_status" value="<?php echo esc_attr($workflow_status); ?>">
+						<input type="hidden" name="workflow_id" value="<?php echo esc_attr($workflow_id); ?>">
 						<div class="aips-filter-left">
 							<?php if (!empty($authors)): ?>
 							<label class="screen-reader-text" for="aips-filter-author"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>
@@ -178,6 +180,8 @@ if (!defined('ABSPATH')) {
 								'add_args' => array_filter(array(
 									'author_id' => $author_id ? $author_id : false,
 									'template_id' => $template_id ? $template_id : false,
+									'workflow_status' => $workflow_status ? $workflow_status : false,
+									'workflow_id' => $workflow_id ? $workflow_id : false,
 									's' => $search_query ? $search_query : false,
 								)),
 							));
@@ -215,11 +219,33 @@ if (!defined('ABSPATH')) {
 								</option>
 								<?php endforeach; ?>
 							</select>
+							<?php endif; ?>
+							<?php if (!empty($workflow_statuses)): ?>
+							<label class="screen-reader-text" for="aips-filter-workflow-status"><?php esc_html_e('Filter by Workflow Status:', 'ai-post-scheduler'); ?></label>
+							<select name="workflow_status" id="aips-filter-workflow-status" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Workflow Statuses', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($workflow_statuses as $status_key => $status_label): ?>
+								<option value="<?php echo esc_attr($status_key); ?>" <?php selected($workflow_status, $status_key); ?>>
+									<?php echo esc_html($status_label); ?>
+								</option>
+								<?php endforeach; ?>
+							</select>
+							<?php endif; ?>
+							<?php if (!empty($workflows)): ?>
+							<label class="screen-reader-text" for="aips-filter-workflow"><?php esc_html_e('Filter by Workflow:', 'ai-post-scheduler'); ?></label>
+							<select name="workflow_id" id="aips-filter-workflow" class="aips-form-select">
+								<option value=""><?php esc_html_e('All Workflows', 'ai-post-scheduler'); ?></option>
+								<?php foreach ($workflows as $workflow): ?>
+								<option value="<?php echo esc_attr($workflow->id); ?>" <?php selected($workflow_id, $workflow->id); ?>>
+									<?php echo esc_html($workflow->name); ?>
+								</option>
+								<?php endforeach; ?>
+							</select>
+							<?php endif; ?>
 							<button type="submit" class="aips-btn aips-btn-sm aips-btn-secondary">
 								<span class="dashicons dashicons-filter"></span>
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
-							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
 							<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
@@ -254,14 +280,15 @@ if (!defined('ABSPATH')) {
 			
 			<table class="wp-list-table widefat fixed striped aips-post-review-table">
 				<thead>
-					<tr>
-						<th id="cb" class="manage-column column-cb check-column">
-							<label class="screen-reader-text" for="cb-select-all-1"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
-							<input id="cb-select-all-1" type="checkbox">
-						</th>
+							<tr>
+								<th id="cb" class="manage-column column-cb check-column">
+									<label class="screen-reader-text" for="cb-select-all-1"><?php esc_html_e('Select All', 'ai-post-scheduler'); ?></label>
+									<input id="cb-select-all-1" type="checkbox">
+								</th>
 						<th class="column-title"><?php esc_html_e('Post', 'ai-post-scheduler'); ?></th>
 						<th class="column-preview" style="width: 60px; text-align: center;"><?php esc_html_e('Preview', 'ai-post-scheduler'); ?></th>
 						<th class="column-source"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
+						<th class="column-workflow"><?php esc_html_e('Workflow Status', 'ai-post-scheduler'); ?></th>
 						<th class="column-date"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
 						<th class="column-modified"><?php esc_html_e('Modified', 'ai-post-scheduler'); ?></th>
 						<th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
@@ -269,7 +296,8 @@ if (!defined('ABSPATH')) {
 				</thead>
 				<tbody>
 					<?php foreach ($draft_posts['items'] as $item): ?>
-					<tr data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>">
+				<?php $item_workflow_status = !empty($item->workflow_status) ? $item->workflow_status : AIPS_Workflow_Service::STATUS_GENERATED; ?>
+					<tr data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>" data-workflow-status="<?php echo esc_attr($item_workflow_status); ?>">
 						<th scope="row" class="check-column">
 							<label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->post_id); ?>"><?php esc_html_e('Select Post', 'ai-post-scheduler'); ?></label>
 							<input id="cb-select-<?php echo esc_attr($item->post_id); ?>" type="checkbox" class="aips-post-checkbox" 
@@ -293,6 +321,11 @@ if (!defined('ABSPATH')) {
 							</td>
 							<td class="column-source">
 								<?php echo esc_html( $controller->format_source( $item ) ); ?>
+							</td>
+							<td class="column-workflow">
+								<span class="aips-badge aips-badge-info">
+									<?php echo esc_html( AIPS_Workflow_Service::get_status_label( $item_workflow_status ) ); ?>
+								</span>
 							</td>
 							<td class="column-date">
 								<?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item->created_at))); ?>
@@ -330,6 +363,7 @@ if (!defined('ABSPATH')) {
 									<button type="button" 
 										class="button button-primary button-small aips-publish-post" 
 										data-post-id="<?php echo esc_attr($item->post_id); ?>"
+										data-history-id="<?php echo esc_attr($item->id); ?>"
 										title="<?php esc_attr_e('Publish this post', 'ai-post-scheduler'); ?>">
 										<?php esc_html_e('Publish', 'ai-post-scheduler'); ?>
 									</button>
@@ -371,6 +405,12 @@ if (!defined('ABSPATH')) {
               }
               if ($search_query) {
                 $base_url .= '&s=' . urlencode($search_query);
+              }
+              if ($workflow_status) {
+                $base_url .= '&workflow_status=' . urlencode($workflow_status);
+              }
+              if ($workflow_id) {
+                $base_url .= '&workflow_id=' . $workflow_id;
               }
               $hash_fragment = '#aips-pending-review';
 
