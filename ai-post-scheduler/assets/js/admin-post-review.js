@@ -6,16 +6,13 @@
 
 	var postReviewModule = {
 		l10n: {},
-		workflowStatusLabels: {},
 
 		/**
 		 * Bootstrap the Post Review module.
 		 */
 		init: function() {
 			this.l10n = typeof aipsPostReviewL10n !== 'undefined' ? aipsPostReviewL10n : {};
-			this.workflowStatusLabels = this.l10n.workflowStatusLabels || {};
 			this.bindEvents();
-			window.AIPS.updateWorkflowStatus = this.updateWorkflowStatus.bind(this);
 		},
 
 		/**
@@ -66,83 +63,6 @@
 		},
 
 		/**
-		 * Apply a workflow status label to a table row.
-		 *
-		 * @param {jQuery} $row
-		 * @param {string} status
-		 */
-		applyWorkflowStatusToRow: function($row, status) {
-			if (!$row || !$row.length || !status) {
-				return;
-			}
-
-			var label = this.workflowStatusLabels[status] || status;
-			var $badge = $row.find('.column-workflow .aips-badge');
-
-			if ($badge.length && label) {
-				$badge.text(label);
-			}
-
-			$row.attr('data-workflow-status', status);
-		},
-
-		/**
-		 * Update the workflow status via AJAX and reconcile UI state after the response.
-		 *
-		 * @param {number} historyId
-		 * @param {string} status
-		 * @param {number} workflowId
-		 * @param {Object} [options]
-		 * @param {jQuery} [options.row]
-		 * @param {string} [options.previousStatus]
-		 * @returns {*}
-		 */
-		updateWorkflowStatus: function(historyId, status, workflowId, options) {
-			var self = this;
-			if (!historyId || !status || !this.l10n.ajaxUrl) {
-				return $.Deferred().reject();
-			}
-
-			options = options || {};
-
-			return $.ajax({
-				url: this.l10n.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'aips_update_workflow_status',
-					history_id: historyId,
-					workflow_status: status,
-					workflow_id: workflowId || '',
-					nonce: this.l10n.nonce
-				}
-			}).done(function(response) {
-				if (!response.success) {
-					self.handleWorkflowStatusFailure(options.row, options.previousStatus, response.data && response.data.message);
-				}
-			}).fail(function() {
-				self.handleWorkflowStatusFailure(options.row, options.previousStatus, self.l10n.workflowUpdateError);
-			});
-		},
-
-		/**
-		 * Restore the previous status badge and show a toast when the AJAX update fails.
-		 *
-		 * @param {jQuery|null} $row
-		 * @param {string|null} previousStatus
-		 * @param {string=} message
-		 */
-		handleWorkflowStatusFailure: function($row, previousStatus, message) {
-			if ($row && previousStatus) {
-				this.applyWorkflowStatusToRow($row, previousStatus);
-			}
-
-			var toast = message || this.l10n.workflowUpdateError;
-			if (toast && window.AIPS && AIPS.Utilities) {
-				AIPS.Utilities.showToast(toast, 'error');
-			}
-		},
-
-		/**
 		 * Handle AI Edit button clicks.
 		 *
 		 * @param {Event} e
@@ -160,8 +80,8 @@
 			var needsReviewStatus = this.l10n.workflowStatusNeedsReview;
 
 			if (historyId && needsReviewStatus) {
-				this.applyWorkflowStatusToRow($row, needsReviewStatus);
-				this.updateWorkflowStatus(historyId, needsReviewStatus, null, {
+				AIPS.Workflows.applyWorkflowStatusToRow($row, needsReviewStatus);
+				AIPS.Workflows.updateWorkflowStatus(historyId, needsReviewStatus, null, {
 					row: $row,
 					previousStatus: previousStatus
 				});
@@ -243,11 +163,11 @@
 									}
 
 									if (historyId && readyStatus) {
-										self.updateWorkflowStatus(historyId, readyStatus, null, {
+										AIPS.Workflows.updateWorkflowStatus(historyId, readyStatus, null, {
 											row: row,
 											previousStatus: previousStatus
 										});
-										self.applyWorkflowStatusToRow(row, readyStatus);
+										AIPS.Workflows.applyWorkflowStatusToRow(row, readyStatus);
 									}
 
 									row.fadeOut(400, function() {
@@ -440,11 +360,11 @@
 										var $row = $(this).closest('tr');
 										var historyId = $(this).data('history-id') || $row.data('history-id');
 										if (historyId && readyStatus) {
-											self.updateWorkflowStatus(historyId, readyStatus, null, {
+											AIPS.Workflows.updateWorkflowStatus(historyId, readyStatus, null, {
 												row: $row,
 												previousStatus: $row.attr('data-workflow-status')
 											});
-											self.applyWorkflowStatusToRow($row, readyStatus);
+											AIPS.Workflows.applyWorkflowStatusToRow($row, readyStatus);
 										}
 										$row.fadeOut(400, function() {
 											$(this).remove();

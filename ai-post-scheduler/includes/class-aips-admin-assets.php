@@ -322,12 +322,32 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
-            
+
+            // Enqueue Workflows module (workflow status updates shared with post-review)
+            wp_enqueue_script(
+                'aips-admin-workflows',
+                AIPS_PLUGIN_URL . 'assets/js/admin-workflows.js',
+                array('jquery', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-workflows', 'aipsWorkflowsL10n', array(
+                'ajaxUrl'                       => admin_url('admin-ajax.php'),
+                'nonce'                         => wp_create_nonce('aips_ajax_nonce'),
+                'workflowStatusGenerated'        => AIPS_Workflow_Service::STATUS_GENERATED,
+                'workflowStatusNeedsReview'      => AIPS_Workflow_Service::STATUS_NEEDS_REVIEW,
+                'workflowStatusApproved'         => AIPS_Workflow_Service::STATUS_APPROVED,
+                'workflowStatusReadyToPublish'   => AIPS_Workflow_Service::STATUS_READY_TO_PUBLISH,
+                'workflowStatusLabels'           => AIPS_Workflow_Service::get_statuses(),
+                'workflowUpdateError'            => __('Failed to update workflow status.', 'ai-post-scheduler'),
+            ));
+
             // Enqueue Post Review module (for Pending Review tab)
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
-                array('aips-admin-script', 'aips-admin-view-session'),
+                array('aips-admin-script', 'aips-admin-view-session', 'aips-admin-workflows'),
                 AIPS_VERSION,
                 true
             );
@@ -378,12 +398,8 @@ class AIPS_Admin_Assets {
                 'previewTitle' => __('Post Preview', 'ai-post-scheduler'),
                 'loadingPreview' => __('Loading preview...', 'ai-post-scheduler'),
                 'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
-                'workflowStatusGenerated' => AIPS_Workflow_Service::STATUS_GENERATED,
                 'workflowStatusNeedsReview' => AIPS_Workflow_Service::STATUS_NEEDS_REVIEW,
-                'workflowStatusApproved' => AIPS_Workflow_Service::STATUS_APPROVED,
                 'workflowStatusReadyToPublish' => AIPS_Workflow_Service::STATUS_READY_TO_PUBLISH,
-                'workflowStatusLabels' => AIPS_Workflow_Service::get_statuses(),
-                'workflowUpdateError' => __('Failed to update workflow status.', 'ai-post-scheduler'),
             ));
             
             // AI Edit Modal (for Generated Posts page)
