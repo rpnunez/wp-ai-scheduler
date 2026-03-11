@@ -43,7 +43,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No Templates Available', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('You need to create at least one active template before you can schedule posts.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
-                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-templates')); ?>" class="aips-btn aips-btn-primary">
+                        <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-primary">
                             <span class="dashicons dashicons-media-document"></span>
                             <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
                         </a>

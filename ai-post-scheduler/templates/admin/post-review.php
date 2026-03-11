@@ -223,7 +223,7 @@ $templates = $template_repository->get_all();
 					</span>
 					<div class="aips-pagination-links">
 						<?php
-						$base_url = admin_url('admin.php?page=aips-post-review');
+						$base_url = AIPS_Admin_Menu_Helper::get_page_url('post_review');
 						if ($template_id) {
 							$base_url .= '&template_id=' . $template_id;
 						}

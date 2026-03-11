@@ -136,7 +136,7 @@ if (!defined('ABSPATH')) {
                                         <span class="dashicons dashicons-controls-play"></span>
                                         <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                     </button>
-                                    <a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule&schedule_template=' . $template->id)); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
+                                    <a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule', array('schedule_template' => $template->id))); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-calendar-alt"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
                                     </a>
