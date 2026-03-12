@@ -35,3 +35,7 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+## 2024-05-18 - Added Copy Error button to API Details & Clear Filter to Planner
+
+Learning: Some search filters were missing clear buttons that were already bound in javascript (e.g. #planner-topic-search-clear in planner.php). Also, copying API error text wasn't implemented despite copying responses being implemented.
+Action: Add missing buttons if the javascript logic already exists for it to improve UX consistency. Always add copy functionality to raw logs output (both success and errors).
