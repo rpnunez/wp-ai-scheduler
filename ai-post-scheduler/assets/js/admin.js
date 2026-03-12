@@ -726,7 +726,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        var savedId = response.data.template_id;
+                        $('#template_id').val(savedId);
+                        AIPS.Utilities.showToast('Draft saved successfully.', 'success');
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
