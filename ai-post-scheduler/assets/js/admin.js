@@ -2713,6 +2713,8 @@
                     callsHtml += '<h4>Response</h4>';
                     if (call.response.success) {
                         callsHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(call.response.content || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
+                    } else if (call.response.error) {
+                        callsHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(call.response.error) + '"><span class="dashicons dashicons-admin-page"></span> Copy Error</button>';
                     }
                     callsHtml += '</div>';
                     if (call.response.success) {
