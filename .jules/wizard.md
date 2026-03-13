@@ -35,3 +35,9 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+
+## 2026-01-23 - Add Clear Search Button to Sections and Planner
+
+Learning: When components share JavaScript logic for features like "Clear Search", the HTML templates should have consistent markup (e.g., matching IDs/classes) to ensure the scripts can attach event listeners and manipulate the UI as expected.
+
+Action: Always double-check if a template is missing UI elements that are referenced by existing JavaScript when implementing a feature across multiple screens.
