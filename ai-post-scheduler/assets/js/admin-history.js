@@ -127,7 +127,7 @@
 			var loadingText = aipsHistoryL10n.loadingLogs || 'Loading logs\u2026';
 			var detailsTitle = aipsHistoryL10n.historyDetailsTitle || 'History Details';
 
-			$title.text(detailsTitle);
+			//$title.text(detailsTitle);
 			$content.html('<p>' + loadingText + '</p>');
 			$modal.fadeIn(200);
 
@@ -152,7 +152,7 @@
 					var container = response.data.container;
 					var logs      = response.data.logs;
 
-					$title.text(detailsTitle);
+					//$title.text(detailsTitle);
 
 					$content.html(self.renderLogsModalContent(container, logs));
 				},
@@ -196,14 +196,17 @@
 		renderLogsModalContent: function (container, logs) {
 			var self = this;
 			var html = '';
-			var containerHeader = aipsHistoryL10n.historyContainerHeader || 'History Container for ID: %d';
-			containerHeader = containerHeader.replace('%d', container.id ? String(container.id) : '');
+			//var containerHeader = aipsHistoryL10n.historyContainerHeader || 'History Container for ID: %d';
+			//containerHeader = containerHeader.replace('%d', container.id ? String(container.id) : '');
 
-			html += '<h3 class="aips-history-modal-section-title">' + self.esc(containerHeader) + '</h3>';
+			//html += '<h3 class="aips-history-modal-section-title">' + self.esc(containerHeader) + '</h3>';
 
 			// ---- Container summary ----
 			html += '<div class="aips-history-modal-summary">';
 			html += '<table class="aips-table" style="width:100%;margin-bottom:20px;"><tbody>';
+
+			html += '<tr><th>' + self.esc(aipsHistoryL10n.labelContainerId || 'Container ID') + '</th><td>'
+				+ self.esc(container.id ? String(container.id) : '') + '</td></tr>';
 
 			if (container.generated_title) {
 				html += '<tr><th>' + self.esc(aipsHistoryL10n.labelTitle || 'Title') + '</th><td>' + self.esc(container.generated_title) + '</td></tr>';

@@ -458,6 +458,7 @@ class AIPS_Admin_Assets {
                 'logsHeading'          => __('Log Entries', 'ai-post-scheduler'),
                 'noLogsFound'          => __('No log entries found for this container.', 'ai-post-scheduler'),
                 'noResultsFound'       => __('No history containers match your current filters.', 'ai-post-scheduler'),
+                'labelContainerId'     => __('Container ID', 'ai-post-scheduler'),
                 'labelTitle'           => __('Title', 'ai-post-scheduler'),
                 'labelTemplate'        => __('Template', 'ai-post-scheduler'),
                 'labelStatus'          => __('Status', 'ai-post-scheduler'),
