@@ -11,78 +11,31 @@ class AIPS_History {
      * @var AIPS_History_Repository Repository for database operations
      */
     private $repository;
-    
+
+    /**
+     * Initialize history handler dependencies and AJAX hooks.
+     *
+     * @return void
+     */
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'aips_history';
         $this->repository = new AIPS_History_Repository();
         
+        add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
         add_action('wp_ajax_aips_clear_history', array($this, 'ajax_clear_history'));
-        add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
+        add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
         add_action('wp_ajax_aips_get_history_details', array($this, 'ajax_get_history_details'));
         add_action('wp_ajax_aips_get_history_logs', array($this, 'ajax_get_history_logs'));
-        add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));
         add_action('wp_ajax_aips_reload_history', array($this, 'ajax_reload_history'));
-        add_action('wp_ajax_aips_export_history', array($this, 'ajax_export_history'));
-    }
-    
-    public function get_history($args = array()) {
-        return $this->repository->get_history($args);
+        add_action('wp_ajax_aips_retry_generation', array($this, 'ajax_retry_generation'));
     }
 
     /**
-     * Generate pagination HTML for history table.
+     * AJAX handler to bulk delete selected history records.
      *
-     * @param array  $history       History data array.
-     * @param string $base_url      Base URL for pagination links.
-     * @param string $status_filter Current status filter.
-     * @return string HTML for pagination.
+     * @return void
      */
-    public function generate_pagination_html($history, $base_url, $status_filter = '') {
-        if ($history['pages'] <= 1) {
-            return '';
-        }
-
-        $url = $base_url;
-        if ($status_filter) {
-            $url = add_query_arg('status', $status_filter, $url);
-        }
-
-        ob_start();
-        include AIPS_PLUGIN_DIR . 'templates/partials/history-pagination.php';
-        return ob_get_clean();
-    }
-    
-    public function get_stats() {
-        return $this->repository->get_stats();
-    }
-
-    public function get_template_stats($template_id) {
-        return $this->repository->get_template_stats($template_id);
-    }
-
-    public function get_all_template_stats() {
-        return $this->repository->get_all_template_stats();
-    }
-    
-    public function clear_history($status = '') {
-        return $this->repository->delete_by_status($status);
-    }
-    
-    public function ajax_clear_history() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
-        }
-        
-        $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
-        
-        $this->clear_history($status);
-        
-        wp_send_json_success(array('message' => __('History cleared successfully.', 'ai-post-scheduler')));
-    }
-
     public function ajax_bulk_delete_history() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -104,46 +57,100 @@ class AIPS_History {
 
         wp_send_json_success(array('message' => __('Selected items deleted successfully.', 'ai-post-scheduler')));
     }
-    
-    public function ajax_retry_generation() {
+
+    /**
+     * AJAX handler to clear history, optionally filtered by status.
+     *
+     * @return void
+     */
+    public function ajax_clear_history() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
-        
+
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
-        
-        $history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
-        
-        if (!$history_id) {
-            wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
-        }
-        
-        $history_item = $this->repository->get_by_id($history_id);
-        
-        if (!$history_item || !$history_item->template_id) {
-            wp_send_json_error(array('message' => __('History item not found or no template associated.', 'ai-post-scheduler')));
-        }
-        
-        $templates = new AIPS_Templates();
-        $template = $templates->get($history_item->template_id);
-        
-        if (!$template) {
-            wp_send_json_error(array('message' => __('Template no longer exists.', 'ai-post-scheduler')));
-        }
-        
-        $generator = new AIPS_Generator();
-        $result = $generator->generate_post($template);
-        
-        if (is_wp_error($result)) {
-            wp_send_json_error(array('message' => $result->get_error_message()));
-        }
-        
-        wp_send_json_success(array(
-            'message' => __('Post regenerated successfully!', 'ai-post-scheduler'),
-            'post_id' => $result
-        ));
+
+        $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+
+        $this->clear_history($status);
+
+        wp_send_json_success(array('message' => __('History cleared successfully.', 'ai-post-scheduler')));
     }
-    
+
+    /**
+     * AJAX handler to export history records as CSV.
+     *
+     * @return void
+     */
+    public function ajax_export_history() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Permission denied.', 'ai-post-scheduler'));
+        }
+
+        $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+        $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+
+        // Get max records limit from configuration
+        $config = AIPS_Config::get_instance();
+        $max_records = (int) $config->get_option('history_export_max_records', 10000);
+
+        // Fetch all matching records
+        $history = $this->get_history(array(
+            'page' => 1,
+            'per_page' => $max_records,
+            'status' => $status_filter,
+            'search' => $search_query,
+        ));
+
+        $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
+        $filename = sanitize_file_name($filename);
+
+        if (!headers_sent()) {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+        }
+
+        $output = fopen('php://output', 'w');
+
+        // Add BOM for Excel compatibility
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+        // Headers
+        fputcsv($output, array(
+            'ID',
+            'Date',
+            'Title',
+            'Status',
+            'Template',
+            'Post ID',
+            'Error Message'
+        ));
+
+        if (!empty($history['items'])) {
+            foreach ($history['items'] as $item) {
+                fputcsv($output, array(
+                    $item->id,
+                    $item->created_at,
+                    $this->sanitize_csv_cell($item->generated_title),
+                    $item->status,
+                    $this->sanitize_csv_cell($item->template_name),
+                    $item->post_id,
+                    $this->sanitize_csv_cell($item->error_message)
+                ));
+            }
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * AJAX handler to return details for a single history item.
+     *
+     * @return void
+     */
     public function ajax_get_history_details() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
@@ -183,7 +190,7 @@ class AIPS_History {
         
         wp_send_json_success($response);
     }
-
+    
     /**
      * AJAX handler to retrieve all log entries for a specific history container.
      *
@@ -303,6 +310,121 @@ class AIPS_History {
     }
 
     /**
+     * AJAX handler to retry generation for a history item template.
+     *
+     * @return void
+     */
+    public function ajax_retry_generation() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+        
+        $history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+        
+        if (!$history_id) {
+            wp_send_json_error(array('message' => __('Invalid history ID.', 'ai-post-scheduler')));
+        }
+        
+        $history_item = $this->repository->get_by_id($history_id);
+        
+        if (!$history_item || !$history_item->template_id) {
+            wp_send_json_error(array('message' => __('History item not found or no template associated.', 'ai-post-scheduler')));
+        }
+        
+        $templates = new AIPS_Templates();
+        $template = $templates->get($history_item->template_id);
+        
+        if (!$template) {
+            wp_send_json_error(array('message' => __('Template no longer exists.', 'ai-post-scheduler')));
+        }
+        
+        $generator = new AIPS_Generator();
+        $result = $generator->generate_post($template);
+        
+        if (is_wp_error($result) && !is_int($result)) {
+            wp_send_json_error(array('message' => $result->get_error_message()));
+        }
+        
+        wp_send_json_success(array(
+            'message' => __('Post regenerated successfully!', 'ai-post-scheduler'),
+            'post_id' => $result
+        ));
+    }
+
+    /**
+     * Retrieve paginated history records.
+     *
+     * @param array $args Query arguments.
+     * @return array
+     */
+    public function get_history($args = array()) {
+        return $this->repository->get_history($args);
+    }
+
+    /**
+     * Generate pagination HTML for history table.
+     *
+     * @param array  $history       History data array.
+     * @param string $base_url      Base URL for pagination links.
+     * @param string $status_filter Current status filter.
+     * @return string HTML for pagination.
+     */
+    public function generate_pagination_html($history, $base_url, $status_filter = '') {
+        if ($history['pages'] <= 1) {
+            return '';
+        }
+
+        $url = $base_url;
+        if ($status_filter) {
+            $url = add_query_arg('status', $status_filter, $url);
+        }
+
+        ob_start();
+        include AIPS_PLUGIN_DIR . 'templates/partials/history-pagination.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Get aggregate history statistics.
+     *
+     * @return array
+     */
+    public function get_stats() {
+        return $this->repository->get_stats();
+    }
+
+    /**
+     * Get statistics for a specific template.
+     *
+     * @param int $template_id Template ID.
+     * @return array
+     */
+    public function get_template_stats($template_id) {
+        return $this->repository->get_template_stats($template_id);
+    }
+
+    /**
+     * Get statistics for all templates.
+     *
+     * @return array
+     */
+    public function get_all_template_stats() {
+        return $this->repository->get_all_template_stats();
+    }
+
+    /**
+     * Clear history records, optionally filtered by status.
+     *
+     * @param string $status Status filter.
+     * @return mixed
+     */
+    public function clear_history($status = '') {
+        return $this->repository->delete_by_status($status);
+    }
+
+    /**
      * Render pagination HTML for history table (used by template and AJAX).
      *
      * @param array  $history       History result with total, pages, current_page.
@@ -340,70 +462,11 @@ class AIPS_History {
         return $value;
     }
 
-    public function ajax_export_history() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_die(__('Permission denied.', 'ai-post-scheduler'));
-        }
-
-        $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
-        $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
-
-        // Get max records limit from configuration
-        $config = AIPS_Config::get_instance();
-        $max_records = (int) $config->get_option('history_export_max_records', 10000);
-
-        // Fetch all matching records
-        $history = $this->get_history(array(
-            'page' => 1,
-            'per_page' => $max_records,
-            'status' => $status_filter,
-            'search' => $search_query,
-        ));
-
-        $filename = 'aips-history-export-' . date('Y-m-d-H-i-s') . '.csv';
-        $filename = sanitize_file_name($filename);
-
-        if (!headers_sent()) {
-            header('Content-Type: text/csv; charset=utf-8');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-        }
-
-        $output = fopen('php://output', 'w');
-
-        // Add BOM for Excel compatibility
-        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-
-        // Headers
-        fputcsv($output, array(
-            'ID',
-            'Date',
-            'Title',
-            'Status',
-            'Template',
-            'Post ID',
-            'Error Message'
-        ));
-
-        if (!empty($history['items'])) {
-            foreach ($history['items'] as $item) {
-                fputcsv($output, array(
-                    $item->id,
-                    $item->created_at,
-                    $this->sanitize_csv_cell($item->generated_title),
-                    $item->status,
-                    $this->sanitize_csv_cell($item->template_name),
-                    $item->post_id,
-                    $this->sanitize_csv_cell($item->error_message)
-                ));
-            }
-        }
-
-        fclose($output);
-        exit;
-    }
-
+    /**
+     * Render the history admin page.
+     *
+     * @return void
+     */
     public function render_page() {
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
