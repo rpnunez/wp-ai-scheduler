@@ -35,3 +35,7 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+
+## 2026-03-14 - Clear Planner Topic Search
+**Learning:** The Topic Brainstorming (Planner) page had a search bar to filter topics but no way to reset the filter easily. The "Clear List" button next to it could be mistakenly clicked, destroying user data.
+**Action:** Implemented the missing `#planner-topic-search-clear` button in the UI, matching other admin pages, allowing users to safely and easily clear their search filter.
