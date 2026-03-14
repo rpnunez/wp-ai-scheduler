@@ -3152,8 +3152,9 @@
 
             // Prefer preselect from data attribute, then fall back to URL query param.
             var preselectId = $modal.data('preselect-template');
+            var preselectStructureId = $modal.data('preselect-structure');
 
-            if (!preselectId) {
+            if (!preselectId && !preselectStructureId) {
                 var urlParams = null;
 
                 try {
@@ -3169,20 +3170,35 @@
                 }
 
                 if (urlParams) {
-                    preselectId = urlParams.get('schedule_template');
+                    if (urlParams.get('schedule_template')) {
+                        preselectId = urlParams.get('schedule_template');
+                    } else if (urlParams.get('schedule_structure')) {
+                        preselectStructureId = urlParams.get('schedule_structure');
+                    }
                 }
             }
 
-            // Only proceed with a valid positive integer template ID
+            // Only proceed with a valid positive integer template ID or structure ID
             var preselectIdNum = parseInt(preselectId, 10);
-            if (!preselectIdNum || preselectIdNum <= 0) return;
+            var preselectStructureIdNum = parseInt(preselectStructureId, 10);
+
+            if ((!preselectIdNum || preselectIdNum <= 0) && (!preselectStructureIdNum || preselectStructureIdNum <= 0)) {
+                return;
+            }
 
             var $form = $('#aips-schedule-form');
             if (!$form.length) return;
 
             $form[0].reset();
             $('#schedule_id').val('');
-            $('#schedule_template').val(preselectIdNum);
+
+            if (preselectIdNum > 0) {
+                $('#schedule_template').val(preselectIdNum);
+            }
+            if (preselectStructureIdNum > 0) {
+                $('#article_structure_id').val(preselectStructureIdNum);
+            }
+
             $('#aips-schedule-modal-title').text('Add New Schedule');
             $modal.show();
 
@@ -3191,11 +3207,13 @@
                 try {
                     var cleanUrlObj = new URL(window.location.href);
                     cleanUrlObj.searchParams.delete('schedule_template');
+                    cleanUrlObj.searchParams.delete('schedule_structure');
                     cleanUrlObj.hash = '';
                     window.history.replaceState(null, '', cleanUrlObj.toString());
                 } catch (e) {
                     // Fallback to regex cleanup if URL API unavailable
                     var cleanUrl = window.location.href.replace(/[?&]schedule_template=[^&]*/, '');
+                    cleanUrl = cleanUrl.replace(/[?&]schedule_structure=[^&]*/, '');
                     cleanUrl = cleanUrl.replace(/\?&/, '?');  // Fix orphaned ?& when param was first
                     cleanUrl = cleanUrl.replace(/\?$/, '');
                     cleanUrl = cleanUrl.replace(/#open_schedule_modal$/, '');

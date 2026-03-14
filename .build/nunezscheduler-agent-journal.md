@@ -94,3 +94,11 @@
 - `ai-post-scheduler/templates/admin/templates.php`
 - `ai-post-scheduler/assets/js/admin.js`
 **Outcome:** Saves experienced users time and friction when making minor updates or quickly iterating on template parameters.
+## 2026-03-08 - Article Structures Scheduling Flow Optimization
+**Target Feature:** Article Structures
+**Improvement:** Optimized flow by adding a quick-action "Schedule" button directly on the Article Structures admin list. Clicking this button redirects the user to the Schedule page, automatically opens the "Add New Schedule" modal, and pre-selects the chosen Article Structure via the `schedule_structure` query parameter. This eliminates the manual steps of navigating to the schedule page, opening the modal, and locating the structure in the dropdown.
+**Files Modified:**
+- `ai-post-scheduler/templates/admin/structures.php` (Added Schedule button)
+- `ai-post-scheduler/templates/admin/schedule.php` (Added data-preselect-structure attribute to modal)
+- `ai-post-scheduler/assets/js/admin.js` (Updated `initScheduleAutoOpen` to handle `schedule_structure` param and clean URL)
+**Outcome:** Significantly reduces friction for users who create a new Article Structure and immediately want to schedule it, aligning with the "Flow is Function" philosophy by reducing a multi-step process to a single click.
