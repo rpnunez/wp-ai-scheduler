@@ -679,8 +679,8 @@
          * Save the current template form as an inactive draft.
          *
          * Requires at least the template name to be filled in. Sends the
-         * `aips_save_template` AJAX action with `is_active=0` and reloads the
-         * page on success.
+         * `aips_save_template` AJAX action with `is_active=0` and updates the
+         * template_id on success without reloading the page.
          *
          * @param {Event} e - Click event from an `.aips-save-draft-template` element.
          */
@@ -726,7 +726,13 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        // Update the template_id so subsequent saves update the same draft
+                        if (response.data && response.data.template_id) {
+                            $('#template_id').val(response.data.template_id);
+                            AIPS.lastSavedTemplateId = response.data.template_id;
+                        }
+
+                        AIPS.Utilities.showToast('Draft saved successfully.', 'success');
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }

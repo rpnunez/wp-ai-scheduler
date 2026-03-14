@@ -94,3 +94,8 @@
 - `ai-post-scheduler/templates/admin/templates.php`
 - `ai-post-scheduler/assets/js/admin.js`
 **Outcome:** Saves experienced users time and friction when making minor updates or quickly iterating on template parameters.
+## 2026-03-14 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Optimized the `saveDraftTemplate` flow so that users can save a draft without losing their place in the wizard. Previously, saving a draft triggered a full page reload. Now, the draft is saved via AJAX, the `#template_id` is updated silently, and a success toast is shown, allowing the user to continue editing the template seamlessly.
+**Files Modified:** ai-post-scheduler/assets/js/admin.js
+**Outcome:** Significantly improves workflow efficiency by keeping the user in the context of the wizard after saving their progress.
