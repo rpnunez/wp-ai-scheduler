@@ -43,8 +43,6 @@ class AIPS_Generator {
      */
     private $markdown_parser;
 
-    private $history_id;
-
     /**
      * Constructor.
      *
@@ -733,8 +731,6 @@ class AIPS_Generator {
         } else {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id());
         }
-
-        $this->history_id = null;
 
         return $post_id;
     }
