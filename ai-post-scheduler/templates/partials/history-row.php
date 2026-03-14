@@ -94,10 +94,6 @@ if (!defined('ABSPATH')) {
             </button>
         <?php endif; ?>
 
-        <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-history" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete history container', 'ai-post-scheduler'); ?>">
-            <span class="dashicons dashicons-trash"></span>
-        </button>
-
         </div>
     </td>
 </tr>
