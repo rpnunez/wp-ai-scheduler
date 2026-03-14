@@ -120,6 +120,8 @@
             $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
             $(document).on('click', '.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next', this.loadHistoryPage);
             $(document).on('keypress', '#aips-history-search-input', this.handleHistorySearchKeypress);
+            $(document).on('keyup search', '#aips-history-search-input', this.toggleHistorySearchClear);
+            $(document).on('click', '#aips-history-search-clear', this.clearHistorySearch);
             $(document).on('click', '.aips-view-details', this.viewDetails);
 
             // History Pagination
@@ -2065,6 +2067,37 @@
         },
 
         /**
+         * Show or hide the `#aips-history-search-clear` button depending on
+         * whether the search field is non-empty.
+         *
+         * Bound to the `keyup` and `search` events on `#aips-history-search-input`.
+         */
+        toggleHistorySearchClear: function() {
+            var search = $(this).val();
+            var $clearBtn = $('#aips-history-search-clear');
+
+            if (search) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+        },
+
+        /**
+         * Clear the history search input, hide the clear button, and re-run the filter.
+         *
+         * Bound to the `click` event on `#aips-history-search-clear`.
+         *
+         * @param {Event} e - Click event from `#aips-history-search-clear`.
+         */
+        clearHistorySearch: function(e) {
+            e.preventDefault();
+            $('#aips-history-search-input').val('');
+            $('#aips-history-search-clear').hide();
+            AIPS.filterHistory(e);
+        },
+
+        /**
          * Submit the history filter when the Enter key is pressed inside the
          * search input.
          *
@@ -3725,6 +3758,75 @@
             AIPS.searchVoices.call($('#voice_search'));
         }
         console.log('AIPS: hello from admin.js')
+    });
+
+})(jQuery);
+
+    // Form search clear buttons
+    $(document).ready(function() {
+        $(document).on('keyup search', 'form.aips-filter-form input[type="search"]', function() {
+            var $input = $(this);
+            var $clearBtn = $input.siblings('.aips-clear-search-btn');
+            if ($input.val()) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+        });
+
+        $(document).on('click', '.aips-clear-search-btn', function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var $form = $btn.closest('form');
+            var $input = $form.find('input[type="search"]');
+            $input.val('');
+            $form.submit();
+        });
+    });
+    // Form search clear buttons
+    $(document).ready(function() {
+        $(document).on('keyup search', 'form.aips-filter-form input[type="search"]', function() {
+            var $input = $(this);
+            var $clearBtn = $input.siblings('.aips-clear-search-btn');
+            if ($input.val()) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+        });
+
+        $(document).on('click', '.aips-clear-search-btn', function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var $form = $btn.closest('form');
+            var $input = $form.find('input[type="search"]');
+            $input.val('');
+            $form.submit();
+        });
+    });
+
+})(jQuery);
+
+    // Form search clear buttons
+    $(document).ready(function() {
+        $(document).on('keyup search', 'form.aips-filter-form input[type="search"]', function() {
+            var $input = $(this);
+            var $clearBtn = $input.siblings('.aips-clear-search-btn');
+            if ($input.val()) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+        });
+
+        $(document).on('click', '.aips-clear-search-btn', function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var $form = $btn.closest('form');
+            var $input = $form.find('input[type="search"]');
+            $input.val('');
+            $form.submit();
+        });
     });
 
 })(jQuery);

@@ -75,9 +75,7 @@ if (!defined('ABSPATH')) {
 								<span class="dashicons dashicons-search"></span>
 								<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
 							</button>
-							<?php if (!empty($search_query)): ?>
-							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
-							<?php endif; ?>
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-search-btn" style="<?php echo empty($search_query) ? 'display: none;' : ''; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 						</div>
 					</form>
 				</div>
@@ -228,9 +226,7 @@ if (!defined('ABSPATH')) {
 								<span class="dashicons dashicons-search"></span>
 								<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
 							</button>
-							<?php if (!empty($search_query)): ?>
-							<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-sm"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
-							<?php endif; ?>
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-clear-search-btn" style="<?php echo empty($search_query) ? 'display: none;' : ''; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 						</div>
 					</form>
 				</div>

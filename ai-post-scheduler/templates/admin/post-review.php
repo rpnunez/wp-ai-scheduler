@@ -65,7 +65,7 @@ $templates = $template_repository->get_all();
 		<!-- Content Panel -->
 		<div class="aips-content-panel">
 			<!-- Filter Bar -->
-			<form method="get" class="aips-filter-bar">
+			<form method="get" class="aips-filter-bar aips-filter-form">
 				<input type="hidden" name="page" value="aips-post-review">
 				
 				<div class="aips-filter-left">
@@ -86,9 +86,7 @@ $templates = $template_repository->get_all();
 					<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-post-search-input" name="s" class="aips-form-input" value="<?php echo esc_attr($search_query); ?>" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
 					<button type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-secondary"><?php esc_html_e('Search', 'ai-post-scheduler'); ?></button>
-					<?php if (!empty($search_query)): ?>
-						<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-secondary"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
-					<?php endif; ?>
+					<button type="button" class="aips-btn aips-btn-secondary aips-clear-search-btn" style="<?php echo empty($search_query) ? 'display: none;' : ''; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 				</div>
 			</form>
 	
