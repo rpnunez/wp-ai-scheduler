@@ -3,9 +3,13 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Handles history management for AI post generation runs.
+ *
+ * Registers history-related AJAX endpoints and coordinates history
+ * retrieval, export, stats, and admin page rendering.
+ */
 class AIPS_History {
-    
-    private $table_name;
     
     /**
      * @var AIPS_History_Repository Repository for database operations
@@ -18,8 +22,6 @@ class AIPS_History {
      * @return void
      */
     public function __construct() {
-        global $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_history';
         $this->repository = new AIPS_History_Repository();
         
         add_action('wp_ajax_aips_bulk_delete_history', array($this, 'ajax_bulk_delete_history'));

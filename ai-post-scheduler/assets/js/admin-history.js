@@ -125,8 +125,9 @@
 			var $content    = $('#aips-history-logs-content');
 			var $title      = $('#aips-history-logs-modal-title');
 			var loadingText = aipsHistoryL10n.loadingLogs || 'Loading logs\u2026';
+			var detailsTitle = aipsHistoryL10n.historyDetailsTitle || 'History Details';
 
-			$title.text(loadingText);
+			$title.text(detailsTitle);
 			$content.html('<p>' + loadingText + '</p>');
 			$modal.fadeIn(200);
 
@@ -151,12 +152,7 @@
 					var container = response.data.container;
 					var logs      = response.data.logs;
 
-					var title = container.generated_title || ('#' + container.id);
-					$title.text(
-						aipsHistoryL10n.logsModalTitle
-							? aipsHistoryL10n.logsModalTitle.replace('%s', title)
-							: 'Logs \u2014 ' + title
-					);
+					$title.text(detailsTitle);
 
 					$content.html(self.renderLogsModalContent(container, logs));
 				},
@@ -177,10 +173,16 @@
 		 */
 		toggleLogDetail: function (e) {
 			e.preventDefault();
-			var targetSelector = $(e.currentTarget).data('target');
+			var $button = $(e.currentTarget);
+			var targetSelector = $button.data('target');
 			var $target = $(targetSelector);
 			if ($target.length) {
-				$target.slideToggle(150);
+				var showLabel = aipsHistoryL10n.showDetails || 'Show details';
+				var hideLabel = aipsHistoryL10n.hideDetails || 'Hide details';
+
+				$target.slideToggle(150, function () {
+					$button.text($target.is(':visible') ? hideLabel : showLabel);
+				});
 			}
 		},
 
@@ -194,6 +196,10 @@
 		renderLogsModalContent: function (container, logs) {
 			var self = this;
 			var html = '';
+			var containerHeader = aipsHistoryL10n.historyContainerHeader || 'History Container for ID: %d';
+			containerHeader = containerHeader.replace('%d', container.id ? String(container.id) : '');
+
+			html += '<h3 class="aips-history-modal-section-title">' + self.esc(containerHeader) + '</h3>';
 
 			// ---- Container summary ----
 			html += '<div class="aips-history-modal-summary">';

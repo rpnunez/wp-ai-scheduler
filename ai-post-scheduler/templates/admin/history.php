@@ -231,7 +231,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 <div id="aips-history-logs-modal" class="aips-modal" style="display: none;">
     <div class="aips-modal-content aips-modal-large">
         <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
-        <h2 id="aips-history-logs-modal-title"><?php esc_html_e('History Logs', 'ai-post-scheduler'); ?></h2>
+        <h2 id="aips-history-logs-modal-title"><?php esc_html_e('History Details', 'ai-post-scheduler'); ?></h2>
         <div id="aips-history-logs-content">
             <p><?php esc_html_e('Loading logs...', 'ai-post-scheduler'); ?></p>
         </div>
