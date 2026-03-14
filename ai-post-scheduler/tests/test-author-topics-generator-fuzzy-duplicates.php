@@ -71,7 +71,7 @@ class Test_Author_Topics_Generator_Fuzzy_Duplicates extends WP_UnitTestCase {
 			}
 
 			public function update( $id, $data ) {
-				return true;
+				return 1;
 			}
 		};
 	}
