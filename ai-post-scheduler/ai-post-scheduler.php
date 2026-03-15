@@ -193,6 +193,9 @@ final class AI_Post_Scheduler {
         new AIPS_Author_Post_Generator();
         new AIPS_Post_Review_Notifications();
 
+        // Data cleanup: remove orphaned plugin records when WP objects are deleted.
+        new AIPS_Data_Cleanup();
+
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();
     }
