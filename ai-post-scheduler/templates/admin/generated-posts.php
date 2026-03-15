@@ -172,25 +172,61 @@ if (!defined('ABSPATH')) {
 						<?php printf( esc_html( _n( '%s post', '%s posts', $history['total'], 'ai-post-scheduler' ) ), number_format_i18n( $history['total'] ) ); ?>
 					</span>
 					<?php if ($history['pages'] > 1): ?>
-					<div class="tablenav-pages">
-						<?php
-						$page_links = paginate_links(array(
-							'base' => add_query_arg('generated_paged', '%#%'),
-							'format' => '',
-							'prev_text' => '&laquo;',
-							'next_text' => '&raquo;',
-							'total' => $history['pages'],
-							'current' => $current_page,
-							'add_args' => array_filter(array(
-								'author_id' => $author_id ? $author_id : false,
-								'template_id' => $template_id ? $template_id : false,
-								's' => $search_query ? $search_query : false,
-							)),
-						));
-						if ($page_links) {
-							echo wp_kses_post( $page_links );
-						}
-						?>
+					<?php
+					$current = (int) $current_page;
+					$pages = (int) $history['pages'];
+					$start = max(1, $current - 3);
+					$end = min($pages, $current + 3);
+					$base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+					$build_generated_posts_page_url = static function($page_number) use ($base_url, $author_id, $template_id, $search_query) {
+						return add_query_arg(array_filter(array(
+							'generated_paged' => absint($page_number),
+							'author_id' => $author_id ? $author_id : false,
+							'template_id' => $template_id ? $template_id : false,
+							's' => $search_query ? $search_query : false,
+						)), $base_url);
+					};
+					?>
+					<div class="aips-history-pagination-links">
+						<?php if ($current > 1): ?>
+							<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-prev" href="<?php echo esc_url($build_generated_posts_page_url($current - 1)); ?>" aria-label="<?php esc_attr_e('Previous page', 'ai-post-scheduler'); ?>">
+								<span class="dashicons dashicons-arrow-left-alt2"></span>
+							</a>
+						<?php else: ?>
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-prev" disabled aria-label="<?php esc_attr_e('Previous page', 'ai-post-scheduler'); ?>">
+								<span class="dashicons dashicons-arrow-left-alt2"></span>
+							</button>
+						<?php endif; ?>
+
+						<span class="aips-history-page-numbers">
+							<?php if ($start > 1): ?>
+								<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-link" href="<?php echo esc_url($build_generated_posts_page_url(1)); ?>">1</a>
+								<?php if ($start > 2): ?><span class="aips-history-page-ellipsis">…</span><?php endif; ?>
+							<?php endif; ?>
+
+							<?php for ($p = $start; $p <= $end; $p++): ?>
+								<?php if ($p === $current): ?>
+									<span class="aips-btn aips-btn-sm aips-btn-primary" aria-current="page"><?php echo esc_html($p); ?></span>
+								<?php else: ?>
+									<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-link" href="<?php echo esc_url($build_generated_posts_page_url($p)); ?>"><?php echo esc_html($p); ?></a>
+								<?php endif; ?>
+							<?php endfor; ?>
+
+							<?php if ($end < $pages): ?>
+								<?php if ($end < $pages - 1): ?><span class="aips-history-page-ellipsis">…</span><?php endif; ?>
+								<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-link" href="<?php echo esc_url($build_generated_posts_page_url($pages)); ?>"><?php echo esc_html($pages); ?></a>
+							<?php endif; ?>
+						</span>
+
+						<?php if ($current < $pages): ?>
+							<a class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-next" href="<?php echo esc_url($build_generated_posts_page_url($current + 1)); ?>" aria-label="<?php esc_attr_e('Next page', 'ai-post-scheduler'); ?>">
+								<span class="dashicons dashicons-arrow-right-alt2"></span>
+							</a>
+						<?php else: ?>
+							<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-history-page-next" disabled aria-label="<?php esc_attr_e('Next page', 'ai-post-scheduler'); ?>">
+								<span class="dashicons dashicons-arrow-right-alt2"></span>
+							</button>
+						<?php endif; ?>
 					</div>
 					<?php endif; ?>
 				</div>
