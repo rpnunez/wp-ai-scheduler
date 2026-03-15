@@ -474,6 +474,7 @@
 	display: flex;
 	gap: var(--aips-space-2);
 	align-items: center;
+	flex-wrap: wrap;
 }
 
 /* History table: checkbox column background (integrate with table) */
@@ -654,6 +655,7 @@
 	transition: all var(--aips-transition-base);
 	border: 1px solid transparent;
 	text-decoration: none;
+	white-space: nowrap;
 }
 
 .aips-btn:focus {

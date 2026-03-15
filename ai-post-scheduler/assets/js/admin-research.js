@@ -1,42 +1,87 @@
 (function($) {
     'use strict';
 
-    $(document).ready(function() {
-        let selectedTopics = [];
+    window.AIPS = window.AIPS || {};
+    var AIPS = window.AIPS;
 
-        // Local helper for HTML escaping to prevent XSS
+    Object.assign(AIPS, {
         /**
-         * Escape a value for safe insertion as HTML text content.
+         * Topic IDs selected in the Trending Topics table.
          *
-         * Converts the value to a string and replaces `&`, `<`, `>`, `"`, and `'`
-         * with their corresponding HTML entities. Returns an empty string for
-         * `null` or `undefined` inputs.
-         *
-         * @param  {*}      text - Value to escape (coerced to string if needed).
-         * @return {string} HTML-safe string.
+         * @type {string[]}
          */
-        function escapeHtml(text) {
-            if (text === null || text === undefined) return '';
-            return String(text)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
+        researchSelectedTopics: [],
 
-        // Research form submission
-        $('#aips-research-form').on('submit', function(e) {
+        /**
+         * Initialize the research admin module.
+         *
+         * Binds all delegated listeners and auto-loads topics when the page is
+         * available.
+         */
+        initResearch: function() {
+            this.bindResearchEvents();
+
+            if ($('#load-topics').length) {
+                $('#load-topics').trigger('click');
+            }
+        },
+
+        /**
+         * Register delegated event handlers for the research admin UI.
+         */
+        bindResearchEvents: function() {
+            $(document).on('submit', '#aips-research-form', this.submitResearchForm);
+            $(document).on('click', '#load-topics', this.loadTopics);
+            $(document).on('keyup search', '#filter-search', this.filterTopics);
+            $(document).on('click', '#filter-search-clear, #clear-topics-search', this.clearTopicsSearch);
+            $(document).on('change', '#select-all-topics', this.toggleAllTopics);
+            $(document).on('change', '.topic-checkbox', this.toggleTopicSelection);
+            $(document).on('click', '.delete-topic', this.deleteTopic);
+            $(document).on('submit', '#bulk-schedule-form', this.submitBulkSchedule);
+            $(document).on('click', '#aips-clear-filters', this.clearTopicFilters);
+            $(document).on('click', '#aips-start-research', this.focusResearchForm);
+            $(document).on('click', '#analyze-gaps-btn', this.analyzeGaps);
+            $(document).on('click', '.generate-gap-ideas', this.generateGapIdeas);
+            $(document).on('click', '#aips-delete-selected-topics', this.bulkDeleteSelectedTopics);
+            $(document).on('click', '#aips-generate-selected-topics', this.generateSelectedTopics);
+            $(document).on('click', '#aips-reload-topics-btn', this.reloadTopics);
+        },
+
+        /**
+         * Escape a value for safe insertion into HTML content.
+         *
+         * @param {*} text Value to escape.
+         * @returns {string} Escaped HTML-safe text.
+         */
+        escapeHtml: function(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        },
+
+        /**
+         * Handle submission of the "New Research" form.
+         *
+         * @param {Event} e Submit event.
+         */
+        submitResearchForm: function(e) {
             e.preventDefault();
 
-            const $form = $(this);
-            const $submit = $('#research-submit');
-            const $spinner = $form.find('.spinner');
+            var $form = $(e.currentTarget);
+            var $submit = $('#research-submit');
+            var $spinner = $form.find('.spinner');
 
-            const niche = $('#research-niche').val();
-            const count = $('#research-count').val();
-            const keywordsStr = $('#research-keywords').val();
-            const keywords = keywordsStr ? keywordsStr.split(',').map(k => k.trim()) : [];
+            var niche = $('#research-niche').val();
+            var count = $('#research-count').val();
+            var keywordsStr = $('#research-keywords').val();
+            var keywords = keywordsStr ? keywordsStr.split(',').map(function(k) { return k.trim(); }) : [];
 
             $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
@@ -53,8 +98,8 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        displayResearchResults(response.data);
-                        $('#load-topics').trigger('click'); // Refresh topics list
+                        AIPS.renderResearchResults(response.data);
+                        $('#load-topics').trigger('click');
                     } else {
                         AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
@@ -67,34 +112,25 @@
                     $spinner.removeClass('is-active');
                 }
             });
-        });
+        },
 
-        // Display research results
         /**
-         * Render the research-result summary into `#research-results-content`.
+         * Render the research results summary panel.
          *
-         * Builds an HTML snippet showing the number of saved topics and the niche,
-         * followed by an ordered list of the top-ranked topics with scores and
-         * optional reasoning. Slides the `#research-results` panel into view.
-         *
-         * @param {Object}        data            - The `response.data` from `aips_research_topics`.
-         * @param {number}        data.saved_count - Total topics saved by this research run.
-         * @param {string}        data.niche       - The niche that was researched.
-         * @param {Array<Object>} data.top_topics  - Array of top-ranked topic objects.
+         * @param {Object} data Response payload from research AJAX action.
          */
-        function displayResearchResults(data) {
-            const $container = $('#research-results-content');
-            // Security: Escape HTML using local escapeHtml helper
-            let html = '<p><strong>' + escapeHtml(data.saved_count) + ' ' + aipsResearchL10n.topicsSaved + ' "' + escapeHtml(data.niche) + '"</strong></p>';
+        renderResearchResults: function(data) {
+            var $container = $('#research-results-content');
+            var html = '<p><strong>' + this.escapeHtml(data.saved_count) + ' ' + aipsResearchL10n.topicsSaved + ' "' + this.escapeHtml(data.niche) + '"</strong></p>';
 
             if (data.top_topics && data.top_topics.length > 0) {
                 html += '<h4>' + aipsResearchL10n.topTopics + '</h4><ol>';
                 data.top_topics.forEach(function(topic) {
-                    const scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
-                    html += '<li><strong>' + escapeHtml(topic.topic) + '</strong> ';
-                    html += '<span class="aips-score-badge aips-score-' + scoreClass + '">' + escapeHtml(topic.score) + '</span>';
+                    var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
+                    html += '<li><strong>' + AIPS.escapeHtml(topic.topic) + '</strong> ';
+                    html += '<span class="aips-score-badge aips-score-' + scoreClass + '">' + AIPS.escapeHtml(topic.score) + '</span>';
                     if (topic.reason) {
-                        html += '<br><small><em>' + escapeHtml(topic.reason) + '</em></small>';
+                        html += '<br><small><em>' + AIPS.escapeHtml(topic.reason) + '</em></small>';
                     }
                     html += '</li>';
                 });
@@ -103,13 +139,21 @@
 
             $container.html(html);
             $('#research-results').slideDown();
-        }
+        },
 
-        // Load topics
-        $('#load-topics').on('click', function() {
-            const niche = $('#filter-niche').val();
-            const minScore = $('#filter-score').val();
-            const freshOnly = $('#filter-fresh').is(':checked');
+        /**
+         * Load filtered trending topics from the server.
+         *
+         * @param {Event} e Click event.
+         */
+        loadTopics: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+
+            var niche = $('#filter-niche').val();
+            var minScore = $('#filter-score').val();
+            var freshOnly = $('#filter-fresh').is(':checked');
 
             $.ajax({
                 url: ajaxurl,
@@ -124,127 +168,119 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        displayTopicsTable(response.data.topics);
+                        AIPS.renderTopicsTable(response.data.topics);
                     } else {
                         AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
                 }
             });
-        });
+        },
 
-        // Display topics table
         /**
-         * Render the full topics table (or an empty-state panel) in
-         * `#topics-container`.
+         * Render the topics table or empty state.
          *
-         * Builds a `<table>` with checkboxes, score badges, keywords, and action
-         * buttons for each topic. Also appends an initially hidden "no results"
-         * empty state for the in-page search filter. Shows or hides the
-         * `#bulk-schedule-section` depending on whether any topics are present.
-         * Re-applies the current search term if `#filter-search` is non-empty.
-         *
-         * @param {Array<Object>} topics - Array of topic objects from the server.
+         * @param {Array<Object>} topics Topics returned from AJAX.
          */
-        function displayTopicsTable(topics) {
+        renderTopicsTable: function(topics) {
+            var html = '';
+            var niche = $('#filter-niche').val();
+            var minScore = $('#filter-score').val();
+            var freshOnly = $('#filter-fresh').is(':checked');
+            var isFiltered = niche || minScore !== '0' || freshOnly;
+
+            this.researchSelectedTopics = [];
+            this.updateSelectedTopics();
+
             if (!topics || topics.length === 0) {
-                // Check if filters are active
-                const niche = $('#filter-niche').val();
-                const minScore = $('#filter-score').val();
-                const freshOnly = $('#filter-fresh').is(':checked');
-
-                const isFiltered = niche || minScore !== '0' || freshOnly;
-
-                let emptyStateHtml = '<div class="aips-empty-state">';
-                emptyStateHtml += '<span class="dashicons dashicons-search" aria-hidden="true"></span>';
+                html = '<div class="aips-panel-body"><div class="aips-empty-state">';
+                html += '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>';
 
                 if (isFiltered) {
-                    emptyStateHtml += '<h3>' + aipsResearchL10n.noTopicsFound + '</h3>';
-                    emptyStateHtml += '<p>' + aipsResearchL10n.noTopicsFound + '</p>';
-                    emptyStateHtml += '<button type="button" class="button button-primary" id="aips-clear-filters">' + aipsResearchL10n.clearFilters + '</button>';
+                    html += '<h3 class="aips-empty-state-title">' + aipsResearchL10n.noTopicsFound + '</h3>';
+                    html += '<p class="aips-empty-state-description">' + aipsResearchL10n.noTopicsFound + '</p>';
+                    html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-clear-filters">' + aipsResearchL10n.clearFilters + '</button>';
                 } else {
-                    emptyStateHtml += '<h3>' + aipsResearchL10n.libraryEmpty + '</h3>';
-                    emptyStateHtml += '<p>' + aipsResearchL10n.libraryEmpty + '</p>';
-                    emptyStateHtml += '<button type="button" class="button button-primary" id="aips-start-research">' + aipsResearchL10n.startResearch + '</button>';
+                    html += '<h3 class="aips-empty-state-title">' + aipsResearchL10n.libraryEmpty + '</h3>';
+                    html += '<p class="aips-empty-state-description">' + aipsResearchL10n.libraryEmpty + '</p>';
+                    html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-primary" id="aips-start-research">' + aipsResearchL10n.startResearch + '</button>';
                 }
 
-                emptyStateHtml += '</div>';
+                html += '</div></div>';
 
-                $('#topics-container').html(emptyStateHtml);
+                $('#topics-container').html(html);
                 $('#bulk-schedule-section').hide();
+                $('#topics-tablenav').hide();
                 return;
             }
 
-            let html = '<table class="aips-topics-table">';
+            html = '<table class="aips-table aips-research-table">';
             html += '<thead><tr>';
-            html += '<th><input type="checkbox" id="select-all-topics"></th>';
-            html += '<th>Topic</th>';
-            html += '<th>Score</th>';
-            html += '<th>Niche</th>';
-            html += '<th>Keywords</th>';
-            html += '<th>Researched</th>';
-            html += '<th>Actions</th>';
+            html += '<th scope="col" style="width:30px;"><input type="checkbox" id="select-all-topics"></th>';
+            html += '<th scope="col">Topic</th>';
+            html += '<th scope="col">Score</th>';
+            html += '<th scope="col">Niche</th>';
+            html += '<th scope="col">Keywords</th>';
+            html += '<th scope="col">Researched</th>';
+            html += '<th scope="col">Actions</th>';
             html += '</tr></thead><tbody>';
 
             topics.forEach(function(topic) {
-                const scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
-                const keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
+                var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
+                var keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
 
                 html += '<tr>';
-                html += '<td><input type="checkbox" class="topic-checkbox" value="' + escapeHtml(topic.id) + '"></td>';
-                html += '<td><strong>' + escapeHtml(topic.topic) + '</strong>';
+                html += '<td><input type="checkbox" class="topic-checkbox" value="' + AIPS.escapeHtml(topic.id) + '"></td>';
+                html += '<td><strong>' + AIPS.escapeHtml(topic.topic) + '</strong>';
                 if (topic.reason) {
-                    html += '<br><small>' + escapeHtml(topic.reason) + '</small>';
+                    html += '<br><small>' + AIPS.escapeHtml(topic.reason) + '</small>';
                 }
                 html += '</td>';
-                html += '<td><span class="aips-score-badge aips-score-' + scoreClass + '">' + escapeHtml(topic.score) + '</span></td>';
-                html += '<td>' + escapeHtml(topic.niche) + '</td>';
+                html += '<td><span class="aips-score-badge aips-score-' + scoreClass + '">' + AIPS.escapeHtml(topic.score) + '</span></td>';
+                html += '<td>' + AIPS.escapeHtml(topic.niche) + '</td>';
                 html += '<td><div class="aips-keywords-list">';
                 keywords.forEach(function(kw) {
-                    html += '<span class="aips-keyword-tag">' + escapeHtml(kw) + '</span>';
+                    html += '<span class="aips-keyword-tag">' + AIPS.escapeHtml(kw) + '</span>';
                 });
                 html += '</div></td>';
                 html += '<td>' + new Date(topic.researched_at).toLocaleDateString() + '</td>';
                 html += '<td><div class="aips-topic-actions">';
-                html += '<button class="button button-small delete-topic" data-id="' + escapeHtml(topic.id) + '">' + aipsResearchL10n.delete + '</button>';
+                html += '<button class="aips-btn aips-btn-sm aips-btn-danger delete-topic" data-id="' + AIPS.escapeHtml(topic.id) + '"><span class="dashicons dashicons-trash"></span> ' + aipsResearchL10n.delete + '</button>';
                 html += '</div></td>';
                 html += '</tr>';
             });
 
             html += '</tbody></table>';
-
-            // Empty state for search
-            html += '<div id="topics-search-empty" class="aips-empty-state" style="display:none;">';
-            html += '<span class="dashicons dashicons-search" aria-hidden="true"></span>';
-            html += '<h3>' + aipsResearchL10n.noTopicsFoundTitle + '</h3>';
-            html += '<p>' + aipsResearchL10n.noTopicsFound + '</p>';
-            html += '<button type="button" class="button button-primary" id="clear-topics-search">' + aipsResearchL10n.clearSearch + '</button>';
+            html += '<div id="topics-search-empty" class="aips-empty-state" style="display:none; padding: 40px 20px;">';
+            html += '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>';
+            html += '<h3 class="aips-empty-state-title">' + aipsResearchL10n.noTopicsFoundTitle + '</h3>';
+            html += '<p class="aips-empty-state-description">' + aipsResearchL10n.noTopicsFound + '</p>';
+            html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="clear-topics-search">' + aipsResearchL10n.clearSearch + '</button>';
             html += '</div>';
 
             $('#topics-container').html(html);
 
-            // Show bulk schedule section
-            $('#bulk-schedule-section').show();
+            $('#topics-count').text(topics.length + ' ' + (topics.length === 1 ? 'topic' : 'topics'));
+            $('#topics-tablenav').show();
+            $('#bulk-schedule-section').hide();
 
-            // Re-apply filter if search box has value
             if ($('#filter-search').val()) {
-                filterTopics();
+                this.filterTopics();
             }
-        }
+        },
 
-        // Search Filter Logic
         /**
-         * Filter the visible topics table rows against the current search query.
+         * Apply the client-side search filter to the rendered topics table.
          *
-         * Shows or hides the `#filter-search-clear` button, toggles rows based
-         * on whether the topic text cell contains the query, and shows the
-         * `#topics-search-empty` empty-state element when no rows match.
-         *
-         * Bound to the `keyup` and `search` events on `#filter-search`.
+         * @param {Event} e Key/search event.
          */
-        function filterTopics() {
-            const query = $('#filter-search').val().toLowerCase();
-            const $rows = $('.aips-topics-table tbody tr');
-            let visibleCount = 0;
+        filterTopics: function(e) {
+            if (e) {
+                e.preventDefault();
+            }
+
+            var query = $('#filter-search').val().toLowerCase();
+            var $rows = $('.aips-research-table tbody tr');
+            var visibleCount = 0;
 
             if (query.length > 0) {
                 $('#filter-search-clear').show();
@@ -253,7 +289,7 @@
             }
 
             $rows.each(function() {
-                const topicText = $(this).find('td:nth-child(2)').text().toLowerCase();
+                var topicText = $(this).find('td:nth-child(2)').text().toLowerCase();
                 if (topicText.indexOf(query) > -1) {
                     $(this).show();
                     visibleCount++;
@@ -262,98 +298,113 @@
                 }
             });
 
-            // Show/hide empty state
             if (visibleCount === 0 && $rows.length > 0) {
-                $('.aips-topics-table').hide();
+                $('.aips-research-table').hide();
                 $('#topics-search-empty').show();
             } else {
-                $('.aips-topics-table').show();
+                $('.aips-research-table').show();
                 $('#topics-search-empty').hide();
             }
-        }
+        },
 
-        // Search Listeners
-        $(document).on('keyup search', '#filter-search', function() {
-            filterTopics();
-        });
-
-        // Helper function to clear search
         /**
-         * Clear the `#filter-search` input and re-trigger the search event to
-         * restore all hidden topic rows, then return focus to the field.
-         */
-        function clearSearch() {
-            $('#filter-search').val('').trigger('search');
-            $('#filter-search').focus();
-        }
-
-        $(document).on('click', '#filter-search-clear, #clear-topics-search', clearSearch);
-
-        // Select all topics
-        $(document).on('change', '#select-all-topics', function() {
-            // Only select visible checkboxes
-            $('.topic-checkbox:visible').prop('checked', $(this).is(':checked'));
-            updateSelectedTopics();
-        });
-
-        // Individual checkbox change
-        $(document).on('change', '.topic-checkbox', function() {
-            updateSelectedTopics();
-        });
-
-        // Update selected topics
-        /**
-         * Rebuild the `selectedTopics` array from currently checked
-         * `.topic-checkbox` elements.
+         * Clear the topics search input and restore all rows.
          *
-         * Called on every individual or "select all" checkbox change so that
-         * the bulk-schedule form always has an up-to-date list of IDs.
+         * @param {Event} e Click event.
          */
-        function updateSelectedTopics() {
-            selectedTopics = $('.topic-checkbox:checked').map(function() {
+        clearTopicsSearch: function(e) {
+            e.preventDefault();
+            $('#filter-search').val('').trigger('search').focus();
+        },
+
+        /**
+         * Toggle all visible topic checkboxes from the header checkbox.
+         *
+         * @param {Event} e Change event.
+         */
+        toggleAllTopics: function(e) {
+            var isChecked = $(e.currentTarget).is(':checked');
+            $('.topic-checkbox:visible').prop('checked', isChecked);
+            AIPS.updateSelectedTopics();
+        },
+
+        /**
+         * Recompute selected topics when an individual checkbox changes.
+         *
+         * @param {Event} e Change event.
+         */
+        toggleTopicSelection: function(e) {
+            e.preventDefault();
+            this.updateSelectedTopics();
+        },
+
+        /**
+         * Refresh selected-topic state and related action-button availability.
+         */
+        updateSelectedTopics: function() {
+            this.researchSelectedTopics = $('.topic-checkbox:checked').map(function() {
                 return $(this).val();
             }).get();
-        }
 
-        // Delete topic
-        $(document).on('click', '.delete-topic', function() {
-            var $el = $(this);
-            var topicId = $el.data('id');
-            AIPS.Utilities.confirm(aipsResearchL10n.deleteTopicConfirm, 'Notice', [
-                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $.ajax({
-                        url: ajaxurl,
-                        type: 'POST',
-                        data: {
-                            action: 'aips_delete_trending_topic',
-                            nonce: $('#aips_nonce').val(),
-                            topic_id: topicId
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                $('#load-topics').trigger('click');
-                            } else {
-                                AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
-                            }
-                        }
-                    });
-                }}
-            ]);
-        });
+            var hasSelected = this.researchSelectedTopics.length > 0;
+            $('#aips-delete-selected-topics').prop('disabled', !hasSelected);
+            $('#aips-generate-selected-topics').prop('disabled', !hasSelected);
+        },
 
-        // Bulk schedule
-        $('#bulk-schedule-form').on('submit', function(e) {
+        /**
+         * Delete a single topic from the table.
+         *
+         * @param {Event} e Click event.
+         */
+        deleteTopic: function(e) {
             e.preventDefault();
 
-            if (selectedTopics.length === 0) {
+            var $el = $(e.currentTarget);
+            var topicId = $el.data('id');
+
+            AIPS.Utilities.confirm(aipsResearchL10n.deleteTopicConfirm, 'Notice', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                {
+                    label: 'Yes, delete',
+                    className: 'aips-btn aips-btn-danger-solid',
+                    action: function() {
+                        $.ajax({
+                            url: ajaxurl,
+                            type: 'POST',
+                            data: {
+                                action: 'aips_delete_trending_topic',
+                                nonce: $('#aips_nonce').val(),
+                                topic_id: topicId
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    $('#load-topics').trigger('click');
+                                } else {
+                                    AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                                }
+                            }
+                        });
+                    }
+                }
+            ]);
+        },
+
+        /**
+         * Submit bulk schedule action for selected topics.
+         *
+         * @param {Event} e Submit event.
+         */
+        submitBulkSchedule: function(e) {
+            e.preventDefault();
+
+            if (AIPS.researchSelectedTopics.length === 0) {
                 AIPS.Utilities.showToast(aipsResearchL10n.selectTopicSchedule, 'warning');
                 return;
             }
 
-            const $form = $(this);
-            const $submit = $form.find('button[type="submit"]');
-            const $spinner = $form.find('.spinner');
+            var $form = $(e.currentTarget);
+            var $submit = $form.find('button[type="submit"]');
+            var $spinner = $form.find('.spinner');
 
             $submit.prop('disabled', true).addClass('is-loading');
             $spinner.addClass('is-active');
@@ -364,7 +415,7 @@
                 data: {
                     action: 'aips_schedule_trending_topics',
                     nonce: $('#aips_nonce').val(),
-                    topic_ids: selectedTopics,
+                    topic_ids: AIPS.researchSelectedTopics,
                     template_id: $('#schedule-template').val(),
                     start_date: $('#schedule-start-date').val(),
                     frequency: $('#schedule-frequency').val()
@@ -372,9 +423,10 @@
                 success: function(response) {
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success');
-                        selectedTopics = [];
+                        AIPS.researchSelectedTopics = [];
                         $('.topic-checkbox').prop('checked', false);
                         $('#select-all-topics').prop('checked', false);
+                        AIPS.updateSelectedTopics();
                     } else {
                         AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
@@ -387,45 +439,55 @@
                     $spinner.removeClass('is-active');
                 }
             });
-        });
+        },
 
-        // Clear filters handler
-        $(document).on('click', '#aips-clear-filters', function() {
+        /**
+         * Reset topic filters to defaults and reload the list.
+         *
+         * @param {Event} e Click event.
+         */
+        clearTopicFilters: function(e) {
+            e.preventDefault();
             $('#filter-niche').val('');
             $('#filter-score').val('0');
             $('#filter-fresh').prop('checked', false);
             $('#load-topics').trigger('click');
-        });
+        },
 
-        // Start research handler
-        $(document).on('click', '#aips-start-research', function() {
-            var $form = $('#aips-research-form');
-
-            if ($form.length > 0) {
-                $('html, body').animate({
-                    scrollTop: $form.offset().top - 50
-                }, 500);
-
-                var $nicheField = $('#research-niche');
-                if ($nicheField.length > 0) {
-                    $nicheField.focus();
-                }
-            }
-        });
-
-        // Auto-load topics on page load if elements exist
-        if ($('#load-topics').length > 0) {
-            $('#load-topics').trigger('click');
-        }
-
-        // --- Gap Analysis Logic ---
-
-        // Analyze Gaps Button
-        $('#analyze-gaps-btn').on('click', function(e) {
+        /**
+         * Scroll to the research form and focus the niche field.
+         *
+         * @param {Event} e Click event.
+         */
+        focusResearchForm: function(e) {
             e.preventDefault();
-            const niche = $('#gap-niche').val();
-            const $btn = $(this);
-            const $spinner = $btn.next('.spinner');
+
+            var $form = $('#aips-research-form');
+            if (!$form.length) {
+                return;
+            }
+
+            $('html, body').animate({
+                scrollTop: $form.offset().top - 50
+            }, 500);
+
+            var $nicheField = $('#research-niche');
+            if ($nicheField.length) {
+                $nicheField.focus();
+            }
+        },
+
+        /**
+         * Analyze site content gaps for the requested niche.
+         *
+         * @param {Event} e Click event.
+         */
+        analyzeGaps: function(e) {
+            e.preventDefault();
+
+            var niche = $('#gap-niche').val();
+            var $btn = $(e.currentTarget);
+            var $spinner = $btn.next('.spinner');
 
             if (!niche) {
                 AIPS.Utilities.showToast('Please enter a target niche.', 'warning');
@@ -445,7 +507,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        renderGapResults(response.data.gaps);
+                        AIPS.renderGapResults(response.data.gaps);
                     } else {
                         AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
                     }
@@ -458,23 +520,16 @@
                     $spinner.removeClass('is-active');
                 }
             });
-        });
+        },
 
-        // Render Gap Cards
         /**
-         * Render the gap-analysis results as a grid of priority-coded cards.
+         * Render cards for gap-analysis results.
          *
-         * Clears the `#gap-results-container .aips-gap-grid` and rebuilds it
-         * from the `gaps` array. Each card shows the priority badge, missing
-         * topic title, reason, search intent, and a "Generate Ideas" button
-         * that triggers an AJAX-backed idea-generation flow. Slides the
-         * container into view on completion.
-         *
-         * @param {Array<Object>} gaps - Array of gap objects returned by the server.
+         * @param {Array<Object>} gaps Gap records from the server.
          */
-        function renderGapResults(gaps) {
-            const $container = $('#gap-results-container');
-            const $grid = $container.find('.aips-gap-grid');
+        renderGapResults: function(gaps) {
+            var $container = $('#gap-results-container');
+            var $grid = $container.find('.aips-gap-grid');
             $grid.empty();
 
             if (!gaps || gaps.length === 0) {
@@ -484,32 +539,35 @@
             }
 
             gaps.forEach(function(gap) {
-                const priorityClass = (gap.priority || 'Medium').toLowerCase();
-                let cardHtml = `
-                    <div class="aips-gap-card priority-${escapeHtml(priorityClass)}">
-                        <span class="aips-gap-badge ${escapeHtml(priorityClass)}">${escapeHtml(gap.priority)} Priority</span>
-                        <h4>${escapeHtml(gap.missing_topic)}</h4>
-                        <p class="aips-gap-reason">${escapeHtml(gap.reason)}</p>
-                        <p class="aips-gap-intent">Intent: ${escapeHtml(gap.search_intent)}</p>
-                        <div class="aips-gap-actions">
-                            <button class="button button-secondary generate-gap-ideas" data-topic="${escapeHtml(gap.missing_topic)}">
-                                Generate Ideas
-                            </button>
-                        </div>
-                    </div>
-                `;
+                var priorityClass = (gap.priority || 'Medium').toLowerCase();
+                var cardHtml = '';
+
+                cardHtml += '<div class="aips-gap-card priority-' + AIPS.escapeHtml(priorityClass) + '">';
+                cardHtml += '<span class="aips-gap-badge ' + AIPS.escapeHtml(priorityClass) + '">' + AIPS.escapeHtml(gap.priority) + ' Priority</span>';
+                cardHtml += '<h4>' + AIPS.escapeHtml(gap.missing_topic) + '</h4>';
+                cardHtml += '<p class="aips-gap-reason">' + AIPS.escapeHtml(gap.reason) + '</p>';
+                cardHtml += '<p class="aips-gap-intent">Intent: ' + AIPS.escapeHtml(gap.search_intent) + '</p>';
+                cardHtml += '<div class="aips-gap-actions">';
+                cardHtml += '<button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="' + AIPS.escapeHtml(gap.missing_topic) + '">Generate Ideas</button>';
+                cardHtml += '</div></div>';
+
                 $grid.append(cardHtml);
             });
 
             $container.slideDown();
-        }
+        },
 
-        // Generate Ideas from Gap
-        $(document).on('click', '.generate-gap-ideas', function(e) {
+        /**
+         * Generate topic ideas from a selected gap card.
+         *
+         * @param {Event} e Click event.
+         */
+        generateGapIdeas: function(e) {
             e.preventDefault();
-            const $btn = $(this);
-            const topic = $btn.data('topic');
-            const niche = $('#gap-niche').val();
+
+            var $btn = $(e.currentTarget);
+            var topic = $btn.data('topic');
+            var niche = $('#gap-niche').val();
 
             $btn.prop('disabled', true).text('Generating...');
 
@@ -525,9 +583,7 @@
                 success: function(response) {
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success');
-                        // Switch to Trending tab and reload
                         $('.aips-tab-link[data-tab="trending"]').trigger('click');
-                        // Wait for tab switch then reload
                         setTimeout(function() {
                             $('#load-topics').trigger('click');
                         }, 500);
@@ -542,8 +598,93 @@
                     $btn.prop('disabled', false).text('Generate Ideas');
                 }
             });
-        });
+        },
 
+        /**
+         * Bulk-delete selected topics.
+         *
+         * @param {Event} e Click event.
+         */
+        bulkDeleteSelectedTopics: function(e) {
+            e.preventDefault();
+
+            if (AIPS.researchSelectedTopics.length === 0) {
+                return;
+            }
+
+            AIPS.Utilities.confirm(
+                (aipsResearchL10n.deleteTopicsConfirm || 'Delete ' + AIPS.researchSelectedTopics.length + ' selected topic(s)?'),
+                'Notice',
+                [
+                    { label: aipsResearchL10n.cancel || 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                    {
+                        label: aipsResearchL10n.confirmDelete || 'Yes, delete',
+                        className: 'aips-btn aips-btn-danger-solid',
+                        action: function() {
+                            $.ajax({
+                                url: ajaxurl,
+                                type: 'POST',
+                                data: {
+                                    action: 'aips_delete_trending_topic_bulk',
+                                    nonce: $('#aips_nonce').val(),
+                                    topic_ids: AIPS.researchSelectedTopics
+                                },
+                                success: function(response) {
+                                    if (response.success) {
+                                        AIPS.Utilities.showToast(response.data.message, 'success');
+                                        AIPS.researchSelectedTopics = [];
+                                        $('#load-topics').trigger('click');
+                                    } else {
+                                        AIPS.Utilities.showToast('Error: ' + response.data.message, 'error');
+                                    }
+                                }
+                            });
+                        }
+                    }
+                ]
+            );
+        },
+
+        /**
+         * Open the schedule panel for selected topics and prefill start time.
+         *
+         * @param {Event} e Click event.
+         */
+        generateSelectedTopics: function(e) {
+            e.preventDefault();
+
+            if (AIPS.researchSelectedTopics.length === 0) {
+                return;
+            }
+
+            var now = new Date();
+            var pad = function(n) {
+                return String(n).padStart(2, '0');
+            };
+            var localDT = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+            $('#schedule-start-date').val(localDT);
+            $('#bulk-schedule-section').show();
+
+            if ($('#bulk-schedule-section').length) {
+                $('html, body').animate({
+                    scrollTop: $('#bulk-schedule-section').offset().top - 50
+                }, 400);
+            }
+        },
+
+        /**
+         * Reload the trending topics list.
+         *
+         * @param {Event} e Click event.
+         */
+        reloadTopics: function(e) {
+            e.preventDefault();
+            $('#load-topics').trigger('click');
+        }
     });
 
+    $(document).ready(function() {
+        AIPS.initResearch();
+    });
 })(jQuery);
