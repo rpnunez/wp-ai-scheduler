@@ -29,6 +29,31 @@ Fires after a post has been successfully generated and saved.
     *   `object $template`: The template object used for generation.
     *   `int $history_id`: The ID of the history record associated with this generation.
 
+#### `aips_post_generation_incomplete`
+Fires after a post has been created but one or more requested components failed to generate.
+
+*   **Arguments:**
+    *   `int $post_id`: The ID of the created WordPress post.
+    *   `array $component_statuses`: Per-component success map keyed by `post_title`, `post_excerpt`, `post_content`, and `featured_image`.
+    *   `AIPS_Generation_Context $context`: The generation context used for the request.
+    *   `int $history_id`: The ID of the history record associated with this generation.
+
+#### `aips_post_components_updated`
+Fires after AI Edit saves updated post components.
+
+*   **Arguments:**
+    *   `int $post_id`: The updated post ID.
+    *   `array $updated_components`: Updated component keys (`title`, `excerpt`, `content`, `featured_image`).
+    *   `array $components`: Raw component payload submitted by AI Edit.
+
+#### `aips_partial_generation_state_reconciled`
+Fires after partial-generation metadata is reconciled from current post values.
+
+*   **Arguments:**
+    *   `int $post_id`: The reconciled post ID.
+    *   `array $component_statuses`: Normalized component status map.
+    *   `string $source`: Reconciliation source (`save_post` or `aips_post_components_updated`).
+
 ### Schedule Execution
 
 #### `aips_schedule_execution_started`

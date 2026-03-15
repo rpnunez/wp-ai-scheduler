@@ -136,7 +136,7 @@ if (!defined('ABSPATH')) {
                                         <span class="dashicons dashicons-controls-play"></span>
                                         <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                     </button>
-                                    <a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule&schedule_template=' . $template->id)); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
+                                    <a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule', array('schedule_template' => $template->id))); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-calendar-alt"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
                                     </a>
@@ -544,7 +544,7 @@ if (!defined('ABSPATH')) {
                         <?php esc_html_e('Next', 'ai-post-scheduler'); ?>
                         <span class="dashicons dashicons-arrow-right-alt2"></span>
                     </button>
-                    <button type="button" class="button button-primary aips-save-template" style="display: none;">
+                    <button type="button" class="button button-secondary aips-save-template">
                         <?php esc_html_e('Save Template', 'ai-post-scheduler'); ?>
                     </button>
                 </div>

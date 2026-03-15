@@ -31,9 +31,6 @@
 			// Edit Author Button
 			$(document).on('click', '.aips-edit-author', this.editAuthor.bind(this));
 
-			// View Topics Button
-			$(document).on('click', '.aips-view-author', this.viewTopics.bind(this));
-
 			// Generate Topics Now Button
 			$(document).on('click', '.aips-generate-topics-now', this.generateTopicsNow.bind(this));
 
@@ -53,8 +50,6 @@
 			$(document).on('aips:tabSwitch', this.onTabSwitch.bind(this));
 
 			// Topic actions
-			$(document).on('click', '.aips-quick-approve-topic', this.quickApproveTopic.bind(this));
-			$(document).on('click', '.aips-quick-reject-topic', this.quickRejectTopic.bind(this));
 			$(document).on('click', '.aips-approve-topic', this.approveTopic.bind(this));
 			$(document).on('click', '.aips-reject-topic', this.rejectTopic.bind(this));
 			$(document).on('click', '.aips-delete-topic', this.deleteTopic.bind(this));
@@ -296,35 +291,6 @@
 		},
 
 		/**
-		 * Open the topics modal for an author and load the "pending" tab.
-		 *
-		 * Stores the author ID, shows a loading message, resets the tab state
-		 * to "pending", updates the bulk-action dropdown for that tab, and
-		 * calls `loadTopics('pending')`.
-		 *
-		 * @param {Event} e - Click event from an `.aips-view-author` element.
-		 */
-		viewTopics: function (e) {
-			e.preventDefault();
-
-			const authorId = $(e.currentTarget).data('id');
-			this.currentAuthorId = authorId;
-
-			$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.loadingTopics + '</p>');
-			
-			// Reset tabs to pending
-			$('.aips-tab-link').removeClass('active');
-			$('.aips-tab-link[data-tab="pending"]').addClass('active');
-			
-			// Update bulk action dropdown for pending tab
-			this.updateBulkActionDropdown('pending');
-			
-			$('#aips-topics-modal').fadeIn();
-
-			this.loadTopics('pending');
-		},
-
-		/**
 		 * Fetch topics for the current author filtered by status.
 		 *
 		 * Sends the `aips_get_author_topics` AJAX action. On success, calls
@@ -348,6 +314,9 @@
 					if (response.success) {
 						this.renderTopics(response.data.topics, status);
 						this.updateTopicCounts(response.data.status_counts);
+						if (status === 'pending') {
+							this.renderInlineSimilarityIndicators();
+						}
 					} else {
 						$('#aips-topics-content').html('<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingTopics) + '</p>');
 					}
@@ -378,24 +347,64 @@
 
 			let html = '<table class="wp-list-table widefat fixed striped aips-topics-table"><thead><tr>';
 			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>';
-			html += '<th style="width:60%">' + aipsAuthorsL10n.topicTitle + '</th>';
+			html += '<th style="width:60%">' + (aipsAuthorsL10n.topicDetails || 'Topic Details') + '</th>';
 			html += '<th style="width:10%">' + aipsAuthorsL10n.generatedAt + '</th>';
 			html += '<th style="width:30%">' + aipsAuthorsL10n.actions + '</th>';
 			html += '</tr></thead><tbody>';
 
 			topics.forEach(topic => {
-				html += '<tr data-topic-id="' + topic.id + '" class="aips-topic-row">';
+				let detailContentHtml = '';
+				if (topic.topic_description) {
+					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.description || 'Description') + ':</strong> ' + this.escapeHtml(topic.topic_description) + '</div>';
+				}
+				if (topic.topic_rationale) {
+					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.rationale || 'Rationale') + ':</strong> ' + this.escapeHtml(topic.topic_rationale) + '</div>';
+				}
+				if (topic.reviewed_at && topic.reviewed_by) {
+					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + this.escapeHtml(String(topic.reviewed_at)) + ' by User ID ' + this.escapeHtml(String(topic.reviewed_by)) + '</div>';
+				}
+				if (topic.last_feedback) {
+					const feedbackAction = topic.last_feedback.action;
+					const feedbackLabel = feedbackAction === 'rejected'
+						? (aipsAuthorsL10n.reject || 'Rejected')
+						: (aipsAuthorsL10n.approve || 'Approved');
+					detailContentHtml += '<div class="aips-detail-section aips-detail-feedback">';
+					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.lastFeedback || 'Last Feedback') + ':</strong>';
+					detailContentHtml += ' <span class="aips-feedback-badge aips-feedback-badge-' + feedbackAction + '">' + this.escapeHtml(feedbackLabel) + '</span>';
+					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
+						detailContentHtml += ' <em>(' + this.escapeHtml(topic.last_feedback.reason_category) + ')</em>';
+					}
+					if (topic.last_feedback.reason) {
+						detailContentHtml += ' — ' + this.escapeHtml(topic.last_feedback.reason);
+					}
+					if (topic.last_feedback.created_at) {
+						detailContentHtml += ' <span class="aips-feedback-date">' + this.escapeHtml(String(topic.last_feedback.created_at)) + '</span>';
+					}
+					detailContentHtml += '</div>';
+				}
+				if (topic.potential_duplicate && topic.duplicate_match) {
+					detailContentHtml += '<div class="aips-detail-section aips-detail-duplicate">';
+					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate') + ':</strong>';
+					detailContentHtml += ' <em>' + this.escapeHtml(topic.duplicate_match) + '</em>';
+					detailContentHtml += '</div>';
+				}
+
+				const hasDetailContent = detailContentHtml !== '';
+
+				html += '<tr data-topic-id="' + topic.id + '">';
 				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
 				html += '<td class="topic-title-cell">';
+				html += '<div class="aips-topic-row">';
 
-				// Expand button only shown for reviewed topics (not on Pending Review tab)
-				if (status !== 'pending') {
+				// Expand button is only shown when detail content exists.
+				if (hasDetailContent) {
 					html += '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '">';
 					html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
-					html += '</button> ';
+					html += '</button>';
 				}
 
 				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
+				html += '<span class="aips-topic-similarity-slot" data-topic-id="' + topic.id + '"></span>';
 				
 				// Add post count badge if there are any posts
 				if (topic.post_count && topic.post_count > 0) {
@@ -403,17 +412,36 @@
 					html += '<span class="dashicons dashicons-admin-post"></span> ' + topic.post_count;
 					html += '</span>';
 				}
+
+				// Potential duplicate warning badge
+				if (topic.potential_duplicate) {
+					const dupLabel = aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate';
+					const safeDupLabel = this.escapeHtml(dupLabel);
+					const dupTitle = topic.duplicate_match
+						? safeDupLabel + ': ' + this.escapeHtml(topic.duplicate_match)
+						: safeDupLabel;
+					html += ' <span class="aips-duplicate-badge" title="' + dupTitle + '">';
+					html += '<span class="dashicons dashicons-warning"></span> ' + safeDupLabel + '</span>';
+				}
+
+				// Last feedback badge — shows prior approval/rejection history for context
+				if (topic.last_feedback) {
+					const fbAction = topic.last_feedback.action;
+					const fbLabel = fbAction === 'rejected'
+						? (aipsAuthorsL10n.previouslyRejected || 'Previously Rejected')
+						: (aipsAuthorsL10n.previouslyApproved || 'Previously Approved');
+					const fbTitle = topic.last_feedback.reason
+						? this.escapeHtml(fbLabel) + ': ' + this.escapeHtml(topic.last_feedback.reason)
+						: this.escapeHtml(fbLabel);
+					html += ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '">';
+					html += '<span class="dashicons dashicons-admin-comments"></span> ' + this.escapeHtml(fbLabel) + '</span>';
+				}
 				
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
+				html += '</div>';
 
-				// Feedback buttons displayed inline below the topic title (pending only)
-				if (status === 'pending') {
-					html += '<div class="aips-topic-inline-feedback">';
-					html += '<button class="button aips-approve-topic" data-id="' + topic.id + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '">';
-					html += '<span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span> ' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '</button>';
-					html += '<button class="button aips-reject-topic" data-id="' + topic.id + '" aria-label="' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '">';
-					html += '<span class="dashicons dashicons-admin-comments aips-topic-feedback-icon"></span> ' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '</button>';
-					html += '</div>';
+				if (hasDetailContent) {
+					html += '<div class="aips-topic-detail-content" id="aips-topic-details-' + topic.id + '" style="display:none;">' + detailContentHtml + '</div>';
 				}
 
 				html += '</td>';
@@ -422,11 +450,13 @@
 
 				// Actions based on status
 				if (status === 'pending') {
-					// Quick Approve, Quick Reject, and Edit in a single row
+					// Pending actions: feedback actions and edit
 					html += '<div class="aips-btn-group">';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-approve-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.quickApprove || 'Quick Approve') + '</button>';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-quick-reject-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.quickReject || 'Quick Reject') + '</button>';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
+					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
+					html += '</div>';
+					html += '<div class="aips-btn-group" style="margin-top: 6px;">';
+					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '</button>';
+					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '</button>';
 					html += '</div>';
 				} else if (status === 'approved') {
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button> ';
@@ -436,25 +466,77 @@
 				}
 
 				html += '</td></tr>';
-				
-				// Add collapsible detail row
-				html += '<tr class="aips-topic-detail-row" data-topic-id="' + topic.id + '" style="display:none;">';
-				html += '<td colspan="4" class="aips-topic-detail-cell">';
-				html += '<div class="aips-topic-detail-content">';
-				if (topic.topic_description) {
-					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.description || 'Description') + ':</strong> ' + this.escapeHtml(topic.topic_description) + '</div>';
-				}
-				if (topic.topic_rationale) {
-					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.rationale || 'Rationale') + ':</strong> ' + this.escapeHtml(topic.topic_rationale) + '</div>';
-				}
-				if (topic.reviewed_at && topic.reviewed_by) {
-					html += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + this.escapeHtml(String(topic.reviewed_at)) + ' by User ID ' + this.escapeHtml(String(topic.reviewed_by)) + '</div>';
-				}
-				html += '</div></td></tr>';
 			});
 
 			html += '</tbody></table>';
 			$('#aips-topics-content').html(html);
+		},
+
+		/**
+		 * Fetch semantic similarity suggestions and render them inline in topic rows.
+		 *
+		 * Calls the `aips_suggest_related_topics` AJAX action, then appends a
+		 * color-coded percentage badge to each matching pending topic row.
+		 */
+		renderInlineSimilarityIndicators: function () {
+			if (!this.currentAuthorId) {
+				return;
+			}
+
+			$('.aips-topic-similarity-slot').empty();
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_suggest_related_topics',
+					nonce: aipsAuthorsL10n.nonce,
+					author_id: this.currentAuthorId,
+					limit: 5
+				},
+				success: (response) => {
+					if (!response.success || !response.data || !Array.isArray(response.data.suggestions) || response.data.suggestions.length === 0) {
+						return;
+					}
+
+					response.data.suggestions.forEach((item) => {
+						const topicId = parseInt(item.topic_id, 10);
+						const rawScore = typeof item.similarity_score === 'number' ? item.similarity_score : parseFloat(item.similarity_score);
+						const score = Number.isFinite(rawScore) ? Math.round(rawScore * 100) : 0;
+
+						if (!topicId || score <= 0) {
+							return;
+						}
+
+						const badgeClass = this.getSimilarityBadgeClass(score);
+						const label = this.escapeHtml((aipsAuthorsL10n.similarityLabel || 'Similarity') + ': ' + score + '%');
+						const $slot = $('.aips-topic-similarity-slot[data-topic-id="' + topicId + '"]');
+
+						if ($slot.length) {
+							$slot.html('<span class="aips-topic-similarity-badge ' + badgeClass + '" title="' + label + '">' + label + '</span>');
+						}
+					});
+				},
+				error: () => {}
+			});
+		},
+
+		/**
+		 * Return the CSS class for a similarity percentage.
+		 *
+		 * @param {number} scorePercent - Similarity score from 0 to 100.
+		 * @returns {string} CSS class name.
+		 */
+		getSimilarityBadgeClass: function (scorePercent) {
+			if (scorePercent > 75) {
+				return 'aips-topic-similarity-high';
+			}
+
+			if (scorePercent > 50) {
+				return 'aips-topic-similarity-medium';
+			}
+
+			return 'aips-topic-similarity-low';
 		},
 
 		/**
@@ -537,9 +619,9 @@
 		},
 
 		/**
-		 * Toggle the collapsible detail row immediately below a topic row.
+		 * Toggle the collapsible detail block inside a topic row.
 		 *
-		 * Slides the adjacent `.aips-topic-detail-row` up or down and updates
+		 * Slides the inline `.aips-topic-detail-content` up or down and updates
 		 * the expand button's `aria-expanded` attribute and dashicon accordingly.
 		 *
 		 * @param {Event} e - Click event from an `.aips-topic-expand-btn` element.
@@ -547,8 +629,8 @@
 		toggleTopicDetail: function (e) {
 			e.preventDefault();
 			const $button = $(e.currentTarget);
-			const $row = $button.closest('tr');
-			const $detailRow = $row.next('.aips-topic-detail-row');
+			const topicId = $button.data('topic-id');
+			const $detailRow = $('#aips-topic-details-' + topicId);
 
 			// If no corresponding detail row is found, do nothing.
 			if (!$detailRow.length) {
@@ -613,98 +695,6 @@
 		},
 
 		/**
-		 * Approve a topic immediately without opening the feedback modal.
-		 *
-		 * Sends `aips_approve_topic` with `skip_feedback: true`. Disables all
-		 * buttons in the row while the request is in flight. On success, reloads
-		 * the pending topics list; on failure, re-enables the buttons.
-		 *
-		 * @param {Event} e - Click event from an `.aips-quick-approve-topic` element.
-		 */
-		quickApproveTopic: function (e) {
-			e.preventDefault();
-			const $btn = $(e.currentTarget);
-			const topicId = $btn.data('id');
-			const $row = $btn.closest('tr');
-			const $rowBtns = $row.find('button');
-
-			$rowBtns.prop('disabled', true);
-			$btn.text(aipsAuthorsL10n.processing || 'Processing...');
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_approve_topic',
-					nonce: aipsAuthorsL10n.nonce,
-					topic_id: topicId,
-					skip_feedback: true
-				},
-				success: (response) => {
-					if (response.success) {
-						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicApproved || 'Topic approved.', 'success');
-						this.loadTopics('pending');
-					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorApproving || 'Error approving topic.', 'error');
-						$rowBtns.prop('disabled', false);
-						$btn.text(aipsAuthorsL10n.quickApprove || 'Quick Approve');
-					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorApproving || 'Error approving topic.', 'error');
-					$rowBtns.prop('disabled', false);
-					$btn.text(aipsAuthorsL10n.quickApprove || 'Quick Approve');
-				}
-			});
-		},
-
-		/**
-		 * Reject a topic immediately without opening the feedback modal.
-		 *
-		 * Sends `aips_reject_topic` with `skip_feedback: true`. Disables all
-		 * buttons in the row while the request is in flight. On success, reloads
-		 * the pending topics list; on failure, re-enables the buttons.
-		 *
-		 * @param {Event} e - Click event from an `.aips-quick-reject-topic` element.
-		 */
-		quickRejectTopic: function (e) {
-			e.preventDefault();
-			const $btn = $(e.currentTarget);
-			const topicId = $btn.data('id');
-			const $row = $btn.closest('tr');
-			const $rowBtns = $row.find('button');
-
-			$rowBtns.prop('disabled', true);
-			$btn.text(aipsAuthorsL10n.processing || 'Processing...');
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_reject_topic',
-					nonce: aipsAuthorsL10n.nonce,
-					topic_id: topicId,
-					skip_feedback: true
-				},
-				success: (response) => {
-					if (response.success) {
-						AIPS.Utilities.showToast(response.data.message || aipsAuthorsL10n.topicRejected || 'Topic rejected.', 'success');
-						this.loadTopics('pending');
-					} else {
-						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
-						$rowBtns.prop('disabled', false);
-						$btn.text(aipsAuthorsL10n.quickReject || 'Quick Reject');
-					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorRejecting || 'Error rejecting topic.', 'error');
-					$rowBtns.prop('disabled', false);
-					$btn.text(aipsAuthorsL10n.quickReject || 'Quick Reject');
-				}
-			});
-		},
-
-		/**
 		 * Submit the topic feedback form (approve or reject with a reason).
 		 *
 		 * Reads the topic ID, action, and reason from the feedback modal form.
@@ -720,6 +710,7 @@
 			const topicId = $('#feedback_topic_id').val();
 			const action = $('#feedback_action').val();
 			const reason = $('#feedback_reason').val();
+			const reasonCategory = $('#feedback_reason_category').val() || 'other';
 
 			const ajaxAction = action === 'approve' ? 'aips_approve_topic' : 'aips_reject_topic';
 
@@ -730,7 +721,9 @@
 					action: ajaxAction,
 					nonce: aipsAuthorsL10n.nonce,
 					topic_id: topicId,
-					reason: reason
+					reason: reason,
+					reason_category: reasonCategory,
+					source: 'manual_ui'
 				},
 				success: (response) => {
 					if (response.success) {

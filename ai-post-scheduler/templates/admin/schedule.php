@@ -43,7 +43,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No Templates Available', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('You need to create at least one active template before you can schedule posts.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
-                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-templates')); ?>" class="aips-btn aips-btn-primary">
+                        <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-primary">
                             <span class="dashicons dashicons-media-document"></span>
                             <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
                         </a>
@@ -257,8 +257,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
 <!-- Keep original modal markup below (not redesigned yet) -->
 <?php
 $preselect_template_id = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
+$preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['schedule_structure']) : 0;
 ?>
-<div id="aips-schedule-modal" class="aips-modal" style="display: none;" data-preselect-template="<?php echo esc_attr($preselect_template_id); ?>">
+<div id="aips-schedule-modal" class="aips-modal" style="display: none;" data-preselect-template="<?php echo esc_attr($preselect_template_id); ?>" data-preselect-structure="<?php echo esc_attr($preselect_structure_id); ?>">
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2 id="aips-schedule-modal-title"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>

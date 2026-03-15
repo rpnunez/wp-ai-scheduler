@@ -252,6 +252,20 @@ class AIPS_Author_Topics_Repository {
 			$after_id,
 			$limit
 		));
+  }
+  
+  /*
+	 * Delete all topics belonging to an author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return int|false Number of rows deleted (0 if none matched), or false on failure.
+	 */
+	public function delete_by_author($author_id) {
+		return $this->wpdb->delete(
+			$this->table_name,
+			array('author_id' => absint($author_id)),
+			array('%d')
+		);
 	}
 
 	/**
@@ -355,9 +369,11 @@ class AIPS_Author_Topics_Repository {
 				FROM {$this->table_name} t
 				INNER JOIN {$authors_table} a ON t.author_id = a.id
 				WHERE t.status = %s 
-				ORDER BY t.reviewed_at ASC",
+				ORDER BY t.score DESC, t.reviewed_at ASC",
 				'approved'
 			)
 		);
 	}
 }
+
+

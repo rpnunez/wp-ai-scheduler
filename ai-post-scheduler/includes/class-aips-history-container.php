@@ -125,6 +125,51 @@ class AIPS_History_Container {
 		// Create container with existing ID and preserved metadata
 		return new self($repository, $history->type, $metadata, $history_id);
 	}
+
+	/**
+	 * Resolve an existing History Container for a post context.
+	 *
+	 * Uses the provided history ID when available, validates that it belongs to
+	 * the given post, and otherwise falls back to the most recent history record
+	 * for the post.
+	 *
+	 * @param AIPS_History_Repository $repository Repository instance.
+	 * @param int                     $post_id Post ID.
+	 * @param int                     $history_id Optional history ID from the active session.
+	 * @return AIPS_History_Container|WP_Error
+	 */
+	public static function resolve_existing($repository, $post_id = 0, $history_id = 0) {
+		$post_id = absint($post_id);
+		$history_id = absint($history_id);
+		$history_record = null;
+
+		if ($history_id > 0) {
+			$history_record = $repository->get_by_id($history_id);
+
+			if (!$history_record) {
+				return new WP_Error('no_history', __('Could not find history record.', 'ai-post-scheduler'));
+			}
+
+			if ($post_id > 0 && isset($history_record->post_id) && absint($history_record->post_id) > 0 && absint($history_record->post_id) !== $post_id) {
+				return new WP_Error('history_mismatch', __('History record does not belong to this post.', 'ai-post-scheduler'));
+			}
+		} elseif ($post_id > 0) {
+			$history_record = $repository->get_by_post_id($post_id);
+
+			if (!$history_record) {
+				return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
+			}
+		} else {
+			return new WP_Error('missing_history', __('History context is required.', 'ai-post-scheduler'));
+		}
+
+		$history_container = self::load_existing($repository, $history_record->id);
+		if (!$history_container) {
+			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+		}
+
+		return $history_container;
+	}
 	
 	/**
 	 * Generate a unique UUID for this history container

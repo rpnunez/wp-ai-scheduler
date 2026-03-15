@@ -159,6 +159,34 @@ class AIPS_Author_Topic_Logs_Repository {
 	}
 	
 	/**
+	 * Delete all logs for the given topic IDs.
+	 *
+	 * @param int[] $topic_ids Array of author_topic IDs whose logs should be deleted.
+	 * @return int|false Number of rows deleted, or false on failure. Returns 0 for an empty array.
+	 */
+	public function delete_by_topic_ids(array $topic_ids) {
+		if (empty($topic_ids)) {
+			return 0;
+		}
+
+		$topic_ids    = array_map('absint', $topic_ids);
+		$topic_ids    = array_filter($topic_ids);
+
+		if (empty($topic_ids)) {
+			return 0;
+		}
+
+		$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
+
+		return $this->wpdb->query(
+			$this->wpdb->prepare(
+				"DELETE FROM {$this->table_name} WHERE author_topic_id IN ({$placeholders})",
+				...$topic_ids
+			)
+		);
+	}
+
+	/**
 	 * Count the number of generated posts for a specific author.
 	 *
 	 * More efficient than get_generated_posts_by_author() when only the count is needed,

@@ -165,4 +165,62 @@ class Test_AIPS_Post_Review_Repository extends WP_UnitTestCase {
 			$this->assertEquals(1, $item->template_id);
 		}
 	}
+
+	/**
+	 * Test retrieval of active and historical partial generations.
+	 */
+	public function test_get_partial_generations() {
+		$active_partial = $this->create_test_post_with_history('draft', 1);
+		$resolved_partial = $this->create_test_post_with_history('draft', 2);
+		$never_partial = $this->create_test_post_with_history('draft', 3);
+
+		update_post_meta($active_partial['post_id'], 'aips_post_generation_incomplete', 'true');
+		update_post_meta($active_partial['post_id'], 'aips_post_generation_component_statuses', wp_json_encode(array(
+			'post_title' => true,
+			'post_excerpt' => false,
+			'featured_image' => true,
+			'post_content' => true,
+		)));
+
+		update_post_meta($resolved_partial['post_id'], 'aips_post_generation_incomplete', 'false');
+		update_post_meta($resolved_partial['post_id'], 'aips_post_generation_had_partial', 'true');
+		update_post_meta($resolved_partial['post_id'], 'aips_post_generation_component_statuses', wp_json_encode(array(
+			'post_title' => true,
+			'post_excerpt' => true,
+			'featured_image' => true,
+			'post_content' => true,
+		)));
+
+		update_post_meta($never_partial['post_id'], 'aips_post_generation_incomplete', 'false');
+		update_post_meta($never_partial['post_id'], 'aips_post_generation_component_statuses', wp_json_encode(array(
+			'post_title' => true,
+			'post_excerpt' => true,
+			'featured_image' => true,
+			'post_content' => true,
+		)));
+
+		$result = $this->history_repository->get_partial_generations();
+
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('items', $result);
+		$this->assertGreaterThanOrEqual(2, $result['total']);
+
+		$found_active_partial = false;
+		$found_resolved_partial = false;
+		foreach ($result['items'] as $item) {
+			if ((int) $item->post_id === (int) $active_partial['post_id']) {
+				$found_active_partial = true;
+				$this->assertSame('true', get_post_meta($item->post_id, 'aips_post_generation_incomplete', true));
+			}
+			if ((int) $item->post_id === (int) $resolved_partial['post_id']) {
+				$found_resolved_partial = true;
+				$this->assertSame('false', get_post_meta($item->post_id, 'aips_post_generation_incomplete', true));
+				$this->assertSame('true', get_post_meta($item->post_id, 'aips_post_generation_had_partial', true));
+			}
+			$this->assertNotEquals($never_partial['post_id'], $item->post_id);
+		}
+
+		$this->assertTrue($found_active_partial, 'Expected active partial generation post to be returned.');
+		$this->assertTrue($found_resolved_partial, 'Expected resolved historical partial post to be returned.');
+	}
 }

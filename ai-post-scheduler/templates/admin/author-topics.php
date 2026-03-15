@@ -14,8 +14,7 @@ if (!defined('ABSPATH')) {
 }
 
 $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
-$authors_page_url = admin_url('admin.php?page=aips-authors');
-$author_page_url = add_query_arg( array( 'page' => 'aips-authors', 'author_id' => $author_id ), admin_url( 'admin.php' ) );
+$authors_page_url = AIPS_Admin_Menu_Helper::get_page_url('authors');
 
 if (!$author_id) {
 	?>
@@ -35,6 +34,7 @@ if (!$author_id) {
 
 $authors_repository = new AIPS_Authors_Repository();
 $author = $authors_repository->get_by_id($author_id);
+$author_page_url = add_query_arg( array( 'page' => 'aips-authors', 'author_id' => $author_id ), admin_url( 'admin.php' ) );
 
 if (!$author) {
 	?>
@@ -82,7 +82,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 					</p>
 				</div>
 				<div class="aips-page-actions">
-					<a href="<?php echo $author_page_url; ?>" class="aips-btn aips-btn-secondary">
+					<a href="<?php echo esc_url($authors_page_url); ?>" class="aips-btn aips-btn-secondary">
 						<span class="dashicons dashicons-edit"></span>
 						<?php esc_html_e('Edit Author', 'ai-post-scheduler'); ?>
 					</a>
@@ -211,6 +211,18 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 			<input type="hidden" id="feedback_action" name="action_type" value="">
 
 			<div class="form-group">
+				<label for="feedback_reason_category"><?php esc_html_e('Feedback Category', 'ai-post-scheduler'); ?></label>
+				<select id="feedback_reason_category" name="reason_category">
+					<option value="other"><?php esc_html_e('Other', 'ai-post-scheduler'); ?></option>
+					<option value="duplicate"><?php esc_html_e('Duplicate', 'ai-post-scheduler'); ?></option>
+					<option value="tone"><?php esc_html_e('Tone', 'ai-post-scheduler'); ?></option>
+					<option value="irrelevant"><?php esc_html_e('Irrelevant', 'ai-post-scheduler'); ?></option>
+					<option value="policy"><?php esc_html_e('Policy', 'ai-post-scheduler'); ?></option>
+				</select>
+				<p class="description"><?php esc_html_e('Select a structured reason to improve future topic quality.', 'ai-post-scheduler'); ?></p>
+			</div>
+
+			<div class="form-group">
 				<label for="feedback_reason"><?php esc_html_e('Reason (optional)', 'ai-post-scheduler'); ?></label>
 				<textarea id="feedback_reason" name="reason" rows="4" placeholder="<?php esc_attr_e('Why are you approving/rejecting this topic?', 'ai-post-scheduler'); ?>"></textarea>
 				<p class="description"><?php esc_html_e('Your feedback helps improve future topic generation', 'ai-post-scheduler'); ?></p>
@@ -223,3 +235,5 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		</form>
 	</div>
 </div>
+
+

@@ -107,6 +107,7 @@
 	--aips-container-lg: 1024px;
 	--aips-container-xl: 1200px;
 	--aips-container-2xl: 1400px;
+    --aips-container-3xl: 1500px;
 
 	/* Transitions */
 	--aips-transition-fast: 150ms ease;
@@ -134,7 +135,7 @@
 
 /* Main Page Container */
 .aips-page-container {
-	max-width: var(--aips-container-xl);
+	max-width: var(--aips-container-3xl);
 	margin: var(--aips-space-6) auto;
 	padding: 0 var(--aips-space-5);
 	position: relative;
@@ -540,6 +541,29 @@
 	font-size: var(--aips-text-sm);
 }
 
+/* History logs modal: keep the body scrollable for long log lists */
+#aips-history-logs-modal .aips-modal-content {
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+#aips-history-logs-modal #aips-history-logs-modal-title {
+	margin: 0;
+	padding: var(--aips-space-5) var(--aips-space-5) var(--aips-space-3);
+}
+
+#aips-history-logs-modal #aips-history-logs-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0 var(--aips-space-5) var(--aips-space-5);
+}
+
+#aips-history-logs-modal .aips-history-modal-section-title,
+#aips-history-logs-modal #aips-history-logs-content h3 {
+	margin-left: 0;
+}
+
 /* ==========================================================================
    Status Badges (Modern Design)
    ========================================================================== */
@@ -920,7 +944,7 @@
    ========================================================================== */
 
 .aips-wrap {
-    max-width: 1200px;
+    max-width: var(--aips-container-3xl);
     position: relative;
     z-index: 1;
 }

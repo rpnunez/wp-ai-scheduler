@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for AIPS_Post_Creator SEO metadata handling.
+ * Tests for AIPS_Post_Manager SEO metadata handling.
  *
  * @package AI_Post_Scheduler
  */
@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 /**
  * Validate that generated posts receive SEO metadata for Yoast and RankMath.
  */
-class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
+class AIPS_Post_Manager_SEO_Metadata_Test extends WP_UnitTestCase {
 
     /**
      * Reset shared meta storage between tests.

@@ -98,7 +98,7 @@ class AIPS_Admin_Bar {
 		$wp_admin_bar->add_node(array(
 			'id'    => 'aips-toolbar',
 			'title' => $title,
-			'href'  => admin_url('admin.php?page=ai-post-scheduler'),
+			'href'  => AIPS_Admin_Menu_Helper::get_page_url('dashboard'),
 			'meta'  => array(
 				'class' => 'aips-toolbar-root' . ($unread_count > 0 ? ' aips-has-notifications' : ''),
 				'title' => esc_attr__('AI Post Scheduler', 'ai-post-scheduler'),
@@ -116,17 +116,17 @@ class AIPS_Admin_Bar {
 			array(
 				'id'    => 'aips-toolbar-templates',
 				'title' => '<span class="dashicons dashicons-media-document"></span> ' . esc_html__('Templates', 'ai-post-scheduler'),
-				'href'  => admin_url('admin.php?page=aips-templates'),
+				'href'  => AIPS_Admin_Menu_Helper::get_page_url('templates'),
 			),
 			array(
 				'id'    => 'aips-toolbar-authors',
 				'title' => '<span class="dashicons dashicons-admin-users"></span> ' . esc_html__('Authors', 'ai-post-scheduler'),
-				'href'  => admin_url('admin.php?page=aips-authors'),
+				'href'  => AIPS_Admin_Menu_Helper::get_page_url('authors'),
 			),
 			array(
 				'id'    => 'aips-toolbar-schedules',
 				'title' => '<span class="dashicons dashicons-calendar-alt"></span> ' . esc_html__('Schedules', 'ai-post-scheduler'),
-				'href'  => admin_url('admin.php?page=aips-schedule'),
+				'href'  => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
 			),
 		);
 
@@ -265,7 +265,7 @@ class AIPS_Admin_Bar {
 	public static function notify_author_topics_generated($author_name, $topic_count, $author_id) {
 		$repo = new AIPS_Notifications_Repository();
 
-		$url = admin_url('admin.php?page=aips-author-topics&author_id=' . absint($author_id) . '&status=pending');
+		$url = AIPS_Admin_Menu_Helper::get_page_url('author_topics', array('author_id' => absint($author_id), 'status' => 'pending'));
 
 		/* translators: 1: author name, 2: number of topics */
 		$message = sprintf(
