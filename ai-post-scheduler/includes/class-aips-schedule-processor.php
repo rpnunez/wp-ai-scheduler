@@ -488,7 +488,7 @@ class AIPS_Schedule_Processor {
         // No existing container — create one and attach it to the schedule
         $container = $this->history_service->create('schedule_lifecycle', array(
             'schedule_id' => $schedule_id,
-        ));
+        ), AIPS_History_Container_Type::SCHEDULE);
 
         if ($container && $container->get_id()) {
             $this->repository->update($schedule_id, array(

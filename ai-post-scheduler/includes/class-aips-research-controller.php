@@ -98,7 +98,7 @@ class AIPS_Research_Controller {
         // Create history container for this research run
         $history = $this->history_service->create('trending_topics_research', array(
             'creation_method' => 'manual_research',
-        ));
+        ), AIPS_History_Container_Type::RESEARCH);
         $history->record_user_action(
             'trending_topics_research',
             sprintf(__('Researching trending topics for niche: %s', 'ai-post-scheduler'), $niche),
@@ -339,7 +339,7 @@ class AIPS_Research_Controller {
             $history = $this->history_service->create('trending_topics_scheduling', array(
                 'creation_method' => 'manual_schedule',
                 'template_id'     => $template_id,
-            ));
+            ), AIPS_History_Container_Type::RESEARCH);
             $history->record_user_action(
                 'trending_topics_scheduling',
                 sprintf(
@@ -511,7 +511,7 @@ class AIPS_Research_Controller {
         // Create history container for this gap analysis run
         $history = $this->history_service->create('content_gap_analysis', array(
             'creation_method' => 'manual_gap_analysis',
-        ));
+        ), AIPS_History_Container_Type::GAP_ANALYSIS);
         $history->record_user_action(
             'content_gap_analysis',
             sprintf(__('Performing content gap analysis for niche: %s', 'ai-post-scheduler'), $niche),

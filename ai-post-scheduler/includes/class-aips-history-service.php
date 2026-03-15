@@ -40,10 +40,12 @@ class AIPS_History_Service {
 	 *
 	 * @param string $type Type of history container (e.g., 'post_generation', 'topic_generation')
 	 * @param array $metadata Optional metadata for the history container
+	 * @param int|null $container_type Optional. Explicit AIPS_History_Container_Type::* constant.
+	 *                                 When provided, overrides string-based type resolution.
 	 * @return AIPS_History_Container History container object
 	 */
-	public function create($type, $metadata = array()) {
-		return new AIPS_History_Container($this->repository, $type, $metadata);
+	public function create($type, $metadata = array(), $container_type = null) {
+		return new AIPS_History_Container($this->repository, $type, $metadata, null, $container_type);
 	}
 	
 	/**

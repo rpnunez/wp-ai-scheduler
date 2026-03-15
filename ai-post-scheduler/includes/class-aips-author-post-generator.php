@@ -165,7 +165,7 @@ class AIPS_Author_Post_Generator {
 		if ($topic_history) {
 			$post_history_metadata['parent_id'] = $topic_history->get_id();
 		}
-		$post_history = $this->history_service->create('post_generation', $post_history_metadata);
+		$post_history = $this->history_service->create('post_generation', $post_history_metadata, AIPS_History_Container_Type::POST_GENERATION);
 
 		// Get expanded context from similar approved topics
 		$expanded_context = $this->expansion_service->get_expanded_context($author->id, $topic->id, 5);

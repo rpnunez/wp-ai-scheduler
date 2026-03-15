@@ -42,7 +42,7 @@ class AIPS_Planner {
         // Create history container for this planner topic generation run
         $history = $this->history_service->create('planner_topics_generation', array(
             'creation_method' => 'manual_planner',
-        ));
+        ), AIPS_History_Container_Type::PLANNER);
         $history->record_user_action(
             'planner_topics_generation',
             sprintf(

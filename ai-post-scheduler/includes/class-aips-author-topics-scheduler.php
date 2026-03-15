@@ -95,7 +95,7 @@ class AIPS_Author_Topics_Scheduler {
 		// Create history container at the start to track the entire process
 		$history = $this->history_service->create('author_topic_generation', array(
 			'author_id' => $author->id,
-		));
+		), AIPS_History_Container_Type::AUTHOR_TOPIC);
 
 		$this->logger->log("Generating topics for author: {$author->name} (ID: {$author->id})", 'info');
 		$history->record('info', "Generating topics for author: {$author->name}");
@@ -203,7 +203,7 @@ class AIPS_Author_Topics_Scheduler {
 		$history = $this->history_service->create('author_topic_generation', array(
 			'author_id' => $author->id,
 			'source' => 'manual_ui'
-		));
+		), AIPS_History_Container_Type::AUTHOR_TOPIC);
 		$history->record_user_action('manual_topic_generation', "User manually triggered topic generation for author: {$author->name}");
 		
 		$result = $this->topics_generator->generate_topics($author, $history);

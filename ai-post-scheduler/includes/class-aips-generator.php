@@ -574,7 +574,7 @@ class AIPS_Generator {
             $creation_method = $context->get_creation_method() ?: 'manual';
             $history_metadata['creation_method'] = $creation_method;
 
-            $this->current_history = $this->history_service->create('post_generation', $history_metadata);
+            $this->current_history = $this->history_service->create('post_generation', $history_metadata, AIPS_History_Container_Type::POST_GENERATION);
         }
 
         // Attach a generation session to the history container.
