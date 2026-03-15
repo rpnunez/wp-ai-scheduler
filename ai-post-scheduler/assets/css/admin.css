@@ -1091,9 +1091,15 @@
     color: #50575e;
 }
 
-/* Form that participates in flex layout without introducing a block */
+/* Form that participates in flex layout without introducing a block.
+   width: 100% ensures margin-left: auto on .aips-filter-right
+   can push the search input to the far right of the bar. */
 .aips-filter-form {
-    display: flex;
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-3);
+	flex-wrap: wrap;
+	width: 100%;
 }
 
 .aips-button-group {
