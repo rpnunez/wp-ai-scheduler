@@ -139,3 +139,9 @@
 **Improvement:** Optimized the flow of creating and updating a schedule. Previously, saving a schedule would trigger a full page reload (`location.reload()`), disrupting user flow and losing UI state (such as scroll position or modal status). The `saveSchedule` function has been enhanced to issue a success toast, close the modal seamlessly, and dynamically refresh the schedule table using an AJAX fetch (`$.get(location.href)`) combined with `.replaceWith()`.
 **Files Modified:** `ai-post-scheduler/assets/js/admin.js`
 **Outcome:** Enhances the user's workflow by creating a seamless, single-page application feel when modifying schedules, reducing disruptive flashes and context loss.
+
+## 2026-03-15 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Enabled clickable progress indicator steps in the Template Wizard to allow non-linear navigation.
+**Files Modified:** `ai-post-scheduler/assets/js/admin.js`, `ai-post-scheduler/assets/css/admin.css`
+**Outcome:** Reduces friction for users, allowing them to jump directly to previous steps or skip ahead (if intermediate steps are valid) without needing to click "Next" or "Back" multiple times, significantly improving the edit flow.
