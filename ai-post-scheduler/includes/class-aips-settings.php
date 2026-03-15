@@ -409,6 +409,15 @@ class AIPS_Settings {
 
 
     /**
+     * Render the Settings admin page.
+     *
+     * @return void
+     */
+    public function render_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/settings.php';
+    }
+
+    /**
      * Handle AJAX request to test AI connection.
      *
      * @return void
