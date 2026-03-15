@@ -81,6 +81,31 @@
 - `wp-ai-scheduler/ai-post-scheduler/includes/class-aips-generation-context-factory.php`
 **Outcome:** The `AIPS_Component_Regeneration_Service` is now a much leaner orchestrator, delegating data fetching and object creation to specialized classes. This improves code clarity, testability, and maintainability, aligning with the "Flow is Function" philosophy by ensuring the underlying code structure is logical and efficient.
 **Verification Status:** Blocked. The project's test suite requires a Docker environment, which was not running or accessible. Multiple attempts to run the tests via `make test` and `docker-compose exec` failed. A final attempt to run `phpunit` directly on the host failed due to missing WordPress and database dependencies. The refactoring is complete, but could not be verified.
+
+## 2026-03-06 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Optimized the workflow from saving a template to scheduling it by introducing a `quickSchedule` action. Now, clicking "Schedule This Template" inside the "Next Steps" wizard directs to the schedules page and immediately triggers the "Add New Schedule" modal with the template field pre-selected.
+**Files Modified:** ai-post-scheduler/assets/js/admin.js
+**Outcome:** Enhances efficiency for the user by streamlining the multi-step navigation process directly to task execution context.
+
+## 2026-02-09 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Optimized flow by allowing users to save the template from any step of the wizard, eliminating the need to click "Next" multiple times to reach the final summary step. Includes cross-step validation to guide users back to the exact step containing missing required fields.
+**Files Modified:**
+- `ai-post-scheduler/templates/admin/templates.php`
+- `ai-post-scheduler/assets/js/admin.js`
+**Outcome:** Saves experienced users time and friction when making minor updates or quickly iterating on template parameters.
+
+## 2026-03-11 - Dashboard KPIs Optimization
+**Target Feature:** Dashboard
+**Improvement:** Optimized the Dashboard flow by introducing new key metrics ("Pending Reviews", "Topics in Queue", and "Partial Generations") and making all KPI summary cards clickable. Previously, the dashboard displayed read-only metrics, forcing users to manually navigate to other sections via the sidebar to take action. Now, the KPI cards serve as direct links to their respective management pages.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-history-repository.php`
+- `ai-post-scheduler/includes/class-aips-author-topics-repository.php`
+- `ai-post-scheduler/includes/class-aips-dashboard-controller.php`
+- `ai-post-scheduler/templates/admin/dashboard.php`
+**Outcome:** Enhances navigation efficiency by turning the static dashboard into an actionable launchpad, reducing the steps required to manage pending tasks and errors.
+
 ## 2026-03-06 - Template Wizard Optimization
 **Target Feature:** Template Wizard
 **Improvement:** Optimized the workflow from saving a template to scheduling it by introducing a `quickSchedule` action. Now, clicking "Schedule This Template" inside the "Next Steps" wizard directs to the schedules page and immediately triggers the "Add New Schedule" modal with the template field pre-selected.
