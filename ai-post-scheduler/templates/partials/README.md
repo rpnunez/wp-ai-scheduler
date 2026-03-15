@@ -114,5 +114,5 @@ No additional CSS needed.
 ## Examples
 
 See these pages for working examples:
-- `templates/admin/generated-posts.php`
+- `templates/admin/generated-posts-container.php`
 - `templates/admin/post-review.php`
