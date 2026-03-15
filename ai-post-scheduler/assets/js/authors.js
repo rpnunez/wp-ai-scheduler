@@ -69,6 +69,10 @@
 
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
+			
+			// Topic search (author-topics page)
+			$(document).on('keyup search', '#aips-topic-search', this.filterTopics.bind(this));
+			$(document).on('click', '#aips-topic-search-clear', this.clearTopicSearch.bind(this));
 		},
 
 		/**
@@ -470,6 +474,13 @@
 
 			html += '</tbody></table>';
 			$('#aips-topics-content').html(html);
+			
+			// Update the filter bar result count
+			var total = topics.length;
+			var countStr = total === 1
+				? total + ' ' + (aipsAuthorsL10n.topicCountSingular || 'topic')
+				: total + ' ' + (aipsAuthorsL10n.topicCountPlural || 'topics');
+			$('#aips-topics-result-count').text(countStr);
 		},
 
 		/**
@@ -564,6 +575,10 @@
 			if (!$('#aips-topics-content').length) {
 				return;
 			}
+			
+			// Reset topic search when switching tabs
+			$('#aips-topic-search').val('');
+			$('#aips-topic-search-clear').hide();
 
 			// Add fade transition and reload content for the selected tab
 			$('#aips-topics-content').fadeOut(200, () => {
@@ -577,6 +592,44 @@
 
 			// Update bulk action dropdown options based on tab
 			this.updateBulkActionDropdown(status);
+		},
+		
+		/**
+		 * Filter the rendered topics table in real time by the typed search term.
+		 *
+		 * Matches against the `.topic-title` span content of each row in the
+		 * `.aips-topics-table`. Shows a clear button when a term is active.
+		 */
+		filterTopics: function() {
+			var term = $('#aips-topic-search').val().toLowerCase().trim();
+			var $rows = $('.aips-topics-table tbody tr');
+			var $clearBtn = $('#aips-topic-search-clear');
+
+			if (term.length > 0) {
+				$clearBtn.show();
+			} else {
+				$clearBtn.hide();
+			}
+
+			$rows.each(function() {
+				var $row = $(this);
+				var title = $row.find('.topic-title').text().toLowerCase();
+				if (title.indexOf(term) > -1) {
+					$row.show();
+				} else {
+					$row.hide();
+				}
+			});
+		},
+
+		/**
+		 * Clear the topic search input and re-run the filter to show all rows.
+		 *
+		 * @param {Event} e - Click event from `#aips-topic-search-clear`.
+		 */
+		clearTopicSearch: function(e) {
+			e.preventDefault();
+			$('#aips-topic-search').val('').trigger('keyup');
 		},
 
 		/**

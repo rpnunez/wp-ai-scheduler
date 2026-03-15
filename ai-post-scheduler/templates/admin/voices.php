@@ -29,9 +29,6 @@ if (!defined('ABSPATH')) {
                 <?php if (!empty($voices)): ?>
                 <!-- Filter Bar -->
                 <div class="aips-filter-bar">
-                    <div class="aips-filter-left">
-                        <span class="aips-result-count"><?php printf(esc_html__('%d voices', 'ai-post-scheduler'), count($voices)); ?></span>
-                    </div>
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-voice-search"><?php esc_html_e('Search Voices:', 'ai-post-scheduler'); ?></label>
                         <input type="search" id="aips-voice-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search voices...', 'ai-post-scheduler'); ?>">
@@ -92,6 +89,13 @@ if (!defined('ABSPATH')) {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Table footer -->
+                <div class="tablenav">
+                    <span class="aips-table-footer-count">
+                        <?php printf( esc_html( _n( '%d voice', '%d voices', count( $voices ), 'ai-post-scheduler' ) ), count( $voices ) ); ?>
+                    </span>
                 </div>
 
                 <!-- No Search Results -->

@@ -59,24 +59,6 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
             <div class="aips-content-panel">
                 <!-- Filter Bar -->
                 <div class="aips-filter-bar">
-                    <div class="aips-filter-left">
-                        <span class="aips-result-count">
-                            <?php
-                            $authors_count = count( $authors );
-                            printf(
-                                esc_html(
-                                    _n(
-                                        '%s author',
-                                        '%s authors',
-                                        $authors_count,
-                                        'ai-post-scheduler'
-                                    )
-                                ),
-                                number_format_i18n( $authors_count )
-                            );
-                            ?>
-                        </span>
-                    </div>
                     <div class="aips-filter-right">
                         <label class="screen-reader-text" for="aips-author-search"><?php esc_html_e('Search Authors:', 'ai-post-scheduler'); ?></label>
                         <input type="search" id="aips-author-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search authors...', 'ai-post-scheduler'); ?>">
@@ -237,6 +219,26 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                    
+                    <!-- Table footer -->
+                    <div class="tablenav">
+                        <span class="aips-table-footer-count">
+                            <?php
+                            $authors_count = count( $authors );
+                            printf(
+                                esc_html(
+                                    _n(
+                                        '%s author',
+                                        '%s authors',
+                                        $authors_count,
+                                        'ai-post-scheduler'
+                                    )
+                                ),
+                                number_format_i18n( $authors_count )
+                            );
+                            ?>
+                        </span>
+                    </div>
 
                     <!-- No Search Results State -->
                     <div id="aips-author-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
@@ -278,7 +280,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                     <p class="description" style="margin-bottom: 20px;">
                         <?php esc_html_e('This queue shows all approved topics across all authors, ready for post generation. Topics are prioritized by score (highest first), then by approval date.', 'ai-post-scheduler'); ?>
                     </p>
-
+                    
                     <!-- Bulk Actions -->
                     <div class="aips-bulk-actions" style="margin-bottom: 15px;">
                         <select id="aips-queue-bulk-action-select" class="aips-form-select aips-queue-bulk-action-select">

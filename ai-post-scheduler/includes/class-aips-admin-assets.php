@@ -104,6 +104,7 @@ class AIPS_Admin_Assets {
             'noVoiceDefault'      => __('No Voice (Use Default)', 'ai-post-scheduler'),
             'addNewVoice'         => __('Add New Voice', 'ai-post-scheduler'),
             'editVoice'           => __('Edit Voice', 'ai-post-scheduler'),
+            'saveVoice'           => __('Save Voice', 'ai-post-scheduler'),
             'deleteVoiceConfirm'  => __('Are you sure you want to delete this voice?', 'ai-post-scheduler'),
             // Confirm dialog button labels
             'confirmCancelButton'              => __('No, cancel', 'ai-post-scheduler'),
@@ -268,6 +269,9 @@ class AIPS_Admin_Assets {
             'previouslyApproved' => __('Previously Approved', 'ai-post-scheduler'),
             'previouslyRejected' => __('Previously Rejected', 'ai-post-scheduler'),
             'potentialDuplicate' => __('Potential Duplicate', 'ai-post-scheduler'),
+            // Topic count display strings for the filter bar result count
+            'topicCountSingular' => __('topic', 'ai-post-scheduler'),
+            'topicCountPlural' => __('topics', 'ai-post-scheduler'),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
