@@ -43,7 +43,7 @@ This document outlines the comprehensive plan to refactor the AI Post Scheduler 
 - History Service
 - Image Service
 - Logger
-- Post Creator
+- Post Manager
 - Prompt Builder
 - Research Service
 - Resilience Service

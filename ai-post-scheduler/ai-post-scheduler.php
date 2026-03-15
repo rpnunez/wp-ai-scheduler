@@ -55,6 +55,9 @@ final class AI_Post_Scheduler {
     private function includes() {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
+
+        // Helpers
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-admin-menu-helper.php';
     }
     
     private function init_hooks() {
@@ -192,6 +195,8 @@ final class AI_Post_Scheduler {
         new AIPS_Author_Topics_Scheduler();
         new AIPS_Author_Post_Generator();
         new AIPS_Post_Review_Notifications();
+		new AIPS_Partial_Generation_Notifications();
+		new AIPS_Partial_Generation_State_Reconciler();
 
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();
