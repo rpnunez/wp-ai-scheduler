@@ -7,6 +7,13 @@
     // System variables that should not be treated as AI Variables
     var SYSTEM_VARIABLES = ['date', 'year', 'month', 'day', 'time', 'site_name', 'site_description', 'random_number', 'topic', 'title'];
 
+    // Required-field rules for the template wizard, shared by validateWizardStep and getFirstInvalidStep.
+    // Each entry maps a 1-based step number to its required field selector and l10n message key.
+    var WIZARD_REQUIRED_FIELDS = [
+        { step: 1, selector: '#template_name',   messageKey: 'templateNameRequired' },
+        { step: 3, selector: '#prompt_template', messageKey: 'contentPromptRequired' }
+    ];
+
     Object.assign(AIPS, {
         /**
          * Bootstrap the AIPS admin interface.
@@ -105,23 +112,7 @@
             $(document).on('click', '#aips-schedule-unselect-all', this.unselectAllSchedules);
             $(document).on('click', '#aips-schedule-bulk-apply', this.applyScheduleBulkAction);
 
-            $(document).on('click', '.aips-clear-history', this.clearHistory);
-            $(document).on('click', '.aips-retry-generation', this.retryGeneration);
-            $(document).on('click', '#aips-filter-btn', this.filterHistory);
-            $(document).on('click', '#aips-export-history-btn', this.exportHistory);
-            $(document).on('click', '#aips-history-search-btn', this.filterHistory);
-            $(document).on('click', '#aips-reload-history-btn', this.reloadHistory);
-            $(document).on('click', '.aips-history-page-link, .aips-history-page-prev, .aips-history-page-next', this.loadHistoryPage);
-            $(document).on('keypress', '#aips-history-search-input', this.handleHistorySearchKeypress);
-            $(document).on('click', '.aips-view-details', this.viewDetails);
 
-            // History Pagination
-            $(document).on('click', '#aips-history-pagination a', this.handleHistoryPaginationClick);
-
-            // History Bulk Actions
-            $(document).on('change', '#cb-select-all-1', this.toggleAllHistory);
-            $(document).on('change', '.aips-history-table input[name="history[]"]', this.toggleHistorySelection);
-            $(document).on('click', '#aips-delete-selected-btn', this.deleteSelectedHistory);
 
             // Template Search
             $(document).on('keyup search', '#aips-template-search', this.filterTemplates);
@@ -610,6 +601,15 @@
             var $btn = $(this);
             var $form = $('#aips-template-form');
 
+            // Cross-step validation: navigate to the first step with an unfilled required field.
+            var invalid = AIPS.getFirstInvalidStep();
+            if (invalid) {
+                AIPS.Utilities.showToast(invalid.message, 'warning');
+                AIPS.wizardGoToStep(invalid.step);
+                $(invalid.selector).focus();
+                return;
+            }
+
             if (!$form[0].checkValidity()) {
                 $form[0].reportValidity();
                 return;
@@ -663,8 +663,8 @@
          * Save the current template form as an inactive draft.
          *
          * Requires at least the template name to be filled in. Sends the
-         * `aips_save_template` AJAX action with `is_active=0` and reloads the
-         * page on success.
+         * `aips_save_template` AJAX action with `is_active=0` and updates the
+         * template_id on success without reloading the page.
          *
          * @param {Event} e - Click event from an `.aips-save-draft-template` element.
          */
@@ -673,9 +673,10 @@
             var $btn = $(this);
             
             // Validate at least name is provided
-            if (!$('#template_name').val().trim()) {
-                AIPS.Utilities.showToast(aipsAdminL10n.templateNameRequired, 'warning');
-                $('#template_name').focus();
+            var nameRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 1; })[0];
+            if (nameRule && !$(nameRule.selector).val().trim()) {
+                AIPS.Utilities.showToast(aipsAdminL10n[nameRule.messageKey], 'warning');
+                $(nameRule.selector).focus();
                 AIPS.wizardGoToStep(1);
                 return;
             }
@@ -709,7 +710,13 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        // Update the template_id so subsequent saves update the same draft
+                        if (response.data && response.data.template_id) {
+                            $('#template_id').val(response.data.template_id);
+                            AIPS.lastSavedTemplateId = response.data.template_id;
+                        }
+
+                        AIPS.Utilities.showToast('Draft saved successfully.', 'success');
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -737,9 +744,10 @@
             e.preventDefault();
             
             // Validate at least prompt is there
-            if (!$('#prompt_template').val().trim()) {
-                AIPS.Utilities.showToast(aipsAdminL10n.contentPromptRequired || 'Please enter a content prompt first.', 'warning');
-                $('#prompt_template').focus();
+            var promptRule = WIZARD_REQUIRED_FIELDS.filter(function(r) { return r.step === 3; })[0];
+            if (promptRule && !$(promptRule.selector).val().trim()) {
+                AIPS.Utilities.showToast(aipsAdminL10n[promptRule.messageKey], 'warning');
+                $(promptRule.selector).focus();
                 return;
             }
 
@@ -1721,366 +1729,6 @@
         },
 
         /**
-         * Confirm and clear history entries, optionally filtered by status.
-         *
-         * Reads the optional `data-status` attribute from the clicked button to
-         * scope the clear to a specific status (e.g. "failed"). Shows a
-         * confirmation dialog, then sends the `aips_clear_history` AJAX action
-         * and reloads the page on success.
-         *
-         * @param {Event} e - Click event from an `.aips-clear-history` element.
-         */
-        clearHistory: function(e) {
-            e.preventDefault();
-
-            var status = $(this).data('status');
-            var message = status ? 'Are you sure you want to clear all ' + status + ' history?' : 'Are you sure you want to clear all history?';
-
-            AIPS.Utilities.confirm(message, 'Notice', [
-                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, clear', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $.ajax({
-                        url: aipsAjax.ajaxUrl,
-                        type: 'POST',
-                        data: {
-                            action: 'aips_clear_history',
-                            nonce: aipsAjax.nonce,
-                            status: status
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                location.reload();
-                            } else {
-                                AIPS.Utilities.showToast(response.data.message, 'error');
-                            }
-                        },
-                        error: function() {
-                            AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
-                        }
-                    });
-                }}
-            ]);
-        },
-
-        /**
-         * Retry a failed history entry via the `aips_retry_generation` AJAX
-         * action.
-         *
-         * Reads the history entry ID from the clicked element's `data-id`
-         * attribute. Shows a success toast and reloads the page on success.
-         *
-         * @param {Event} e - Click event from an `.aips-retry-generation` element.
-         */
-        retryGeneration: function(e) {
-            e.preventDefault();
-
-            var id = $(this).data('id');
-            var $btn = $(this);
-
-            $btn.prop('disabled', true).text('Retrying...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_retry_generation',
-                    nonce: aipsAjax.nonce,
-                    history_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success');
-
-                        location.reload();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false).text('Retry');
-                }
-            });
-        },
-
-        /**
-         * Apply the current status filter and search term to the history list.
-         *
-         * Reads `#aips-filter-status` and `#aips-history-search-input`, updates
-         * the browser URL via `history.pushState` (without reloading), then
-         * calls `reloadHistory` to fetch the filtered results via AJAX.
-         *
-         * Bound to the `click` event on `#aips-filter-btn` and
-         * `#aips-history-search-btn`.
-         *
-         * @param {Event} e - Click event from the filter or search button.
-         */
-        filterHistory: function(e) {
-            e.preventDefault();
-
-            var status = $('#aips-filter-status').val();
-            var search = $('#aips-history-search-input').val();
-
-            // Update URL without reloading
-            var url = new URL(window.location.href);
-            
-            if (status) {
-                url.searchParams.set('status', status);
-            } else {
-                url.searchParams.delete('status');
-            }
-
-            if (search) {
-                url.searchParams.set('s', search);
-            } else {
-                url.searchParams.delete('s');
-            }
-
-            url.searchParams.delete('paged');
-            // If we are in the main history page, don't set tab param unless needed.
-            // But if we are in a tab, we might need it.
-            // The existing logic enforced tab=history.
-            // However, simply reloading via AJAX is better.
-            
-            window.history.pushState({path: url.toString()}, '', url.toString());
-
-            AIPS.reloadHistory(e, 1);
-        },
-
-        /**
-         * Export the current history view as a downloadable file.
-         *
-         * Builds a hidden `<form>` with the current status filter and search
-         * term, submits it as a POST to the `aips_export_history` AJAX action,
-         * and immediately removes the form. The server responds with file
-         * download headers.
-         *
-         * @param {Event} e - Click event from `#aips-export-history-btn`.
-         */
-        exportHistory: function(e) {
-            e.preventDefault();
-
-            var status = $('#aips-filter-status').val();
-            var search = $('#aips-history-search-input').val();
-            
-            // Create a form and submit it with POST
-            var form = $('<form>', {
-                'method': 'POST',
-                'action': aipsAjax.ajaxUrl,
-                'target': '_self'
-            });
-            
-            form.append($('<input>', {
-                'type': 'hidden',
-                'name': 'action',
-                'value': 'aips_export_history'
-            }));
-            
-            form.append($('<input>', {
-                'type': 'hidden',
-                'name': 'nonce',
-                'value': aipsAjax.nonce
-            }));
-            
-            if (status) {
-                form.append($('<input>', {
-                    'type': 'hidden',
-                    'name': 'status',
-                    'value': status
-                }));
-            }
-            
-            if (search) {
-                form.append($('<input>', {
-                    'type': 'hidden',
-                    'name': 'search',
-                    'value': search
-                }));
-            }
-            
-            // Append form to body, submit, and remove
-            form.appendTo('body').submit().remove();
-        },
-
-        /**
-         * Load a specific page of the history list.
-         *
-         * Reads the target page number from the clicked element's `data-page`
-         * attribute. Ignores disabled buttons and missing page values, then
-         * delegates to `reloadHistory`.
-         *
-         * Bound to the `click` event on `.aips-history-page-link`,
-         * `.aips-history-page-prev`, and `.aips-history-page-next`.
-         *
-         * @param {Event} e - Click event from a history page-navigation element.
-         */
-        loadHistoryPage: function(e) {
-            e.preventDefault();
-
-            var $btn = $(e.currentTarget);
-
-            if ($btn.prop('disabled')) {
-                return;
-            }
-
-            var page = $btn.data('page');
-
-            if (!page) {
-                return;
-            }
-
-            AIPS.reloadHistory(e, parseInt(page, 10));
-        },
-
-        /**
-         * Fetch and render a page of history entries via AJAX.
-         *
-         * Sends the current status filter, search term, and page number to the
-         * `aips_reload_history` action. On success, updates the table body,
-         * pagination, and stats widgets without a full page reload. Shows a
-         * spinner on the Reload button when triggered from that button.
-         *
-         * @param {Event|null} e     - The triggering event, or `null` when called
-         *                             programmatically.
-         * @param {number}     paged - 1-based page number to load. Defaults to 1.
-         */
-        reloadHistory: function(e, paged) {
-            if (e) {
-                e.preventDefault();
-            }
-
-            var status = $('#aips-filter-status').val();
-            var search = $('#aips-history-search-input').val();
-            var $btn = $('#aips-reload-history-btn');            
-            var isReloadBtn = $btn.length && e && $(e.currentTarget).is('#aips-reload-history-btn');
-            var originalHtml;
-
-            paged = (paged === undefined || paged === null) ? 1 : Math.max(1, parseInt(paged, 10));
-
-            if (isReloadBtn) {
-                originalHtml = $btn.html();
-
-                $btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none;margin:0 4px 0 0;"></span> Reloading...');
-            } else {
-                $('.aips-history-table').css('opacity', '0.5');
-            }
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                dataType: 'json',
-                data: {
-                    action: 'aips_reload_history',
-                    nonce: aipsAjax.nonce,
-                    status: status,
-                    search: search,
-                    paged: paged
-                },
-                success: function(response) {
-                    if (!response.success) {
-                        AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Failed to reload history.', 'error');
-
-                        return;
-                    }
-
-                    // Update table body
-                    var $tbody = $('.aips-history-table tbody');
-
-                    if ($tbody.length) {
-                        $tbody.html(response.data.items_html || '');
-                    } else if ($('.aips-empty-state').length && response.data.items_html) {
-                        // If we were in empty state but now have items (e.g. after clear filter), we might need to reconstruct the table structure
-                        // But simplification: reload page if structure missing is easier.
-                        // For now assume table exists or items_html is empty.
-                        // Ideally we should replace the whole content panel body if switching between empty and list.
-                         location.reload();
-
-                         return;
-                    }
-
-                    // Update pagination in tfoot
-                    if (response.data.pagination_html) {
-                        var $cell = $('.aips-history-pagination-cell');
-
-                        if ($cell.length) {
-                            $cell.html(response.data.pagination_html);
-                        }
-                    }
-
-                    // Update stats
-                    if (response.data.stats) {
-                        $('#aips-stat-total').text(response.data.stats.total);
-                        $('#aips-stat-completed').text(response.data.stats.completed);
-                        $('#aips-stat-failed').text(response.data.stats.failed);
-                        $('#aips-stat-success-rate').text(response.data.stats.success_rate + '%');
-                    }
-
-                    // Update URL without reload
-                    var url = new URL(window.location.href);
-
-                    if (paged > 1) {
-                        url.searchParams.set('paged', paged);
-                    } else {
-                        url.searchParams.delete('paged');
-                    }
-
-                    window.history.replaceState({}, '', url.toString());
-
-                    // Reset bulk selection state
-                    $('#cb-select-all-1').prop('checked', false);
-
-                    AIPS.updateDeleteButton();
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred while reloading history.', 'error');
-                },
-                complete: function() {
-                    if (isReloadBtn && $btn.length) {
-                        $btn.prop('disabled', false).html(originalHtml || '<span class="dashicons dashicons-update"></span> Reload');
-                    }
-
-                    $('.aips-history-table').css('opacity', '1');
-                }
-            });
-        },
-
-        /**
-         * Submit the history filter when the Enter key is pressed inside the
-         * search input.
-         *
-         * Delegates to `filterHistory` when `e.which === 13`.
-         *
-         * Bound to the `keypress` event on `#aips-history-search-input`.
-         *
-         * @param {Event} e - Keypress event.
-         */
-        handleHistorySearchKeypress: function(e) {
-            if (e.which == 13) {
-                AIPS.filterHistory(e);
-            }
-        },
-
-        /**
-         * Handle a click on a legacy `#aips-history-pagination` anchor tag.
-         *
-         * Extracts the `paged` query parameter from the anchor's `href` and
-         * delegates to `reloadHistory` with that page number.
-         *
-         * Bound to the `click` event on `#aips-history-pagination a`.
-         *
-         * @param {Event} e - Click event from a pagination anchor.
-         */
-        handleHistoryPaginationClick: function(e) {
-            e.preventDefault();
-            var href = $(this).attr('href');
-            var match = href.match(/paged=(\d+)/);
-            var page = match ? parseInt(match[1]) : 1;
-            AIPS.reloadHistory(e, page);
-        },
-
-        /**
          * Show or hide the featured-image settings block based on the state of
          * the `#generate_featured_image` checkbox.
          *
@@ -2540,194 +2188,6 @@
             $('#aips-author-search').val('').trigger('keyup');
         },
 
-        /**
-         * Open the generation-details modal and fetch full detail data for a
-         * history entry.
-         *
-         * Reads the history entry ID from the clicked element's `data-id`
-         * attribute. Shows a loading indicator while the `aips_get_history_details`
-         * AJAX request is in flight, then hands the response to `renderDetails`.
-         *
-         * @param {Event} e - Click event from an `.aips-view-details` element.
-         */
-        viewDetails: function(e) {
-            e.preventDefault();
-            var id = $(this).data('id');
-            var $btn = $(this);
-            
-            $btn.prop('disabled', true);
-            $('#aips-details-loading').show();
-            $('#aips-details-content').hide();
-            $('#aips-details-modal').show();
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_get_history_details',
-                    nonce: aipsAjax.nonce,
-                    history_id: id
-                },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.renderDetails(response.data);
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                        $('#aips-details-modal').hide();
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
-                    $('#aips-details-modal').hide();
-                },
-                complete: function() {
-                    $btn.prop('disabled', false);
-                    $('#aips-details-loading').hide();
-                }
-            });
-        },
-
-        /**
-         * Populate the generation-details modal with the fetched history data.
-         *
-         * Builds and injects HTML for the summary table (status, title, timing,
-         * error), generated prompt and content, template snapshot, voice
-         * snapshot, individual AI API calls (request/response pairs), and any
-         * logged errors.
-         *
-         * @param {Object} data - The `response.data` payload from the
-         *                        `aips_get_history_details` AJAX action.
-         */
-        renderDetails: function(data) {
-            var log = data.generation_log || {};
-            
-            var summaryHtml = '<table class="aips-details-table">';
-            summaryHtml += '<tr><th>Status:</th><td><span class="aips-status aips-status-' + data.status + '">' + data.status.charAt(0).toUpperCase() + data.status.slice(1) + '</span></td></tr>';
-            summaryHtml += '<tr><th>Title:</th><td>' + AIPS.escapeHtml(data.generated_title || '-') + '</td></tr>';
-            if (data.post_id) {
-                summaryHtml += '<tr><th>Post ID:</th><td>' + data.post_id + '</td></tr>';
-            }
-            summaryHtml += '<tr><th>Started:</th><td>' + (log.started_at || data.created_at) + '</td></tr>';
-            summaryHtml += '<tr><th>Completed:</th><td>' + (log.completed_at || data.completed_at || '-') + '</td></tr>';
-            if (data.error_message) {
-                summaryHtml += '<tr><th>Error:</th><td class="aips-error-text">' + AIPS.escapeHtml(data.error_message) + '</td></tr>';
-            }
-            summaryHtml += '</table>';
-
-            if (data.prompt) {
-                summaryHtml += '<div class="aips-details-subsection"><h4>Generated Prompt</h4>';
-                summaryHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(data.prompt) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
-                summaryHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(data.prompt) + '</pre></div>';
-            }
-
-            if (data.generated_content) {
-                summaryHtml += '<div class="aips-details-subsection"><h4>Generated Content</h4>';
-                summaryHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(data.generated_content) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
-                summaryHtml += '<pre class="aips-prompt-text" style="max-height: 300px; overflow-y: auto;">' + AIPS.escapeHtml(data.generated_content) + '</pre></div>';
-            }
-
-            $('#aips-details-summary').html(summaryHtml);
-            
-            if (log.template) {
-                var templateHtml = '<table class="aips-details-table">';
-                templateHtml += '<tr><th>Name:</th><td>' + AIPS.escapeHtml(log.template.name || '-') + '</td></tr>';
-                templateHtml += '<tr><th>Prompt Template:</th><td>';
-                templateHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.template.prompt_template || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
-                templateHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.prompt_template || '') + '</pre></td></tr>';
-                if (log.template.title_prompt) {
-                    templateHtml += '<tr><th>Title Prompt:</th><td>';
-                    templateHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.template.title_prompt) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
-                    templateHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.title_prompt) + '</pre></td></tr>';
-                }
-                templateHtml += '<tr><th>Post Status:</th><td>' + (log.template.post_status || 'draft') + '</td></tr>';
-                templateHtml += '<tr><th>Post Quantity:</th><td>' + (log.template.post_quantity || 1) + '</td></tr>';
-                if (log.template.generate_featured_image) {
-                    templateHtml += '<tr><th>Image Prompt:</th><td><pre class="aips-prompt-text">' + AIPS.escapeHtml(log.template.image_prompt || '') + '</pre></td></tr>';
-                }
-                templateHtml += '</table>';
-                $('#aips-details-template').html(templateHtml);
-            } else {
-                $('#aips-details-template').html('<p>No template data available.</p>');
-            }
-            
-            if (log.voice) {
-                var voiceHtml = '<table class="aips-details-table">';
-                voiceHtml += '<tr><th>Name:</th><td>' + AIPS.escapeHtml(log.voice.name || '-') + '</td></tr>';
-                voiceHtml += '<tr><th>Title Prompt:</th><td>';
-                voiceHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.voice.title_prompt || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
-                voiceHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.title_prompt || '') + '</pre></td></tr>';
-                voiceHtml += '<tr><th>Content Instructions:</th><td>';
-                voiceHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.voice.content_instructions || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
-                voiceHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.content_instructions || '') + '</pre></td></tr>';
-                if (log.voice.excerpt_instructions) {
-                    voiceHtml += '<tr><th>Excerpt Instructions:</th><td>';
-                    voiceHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(log.voice.excerpt_instructions) + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
-                    voiceHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(log.voice.excerpt_instructions) + '</pre></td></tr>';
-                }
-                voiceHtml += '</table>';
-                $('#aips-details-voice').html(voiceHtml);
-                $('#aips-details-voice-section').show();
-            } else {
-                $('#aips-details-voice-section').hide();
-            }
-            
-            if (log.ai_calls && log.ai_calls.length > 0) {
-                var callsHtml = '';
-                log.ai_calls.forEach(function(call, index) {
-                    var statusClass = call.response.success ? 'aips-call-success' : 'aips-call-error';
-                    callsHtml += '<div class="aips-ai-call ' + statusClass + '">';
-                    callsHtml += '<div class="aips-call-header">';
-                    callsHtml += '<strong>Call #' + (index + 1) + ' - ' + call.type.charAt(0).toUpperCase() + call.type.slice(1) + '</strong>';
-                    callsHtml += '<span class="aips-call-time">' + call.timestamp + '</span>';
-                    callsHtml += '</div>';
-                    callsHtml += '<div class="aips-call-section">';
-                    callsHtml += '<div class="aips-call-section-header">';
-                    callsHtml += '<h4>Request</h4>';
-                    callsHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(call.request.prompt || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
-                    callsHtml += '</div>';
-                    callsHtml += '<pre class="aips-prompt-text">' + AIPS.escapeHtml(call.request.prompt || '') + '</pre>';
-                    if (call.request.options && Object.keys(call.request.options).length > 0) {
-                        callsHtml += '<p><small>Options: ' + JSON.stringify(call.request.options) + '</small></p>';
-                    }
-                    callsHtml += '</div>';
-                    callsHtml += '<div class="aips-call-section">';
-                    callsHtml += '<div class="aips-call-section-header">';
-                    callsHtml += '<h4>Response</h4>';
-                    if (call.response.success) {
-                        callsHtml += '<button class="button button-small aips-copy-btn" data-clipboard-text="' + AIPS.escapeAttribute(call.response.content || '') + '"><span class="dashicons dashicons-admin-page"></span> Copy</button>';
-                    }
-                    callsHtml += '</div>';
-                    if (call.response.success) {
-                        callsHtml += '<pre class="aips-response-text">' + AIPS.escapeHtml(call.response.content || '') + '</pre>';
-                    } else {
-                        callsHtml += '<p class="aips-error-text">Error: ' + AIPS.escapeHtml(call.response.error || 'Unknown error') + '</p>';
-                    }
-                    callsHtml += '</div>';
-                    callsHtml += '</div>';
-                });
-                $('#aips-details-ai-calls').html(callsHtml);
-            } else {
-                $('#aips-details-ai-calls').html('<p>No AI call data available for this entry.</p>');
-            }
-            
-            if (log.errors && log.errors.length > 0) {
-                var errorsHtml = '<ul class="aips-errors-list">';
-                log.errors.forEach(function(error) {
-                    errorsHtml += '<li>';
-                    errorsHtml += '<strong>' + error.type + '</strong> at ' + error.timestamp + '<br>';
-                    errorsHtml += '<span class="aips-error-text">' + AIPS.escapeHtml(error.message) + '</span>';
-                    errorsHtml += '</li>';
-                });
-                errorsHtml += '</ul>';
-                $('#aips-details-errors').html(errorsHtml);
-                $('#aips-details-errors-section').show();
-            } else {
-                $('#aips-details-errors-section').hide();
-            }
-            
-            $('#aips-details-content').show();
-        },
-
         // Article Structures handlers
 
         /**
@@ -3134,8 +2594,9 @@
 
             // Prefer preselect from data attribute, then fall back to URL query param.
             var preselectId = $modal.data('preselect-template');
+            var preselectStructureId = $modal.data('preselect-structure');
 
-            if (!preselectId) {
+            if (!preselectId && !preselectStructureId) {
                 var urlParams = null;
 
                 try {
@@ -3151,20 +2612,35 @@
                 }
 
                 if (urlParams) {
-                    preselectId = urlParams.get('schedule_template');
+                    if (urlParams.get('schedule_template')) {
+                        preselectId = urlParams.get('schedule_template');
+                    } else if (urlParams.get('schedule_structure')) {
+                        preselectStructureId = urlParams.get('schedule_structure');
+                    }
                 }
             }
 
-            // Only proceed with a valid positive integer template ID
+            // Only proceed with a valid positive integer template ID or structure ID
             var preselectIdNum = parseInt(preselectId, 10);
-            if (!preselectIdNum || preselectIdNum <= 0) return;
+            var preselectStructureIdNum = parseInt(preselectStructureId, 10);
+
+            if ((!preselectIdNum || preselectIdNum <= 0) && (!preselectStructureIdNum || preselectStructureIdNum <= 0)) {
+                return;
+            }
 
             var $form = $('#aips-schedule-form');
             if (!$form.length) return;
 
             $form[0].reset();
             $('#schedule_id').val('');
-            $('#schedule_template').val(preselectIdNum);
+
+            if (preselectIdNum > 0) {
+                $('#schedule_template').val(preselectIdNum);
+            }
+            if (preselectStructureIdNum > 0) {
+                $('#article_structure_id').val(preselectStructureIdNum);
+            }
+
             $('#aips-schedule-modal-title').text('Add New Schedule');
             $modal.show();
 
@@ -3173,11 +2649,13 @@
                 try {
                     var cleanUrlObj = new URL(window.location.href);
                     cleanUrlObj.searchParams.delete('schedule_template');
+                    cleanUrlObj.searchParams.delete('schedule_structure');
                     cleanUrlObj.hash = '';
                     window.history.replaceState(null, '', cleanUrlObj.toString());
                 } catch (e) {
                     // Fallback to regex cleanup if URL API unavailable
                     var cleanUrl = window.location.href.replace(/[?&]schedule_template=[^&]*/, '');
+                    cleanUrl = cleanUrl.replace(/[?&]schedule_structure=[^&]*/, '');
                     cleanUrl = cleanUrl.replace(/\?&/, '?');  // Fix orphaned ?& when param was first
                     cleanUrl = cleanUrl.replace(/\?$/, '');
                     cleanUrl = cleanUrl.replace(/#open_schedule_modal$/, '');
@@ -3193,9 +2671,10 @@
          *
          * Hides all `.aips-wizard-step-content` panels and shows the one
          * matching `step`. Updates the progress indicator (marking earlier steps
-         * as completed), toggles the Back/Next/Save buttons, and stores the
-         * current step in `AIPS.currentWizardStep`. Calls `updateWizardSummary`
-         * when advancing to the final step.
+         * as completed), toggles Back/Next button visibility, and updates the
+         * Save button style (primary on the final step, secondary on all
+         * others). Stores the current step in `AIPS.currentWizardStep`. Calls
+         * `updateWizardSummary` when advancing to the final step.
          *
          * @param {number} step - 1-based step index to navigate to (1–5).
          */
@@ -3228,12 +2707,12 @@
             
             if (step === totalSteps) {
                 $('.aips-wizard-next').hide();
-                $('.aips-save-template').show();
+                $('.aips-save-template').removeClass('button-secondary').addClass('button-primary');
                 // Update summary
                 AIPS.updateWizardSummary();
             } else {
                 $('.aips-wizard-next').show();
-                $('.aips-save-template').hide();
+                $('.aips-save-template').removeClass('button-primary').addClass('button-secondary');
             }
             
             // Store current step
@@ -3279,52 +2758,45 @@
         },
 
         /**
+         * Return the first wizard step that contains an unfilled required field,
+         * or `null` if all required fields are valid.
+         *
+         * Iterates `WIZARD_REQUIRED_FIELDS` in declaration order. Used by both
+         * `validateWizardStep` (per-step Next-click validation) and
+         * `saveTemplate` (full pre-save validation across all steps).
+         *
+         * @return {{ step: number, selector: string, message: string }|null}
+         */
+        getFirstInvalidStep: function() {
+            for (var i = 0; i < WIZARD_REQUIRED_FIELDS.length; i++) {
+                var rule = WIZARD_REQUIRED_FIELDS[i];
+                if (!$(rule.selector).val().trim()) {
+                    return { step: rule.step, selector: rule.selector, message: aipsAdminL10n[rule.messageKey] };
+                }
+            }
+            return null;
+        },
+
+        /**
          * Validate the required fields for a given wizard step.
          *
-         * Step 1 requires a template name; step 3 requires a content prompt.
-         * Steps 2, 4, and 5 have no required fields. Shows an error toast and
-         * focuses the first invalid field when validation fails.
+         * Required fields are defined centrally in `WIZARD_REQUIRED_FIELDS`.
+         * Steps with no required fields always pass. Shows an error toast and
+         * focuses the invalid field when validation fails.
          *
          * @param  {number}  step - The 1-based wizard step number to validate.
          * @return {boolean} `true` if validation passes, `false` otherwise.
          */
         validateWizardStep: function(step) {
-            var isValid = true;
-            var errorMessage = '';
-            
-            switch(step) {
-                case 1:
-                    // Validate name (required)
-                    if (!$('#template_name').val().trim()) {
-                        errorMessage = aipsAdminL10n.templateNameRequired;
-                        isValid = false;
-                        $('#template_name').focus();
-                    }
-                    break;
-                case 2:
-                    // Title prompt is optional, so no validation needed
-                    break;
-                case 3:
-                    // Validate content prompt (required)
-                    if (!$('#prompt_template').val().trim()) {
-                        errorMessage = aipsAdminL10n.contentPromptRequired;
-                        isValid = false;
-                        $('#prompt_template').focus();
-                    }
-                    break;
-                case 4:
-                    // Featured image settings are optional
-                    break;
-                case 5:
-                    // Final step, just display summary
-                    break;
+            for (var i = 0; i < WIZARD_REQUIRED_FIELDS.length; i++) {
+                var rule = WIZARD_REQUIRED_FIELDS[i];
+                if (rule.step === step && !$(rule.selector).val().trim()) {
+                    AIPS.Utilities.showToast(aipsAdminL10n[rule.messageKey], 'error');
+                    $(rule.selector).focus();
+                    return false;
+                }
             }
-            
-            if (!isValid && errorMessage) {
-                AIPS.Utilities.showToast(errorMessage, 'error');
-            }
-            
-            return isValid;
+            return true;
         },
 
         /**
@@ -3360,87 +2832,6 @@
             } else {
                 $('#summary_featured_image').text('No');
             }
-        },
-
-        /**
-         * Sync all individual history checkboxes with the "select all" state.
-         *
-         * Bound to the `change` event on `#cb-select-all-1`.
-         */
-        toggleAllHistory: function() {
-            var isChecked = $(this).prop('checked');
-            $('.aips-history-table input[name="history[]"]').prop('checked', isChecked);
-            AIPS.updateDeleteButton();
-        },
-
-        /**
-         * Keep the history "select all" checkbox in sync with individual row
-         * selections and update the delete button state.
-         *
-         * Bound to the `change` event on `.aips-history-table input[name="history[]"]`.
-         */
-        toggleHistorySelection: function() {
-            var allChecked = $('.aips-history-table input[name="history[]"]').length === $('.aips-history-table input[name="history[]"]:checked').length;
-            $('#cb-select-all-1').prop('checked', allChecked);
-            AIPS.updateDeleteButton();
-        },
-
-        /**
-         * Enable or disable the "Delete Selected" button based on the current
-         * history row selection count.
-         */
-        updateDeleteButton: function() {
-            var count = $('.aips-history-table input[name="history[]"]:checked').length;
-            $('#aips-delete-selected-btn').prop('disabled', count === 0);
-        },
-
-        /**
-         * Confirm and bulk-delete the selected history entries via AJAX.
-         *
-         * Collects IDs from all checked `input[name="history[]"]` checkboxes,
-         * shows a confirmation dialog, then sends the `aips_bulk_delete_history`
-         * AJAX action and reloads the page on success.
-         *
-         * @param {Event} e - Click event from `#aips-delete-selected-btn`.
-         */
-        deleteSelectedHistory: function(e) {
-            e.preventDefault();
-            var ids = [];
-            $('.aips-history-table input[name="history[]"]:checked').each(function() {
-                ids.push($(this).val());
-            });
-
-            if (ids.length === 0) return;
-
-            var $btn = $(this);
-            AIPS.Utilities.confirm('Are you sure you want to delete ' + ids.length + ' item(s)?', 'Notice', [
-                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Deleting...');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_bulk_delete_history',
-                    nonce: aipsAjax.nonce,
-                    ids: ids
-                },
-                success: function(response) {
-                    if (response.success) {
-                        location.reload();
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                        $btn.prop('disabled', false).text('Delete Selected');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
-                    $btn.prop('disabled', false).text('Delete Selected');
-                }
-            });
-                }}
-            ]);
         },
 
         // AI Variables feature methods

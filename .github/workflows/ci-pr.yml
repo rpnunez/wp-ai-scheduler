@@ -2,7 +2,7 @@ name: PR CI (lint + unit tests)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, converted, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ci-pr-${{ github.ref }}

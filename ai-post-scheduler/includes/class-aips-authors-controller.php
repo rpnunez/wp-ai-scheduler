@@ -150,27 +150,18 @@ class AIPS_Authors_Controller {
 		}
 		
 		// Delete child records first to avoid orphaned records
-		global $wpdb;
-		$topics_table = $wpdb->prefix . 'aips_author_topics';
-		$logs_table = $wpdb->prefix . 'aips_author_topic_logs';
-		
-		// Get all topic IDs for this author
-		$topic_ids = $wpdb->get_col($wpdb->prepare(
-			"SELECT id FROM {$topics_table} WHERE author_id = %d",
-			$author_id
-		));
-		
-		// Delete logs for these topics
+
+		// Get all topic IDs for this author via repository
+		$topics    = $this->topics_repository->get_by_author($author_id);
+		$topic_ids = array_map(function ($t) { return (int) $t->id; }, $topics);
+
+		// Delete logs for these topics via repository
 		if (!empty($topic_ids)) {
-			$placeholders = implode(',', array_fill(0, count($topic_ids), '%d'));
-			$wpdb->query($wpdb->prepare(
-				"DELETE FROM {$logs_table} WHERE author_topic_id IN ({$placeholders})",
-				...$topic_ids
-			));
+			$this->logs_repository->delete_by_topic_ids($topic_ids);
 		}
-		
-		// Delete topics
-		$wpdb->delete($topics_table, array('author_id' => $author_id), array('%d'));
+
+		// Delete topics via repository
+		$this->topics_repository->delete_by_author($author_id);
 		
 		// Delete author
 		$result = $this->repository->delete($author_id);
