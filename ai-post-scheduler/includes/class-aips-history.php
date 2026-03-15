@@ -436,10 +436,15 @@ class AIPS_History {
         $history_ids = $this->repository->get_ids_by_status($status);
 
         if (!empty($history_ids)) {
-            $logs_deleted = $this->repository->delete_logs_by_history_ids($history_ids);
+            // Process log deletions in chunks to avoid building a single huge IN (...) clause.
+            $chunks = array_chunk($history_ids, 500);
 
-            if ($logs_deleted === false) {
-                return false;
+            foreach ($chunks as $chunk) {
+                $logs_deleted = $this->repository->delete_logs_by_history_ids($chunk);
+
+                if ($logs_deleted === false) {
+                    return false;
+                }
             }
         }
 
