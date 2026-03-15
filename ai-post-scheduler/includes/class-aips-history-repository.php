@@ -518,7 +518,7 @@ class AIPS_History_Repository {
         delete_transient('aips_history_stats');
 
         if (empty($status)) {
-            return $this->wpdb->query("TRUNCATE TABLE {$this->table_name}");
+            return $this->wpdb->query("DELETE FROM {$this->table_name}");
         }
         
         return $this->wpdb->delete($this->table_name, array('status' => $status), array('%s'));
