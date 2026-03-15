@@ -106,8 +106,14 @@ class AIPS_Admin_Assets {
             'editVoice'           => __('Edit Voice', 'ai-post-scheduler'),
             'deleteVoiceConfirm'  => __('Are you sure you want to delete this voice?', 'ai-post-scheduler'),
             // Confirm dialog button labels
-            'confirmCancelButton' => __('No, cancel', 'ai-post-scheduler'),
-            'confirmDeleteButton' => __('Yes, delete', 'ai-post-scheduler'),
+            'confirmCancelButton'              => __('No, cancel', 'ai-post-scheduler'),
+            'confirmDeleteButton'              => __('Yes, delete', 'ai-post-scheduler'),
+            // Schedule delete confirm strings
+            'deleteScheduleConfirm'            => __('Are you sure you want to delete this schedule?', 'ai-post-scheduler'),
+            'selectAtLeastOneSchedule'         => __('Please select at least one schedule.', 'ai-post-scheduler'),
+            'deleteOneScheduleConfirm'         => __('Are you sure you want to delete 1 schedule?', 'ai-post-scheduler'),
+            /* translators: %d: number of schedules */
+            'deleteMultipleSchedulesConfirm'   => __('Are you sure you want to delete %d schedules?', 'ai-post-scheduler'),
         ));
 
         // Enqueue Authors-specific assets

@@ -1191,7 +1191,7 @@
             var id = $el.data('id');
             var $row = $el.closest('tr');
 
-            AIPS.Utilities.confirm('Are you sure you want to delete this schedule?', 'Notice', [
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteScheduleConfirm, 'Notice', [
                 { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
                 { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.ajax({
@@ -1524,19 +1524,19 @@
             });
 
             if (ids.length === 0) {
-                AIPS.Utilities.showToast('Please select at least one schedule.', 'warning');
+                AIPS.Utilities.showToast(aipsAdminL10n.selectAtLeastOneSchedule, 'warning');
                 return;
             }
 
             if (action === 'delete') {
                 var deleteMsg = ids.length === 1
-                    ? 'Are you sure you want to delete 1 schedule?'
-                    : 'Are you sure you want to delete ' + ids.length + ' schedules?';
+                    ? aipsAdminL10n.deleteOneScheduleConfirm
+                    : aipsAdminL10n.deleteMultipleSchedulesConfirm.replace('%d', ids.length);
                 AIPS.Utilities.confirm(
                     deleteMsg,
                     'Delete Schedules',
                     [
-                        { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                        { label: aipsAdminL10n.confirmCancelButton, className: 'aips-btn aips-btn-secondary' },
                         { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() { AIPS.bulkDeleteSchedules(ids); } }
                     ]
                 );
