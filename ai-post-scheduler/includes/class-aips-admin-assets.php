@@ -112,8 +112,34 @@ class AIPS_Admin_Assets {
             'deleteScheduleConfirm'            => __('Are you sure you want to delete this schedule?', 'ai-post-scheduler'),
             'selectAtLeastOneSchedule'         => __('Please select at least one schedule.', 'ai-post-scheduler'),
             'deleteOneScheduleConfirm'         => __('Are you sure you want to delete 1 schedule?', 'ai-post-scheduler'),
-            /* translators: %d: number of schedules */
+            /* translators: %d: number of schedules to delete */
             'deleteMultipleSchedulesConfirm'   => __('Are you sure you want to delete %d schedules?', 'ai-post-scheduler'),
+            // Schedule error toasts
+            'failedToLoadHistory'              => __('Failed to load history.', 'ai-post-scheduler'),
+            'failedToDeleteSchedules'          => __('Failed to delete schedules.', 'ai-post-scheduler'),
+            'bulkRunFailed'                    => __('Bulk run failed.', 'ai-post-scheduler'),
+            // Bulk run-now confirm dialog
+            'runSchedulesNow'                  => __('Run Schedules Now', 'ai-post-scheduler'),
+            'cancel'                           => __('Cancel', 'ai-post-scheduler'),
+            'yesRunNow'                        => __('Yes, run now', 'ai-post-scheduler'),
+            'runPostsConfirmSingular'          => __('This will generate an estimated 1 post. Are you sure?', 'ai-post-scheduler'),
+            /* translators: %d: estimated number of posts to generate */
+            'runPostsConfirmPlural'            => __('This will generate an estimated %d posts. Are you sure?', 'ai-post-scheduler'),
+            'runOneScheduleConfirm'            => __('This will run 1 schedule. Are you sure?', 'ai-post-scheduler'),
+            /* translators: %d: number of schedules to run */
+            'runMultipleSchedulesConfirm'      => __('This will run %d schedules. Are you sure?', 'ai-post-scheduler'),
+            // Template summary panel
+            'autoGenerateFromContent'          => __('Auto-generate from content', 'ai-post-scheduler'),
+            'noneOption'                       => __('None', 'ai-post-scheduler'),
+            'featuredImageNo'                  => __('No', 'ai-post-scheduler'),
+            /* translators: %s: featured image source name */
+            'featuredImageYes'                 => __('Yes (%s)', 'ai-post-scheduler'),
+            // AI variable tag tooltip
+            'clickToCopy'                      => __('Click to copy', 'ai-post-scheduler'),
+            // Template preview
+            'exampleTopic'                     => __('Example Topic', 'ai-post-scheduler'),
+            'failedToGeneratePreview'          => __('Failed to generate preview. Please check that all required fields are filled.', 'ai-post-scheduler'),
+            'previewNetworkError'              => __('An error occurred while generating the preview. Please check your network connection and try again.', 'ai-post-scheduler'),
         ));
 
         // Enqueue Authors-specific assets

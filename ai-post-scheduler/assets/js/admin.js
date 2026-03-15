@@ -1365,7 +1365,7 @@
                     $loading.hide();
 
                     if (!response.success) {
-                        AIPS.Utilities.showToast(response.data.message || 'Failed to load history.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.failedToLoadHistory, 'error');
                         $modal.hide();
                         return;
                     }
@@ -1556,24 +1556,28 @@
                     },
                     success: function(response) {
                         var count = response.success ? (response.data.count || ids.length) : ids.length;
-                        var runMsg = 'This will generate an estimated ' + count + ' post' + (count !== 1 ? 's' : '') + '. Are you sure?';
+                        var runMsg = count === 1
+                            ? aipsAdminL10n.runPostsConfirmSingular
+                            : aipsAdminL10n.runPostsConfirmPlural.replace('%d', count);
                         AIPS.Utilities.confirm(
                             runMsg,
-                            'Run Schedules Now',
+                            aipsAdminL10n.runSchedulesNow,
                             [
-                                { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
-                                { label: 'Yes, run now', className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
+                                { label: aipsAdminL10n.cancel, className: 'aips-btn aips-btn-secondary' },
+                                { label: aipsAdminL10n.yesRunNow, className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
                             ]
                         );
                     },
                     error: function() {
-                        var runMsg = 'This will run ' + ids.length + ' schedule' + (ids.length !== 1 ? 's' : '') + '. Are you sure?';
+                        var runMsg = ids.length === 1
+                            ? aipsAdminL10n.runOneScheduleConfirm
+                            : aipsAdminL10n.runMultipleSchedulesConfirm.replace('%d', ids.length);
                         AIPS.Utilities.confirm(
                             runMsg,
-                            'Run Schedules Now',
+                            aipsAdminL10n.runSchedulesNow,
                             [
-                                { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
-                                { label: 'Yes, run now', className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
+                                { label: aipsAdminL10n.cancel, className: 'aips-btn aips-btn-secondary' },
+                                { label: aipsAdminL10n.yesRunNow, className: 'aips-btn aips-btn-primary', action: function() { AIPS.bulkRunNowSchedules(ids); } }
                             ]
                         );
                     }
@@ -1613,7 +1617,7 @@
                         $('#cb-select-all-schedules').prop('checked', false);
                         AIPS.updateScheduleBulkActions();
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || 'Failed to delete schedules.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.failedToDeleteSchedules, 'error');
                     }
                 },
                 error: function() {
@@ -1715,7 +1719,7 @@
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success', { duration: 8000 });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || 'Bulk run failed.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.bulkRunFailed, 'error');
                     }
                 },
                 error: function() {
@@ -2812,7 +2816,7 @@
             $('#summary_description').text($('#template_description').val() || '-');
             
             var titlePrompt = $('#title_prompt').val();
-            $('#summary_title_prompt').text(titlePrompt || 'Auto-generate from content');
+            $('#summary_title_prompt').text(titlePrompt || aipsAdminL10n.autoGenerateFromContent);
             
             var contentPrompt = $('#prompt_template').val();
             if (contentPrompt.length > 100) {
@@ -2821,16 +2825,16 @@
             $('#summary_content_prompt').text(contentPrompt || '-');
             
             var voiceText = $('#voice_id option:selected').text();
-            $('#summary_voice').text(voiceText || 'None');
+            $('#summary_voice').text(voiceText || aipsAdminL10n.noneOption);
             
             $('#summary_quantity').text($('#post_quantity').val() || '1');
             
             var featuredImage = $('#generate_featured_image').is(':checked');
             if (featuredImage) {
                 var source = $('#featured_image_source option:selected').text();
-                $('#summary_featured_image').text('Yes (' + source + ')');
+                $('#summary_featured_image').text(aipsAdminL10n.featuredImageYes.replace('%s', source));
             } else {
-                $('#summary_featured_image').text('No');
+                $('#summary_featured_image').text(aipsAdminL10n.featuredImageNo);
             }
         },
 
@@ -2916,7 +2920,7 @@
             // Build the variable tags
             var html = '';
             variables.forEach(function(varName) {
-                html += '<span class="aips-ai-var-tag" data-variable="{{' + AIPS.escapeHtml(varName) + '}}" title="Click to copy">';
+                html += '<span class="aips-ai-var-tag" data-variable="{{' + AIPS.escapeHtml(varName) + '}}" title="' + aipsAdminL10n.clickToCopy + '">';
                 html += '<span class="dashicons dashicons-tag"></span>';
                 html += '{{' + AIPS.escapeHtml(varName) + '}}';
                 html += '</span>';
@@ -2995,7 +2999,7 @@
                             $('#aips-preview-structure').hide();
                         }
                         
-                        $('.aips-preview-sample-topic').text(metadata.sample_topic || 'Example Topic');
+                        $('.aips-preview-sample-topic').text(metadata.sample_topic || aipsAdminL10n.exampleTopic);
                         
                         // Update prompt sections
                         $('#aips-preview-content-prompt').text(prompts.content || '-');
@@ -3011,13 +3015,13 @@
                         
                         $sections.show();
                     } else {
-                        var errorMsg = response.data.message || 'Failed to generate preview. Please check that all required fields are filled.';
+                        var errorMsg = response.data.message || aipsAdminL10n.failedToGeneratePreview;
                         $error.text(errorMsg).show();
                     }
                 },
                 error: function() {
                     $loading.hide();
-                    $error.text('An error occurred while generating the preview. Please check your network connection and try again.').show();
+                    $error.text(aipsAdminL10n.previewNetworkError).show();
                 }
             });
         },
