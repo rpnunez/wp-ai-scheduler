@@ -1,9 +1,9 @@
 <?php
-if (!defined('ABSPATH')) {
-    die;
-}
+if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
+ * Class AIPS_Admin_Menu
+ *
  * Class AIPS_Admin_Menu
  *
  * Handles the registration of admin menu pages and rendering of admin interfaces
