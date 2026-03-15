@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
                     <p class="aips-page-description"><?php esc_html_e('Create and manage AI post generation templates with custom prompts and settings.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-primary aips-add-template-btn">
+                    <button type="button" class="aips-btn aips-btn-primary aips-add-template-btn">
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Add Template', 'ai-post-scheduler'); ?>
                     </button>
@@ -110,11 +110,11 @@ if (!defined('ABSPATH')) {
                             </td>
                             <td>
                                 <div class="cell-actions">
-                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-edit"></span>
                                         <?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-run-now" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-run-now" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-controls-play"></span>
                                         <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                     </button>
@@ -122,11 +122,11 @@ if (!defined('ABSPATH')) {
                                         <span class="dashicons dashicons-calendar-alt"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
                                     </a>
-                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-admin-page"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Clone', 'ai-post-scheduler'); ?></span>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-template" data-id="<?php echo esc_attr($template->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-trash"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
                                     </button>
@@ -179,7 +179,7 @@ if (!defined('ABSPATH')) {
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No Templates Yet', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('Templates define how your AI-generated posts are structured. Create your first template to start generating content automatically.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
-                        <button class="aips-btn aips-btn-primary aips-add-template-btn">
+                        <button type="button" class="aips-btn aips-btn-primary aips-add-template-btn">
                             <span class="dashicons dashicons-plus-alt"></span>
                             <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
                         </button>
@@ -196,7 +196,7 @@ if (!defined('ABSPATH')) {
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 id="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             
             <!-- Wizard Progress Indicator -->
@@ -610,7 +610,7 @@ if (!defined('ABSPATH')) {
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2><?php esc_html_e('Test Generation Result', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <div id="aips-test-result-container">
@@ -645,7 +645,7 @@ if (!defined('ABSPATH')) {
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2><?php esc_html_e('Post Successfully Generated', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <div style="text-align: center; padding: 20px;">

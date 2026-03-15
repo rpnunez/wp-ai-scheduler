@@ -39,7 +39,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                     <p class="aips-page-description"><?php esc_html_e('Manage AI author profiles, generate topics, and create authentic content from different perspectives.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-primary aips-add-author-btn">
+                    <button type="button" class="aips-btn aips-btn-primary aips-add-author-btn">
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
                     </button>
@@ -49,8 +49,8 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
 
         <!-- Add tabs for Authors List and Generation Queue -->
         <div class="aips-authors-tabs" style="margin-bottom: 20px;">
-            <button class="aips-authors-tab-link active" data-tab="authors-list"><?php esc_html_e('Authors List', 'ai-post-scheduler'); ?></button>
-            <button class="aips-authors-tab-link" data-tab="generation-queue"><?php esc_html_e('Generation Queue', 'ai-post-scheduler'); ?></button>
+            <button type="button" class="aips-authors-tab-link active" data-tab="authors-list"><?php esc_html_e('Authors List', 'ai-post-scheduler'); ?></button>
+            <button type="button" class="aips-authors-tab-link" data-tab="generation-queue"><?php esc_html_e('Generation Queue', 'ai-post-scheduler'); ?></button>
         </div>
 
         <!-- Authors List Tab Content -->
@@ -204,13 +204,13 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                                                 <span class="dashicons dashicons-admin-post"></span>
                                                 <?php esc_html_e("View Author's Posts", 'ai-post-scheduler'); ?>
                                             </a>
-                                            <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit author', 'ai-post-scheduler'); ?>">
+                                            <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit author', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-edit"></span>
                                             </button>
-                                            <button class="aips-btn aips-btn-sm aips-btn-ghost aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate topics', 'ai-post-scheduler'); ?>">
+                                            <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Generate Topics', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Generate topics', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-update"></span>
                                             </button>
-                                            <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete author', 'ai-post-scheduler'); ?>">
+                                            <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-author" data-id="<?php echo esc_attr($author->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete author', 'ai-post-scheduler'); ?>">
                                                 <span class="dashicons dashicons-trash"></span>
                                             </button>
                                         </div>
@@ -262,7 +262,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                         <h3 class="aips-empty-state-title"><?php esc_html_e('No Authors Yet', 'ai-post-scheduler'); ?></h3>
                         <p class="aips-empty-state-description"><?php esc_html_e('Create your first author to start generating topically diverse blog posts.', 'ai-post-scheduler'); ?></p>
                         <div class="aips-empty-state-actions">
-                            <button class="aips-btn aips-btn-primary aips-add-author-btn">
+                            <button type="button" class="aips-btn aips-btn-primary aips-add-author-btn">
                                 <span class="dashicons dashicons-plus-alt"></span>
                                 <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
                             </button>
@@ -287,7 +287,7 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                             <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
                     <option value="generate_now"><?php esc_html_e('Generate Now', 'ai-post-scheduler'); ?></option>
                 </select>
-                <button class="button aips-queue-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+                <button type="button" class="button aips-queue-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
             </div>
 
             <!-- Queue Topics List -->
@@ -410,10 +410,3 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         </form>
     </div>
 </div>
-
-
-
-
-
-
-

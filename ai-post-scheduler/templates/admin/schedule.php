@@ -27,7 +27,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     <p class="aips-page-description"><?php esc_html_e('Automate post generation by setting up recurring schedules for your templates.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-primary aips-add-schedule-btn" <?php echo empty($templates) ? 'disabled' : ''; ?>>
+                    <button type="button" class="aips-btn aips-btn-primary aips-add-schedule-btn" <?php echo empty($templates) ? 'disabled' : ''; ?>>
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Add Schedule', 'ai-post-scheduler'); ?>
                     </button>
@@ -197,19 +197,19 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             </td>
                             <td>
                                 <div class="cell-actions">
-                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-schedule" aria-label="<?php esc_attr_e('Edit schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-schedule" aria-label="<?php esc_attr_e('Edit schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-edit"></span>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-run-now-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Run now', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-run-now-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Run now', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Run Now', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-controls-play"></span>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-view-schedule-history" data-id="<?php echo esc_attr($schedule->id); ?>" data-name="<?php echo esc_attr($schedule->template_name ?: $schedule->id); ?>" aria-label="<?php esc_attr_e('View history', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('View History', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-view-schedule-history" data-id="<?php echo esc_attr($schedule->id); ?>" data-name="<?php echo esc_attr($schedule->template_name ?: $schedule->id); ?>" aria-label="<?php esc_attr_e('View history', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('View History', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-backup"></span>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-clone-schedule" aria-label="<?php esc_attr_e('Clone schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Clone', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-admin-page"></span>
                                     </button>
-                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                    <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php esc_attr_e('Delete schedule', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-trash"></span>
                                     </button>
                                 </div>
@@ -262,7 +262,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     <p class="aips-empty-state-description"><?php esc_html_e('Create a schedule to automatically generate posts on a regular basis using your templates.', 'ai-post-scheduler'); ?></p>
                     <?php if (!empty($templates)): ?>
                     <div class="aips-empty-state-actions">
-                        <button class="aips-btn aips-btn-primary aips-add-schedule-btn">
+                        <button type="button" class="aips-btn aips-btn-primary aips-add-schedule-btn">
                             <span class="dashicons dashicons-plus-alt"></span>
                             <?php esc_html_e('Create Schedule', 'ai-post-scheduler'); ?>
                         </button>
@@ -284,7 +284,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2 id="aips-schedule-modal-title"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <form id="aips-schedule-form">
@@ -376,7 +376,7 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
     <div class="aips-modal-content aips-modal-large">
         <div class="aips-modal-header">
             <h2 id="aips-schedule-history-modal-title"><?php esc_html_e('Schedule History', 'ai-post-scheduler'); ?></h2>
-            <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+            <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
         </div>
         <div class="aips-modal-body">
             <div id="aips-schedule-history-loading" style="text-align: center; padding: 20px;">

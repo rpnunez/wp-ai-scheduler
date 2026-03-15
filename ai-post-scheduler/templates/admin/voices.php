@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
                     </p>
                 </div>
                 <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-primary aips-add-voice-btn">
+                    <button type="button" class="aips-btn aips-btn-primary aips-add-voice-btn">
                         <span class="dashicons dashicons-plus-alt2"></span>
                         <?php esc_html_e('Add Voice', 'ai-post-scheduler'); ?>
                     </button>
@@ -75,11 +75,11 @@ if (!defined('ABSPATH')) {
                                 </td>
                                 <td class="column-actions">
                                     <div class="aips-action-buttons">
-                                        <button class="aips-btn aips-btn-sm aips-edit-voice" data-id="<?php echo esc_attr($voice->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+                                        <button type="button" class="aips-btn aips-btn-sm aips-edit-voice" data-id="<?php echo esc_attr($voice->id); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
                                             <span class="dashicons dashicons-edit"></span>
                                             <span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
                                         </button>
-                                        <button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-voice" data-id="<?php echo esc_attr($voice->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+                                        <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-voice" data-id="<?php echo esc_attr($voice->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
                                             <span class="dashicons dashicons-trash"></span>
                                             <span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
                                         </button>
@@ -118,7 +118,7 @@ if (!defined('ABSPATH')) {
                     </div>
                     <h3 class="aips-empty-title"><?php esc_html_e('No Voices Yet', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-description"><?php esc_html_e('Create a voice to establish consistent tone and style for your generated posts.', 'ai-post-scheduler'); ?></p>
-                    <button class="aips-btn aips-btn-primary aips-btn-lg aips-add-voice-btn">
+                    <button type="button" class="aips-btn aips-btn-primary aips-btn-lg aips-add-voice-btn">
                         <span class="dashicons dashicons-plus-alt2"></span>
                         <?php esc_html_e('Create Voice', 'ai-post-scheduler'); ?>
                     </button>
@@ -132,7 +132,7 @@ if (!defined('ABSPATH')) {
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2 id="aips-voice-modal-title"><?php esc_html_e('Add New Voice', 'ai-post-scheduler'); ?></h2>
-                <button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+                <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
             </div>
             <div class="aips-modal-body">
                 <form id="aips-voice-form">

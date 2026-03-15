@@ -70,7 +70,7 @@ if (!defined('ABSPATH')) {
     <td class="column-actions">
         <div class="aips-btn-group aips-btn-group-inline">
 
-        <button class="aips-btn aips-btn-sm aips-btn-primary aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>">
+        <button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-view-history-logs" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('View Logs', 'ai-post-scheduler'); ?>">
             <span class="dashicons dashicons-list-view"></span>
             <?php esc_html_e('View Logs', 'ai-post-scheduler'); ?>
         </button>
@@ -81,14 +81,14 @@ if (!defined('ABSPATH')) {
                 <?php esc_html_e('View', 'ai-post-scheduler'); ?>
             </a>
         <?php elseif ($item->status === 'processing'): ?>
-            <button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" data-history-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
+            <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" data-history-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
                 <span class="dashicons dashicons-visibility"></span>
                 <?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
             </button>
         <?php endif; ?>
 
         <?php if ($item->status === 'failed' && $item->template_id): ?>
-            <button class="aips-btn aips-btn-sm aips-btn-secondary aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('Retry Generation', 'ai-post-scheduler'); ?>">
+            <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-retry-generation" data-id="<?php echo esc_attr($item->id); ?>" title="<?php esc_attr_e('Retry Generation', 'ai-post-scheduler'); ?>">
                 <span class="dashicons dashicons-update"></span>
                 <?php esc_html_e('Retry', 'ai-post-scheduler'); ?>
             </button>

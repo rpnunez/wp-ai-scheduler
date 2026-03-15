@@ -165,7 +165,7 @@ class AIPS_Admin_Bar {
 				'title'  => '<span class="aips-toolbar-notif-heading">'
 					. esc_html__('Notifications', 'ai-post-scheduler')
 					. '</span>'
-					. '<button class="aips-mark-all-read" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '">'
+					. '<button type="button" class="aips-mark-all-read" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '">'
 					. esc_html__('Mark all as read', 'ai-post-scheduler')
 					. '</button>',
 				'href'   => false,
@@ -182,7 +182,7 @@ class AIPS_Admin_Bar {
 				}
 
 				$node_title .= '</span>'
-					. '<button class="aips-mark-read" data-id="' . esc_attr($notif->id) . '" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '" title="' . esc_attr__('Mark as read', 'ai-post-scheduler') . '">'
+					. '<button type="button" class="aips-mark-read" data-id="' . esc_attr($notif->id) . '" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '" title="' . esc_attr__('Mark as read', 'ai-post-scheduler') . '">'
 					. '<span class="dashicons dashicons-yes-alt"></span>'
 					. '</button>';
 

@@ -31,7 +31,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                     <p class="aips-page-description"><?php esc_html_e('View generation history containers and inspect every logged step, AI call, and error for each run.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
-                    <button class="aips-btn aips-btn-secondary" id="aips-export-history-btn">
+                    <button type="button" class="aips-btn aips-btn-secondary" id="aips-export-history-btn">
                         <span class="dashicons dashicons-download"></span>
                         <?php esc_html_e('Export CSV', 'ai-post-scheduler'); ?>
                     </button>
@@ -94,7 +94,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                         <option value="failed" <?php selected($status_filter, 'failed'); ?>><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option>
                         <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
                     </select>
-                    <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-filter-btn">
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-filter-btn">
                         <span class="dashicons dashicons-filter"></span>
                         <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
                     </button>
@@ -109,21 +109,21 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
             <!-- Toolbar (bulk actions) -->
             <div class="aips-panel-toolbar">
                 <div class="aips-toolbar-left">
-                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid" id="aips-delete-selected-btn" disabled>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid" id="aips-delete-selected-btn" disabled>
                         <span class="dashicons dashicons-trash"></span>
                         <?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?>
                     </button>
-                    <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-reload-history-btn">
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-reload-history-btn">
                         <span class="dashicons dashicons-update"></span>
                         <?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
                 <div class="aips-toolbar-right">
-                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="failed">
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="failed">
                         <span class="dashicons dashicons-dismiss"></span>
                         <?php esc_html_e('Clear Failed', 'ai-post-scheduler'); ?>
                     </button>
-                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="">
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid aips-clear-history" data-status="">
                         <span class="dashicons dashicons-trash"></span>
                         <?php esc_html_e('Clear All', 'ai-post-scheduler'); ?>
                     </button>

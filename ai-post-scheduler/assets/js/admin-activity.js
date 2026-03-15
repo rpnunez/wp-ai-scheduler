@@ -89,7 +89,7 @@
 				
 				if (activity.post) {
 					if (activity.post.status === 'draft') {
-						$actions.append('<button class="button button-small aips-quick-publish">Publish</button>');
+						$actions.append('<button type="button" class="button button-small aips-quick-publish">Publish</button>');
 					}
 					if (activity.post.edit_url) {
 						$actions.append('<a href="' + activity.post.edit_url + '" class="button button-small" target="_blank">Edit</a>');

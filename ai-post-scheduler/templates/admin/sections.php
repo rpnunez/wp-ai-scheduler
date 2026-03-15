@@ -17,7 +17,7 @@ if (!isset($sections) || !is_array($sections)) {
 					<p class="aips-page-description"><?php esc_html_e('Create and manage reusable prompt sections that can be inserted into your templates using placeholders.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-page-actions">
-					<button class="aips-btn aips-btn-primary aips-add-section-btn">
+					<button type="button" class="aips-btn aips-btn-primary aips-add-section-btn">
 						<span class="dashicons dashicons-plus-alt"></span>
 						<?php esc_html_e('Add Section', 'ai-post-scheduler'); ?>
 					</button>
@@ -72,10 +72,10 @@ if (!isset($sections) || !is_array($sections)) {
 								<?php endif; ?>
 							</td>
 							<td class="column-actions">
-								<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+								<button type="button" class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-edit"></span>
 								</button>
-								<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+								<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-section" data-id="<?php echo esc_attr($section->id); ?>" aria-label="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-trash"></span>
 								</button>
 							</td>
@@ -100,7 +100,7 @@ if (!isset($sections) || !is_array($sections)) {
 				<span class="dashicons dashicons-editor-table" style="font-size: 64px; width: 64px; height: 64px;"></span>
 				<h3><?php esc_html_e('No Prompt Sections', 'ai-post-scheduler'); ?></h3>
 				<p><?php esc_html_e('Create reusable prompt sections that can be inserted into your article structures using placeholders like {{section:key}}.', 'ai-post-scheduler'); ?></p>
-				<button class="aips-btn aips-btn-primary aips-add-section-btn">
+				<button type="button" class="aips-btn aips-btn-primary aips-add-section-btn">
 					<span class="dashicons dashicons-plus-alt"></span>
 					<?php esc_html_e('Create First Section', 'ai-post-scheduler'); ?>
 				</button>
@@ -113,7 +113,7 @@ if (!isset($sections) || !is_array($sections)) {
 		<div class="aips-modal-content">
 			<div class="aips-modal-header">
 				<h2 id="aips-section-modal-title"><?php esc_html_e('Add New Prompt Section', 'ai-post-scheduler'); ?></h2>
-				<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+				<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 			</div>
 			<div class="aips-modal-body">
 				<form id="aips-section-form">
