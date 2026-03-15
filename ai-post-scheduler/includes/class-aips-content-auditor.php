@@ -86,10 +86,11 @@ class AIPS_Content_Auditor {
     /**
      * Perform a gap analysis for a specific niche.
      *
-     * @param string $niche The target niche to analyze.
+     * @param string                       $niche            The target niche to analyze.
+     * @param AIPS_History_Container|null  $history_container Optional history container for logging.
      * @return array|WP_Error Array of gap opportunities or WP_Error on failure.
      */
-    public function perform_gap_analysis($niche) {
+    public function perform_gap_analysis($niche, $history_container = null) {
         $this->logger->log("Starting gap analysis for niche: {$niche}", 'info');
 
         // 1. Ingest existing content
@@ -115,20 +116,76 @@ class AIPS_Content_Auditor {
              $options['model'] = ''; // Clear model to use AI Engine default (e.g. Gemini)
         }
 
+        if ($history_container) {
+            $history_container->record('ai_request', __('Sending gap analysis prompt to AI', 'ai-post-scheduler'), array(
+                'niche'              => $niche,
+                'existing_posts'     => count($existing_content),
+                'prompt_preview'     => substr($prompt, 0, 200),
+            ));
+        }
+
         $response = $this->ai_service->generate_json($prompt, $options);
 
         if (is_wp_error($response)) {
             $this->logger->log("Gap analysis AI call failed: " . $response->get_error_message(), 'error');
+            if ($history_container) {
+                $history_container->record_error(
+                    sprintf(__('Gap analysis AI call failed: %s', 'ai-post-scheduler'), $response->get_error_message()),
+                    array(),
+                    $response
+                );
+            }
             return $response;
         }
 
         // 4. Validate and return results
         if (!is_array($response)) {
             $this->logger->log("Gap analysis returned invalid JSON format.", 'error');
+            if ($history_container) {
+                $history_container->record_error(__('Gap analysis returned invalid JSON format.', 'ai-post-scheduler'));
+            }
             return new WP_Error('invalid_response', 'AI returned invalid data format.');
         }
 
         $this->logger->log("Gap analysis completed successfully. Found " . count($response) . " gaps.", 'info');
+
+        if ($history_container) {
+            $history_container->record(
+                'ai_response',
+                sprintf(
+                    /* translators: %d: number of content gaps found */
+                    __('Gap analysis completed. Found %d content gaps.', 'ai-post-scheduler'),
+                    count($response)
+                ),
+                null,
+                array('gaps_count' => count($response))
+            );
+
+            // Log each individual gap as a separate activity entry
+            foreach ($response as $gap) {
+                $missing_topic = isset($gap['missing_topic']) ? $gap['missing_topic'] : __('Unknown gap', 'ai-post-scheduler');
+                $priority      = isset($gap['priority']) ? $gap['priority'] : '';
+                $reason        = isset($gap['reason']) ? $gap['reason'] : '';
+
+                $history_container->record(
+                    'activity',
+                    sprintf(
+                        /* translators: 1: missing topic 2: priority level */
+                        __('Gap identified: %1$s [Priority: %2$s]', 'ai-post-scheduler'),
+                        $missing_topic,
+                        $priority
+                    ),
+                    null,
+                    null,
+                    array(
+                        'missing_topic'  => $missing_topic,
+                        'priority'       => $priority,
+                        'reason'         => $reason,
+                        'search_intent'  => isset($gap['search_intent']) ? $gap['search_intent'] : '',
+                    )
+                );
+            }
+        }
         
         return $response;
     }
