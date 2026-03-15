@@ -778,6 +778,13 @@ class AIPS_Settings {
         include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
     }
     
+    /**
+     * Render the Prompt Sections page.
+     *
+     * Fetches prompt sections (active and trashed) and passes them to the template.
+     *
+     * @return void
+     */
     public function render_prompt_sections_page() {
         $section_repo = new AIPS_Prompt_Section_Repository();
         $sections = $section_repo->get_all(false);

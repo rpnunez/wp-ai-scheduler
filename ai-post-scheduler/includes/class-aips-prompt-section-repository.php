@@ -219,7 +219,7 @@ class AIPS_Prompt_Section_Repository {
 			$this->table_name,
 			array('deleted_at' => null),
 			array('id' => $id),
-			array(null),
+			array('%s'),
 			array('%d')
 		) !== false;
 	}

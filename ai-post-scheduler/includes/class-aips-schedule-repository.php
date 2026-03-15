@@ -312,7 +312,7 @@ class AIPS_Schedule_Repository {
             $this->schedule_table,
             array('deleted_at' => null),
             array('id' => $id),
-            array(null),
+            array('%s'),
             array('%d')
         );
 

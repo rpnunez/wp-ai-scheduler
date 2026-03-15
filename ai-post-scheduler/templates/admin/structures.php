@@ -12,6 +12,15 @@ if (!isset($structures) || !is_array($structures)) {
 if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
+
+// Ensure $trashed_structures and $trashed_sections are defined
+if (!isset($trashed_structures) || !is_array($trashed_structures)) {
+	$trashed_structures = array();
+}
+
+if (!isset($trashed_sections) || !is_array($trashed_sections)) {
+	$trashed_sections = array();
+}
 ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
@@ -27,7 +36,7 @@ if (!isset($sections) || !is_array($sections)) {
 					<button class="aips-btn aips-btn-ghost aips-toggle-trash-btn" data-target="aips-structures-trash-panel">
 						<span class="dashicons dashicons-trash"></span>
 						<?php
-						$total_trashed = count(isset($trashed_structures) ? $trashed_structures : array()) + count(isset($trashed_sections) ? $trashed_sections : array());
+						$total_trashed = count($trashed_structures) + count($trashed_sections);
 						printf(
 							/* translators: %d: number of trashed items */
 							esc_html__('Trash (%d)', 'ai-post-scheduler'),

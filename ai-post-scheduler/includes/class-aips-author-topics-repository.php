@@ -256,7 +256,7 @@ class AIPS_Author_Topics_Repository {
 			$this->table_name,
 			array('deleted_at' => null),
 			array('id' => $id),
-			array(null),
+			array('%s'),
 			array('%d')
 		) !== false;
 	}
@@ -425,8 +425,4 @@ class AIPS_Author_Topics_Repository {
 			)
 		);
 	}
-
-
-
-
 }
