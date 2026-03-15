@@ -249,6 +249,33 @@
 	min-width: 200px;
 }
 
+/* Pagination tablenav inside content panels.
+   Override WordPress float-based layout with flexbox:
+   count on the left, pagination links on the right. */
+.aips-content-panel .tablenav {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--aips-space-3) var(--aips-space-5);
+	border-top: 1px solid var(--aips-gray-100);
+	height: auto;
+	margin: 0;
+	clear: both;
+}
+
+.aips-content-panel .tablenav .tablenav-pages {
+	float: none;
+	height: auto;
+	margin: 0;
+}
+
+/* Row-count label in the table footer (left side of .tablenav) */
+.aips-table-footer-count {
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-500);
+	white-space: nowrap;
+}
+
 /* Panel toolbar */
 .aips-panel-toolbar {
 	display: flex;
@@ -1092,9 +1119,15 @@
     color: #50575e;
 }
 
-/* Form that participates in flex layout without introducing a block */
+/* Form that participates in flex layout without introducing a block.
+   width: 100% ensures margin-left: auto on .aips-filter-right
+   can push the search input to the far right of the bar. */
 .aips-filter-form {
-    display: flex;
+	display: flex;
+	align-items: center;
+	gap: var(--aips-space-3);
+	flex-wrap: wrap;
+	width: 100%;
 }
 
 .aips-button-group {

@@ -46,24 +46,6 @@ if (!isset($sections) || !is_array($sections)) {
 		<div class="aips-structures-container">
 			<?php if (!empty($structures)): ?>
 			<div class="aips-filter-bar">
-				<div class="aips-filter-left">
-					<span class="aips-result-count">
-						<?php
-						$count = count( $structures );
-						printf(
-							esc_html(
-								_n(
-									'%s structure',
-									'%s structures',
-									$count,
-									'ai-post-scheduler'
-								)
-							),
-							number_format_i18n( $count )
-						);
-						?>
-					</span>
-				</div>
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-structure-search"><?php esc_html_e('Search Structures:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-structure-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search structures...', 'ai-post-scheduler'); ?>">
@@ -123,6 +105,26 @@ if (!isset($sections) || !is_array($sections)) {
 			</table>
 			</div>
 
+			<!-- Table footer -->
+			<div class="tablenav">
+				<span class="aips-table-footer-count">
+					<?php
+					$count = count( $structures );
+					printf(
+						esc_html(
+							_n(
+								'%s structure',
+								'%s structures',
+								$count,
+								'ai-post-scheduler'
+							)
+						),
+						number_format_i18n( $count )
+					);
+					?>
+				</span>
+			</div>
+
 			<div id="aips-structure-search-no-results" class="aips-empty-state" style="display: none;">
 				<span class="dashicons dashicons-search" aria-hidden="true"></span>
 				<h3><?php esc_html_e('No Structures Found', 'ai-post-scheduler'); ?></h3>
@@ -148,17 +150,6 @@ if (!isset($sections) || !is_array($sections)) {
 		<div class="aips-structures-container">
 			<?php if (!empty($sections)): ?>
 			<div class="aips-filter-bar">
-				<div class="aips-filter-left">
-					<span class="aips-result-count">
-						<?php
-						$section_count = count( $sections );
-						printf(
-							esc_html( _n( '%s section', '%s sections', $section_count, 'ai-post-scheduler' ) ),
-							number_format_i18n( $section_count )
-						);
-						?>
-					</span>
-				</div>
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-section-search"><?php esc_html_e('Search Sections:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-section-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sections...', 'ai-post-scheduler'); ?>">
@@ -206,6 +197,19 @@ if (!isset($sections) || !is_array($sections)) {
 					<?php endforeach; ?>
 				</tbody>
 			</table>
+			</div>
+
+			<!-- Table footer -->
+			<div class="tablenav">
+				<span class="aips-table-footer-count">
+					<?php
+					$section_count = count( $sections );
+					printf(
+						esc_html( _n( '%s section', '%s sections', $section_count, 'ai-post-scheduler' ) ),
+						number_format_i18n( $section_count )
+					);
+					?>
+				</span>
 			</div>
 
 			<div id="aips-section-search-no-results" class="aips-empty-state" style="display: none;">
