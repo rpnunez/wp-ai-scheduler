@@ -31,6 +31,7 @@ class AIPS_Schedule_Controller {
         $data = array(
             'id' => isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0,
             'template_id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
+            'title' => isset($_POST['schedule_title']) ? sanitize_text_field($_POST['schedule_title']) : '',
             'frequency' => isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily',
             'start_time' => isset($_POST['start_time']) ? sanitize_text_field($_POST['start_time']) : null,
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
