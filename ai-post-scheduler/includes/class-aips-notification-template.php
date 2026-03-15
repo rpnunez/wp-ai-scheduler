@@ -152,7 +152,7 @@ class AIPS_Notification_Template {
 
 		foreach ($vars as $token => $value) {
 			// Normalise the token so both '{{name}}' and 'name' are accepted.
-			if (strpos($token, '{{') !== 0) {
+			if (!str_starts_with($token, '{{')) {
 				$token = '{{' . $token . '}}';
 			}
 			$search[]  = $token;

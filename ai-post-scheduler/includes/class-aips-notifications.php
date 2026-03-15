@@ -73,6 +73,14 @@ class AIPS_Notifications {
 	 */
 	private $history_service;
 
+	/**
+	 * Tracks whether the WordPress action hooks have been registered by any
+	 * instance so that multiple instantiations do not register duplicate handlers.
+	 *
+	 * @var bool
+	 */
+	private static $hooks_registered = false;
+
 	// -----------------------------------------------------------------------
 	// Constructor
 	// -----------------------------------------------------------------------
@@ -106,9 +114,18 @@ class AIPS_Notifications {
 	/**
 	 * Register WordPress action hooks for the built-in scheduled notifications.
 	 *
+	 * Uses a static flag so that multiple instantiations (e.g. one in the main
+	 * plugin bootstrap and another inside a scheduler) do not register duplicate
+	 * hook callbacks.
+	 *
 	 * @return void
 	 */
 	private function register_hooks() {
+		if (self::$hooks_registered) {
+			return;
+		}
+		self::$hooks_registered = true;
+
 		// Daily cron: send draft-posts-review digest email.
 		add_action('aips_send_review_notifications', array($this, 'handle_review_notifications_cron'));
 
