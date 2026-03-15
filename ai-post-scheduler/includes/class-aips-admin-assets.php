@@ -104,6 +104,7 @@ class AIPS_Admin_Assets {
             'noVoiceDefault'      => __('No Voice (Use Default)', 'ai-post-scheduler'),
             'addNewVoice'         => __('Add New Voice', 'ai-post-scheduler'),
             'editVoice'           => __('Edit Voice', 'ai-post-scheduler'),
+            'saveVoice'           => __('Save Voice', 'ai-post-scheduler'),
             'deleteVoiceConfirm'  => __('Are you sure you want to delete this voice?', 'ai-post-scheduler'),
             // Confirm dialog button labels
             'confirmCancelButton'              => __('No, cancel', 'ai-post-scheduler'),
