@@ -903,6 +903,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     // Load plugin classes
     $includes_dir = dirname(__DIR__) . '/includes/';
     $files = [
+        'class-aips-container.php',
         'class-aips-logger.php',
         'class-aips-config.php',
         'class-aips-db-manager.php',

@@ -193,77 +193,66 @@ class AIPS_Admin_Menu {
     }
 
     public function render_dashboard_page() {
-        $controller = new AIPS_Dashboard_Controller();
-        $controller->render_page();
+        AIPS_Container::get_instance()->get('dashboard_controller')->render_page();
     }
 
     public function render_voices_page() {
-        $voices_handler = new AIPS_Voices();
-        $voices_handler->render_page();
+        AIPS_Container::get_instance()->get('voices')->render_page();
     }
 
     public function render_templates_page() {
-        $templates_handler = new AIPS_Templates();
-        $templates_handler->render_page();
+        AIPS_Container::get_instance()->get('templates')->render_page();
     }
 
     public function render_schedule_page() {
-        $controller = new AIPS_Schedule_Controller();
-        $controller->render_page();
+        AIPS_Container::get_instance()->get('schedule_controller')->render_page();
     }
 
     public function render_schedule_calendar_page() {
-        $controller = new AIPS_Calendar_Controller();
-        $controller->render_page();
+        AIPS_Container::get_instance()->get('calendar_controller')->render_page();
     }
 
     public function render_research_page() {
-        $controller = new AIPS_Research_Controller();
-        $controller->render_page();
+        AIPS_Container::get_instance()->get('research_controller')->render_page();
     }
 
     public function render_authors_page() {
-        $controller = new AIPS_Authors_Controller();
-        $controller->render_page();
+        AIPS_Container::get_instance()->get('authors_controller')->render_page();
     }
 
     public function render_author_topics_page() {
-        $controller = new AIPS_Author_Topics_Controller();
-        $controller->render_page();
+        AIPS_Container::get_instance()->get('author_topics_controller')->render_page();
     }
 
     public function render_generated_posts_page() {
-        $controller = new AIPS_Generated_Posts_Controller();
-        $controller->render_page();
+        AIPS_Container::get_instance()->get('generated_posts_controller')->render_page();
     }
 
     public function render_structures_page() {
-        $controller = new AIPS_Structures_Controller();
-        $controller->render_page();
+        AIPS_Container::get_instance()->get('structures_controller')->render_page();
     }
 
     public function render_history_page() {
-        $history_handler = new AIPS_History();
-        $history_handler->render_page();
+        AIPS_Container::get_instance()->get('history')->render_page();
     }
 
     public function render_settings_page() {
-        $settings_handler = new AIPS_Settings();
-        $settings_handler->render_page();
+        AIPS_Container::get_instance()->get('settings')->render_page();
     }
 
     public function render_seeder_page() {
-        $seeder_handler = new AIPS_Seeder_Admin();
-        $seeder_handler->render_page();
+        AIPS_Container::get_instance()->get('seeder')->render_page();
     }
 
     public function render_status_page() {
-        $status_handler = new AIPS_System_Status();
-        $status_handler->render_page();
+        AIPS_Container::get_instance()->get('system_status')->render_page();
     }
 
     public function render_dev_tools_page() {
-        $dev_tools = new AIPS_Dev_Tools();
-        $dev_tools->render_page();
+        $container = AIPS_Container::get_instance();
+        if ( ! $container->has( 'dev_tools' ) ) {
+            return;
+        }
+        $container->get( 'dev_tools' )->render_page();
     }
 }
