@@ -94,6 +94,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             <th class="check-column">
                                 <input type="checkbox" id="cb-select-all-schedules" aria-label="<?php esc_attr_e('Select all schedules', 'ai-post-scheduler'); ?>">
                             </th>
+                            <th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
                             <th><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
                             <th><?php esc_html_e('Article Structure', 'ai-post-scheduler'); ?></th>
                             <th><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
@@ -121,6 +122,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         ?>
                         <tr data-schedule-id="<?php echo esc_attr($schedule->id); ?>"
                             data-template-id="<?php echo esc_attr($schedule->template_id); ?>"
+                            data-title="<?php echo esc_attr($schedule->title ?? ''); ?>"
                             data-frequency="<?php echo esc_attr($schedule->frequency); ?>"
                             data-topic="<?php echo esc_attr($schedule->topic); ?>"
                             data-article-structure-id="<?php echo esc_attr($schedule->article_structure_id); ?>"
@@ -130,6 +132,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                             <th scope="row" class="check-column">
                                 <input type="checkbox" class="aips-schedule-checkbox" name="schedule[]" value="<?php echo esc_attr($schedule->id); ?>" aria-label="<?php echo esc_attr(sprintf(__('Select schedule %s', 'ai-post-scheduler'), $schedule->template_name ?: $schedule->id)); ?>">
                             </th>
+                            <td class="column-title">
+                                <div class="cell-primary"><?php echo esc_html($schedule->title ?? ''); ?></div>
+                            </td>
                             <td class="column-template">
                                 <div class="cell-primary"><?php echo esc_html($schedule->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?></div>
                             </td>
@@ -289,6 +294,12 @@ $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['sch
             <div class="aips-modal-body">
                 <form id="aips-schedule-form">
                     <input type="hidden" name="schedule_id" id="schedule_id" value="">
+                    
+                    <div class="aips-form-row">
+                        <label for="schedule_title"><?php esc_html_e('Title (Optional)', 'ai-post-scheduler'); ?></label>
+                        <input type="text" id="schedule_title" name="schedule_title" class="regular-text">
+                        <p class="description"><?php esc_html_e('A friendly name for this schedule to help identify it in the list.', 'ai-post-scheduler'); ?></p>
+                    </div>
                     
                     <div class="aips-form-row">
                         <label for="schedule_template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?> <span class="required">*</span></label>

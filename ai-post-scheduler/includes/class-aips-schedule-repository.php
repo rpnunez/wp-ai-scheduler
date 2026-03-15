@@ -152,6 +152,7 @@ class AIPS_Schedule_Repository {
     public function create($data) {
         $insert_data = array(
             'template_id' => absint($data['template_id']),
+            'title' => isset($data['title']) ? sanitize_text_field($data['title']) : '',
             'frequency' => sanitize_text_field($data['frequency']),
             'next_run' => sanitize_text_field($data['next_run']),
             'is_active' => isset($data['is_active']) ? 1 : 0,
@@ -159,7 +160,7 @@ class AIPS_Schedule_Repository {
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
         );
         
-        $format = array('%d', '%s', '%s', '%d', '%s', '%s');
+        $format = array('%d', '%s', '%s', '%s', '%d', '%s', '%s');
         
         if (isset($data['article_structure_id'])) {
             $insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
@@ -194,6 +195,11 @@ class AIPS_Schedule_Repository {
         if (isset($data['template_id'])) {
             $update_data['template_id'] = absint($data['template_id']);
             $format[] = '%d';
+        }
+        
+        if (isset($data['title'])) {
+            $update_data['title'] = sanitize_text_field($data['title']);
+            $format[] = '%s';
         }
         
         if (isset($data['frequency'])) {
