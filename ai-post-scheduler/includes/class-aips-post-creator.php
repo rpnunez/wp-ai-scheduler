@@ -29,6 +29,9 @@ class AIPS_Post_Creator {
      *     @type string $title    Post title.
      *     @type string $content  Post content.
      *     @type string $excerpt  Post excerpt.
+     *     @type bool   $generation_incomplete Optional. Whether post generation is incomplete (e.g., featured image failed).
+     *     @type array  $component_statuses Optional. Per-component generation status map.
+     *                                   Supported keys: post_title, post_excerpt, featured_image, post_content (bool values).
      *     @type string $focus_keyword Optional. Primary SEO focus keyword/keyphrase.
      *     @type string $meta_description Optional. SEO meta description content.
      *     @type string $seo_title Optional. SEO title override for plugins.
@@ -81,6 +84,14 @@ class AIPS_Post_Creator {
 
         if (is_wp_error($post_id)) {
             return $post_id;
+        }
+
+        if (isset($data['generation_incomplete']) || isset($data['component_statuses'])) {
+            $this->update_generation_status_meta(
+                $post_id,
+                isset($data['component_statuses']) && is_array($data['component_statuses']) ? $data['component_statuses'] : null,
+                isset($data['generation_incomplete']) ? (bool) $data['generation_incomplete'] : null
+            );
         }
 
         // Handle Tags
@@ -246,5 +257,114 @@ class AIPS_Post_Creator {
         }
 
         return substr($clean_description, 0, 160);
+    }
+
+    /**
+     * Update per-component generation status metadata on a post.
+     *
+     * @param int   $post_id Post ID.
+     * @param array|null $component_statuses Optional component status map.
+     * @param bool|null  $generation_incomplete Optional explicit flag; when null, inferred from component statuses.
+     * @return void
+     */
+    public function update_generation_status_meta($post_id, $component_statuses = null, $generation_incomplete = null) {
+        if (empty($post_id)) {
+            return;
+        }
+
+        $normalized_statuses = null;
+        if (is_array($component_statuses)) {
+            $normalized_statuses = array(
+                'post_title'     => !empty($component_statuses['post_title']),
+                'post_excerpt'   => !empty($component_statuses['post_excerpt']),
+                'featured_image' => !empty($component_statuses['featured_image']),
+                'post_content'   => !empty($component_statuses['post_content']),
+            );
+
+            update_post_meta($post_id, 'aips_post_generation_component_statuses', wp_json_encode($normalized_statuses));
+        }
+
+        if ($generation_incomplete === null && is_array($normalized_statuses)) {
+            $generation_incomplete = in_array(false, $normalized_statuses, true);
+        }
+
+        if ($generation_incomplete !== null) {
+            update_post_meta($post_id, 'aips_post_generation_incomplete', $generation_incomplete ? 'true' : 'false');
+        }
+
+        $had_partial = ('true' === (string) $this->get_post_meta_value($post_id, 'aips_post_generation_had_partial'));
+        if (!$had_partial) {
+            $existing_incomplete = ('true' === (string) $this->get_post_meta_value($post_id, 'aips_post_generation_incomplete'));
+            $had_partial = $existing_incomplete || (true === $generation_incomplete);
+        }
+
+        if ($had_partial) {
+            update_post_meta($post_id, 'aips_post_generation_had_partial', 'true');
+        }
+    }
+
+    /**
+     * Reconcile generation status metadata using current persisted post values.
+     *
+     * @param int   $post_id   Post ID.
+     * @param array $overrides Optional component status overrides keyed by post_title, post_excerpt,
+     *                         post_content, featured_image.
+     * @return array|null Normalized component statuses or null when post not found.
+     */
+    public function reconcile_generation_status_meta_from_post($post_id, $overrides = array()) {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return null;
+        }
+
+        $post = get_post($post_id);
+        if (!$post) {
+            return null;
+        }
+
+        $existing_statuses = json_decode((string) $this->get_post_meta_value($post_id, 'aips_post_generation_component_statuses'), true);
+        $has_thumbnail = !empty(get_post_thumbnail_id($post_id));
+
+        $component_statuses = array(
+            'post_title' => '' !== trim(wp_strip_all_tags((string) $post->post_title)),
+            'post_excerpt' => '' !== trim(wp_strip_all_tags((string) $post->post_excerpt)),
+            'post_content' => '' !== trim(wp_strip_all_tags((string) $post->post_content)),
+            'featured_image' => $has_thumbnail,
+        );
+
+        if (!$has_thumbnail && is_array($existing_statuses) && array_key_exists('featured_image', $existing_statuses)) {
+            $component_statuses['featured_image'] = !empty($existing_statuses['featured_image']);
+        }
+
+        $allowed_keys = array('post_title', 'post_excerpt', 'post_content', 'featured_image');
+        foreach ($allowed_keys as $key) {
+            if (array_key_exists($key, $overrides)) {
+                $component_statuses[$key] = (bool) $overrides[$key];
+            }
+        }
+
+        $this->update_generation_status_meta($post_id, $component_statuses, null);
+
+        return $component_statuses;
+    }
+
+    /**
+     * Safely read a post meta value in both runtime and limited test environments.
+     *
+     * @param int    $post_id  Post ID.
+     * @param string $meta_key Meta key.
+     * @return mixed
+     */
+    private function get_post_meta_value($post_id, $meta_key) {
+        if (function_exists('get_post_meta')) {
+            return get_post_meta($post_id, $meta_key, true);
+        }
+
+        global $aips_test_meta;
+        if (isset($aips_test_meta[$post_id]) && array_key_exists($meta_key, $aips_test_meta[$post_id])) {
+            return $aips_test_meta[$post_id][$meta_key];
+        }
+
+        return '';
     }
 }

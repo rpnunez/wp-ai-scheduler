@@ -292,6 +292,8 @@ class AIPS_AI_Edit_Controller {
 				delete_post_thumbnail($post_id);
 			}
 		}
+
+		do_action('aips_post_components_updated', $post_id, $updated_components, $components);
 		
 		wp_send_json_success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),

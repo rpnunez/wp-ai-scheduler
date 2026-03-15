@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
                     <p class="aips-page-description"><?php esc_html_e('Overview of your AI content generation activity and quick actions.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=aips-templates')); ?>" class="aips-btn aips-btn-primary">
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-primary">
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
                     </a>
@@ -101,7 +101,7 @@ if (!defined('ABSPATH')) {
                         <h3 class="aips-empty-state-title"><?php esc_html_e('No Schedules Yet', 'ai-post-scheduler'); ?></h3>
                         <p class="aips-empty-state-description"><?php esc_html_e('Get started by creating your first schedule to automate content generation.', 'ai-post-scheduler'); ?></p>
                         <div class="aips-empty-state-actions">
-                            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule')); ?>" class="aips-btn aips-btn-primary">
+                            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-primary">
                                 <span class="dashicons dashicons-plus-alt"></span>
                                 <?php esc_html_e('Create Schedule', 'ai-post-scheduler'); ?>
                             </a>
@@ -116,7 +116,7 @@ if (!defined('ABSPATH')) {
                 <div class="aips-panel-header">
                     <h2 class="aips-panel-title"><?php esc_html_e('Recent Activity', 'ai-post-scheduler'); ?></h2>
                     <?php if (!empty($recent_posts)): ?>
-                    <a href="<?php echo esc_url(add_query_arg('tab', 'history', admin_url('admin.php?page=aips-templates'))); ?>" class="aips-btn aips-btn-ghost aips-btn-sm">
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates', array('tab' => 'history'))); ?>" class="aips-btn aips-btn-ghost aips-btn-sm">
                         <?php esc_html_e('View All', 'ai-post-scheduler'); ?> &rarr;
                     </a>
                     <?php endif; ?>
@@ -181,23 +181,23 @@ if (!defined('ABSPATH')) {
             </div>
             <div class="aips-panel-body">
                 <div class="aips-quick-actions">
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=aips-templates')); ?>" class="aips-btn aips-btn-secondary">
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-secondary">
                         <span class="dashicons dashicons-media-document"></span>
                         <?php esc_html_e('Manage Templates', 'ai-post-scheduler'); ?>
                     </a>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule')); ?>" class="aips-btn aips-btn-secondary">
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
                         <span class="dashicons dashicons-calendar-alt"></span>
                         <?php esc_html_e('Manage Schedules', 'ai-post-scheduler'); ?>
                     </a>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=aips-generated-posts')); ?>" class="aips-btn aips-btn-secondary">
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts')); ?>" class="aips-btn aips-btn-secondary">
                         <span class="dashicons dashicons-edit"></span>
                         <?php esc_html_e('View Generated Posts', 'ai-post-scheduler'); ?>
                     </a>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=aips-authors')); ?>" class="aips-btn aips-btn-secondary">
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors')); ?>" class="aips-btn aips-btn-secondary">
                         <span class="dashicons dashicons-admin-users"></span>
                         <?php esc_html_e('Manage Authors', 'ai-post-scheduler'); ?>
                     </a>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings')); ?>" class="aips-btn aips-btn-secondary">
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('settings')); ?>" class="aips-btn aips-btn-secondary">
                         <span class="dashicons dashicons-admin-generic"></span>
                         <?php esc_html_e('Plugin Settings', 'ai-post-scheduler'); ?>
                     </a>
