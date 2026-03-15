@@ -161,30 +161,31 @@ final class AI_Post_Scheduler {
             $container->register('admin_assets', new AIPS_Admin_Assets());
             $container->register('voices', new AIPS_Voices());
             $container->register('templates', new AIPS_Templates());
-            new AIPS_Templates_Controller();
+            $container->register('templates_controller', new AIPS_Templates_Controller());
             $container->register('history', new AIPS_History());
 
-            // Initialize Post Review handler globally to avoid duplicate AJAX registration
+            // Post Review handler — stored in container (and kept in global for backward compat)
             global $aips_post_review_handler;
             $aips_post_review_handler = new AIPS_Post_Review();
+            $container->register('post_review', $aips_post_review_handler);
 
-            new AIPS_Planner();
+            $container->register('planner', new AIPS_Planner());
             $container->register('schedule_controller', new AIPS_Schedule_Controller());
             $container->register('generated_posts_controller', new AIPS_Generated_Posts_Controller());
             $container->register('research_controller', new AIPS_Research_Controller());
             $container->register('seeder', new AIPS_Seeder_Admin());
-            new AIPS_Data_Management();
+            $container->register('data_management', new AIPS_Data_Management());
             // Structures admin controller (CRUD endpoints for Article Structures UI)
             $container->register('structures_controller', new AIPS_Structures_Controller());
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
-            new AIPS_Prompt_Sections_Controller();
+            $container->register('prompt_sections_controller', new AIPS_Prompt_Sections_Controller());
 
             // Authors feature controllers
             $container->register('authors_controller', new AIPS_Authors_Controller());
             $container->register('author_topics_controller', new AIPS_Author_Topics_Controller());
 
             // AI Edit + Calendar controllers (AJAX endpoints)
-            new AIPS_AI_Edit_Controller();
+            $container->register('ai_edit_controller', new AIPS_AI_Edit_Controller());
             $container->register('calendar_controller', new AIPS_Calendar_Controller());
 
             // Pages without dedicated AJAX hooks but with render logic
