@@ -400,7 +400,8 @@ class AIPS_History_Repository {
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing
+                SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
+                SUM(CASE WHEN status = 'partial' THEN 1 ELSE 0 END) as partial
             FROM {$this->table_name}
         ");
 
@@ -409,6 +410,7 @@ class AIPS_History_Repository {
             'completed' => (int) $results->completed,
             'failed' => (int) $results->failed,
             'processing' => (int) $results->processing,
+            'partial' => (int) $results->partial,
         );
         
         $stats['success_rate'] = $stats['total'] > 0 
