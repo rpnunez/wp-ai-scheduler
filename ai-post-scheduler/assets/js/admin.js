@@ -1078,6 +1078,7 @@
             var $row = $(this).closest('tr');
             var scheduleId = $row.data('schedule-id');
             var templateId = $row.data('template-id');
+            var scheduleTitle = $row.data('title');
             var frequency = $row.data('frequency');
             var topic = $row.data('topic');
             var articleStructureId = $row.data('article-structure-id');
@@ -1087,6 +1088,7 @@
 
             $('#aips-schedule-form')[0].reset();
             $('#schedule_id').val(scheduleId);
+            $('#schedule_title').val(scheduleTitle || '');
             $('#schedule_template').val(templateId);
             $('#schedule_frequency').val(frequency);
             $('#schedule_topic').val(topic || '');
@@ -1127,12 +1129,14 @@
             // Get data from the row
             var $row = $(this).closest('tr');
             var templateId = $row.data('template-id');
+            var scheduleTitle = $row.data('title');
             var frequency = $row.data('frequency');
             var topic = $row.data('topic');
             var articleStructureId = $row.data('article-structure-id');
             var rotationPattern = $row.data('rotation-pattern');
 
             // Populate form
+            $('#schedule_title').val(scheduleTitle || '');
             $('#schedule_template').val(templateId);
             $('#schedule_frequency').val(frequency);
             $('#schedule_topic').val(topic);
@@ -1176,6 +1180,7 @@
                     action: 'aips_save_schedule',
                     nonce: aipsAjax.nonce,
                     schedule_id: $('#schedule_id').val(),
+                    schedule_title: $('#schedule_title').val(),
                     template_id: $('#schedule_template').val(),
                     frequency: $('#schedule_frequency').val(),
                     start_time: $('#schedule_start_time').val(),
