@@ -47,7 +47,7 @@ class AIPS_Voices_Repository {
      * @return array Array of voice objects.
      */
     public function get_all($active_only = false) {
-        $where = $active_only ? "WHERE is_active = 1" : "";
+        $where = $active_only ? "WHERE is_active = 1 AND deleted_at IS NULL" : "WHERE deleted_at IS NULL";
         return $this->wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
     }
 
@@ -135,13 +135,56 @@ class AIPS_Voices_Repository {
     }
 
     /**
-     * Delete a voice.
+     * Delete a voice (permanent delete).
      *
      * @param int $id Voice ID.
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
-        return $this->wpdb->delete($this->table_name, array('id' => $id), array('%d'));
+        return $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
+    }
+
+    /**
+     * Soft-delete a voice by setting deleted_at.
+     *
+     * @param int $id Voice ID.
+     * @return bool True on success, false on failure.
+     */
+    public function soft_delete($id) {
+        return $this->wpdb->update(
+            $this->table_name,
+            array('deleted_at' => current_time('mysql'), 'is_active' => 0),
+            array('id' => $id),
+            array('%s', '%d'),
+            array('%d')
+        ) !== false;
+    }
+
+    /**
+     * Restore a soft-deleted voice.
+     *
+     * @param int $id Voice ID.
+     * @return bool True on success, false on failure.
+     */
+    public function restore($id) {
+        return $this->wpdb->update(
+            $this->table_name,
+            array('deleted_at' => null),
+            array('id' => $id),
+            array('%s'),
+            array('%d')
+        ) !== false;
+    }
+
+    /**
+     * Get all trashed voices.
+     *
+     * @return array Array of trashed voice objects.
+     */
+    public function get_trashed() {
+        return $this->wpdb->get_results(
+            "SELECT * FROM {$this->table_name} WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
+        );
     }
 
     /**
@@ -157,13 +200,13 @@ class AIPS_Voices_Repository {
         if ($term) {
             $like = '%' . $this->wpdb->esc_like($term) . '%';
             $sql  = $this->wpdb->prepare(
-                "SELECT id, name FROM {$this->table_name} WHERE is_active = 1 AND name LIKE %s ORDER BY name ASC LIMIT %d",
+                "SELECT id, name FROM {$this->table_name} WHERE is_active = 1 AND deleted_at IS NULL AND name LIKE %s ORDER BY name ASC LIMIT %d",
                 $like,
                 $limit
             );
         } else {
             $sql = $this->wpdb->prepare(
-                "SELECT id, name FROM {$this->table_name} WHERE is_active = 1 ORDER BY name ASC LIMIT %d",
+                "SELECT id, name FROM {$this->table_name} WHERE is_active = 1 AND deleted_at IS NULL ORDER BY name ASC LIMIT %d",
                 $limit
             );
         }

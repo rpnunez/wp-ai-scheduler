@@ -57,6 +57,8 @@ class AIPS_Authors_Controller {
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));
 		add_action('wp_ajax_aips_delete_author', array($this, 'ajax_delete_author'));
+		add_action('wp_ajax_aips_restore_author', array($this, 'ajax_restore_author'));
+		add_action('wp_ajax_aips_permanent_delete_author', array($this, 'ajax_permanent_delete_author'));
 		add_action('wp_ajax_aips_get_author', array($this, 'ajax_get_author'));
 		add_action('wp_ajax_aips_get_author_topics', array($this, 'ajax_get_author_topics'));
 		add_action('wp_ajax_aips_get_author_posts', array($this, 'ajax_get_author_posts'));
@@ -134,7 +136,7 @@ class AIPS_Authors_Controller {
 	}
 	
 	/**
-	 * AJAX handler for deleting an author.
+	 * AJAX handler for deleting an author (soft delete - moves to trash).
 	 */
 	public function ajax_delete_author() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -149,27 +151,68 @@ class AIPS_Authors_Controller {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 		
-		// Delete child records first to avoid orphaned records
+		if ($this->repository->soft_delete($author_id)) {
+			wp_send_json_success(array('message' => __('Author moved to trash.', 'ai-post-scheduler')));
+		} else {
+			wp_send_json_error(array('message' => __('Failed to move author to trash.', 'ai-post-scheduler')));
+		}
+	}
 
-		// Get all topic IDs for this author via repository
+	/**
+	 * AJAX handler for restoring a trashed author.
+	 */
+	public function ajax_restore_author() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+
+		if (!$author_id) {
+			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+		}
+
+		if ($this->repository->restore($author_id)) {
+			wp_send_json_success(array('message' => __('Author restored successfully.', 'ai-post-scheduler')));
+		} else {
+			wp_send_json_error(array('message' => __('Failed to restore author.', 'ai-post-scheduler')));
+		}
+	}
+
+	/**
+	 * AJAX handler for permanently deleting an author.
+	 */
+	public function ajax_permanent_delete_author() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+
+		if (!$author_id) {
+			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
+		}
+
+		// Delete child records first to avoid orphaned records
 		$topics    = $this->topics_repository->get_by_author($author_id);
 		$topic_ids = array_map(function ($t) { return (int) $t->id; }, $topics);
 
-		// Delete logs for these topics via repository
 		if (!empty($topic_ids)) {
 			$this->logs_repository->delete_by_topic_ids($topic_ids);
 		}
 
-		// Delete topics via repository
 		$this->topics_repository->delete_by_author($author_id);
-		
-		// Delete author
+
 		$result = $this->repository->delete($author_id);
-		
+
 		if ($result) {
-			wp_send_json_success(array('message' => __('Author deleted successfully.', 'ai-post-scheduler')));
+			wp_send_json_success(array('message' => __('Author permanently deleted.', 'ai-post-scheduler')));
 		} else {
-			wp_send_json_error(array('message' => __('Failed to delete author.', 'ai-post-scheduler')));
+			wp_send_json_error(array('message' => __('Failed to permanently delete author.', 'ai-post-scheduler')));
 		}
 	}
 	

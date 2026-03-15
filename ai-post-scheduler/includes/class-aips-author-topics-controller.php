@@ -65,6 +65,8 @@ class AIPS_Author_Topics_Controller {
 		add_action('wp_ajax_aips_reject_topic', array($this, 'ajax_reject_topic'));
 		add_action('wp_ajax_aips_edit_topic', array($this, 'ajax_edit_topic'));
 		add_action('wp_ajax_aips_delete_topic', array($this, 'ajax_delete_topic'));
+		add_action('wp_ajax_aips_restore_topic', array($this, 'ajax_restore_topic'));
+		add_action('wp_ajax_aips_permanent_delete_topic', array($this, 'ajax_permanent_delete_topic'));
 		add_action('wp_ajax_aips_generate_post_from_topic', array($this, 'ajax_generate_post_from_topic'));
 		add_action('wp_ajax_aips_get_topic_logs', array($this, 'ajax_get_topic_logs'));
 		add_action('wp_ajax_aips_get_topic_feedback', array($this, 'ajax_get_topic_feedback'));
@@ -257,7 +259,7 @@ class AIPS_Author_Topics_Controller {
 	}
 	
 	/**
-	 * AJAX handler for deleting a topic.
+	 * AJAX handler for deleting a topic (soft delete - moves to trash).
 	 */
 	public function ajax_delete_topic() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -272,12 +274,56 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
 		}
 		
-		$result = $this->repository->delete($topic_id);
-		
-		if ($result) {
-			wp_send_json_success(array('message' => __('Topic deleted successfully.', 'ai-post-scheduler')));
+		if ($this->repository->soft_delete($topic_id)) {
+			wp_send_json_success(array('message' => __('Topic moved to trash.', 'ai-post-scheduler')));
 		} else {
-			wp_send_json_error(array('message' => __('Failed to delete topic.', 'ai-post-scheduler')));
+			wp_send_json_error(array('message' => __('Failed to move topic to trash.', 'ai-post-scheduler')));
+		}
+	}
+
+	/**
+	 * AJAX handler for restoring a trashed topic.
+	 */
+	public function ajax_restore_topic() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
+
+		if (!$topic_id) {
+			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
+		}
+
+		if ($this->repository->restore($topic_id)) {
+			wp_send_json_success(array('message' => __('Topic restored successfully.', 'ai-post-scheduler')));
+		} else {
+			wp_send_json_error(array('message' => __('Failed to restore topic.', 'ai-post-scheduler')));
+		}
+	}
+
+	/**
+	 * AJAX handler for permanently deleting a topic.
+	 */
+	public function ajax_permanent_delete_topic() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$topic_id = isset($_POST['topic_id']) ? absint($_POST['topic_id']) : 0;
+
+		if (!$topic_id) {
+			wp_send_json_error(array('message' => __('Invalid topic ID.', 'ai-post-scheduler')));
+		}
+
+		if ($this->repository->delete($topic_id)) {
+			wp_send_json_success(array('message' => __('Topic permanently deleted.', 'ai-post-scheduler')));
+		} else {
+			wp_send_json_error(array('message' => __('Failed to permanently delete topic.', 'ai-post-scheduler')));
 		}
 	}
 	
@@ -469,22 +515,22 @@ class AIPS_Author_Topics_Controller {
 		
 		$success_count = 0;
 		foreach ($topic_ids as $topic_id) {
-			$result = $this->repository->delete($topic_id);
+			$result = $this->repository->soft_delete($topic_id);
 			if ($result) {
 				$success_count++;
 			} else {
-				$history->record('warning', sprintf(__('Failed to delete topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array('topic_id' => $topic_id));
+				$history->record('warning', sprintf(__('Failed to trash topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array('topic_id' => $topic_id));
 			}
 		}
 		
-		$history->record('activity', sprintf(__('Deleted %d topics', 'ai-post-scheduler'), $success_count), null, null, array(
+		$history->record('activity', sprintf(__('Moved %d topics to trash', 'ai-post-scheduler'), $success_count), null, null, array(
 			'deleted_count' => $success_count,
 			'requested_count' => count($topic_ids)
 		));
 		$history->complete_success(array('deleted_count' => $success_count));
 		
 		wp_send_json_success(array(
-			'message' => sprintf(__('%d topics deleted successfully.', 'ai-post-scheduler'), $success_count)
+			'message' => sprintf(__('%d topics moved to trash.', 'ai-post-scheduler'), $success_count)
 		));
 	}
 	

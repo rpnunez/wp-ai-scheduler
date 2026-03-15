@@ -36,6 +36,8 @@ class AIPS_Prompt_Sections_Controller {
 		add_action('wp_ajax_aips_get_prompt_section', array($this, 'ajax_get_section'));
 		add_action('wp_ajax_aips_save_prompt_section', array($this, 'ajax_save_section'));
 		add_action('wp_ajax_aips_delete_prompt_section', array($this, 'ajax_delete_section'));
+		add_action('wp_ajax_aips_restore_prompt_section', array($this, 'ajax_restore_section'));
+		add_action('wp_ajax_aips_permanent_delete_prompt_section', array($this, 'ajax_permanent_delete_section'));
 		add_action('wp_ajax_aips_toggle_prompt_section_active', array($this, 'ajax_toggle_section_active'));
 	}
 
@@ -129,12 +131,49 @@ class AIPS_Prompt_Sections_Controller {
 			wp_send_json_error(array('message' => __('Invalid section ID.', 'ai-post-scheduler')));
 		}
 
-		$result = $this->repo->delete($id);
-		if (!$result) {
-			wp_send_json_error(array('message' => __('Failed to delete prompt section.', 'ai-post-scheduler')));
+		if ($this->repo->soft_delete($id)) {
+			wp_send_json_success(array('message' => __('Section moved to trash.', 'ai-post-scheduler')));
+		} else {
+			wp_send_json_error(array('message' => __('Failed to move section to trash.', 'ai-post-scheduler')));
+		}
+	}
+
+	public function ajax_restore_section() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		wp_send_json_success(array('message' => __('Section deleted.', 'ai-post-scheduler')));
+		$id = isset($_POST['section_id']) ? absint($_POST['section_id']) : 0;
+		if (!$id) {
+			wp_send_json_error(array('message' => __('Invalid section ID.', 'ai-post-scheduler')));
+		}
+
+		if ($this->repo->restore($id)) {
+			wp_send_json_success(array('message' => __('Section restored successfully.', 'ai-post-scheduler')));
+		} else {
+			wp_send_json_error(array('message' => __('Failed to restore section.', 'ai-post-scheduler')));
+		}
+	}
+
+	public function ajax_permanent_delete_section() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$id = isset($_POST['section_id']) ? absint($_POST['section_id']) : 0;
+		if (!$id) {
+			wp_send_json_error(array('message' => __('Invalid section ID.', 'ai-post-scheduler')));
+		}
+
+		if ($this->repo->delete($id)) {
+			wp_send_json_success(array('message' => __('Section permanently deleted.', 'ai-post-scheduler')));
+		} else {
+			wp_send_json_error(array('message' => __('Failed to permanently delete section.', 'ai-post-scheduler')));
+		}
 	}
 
 	public function ajax_toggle_section_active() {

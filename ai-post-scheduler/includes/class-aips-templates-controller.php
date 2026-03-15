@@ -12,6 +12,8 @@ class AIPS_Templates_Controller {
 
         add_action('wp_ajax_aips_save_template', array($this, 'ajax_save_template'));
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
+        add_action('wp_ajax_aips_restore_template', array($this, 'ajax_restore_template'));
+        add_action('wp_ajax_aips_permanent_delete_template', array($this, 'ajax_permanent_delete_template'));
         add_action('wp_ajax_aips_get_template', array($this, 'ajax_get_template'));
         add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
         add_action('wp_ajax_aips_clone_template', array($this, 'ajax_clone_template'));
@@ -80,10 +82,52 @@ class AIPS_Templates_Controller {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
         }
 
-        if ($this->templates->delete($id)) {
-            wp_send_json_success(array('message' => __('Template deleted successfully.', 'ai-post-scheduler')));
+        $repository = new AIPS_Template_Repository();
+        if ($repository->soft_delete($id)) {
+            wp_send_json_success(array('message' => __('Template moved to trash.', 'ai-post-scheduler')));
         } else {
-            wp_send_json_error(array('message' => __('Failed to delete template.', 'ai-post-scheduler')));
+            wp_send_json_error(array('message' => __('Failed to move template to trash.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_restore_template() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
+        }
+
+        $repository = new AIPS_Template_Repository();
+        if ($repository->restore($id)) {
+            wp_send_json_success(array('message' => __('Template restored successfully.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to restore template.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_permanent_delete_template() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
+        }
+
+        if ($this->templates->delete($id)) {
+            wp_send_json_success(array('message' => __('Template permanently deleted.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to permanently delete template.', 'ai-post-scheduler')));
         }
     }
 

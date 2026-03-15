@@ -12,6 +12,8 @@ class AIPS_Schedule_Controller {
 
         add_action('wp_ajax_aips_save_schedule', array($this, 'ajax_save_schedule'));
         add_action('wp_ajax_aips_delete_schedule', array($this, 'ajax_delete_schedule'));
+        add_action('wp_ajax_aips_restore_schedule', array($this, 'ajax_restore_schedule'));
+        add_action('wp_ajax_aips_permanent_delete_schedule', array($this, 'ajax_permanent_delete_schedule'));
         add_action('wp_ajax_aips_toggle_schedule', array($this, 'ajax_toggle_schedule'));
         add_action('wp_ajax_aips_run_now', array($this, 'ajax_run_now'));
         add_action('wp_ajax_aips_bulk_delete_schedules', array($this, 'ajax_bulk_delete_schedules'));
@@ -73,10 +75,53 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
         }
 
-        if ($this->scheduler->delete_schedule($id)) {
-            wp_send_json_success(array('message' => __('Schedule deleted successfully.', 'ai-post-scheduler')));
+        $repository = new AIPS_Schedule_Repository();
+        if ($repository->soft_delete($id)) {
+            wp_send_json_success(array('message' => __('Schedule moved to trash.', 'ai-post-scheduler')));
         } else {
-            wp_send_json_error(array('message' => __('Failed to delete schedule.', 'ai-post-scheduler')));
+            wp_send_json_error(array('message' => __('Failed to move schedule to trash.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_restore_schedule() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
+        }
+
+        $repository = new AIPS_Schedule_Repository();
+        if ($repository->restore($id)) {
+            wp_send_json_success(array('message' => __('Schedule restored successfully.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to restore schedule.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_permanent_delete_schedule() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid schedule ID.', 'ai-post-scheduler')));
+        }
+
+        $repository = new AIPS_Schedule_Repository();
+        if ($repository->delete($id)) {
+            wp_send_json_success(array('message' => __('Schedule permanently deleted.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to permanently delete schedule.', 'ai-post-scheduler')));
         }
     }
 

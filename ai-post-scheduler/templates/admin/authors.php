@@ -39,6 +39,18 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                     <p class="aips-page-description"><?php esc_html_e('Manage AI author profiles, generate topics, and create authentic content from different perspectives.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
+                    <?php if (!empty($trashed_authors)): ?>
+                    <button class="aips-btn aips-btn-ghost aips-toggle-trash-btn" data-target="aips-authors-trash-panel">
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php
+                        printf(
+                            /* translators: %d: number of trashed authors */
+                            esc_html__('Trash (%d)', 'ai-post-scheduler'),
+                            count($trashed_authors)
+                        );
+                        ?>
+                    </button>
+                    <?php endif; ?>
                     <button class="aips-btn aips-btn-primary aips-add-author-btn">
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
@@ -299,6 +311,58 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
 </div>
     </div><!-- .aips-page-container -->
 </div><!-- .wrap.aips-wrap -->
+
+<?php if (!empty($trashed_authors)): ?>
+<!-- Authors Trash Panel -->
+<div class="wrap aips-wrap" id="aips-authors-trash-panel" style="display: none; margin-top: -20px;">
+    <div class="aips-page-container">
+        <div class="aips-content-panel aips-trash-panel">
+            <div class="aips-panel-toolbar">
+                <div class="aips-toolbar-left">
+                    <h3 style="margin: 0;">
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php esc_html_e('Trash', 'ai-post-scheduler'); ?>
+                        <span class="aips-badge aips-badge-neutral"><?php echo esc_html(count($trashed_authors)); ?></span>
+                    </h3>
+                </div>
+            </div>
+            <div class="aips-panel-body no-padding">
+                <table class="aips-table aips-trash-table">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Niche', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Trashed', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($trashed_authors as $author): ?>
+                        <tr data-author-id="<?php echo esc_attr($author->id); ?>">
+                            <td class="column-name cell-primary"><?php echo esc_html($author->name); ?></td>
+                            <td class="cell-meta"><?php echo esc_html($author->field_niche); ?></td>
+                            <td class="cell-meta"><?php echo esc_html(wp_date(get_option('date_format') . ' ' . get_option('time_format'), strtotime($author->deleted_at))); ?></td>
+                            <td class="column-actions">
+                                <div class="aips-action-buttons">
+                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-restore-author" data-id="<?php echo esc_attr($author->id); ?>">
+                                        <span class="dashicons dashicons-undo"></span>
+                                        <?php esc_html_e('Restore', 'ai-post-scheduler'); ?>
+                                    </button>
+                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-permanent-delete-author" data-id="<?php echo esc_attr($author->id); ?>">
+                                        <span class="dashicons dashicons-trash"></span>
+                                        <?php esc_html_e('Delete Permanently', 'ai-post-scheduler'); ?>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">

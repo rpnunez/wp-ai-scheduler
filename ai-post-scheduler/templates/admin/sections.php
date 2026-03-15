@@ -6,6 +6,10 @@ if (!defined('ABSPATH')) {
 if (!isset($sections) || !is_array($sections)) {
 	$sections = array();
 }
+
+if (!isset($trashed_sections) || !is_array($trashed_sections)) {
+	$trashed_sections = array();
+}
 ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
@@ -17,6 +21,18 @@ if (!isset($sections) || !is_array($sections)) {
 					<p class="aips-page-description"><?php esc_html_e('Create and manage reusable prompt sections that can be inserted into your templates using placeholders.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-page-actions">
+					<?php if (!empty($trashed_sections)): ?>
+					<button class="aips-btn aips-btn-ghost aips-toggle-trash-btn" data-target="aips-sections-trash-panel">
+						<span class="dashicons dashicons-trash"></span>
+						<?php
+						printf(
+							/* translators: %d: number of trashed sections */
+							esc_html__('Trash (%d)', 'ai-post-scheduler'),
+							count($trashed_sections)
+						);
+						?>
+					</button>
+					<?php endif; ?>
 					<button class="aips-btn aips-btn-primary aips-add-section-btn">
 						<span class="dashicons dashicons-plus-alt"></span>
 						<?php esc_html_e('Add Section', 'ai-post-scheduler'); ?>
@@ -107,6 +123,54 @@ if (!isset($sections) || !is_array($sections)) {
 			</div>
 			<?php endif; ?>
 		</div>
+
+		<?php if (!empty($trashed_sections)): ?>
+		<!-- Trash Section -->
+		<div class="aips-content-panel aips-trash-panel" id="aips-sections-trash-panel" style="display: none;">
+			<div class="aips-panel-toolbar">
+				<div class="aips-toolbar-left">
+					<h3 style="margin: 0;">
+						<span class="dashicons dashicons-trash"></span>
+						<?php esc_html_e('Trash', 'ai-post-scheduler'); ?>
+						<span class="aips-badge aips-badge-neutral"><?php echo esc_html(count($trashed_sections)); ?></span>
+					</h3>
+				</div>
+			</div>
+			<div class="aips-panel-body no-padding">
+				<table class="aips-table aips-trash-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
+							<th><?php esc_html_e('Key', 'ai-post-scheduler'); ?></th>
+							<th><?php esc_html_e('Trashed', 'ai-post-scheduler'); ?></th>
+							<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ($trashed_sections as $section): ?>
+						<tr data-section-id="<?php echo esc_attr($section->id); ?>">
+							<td class="column-name cell-primary"><?php echo esc_html($section->name); ?></td>
+							<td><code><?php echo esc_html($section->section_key); ?></code></td>
+							<td class="cell-meta"><?php echo esc_html(wp_date(get_option('date_format') . ' ' . get_option('time_format'), strtotime($section->deleted_at))); ?></td>
+							<td class="column-actions">
+								<div class="aips-action-buttons">
+									<button class="aips-btn aips-btn-sm aips-btn-secondary aips-restore-prompt-section" data-id="<?php echo esc_attr($section->id); ?>">
+										<span class="dashicons dashicons-undo"></span>
+										<?php esc_html_e('Restore', 'ai-post-scheduler'); ?>
+									</button>
+									<button class="aips-btn aips-btn-sm aips-btn-danger aips-permanent-delete-prompt-section" data-id="<?php echo esc_attr($section->id); ?>">
+										<span class="dashicons dashicons-trash"></span>
+										<?php esc_html_e('Delete Permanently', 'ai-post-scheduler'); ?>
+									</button>
+								</div>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		</div>
+		<?php endif; ?>
 	</div>
 
 	<!-- Section Modal (kept as-is for JavaScript compatibility) --><div id="aips-section-modal" class="aips-modal" style="display: none;">

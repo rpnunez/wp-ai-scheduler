@@ -27,6 +27,18 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     <p class="aips-page-description"><?php esc_html_e('Automate post generation by setting up recurring schedules for your templates.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
+                    <?php if (!empty($trashed_schedules)): ?>
+                    <button class="aips-btn aips-btn-ghost aips-toggle-trash-btn" data-target="aips-schedule-trash-panel">
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php
+                        printf(
+                            /* translators: %d: number of trashed schedules */
+                            esc_html__('Trash (%d)', 'ai-post-scheduler'),
+                            count($trashed_schedules)
+                        );
+                        ?>
+                    </button>
+                    <?php endif; ?>
                     <button class="aips-btn aips-btn-primary aips-add-schedule-btn" <?php echo empty($templates) ? 'disabled' : ''; ?>>
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Add Schedule', 'ai-post-scheduler'); ?>
@@ -269,6 +281,60 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     </div>
                     <?php endif; ?>
                 </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($trashed_schedules)): ?>
+        <!-- Trash Section -->
+        <div class="aips-content-panel aips-trash-panel" id="aips-schedule-trash-panel" style="display: none;">
+            <div class="aips-panel-toolbar">
+                <div class="aips-toolbar-left">
+                    <h3 style="margin: 0;">
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php esc_html_e('Trash', 'ai-post-scheduler'); ?>
+                        <span class="aips-badge aips-badge-neutral"><?php echo esc_html(count($trashed_schedules)); ?></span>
+                    </h3>
+                </div>
+            </div>
+            <div class="aips-panel-body no-padding">
+                <table class="aips-table aips-trash-table">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Trashed', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($trashed_schedules as $schedule): ?>
+                        <tr data-schedule-id="<?php echo esc_attr($schedule->id); ?>">
+                            <td class="column-name">
+                                <div class="cell-primary"><?php echo esc_html($schedule->template_name ?: __('(Deleted Template)', 'ai-post-scheduler')); ?></div>
+                            </td>
+                            <td>
+                                <span class="aips-badge aips-badge-neutral"><?php echo esc_html(ucfirst($schedule->frequency)); ?></span>
+                            </td>
+                            <td class="cell-meta">
+                                <?php echo esc_html(wp_date(get_option('date_format') . ' ' . get_option('time_format'), strtotime($schedule->deleted_at))); ?>
+                            </td>
+                            <td class="column-actions">
+                                <div class="aips-action-buttons">
+                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-restore-schedule" data-id="<?php echo esc_attr($schedule->id); ?>">
+                                        <span class="dashicons dashicons-undo"></span>
+                                        <?php esc_html_e('Restore', 'ai-post-scheduler'); ?>
+                                    </button>
+                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-permanent-delete-schedule" data-id="<?php echo esc_attr($schedule->id); ?>">
+                                        <span class="dashicons dashicons-trash"></span>
+                                        <?php esc_html_e('Delete Permanently', 'ai-post-scheduler'); ?>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
         <?php endif; ?>

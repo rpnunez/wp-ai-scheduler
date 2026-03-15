@@ -37,6 +37,14 @@
 			// Delete Author Button
 			$(document).on('click', '.aips-delete-author', this.deleteAuthor.bind(this));
 
+			// Restore / Permanently Delete Authors (trash)
+			$(document).on('click', '.aips-restore-author', this.restoreAuthor.bind(this));
+			$(document).on('click', '.aips-permanent-delete-author', this.permanentDeleteAuthor.bind(this));
+
+			// Restore / Permanently Delete Topics (trash)
+			$(document).on('click', '.aips-restore-topic', this.restoreTopic.bind(this));
+			$(document).on('click', '.aips-permanent-delete-topic', this.permanentDeleteTopic.bind(this));
+
 			// Close Modal
 			$('.aips-modal-close').on('click', this.closeModals.bind(this));
 
@@ -234,6 +242,115 @@
 							error: () => {
 								AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeleting, 'error');
 							}
+						});
+					}
+				}
+			]);
+		},
+
+
+		/**
+		 * Restore a trashed author.
+		 *
+		 * @param {Event} e - Click event from an `.aips-restore-author` element.
+		 */
+		restoreAuthor: function (e) {
+			e.preventDefault();
+			const authorId = $(e.currentTarget).data('id');
+			const $row = $(e.currentTarget).closest('tr');
+			$.post(ajaxurl, {action: 'aips_restore_author', nonce: aipsAuthorsL10n.nonce, author_id: authorId}, function(response) {
+				if (response.success) {
+					$row.fadeOut(function() { $(this).remove(); });
+					AIPS.Utilities.showToast(response.data.message, 'success');
+					setTimeout(() => location.reload(), 1200);
+				} else {
+					AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Failed to restore.', 'error');
+				}
+			});
+		},
+
+		/**
+		 * Permanently delete a trashed author.
+		 *
+		 * @param {Event} e - Click event from an `.aips-permanent-delete-author` element.
+		 */
+		permanentDeleteAuthor: function (e) {
+			e.preventDefault();
+			const authorId = $(e.currentTarget).data('id');
+			const $row = $(e.currentTarget).closest('tr');
+			AIPS.Utilities.confirm(aipsAuthorsL10n.confirmDelete, 'Notice', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, delete permanently',
+					className: 'aips-btn aips-btn-danger-solid',
+					action: () => {
+						$.ajax({
+							url: ajaxurl,
+							type: 'POST',
+							data: {action: 'aips_permanent_delete_author', nonce: aipsAuthorsL10n.nonce, author_id: authorId},
+							success: (response) => {
+								if (response.success) {
+									$row.fadeOut(function() { $(this).remove(); });
+									AIPS.Utilities.showToast(response.data.message || 'Author permanently deleted.', 'success');
+								} else {
+									AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Failed to delete.', 'error');
+								}
+							},
+							error: () => { AIPS.Utilities.showToast('An error occurred.', 'error'); }
+						});
+					}
+				}
+			]);
+		},
+
+		/**
+		 * Restore a trashed topic.
+		 *
+		 * @param {Event} e - Click event from an `.aips-restore-topic` element.
+		 */
+		restoreTopic: function (e) {
+			e.preventDefault();
+			const topicId = $(e.currentTarget).data('id');
+			const $row = $(e.currentTarget).closest('tr');
+			$.post(ajaxurl, {action: 'aips_restore_topic', nonce: aipsAuthorsL10n.nonce, topic_id: topicId}, function(response) {
+				if (response.success) {
+					$row.fadeOut(function() { $(this).remove(); });
+					AIPS.Utilities.showToast(response.data.message, 'success');
+					setTimeout(() => location.reload(), 1200);
+				} else {
+					AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Failed to restore.', 'error');
+				}
+			});
+		},
+
+		/**
+		 * Permanently delete a trashed topic.
+		 *
+		 * @param {Event} e - Click event from an `.aips-permanent-delete-topic` element.
+		 */
+		permanentDeleteTopic: function (e) {
+			e.preventDefault();
+			const topicId = $(e.currentTarget).data('id');
+			const $row = $(e.currentTarget).closest('tr');
+			AIPS.Utilities.confirm('Are you sure you want to permanently delete this topic? This action cannot be undone.', 'Notice', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, delete permanently',
+					className: 'aips-btn aips-btn-danger-solid',
+					action: () => {
+						$.ajax({
+							url: ajaxurl,
+							type: 'POST',
+							data: {action: 'aips_permanent_delete_topic', nonce: aipsAuthorsL10n.nonce, topic_id: topicId},
+							success: (response) => {
+								if (response.success) {
+									$row.fadeOut(function() { $(this).remove(); });
+									AIPS.Utilities.showToast(response.data.message || 'Topic permanently deleted.', 'success');
+								} else {
+									AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : 'Failed to delete.', 'error');
+								}
+							},
+							error: () => { AIPS.Utilities.showToast('An error occurred.', 'error'); }
 						});
 					}
 				}
@@ -575,6 +692,23 @@
 			if (!$('#aips-topics-content').length) {
 				return;
 			}
+
+			// Handle trash tab
+			if (status === 'trash') {
+				$('#aips-topics-content').hide();
+				$('.aips-panel-toolbar').hide();
+				$('.aips-filter-bar').hide();
+				$('.tablenav').hide();
+				$('#aips-trash-panel').show();
+				return;
+			}
+
+			// Hide trash panel when switching away from trash
+			$('#aips-trash-panel').hide();
+			$('#aips-topics-content').show();
+			$('.aips-panel-toolbar').show();
+			$('.aips-filter-bar').show();
+			$('.tablenav').show();
 
 			// Reset topic search when switching tabs
 			$('#aips-topic-search').val('');

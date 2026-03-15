@@ -15,6 +15,18 @@ if (!defined('ABSPATH')) {
                     </p>
                 </div>
                 <div class="aips-page-actions">
+                    <?php if (!empty($trashed_voices)): ?>
+                    <button class="aips-btn aips-btn-ghost aips-toggle-trash-btn" data-target="aips-voices-trash-panel">
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php
+                        printf(
+                            /* translators: %d: number of trashed voices */
+                            esc_html__('Trash (%d)', 'ai-post-scheduler'),
+                            count($trashed_voices)
+                        );
+                        ?>
+                    </button>
+                    <?php endif; ?>
                     <button class="aips-btn aips-btn-primary aips-add-voice-btn">
                         <span class="dashicons dashicons-plus-alt2"></span>
                         <?php esc_html_e('Add Voice', 'ai-post-scheduler'); ?>
@@ -126,6 +138,56 @@ if (!defined('ABSPATH')) {
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if (!empty($trashed_voices)): ?>
+        <!-- Trash Section -->
+        <div class="aips-content-panel aips-trash-panel" id="aips-voices-trash-panel" style="display: none;">
+            <div class="aips-panel-toolbar">
+                <div class="aips-toolbar-left">
+                    <h3 style="margin: 0;">
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php esc_html_e('Trash', 'ai-post-scheduler'); ?>
+                        <span class="aips-badge aips-badge-neutral"><?php echo esc_html(count($trashed_voices)); ?></span>
+                    </h3>
+                </div>
+            </div>
+            <div class="aips-panel-body no-padding">
+                <table class="aips-table aips-trash-table">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e('Name', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Trashed', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($trashed_voices as $voice): ?>
+                        <tr data-voice-id="<?php echo esc_attr($voice->id); ?>">
+                            <td class="column-name">
+                                <div class="cell-primary"><?php echo esc_html($voice->name); ?></div>
+                            </td>
+                            <td class="cell-meta">
+                                <?php echo esc_html(wp_date(get_option('date_format') . ' ' . get_option('time_format'), strtotime($voice->deleted_at))); ?>
+                            </td>
+                            <td class="column-actions">
+                                <div class="aips-action-buttons">
+                                    <button class="aips-btn aips-btn-sm aips-btn-secondary aips-restore-voice" data-id="<?php echo esc_attr($voice->id); ?>">
+                                        <span class="dashicons dashicons-undo"></span>
+                                        <?php esc_html_e('Restore', 'ai-post-scheduler'); ?>
+                                    </button>
+                                    <button class="aips-btn aips-btn-sm aips-btn-danger aips-permanent-delete-voice" data-id="<?php echo esc_attr($voice->id); ?>">
+                                        <span class="dashicons dashicons-trash"></span>
+                                        <?php esc_html_e('Delete Permanently', 'ai-post-scheduler'); ?>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
     
     <div id="aips-voice-modal" class="aips-modal" style="display: none;">

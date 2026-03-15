@@ -49,11 +49,11 @@ class AIPS_Authors_Repository {
 	public function get_all($active_only = false) {
 		if ( $active_only ) {
 			$sql = $this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE is_active = %d ORDER BY name ASC",
+				"SELECT * FROM {$this->table_name} WHERE is_active = %d AND deleted_at IS NULL ORDER BY name ASC",
 				1
 			);
 		} else {
-			$sql = "SELECT * FROM {$this->table_name} ORDER BY name ASC";
+			$sql = "SELECT * FROM {$this->table_name} WHERE deleted_at IS NULL ORDER BY name ASC";
 		}
 
 		return $this->wpdb->get_results( $sql );
@@ -101,7 +101,7 @@ class AIPS_Authors_Repository {
 	}
 	
 	/**
-	 * Delete an author.
+	 * Delete an author (permanent delete).
 	 *
 	 * @param int $id Author ID.
 	 * @return int|false The number of rows deleted, or false on error.
@@ -111,6 +111,49 @@ class AIPS_Authors_Repository {
 			$this->table_name,
 			array('id' => $id),
 			array('%d')
+		);
+	}
+
+	/**
+	 * Soft-delete an author by setting deleted_at.
+	 *
+	 * @param int $id Author ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function soft_delete($id) {
+		return $this->wpdb->update(
+			$this->table_name,
+			array('deleted_at' => current_time('mysql'), 'is_active' => 0),
+			array('id' => $id),
+			array('%s', '%d'),
+			array('%d')
+		) !== false;
+	}
+
+	/**
+	 * Restore a soft-deleted author.
+	 *
+	 * @param int $id Author ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function restore($id) {
+		return $this->wpdb->update(
+			$this->table_name,
+			array('deleted_at' => null),
+			array('id' => $id),
+			array('%s'),
+			array('%d')
+		) !== false;
+	}
+
+	/**
+	 * Get all trashed authors.
+	 *
+	 * @return array Array of trashed author objects.
+	 */
+	public function get_trashed() {
+		return $this->wpdb->get_results(
+			"SELECT * FROM {$this->table_name} WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
 		);
 	}
 	
@@ -124,6 +167,7 @@ class AIPS_Authors_Repository {
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} 
 			WHERE is_active = 1 
+			AND deleted_at IS NULL
 			AND topic_generation_next_run IS NOT NULL 
 			AND topic_generation_next_run <= %s
 			ORDER BY topic_generation_next_run ASC",
@@ -141,6 +185,7 @@ class AIPS_Authors_Repository {
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} 
 			WHERE is_active = 1 
+			AND deleted_at IS NULL
 			AND post_generation_next_run IS NOT NULL 
 			AND post_generation_next_run <= %s
 			ORDER BY post_generation_next_run ASC",

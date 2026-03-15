@@ -643,6 +643,8 @@ class AIPS_Settings {
      * @return void
      */
     public function render_schedule_page() {
+        $schedule_repo = new AIPS_Schedule_Repository();
+        $trashed_schedules = $schedule_repo->get_trashed();
         include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
     }
     
@@ -676,6 +678,8 @@ class AIPS_Settings {
      * @return void
      */
     public function render_authors_page() {
+        $authors_repo = new AIPS_Authors_Repository();
+        $trashed_authors = $authors_repo->get_trashed();
         include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
     }
 
@@ -767,7 +771,9 @@ class AIPS_Settings {
         $section_repo = new AIPS_Prompt_Section_Repository();
         
         $structures = $structure_repo->get_all(false);
+        $trashed_structures = $structure_repo->get_trashed();
         $sections = $section_repo->get_all(false);
+        $trashed_sections = $section_repo->get_trashed();
         
         include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
     }
@@ -775,13 +781,14 @@ class AIPS_Settings {
     /**
      * Render the Prompt Sections page.
      *
-     * Fetches prompt sections and passes them to the template.
+     * Fetches prompt sections (active and trashed) and passes them to the template.
      *
      * @return void
      */
     public function render_prompt_sections_page() {
         $section_repo = new AIPS_Prompt_Section_Repository();
         $sections = $section_repo->get_all(false);
+        $trashed_sections = $section_repo->get_trashed();
         
         include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
     }
