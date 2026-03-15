@@ -101,24 +101,7 @@ class AIPS_Post_Manager {
         }
 
         $focus_keyword = $title;
-        if (isset($data['topic'])) {
-            $focus_keyword = $data['topic'];
-        }
-        if (isset($data['focus_keyword'])) {
-            $focus_keyword = $data['focus_keyword'];
-        }
-
-        $meta_description = $excerpt;
-        if (isset($data['meta_description'])) {
-            $meta_description = $data['meta_description'];
-        }
-
-        $seo_title = $title;
-        if (isset($data['seo_title'])) {
-            $seo_title = $data['seo_title'];
-        }
-
-        // Build initial meta description from provided meta_description or excerpt.
+        // Build initial meta description from provided meta_description or fallback to excerpt.
         $meta_description = '';
         if (isset($data['meta_description']) && $data['meta_description'] !== '') {
             $meta_description = $data['meta_description'];
@@ -127,9 +110,9 @@ class AIPS_Post_Manager {
         }
 
         $seo_data = array(
-            'focus_keyword'   => isset($data['focus_keyword']) ? $data['focus_keyword'] : (isset($data['topic']) ? $data['topic'] : $title),
+            'focus_keyword'    => isset($data['focus_keyword']) ? $data['focus_keyword'] : (isset($data['topic']) ? $data['topic'] : $title),
             'meta_description' => wp_strip_all_tags($meta_description),
-            'seo_title'       => isset($data['seo_title']) ? $data['seo_title'] : $title,
+            'seo_title'        => isset($data['seo_title']) ? $data['seo_title'] : $title,
         );
 
         /**
