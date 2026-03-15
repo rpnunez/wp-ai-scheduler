@@ -81,6 +81,7 @@
 - `wp-ai-scheduler/ai-post-scheduler/includes/class-aips-generation-context-factory.php`
 **Outcome:** The `AIPS_Component_Regeneration_Service` is now a much leaner orchestrator, delegating data fetching and object creation to specialized classes. This improves code clarity, testability, and maintainability, aligning with the "Flow is Function" philosophy by ensuring the underlying code structure is logical and efficient.
 **Verification Status:** Blocked. The project's test suite requires a Docker environment, which was not running or accessible. Multiple attempts to run the tests via `make test` and `docker-compose exec` failed. A final attempt to run `phpunit` directly on the host failed due to missing WordPress and database dependencies. The refactoring is complete, but could not be verified.
+
 ## 2026-03-06 - Template Wizard Optimization
 **Target Feature:** Template Wizard
 **Improvement:** Optimized the workflow from saving a template to scheduling it by introducing a `quickSchedule` action. Now, clicking "Schedule This Template" inside the "Next Steps" wizard directs to the schedules page and immediately triggers the "Add New Schedule" modal with the template field pre-selected.
@@ -104,3 +105,32 @@
 - `ai-post-scheduler/includes/class-aips-dashboard-controller.php`
 - `ai-post-scheduler/templates/admin/dashboard.php`
 **Outcome:** Enhances navigation efficiency by turning the static dashboard into an actionable launchpad, reducing the steps required to manage pending tasks and errors.
+
+## 2026-03-06 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Optimized the workflow from saving a template to scheduling it by introducing a `quickSchedule` action. Now, clicking "Schedule This Template" inside the "Next Steps" wizard directs to the schedules page and immediately triggers the "Add New Schedule" modal with the template field pre-selected.
+**Files Modified:** ai-post-scheduler/assets/js/admin.js
+**Outcome:** Enhances efficiency for the user by streamlining the multi-step navigation process directly to task execution context.
+
+## 2026-02-09 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Optimized flow by allowing users to save the template from any step of the wizard, eliminating the need to click "Next" multiple times to reach the final summary step. Includes cross-step validation to guide users back to the exact step containing missing required fields.
+**Files Modified:**
+- `ai-post-scheduler/templates/admin/templates.php`
+- `ai-post-scheduler/assets/js/admin.js`
+**Outcome:** Saves experienced users time and friction when making minor updates or quickly iterating on template parameters.
+
+## 2026-03-08 - Article Structures Scheduling Flow Optimization
+**Target Feature:** Article Structures
+**Improvement:** Optimized flow by adding a quick-action "Schedule" button directly on the Article Structures admin list. Clicking this button redirects the user to the Schedule page, automatically opens the "Add New Schedule" modal, and pre-selects the chosen Article Structure via the `schedule_structure` query parameter. This eliminates the manual steps of navigating to the schedule page, opening the modal, and locating the structure in the dropdown.
+**Files Modified:**
+- `ai-post-scheduler/templates/admin/structures.php` (Added Schedule button)
+- `ai-post-scheduler/templates/admin/schedule.php` (Added data-preselect-structure attribute to modal)
+- `ai-post-scheduler/assets/js/admin.js` (Updated `initScheduleAutoOpen` to handle `schedule_structure` param and clean URL)
+**Outcome:** Significantly reduces friction for users who create a new Article Structure and immediately want to schedule it, aligning with the "Flow is Function" philosophy by reducing a multi-step process to a single click.
+
+## 2026-03-14 - Template Wizard Optimization
+**Target Feature:** Template Wizard
+**Improvement:** Optimized the `saveDraftTemplate` flow so that users can save a draft without losing their place in the wizard. Previously, saving a draft triggered a full page reload. Now, the draft is saved via AJAX, the `#template_id` is updated silently, and a success toast is shown, allowing the user to continue editing the template seamlessly.
+**Files Modified:** ai-post-scheduler/assets/js/admin.js
+**Outcome:** Significantly improves workflow efficiency by keeping the user in the context of the wizard after saving their progress.

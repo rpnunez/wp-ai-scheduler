@@ -150,6 +150,9 @@ class AIPS_AI_Edit_Controller {
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
 		$component = isset($_POST['component']) ? sanitize_text_field($_POST['component']) : '';
+		$current_value = isset($_POST['current_value']) ? wp_unslash($_POST['current_value']) : null;
+		$current_source = isset($_POST['current_source']) ? sanitize_key(wp_unslash($_POST['current_source'])) : '';
+		$current_reason = isset($_POST['current_reason']) ? sanitize_key(wp_unslash($_POST['current_reason'])) : '';
 		
 		if (!$post_id || !$history_id || !$component) {
 			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
@@ -189,6 +192,21 @@ class AIPS_AI_Edit_Controller {
 		$context['current_title'] = $post->post_title;
 		$context['current_excerpt'] = $post->post_excerpt;
 		$context['current_content'] = $post->post_content;
+
+		if ('manual_edit' === $current_source && null !== $current_value && '' !== $current_value) {
+			$snapshot_result = $this->service->capture_component_revision(
+				$post_id,
+				$history_id,
+				$component,
+				$this->sanitize_component_revision_value($component, $current_value),
+				'manual_edit',
+				$current_reason ? $current_reason : 'pre_regenerate_manual'
+			);
+
+			if (is_wp_error($snapshot_result)) {
+				wp_send_json_error(array('message' => $snapshot_result->get_error_message()));
+			}
+		}
 		
 		// Regenerate component
 		$result = null;
@@ -274,6 +292,8 @@ class AIPS_AI_Edit_Controller {
 				delete_post_thumbnail($post_id);
 			}
 		}
+
+		do_action('aips_post_components_updated', $post_id, $updated_components, $components);
 		
 		wp_send_json_success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),
@@ -295,6 +315,9 @@ class AIPS_AI_Edit_Controller {
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$component = isset($_POST['component']) ? sanitize_text_field($_POST['component']) : '';
+		if (empty($component) && isset($_POST['component_type'])) {
+			$component = sanitize_text_field($_POST['component_type']);
+		}
 		
 		if (!$post_id || !$component) {
 			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
@@ -334,7 +357,13 @@ class AIPS_AI_Edit_Controller {
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$component = isset($_POST['component']) ? sanitize_text_field($_POST['component']) : '';
+		if (empty($component) && isset($_POST['component_type'])) {
+			$component = sanitize_text_field($_POST['component_type']);
+		}
 		$revision_id = isset($_POST['revision_id']) ? absint($_POST['revision_id']) : 0;
+		$current_value = isset($_POST['current_value']) ? wp_unslash($_POST['current_value']) : null;
+		$current_source = isset($_POST['current_source']) ? sanitize_key(wp_unslash($_POST['current_source'])) : '';
+		$current_reason = isset($_POST['current_reason']) ? sanitize_key(wp_unslash($_POST['current_reason'])) : '';
 		
 		if (!$post_id || !$component || !$revision_id) {
 			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
@@ -349,6 +378,22 @@ class AIPS_AI_Edit_Controller {
 		// Check if user can edit this post
 		if (!current_user_can('edit_post', $post_id)) {
 			wp_send_json_error(array('message' => __('You do not have permission to edit this post.', 'ai-post-scheduler')));
+		}
+
+		$history_record = $this->history_repository->get_by_post_id($post_id);
+		if ('manual_edit' === $current_source && null !== $current_value && '' !== $current_value && $history_record) {
+			$snapshot_result = $this->service->capture_component_revision(
+				$post_id,
+				absint($history_record->id),
+				$component,
+				$this->sanitize_component_revision_value($component, $current_value),
+				'manual_edit',
+				$current_reason ? $current_reason : 'pre_restore_manual'
+			);
+
+			if (is_wp_error($snapshot_result)) {
+				wp_send_json_error(array('message' => $snapshot_result->get_error_message()));
+			}
 		}
 		
 		// Get the revision to restore
@@ -382,8 +427,16 @@ class AIPS_AI_Edit_Controller {
 			case 'featured_image':
 				// For featured image, the value is an array with attachment_id
 				if (is_array($restored_value) && isset($restored_value['attachment_id'])) {
-					set_post_thumbnail($post_id, absint($restored_value['attachment_id']));
-					$restored_value = $restored_value['attachment_id'];
+					$attachment_id = absint($restored_value['attachment_id']);
+					if ($attachment_id > 0) {
+						set_post_thumbnail($post_id, $attachment_id);
+					} else {
+						delete_post_thumbnail($post_id);
+					}
+					$restored_value = array(
+						'attachment_id' => $attachment_id,
+						'url' => $attachment_id ? wp_get_attachment_url($attachment_id) : '',
+					);
 				}
 				break;
 		}
@@ -402,5 +455,41 @@ class AIPS_AI_Edit_Controller {
 			'component' => $component,
 			'value' => $restored_value,
 		));
+	}
+
+	/**
+	 * Sanitize a component value before storing it as a revision snapshot.
+	 *
+	 * @param string $component Component type.
+	 * @param mixed  $value Raw revision value.
+	 * @return mixed
+	 */
+	private function sanitize_component_revision_value($component, $value) {
+		switch ($component) {
+			case 'title':
+				return sanitize_text_field((string) $value);
+
+			case 'excerpt':
+				return sanitize_textarea_field((string) $value);
+
+			case 'content':
+				return wp_kses_post((string) $value);
+
+			case 'featured_image':
+				if (!is_array($value)) {
+					return array(
+						'attachment_id' => 0,
+						'url' => '',
+					);
+				}
+
+				return array(
+					'attachment_id' => isset($value['attachment_id']) ? absint($value['attachment_id']) : 0,
+					'url' => isset($value['url']) ? esc_url_raw($value['url']) : '',
+				);
+
+			default:
+				return '';
+		}
 	}
 }

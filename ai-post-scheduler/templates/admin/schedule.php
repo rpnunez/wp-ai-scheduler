@@ -43,7 +43,7 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     <h3 class="aips-empty-state-title"><?php esc_html_e('No Templates Available', 'ai-post-scheduler'); ?></h3>
                     <p class="aips-empty-state-description"><?php esc_html_e('You need to create at least one active template before you can schedule posts.', 'ai-post-scheduler'); ?></p>
                     <div class="aips-empty-state-actions">
-                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-templates')); ?>" class="aips-btn aips-btn-primary">
+                        <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-primary">
                             <span class="dashicons dashicons-media-document"></span>
                             <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
                         </a>
@@ -56,9 +56,11 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
         <div class="aips-content-panel">
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
-                <label class="screen-reader-text" for="aips-schedule-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
-                <input type="search" id="aips-schedule-search" class="aips-form-input" style="max-width: 300px;" placeholder="<?php esc_attr_e('Search schedules...', 'ai-post-scheduler'); ?>">
-                <button type="button" id="aips-schedule-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                <div class="aips-filter-right">
+                    <label class="screen-reader-text" for="aips-schedule-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
+                    <input type="search" id="aips-schedule-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search schedules...', 'ai-post-scheduler'); ?>">
+                    <button type="button" id="aips-schedule-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                </div>
             </div>
 
             <!-- Bulk Actions Toolbar -->
@@ -230,6 +232,25 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                     </div>
                 </div>
             </div>
+            <!-- Table footer -->
+            <div class="tablenav">
+                <span class="aips-table-footer-count">
+                    <?php
+                    $schedule_count = count( $schedules );
+                    printf(
+                        esc_html(
+                            _n(
+                                '%s schedule',
+                                '%s schedules',
+                                $schedule_count,
+                                'ai-post-scheduler'
+                            )
+                        ),
+                        number_format_i18n( $schedule_count )
+                    );
+                    ?>
+                </span>
+            </div>
         </div>
         <?php else: ?>
         <!-- Empty State -->
@@ -257,8 +278,9 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
 <!-- Keep original modal markup below (not redesigned yet) -->
 <?php
 $preselect_template_id = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
+$preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['schedule_structure']) : 0;
 ?>
-<div id="aips-schedule-modal" class="aips-modal" style="display: none;" data-preselect-template="<?php echo esc_attr($preselect_template_id); ?>">
+<div id="aips-schedule-modal" class="aips-modal" style="display: none;" data-preselect-template="<?php echo esc_attr($preselect_template_id); ?>" data-preselect-structure="<?php echo esc_attr($preselect_structure_id); ?>">
         <div class="aips-modal-content">
             <div class="aips-modal-header">
                 <h2 id="aips-schedule-modal-title"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>

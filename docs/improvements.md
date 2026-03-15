@@ -67,7 +67,7 @@ The Scheduling & Automation system controls when posts are generated. Users defi
 
 ### What It Does
 
-Content Management covers the full lifecycle of generated content. Templates define the AI prompt blueprints used to produce posts. Article structures define how content is organized — section by section. A post review workflow lets editors inspect AI-generated drafts before they go live, with notification emails sent when new posts are waiting. The template processor resolves dynamic variables and AI-driven placeholders inside prompts, while the post creator handles the final insertion of content into WordPress.
+Content Management covers the full lifecycle of generated content. Templates define the AI prompt blueprints used to produce posts. Article structures define how content is organized — section by section. A post review workflow lets editors inspect AI-generated drafts before they go live, with notification emails sent when new posts are waiting. The template processor resolves dynamic variables and AI-driven placeholders inside prompts, while the post manager handles the final insertion of content into WordPress.
 
 ### Suggestions for Improvement
 

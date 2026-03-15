@@ -26,24 +26,6 @@ if (!defined('ABSPATH')) {
         <div class="aips-content-panel">
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
-                <div class="aips-filter-left">
-                    <span class="aips-result-count">
-                        <?php
-                        $template_count = count( $templates );
-                        printf(
-                            esc_html(
-                                _n(
-                                    '%s template',
-                                    '%s templates',
-                                    $template_count,
-                                    'ai-post-scheduler'
-                                )
-                            ),
-                            number_format_i18n( $template_count )
-                        );
-                        ?>
-                    </span>
-                </div>
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-template-search"><?php esc_html_e('Search Templates:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-template-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search templates...', 'ai-post-scheduler'); ?>">
@@ -136,7 +118,7 @@ if (!defined('ABSPATH')) {
                                         <span class="dashicons dashicons-controls-play"></span>
                                         <?php esc_html_e('Run Now', 'ai-post-scheduler'); ?>
                                     </button>
-                                    <a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule&schedule_template=' . $template->id)); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
+                                    <a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule', array('schedule_template' => $template->id))); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
                                         <span class="dashicons dashicons-calendar-alt"></span>
                                         <span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
                                     </a>
@@ -167,6 +149,25 @@ if (!defined('ABSPATH')) {
                         </button>
                     </div>
                 </div>
+            </div>
+            <!-- Table footer -->
+            <div class="tablenav">
+                <span class="aips-table-footer-count">
+                    <?php
+                    $template_count = count( $templates );
+                    printf(
+                        esc_html(
+                            _n(
+                                '%s template',
+                                '%s templates',
+                                $template_count,
+                                'ai-post-scheduler'
+                            )
+                        ),
+                        number_format_i18n( $template_count )
+                    );
+                    ?>
+                </span>
             </div>
         </div>
         <?php else: ?>

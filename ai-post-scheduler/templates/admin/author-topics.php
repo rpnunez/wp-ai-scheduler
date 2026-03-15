@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 }
 
 $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
-$authors_page_url = admin_url('admin.php?page=aips-authors');
+$authors_page_url = AIPS_Admin_Menu_Helper::get_page_url('authors');
 
 if (!$author_id) {
 	?>
@@ -143,16 +143,25 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				</button>
 			</div>
 
-			<!-- Bulk Actions (top) -->
-			<div class="aips-panel-body" style="padding-bottom: 0;">
-				<div class="aips-bulk-actions">
-					<select class="aips-bulk-action-select">
+			<!-- Filter Bar -->
+			<div class="aips-filter-bar">
+				<div class="aips-filter-right">
+					<label class="screen-reader-text" for="aips-topic-search"><?php esc_html_e('Search Topics:', 'ai-post-scheduler'); ?></label>
+					<input type="search" id="aips-topic-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
+					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+				</div>
+			</div>
+
+			<!-- Bulk Actions Toolbar (top) -->
+			<div class="aips-panel-toolbar">
+				<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+					<select class="aips-bulk-action-select aips-form-select" style="width: auto;">
 						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 						<option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
 						<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
 						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 					</select>
-					<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+					<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
@@ -162,19 +171,37 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 					<p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
 				</div>
 
-				<!-- Bulk Actions (bottom) -->
-				<div style="padding: 0 20px 20px;">
-					<div class="aips-bulk-actions">
-						<select class="aips-bulk-action-select">
+				<!-- Bulk Actions Toolbar (bottom) -->
+				<div class="aips-panel-toolbar">
+					<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+						<select class="aips-bulk-action-select aips-form-select" style="width: auto;">
 							<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
 							<option value="approve"><?php esc_html_e('Approve', 'ai-post-scheduler'); ?></option>
 							<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
 							<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 						</select>
-						<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+						<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
 					</div>
 				</div>
 			</div>
+		</div>
+		<!-- Table footer -->
+		<div class="tablenav">
+			<span class="aips-table-footer-count" id="aips-topics-result-count">
+				<?php
+				printf(
+					esc_html(
+						_n(
+							'%s topic',
+							'%s topics',
+							$status_counts['pending'],
+							'ai-post-scheduler'
+						)
+					),
+					number_format_i18n( $status_counts['pending'] )
+				);
+				?>
+			</span>
 		</div>
 	</div>
 </div>
