@@ -112,6 +112,86 @@ class AIPS_Post_Creator_SEO_Test extends WP_UnitTestCase {
     }
 
     /**
+     * Ensure generation status metadata is stored for partial generations.
+     */
+    public function test_stores_partial_generation_meta_statuses() {
+        global $aips_test_meta;
+
+        $template = (object) array(
+            'post_status' => 'draft',
+            'post_author' => 1,
+            'post_tags' => '',
+        );
+
+        $creator = new AIPS_Post_Creator();
+
+        $post_id = $creator->create_post(array(
+            'title' => 'AI SEO Title',
+            'content' => 'Generated content body.',
+            'excerpt' => 'Generated excerpt body.',
+            'template' => $template,
+            'generation_incomplete' => true,
+            'component_statuses' => array(
+                'post_title' => true,
+                'post_excerpt' => true,
+                'featured_image' => false,
+                'post_content' => true,
+            ),
+        ));
+
+        $this->assertArrayHasKey($post_id, $aips_test_meta);
+        $this->assertSame('true', $aips_test_meta[$post_id]['aips_post_generation_incomplete']);
+
+        $decoded_statuses = json_decode($aips_test_meta[$post_id]['aips_post_generation_component_statuses'], true);
+        $this->assertSame(
+            array(
+                'post_title' => true,
+                'post_excerpt' => true,
+                'featured_image' => false,
+                'post_content' => true,
+            ),
+            $decoded_statuses
+        );
+
+        $this->assertSame('true', $aips_test_meta[$post_id]['aips_post_generation_had_partial']);
+    }
+
+    /**
+     * Ensure historical partial flag remains true after a post is fully resolved.
+     */
+    public function test_historical_partial_flag_is_sticky_after_resolution() {
+        global $aips_test_meta;
+
+        $creator = new AIPS_Post_Creator();
+        $post_id = 999;
+
+        $creator->update_generation_status_meta(
+            $post_id,
+            array(
+                'post_title' => false,
+                'post_excerpt' => true,
+                'featured_image' => true,
+                'post_content' => true,
+            ),
+            true
+        );
+
+        $creator->update_generation_status_meta(
+            $post_id,
+            array(
+                'post_title' => true,
+                'post_excerpt' => true,
+                'featured_image' => true,
+                'post_content' => true,
+            ),
+            false
+        );
+
+        $this->assertSame('false', $aips_test_meta[$post_id]['aips_post_generation_incomplete']);
+        $this->assertSame('true', $aips_test_meta[$post_id]['aips_post_generation_had_partial']);
+    }
+
+    /**
      * Activate SEO plugins for tests that rely on plugin-specific meta fields.
      *
      * @return void

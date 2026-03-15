@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 					</p>
 				</div>
 				<div class="aips-page-actions">
-					<a href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule')); ?>" class="aips-btn aips-btn-secondary">
+					<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
 						<span class="dashicons dashicons-list-view"></span>
 						<?php esc_html_e('List View', 'ai-post-scheduler'); ?>
 					</a>
@@ -144,7 +144,7 @@ if (!defined('ABSPATH')) {
 				</div>
 			</div>
 			<div class="aips-calendar-modal-footer">
-				<a href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule')); ?>" class="aips-btn aips-btn-primary">
+				<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-primary">
 					<?php esc_html_e('View All Schedules', 'ai-post-scheduler'); ?>
 				</a>
 				<button type="button" class="aips-btn aips-btn-secondary aips-calendar-modal-close">

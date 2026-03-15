@@ -438,12 +438,16 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
 
     if (!function_exists('get_post')) {
         function get_post($post_id = null) {
+            global $test_posts;
+            if (isset($test_posts) && isset($test_posts[$post_id])) {
+                return clone $test_posts[$post_id];
+            }
             $post = new stdClass();
             $post->ID = $post_id ? $post_id : 1;
             $post->post_title = 'Test Post';
             $post->post_status = 'draft';
             $post->post_type = 'post';
-            return $post;
+            return clone $post;
         }
     }
 
@@ -530,6 +534,28 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                                 $test_users = array();
                             }
                             $test_users[$id] = isset($args['role']) ? $args['role'] : 'subscriber';
+                            return $id;
+                        }
+                    };
+                    $this->factory->post = new class {
+                        public function create($args = array()) {
+                            static $post_id = 1;
+                            $id = $post_id++;
+
+                            global $test_posts;
+                            if (!isset($test_posts)) {
+                                $test_posts = array();
+                            }
+
+                            $post = new stdClass();
+                            $post->ID = $id;
+                            $post->post_title = isset($args['post_title']) ? $args['post_title'] : 'Test Post ' . $id;
+                            $post->post_content = isset($args['post_content']) ? $args['post_content'] : 'Test Content';
+                            $post->post_excerpt = isset($args['post_excerpt']) ? $args['post_excerpt'] : 'Test Excerpt';
+                            $post->post_status = isset($args['post_status']) ? $args['post_status'] : 'publish';
+                            $post->post_type = isset($args['post_type']) ? $args['post_type'] : 'post';
+
+                            $test_posts[$id] = $post;
                             return $id;
                         }
                     };
@@ -911,6 +937,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-history.php',
         'class-aips-settings.php',
         'class-aips-admin-assets.php',
+        'class-aips-admin-menu-helper.php',
         'class-aips-system-status.php',
         'class-aips-templates.php',
         'class-aips-upgrades.php',
@@ -938,6 +965,28 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     foreach ($files as $file) {
         if (file_exists($includes_dir . $file)) {
             require_once $includes_dir . $file;
+        }
+    }
+
+    if (!function_exists('has_action')) {
+        function has_action($hook_name, $callback = false) {
+            if (!isset($GLOBALS['aips_test_hooks']['actions'][$hook_name])) {
+                return false;
+            }
+
+            if (false === $callback) {
+                return true;
+            }
+
+            foreach ($GLOBALS['aips_test_hooks']['actions'][$hook_name] as $priority => $callbacks) {
+                foreach ($callbacks as $cb) {
+                    if ($cb['callback'] === $callback) {
+                        return $priority;
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }
