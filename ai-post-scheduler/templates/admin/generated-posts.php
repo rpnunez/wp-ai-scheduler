@@ -535,7 +535,7 @@ if (!defined('ABSPATH')) {
             </span>
             <span class="pagination-links">
               <?php
-              $base_url = admin_url('admin.php?page=aips-generated-posts');
+              $base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
               if ($template_id) {
                 $base_url .= '&template_id=' . $template_id;
               }

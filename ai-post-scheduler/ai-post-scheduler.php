@@ -55,6 +55,9 @@ final class AI_Post_Scheduler {
     private function includes() {
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
+
+        // Helpers
+        require_once AIPS_PLUGIN_DIR . 'includes/class-aips-admin-menu-helper.php';
     }
     
     private function init_hooks() {
