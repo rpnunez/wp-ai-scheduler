@@ -447,6 +447,15 @@ class AIPS_AI_Edit_Controller {
 				wp_send_json_error(array('message' => $result->get_error_message()));
 			}
 		}
+
+		if ($history_record) {
+			$this->service->log_component_revision_restored(
+				$post_id,
+				absint($history_record->id),
+				$component,
+				$revision_id
+			);
+		}
 		
 		wp_send_json_success(array(
 			'message' => __('Revision restored successfully!', 'ai-post-scheduler'),

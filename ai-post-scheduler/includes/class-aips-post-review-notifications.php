@@ -100,6 +100,7 @@ class AIPS_Post_Review_Notifications {
 				null,
 				array('to_email' => $to_email, 'draft_count' => $draft_count)
 			);
+			$history->complete_success(array('to_email' => $to_email, 'draft_count' => $draft_count));
 		}
 	}
 	
