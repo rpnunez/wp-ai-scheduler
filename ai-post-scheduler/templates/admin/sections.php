@@ -30,7 +30,11 @@ if (!isset($sections) || !is_array($sections)) {
 			<?php if (!empty($sections)) : ?>
 			<!-- Filter Bar -->
 			<div class="aips-filter-bar">
-				<input type="search" id="aips-section-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sections...', 'ai-post-scheduler'); ?>">
+				<div class="aips-filter-right">
+					<label class="screen-reader-text" for="aips-section-search"><?php esc_html_e('Search Sections:', 'ai-post-scheduler'); ?></label>
+					<input type="search" id="aips-section-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search sections...', 'ai-post-scheduler'); ?>">
+					<button type="button" id="aips-section-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+				</div>
 			</div>
 
 			<!-- Table -->
