@@ -148,20 +148,11 @@ class AIPS_Authors_Controller {
 		if (!$author_id) {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
-		
-		// Delete child records first to avoid orphaned records
 
-		// Get all topic IDs for this author via repository
-		$topics    = $this->topics_repository->get_by_author($author_id);
-		$topic_ids = array_map(function ($t) { return (int) $t->id; }, $topics);
-
-		// Delete logs for these topics via repository
-		if (!empty($topic_ids)) {
-			$this->logs_repository->delete_by_topic_ids($topic_ids);
-		}
-
-		// Delete topics via repository
-		$this->topics_repository->delete_by_author($author_id);
+		// Fire before-delete hook so that AIPS_Data_Cleanup (and any other
+		// listener) can cascade-delete related records before the author row
+		// itself is removed.
+		do_action('aips_before_delete_author', $author_id);
 		
 		// Delete author
 		$result = $this->repository->delete($author_id);

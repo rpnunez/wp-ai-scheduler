@@ -370,6 +370,42 @@ class AIPS_History_Repository {
     }
 
     /**
+     * Get history container IDs for an author that are safe to delete.
+     *
+     * Returns only containers whose associated WordPress post either does not
+     * exist in `wp_posts` at all (permanently deleted) or whose `post_id` is
+     * NULL (topic-generation / failed-generation runs that never produced a post).
+     *
+     * Containers that have a `post_id` pointing to a row that still exists in
+     * `wp_posts` (any status, including trash) are intentionally excluded so
+     * that the post's generation history is preserved even after its author is
+     * deleted.
+     *
+     * @param int $author_id Author ID.
+     * @return int[] Array of history container IDs safe to delete.
+     */
+    public function get_deletable_ids_by_author_id($author_id) {
+        $author_id = absint($author_id);
+
+        if (!$author_id) {
+            return array();
+        }
+
+        $posts_table = $this->wpdb->prefix . 'posts';
+
+        $results = $this->wpdb->get_col($this->wpdb->prepare(
+            "SELECT h.id
+             FROM {$this->table_name} h
+             LEFT JOIN {$posts_table} p ON h.post_id = p.ID
+             WHERE h.author_id = %d
+             AND (h.post_id IS NULL OR p.ID IS NULL)",
+            $author_id
+        ));
+
+        return array_map('intval', $results ?: array());
+    }
+
+    /**
      * Delete all history log entries associated with the given history container IDs.
      *
      * @param int[] $history_ids Array of history container IDs.
