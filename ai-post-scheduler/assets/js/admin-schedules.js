@@ -840,6 +840,37 @@
             }
 
             $('#aips-schedule-modal').show();
+
+            // Clean URL so refresh doesn't re-trigger auto-open.
+            if (window.history && typeof window.history.replaceState === 'function') {
+                try {
+                    var currentUrl = new URL(window.location.href);
+
+                    currentUrl.searchParams.delete('schedule_template');
+                    currentUrl.searchParams.delete('article_structure_id');
+
+                    if (currentUrl.hash === '#open_schedule_modal') {
+                        currentUrl.hash = '';
+                    }
+
+                    // Avoid trailing "#" after clearing hash.
+                    var cleanedUrl = currentUrl.toString().replace(/#$/, '');
+                    window.history.replaceState(null, document.title, cleanedUrl);
+                } catch (err) {
+                    // Fallback for environments without full URL support.
+                    var loc = window.location;
+                    var base = loc.origin ? (loc.origin + loc.pathname) : (loc.protocol + '//' + loc.host + loc.pathname);
+                    var search = loc.search || '';
+
+                    // Remove the relevant query parameters from the search string.
+                    search = search.replace(/([?&])(schedule_template|article_structure_id)=[^&]*/g, '$1');
+                    // Clean up any trailing "?" or "&" left over.
+                    search = search.replace(/[?&]$/, '');
+
+                    var hash = loc.hash === '#open_schedule_modal' ? '' : (loc.hash || '');
+                    window.history.replaceState(null, document.title, base + (search || '') + hash);
+                }
+            }
         }
     });
 
