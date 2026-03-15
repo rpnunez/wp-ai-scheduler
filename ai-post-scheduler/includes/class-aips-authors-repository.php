@@ -37,7 +37,7 @@ class AIPS_Authors_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_authors';
+		$this->table_name = AIPS_DB_Manager::get_table_name('authors');
 	}
 	
 	/**

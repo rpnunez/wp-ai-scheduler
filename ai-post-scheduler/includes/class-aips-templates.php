@@ -24,7 +24,7 @@ class AIPS_Templates {
     
     public function __construct() {
         global $wpdb;
-        $this->table_name          = $wpdb->prefix . 'aips_templates';
+        $this->table_name          = AIPS_DB_Manager::get_table_name('templates');
         $this->repository          = new AIPS_Template_Repository();
         $this->schedule_repository = new AIPS_Schedule_Repository();
         $this->interval_calculator = new AIPS_Interval_Calculator();

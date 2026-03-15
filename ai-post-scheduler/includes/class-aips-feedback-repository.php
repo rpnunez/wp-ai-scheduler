@@ -37,7 +37,7 @@ class AIPS_Feedback_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_topic_feedback';
+		$this->table_name = AIPS_DB_Manager::get_table_name('topic_feedback');
 	}
 	
 	/**
@@ -60,7 +60,7 @@ class AIPS_Feedback_Repository {
 	 * @return array Array of feedback objects with topic information.
 	 */
 	public function get_by_author($author_id) {
-		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$topics_table = AIPS_DB_Manager::get_table_name('author_topics');
 		
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT f.*, t.topic_title, t.author_id 
@@ -198,7 +198,7 @@ class AIPS_Feedback_Repository {
 	 * @return array Statistics array with counts.
 	 */
 	public function get_statistics($author_id) {
-		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$topics_table = AIPS_DB_Manager::get_table_name('author_topics');
 		
 		$results = $this->wpdb->get_row($this->wpdb->prepare(
 			"SELECT
@@ -227,7 +227,7 @@ class AIPS_Feedback_Repository {
 	 */
 	public function get_by_reason_category($reason_category, $author_id = null) {
 		if ($author_id) {
-			$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+			$topics_table = AIPS_DB_Manager::get_table_name('author_topics');
 			
 			return $this->wpdb->get_results($this->wpdb->prepare(
 				"SELECT f.*, t.topic_title, t.author_id 
@@ -254,7 +254,7 @@ class AIPS_Feedback_Repository {
 	 */
 	public function get_reason_category_statistics($author_id = null) {
 		if ($author_id) {
-			$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+			$topics_table = AIPS_DB_Manager::get_table_name('author_topics');
 			
 			$results = $this->wpdb->get_results($this->wpdb->prepare(
 				"SELECT f.reason_category, f.action, COUNT(*) as count
@@ -296,7 +296,7 @@ class AIPS_Feedback_Repository {
 			return array();
 		}
 
-		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$topics_table = AIPS_DB_Manager::get_table_name('author_topics');
 		$placeholders = implode(',', array_fill(0, count($author_ids), '%d'));
 
 		$sql = "SELECT

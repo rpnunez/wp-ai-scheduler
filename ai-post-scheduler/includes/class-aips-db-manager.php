@@ -46,6 +46,29 @@ class AIPS_DB_Manager {
         return $full_names;
     }
 
+    /**
+     * Get plugin table name by shorthand (portion after "aips_").
+     *
+     * Example: get_table_name('history') returns 'aips_history'.
+     *
+     * @param string $table Shorthand table name.
+     * @return string|null Full plugin table name or null when not found.
+     */
+    public static function get_table_name($table) {
+        global $wpdb;
+
+        $table = sanitize_key($table);
+
+        foreach (self::$tables as $table_name) {
+            $short_name = preg_replace('/^aips_/', '', $table_name);
+            if ($short_name === $table) {
+                return $wpdb->prefix . $table_name;
+            }
+        }
+
+        return null;
+    }
+
     public function get_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();

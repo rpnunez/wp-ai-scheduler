@@ -42,8 +42,8 @@ class AIPS_Scheduler {
     
     public function __construct() {
         global $wpdb;
-        $this->schedule_table = $wpdb->prefix . 'aips_schedule';
-        $this->templates_table = $wpdb->prefix . 'aips_templates';
+        $this->schedule_table = AIPS_DB_Manager::get_table_name('schedule');
+        $this->templates_table = AIPS_DB_Manager::get_table_name('templates');
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->repository = new AIPS_Schedule_Repository();
         $this->template_repository = new AIPS_Template_Repository();

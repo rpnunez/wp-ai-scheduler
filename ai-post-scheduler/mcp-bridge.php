@@ -1416,7 +1416,7 @@ class AIPS_MCP_Bridge {
 			
 			if ($date_filter) {
 				global $wpdb;
-				$table_name = $wpdb->prefix . 'aips_history';
+				$table_name = AIPS_DB_Manager::get_table_name('history');
 				
 				$where = "created_at >= %s";
 				$query_args = array($date_filter);

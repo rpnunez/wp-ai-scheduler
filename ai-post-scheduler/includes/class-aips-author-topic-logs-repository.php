@@ -37,7 +37,7 @@ class AIPS_Author_Topic_Logs_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_author_topic_logs';
+		$this->table_name = AIPS_DB_Manager::get_table_name('author_topic_logs');
 	}
 	
 	/**
@@ -196,7 +196,7 @@ class AIPS_Author_Topic_Logs_Repository {
 	 * @return int Number of generated posts.
 	 */
 	public function count_generated_posts_by_author($author_id) {
-		$topics_table = $this->wpdb->prefix . 'aips_author_topics';
+		$topics_table = AIPS_DB_Manager::get_table_name('author_topics');
 
 		$count = $this->wpdb->get_var($this->wpdb->prepare(
 			"SELECT COUNT(*) 

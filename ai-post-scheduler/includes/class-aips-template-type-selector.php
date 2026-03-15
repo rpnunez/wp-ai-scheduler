@@ -195,8 +195,8 @@ class AIPS_Template_Type_Selector {
 	 */
 	private function get_schedule_execution_count($schedule) {
 		global $wpdb;
-		$table_history = $wpdb->prefix . 'aips_history';
-		$table_schedule = $wpdb->prefix . 'aips_schedule';
+		$table_history = AIPS_DB_Manager::get_table_name('history');
+		$table_schedule = AIPS_DB_Manager::get_table_name('schedule');
 		
 		// Handle ID or Object input to allow avoiding N+1 queries
 		if (is_numeric($schedule)) {

@@ -36,7 +36,7 @@ class AIPS_Post_Review_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_history';
+		$this->table_name = AIPS_DB_Manager::get_table_name('history');
 	}
 	
 	/**
@@ -109,7 +109,7 @@ class AIPS_Post_Review_Repository {
 			$orderby_sql = "h.$orderby $order";
 		}
 		
-		$templates_table = $this->wpdb->prefix . 'aips_templates';
+		$templates_table = AIPS_DB_Manager::get_table_name('templates');
 		$posts_table = $this->wpdb->posts;
 		
 		// Query for items

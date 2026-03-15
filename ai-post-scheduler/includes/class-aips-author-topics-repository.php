@@ -37,7 +37,7 @@ class AIPS_Author_Topics_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_author_topics';
+		$this->table_name = AIPS_DB_Manager::get_table_name('author_topics');
 	}
 	
 	/**
@@ -336,7 +336,7 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Array of approved topic objects with author info.
 	 */
 	public function get_all_approved_for_queue() {
-		$authors_table = $this->wpdb->prefix . 'aips_authors';
+		$authors_table = AIPS_DB_Manager::get_table_name('authors');
 		
 		return $this->wpdb->get_results(
 			$this->wpdb->prepare(

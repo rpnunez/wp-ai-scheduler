@@ -29,7 +29,7 @@ class AIPS_Notifications_Repository {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb  = $wpdb;
-		$this->table = $wpdb->prefix . 'aips_notifications';
+		$this->table = AIPS_DB_Manager::get_table_name('notifications');
 	}
 
 	/**

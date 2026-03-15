@@ -38,8 +38,8 @@ class AIPS_History_Repository {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_history';
-        $this->table_name_log = $wpdb->prefix . 'aips_history_log';
+        $this->table_name = AIPS_DB_Manager::get_table_name('history');
+        $this->table_name_log = AIPS_DB_Manager::get_table_name('history_log');
     }
     
     /**
@@ -116,7 +116,7 @@ class AIPS_History_Repository {
         $orderby = in_array($args['orderby'], array('created_at', 'completed_at', 'status')) ? $args['orderby'] : 'created_at';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
         
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $templates_table = AIPS_DB_Manager::get_table_name('templates');
         
         // Query for items
         $query_args = $where_args;
@@ -221,7 +221,7 @@ class AIPS_History_Repository {
             $orderby_sql = "h.$orderby $order";
         }
 
-        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $templates_table = AIPS_DB_Manager::get_table_name('templates');
         $posts_table = $this->wpdb->posts;
         $postmeta_table = $this->wpdb->postmeta;
 
@@ -789,8 +789,8 @@ class AIPS_History_Repository {
      * @return array Array of revision objects with id, timestamp, value, history_id
      */
     public function get_component_revisions($post_id, $component_type, $limit = 20) {
-        $history_log_table = $this->wpdb->prefix . 'aips_history_log';
-        $history_table = $this->wpdb->prefix . 'aips_history';
+        $history_log_table = AIPS_DB_Manager::get_table_name('history_log');
+        $history_table = AIPS_DB_Manager::get_table_name('history');
 
         // Query for AI_RESPONSE logs with matching component in context
         // The context field contains JSON like {"component":"title","post_id":123}

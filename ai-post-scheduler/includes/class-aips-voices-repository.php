@@ -37,7 +37,7 @@ class AIPS_Voices_Repository {
     public function __construct() {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_voices';
+        $this->table_name = AIPS_DB_Manager::get_table_name('voices');
     }
 
     /**
