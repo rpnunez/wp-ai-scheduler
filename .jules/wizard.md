@@ -35,3 +35,7 @@
 ## 2026-01-22 - Research Search Consistency
 **Learning:** The "Trending Topics Library" table lacked search functionality, which is a standard expectation established in other admin tables (Authors, Structures, etc.).
 **Action:** Implemented client-side search for Trending Topics with a "Clear" button and Empty State, ensuring "Select All" functionality respects the active filter.
+
+## 2024-05-19 - Add "Clear" buttons to search bars in Sections and Planner
+Learning: Consistent UX in search bars requires not just an input, but `screen-reader-text` labels and a hidden `Clear` button that can be toggled by JS. Wait to merge `class` attributes when copying elements to prevent duplicate attributes like `class="aips-form-input" class="aips-planner-topic-search"`.
+Action: Always check if the `admin.js` script handles specific clear button IDs even if they are missing from the PHP template, and add them proactively for completeness.

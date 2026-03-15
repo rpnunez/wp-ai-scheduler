@@ -133,6 +133,7 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_schedule (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             template_id bigint(20) NOT NULL,
+            title varchar(255) DEFAULT NULL,
             article_structure_id bigint(20) DEFAULT NULL,
             rotation_pattern varchar(50) DEFAULT NULL,
             frequency varchar(50) NOT NULL DEFAULT 'daily',
