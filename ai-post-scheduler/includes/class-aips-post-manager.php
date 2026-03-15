@@ -5,7 +5,7 @@
  * Handles the creation and configuration of WordPress posts from generated content.
  *
  * @package AI_Post_Scheduler
- * @since 1.6.0
+ * @since 1.7.0
  */
 
 if (!defined('ABSPATH')) {
