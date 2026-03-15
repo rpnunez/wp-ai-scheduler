@@ -39,6 +39,11 @@ class AIPS_Research_Controller {
      * @var AIPS_Content_Auditor Content Auditor instance
      */
     private $content_auditor;
+
+    /**
+     * @var AIPS_History_Service History service for logging
+     */
+    private $history_service;
     
     /**
      * Initialize the controller.
@@ -48,6 +53,7 @@ class AIPS_Research_Controller {
         $this->repository = new AIPS_Trending_Topics_Repository();
         $this->logger = new AIPS_Logger();
         $this->content_auditor = new AIPS_Content_Auditor();
+        $this->history_service = new AIPS_History_Service();
         
         $this->init_hooks();
     }
@@ -88,11 +94,26 @@ class AIPS_Research_Controller {
         if (empty($niche)) {
             wp_send_json_error(array('message' => __('Niche is required.', 'ai-post-scheduler')));
         }
+
+        // Create history container for this research run
+        $history = $this->history_service->create('trending_topics_research', array(
+            'creation_method' => 'manual_research',
+        ));
+        $history->record_user_action(
+            'trending_topics_research',
+            sprintf(__('Researching trending topics for niche: %s', 'ai-post-scheduler'), $niche),
+            array(
+                'niche'    => $niche,
+                'count'    => $count,
+                'keywords' => $keywords,
+            )
+        );
         
         // Execute research
         $topics = $this->research_service->research_trending_topics($niche, $count, $keywords);
         
         if (is_wp_error($topics)) {
+            $history->complete_failure($topics->get_error_message());
             wp_send_json_error(array('message' => $topics->get_error_message()));
         }
         
@@ -100,17 +121,44 @@ class AIPS_Research_Controller {
         $saved_count = $this->repository->save_research_batch($topics, $niche);
         
         if ($saved_count === false) {
+            $history->complete_failure(__('Failed to save research results.', 'ai-post-scheduler'));
             wp_send_json_error(array('message' => __('Failed to save research results.', 'ai-post-scheduler')));
         }
+
+        // Log each discovered topic as an individual entry
+        foreach ($topics as $topic) {
+            $history->record(
+                'activity',
+                sprintf(
+                    /* translators: 1: topic title 2: relevance score */
+                    __('Topic discovered: %1$s (Score: %2$d)', 'ai-post-scheduler'),
+                    $topic['topic'],
+                    $topic['score']
+                ),
+                null,
+                null,
+                array(
+                    'topic'    => $topic['topic'],
+                    'score'    => $topic['score'],
+                    'reason'   => isset($topic['reason']) ? $topic['reason'] : '',
+                    'keywords' => isset($topic['keywords']) ? $topic['keywords'] : array(),
+                )
+            );
+        }
+
+        $history->complete_success(array(
+            'topics_count' => count($topics),
+            'saved_count'  => $saved_count,
+        ));
         
         // Get top 5 for display
         $top_topics = $this->research_service->get_top_topics($topics, 5);
         
         wp_send_json_success(array(
-            'topics' => $topics,
+            'topics'     => $topics,
             'top_topics' => $top_topics,
             'saved_count' => $saved_count,
-            'niche' => $niche,
+            'niche'      => $niche,
         ));
     }
     
@@ -287,8 +335,46 @@ class AIPS_Research_Controller {
         $result = $scheduler->save_schedule_bulk($schedules_to_create);
 
         if ($result) {
-            // Restore per-topic hook for backward compatibility.
+            // Create history container to record which topics were scheduled
+            $history = $this->history_service->create('trending_topics_scheduling', array(
+                'creation_method' => 'manual_schedule',
+                'template_id'     => $template_id,
+            ));
+            $history->record_user_action(
+                'trending_topics_scheduling',
+                sprintf(
+                    /* translators: %d: number of topics */
+                    __('Scheduling %d researched topics for generation', 'ai-post-scheduler'),
+                    count($schedules_to_create)
+                ),
+                array(
+                    'topic_ids'   => $topic_ids,
+                    'template_id' => $template_id,
+                    'frequency'   => $frequency,
+                    'start_date'  => $start_date,
+                )
+            );
+
+            // Log each individual scheduled topic and fire the backward-compat hook in one pass
             foreach ($schedules_to_create as $schedule_data) {
+                $history->record(
+                    'activity',
+                    sprintf(
+                        /* translators: 1: topic title 2: scheduled date */
+                        __('Topic "%1$s" scheduled to be generated on %2$s', 'ai-post-scheduler'),
+                        $schedule_data['topic'],
+                        $schedule_data['next_run']
+                    ),
+                    null,
+                    null,
+                    array(
+                        'topic'       => $schedule_data['topic'],
+                        'next_run'    => $schedule_data['next_run'],
+                        'template_id' => $schedule_data['template_id'],
+                        'frequency'   => $schedule_data['frequency'],
+                    )
+                );
+
                 /**
                  * Fires when a trending topic is scheduled for generation.
                  *
@@ -314,6 +400,8 @@ class AIPS_Research_Controller {
                 'template_id' => $template_id,
                 'frequency' => $frequency,
             ));
+
+            $history->complete_success(array('scheduled_count' => $count));
             
             wp_send_json_success(array(
                 'message' => sprintf(__('Successfully scheduled %d topics.', 'ai-post-scheduler'), $count),
@@ -420,14 +508,27 @@ class AIPS_Research_Controller {
             wp_send_json_error(array('message' => __('Niche is required.', 'ai-post-scheduler')));
         }
 
-        $gaps = $this->content_auditor->perform_gap_analysis($niche);
+        // Create history container for this gap analysis run
+        $history = $this->history_service->create('content_gap_analysis', array(
+            'creation_method' => 'manual_gap_analysis',
+        ));
+        $history->record_user_action(
+            'content_gap_analysis',
+            sprintf(__('Performing content gap analysis for niche: %s', 'ai-post-scheduler'), $niche),
+            array('niche' => $niche)
+        );
+
+        $gaps = $this->content_auditor->perform_gap_analysis($niche, $history);
 
         if (is_wp_error($gaps)) {
+            $history->complete_failure($gaps->get_error_message());
             wp_send_json_error(array('message' => $gaps->get_error_message()));
         }
 
+        $history->complete_success(array('gaps_count' => count($gaps)));
+
         wp_send_json_success(array(
-            'gaps' => $gaps,
+            'gaps'  => $gaps,
             'niche' => $niche
         ));
     }
