@@ -198,6 +198,9 @@ final class AI_Post_Scheduler {
 		new AIPS_Partial_Generation_Notifications();
 		new AIPS_Partial_Generation_State_Reconciler();
 
+        // Data cleanup: remove orphaned plugin records when WP objects are deleted.
+        new AIPS_Data_Cleanup();
+
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();
     }
