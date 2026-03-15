@@ -93,6 +93,21 @@ class AIPS_Admin_Assets {
             // Schedule strings
             'runScheduleConfirm' => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
             'scheduleRunning' => __('Running...', 'ai-post-scheduler'),
+            // Status/button strings
+            'saving'              => __('Saving...', 'ai-post-scheduler'),
+            'generating'          => __('Generating...', 'ai-post-scheduler'),
+            'generationFailed'    => __('Generation failed.', 'ai-post-scheduler'),
+            'runNow'              => __('Run Now', 'ai-post-scheduler'),
+            'draftSaved'          => __('Draft saved successfully.', 'ai-post-scheduler'),
+            'saveDraft'           => __('Save Draft', 'ai-post-scheduler'),
+            // Voice strings
+            'noVoiceDefault'      => __('No Voice (Use Default)', 'ai-post-scheduler'),
+            'addNewVoice'         => __('Add New Voice', 'ai-post-scheduler'),
+            'editVoice'           => __('Edit Voice', 'ai-post-scheduler'),
+            'deleteVoiceConfirm'  => __('Are you sure you want to delete this voice?', 'ai-post-scheduler'),
+            // Confirm dialog button labels
+            'confirmCancelButton' => __('No, cancel', 'ai-post-scheduler'),
+            'confirmDeleteButton' => __('Yes, delete', 'ai-post-scheduler'),
         ));
 
         // Enqueue Authors-specific assets

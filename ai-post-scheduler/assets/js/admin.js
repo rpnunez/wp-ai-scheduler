@@ -289,7 +289,7 @@
                     }
                 },
                 error: function() {
-                    $result.addClass('aips-status-error').text('An error occurred. Please try again.');
+                    $result.addClass('aips-status-error').text(aipsAdminL10n.errorTryAgain);
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -468,7 +468,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -490,7 +490,7 @@
             var id = $btn.data('id');
 
             AIPS.Utilities.confirm('Are you sure you want to clone this template?', 'Confirm', [
-                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmCancelButton, className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, clone', className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $btn.prop('disabled', true).text('Cloning...');
 
@@ -511,7 +511,7 @@
                             }
                         },
                         error: function() {
-                            AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                            AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                             $btn.prop('disabled', false).text('Clone');
                         }
                     });
@@ -577,7 +577,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                     // Reset button state on error
                     $btn.text($btn.data('original-text'));
                     $btn.removeClass('aips-confirm-delete');
@@ -615,7 +615,7 @@
                 return;
             }
 
-            $btn.prop('disabled', true).text('Saving...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -651,7 +651,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Template');
@@ -681,7 +681,7 @@
                 return;
             }
 
-            $btn.prop('disabled', true).html('<span class="dashicons dashicons-cloud-saved"></span> Saving...');
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saving);
 
             // Save with is_active set to 0 (inactive)
             $.ajax({
@@ -716,16 +716,16 @@
                             AIPS.lastSavedTemplateId = response.data.template_id;
                         }
 
-                        AIPS.Utilities.showToast('Draft saved successfully.', 'success');
+                        AIPS.Utilities.showToast(aipsAdminL10n.draftSaved, 'success');
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-cloud-saved"></span> Save Draft');
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-cloud-saved"></span> ' + aipsAdminL10n.saveDraft);
                 }
             });
         },
@@ -753,7 +753,7 @@
 
             var $btn = $(this);
             var originalText = $btn.html();
-            $btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none; margin:0 5px 0 0;"></span> Generating...');
+            $btn.prop('disabled', true).html('<span class="spinner is-active" style="float:none; margin:0 5px 0 0;"></span> ' + aipsAdminL10n.generating);
 
             // Gather all form data
             var data = {
@@ -799,11 +799,11 @@
 
                         $('#aips-test-result-modal').show();
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || 'Generation failed.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.generationFailed, 'error');
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).html(originalText);
@@ -826,7 +826,7 @@
             var id = $(this).data('id');
             var $btn = $(this);
 
-            $btn.prop('disabled', true).text('Generating...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.generating);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -851,10 +851,10 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Run Now');
+                    $btn.prop('disabled', false).text(aipsAdminL10n.runNow);
                 }
             });
         },
@@ -882,7 +882,7 @@
                     if (response.success) {
                         var $select = $('#voice_id');
                         var currentVal = $select.val();
-                        $select.html('<option value="0">' + 'No Voice (Use Default)' + '</option>');
+                        $select.html('<option value="0">' + aipsAdminL10n.noVoiceDefault + '</option>');
                         $.each(response.data.voices, function(i, voice) {
                             $select.append('<option value="' + voice.id + '">' + voice.name + '</option>');
                         });
@@ -904,7 +904,7 @@
             e.preventDefault();
             $('#aips-voice-form')[0].reset();
             $('#voice_id').val('');
-            $('#aips-voice-modal-title').text('Add New Voice');
+            $('#aips-voice-modal-title').text(aipsAdminL10n.addNewVoice);
             $('#aips-voice-modal').show();
         },
 
@@ -936,7 +936,7 @@
                         $('#voice_content_instructions').val(v.content_instructions);
                         $('#voice_excerpt_instructions').val(v.excerpt_instructions || '');
                         $('#voice_is_active').prop('checked', v.is_active == 1);
-                        $('#aips-voice-modal-title').text('Edit Voice');
+                        $('#aips-voice-modal-title').text(aipsAdminL10n.editVoice);
                         $('#aips-voice-modal').show();
                     }
                 }
@@ -956,9 +956,9 @@
             var $el = $(this);
             var id = $el.data('id');
             var $row = $el.closest('tr');
-            AIPS.Utilities.confirm('Are you sure you want to delete this voice?', 'Confirm', [
-                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteVoiceConfirm, 'Confirm', [
+                { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
@@ -995,7 +995,7 @@
                 $form[0].reportValidity();
                 return;
             }
-            $btn.prop('disabled', true).text('Saving...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
             $.ajax({
                 url: aipsAjax.ajaxUrl,
                 type: 'POST',
@@ -1017,7 +1017,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Voice');
@@ -1142,7 +1142,7 @@
                 return;
             }
 
-            $btn.prop('disabled', true).text('Saving...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1167,7 +1167,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Schedule');
@@ -1192,8 +1192,8 @@
             var $row = $el.closest('tr');
 
             AIPS.Utilities.confirm('Are you sure you want to delete this schedule?', 'Notice', [
-                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.ajax({
                         url: aipsAjax.ajaxUrl,
                         type: 'POST',
@@ -1212,7 +1212,7 @@
                             }
                         },
                         error: function() {
-                            AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                            AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                         }
                     });
                 }}
@@ -1255,11 +1255,11 @@
 
                         AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || 'Generation failed.', 'error');
+                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.generationFailed, 'error');
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
                     $btn.prop('disabled', false);
@@ -1316,7 +1316,7 @@
                 error: function() {
                     $toggle.prop('checked', !isActive);
 
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 }
             });
         },
@@ -1417,7 +1417,7 @@
                 },
                 error: function() {
                     $loading.hide();
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                     $modal.hide();
                 }
             });
@@ -1537,7 +1537,7 @@
                     'Delete Schedules',
                     [
                         { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
-                        { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() { AIPS.bulkDeleteSchedules(ids); } }
+                        { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() { AIPS.bulkDeleteSchedules(ids); } }
                     ]
                 );
             } else if (action === 'pause') {
@@ -1617,7 +1617,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
                     $applyBtn.text('Apply');
@@ -1681,7 +1681,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
                     $applyBtn.text('Apply');
@@ -1719,7 +1719,7 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
                     $applyBtn.text('Apply');
@@ -2216,7 +2216,7 @@
          */
         saveStructure: function() {
             var $btn = $(this);
-            $btn.prop('disabled', true).text('Saving...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
 
             var data = {
                 action: 'aips_save_structure',
@@ -2301,8 +2301,8 @@
             var id = $el.data('id');
             var $row = $el.closest('tr');
             AIPS.Utilities.confirm(aipsAdminL10n.deleteStructureConfirm, 'Confirm', [
-                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
                         if (response.success) {
                             $row.fadeOut(function(){ $(this).remove(); });
@@ -2342,7 +2342,7 @@
          */
         saveSection: function() {
             var $btn = $(this);
-            $btn.prop('disabled', true).text('Saving...');
+            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
 
             var data = {
                 action: 'aips_save_prompt_section',
@@ -2412,8 +2412,8 @@
             var id = $el.data('id');
             var $row = $el.closest('tr');
             AIPS.Utilities.confirm(aipsAdminL10n.deleteSectionConfirm, 'Confirm', [
-                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                { label: aipsAdminL10n.confirmCancelButton,  className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
                     $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
                         if (response.success) {
                             $row.fadeOut(function(){ $(this).remove(); });
@@ -2551,7 +2551,7 @@
 
             if (!templateId) return;
 
-            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> Generating...');
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> ' + aipsAdminL10n.generating);
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -2576,10 +2576,10 @@
                     }
                 },
                 error: function() {
-                    AIPS.Utilities.showToast('An error occurred. Please try again.', 'error');
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-controls-play"></span> Run Now');
+                    $btn.prop('disabled', false).html('<span class="dashicons dashicons-controls-play"></span> ' + aipsAdminL10n.runNow);
                 }
             });
         },
