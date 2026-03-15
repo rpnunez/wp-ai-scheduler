@@ -709,6 +709,8 @@ class AIPS_History_Repository {
                 'timestamp' => $row->timestamp,
                 'component_type' => $component_type,
                 'value' => $value,
+                'source' => isset($details['context']['source']) ? $details['context']['source'] : 'ai_generated',
+                'reason' => isset($details['context']['reason']) ? $details['context']['reason'] : '',
                 'context' => isset($details['context']) ? $details['context'] : array(),
             );
         }
