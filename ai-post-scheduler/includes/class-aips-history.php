@@ -51,6 +51,12 @@ class AIPS_History {
             wp_send_json_error(array('message' => __('No items selected.', 'ai-post-scheduler')));
         }
 
+        $logs_deleted = $this->repository->delete_logs_by_history_ids($ids);
+
+        if ($logs_deleted === false) {
+            wp_send_json_error(array('message' => __('Failed to delete history logs.', 'ai-post-scheduler')));
+        }
+
         $result = $this->repository->delete_bulk($ids);
 
         if ($result === false) {
@@ -74,7 +80,11 @@ class AIPS_History {
 
         $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
 
-        $this->clear_history($status);
+        $result = $this->clear_history($status);
+
+        if ($result === false) {
+            wp_send_json_error(array('message' => __('Failed to clear history.', 'ai-post-scheduler')));
+        }
 
         wp_send_json_success(array('message' => __('History cleared successfully.', 'ai-post-scheduler')));
     }
@@ -423,6 +433,16 @@ class AIPS_History {
      * @return mixed
      */
     public function clear_history($status = '') {
+        $history_ids = $this->repository->get_ids_by_status($status);
+
+        if (!empty($history_ids)) {
+            $logs_deleted = $this->repository->delete_logs_by_history_ids($history_ids);
+
+            if ($logs_deleted === false) {
+                return false;
+            }
+        }
+
         return $this->repository->delete_by_status($status);
     }
 

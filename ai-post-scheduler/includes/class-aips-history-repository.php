@@ -370,6 +370,25 @@ class AIPS_History_Repository {
     }
 
     /**
+     * Get history container IDs optionally filtered by status.
+     *
+     * @param string $status Optional status filter.
+     * @return int[] Array of history container IDs.
+     */
+    public function get_ids_by_status($status = '') {
+        if (!empty($status)) {
+            $results = $this->wpdb->get_col($this->wpdb->prepare(
+                "SELECT id FROM {$this->table_name} WHERE status = %s",
+                $status
+            ));
+        } else {
+            $results = $this->wpdb->get_col("SELECT id FROM {$this->table_name}");
+        }
+
+        return array_map('intval', $results ?: array());
+    }
+
+    /**
      * Get history container IDs for an author that are safe to delete.
      *
      * Returns only containers whose associated WordPress post either does not

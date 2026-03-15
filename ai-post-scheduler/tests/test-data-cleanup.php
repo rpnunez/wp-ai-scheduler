@@ -424,6 +424,17 @@ class Test_AIPS_Data_Cleanup extends WP_UnitTestCase {
 
 	/**
 	 * @test
+	 * get_ids_by_status returns an array for both filtered and unfiltered calls.
+	 */
+	public function test_history_repository_get_ids_by_status_returns_array() {
+		$repo = new AIPS_History_Repository();
+
+		$this->assertIsArray($repo->get_ids_by_status('completed'));
+		$this->assertIsArray($repo->get_ids_by_status(''));
+	}
+
+	/**
+	 * @test
 	 * get_deletable_ids_by_author_id returns an array (empty when wpdb returns nothing).
 	 */
 	public function test_history_repository_get_deletable_ids_by_author_id_returns_array() {
