@@ -88,21 +88,6 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
                 <div class="aips-filter-left">
-                    <span class="aips-result-count">
-                        <?php
-                        printf(
-                            esc_html(
-                                _n(
-                                    '%s container',
-                                    '%s containers',
-                                    $total_items,
-                                    'ai-post-scheduler'
-                                )
-                            ),
-                            number_format_i18n($total_items)
-                        );
-                        ?>
-                    </span>
                     <select id="aips-filter-status" class="aips-form-select">
                         <option value=""><?php esc_html_e('All Statuses', 'ai-post-scheduler'); ?></option>
                         <option value="completed" <?php selected($status_filter, 'completed'); ?>><?php esc_html_e('Completed', 'ai-post-scheduler'); ?></option>

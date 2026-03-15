@@ -93,6 +93,54 @@ class AIPS_Admin_Assets {
             // Schedule strings
             'runScheduleConfirm' => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
             'scheduleRunning' => __('Running...', 'ai-post-scheduler'),
+            // Status/button strings
+            'saving'              => __('Saving...', 'ai-post-scheduler'),
+            'generating'          => __('Generating...', 'ai-post-scheduler'),
+            'generationFailed'    => __('Generation failed.', 'ai-post-scheduler'),
+            'runNow'              => __('Run Now', 'ai-post-scheduler'),
+            'draftSaved'          => __('Draft saved successfully.', 'ai-post-scheduler'),
+            'saveDraft'           => __('Save Draft', 'ai-post-scheduler'),
+            // Voice strings
+            'noVoiceDefault'      => __('No Voice (Use Default)', 'ai-post-scheduler'),
+            'addNewVoice'         => __('Add New Voice', 'ai-post-scheduler'),
+            'editVoice'           => __('Edit Voice', 'ai-post-scheduler'),
+            'saveVoice'           => __('Save Voice', 'ai-post-scheduler'),
+            'deleteVoiceConfirm'  => __('Are you sure you want to delete this voice?', 'ai-post-scheduler'),
+            // Confirm dialog button labels
+            'confirmCancelButton'              => __('No, cancel', 'ai-post-scheduler'),
+            'confirmDeleteButton'              => __('Yes, delete', 'ai-post-scheduler'),
+            // Schedule delete confirm strings
+            'deleteScheduleConfirm'            => __('Are you sure you want to delete this schedule?', 'ai-post-scheduler'),
+            'selectAtLeastOneSchedule'         => __('Please select at least one schedule.', 'ai-post-scheduler'),
+            'deleteOneScheduleConfirm'         => __('Are you sure you want to delete 1 schedule?', 'ai-post-scheduler'),
+            /* translators: %d: number of schedules to delete */
+            'deleteMultipleSchedulesConfirm'   => __('Are you sure you want to delete %d schedules?', 'ai-post-scheduler'),
+            // Schedule error toasts
+            'failedToLoadHistory'              => __('Failed to load history.', 'ai-post-scheduler'),
+            'failedToDeleteSchedules'          => __('Failed to delete schedules.', 'ai-post-scheduler'),
+            'bulkRunFailed'                    => __('Bulk run failed.', 'ai-post-scheduler'),
+            // Bulk run-now confirm dialog
+            'runSchedulesNow'                  => __('Run Schedules Now', 'ai-post-scheduler'),
+            'cancel'                           => __('Cancel', 'ai-post-scheduler'),
+            'yesRunNow'                        => __('Yes, run now', 'ai-post-scheduler'),
+            'runPostsConfirmSingular'          => __('This will generate an estimated 1 post. Are you sure?', 'ai-post-scheduler'),
+            /* translators: %d: estimated number of posts to generate */
+            'runPostsConfirmPlural'            => __('This will generate an estimated %d posts. Are you sure?', 'ai-post-scheduler'),
+            'runOneScheduleConfirm'            => __('This will run 1 schedule. Are you sure?', 'ai-post-scheduler'),
+            /* translators: %d: number of schedules to run */
+            'runMultipleSchedulesConfirm'      => __('This will run %d schedules. Are you sure?', 'ai-post-scheduler'),
+            // Template summary panel
+            'autoGenerateFromContent'          => __('Auto-generate from content', 'ai-post-scheduler'),
+            'noneOption'                       => __('None', 'ai-post-scheduler'),
+            'featuredImageNo'                  => __('No', 'ai-post-scheduler'),
+            /* translators: %s: featured image source name */
+            'featuredImageYes'                 => __('Yes (%s)', 'ai-post-scheduler'),
+            // AI variable tag tooltip
+            'clickToCopy'                      => __('Click to copy', 'ai-post-scheduler'),
+            // Template preview
+            'exampleTopic'                     => __('Example Topic', 'ai-post-scheduler'),
+            'failedToGeneratePreview'          => __('Failed to generate preview. Please check that all required fields are filled.', 'ai-post-scheduler'),
+            'previewNetworkError'              => __('An error occurred while generating the preview. Please check your network connection and try again.', 'ai-post-scheduler'),
         ));
 
         // Enqueue Authors-specific assets
@@ -221,6 +269,9 @@ class AIPS_Admin_Assets {
             'previouslyApproved' => __('Previously Approved', 'ai-post-scheduler'),
             'previouslyRejected' => __('Previously Rejected', 'ai-post-scheduler'),
             'potentialDuplicate' => __('Potential Duplicate', 'ai-post-scheduler'),
+            // Topic count display strings for the filter bar result count
+            'topicCountSingular' => __('topic', 'ai-post-scheduler'),
+            'topicCountPlural' => __('topics', 'ai-post-scheduler'),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays

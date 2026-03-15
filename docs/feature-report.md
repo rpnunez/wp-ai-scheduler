@@ -166,7 +166,7 @@ This category contains 15 classes:
 - **Article Structure Repository** (`AIPS_Article_Structure_Repository`): Article Structure Repository
 - **Content Auditor** (`AIPS_Content_Auditor`): Content Auditor Service
 - **Generated Posts Controller** (`AIPS_Generated_Posts_Controller`): Generated Posts Controller
-- **Post Creator** (`AIPS_Post_Creator`): Post Creator Service
+- **Post Manager** (`AIPS_Post_Manager`): Post Manager Service
 - **Post Review Notifications** (`AIPS_Post_Review_Notifications`): Post Review Email Notifications
 - **Post Review Repository** (`AIPS_Post_Review_Repository`): Post Review Repository
 - **Post Review** (`AIPS_Post_Review`): Post Review Handler
@@ -188,7 +188,7 @@ flowchart TD
     Article_Structure_Repository[("Article Structure Repository")]
     Content_Auditor["Content Auditor"]
     Generated_Posts_Controller["Generated Posts Controller"]
-    Post_Creator["Post Creator"]
+    Post_Manager["Post Manager"]
     Post_Review_Notifications["Post Review Notifications"]
     Post_Review_Repository[("Post Review Repository")]
     Post_Review["Post Review"]
@@ -1399,7 +1399,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Technical Details**:
 
 - **Public Methods** (9): `__construct()`, `is_available()`, `generate_content()`, `resolve_ai_variables()`, `generate_title()`, `generate_excerpt()`, `generate_preview()`, `generate_post()`, `set_history_container()`
-- **Dependencies** (13): `AIPS_AI_Service`, `AIPS_Article_Structure_Manager`, `AIPS_Generation_Logger`, `AIPS_Generation_Session`, `AIPS_History_Repository`, `AIPS_History_Service`, `AIPS_Image_Service`, `AIPS_Logger`, `AIPS_Markdown_Parser`, `AIPS_Post_Creator`, `AIPS_Prompt_Builder`, `AIPS_Template_Context`, `AIPS_Template_Processor`
+- **Dependencies** (13): `AIPS_AI_Service`, `AIPS_Article_Structure_Manager`, `AIPS_Generation_Logger`, `AIPS_Generation_Session`, `AIPS_History_Repository`, `AIPS_History_Service`, `AIPS_Image_Service`, `AIPS_Logger`, `AIPS_Markdown_Parser`, `AIPS_Post_Manager`, `AIPS_Prompt_Builder`, `AIPS_Template_Context`, `AIPS_Template_Processor`
 - **Action Hooks** (5): `aips_post_generated`, `aips_post_generation_before_post_create`, `aips_post_generation_failed`, `aips_post_generation_started`
 - **Database Operations**: Has Repository
 
@@ -1699,13 +1699,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 ---
 
-### Post Creator
+### Post Manager
 
-**Summary**: Post Creator Service
+**Summary**: Post Manager Service
 
-**File**: `ai-post-scheduler/includes/class-aips-post-creator.php`
+**File**: `ai-post-scheduler/includes/class-aips-post-manager.php`
 
-**Class**: `AIPS_Post_Creator`
+**Class**: `AIPS_Post_Manager`
 
 **Lines of Code**: 251
 

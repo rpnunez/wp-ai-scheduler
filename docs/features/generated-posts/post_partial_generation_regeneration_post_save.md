@@ -108,8 +108,8 @@ The list membership is determined by [AIPS_History_Repository::get_partial_gener
 After successfully updating post via `wp_update_post()` in `ajax_save_post_components()`, must call:
 
 ```php
-// Method available in AIPS_Post_Creator (line 270)
-$this->post_creator->update_generation_status_meta(
+// Method available in AIPS_Post_Manager
+$this->post_manager->update_generation_status_meta(
     $post_id,
     array(
         'post_title' => true,
@@ -137,7 +137,7 @@ $this->post_creator->update_generation_status_meta(
 | Component | File Path | Key Method |
 |-----------|-----------|-----------|
 | **Repository Query** | `ai-post-scheduler/includes/class-aips-history-repository.php` | `get_partial_generations($args)` (L174) |
-| **Meta Update** | `ai-post-scheduler/includes/class-aips-post-creator.php` | `update_generation_status_meta($post_id, $component_statuses, $generation_incomplete)` (L270) |
+| **Meta Update** | `ai-post-scheduler/includes/class-aips-post-manager.php` | `update_generation_status_meta($post_id, $component_statuses, $generation_incomplete)` |
 | **Controller** | `ai-post-scheduler/includes/class-aips-generated-posts-controller.php` | `render_generated_posts_page()` (L80); `get_missing_components($json)` (L193) |
 | **AJAX Save Handler** | `ai-post-sculptor/includes/class-aips-ai-edit-controller.php` | `ajax_save_post_components()` (L240) |
 | **Template** | `ai-post-scheduler/templates/admin/generated-posts.php` | Partial Generations tab (L202-325) |
@@ -167,7 +167,7 @@ AIPS_Generator::generate_post()
     ↓
 Sets component_statuses[] tracking success per component
     ↓
-Calls post_creator->update_generation_status_meta($post_id, $component_statuses)
+Calls post_manager->update_generation_status_meta($post_id, $component_statuses)
     ↓
 [Post Meta Updated]
     ├─ aips_post_generation_component_statuses = JSON (all booleans)
