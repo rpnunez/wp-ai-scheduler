@@ -54,7 +54,11 @@ class AIPS_Notification_Templates {
 		 * @since 1.9.0
 		 * @param AIPS_Notification_Templates $registry This registry instance.
 		 */
-		apply_filters('aips_notification_templates', $this);
+		$registry = apply_filters( 'aips_notification_templates', $this );
+
+		if ( $registry instanceof self && $registry !== $this ) {
+			$this->templates = $registry->all();
+		}
 	}
 
 	/**
