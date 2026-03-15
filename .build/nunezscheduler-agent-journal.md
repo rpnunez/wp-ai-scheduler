@@ -109,3 +109,8 @@
 **Improvement:** Optimized the `saveDraftTemplate` flow so that users can save a draft without losing their place in the wizard. Previously, saving a draft triggered a full page reload. Now, the draft is saved via AJAX, the `#template_id` is updated silently, and a success toast is shown, allowing the user to continue editing the template seamlessly.
 **Files Modified:** ai-post-scheduler/assets/js/admin.js
 **Outcome:** Significantly improves workflow efficiency by keeping the user in the context of the wizard after saving their progress.
+## 2025-02-23 - Schedule Savings Optimization
+**Target Feature:** Scheduler
+**Improvement:** Optimized the flow of creating and updating a schedule. Previously, saving a schedule would trigger a full page reload (`location.reload()`), disrupting user flow and losing UI state (such as scroll position or modal status). The `saveSchedule` function has been enhanced to issue a success toast, close the modal seamlessly, and dynamically refresh the schedule table using an AJAX fetch (`$.get(location.href)`) combined with `.replaceWith()`.
+**Files Modified:** `ai-post-scheduler/assets/js/admin.js`
+**Outcome:** Enhances the user's workflow by creating a seamless, single-page application feel when modifying schedules, reducing disruptive flashes and context loss.

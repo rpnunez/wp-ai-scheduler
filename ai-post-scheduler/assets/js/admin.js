@@ -1011,7 +1011,37 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        AIPS.Utilities.showToast(response.data.message || 'Schedule saved successfully', 'success');
+                        $('#aips-schedule-modal').hide();
+
+                        // Dynamically update the schedules table
+                        $.get(location.href, function(html) {
+                            var $newDoc = $(html);
+                            var $newContent = $newDoc.find('.aips-schedule-table').closest('.aips-content-panel');
+                            var $existingPanel = $('.aips-schedule-table').closest('.aips-content-panel');
+
+                            if ($newContent.length) {
+                                if ($existingPanel.length) {
+                                    $existingPanel.replaceWith($newContent);
+                                } else {
+                                    // If table didn't exist (we were on the empty state), replace the empty state panel
+                                    // We need to find the correct panel to replace.
+                                    // It's the one containing .aips-empty-state that is related to schedules.
+                                    var $emptyStatePanel = $('.aips-content-panel').has('.aips-empty-state').last();
+                                    if ($emptyStatePanel.length) {
+                                        $emptyStatePanel.replaceWith($newContent);
+                                    } else {
+                                        location.reload();
+                                    }
+                                }
+
+                                // Re-bind any dynamic event listeners or UI initializations if needed
+                                // Currently, event delegation handles most interactions in admin.js
+                                AIPS.updateScheduleBulkActions();
+                            } else {
+                                location.reload();
+                            }
+                        });
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -1161,7 +1191,37 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload();
+                        AIPS.Utilities.showToast(response.data.message || 'Schedule saved successfully', 'success');
+                        $('#aips-schedule-modal').hide();
+
+                        // Dynamically update the schedules table
+                        $.get(location.href, function(html) {
+                            var $newDoc = $(html);
+                            var $newContent = $newDoc.find('.aips-schedule-table').closest('.aips-content-panel');
+                            var $existingPanel = $('.aips-schedule-table').closest('.aips-content-panel');
+
+                            if ($newContent.length) {
+                                if ($existingPanel.length) {
+                                    $existingPanel.replaceWith($newContent);
+                                } else {
+                                    // If table didn't exist (we were on the empty state), replace the empty state panel
+                                    // We need to find the correct panel to replace.
+                                    // It's the one containing .aips-empty-state that is related to schedules.
+                                    var $emptyStatePanel = $('.aips-content-panel').has('.aips-empty-state').last();
+                                    if ($emptyStatePanel.length) {
+                                        $emptyStatePanel.replaceWith($newContent);
+                                    } else {
+                                        location.reload();
+                                    }
+                                }
+
+                                // Re-bind any dynamic event listeners or UI initializations if needed
+                                // Currently, event delegation handles most interactions in admin.js
+                                AIPS.updateScheduleBulkActions();
+                            } else {
+                                location.reload();
+                            }
+                        });
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
