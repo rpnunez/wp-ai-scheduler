@@ -145,7 +145,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 		$ref_container = new stdClass();
 		$ref_container->action_called =& $action_called;
 
-		$post_creator = new class($ref_container) {
+		$post_manager = new class($ref_container) {
 			private $ref_container;
 			public $received_data;
 
@@ -174,7 +174,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			null,
 			new class {
 			},
-			$post_creator,
+			$post_manager,
 			$history_service,
 			$prompt_builder
 		);
@@ -292,7 +292,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			1
 		);
 
-		$post_creator = new class {
+		$post_manager = new class {
 			public function create_post($data) {
 				return 654;
 			}
@@ -308,7 +308,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			null,
 			new class {
 			},
-			$post_creator,
+			$post_manager,
 			$history_service,
 			$prompt_builder
 		);
@@ -481,7 +481,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			}
 		};
 
-		$post_creator = new class {
+		$post_manager = new class {
 			public function create_post($data) {
 				return 321;
 			}
@@ -498,7 +498,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			null,
 			new class {
 			},
-			$post_creator,
+			$post_manager,
 			$history_service,
 			$prompt_builder
 		);
@@ -644,7 +644,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			}
 		};
 
-		$post_creator = new class {
+		$post_manager = new class {
 			public function create_post($data) {
 				return 321;
 			}
@@ -657,7 +657,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			$template_processor,
 			null,
 			new class {},
-			$post_creator,
+			$post_manager,
 			$history_service,
 			$prompt_builder
 		);
@@ -684,5 +684,150 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 		$warnings = $logger->get_warnings();
 		$this->assertNotEmpty($warnings);
 		$this->assertStringContainsString('chatId', $warnings[0]);
+	}
+
+	/**
+	 * Ensure featured image failures do not discard successful text generation.
+	 *
+	 * @return void
+	 */
+	public function test_featured_image_failure_still_saves_post_with_incomplete_meta() {
+		global $aips_test_meta;
+		$aips_test_meta = array();
+		$incomplete_action_calls = array();
+
+		$logger = new class {
+			public function log($message, $level = 'info', $context = array()) {}
+		};
+
+		$ai_service = new class {
+			private $call_count = 0;
+			public function is_available() { return true; }
+			public function generate_text($prompt, $options = array()) {
+				$this->call_count++;
+				if ($this->call_count === 1) {
+					return 'Generated post content body.';
+				}
+				if ($this->call_count === 2) {
+					return 'Generated Post Title';
+				}
+				return 'Generated post excerpt.';
+			}
+		};
+
+		$template_processor = new class {
+			public function process($value, $topic = null) {
+				return str_replace('{{topic}}', (string) $topic, $value);
+			}
+			public function extract_ai_variables($prompt) {
+				return array();
+			}
+			public function build_ai_variables_prompt($ai_variables, $context_str) {
+				return 'unused';
+			}
+			public function parse_ai_variables_response($result, $ai_variables) {
+				return array();
+			}
+		};
+
+		$image_service = new class {
+			public function generate_and_upload_featured_image($prompt, $title) {
+				return new WP_Error('image_failed', 'Image generation failed');
+			}
+			public function fetch_and_upload_unsplash_image($keywords, $title) {
+				return new WP_Error('image_failed', 'Image generation failed');
+			}
+			public function select_media_library_image($media_ids) {
+				return new WP_Error('image_failed', 'Image generation failed');
+			}
+		};
+
+		$prompt_builder = new class {
+			public function build_content_prompt($context) {
+				return 'Content prompt';
+			}
+			public function build_content_context($context) {
+				return 'Content context';
+			}
+			public function build_title_prompt($context, $x = null, $y = null, $content = '', $use_conversation_context = false) {
+				return 'Title prompt';
+			}
+			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
+				return 'Excerpt prompt';
+			}
+		};
+
+		$history_service = new class {
+			public function create($type, $data = array()) {
+				return new class {
+					public function get_id() { return 99; }
+					public function with_session($context) { return $this; }
+					public function record($type, $message, $data = null, $result = null, $metadata = array()) {}
+					public function record_error($message, $metadata = array()) {}
+					public function complete_failure($error, $metadata = array()) {}
+					public function complete_success($data = array()) {}
+				};
+			}
+		};
+
+		$generator = new AIPS_Generator(
+			$logger,
+			$ai_service,
+			$template_processor,
+			$image_service,
+			new class {},
+			new AIPS_Post_Manager(),
+			$history_service,
+			$prompt_builder
+		);
+
+		add_action(
+			'aips_post_generation_incomplete',
+			function($post_id, $component_statuses, $context, $history_id) use (&$incomplete_action_calls) {
+				$incomplete_action_calls[] = array(
+					'post_id' => $post_id,
+					'component_statuses' => $component_statuses,
+					'context' => $context,
+					'history_id' => $history_id,
+				);
+			},
+			10,
+			4
+		);
+
+		$template = (object) array(
+			'id' => 11,
+			'prompt_template' => 'Prompt for {{topic}}',
+			'title_prompt' => 'Title for {{topic}}',
+			'post_status' => 'draft',
+			'post_category' => '',
+			'post_tags' => '',
+			'post_author' => 1,
+			'post_quantity' => 1,
+			'generate_featured_image' => true,
+			'image_prompt' => 'Image for {{topic}}',
+		);
+
+		$post_id = $generator->generate_post($template, null, 'Testing');
+
+		$this->assertIsInt($post_id);
+		$this->assertArrayHasKey($post_id, $aips_test_meta);
+		$this->assertSame('true', $aips_test_meta[$post_id]['aips_post_generation_incomplete']);
+
+		$component_statuses = json_decode($aips_test_meta[$post_id]['aips_post_generation_component_statuses'], true);
+		$this->assertSame(
+			array(
+				'post_title' => true,
+				'post_excerpt' => true,
+				'featured_image' => false,
+				'post_content' => true,
+			),
+			$component_statuses
+		);
+
+		$this->assertCount(1, $incomplete_action_calls);
+		$this->assertSame($post_id, $incomplete_action_calls[0]['post_id']);
+		$this->assertSame(99, $incomplete_action_calls[0]['history_id']);
+		$this->assertSame($component_statuses, $incomplete_action_calls[0]['component_statuses']);
 	}
 }

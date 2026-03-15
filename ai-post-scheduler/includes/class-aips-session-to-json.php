@@ -359,20 +359,22 @@ class AIPS_Session_To_JSON {
 	 */
 	private function create_htaccess_protection($dir) {
 		$htaccess_file = trailingslashit($dir) . '.htaccess';
+		$index_file = trailingslashit($dir) . 'index.php';
 		
-		// Only create if it doesn't exist
-		if (file_exists($htaccess_file)) {
-			return;
+		if (!file_exists($htaccess_file)) {
+			$content = "# Protect AIPS export files\n";
+			$content .= "# Files are accessed through authenticated download handler\n";
+			$content .= "<Files *.json>\n";
+			$content .= "    Order Allow,Deny\n";
+			$content .= "    Deny from all\n";
+			$content .= "</Files>\n";
+
+			@file_put_contents($htaccess_file, $content);
 		}
 		
-		$content = "# Protect AIPS export files\n";
-		$content .= "# Files are accessed through authenticated download handler\n";
-		$content .= "<Files *.json>\n";
-		$content .= "    Order Allow,Deny\n";
-		$content .= "    Deny from all\n";
-		$content .= "</Files>\n";
-		
-		@file_put_contents($htaccess_file, $content);
+		if (!file_exists($index_file)) {
+			@file_put_contents($index_file, '<?php // Silence is golden');
+		}
 	}
 	
 	/**
