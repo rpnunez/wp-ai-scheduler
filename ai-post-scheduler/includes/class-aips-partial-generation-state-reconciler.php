@@ -18,15 +18,15 @@ if (!defined('ABSPATH')) {
 class AIPS_Partial_Generation_State_Reconciler {
 
 	/**
-	 * @var AIPS_Post_Creator
+	 * @var AIPS_Post_Manager
 	 */
-	private $post_creator;
+	private $post_manager;
 
 	/**
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->post_creator = new AIPS_Post_Creator();
+		$this->post_manager = new AIPS_Post_Manager();
 
 		add_action('save_post', array($this, 'on_save_post'), 20, 3);
 		add_action('aips_post_components_updated', array($this, 'on_post_components_updated'), 10, 3);
@@ -57,7 +57,7 @@ class AIPS_Partial_Generation_State_Reconciler {
 			return;
 		}
 
-		$statuses = $this->post_creator->reconcile_generation_status_meta_from_post($post_id);
+		$statuses = $this->post_manager->reconcile_generation_status_meta_from_post($post_id);
 		if (is_array($statuses)) {
 			do_action('aips_partial_generation_state_reconciled', $post_id, $statuses, 'save_post');
 		}
@@ -98,7 +98,7 @@ class AIPS_Partial_Generation_State_Reconciler {
 			$overrides['featured_image'] = absint($components['featured_image_id']) > 0;
 		}
 
-		$statuses = $this->post_creator->reconcile_generation_status_meta_from_post($post_id, $overrides);
+		$statuses = $this->post_manager->reconcile_generation_status_meta_from_post($post_id, $overrides);
 		if (is_array($statuses)) {
 			do_action('aips_partial_generation_state_reconciled', $post_id, $statuses, 'aips_post_components_updated');
 		}

@@ -145,7 +145,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 		$ref_container = new stdClass();
 		$ref_container->action_called =& $action_called;
 
-		$post_creator = new class($ref_container) {
+		$post_manager = new class($ref_container) {
 			private $ref_container;
 			public $received_data;
 
@@ -174,7 +174,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			null,
 			new class {
 			},
-			$post_creator,
+			$post_manager,
 			$history_service,
 			$prompt_builder
 		);
@@ -292,7 +292,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			1
 		);
 
-		$post_creator = new class {
+		$post_manager = new class {
 			public function create_post($data) {
 				return 654;
 			}
@@ -308,7 +308,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			null,
 			new class {
 			},
-			$post_creator,
+			$post_manager,
 			$history_service,
 			$prompt_builder
 		);
@@ -481,7 +481,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			}
 		};
 
-		$post_creator = new class {
+		$post_manager = new class {
 			public function create_post($data) {
 				return 321;
 			}
@@ -498,7 +498,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			null,
 			new class {
 			},
-			$post_creator,
+			$post_manager,
 			$history_service,
 			$prompt_builder
 		);
@@ -644,7 +644,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			}
 		};
 
-		$post_creator = new class {
+		$post_manager = new class {
 			public function create_post($data) {
 				return 321;
 			}
@@ -657,7 +657,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			$template_processor,
 			null,
 			new class {},
-			$post_creator,
+			$post_manager,
 			$history_service,
 			$prompt_builder
 		);
@@ -776,7 +776,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			$template_processor,
 			$image_service,
 			new class {},
-			new AIPS_Post_Creator(),
+			new AIPS_Post_Manager(),
 			$history_service,
 			$prompt_builder
 		);

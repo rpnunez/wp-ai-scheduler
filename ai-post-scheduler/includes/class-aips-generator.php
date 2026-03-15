@@ -40,7 +40,7 @@ class AIPS_Generator {
     private $template_processor;
     private $image_service;
     private $structure_manager;
-    private $post_creator;
+    private $post_manager;
     private $prompt_builder;
 
     /**
@@ -59,7 +59,7 @@ class AIPS_Generator {
      * @param object|null $template_processor
      * @param object|null $image_service
      * @param object|null $structure_manager
-     * @param object|null $post_creator
+     * @param object|null $post_manager
      * @param object|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
@@ -70,7 +70,7 @@ class AIPS_Generator {
         $template_processor = null,
         $image_service = null,
         $structure_manager = null,
-        $post_creator = null,
+        $post_manager = null,
         $history_service = null,
         $prompt_builder = null,
         $markdown_parser = null
@@ -80,7 +80,7 @@ class AIPS_Generator {
         $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
         $this->image_service      = $image_service ?: new AIPS_Image_Service( $this->ai_service );
         $this->structure_manager  = $structure_manager ?: new AIPS_Article_Structure_Manager();
-        $this->post_creator       = $post_creator ?: new AIPS_Post_Creator();
+        $this->post_manager       = $post_manager ?: new AIPS_Post_Manager();
         $this->history_service    = $history_service ?: new AIPS_History_Service();
         $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
@@ -667,7 +667,7 @@ class AIPS_Generator {
 
         $generation_incomplete = in_array(false, $component_statuses, true);
 
-        // Use Post Creator Service to save the generated post in WP
+        // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
             'title' => $title,
             'content' => $content,
@@ -684,7 +684,7 @@ class AIPS_Generator {
         // Allow integrations to hook before the post is created.
         do_action('aips_post_generation_before_post_create', $post_creation_data);
 
-        $post_id = $this->post_creator->create_post($post_creation_data);
+        $post_id = $this->post_manager->create_post($post_creation_data);
 
         if (is_wp_error($post_id)) {
             // Use new history API to complete with failure
@@ -703,7 +703,7 @@ class AIPS_Generator {
         $component_statuses['featured_image'] = (bool) $featured_image_success;
 
         $generation_incomplete = in_array(false, $component_statuses, true);
-        $this->post_creator->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
+        $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
         if ($generation_incomplete) {
             do_action('aips_post_generation_incomplete', $post_id, $component_statuses, $context, $this->current_history ? $this->current_history->get_id() : 0);
@@ -814,7 +814,7 @@ class AIPS_Generator {
             if (!is_wp_error($featured_image_result)) {
                 $featured_image_id = $featured_image_result;
 
-                $this->post_creator->set_featured_image($post_id, $featured_image_id);
+                $this->post_manager->set_featured_image($post_id, $featured_image_id);
                 $component_success = true;
             }
         } elseif ($featured_image_source === 'media_library') {
@@ -822,7 +822,7 @@ class AIPS_Generator {
             $featured_image_result = $this->image_service->select_media_library_image($media_ids);
 
             if (!is_wp_error($featured_image_result)) {
-                $this->post_creator->set_featured_image($post_id, $featured_image_result);
+                $this->post_manager->set_featured_image($post_id, $featured_image_result);
 
                 $featured_image_id = $featured_image_result;
                 $component_success = true;
@@ -851,7 +851,7 @@ class AIPS_Generator {
             if (!is_wp_error($featured_image_result)) {
                 $featured_image_id = $featured_image_result;
 
-                $this->post_creator->set_featured_image($post_id, $featured_image_id);
+                $this->post_manager->set_featured_image($post_id, $featured_image_id);
                 $component_success = true;
 
                 // Log successful featured image generation
