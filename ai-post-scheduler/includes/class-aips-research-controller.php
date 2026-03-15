@@ -466,4 +466,12 @@ class AIPS_Research_Controller {
             'count' => count($topics)
         ));
     }
+
+
+    /**
+     * Render the admin page.
+     */
+    public function render_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
+    }
 }

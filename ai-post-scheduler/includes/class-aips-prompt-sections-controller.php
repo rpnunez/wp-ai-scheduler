@@ -158,5 +158,13 @@ class AIPS_Prompt_Sections_Controller {
 
 		wp_send_json_success(array('message' => __('Section status updated.', 'ai-post-scheduler')));
 	}
+
+
+    /**
+     * Render the admin page.
+     */
+    public function render_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
+    }
 }
 
