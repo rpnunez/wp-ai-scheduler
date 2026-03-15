@@ -248,6 +248,26 @@
 	min-width: 200px;
 }
 
+/* Pagination tablenav inside content panels.
+   Override WordPress float-based layout with flexbox so the pagination
+   is right-aligned without ever overflowing the panel's border/radius. */
+.aips-content-panel .tablenav {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	padding: var(--aips-space-3) var(--aips-space-5);
+	border-top: 1px solid var(--aips-gray-100);
+	height: auto;
+	margin: 0;
+	clear: both;
+}
+
+.aips-content-panel .tablenav .tablenav-pages {
+	float: none;
+	height: auto;
+	margin: 0;
+}
+
 /* Panel toolbar */
 .aips-panel-toolbar {
 	display: flex;
