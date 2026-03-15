@@ -821,7 +821,7 @@
 
                 if (urlParams) {
                     preselectId = urlParams.get('schedule_template') || '';
-                    preselectStructureId = urlParams.get('article_structure_id') || '';
+                    preselectStructureId = urlParams.get('schedule_structure') || urlParams.get('article_structure_id') || '';
                 }
             }
 
