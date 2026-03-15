@@ -59,7 +59,7 @@
             var $toast = $('<div class="aips-toast ' + type + '">')
               .append('<span class="aips-toast-icon">' + iconMap[type] + '</span>')
               .append('<div class="aips-toast-message">' + safeMessage + '</div>')
-              .append($('<button class="aips-toast-close">&times;</button>').attr('aria-label', closeLabel));
+              .append($('<button type="button" class="aips-toast-close">&times;</button>').attr('aria-label', closeLabel));
 
             $container.append($toast);
 
