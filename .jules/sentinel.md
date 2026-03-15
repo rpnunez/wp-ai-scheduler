@@ -27,3 +27,8 @@
 **Vulnerability:** Weak validation in `AIPS_Data_Management_Import_MySQL` relied on `stripos` to check for table names, allowing arbitrary SQL (like `DELETE FROM wp_users`) if it merely *contained* a valid table name string or if the command didn't match `TABLE`/`INSERT` keywords.
 **Learning:** Checking for the presence of a safe string is NOT enough to validate a complex command like SQL. Attackers can embed safe strings in comments or irrelevant clauses to bypass such checks.
 **Prevention:** Use a strict allowlist of command types (e.g., only `INSERT`, `CREATE`, `DROP`) and ensure that the command *structure* targets the allowed resources, rather than just grepping for keywords.
+
+## 2025-10-27 - [Exposed Sensitive Data in Logs]
+**Vulnerability:** In `ai-post-scheduler/includes/class-aips-session-to-json.php`, the `create_htaccess_protection` method generated a `.htaccess` file with `deny from all` to protect exported JSON session files, but lacked an `index.php` fallback.
+**Learning:** For web servers that do not process or respect `.htaccess` files (such as NGINX or misconfigured Apache servers), relying solely on `.htaccess` leaves directories vulnerable to directory listing, exposing sensitive logs or exported data.
+**Prevention:** Always pair `.htaccess` protection with an `index.php` file containing `<?php // Silence is golden` to provide defense-in-depth against directory listing across all web server environments.
