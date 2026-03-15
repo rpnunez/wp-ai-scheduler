@@ -5,21 +5,28 @@ if (!defined('ABSPATH')) {
 
 // This template is included by AIPS_History::render_page() which passes
 // $history_handler, $history, and $stats. Ensure default variables are set.
-$current_page  = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
-$status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
-$search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '');
+$current_page    = isset($current_page) ? absint($current_page) : (isset($_GET['paged']) ? absint($_GET['paged']) : 1);
+$status_filter   = isset($status_filter) ? $status_filter : (isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '');
+$search_query    = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '');
+$container_types = isset($container_types) ? $container_types : (
+    (!empty($_GET['container_types']) && is_array($_GET['container_types']))
+        ? array_map('absint', $_GET['container_types'])
+        : array()
+);
 
 if (isset($history_handler)) {
     $history = $history_handler->get_history(array(
-        'page'   => $current_page,
-        'status' => $status_filter,
-        'search' => $search_query,
-        'fields' => 'list',
+        'page'            => $current_page,
+        'status'          => $status_filter,
+        'search'          => $search_query,
+        'container_types' => $container_types,
+        'fields'          => 'list',
     ));
 }
 
 $items       = isset($history['items']) ? $history['items'] : array();
 $total_items = isset($history['total']) ? (int) $history['total'] : 0;
+$all_container_types = AIPS_History_Container_Type::get_all_types();
 ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
@@ -80,7 +87,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
         </div>
 
         <?php
-        $has_active_filter = !empty($status_filter) || !empty($search_query);
+        $has_active_filter = !empty($status_filter) || !empty($search_query) || !empty($container_types);
         $show_panel        = $total_items > 0 || $has_active_filter;
         ?>
         <?php if ($show_panel): ?>
@@ -94,6 +101,45 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                         <option value="failed" <?php selected($status_filter, 'failed'); ?>><?php esc_html_e('Failed', 'ai-post-scheduler'); ?></option>
                         <option value="processing" <?php selected($status_filter, 'processing'); ?>><?php esc_html_e('Processing', 'ai-post-scheduler'); ?></option>
                     </select>
+
+                    <!-- History Type multi-checkbox dropdown -->
+                    <div class="aips-type-filter-wrap" id="aips-type-filter-wrap">
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-type-filter-toggle" id="aips-type-filter-btn" aria-haspopup="true" aria-expanded="false">
+                            <span class="dashicons dashicons-category"></span>
+                            <span id="aips-type-filter-label"><?php
+                                if (!empty($container_types)) {
+                                    $selected_labels = array();
+                                    foreach ($container_types as $ct) {
+                                        $selected_labels[] = AIPS_History_Container_Type::get_label($ct);
+                                    }
+                                    echo esc_html(implode(', ', $selected_labels));
+                                } else {
+                                    esc_html_e('All Types', 'ai-post-scheduler');
+                                }
+                            ?></span>
+                            <span class="dashicons dashicons-arrow-down-alt2 aips-type-filter-arrow"></span>
+                        </button>
+                        <div class="aips-type-filter-panel" id="aips-type-filter-panel" style="display:none;" role="dialog" aria-label="<?php esc_attr_e('Filter by History Type', 'ai-post-scheduler'); ?>">
+                            <div class="aips-type-filter-options">
+                                <?php foreach ($all_container_types as $type_id => $type_label): ?>
+                                <label class="aips-type-filter-option">
+                                    <input
+                                        type="checkbox"
+                                        class="aips-type-checkbox"
+                                        value="<?php echo esc_attr($type_id); ?>"
+                                        <?php checked(in_array($type_id, $container_types, true)); ?>
+                                    >
+                                    <?php echo esc_html($type_label); ?>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="aips-type-filter-footer">
+                                <button type="button" class="aips-btn aips-btn-sm aips-btn-ghost" id="aips-type-filter-clear"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                                <button type="button" class="aips-btn aips-btn-sm aips-btn-primary" id="aips-type-filter-apply"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+                            </div>
+                        </div>
+                    </div>
+
                     <button class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-filter-btn">
                         <span class="dashicons dashicons-filter"></span>
                         <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
@@ -140,7 +186,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                                 <input id="aips-cb-select-all" type="checkbox">
                             </td>
                             <th class="column-title"><?php esc_html_e('Title / Topic', 'ai-post-scheduler'); ?></th>
-                            <th class="column-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></th>
+                            <th class="column-history-type"><?php esc_html_e('History Type', 'ai-post-scheduler'); ?></th>
                             <th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
                             <th class="column-date"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
                             <th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
@@ -224,3 +270,4 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
 </div>
 
 <?php include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php'; ?>
+

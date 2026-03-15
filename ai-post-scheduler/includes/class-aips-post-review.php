@@ -627,7 +627,7 @@ class AIPS_Post_Review {
 		}
 		
 		// Create history container for bulk delete operation
-		$history = $this->history_service->create('bulk_delete', array(
+		$history = $this->history_service->create('post_review_bulk_delete', array(
 			'user_id' => get_current_user_id(),
 			'source' => 'manual_ui',
 			'trigger' => 'ajax_bulk_delete_draft_posts',
