@@ -107,6 +107,10 @@ if (!isset($sections) || !is_array($sections)) {
 									<span class="dashicons dashicons-edit"></span>
 									<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
 								</button>
+								<a class="aips-btn aips-btn-sm aips-btn-ghost" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-schedule', array('schedule_structure' => $structure->id))); ?>" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
+									<span class="dashicons dashicons-calendar-alt"></span>
+									<span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
+								</a>
 								<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-structure" data-id="<?php echo esc_attr($structure->id); ?>" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
 									<span class="dashicons dashicons-trash"></span>
 									<span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>

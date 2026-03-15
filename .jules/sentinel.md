@@ -27,3 +27,11 @@
 **Vulnerability:** Weak validation in `AIPS_Data_Management_Import_MySQL` relied on `stripos` to check for table names, allowing arbitrary SQL (like `DELETE FROM wp_users`) if it merely *contained* a valid table name string or if the command didn't match `TABLE`/`INSERT` keywords.
 **Learning:** Checking for the presence of a safe string is NOT enough to validate a complex command like SQL. Attackers can embed safe strings in comments or irrelevant clauses to bypass such checks.
 **Prevention:** Use a strict allowlist of command types (e.g., only `INSERT`, `CREATE`, `DROP`) and ensure that the command *structure* targets the allowed resources, rather than just grepping for keywords.
+
+## 2025-05-18 - Fix TRUNCATE TABLE Vulnerability
+
+**Finding**: `AIPS_History_Repository::delete_by_status()` used a `TRUNCATE TABLE` query to clear out the entire table when the status filter is empty.
+
+**Risk**: `TRUNCATE TABLE` bypasses normal table deletion constraints (such as `ON DELETE` triggers) and always reports returning a boolean rather than the count of rows removed. If this method is called inadvertently with an empty string due to an invalid request or logical bug upstream, the entire history table would be completely cleared without safety mechanisms.
+
+**Resolution**: Changed the query to `DELETE FROM {$this->table_name}`, which behaves predictably within MySQL's transactional bounds, safely processes trigger conditions, and returns the expected integer count of deleted rows.
