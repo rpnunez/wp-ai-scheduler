@@ -201,7 +201,7 @@ class Test_AIPS_Notification_Templates extends WP_UnitTestCase {
 // AIPS_Notifications (unit / limited-env tests)
 // ============================================================================
 
-class Test_AIPS_Notifications extends WP_UnitTestCase {
+class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 
 	/** @var AIPS_Notifications */
 	private $notifications;
