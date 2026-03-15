@@ -412,5 +412,13 @@ class AIPS_Authors_Controller {
 			'posts' => $posts
 		));
 	}
+
+
+    /**
+     * Render the admin page.
+     */
+    public function render_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/authors.php';
+    }
 }
 

@@ -427,4 +427,12 @@ class AIPS_Schedule_Controller {
 
         wp_send_json_success(array('entries' => $entries));
     }
+
+
+    /**
+     * Render the admin page.
+     */
+    public function render_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
+    }
 }

@@ -957,4 +957,12 @@ class AIPS_Author_Topics_Controller {
 			'sample_size'      => $sample_size,
 		));
 	}
+
+
+    /**
+     * Render the admin page.
+     */
+    public function render_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/author-topics.php';
+    }
 }

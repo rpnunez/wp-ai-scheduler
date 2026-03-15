@@ -56,4 +56,12 @@ class AIPS_Seeder_Admin {
             wp_send_json_error($result);
         }
     }
+
+
+    /**
+     * Render the admin page.
+     */
+    public function render_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/seeder.php';
+    }
 }
