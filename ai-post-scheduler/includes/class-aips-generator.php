@@ -59,7 +59,7 @@ class AIPS_Generator {
      * @param object|null $template_processor
      * @param object|null $image_service
      * @param object|null $structure_manager
-        * @param object|null $post_manager
+     * @param object|null $post_manager
      * @param object|null $history_service
      * @param object|null $prompt_builder
      * @param object|null $markdown_parser
