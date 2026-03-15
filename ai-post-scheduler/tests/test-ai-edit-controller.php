@@ -265,4 +265,166 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		$this->assertStringContainsString('<p>Safe content</p>', $updated_post->post_content);
 		$this->assertStringNotContainsString('<script>', $updated_post->post_content);
 	}
+
+	/**
+	 * Test get_component_revisions supports legacy component_type payload.
+	 */
+	public function test_get_component_revisions_accepts_component_type() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Revision Target',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status' => 'completed',
+		));
+
+		$this->history_repository->add_log_entry(
+			$history_id,
+			'ai_response',
+			array(
+				'message' => 'Snapshot',
+				'output' => array('value' => 'Previous Title'),
+				'context' => array(
+					'component' => 'title',
+					'post_id' => $post_id,
+				),
+			),
+			AIPS_History_Type::AI_RESPONSE
+		);
+
+		$_POST = array(
+			'action' => 'aips_get_component_revisions',
+			'post_id' => $post_id,
+			'component_type' => 'title',
+			'nonce' => wp_create_nonce('aips_ajax_nonce'),
+		);
+
+		ob_start();
+		try {
+			$this->controller->ajax_get_component_revisions();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertGreaterThanOrEqual(1, $response['data']['total']);
+		$this->assertEquals('Previous Title', $response['data']['revisions'][0]['value']);
+	}
+
+	/**
+	 * Test restore_component_revision supports legacy component_type payload.
+	 */
+	public function test_restore_component_revision_accepts_component_type() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Revision Restore Target',
+		));
+
+		$attachment_id = $this->factory->post->create(array(
+			'post_type' => 'attachment',
+			'post_mime_type' => 'image/jpeg',
+			'post_title' => 'Image Attachment',
+			'post_status' => 'inherit',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status' => 'completed',
+		));
+
+		$revision_id = $this->history_repository->add_log_entry(
+			$history_id,
+			'ai_response',
+			array(
+				'message' => 'Image Snapshot',
+				'output' => array(
+					'attachment_id' => $attachment_id,
+					'url' => 'https://example.test/image.jpg',
+				),
+				'context' => array(
+					'component' => 'featured_image',
+					'post_id' => $post_id,
+				),
+			),
+			AIPS_History_Type::AI_RESPONSE
+		);
+
+		$_POST = array(
+			'action' => 'aips_restore_component_revision',
+			'post_id' => $post_id,
+			'component_type' => 'featured_image',
+			'revision_id' => $revision_id,
+			'nonce' => wp_create_nonce('aips_ajax_nonce'),
+		);
+
+		ob_start();
+		try {
+			$this->controller->ajax_restore_component_revision();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		$output = ob_get_clean();
+		$response = json_decode($output, true);
+
+		$this->assertTrue($response['success']);
+		$this->assertEquals('featured_image', $response['data']['component']);
+		$this->assertIsArray($response['data']['value']);
+		$this->assertEquals($attachment_id, $response['data']['value']['attachment_id']);
+	}
+
+	/**
+	 * Test restore_component_revision snapshots a manual draft before overwrite.
+	 */
+	public function test_restore_component_revision_captures_manual_snapshot() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Persisted Title',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status' => 'completed',
+		));
+
+		$revision_id = $this->history_repository->add_log_entry(
+			$history_id,
+			'ai_response',
+			array(
+				'message' => 'Original AI Title',
+				'output' => array('value' => 'Original AI Title'),
+				'context' => array(
+					'component' => 'title',
+					'post_id' => $post_id,
+				),
+			),
+			AIPS_History_Type::AI_RESPONSE
+		);
+
+		$_POST = array(
+			'action' => 'aips_restore_component_revision',
+			'post_id' => $post_id,
+			'component' => 'title',
+			'revision_id' => $revision_id,
+			'current_value' => 'Manual Draft Title',
+			'current_source' => 'manual_edit',
+			'current_reason' => 'pre_restore_manual',
+			'nonce' => wp_create_nonce('aips_ajax_nonce'),
+		);
+
+		ob_start();
+		try {
+			$this->controller->ajax_restore_component_revision();
+		} catch (WPAjaxDieContinueException $e) {
+			// Expected.
+		}
+		ob_end_clean();
+
+		$revisions = $this->history_repository->get_component_revisions($post_id, 'title', 10);
+
+		$this->assertNotEmpty($revisions);
+		$this->assertEquals('Manual Draft Title', $revisions[0]['value']);
+		$this->assertEquals('manual_edit', $revisions[0]['source']);
+		$this->assertEquals('pre_restore_manual', $revisions[0]['reason']);
+	}
 }
