@@ -205,7 +205,7 @@
                 html += '</div></td>';
                 html += '<td>' + new Date(topic.researched_at).toLocaleDateString() + '</td>';
                 html += '<td><div class="aips-topic-actions">';
-                html += '<button class="button button-small delete-topic" data-id="' + escapeHtml(topic.id) + '">' + aipsResearchL10n.delete + '</button>';
+                html += '<button type="button" class="button button-small delete-topic" data-id="' + escapeHtml(topic.id) + '">' + aipsResearchL10n.delete + '</button>';
                 html += '</div></td>';
                 html += '</tr>';
             });
@@ -492,7 +492,7 @@
                         <p class="aips-gap-reason">${escapeHtml(gap.reason)}</p>
                         <p class="aips-gap-intent">Intent: ${escapeHtml(gap.search_intent)}</p>
                         <div class="aips-gap-actions">
-                            <button class="button button-secondary generate-gap-ideas" data-topic="${escapeHtml(gap.missing_topic)}">
+                            <button type="button" class="button button-secondary generate-gap-ideas" data-topic="${escapeHtml(gap.missing_topic)}">
                                 Generate Ideas
                             </button>
                         </div>

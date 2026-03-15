@@ -86,7 +86,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 						<span class="dashicons dashicons-edit"></span>
 						<?php esc_html_e('Edit Author', 'ai-post-scheduler'); ?>
 					</a>
-					<button class="aips-btn aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
+					<button type="button" class="aips-btn aips-btn-primary aips-generate-topics-now" data-id="<?php echo esc_attr($author->id); ?>">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e('Generate Topics', 'ai-post-scheduler'); ?>
 					</button>
@@ -126,19 +126,19 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		<div class="aips-content-panel" id="aips-author-topics-panel">
 			<!-- Tabs -->
 			<div class="aips-topics-tabs aips-page-tabs">
-				<button class="aips-tab-link active" data-tab="pending">
+				<button type="button" class="aips-tab-link active" data-tab="pending">
 					<?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-count" id="pending-count"><?php echo esc_html($status_counts['pending']); ?></span>
 				</button>
-				<button class="aips-tab-link" data-tab="approved">
+				<button type="button" class="aips-tab-link" data-tab="approved">
 					<?php esc_html_e('Approved', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-count" id="approved-count"><?php echo esc_html($status_counts['approved']); ?></span>
 				</button>
-				<button class="aips-tab-link" data-tab="rejected">
+				<button type="button" class="aips-tab-link" data-tab="rejected">
 					<?php esc_html_e('Rejected', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-count" id="rejected-count"><?php echo esc_html($status_counts['rejected']); ?></span>
 				</button>
-				<button class="aips-tab-link" data-tab="feedback">
+				<button type="button" class="aips-tab-link" data-tab="feedback">
 					<?php esc_html_e('Feedback', 'ai-post-scheduler'); ?>
 				</button>
 			</div>
@@ -152,7 +152,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 						<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
 						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 					</select>
-					<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+					<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
@@ -171,7 +171,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 							<option value="reject"><?php esc_html_e('Reject', 'ai-post-scheduler'); ?></option>
 							<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
 						</select>
-						<button class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
+						<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
 					</div>
 				</div>
 			</div>

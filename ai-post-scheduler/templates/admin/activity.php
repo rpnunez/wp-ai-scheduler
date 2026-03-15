@@ -19,16 +19,16 @@ if (!defined('ABSPATH')) {
 			<!-- Filter Bar -->
 			<div class="aips-filter-bar">
 				<div class="aips-filter-group" style="display: flex; gap: 8px;">
-					<button class="aips-btn aips-btn-secondary aips-filter-btn active" data-filter="all">
+					<button type="button" class="aips-btn aips-btn-secondary aips-filter-btn active" data-filter="all">
 						<?php esc_html_e('All Activity', 'ai-post-scheduler'); ?>
 					</button>
-					<button class="aips-btn aips-btn-secondary aips-filter-btn" data-filter="published">
+					<button type="button" class="aips-btn aips-btn-secondary aips-filter-btn" data-filter="published">
 						<?php esc_html_e('Published', 'ai-post-scheduler'); ?>
 					</button>
-					<button class="aips-btn aips-btn-secondary aips-filter-btn" data-filter="drafts">
+					<button type="button" class="aips-btn aips-btn-secondary aips-filter-btn" data-filter="drafts">
 						<?php esc_html_e('Drafts', 'ai-post-scheduler'); ?>
 					</button>
-					<button class="aips-btn aips-btn-secondary aips-filter-btn" data-filter="failed">
+					<button type="button" class="aips-btn aips-btn-secondary aips-filter-btn" data-filter="failed">
 						<?php esc_html_e('Failed', 'ai-post-scheduler'); ?>
 					</button>
 				</div>
@@ -65,7 +65,7 @@ if (!defined('ABSPATH')) {
 	<div class="aips-modal-content aips-modal-large">
 		<div class="aips-modal-header">
 			<h2 id="aips-activity-modal-title"><?php esc_html_e('Post Details', 'ai-post-scheduler'); ?></h2>
-			<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
 		</div>
 		<div class="aips-modal-body">
 			<div class="aips-activity-detail-loading">
