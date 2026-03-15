@@ -276,27 +276,62 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
         <!-- Generation Queue Tab Content -->
         <div id="generation-queue-tab" class="aips-authors-tab-content" style="display: none;">
             <div class="aips-content-panel">
-                <div class="aips-panel-body">
-                    <p class="description" style="margin-bottom: 20px;">
-                        <?php esc_html_e('This queue shows all approved topics across all authors, ready for post generation. Topics are prioritized by score (highest first), then by approval date.', 'ai-post-scheduler'); ?>
-                    </p>
-                    
-                    <!-- Bulk Actions -->
-                    <div class="aips-bulk-actions" style="margin-bottom: 15px;">
-                        <select id="aips-queue-bulk-action-select" class="aips-form-select aips-queue-bulk-action-select">
-                            <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-                    <option value="generate_now"><?php esc_html_e('Generate Now', 'ai-post-scheduler'); ?></option>
-                </select>
-                <button class="button aips-queue-bulk-action-execute"><?php esc_html_e('Execute', 'ai-post-scheduler'); ?></button>
-            </div>
+                <div class="aips-filter-bar">
+                    <div class="aips-filter-left">
+                        <select id="aips-queue-author-filter" class="aips-form-select">
+                            <option value=""><?php esc_html_e('All Authors', 'ai-post-scheduler'); ?></option>
+                        </select>
+                        <select id="aips-queue-field-filter" class="aips-form-select">
+                            <option value=""><?php esc_html_e('All Fields/Niches', 'ai-post-scheduler'); ?></option>
+                        </select>
+                        <button type="button" id="aips-queue-filter-submit" class="aips-btn aips-btn-sm aips-btn-secondary">
+                            <span class="dashicons dashicons-filter"></span>
+                            <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+                    <div class="aips-filter-right">
+                        <label class="screen-reader-text" for="aips-queue-search"><?php esc_html_e('Search Queue Topics:', 'ai-post-scheduler'); ?></label>
+                        <input type="search" id="aips-queue-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search queue topics...', 'ai-post-scheduler'); ?>">
+                        <button type="button" id="aips-queue-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display: none;">
+                            <?php esc_html_e('Clear', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+                </div>
 
-            <!-- Queue Topics List -->
-            <div id="aips-queue-topics-list">
-                <p><?php esc_html_e('Loading queue...', 'ai-post-scheduler'); ?></p>
+                <div class="aips-panel-toolbar">
+                    <div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+                        <select id="aips-queue-bulk-action-select" class="aips-form-select aips-queue-bulk-action-select" style="width: auto;">
+                            <option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+                            <option value="generate_now"><?php esc_html_e('Generate Now', 'ai-post-scheduler'); ?></option>
+                        </select>
+                        <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-bulk-action-execute">
+                            <?php esc_html_e('Apply', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+                    <div class="aips-toolbar-right">
+                        <button type="button" id="aips-queue-reload-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
+                            <span class="dashicons dashicons-update"></span>
+                            <?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="aips-panel-body no-padding">
+                    <div id="aips-queue-topics-list">
+                        <div class="aips-panel-body">
+                            <p class="description" style="margin-bottom: 0;">
+                                <?php esc_html_e('This queue shows all approved topics across all authors, ready for post generation. Topics are prioritized by score (highest first), then by approval date.', 'ai-post-scheduler'); ?>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tablenav" id="aips-queue-tablenav" style="display: none;">
+                    <span class="aips-table-footer-count" id="aips-queue-table-footer-count"></span>
+                    <div class="aips-history-pagination-links" id="aips-queue-pagination-links"></div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
     </div><!-- .aips-page-container -->
 </div><!-- .wrap.aips-wrap -->
 

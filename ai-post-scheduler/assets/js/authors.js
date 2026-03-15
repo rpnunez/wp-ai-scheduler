@@ -1654,6 +1654,11 @@
 	
 	// Generation Queue Module
 	const GenerationQueueModule = {
+		queueTopics: [],
+		filteredQueueTopics: [],
+		queueCurrentPage: 1,
+		queuePerPage: 10,
+
 		/**
 		 * Initialise the Generation Queue module by binding all event listeners.
 		 */
@@ -1673,6 +1678,12 @@
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
+			$(document).on('click', '#aips-queue-filter-submit', this.applyQueueFilters.bind(this));
+			$(document).on('change', '#aips-queue-author-filter, #aips-queue-field-filter', this.applyQueueFilters.bind(this));
+			$(document).on('keyup search', '#aips-queue-search', this.onQueueSearch.bind(this));
+			$(document).on('click', '#aips-queue-search-clear', this.clearQueueSearch.bind(this));
+			$(document).on('click', '#aips-queue-reload-btn', this.loadQueueTopics.bind(this));
+			$(document).on('click', '.aips-queue-page-link', this.goToQueuePage.bind(this));
 		},
 
 		/**
@@ -1718,7 +1729,8 @@
 		 * failure.
 		 */
 		loadQueueTopics: function () {
-			$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.loadingQueue || 'Loading queue...') + '</p>');
+			$('#aips-queue-topics-list').html('<div class="aips-panel-body"><p>' + (aipsAuthorsL10n.loadingQueue || 'Loading queue...') + '</p></div>');
+			$('#aips-queue-tablenav').hide();
 
 			$.ajax({
 				url: ajaxurl,
@@ -1729,17 +1741,100 @@
 				},
 				success: (response) => {
 					if (response.success && response.data.topics) {
-						this.renderQueueTopics(response.data.topics);
+						this.queueTopics = response.data.topics;
+						this.populateQueueFilters();
+						this.applyQueueFilters();
 					} else {
 						$('#aips-queue-topics-list').html(
-							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p>'
+							'<div class="aips-panel-body"><p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p></div>'
 						);
+						$('#aips-queue-tablenav').hide();
 					}
 				},
 				error: () => {
-					$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p>');
+					$('#aips-queue-topics-list').html('<div class="aips-panel-body"><p>' + (aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p></div>');
+					$('#aips-queue-tablenav').hide();
 				}
 			});
+		},
+
+		/**
+		 * Populate queue filter dropdowns from loaded queue data.
+		 */
+		populateQueueFilters: function () {
+			const authorValue = $('#aips-queue-author-filter').val() || '';
+			const fieldValue = $('#aips-queue-field-filter').val() || '';
+			const authorSet = new Set();
+			const fieldSet = new Set();
+
+			this.queueTopics.forEach(topic => {
+				if (topic.author_name) {
+					authorSet.add(topic.author_name);
+				}
+				if (topic.field_niche) {
+					fieldSet.add(topic.field_niche);
+				}
+			});
+
+			const authors = Array.from(authorSet).sort((a, b) => a.localeCompare(b));
+			const fields = Array.from(fieldSet).sort((a, b) => a.localeCompare(b));
+
+			const $authorFilter = $('#aips-queue-author-filter');
+			const $fieldFilter = $('#aips-queue-field-filter');
+
+			$authorFilter.find('option:not(:first)').remove();
+			$fieldFilter.find('option:not(:first)').remove();
+
+			authors.forEach(author => {
+				$authorFilter.append('<option value="' + AuthorsModule.escapeHtml(author) + '">' + AuthorsModule.escapeHtml(author) + '</option>');
+			});
+
+			fields.forEach(field => {
+				$fieldFilter.append('<option value="' + AuthorsModule.escapeHtml(field) + '">' + AuthorsModule.escapeHtml(field) + '</option>');
+			});
+
+			$authorFilter.val(authorValue);
+			$fieldFilter.val(fieldValue);
+		},
+
+		/**
+		 * Apply queue filters and redraw queue table and footer.
+		 */
+		applyQueueFilters: function () {
+			const selectedAuthor = $('#aips-queue-author-filter').val() || '';
+			const selectedField = $('#aips-queue-field-filter').val() || '';
+			const searchTerm = ($('#aips-queue-search').val() || '').toLowerCase().trim();
+
+			this.queueCurrentPage = 1;
+			this.filteredQueueTopics = this.queueTopics.filter(topic => {
+				const matchesAuthor = !selectedAuthor || topic.author_name === selectedAuthor;
+				const matchesField = !selectedField || topic.field_niche === selectedField;
+				const haystack = ((topic.topic_title || '') + ' ' + (topic.author_name || '') + ' ' + (topic.field_niche || '')).toLowerCase();
+				const matchesSearch = !searchTerm || haystack.indexOf(searchTerm) !== -1;
+				return matchesAuthor && matchesField && matchesSearch;
+			});
+
+			$('#aips-queue-search-clear').toggle(searchTerm.length > 0);
+			this.renderQueueTopics();
+		},
+
+		/**
+		 * React to queue search input changes.
+		 */
+		onQueueSearch: function () {
+			this.applyQueueFilters();
+		},
+
+		/**
+		 * Clear queue search input and re-apply filters.
+		 *
+		 * @param {Event} e - Click event from the clear button.
+		 */
+		clearQueueSearch: function (e) {
+			e.preventDefault();
+			$('#aips-queue-search').val('');
+			this.applyQueueFilters();
+			$('#aips-queue-search').focus();
 		},
 
 		/**
@@ -1751,33 +1846,118 @@
 		 *
 		 * @param {Array<Object>} topics - Array of queue-entry objects from the server.
 		 */
-		renderQueueTopics: function (topics) {
+		renderQueueTopics: function () {
+			const topics = this.filteredQueueTopics;
+
 			if (!topics || topics.length === 0) {
-				$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.noQueueTopics || 'No approved topics in the queue yet.') + '</p>');
+				$('#aips-queue-topics-list').html(
+					'<div class="aips-panel-body"><div class="aips-empty-state">'
+					+ '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>'
+					+ '<h3 class="aips-empty-state-title">' + (aipsAuthorsL10n.noQueueTopicsTitle || 'No Queue Topics Found') + '</h3>'
+					+ '<p class="aips-empty-state-description">' + (aipsAuthorsL10n.noQueueTopics || 'No approved topics in the queue yet.') + '</p>'
+					+ '</div></div>'
+				);
+				$('#aips-queue-tablenav').hide();
 				return;
 			}
 
-			let html = '<table class="wp-list-table widefat fixed striped">';
+			const totalItems = topics.length;
+			const totalPages = Math.max(1, Math.ceil(totalItems / this.queuePerPage));
+			if (this.queueCurrentPage > totalPages) {
+				this.queueCurrentPage = totalPages;
+			}
+			const start = (this.queueCurrentPage - 1) * this.queuePerPage;
+			const pageItems = topics.slice(start, start + this.queuePerPage);
+
+			let html = '<table class="aips-table aips-queue-table">';
 			html += '<thead><tr>';
-			html += '<th class="check-column"><input type="checkbox" class="aips-queue-select-all"></th>';
-			html += '<th>' + (aipsAuthorsL10n.topicTitle || 'Topic Title') + '</th>';
-			html += '<th>' + (aipsAuthorsL10n.author || 'Author') + '</th>';
-			html += '<th>' + (aipsAuthorsL10n.fieldNiche || 'Field/Niche') + '</th>';
-			html += '<th>' + (aipsAuthorsL10n.approvedDate || 'Approved Date') + '</th>';
+			html += '<th scope="col" style="width: 30px;"><input type="checkbox" class="aips-queue-select-all"></th>';
+			html += '<th scope="col">' + (aipsAuthorsL10n.topicTitle || 'Topic Title') + '</th>';
+			html += '<th scope="col">' + (aipsAuthorsL10n.author || 'Author') + '</th>';
+			html += '<th scope="col">' + (aipsAuthorsL10n.fieldNiche || 'Field/Niche') + '</th>';
+			html += '<th scope="col">' + (aipsAuthorsL10n.approvedDate || 'Approved Date') + '</th>';
 			html += '</tr></thead><tbody>';
 
-			topics.forEach(topic => {
+			pageItems.forEach(topic => {
 				html += '<tr>';
-				html += '<th class="check-column"><input type="checkbox" class="aips-queue-topic-checkbox" value="' + topic.id + '"></th>';
-				html += '<td>' + AuthorsModule.escapeHtml(topic.topic_title) + '</td>';
+				html += '<td><input type="checkbox" class="aips-queue-topic-checkbox" value="' + topic.id + '"></td>';
+				html += '<td><span class="cell-primary">' + AuthorsModule.escapeHtml(topic.topic_title) + '</span></td>';
 				html += '<td>' + AuthorsModule.escapeHtml(topic.author_name) + '</td>';
 				html += '<td>' + AuthorsModule.escapeHtml(topic.field_niche) + '</td>';
-				html += '<td>' + (topic.reviewed_at || aipsAuthorsL10n.notAvailable || 'N/A') + '</td>';
+				html += '<td><div class="cell-meta">' + (topic.reviewed_at || aipsAuthorsL10n.notAvailable || 'N/A') + '</div></td>';
 				html += '</tr>';
 			});
 
 			html += '</tbody></table>';
 			$('#aips-queue-topics-list').html(html);
+
+			const topicLabel = totalItems === 1 ? (aipsAuthorsL10n.topic || 'topic') : (aipsAuthorsL10n.topics || 'topics');
+			$('#aips-queue-table-footer-count').text(totalItems + ' ' + topicLabel);
+			this.renderQueuePagination(totalPages);
+			$('#aips-queue-tablenav').show();
+		},
+
+		/**
+		 * Render queue pagination controls in the queue footer.
+		 *
+		 * @param {number} totalPages - Total number of pages.
+		 */
+		renderQueuePagination: function (totalPages) {
+			const current = this.queueCurrentPage;
+			let html = '';
+
+			if (totalPages <= 1) {
+				$('#aips-queue-pagination-links').html('');
+				return;
+			}
+
+			html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + (current - 1) + '" ' + (current <= 1 ? 'disabled' : '') + '><span class="dashicons dashicons-arrow-left-alt2"></span></button>';
+			html += '<span class="aips-history-page-numbers">';
+
+			const start = Math.max(1, current - 3);
+			const end = Math.min(totalPages, current + 3);
+
+			if (start > 1) {
+				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="1">1</button>';
+				if (start > 2) {
+					html += '<span class="aips-history-page-ellipsis">…</span>';
+				}
+			}
+
+			for (let p = start; p <= end; p++) {
+				if (p === current) {
+					html += '<span class="aips-btn aips-btn-sm aips-btn-primary" aria-current="page">' + p + '</span>';
+				} else {
+					html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + p + '">' + p + '</button>';
+				}
+			}
+
+			if (end < totalPages) {
+				if (end < totalPages - 1) {
+					html += '<span class="aips-history-page-ellipsis">…</span>';
+				}
+				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + totalPages + '">' + totalPages + '</button>';
+			}
+
+			html += '</span>';
+			html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + (current + 1) + '" ' + (current >= totalPages ? 'disabled' : '') + '><span class="dashicons dashicons-arrow-right-alt2"></span></button>';
+
+			$('#aips-queue-pagination-links').html(html);
+		},
+
+		/**
+		 * Navigate queue pagination.
+		 *
+		 * @param {Event} e - Click event from queue pagination links.
+		 */
+		goToQueuePage: function (e) {
+			e.preventDefault();
+			const page = parseInt($(e.currentTarget).data('page'), 10);
+			if (!Number.isInteger(page) || page < 1) {
+				return;
+			}
+			this.queueCurrentPage = page;
+			this.renderQueueTopics();
 		},
 
 		/**
