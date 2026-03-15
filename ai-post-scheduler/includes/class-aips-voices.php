@@ -15,6 +15,8 @@ class AIPS_Voices {
         
         add_action('wp_ajax_aips_save_voice', array($this, 'ajax_save_voice'));
         add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
+        add_action('wp_ajax_aips_restore_voice', array($this, 'ajax_restore_voice'));
+        add_action('wp_ajax_aips_permanent_delete_voice', array($this, 'ajax_permanent_delete_voice'));
         add_action('wp_ajax_aips_get_voice', array($this, 'ajax_get_voice'));
         add_action('wp_ajax_aips_search_voices', array($this, 'ajax_search_voices'));
     }
@@ -93,10 +95,50 @@ class AIPS_Voices {
             wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
         }
         
-        if ($this->delete($id)) {
-            wp_send_json_success(array('message' => __('Voice deleted successfully.', 'ai-post-scheduler')));
+        if ($this->repository->soft_delete($id)) {
+            wp_send_json_success(array('message' => __('Voice moved to trash.', 'ai-post-scheduler')));
         } else {
-            wp_send_json_error(array('message' => __('Failed to delete voice.', 'ai-post-scheduler')));
+            wp_send_json_error(array('message' => __('Failed to move voice to trash.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_restore_voice() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
+        }
+
+        if ($this->repository->restore($id)) {
+            wp_send_json_success(array('message' => __('Voice restored successfully.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to restore voice.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_permanent_delete_voice() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
+        }
+
+        if ($this->delete($id)) {
+            wp_send_json_success(array('message' => __('Voice permanently deleted.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to permanently delete voice.', 'ai-post-scheduler')));
         }
     }
     
@@ -137,6 +179,7 @@ class AIPS_Voices {
     
     public function render_page() {
         $voices = $this->get_all();
+        $trashed_voices = $this->repository->get_trashed();
         
         include AIPS_PLUGIN_DIR . 'templates/admin/voices.php';
     }

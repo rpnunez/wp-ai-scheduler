@@ -187,6 +187,19 @@
             $(document).on('click', '.aips-edit-section', this.editSection);
 
             $(document).on('click', '.aips-delete-section', this.deleteSection);
+
+            // Trash/Restore actions
+            $(document).on('click', '.aips-toggle-trash-btn', this.toggleTrashPanel);
+            $(document).on('click', '.aips-restore-template', this.restoreTemplate);
+            $(document).on('click', '.aips-permanent-delete-template', this.permanentDeleteTemplate);
+            $(document).on('click', '.aips-restore-voice', this.restoreVoice);
+            $(document).on('click', '.aips-permanent-delete-voice', this.permanentDeleteVoice);
+            $(document).on('click', '.aips-restore-schedule', this.restoreSchedule);
+            $(document).on('click', '.aips-permanent-delete-schedule', this.permanentDeleteSchedule);
+            $(document).on('click', '.aips-restore-structure', this.restoreStructure);
+            $(document).on('click', '.aips-permanent-delete-structure', this.permanentDeleteStructure);
+            $(document).on('click', '.aips-restore-prompt-section', this.restoreSection);
+            $(document).on('click', '.aips-permanent-delete-prompt-section', this.permanentDeleteSection);
         },
 
         /**
@@ -567,6 +580,7 @@
                         $row.fadeOut(function() {
                             $(this).remove();
                         });
+                        AIPS.Utilities.showToast(response.data.message, 'success');
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                         // Reset button state on error
@@ -2476,8 +2490,257 @@
                     $.post(aipsAjax.ajaxUrl, {action: 'aips_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
                         if (response.success) {
                             $row.fadeOut(function(){ $(this).remove(); });
+                            AIPS.Utilities.showToast(response.data.message, 'success');
                         } else {
                             AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.deleteSectionFailed, 'error');
+                        }
+                    }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                }}
+            ]);
+        },
+
+        /**
+         * Toggle the visibility of a trash panel when the trash button is clicked.
+         *
+         * @param {Event} e - Click event from an `.aips-toggle-trash-btn` element.
+         */
+        toggleTrashPanel: function(e) {
+            e.preventDefault();
+            var targetId = $(this).data('target');
+            var $panel = $('#' + targetId);
+            if ($panel.length) {
+                $panel.slideToggle(200);
+            } else {
+                // For panels in a separate wrap element (authors, topics)
+                var $wrap = $('[id="' + targetId + '"]');
+                $wrap.slideToggle(200);
+            }
+        },
+
+        /**
+         * Restore a trashed template.
+         *
+         * @param {Event} e - Click event from an `.aips-restore-template` element.
+         */
+        restoreTemplate: function(e) {
+            e.preventDefault();
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            $.post(aipsAjax.ajaxUrl, {action: 'aips_restore_template', nonce: aipsAjax.nonce, template_id: id}, function(response){
+                if (response.success) {
+                    $row.fadeOut(function(){ $(this).remove(); });
+                    AIPS.Utilities.showToast(response.data.message, 'success');
+                    setTimeout(function(){ location.reload(); }, 1200);
+                } else {
+                    AIPS.Utilities.showToast(response.data.message, 'error');
+                }
+            }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+        },
+
+        /**
+         * Permanently delete a trashed template.
+         *
+         * @param {Event} e - Click event from an `.aips-permanent-delete-template` element.
+         */
+        permanentDeleteTemplate: function(e) {
+            e.preventDefault();
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteTemplateConfirm, 'Confirm', [
+                { label: aipsAdminL10n.confirmCancelButton, className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.post(aipsAjax.ajaxUrl, {action: 'aips_permanent_delete_template', nonce: aipsAjax.nonce, template_id: id}, function(response){
+                        if (response.success) {
+                            $row.fadeOut(function(){ $(this).remove(); });
+                            AIPS.Utilities.showToast(response.data.message, 'success');
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message, 'error');
+                        }
+                    }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                }}
+            ]);
+        },
+
+        /**
+         * Restore a trashed voice.
+         *
+         * @param {Event} e - Click event from an `.aips-restore-voice` element.
+         */
+        restoreVoice: function(e) {
+            e.preventDefault();
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            $.post(aipsAjax.ajaxUrl, {action: 'aips_restore_voice', nonce: aipsAjax.nonce, voice_id: id}, function(response){
+                if (response.success) {
+                    $row.fadeOut(function(){ $(this).remove(); });
+                    AIPS.Utilities.showToast(response.data.message, 'success');
+                    setTimeout(function(){ location.reload(); }, 1200);
+                } else {
+                    AIPS.Utilities.showToast(response.data.message, 'error');
+                }
+            }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+        },
+
+        /**
+         * Permanently delete a trashed voice.
+         *
+         * @param {Event} e - Click event from an `.aips-permanent-delete-voice` element.
+         */
+        permanentDeleteVoice: function(e) {
+            e.preventDefault();
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteVoiceConfirm, 'Confirm', [
+                { label: aipsAdminL10n.confirmCancelButton, className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.post(aipsAjax.ajaxUrl, {action: 'aips_permanent_delete_voice', nonce: aipsAjax.nonce, voice_id: id}, function(response){
+                        if (response.success) {
+                            $row.fadeOut(function(){ $(this).remove(); });
+                            AIPS.Utilities.showToast(response.data.message, 'success');
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message, 'error');
+                        }
+                    }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                }}
+            ]);
+        },
+
+        /**
+         * Restore a trashed schedule.
+         *
+         * @param {Event} e - Click event from an `.aips-restore-schedule` element.
+         */
+        restoreSchedule: function(e) {
+            e.preventDefault();
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            $.post(aipsAjax.ajaxUrl, {action: 'aips_restore_schedule', nonce: aipsAjax.nonce, schedule_id: id}, function(response){
+                if (response.success) {
+                    $row.fadeOut(function(){ $(this).remove(); });
+                    AIPS.Utilities.showToast(response.data.message, 'success');
+                    setTimeout(function(){ location.reload(); }, 1200);
+                } else {
+                    AIPS.Utilities.showToast(response.data.message, 'error');
+                }
+            }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+        },
+
+        /**
+         * Permanently delete a trashed schedule.
+         *
+         * @param {Event} e - Click event from an `.aips-permanent-delete-schedule` element.
+         */
+        permanentDeleteSchedule: function(e) {
+            e.preventDefault();
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteScheduleConfirm, 'Confirm', [
+                { label: aipsAdminL10n.confirmCancelButton, className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.post(aipsAjax.ajaxUrl, {action: 'aips_permanent_delete_schedule', nonce: aipsAjax.nonce, schedule_id: id}, function(response){
+                        if (response.success) {
+                            $row.fadeOut(function(){ $(this).remove(); });
+                            AIPS.Utilities.showToast(response.data.message, 'success');
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message, 'error');
+                        }
+                    }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                }}
+            ]);
+        },
+
+        /**
+         * Restore a trashed article structure.
+         *
+         * @param {Event} e - Click event from an `.aips-restore-structure` element.
+         */
+        restoreStructure: function(e) {
+            e.preventDefault();
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            $.post(aipsAjax.ajaxUrl, {action: 'aips_restore_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                if (response.success) {
+                    $row.fadeOut(function(){ $(this).remove(); });
+                    AIPS.Utilities.showToast(response.data.message, 'success');
+                    setTimeout(function(){ location.reload(); }, 1200);
+                } else {
+                    AIPS.Utilities.showToast(response.data.message, 'error');
+                }
+            }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+        },
+
+        /**
+         * Permanently delete a trashed article structure.
+         *
+         * @param {Event} e - Click event from an `.aips-permanent-delete-structure` element.
+         */
+        permanentDeleteStructure: function(e) {
+            e.preventDefault();
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteStructureConfirm, 'Confirm', [
+                { label: aipsAdminL10n.confirmCancelButton, className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.post(aipsAjax.ajaxUrl, {action: 'aips_permanent_delete_structure', nonce: aipsAjax.nonce, structure_id: id}, function(response){
+                        if (response.success) {
+                            $row.fadeOut(function(){ $(this).remove(); });
+                            AIPS.Utilities.showToast(response.data.message, 'success');
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message, 'error');
+                        }
+                    }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+                }}
+            ]);
+        },
+
+        /**
+         * Restore a trashed prompt section.
+         *
+         * @param {Event} e - Click event from an `.aips-restore-prompt-section` element.
+         */
+        restoreSection: function(e) {
+            e.preventDefault();
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            $.post(aipsAjax.ajaxUrl, {action: 'aips_restore_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                if (response.success) {
+                    $row.fadeOut(function(){ $(this).remove(); });
+                    AIPS.Utilities.showToast(response.data.message, 'success');
+                    setTimeout(function(){ location.reload(); }, 1200);
+                } else {
+                    AIPS.Utilities.showToast(response.data.message, 'error');
+                }
+            }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
+        },
+
+        /**
+         * Permanently delete a trashed prompt section.
+         *
+         * @param {Event} e - Click event from an `.aips-permanent-delete-prompt-section` element.
+         */
+        permanentDeleteSection: function(e) {
+            e.preventDefault();
+            var $el = $(this);
+            var id = $el.data('id');
+            var $row = $el.closest('tr');
+            AIPS.Utilities.confirm(aipsAdminL10n.deleteSectionConfirm, 'Confirm', [
+                { label: aipsAdminL10n.confirmCancelButton, className: 'aips-btn aips-btn-primary' },
+                { label: aipsAdminL10n.confirmDeleteButton, className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $.post(aipsAjax.ajaxUrl, {action: 'aips_permanent_delete_prompt_section', nonce: aipsAjax.nonce, section_id: id}, function(response){
+                        if (response.success) {
+                            $row.fadeOut(function(){ $(this).remove(); });
+                            AIPS.Utilities.showToast(response.data.message, 'success');
+                        } else {
+                            AIPS.Utilities.showToast(response.data.message, 'error');
                         }
                     }).fail(function(){ AIPS.Utilities.showToast(aipsAdminL10n.errorOccurred, 'error'); });
                 }}

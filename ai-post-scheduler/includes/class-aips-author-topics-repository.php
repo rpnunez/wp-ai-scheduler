@@ -50,13 +50,13 @@ class AIPS_Author_Topics_Repository {
 	public function get_by_author($author_id, $status = null) {
 		if ($status) {
 			return $this->wpdb->get_results($this->wpdb->prepare(
-				"SELECT * FROM {$this->table_name} WHERE author_id = %d AND status = %s ORDER BY generated_at DESC",
+				"SELECT * FROM {$this->table_name} WHERE author_id = %d AND status = %s AND deleted_at IS NULL ORDER BY generated_at DESC",
 				$author_id,
 				$status
 			));
 		}
 		return $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE author_id = %d ORDER BY generated_at DESC",
+			"SELECT * FROM {$this->table_name} WHERE author_id = %d AND deleted_at IS NULL ORDER BY generated_at DESC",
 			$author_id
 		));
 	}
@@ -216,7 +216,7 @@ class AIPS_Author_Topics_Repository {
 	}
 	
 	/**
-	 * Delete a topic.
+	 * Delete a topic (permanent delete).
 	 *
 	 * @param int $id Topic ID.
 	 * @return int|false The number of rows deleted, or false on error.
@@ -227,6 +227,51 @@ class AIPS_Author_Topics_Repository {
 			array('id' => $id),
 			array('%d')
 		);
+	}
+
+	/**
+	 * Soft-delete a topic by setting deleted_at.
+	 *
+	 * @param int $id Topic ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function soft_delete($id) {
+		return $this->wpdb->update(
+			$this->table_name,
+			array('deleted_at' => current_time('mysql')),
+			array('id' => $id),
+			array('%s'),
+			array('%d')
+		) !== false;
+	}
+
+	/**
+	 * Restore a soft-deleted topic.
+	 *
+	 * @param int $id Topic ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function restore($id) {
+		return $this->wpdb->update(
+			$this->table_name,
+			array('deleted_at' => null),
+			array('id' => $id),
+			array(null),
+			array('%d')
+		) !== false;
+	}
+
+	/**
+	 * Get trashed topics for an author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return array Array of trashed topic objects.
+	 */
+	public function get_trashed_by_author($author_id) {
+		return $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT * FROM {$this->table_name} WHERE author_id = %d AND deleted_at IS NOT NULL ORDER BY deleted_at DESC",
+			$author_id
+		));
 	}
 	
 	/**
@@ -255,6 +300,7 @@ class AIPS_Author_Topics_Repository {
 			"SELECT * FROM {$this->table_name} 
 			WHERE author_id = %d 
 			AND status = 'approved' 
+			AND deleted_at IS NULL
 			ORDER BY reviewed_at ASC 
 			LIMIT %d",
 			$author_id,
@@ -313,6 +359,7 @@ class AIPS_Author_Topics_Repository {
 			"SELECT status, COUNT(*) as count 
 			FROM {$this->table_name} 
 			WHERE author_id = %d 
+			AND deleted_at IS NULL
 			GROUP BY status",
 			$author_id
 		), ARRAY_A);
@@ -339,6 +386,7 @@ class AIPS_Author_Topics_Repository {
 		$results = $this->wpdb->get_results(
 			"SELECT status, COUNT(*) as count
 			FROM {$this->table_name}
+			WHERE deleted_at IS NULL
 			GROUP BY status",
 			ARRAY_A
 		);
@@ -370,11 +418,15 @@ class AIPS_Author_Topics_Repository {
 				FROM {$this->table_name} t
 				INNER JOIN {$authors_table} a ON t.author_id = a.id
 				WHERE t.status = %s 
+				AND t.deleted_at IS NULL
+				AND a.deleted_at IS NULL
 				ORDER BY t.score DESC, t.reviewed_at ASC",
 				'approved'
 			)
 		);
 	}
+
+
+
+
 }
-
-

@@ -47,7 +47,7 @@ class AIPS_Template_Repository {
      * @return array Array of template objects.
      */
     public function get_all($active_only = false) {
-        $where = $active_only ? "WHERE is_active = 1" : "";
+        $where = $active_only ? "WHERE is_active = 1 AND deleted_at IS NULL" : "WHERE deleted_at IS NULL";
         return $this->wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
     }
     
@@ -245,13 +245,56 @@ class AIPS_Template_Repository {
     }
     
     /**
-     * Delete a template by ID.
+     * Delete a template by ID (permanent delete).
      *
      * @param int $id Template ID.
      * @return bool True on success, false on failure.
      */
     public function delete($id) {
         return $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
+    }
+
+    /**
+     * Soft-delete a template by setting deleted_at.
+     *
+     * @param int $id Template ID.
+     * @return bool True on success, false on failure.
+     */
+    public function soft_delete($id) {
+        return $this->wpdb->update(
+            $this->table_name,
+            array('deleted_at' => current_time('mysql'), 'is_active' => 0),
+            array('id' => $id),
+            array('%s', '%d'),
+            array('%d')
+        ) !== false;
+    }
+
+    /**
+     * Restore a soft-deleted template.
+     *
+     * @param int $id Template ID.
+     * @return bool True on success, false on failure.
+     */
+    public function restore($id) {
+        return $this->wpdb->update(
+            $this->table_name,
+            array('deleted_at' => null),
+            array('id' => $id),
+            array(null),
+            array('%d')
+        ) !== false;
+    }
+
+    /**
+     * Get all trashed templates.
+     *
+     * @return array Array of trashed template objects.
+     */
+    public function get_trashed() {
+        return $this->wpdb->get_results(
+            "SELECT * FROM {$this->table_name} WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
+        );
     }
     
     /**
@@ -277,13 +320,15 @@ class AIPS_Template_Repository {
         $results = $this->wpdb->get_row("
             SELECT
                 COUNT(*) as total,
-                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
+                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) as trashed
             FROM {$this->table_name}
         ");
         
         return array(
-            'total' => (int) $results->total,
+            'total' => (int) $results->total - (int) $results->trashed,
             'active' => (int) $results->active,
+            'trashed' => (int) $results->trashed,
         );
     }
     

@@ -53,7 +53,7 @@ class AIPS_Schedule_Repository {
      * @return array Array of schedule objects with template names.
      */
     public function get_all($active_only = false) {
-        $where = $active_only ? "WHERE s.is_active = 1" : "";
+        $where = $active_only ? "WHERE s.is_active = 1 AND s.deleted_at IS NULL" : "WHERE s.deleted_at IS NULL";
         
         return $this->wpdb->get_results("
             SELECT s.*, t.name as template_name 
@@ -97,8 +97,10 @@ class AIPS_Schedule_Repository {
             FROM {$this->schedule_table} s 
             INNER JOIN {$this->templates_table} t ON s.template_id = t.id
             WHERE s.is_active = 1 
+            AND s.deleted_at IS NULL
             AND s.next_run <= %s
             AND t.is_active = 1
+            AND t.deleted_at IS NULL
             ORDER BY s.next_run ASC
             LIMIT %d
         ", $current_time, $limit));
@@ -116,6 +118,7 @@ class AIPS_Schedule_Repository {
             FROM {$this->schedule_table} s
             LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
             WHERE s.is_active = 1
+            AND s.deleted_at IS NULL
             ORDER BY s.next_run ASC
             LIMIT %d
         ", $limit));
@@ -261,7 +264,7 @@ class AIPS_Schedule_Repository {
     }
     
     /**
-     * Delete a schedule by ID.
+     * Delete a schedule by ID (permanent delete).
      *
      * @param int $id Schedule ID.
      * @return bool True on success, false on failure.
@@ -274,6 +277,65 @@ class AIPS_Schedule_Repository {
         }
 
         return $result !== false;
+    }
+
+    /**
+     * Soft-delete a schedule by setting deleted_at.
+     *
+     * @param int $id Schedule ID.
+     * @return bool True on success, false on failure.
+     */
+    public function soft_delete($id) {
+        $result = $this->wpdb->update(
+            $this->schedule_table,
+            array('deleted_at' => current_time('mysql'), 'is_active' => 0),
+            array('id' => $id),
+            array('%s', '%d'),
+            array('%d')
+        );
+
+        if ($result !== false) {
+            delete_transient('aips_pending_schedule_stats');
+        }
+
+        return $result !== false;
+    }
+
+    /**
+     * Restore a soft-deleted schedule.
+     *
+     * @param int $id Schedule ID.
+     * @return bool True on success, false on failure.
+     */
+    public function restore($id) {
+        $result = $this->wpdb->update(
+            $this->schedule_table,
+            array('deleted_at' => null),
+            array('id' => $id),
+            array(null),
+            array('%d')
+        );
+
+        if ($result !== false) {
+            delete_transient('aips_pending_schedule_stats');
+        }
+
+        return $result !== false;
+    }
+
+    /**
+     * Get all trashed schedules.
+     *
+     * @return array Array of trashed schedule objects with template names.
+     */
+    public function get_trashed() {
+        return $this->wpdb->get_results("
+            SELECT s.*, t.name as template_name 
+            FROM {$this->schedule_table} s 
+            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id 
+            WHERE s.deleted_at IS NOT NULL
+            ORDER BY s.deleted_at DESC
+        ");
     }
     
     /**
@@ -482,42 +544,30 @@ class AIPS_Schedule_Repository {
      */
     public function get_active_schedules() {
         return $this->wpdb->get_results(
-            "SELECT template_id, next_run, frequency FROM {$this->schedule_table} WHERE is_active = 1 ORDER BY template_id"
+            "SELECT template_id, next_run, frequency FROM {$this->schedule_table} WHERE is_active = 1 AND deleted_at IS NULL ORDER BY template_id"
         );
     }
 
-    /**
-     * Get active schedules for a specific template.
-     *
-     * @param int $template_id Template ID.
-     * @return array Array of active schedule objects for this template.
-     */
     public function get_active_schedules_by_template($template_id) {
         return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT * FROM {$this->schedule_table} WHERE template_id = %d AND is_active = 1",
+            "SELECT * FROM {$this->schedule_table} WHERE template_id = %d AND is_active = 1 AND deleted_at IS NULL",
             absint($template_id)
         ));
     }
 
-    /**
-     * Count schedules by status.
-     *
-     * @return array {
-     *     @type int $total  Total number of schedules.
-     *     @type int $active Number of active schedules.
-     * }
-     */
     public function count_by_status() {
         $results = $this->wpdb->get_row("
             SELECT
                 COUNT(*) as total,
-                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
+                SUM(CASE WHEN is_active = 1 AND deleted_at IS NULL THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) as trashed
             FROM {$this->schedule_table}
         ");
         
         return array(
-            'total' => (int) $results->total,
+            'total' => (int) $results->total - (int) $results->trashed,
             'active' => (int) $results->active,
+            'trashed' => (int) $results->trashed,
         );
     }
 }

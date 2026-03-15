@@ -47,7 +47,7 @@ class AIPS_Article_Structure_Repository {
 	 * @return array Array of structure objects.
 	 */
 	public function get_all($active_only = false) {
-		$where = $active_only ? "WHERE is_active = 1" : "";
+		$where = $active_only ? "WHERE is_active = 1 AND deleted_at IS NULL" : "WHERE deleted_at IS NULL";
 		return $this->wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
 	}
 	
@@ -71,7 +71,7 @@ class AIPS_Article_Structure_Repository {
 	 */
 	public function get_default() {
 		return $this->wpdb->get_row(
-			"SELECT * FROM {$this->table_name} WHERE is_default = 1 AND is_active = 1 ORDER BY id ASC LIMIT 1"
+			"SELECT * FROM {$this->table_name} WHERE is_default = 1 AND is_active = 1 AND deleted_at IS NULL ORDER BY id ASC LIMIT 1"
 		);
 	}
 	
@@ -178,13 +178,56 @@ class AIPS_Article_Structure_Repository {
 	}
 	
 	/**
-	 * Delete an article structure by ID.
+	 * Delete an article structure by ID (permanent delete).
 	 *
 	 * @param int $id Structure ID.
 	 * @return bool True on success, false on failure.
 	 */
 	public function delete($id) {
 		return $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
+	}
+
+	/**
+	 * Soft-delete an article structure by setting deleted_at.
+	 *
+	 * @param int $id Structure ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function soft_delete($id) {
+		return $this->wpdb->update(
+			$this->table_name,
+			array('deleted_at' => current_time('mysql'), 'is_active' => 0),
+			array('id' => $id),
+			array('%s', '%d'),
+			array('%d')
+		) !== false;
+	}
+
+	/**
+	 * Restore a soft-deleted article structure.
+	 *
+	 * @param int $id Structure ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function restore($id) {
+		return $this->wpdb->update(
+			$this->table_name,
+			array('deleted_at' => null),
+			array('id' => $id),
+			array(null),
+			array('%d')
+		) !== false;
+	}
+
+	/**
+	 * Get all trashed article structures.
+	 *
+	 * @return array Array of trashed structure objects.
+	 */
+	public function get_trashed() {
+		return $this->wpdb->get_results(
+			"SELECT * FROM {$this->table_name} WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
+		);
 	}
 	
 	/**
@@ -224,13 +267,15 @@ class AIPS_Article_Structure_Repository {
 		$results = $this->wpdb->get_row("
 			SELECT
 				COUNT(*) as total,
-				SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
+				SUM(CASE WHEN is_active = 1 AND deleted_at IS NULL THEN 1 ELSE 0 END) as active,
+				SUM(CASE WHEN deleted_at IS NOT NULL THEN 1 ELSE 0 END) as trashed
 			FROM {$this->table_name}
 		");
 		
 		return array(
-			'total' => (int) $results->total,
+			'total' => (int) $results->total - (int) $results->trashed,
 			'active' => (int) $results->active,
+			'trashed' => (int) $results->trashed,
 		);
 	}
 	

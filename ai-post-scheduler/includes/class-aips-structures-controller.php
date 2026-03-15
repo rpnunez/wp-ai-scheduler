@@ -14,6 +14,8 @@ class AIPS_Structures_Controller {
         add_action('wp_ajax_aips_get_structure', array($this, 'ajax_get_structure'));
         add_action('wp_ajax_aips_save_structure', array($this, 'ajax_save_structure'));
         add_action('wp_ajax_aips_delete_structure', array($this, 'ajax_delete_structure'));
+        add_action('wp_ajax_aips_restore_structure', array($this, 'ajax_restore_structure'));
+        add_action('wp_ajax_aips_permanent_delete_structure', array($this, 'ajax_permanent_delete_structure'));
         add_action('wp_ajax_aips_set_structure_default', array($this, 'ajax_set_structure_default'));
         add_action('wp_ajax_aips_toggle_structure_active', array($this, 'ajax_toggle_structure_active'));
     }
@@ -97,13 +99,51 @@ class AIPS_Structures_Controller {
             wp_send_json_error(array('message' => __('Invalid structure ID.', 'ai-post-scheduler')));
         }
 
+        if ($this->repo->soft_delete($id)) {
+            wp_send_json_success(array('message' => __('Structure moved to trash.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to move structure to trash.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_restore_structure() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['structure_id']) ? absint($_POST['structure_id']) : 0;
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid structure ID.', 'ai-post-scheduler')));
+        }
+
+        if ($this->repo->restore($id)) {
+            wp_send_json_success(array('message' => __('Structure restored successfully.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to restore structure.', 'ai-post-scheduler')));
+        }
+    }
+
+    public function ajax_permanent_delete_structure() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['structure_id']) ? absint($_POST['structure_id']) : 0;
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid structure ID.', 'ai-post-scheduler')));
+        }
+
         $manager = new AIPS_Article_Structure_Manager();
         $result = $manager->delete_structure($id);
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));
         }
 
-        wp_send_json_success(array('message' => __('Structure deleted.', 'ai-post-scheduler')));
+        wp_send_json_success(array('message' => __('Structure permanently deleted.', 'ai-post-scheduler')));
     }
 
     public function ajax_set_structure_default() {

@@ -55,6 +55,7 @@ if (!$author) {
 $topics_repository  = new AIPS_Author_Topics_Repository();
 $logs_repository    = new AIPS_Author_Topic_Logs_Repository();
 $status_counts      = $topics_repository->get_status_counts($author_id);
+$trashed_topics     = $topics_repository->get_trashed_by_author($author_id);
 $total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
 $posts_count        = $logs_repository->count_generated_posts_by_author($author_id);
 ?>
@@ -141,6 +142,12 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<button class="aips-tab-link" data-tab="feedback">
 					<?php esc_html_e('Feedback', 'ai-post-scheduler'); ?>
 				</button>
+				<?php if (!empty($trashed_topics)): ?>
+				<button class="aips-tab-link" data-tab="trash">
+					<?php esc_html_e('Trash', 'ai-post-scheduler'); ?>
+					<span class="aips-tab-count"><?php echo esc_html(count($trashed_topics)); ?></span>
+				</button>
+				<?php endif; ?>
 			</div>
 
 			<!-- Filter Bar -->
@@ -205,6 +212,55 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		</div>
 	</div>
 </div>
+
+<?php if (!empty($trashed_topics)): ?>
+<!-- Trash Panel (hidden by default, shown when trash tab is active) -->
+<div class="wrap aips-wrap" id="aips-trash-panel" style="display: none; margin-top: -20px;">
+	<div class="aips-page-container">
+		<div class="aips-content-panel">
+			<div class="aips-panel-body no-padding">
+				<table class="aips-table aips-topics-trash-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e('Topic', 'ai-post-scheduler'); ?></th>
+							<th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+							<th><?php esc_html_e('Trashed', 'ai-post-scheduler'); ?></th>
+							<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ($trashed_topics as $topic): ?>
+						<tr data-topic-id="<?php echo esc_attr($topic->id); ?>">
+							<td class="column-name">
+								<div class="cell-primary"><?php echo esc_html($topic->topic_title); ?></div>
+							</td>
+							<td>
+								<span class="aips-badge aips-badge-neutral"><?php echo esc_html(ucfirst($topic->status)); ?></span>
+							</td>
+							<td class="cell-meta">
+								<?php echo esc_html(wp_date(get_option('date_format') . ' ' . get_option('time_format'), strtotime($topic->deleted_at))); ?>
+							</td>
+							<td class="column-actions">
+								<div class="aips-action-buttons">
+									<button class="aips-btn aips-btn-sm aips-btn-secondary aips-restore-topic" data-id="<?php echo esc_attr($topic->id); ?>">
+										<span class="dashicons dashicons-undo"></span>
+										<?php esc_html_e('Restore', 'ai-post-scheduler'); ?>
+									</button>
+									<button class="aips-btn aips-btn-sm aips-btn-danger aips-permanent-delete-topic" data-id="<?php echo esc_attr($topic->id); ?>">
+										<span class="dashicons dashicons-trash"></span>
+										<?php esc_html_e('Delete Permanently', 'ai-post-scheduler'); ?>
+									</button>
+								</div>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+<?php endif; ?>
 
 <!-- Topic Logs Modal -->
 <div id="aips-topic-logs-modal" class="aips-modal" style="display: none;">

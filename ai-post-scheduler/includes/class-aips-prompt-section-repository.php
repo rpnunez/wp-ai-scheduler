@@ -47,7 +47,7 @@ class AIPS_Prompt_Section_Repository {
 	 * @return array Array of section objects.
 	 */
 	public function get_all($active_only = false) {
-		$where = $active_only ? "WHERE is_active = 1" : "";
+		$where = $active_only ? "WHERE is_active = 1 AND deleted_at IS NULL" : "WHERE deleted_at IS NULL";
 		return $this->wpdb->get_results("SELECT * FROM {$this->table_name} $where ORDER BY name ASC");
 	}
 	
@@ -183,13 +183,56 @@ class AIPS_Prompt_Section_Repository {
 	}
 	
 	/**
-	 * Delete a prompt section by ID.
+	 * Delete a prompt section by ID (permanent delete).
 	 *
 	 * @param int $id Section ID.
 	 * @return bool True on success, false on failure.
 	 */
 	public function delete($id) {
 		return $this->wpdb->delete($this->table_name, array('id' => $id), array('%d')) !== false;
+	}
+
+	/**
+	 * Soft-delete a prompt section by setting deleted_at.
+	 *
+	 * @param int $id Section ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function soft_delete($id) {
+		return $this->wpdb->update(
+			$this->table_name,
+			array('deleted_at' => current_time('mysql'), 'is_active' => 0),
+			array('id' => $id),
+			array('%s', '%d'),
+			array('%d')
+		) !== false;
+	}
+
+	/**
+	 * Restore a soft-deleted prompt section.
+	 *
+	 * @param int $id Section ID.
+	 * @return bool True on success, false on failure.
+	 */
+	public function restore($id) {
+		return $this->wpdb->update(
+			$this->table_name,
+			array('deleted_at' => null),
+			array('id' => $id),
+			array(null),
+			array('%d')
+		) !== false;
+	}
+
+	/**
+	 * Get all trashed prompt sections.
+	 *
+	 * @return array Array of trashed section objects.
+	 */
+	public function get_trashed() {
+		return $this->wpdb->get_results(
+			"SELECT * FROM {$this->table_name} WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC"
+		);
 	}
 	
 	/**

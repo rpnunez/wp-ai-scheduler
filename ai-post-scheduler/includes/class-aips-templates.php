@@ -213,6 +213,7 @@ class AIPS_Templates {
     
     public function render_page() {
         $templates = $this->get_all();
+        $trashed_templates = $this->repository->get_trashed();
         $categories = get_categories(array('hide_empty' => false));
         $users = get_users(array('role__in' => array('administrator', 'editor', 'author')));
 
