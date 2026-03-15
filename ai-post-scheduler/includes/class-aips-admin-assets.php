@@ -437,6 +437,56 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+
+            wp_enqueue_script(
+                'aips-admin-history',
+                AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
+                array('jquery', 'aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-history', 'aipsHistoryL10n', array(
+                'loading'              => __('Loading…', 'ai-post-scheduler'),
+                'reloading'            => __('Reloading…', 'ai-post-scheduler'),
+                'loadingLogs'          => __('Loading logs…', 'ai-post-scheduler'),
+                'historyDetailsTitle'  => __('History Details', 'ai-post-scheduler'),
+                'historyContainerHeader' => __('History Container for ID: %d', 'ai-post-scheduler'),
+                'errorLoading'         => __('Error loading logs.', 'ai-post-scheduler'),
+                'errorReloading'       => __('Failed to reload history.', 'ai-post-scheduler'),
+                'logsModalTitle'       => __('Logs — %s', 'ai-post-scheduler'),
+                'logsHeading'          => __('Log Entries', 'ai-post-scheduler'),
+                'noLogsFound'          => __('No log entries found for this container.', 'ai-post-scheduler'),
+                'noResultsFound'       => __('No history containers match your current filters.', 'ai-post-scheduler'),
+                'labelContainerId'     => __('Container ID', 'ai-post-scheduler'),
+                'labelTitle'           => __('Title', 'ai-post-scheduler'),
+                'labelTemplate'        => __('Template', 'ai-post-scheduler'),
+                'labelStatus'          => __('Status', 'ai-post-scheduler'),
+                'labelCreated'         => __('Created', 'ai-post-scheduler'),
+                'labelCompleted'       => __('Completed', 'ai-post-scheduler'),
+                'labelError'           => __('Error', 'ai-post-scheduler'),
+                'labelPostId'          => __('Post ID', 'ai-post-scheduler'),
+                'colTimestamp'         => __('Timestamp', 'ai-post-scheduler'),
+                'colType'              => __('Type', 'ai-post-scheduler'),
+                'colLogType'           => __('Log Type', 'ai-post-scheduler'),
+                'colDetails'           => __('Details', 'ai-post-scheduler'),
+                'showDetails'          => __('Show details', 'ai-post-scheduler'),
+                'hideDetails'          => __('Hide details', 'ai-post-scheduler'),
+                'confirmDelete'        => __('Delete this history container? This cannot be undone.', 'ai-post-scheduler'),
+                'confirmBulkDelete'    => __('Delete the selected history containers? This cannot be undone.', 'ai-post-scheduler'),
+                'confirmClearAll'      => __('Clear all history? This cannot be undone.', 'ai-post-scheduler'),
+                'confirmClearStatus'   => __('Clear all history entries with this status? This cannot be undone.', 'ai-post-scheduler'),
+                'confirmDeleteLabel'   => __('Yes, delete', 'ai-post-scheduler'),
+                'confirmClearLabel'    => __('Yes, clear', 'ai-post-scheduler'),
+                'cancelLabel'          => __('No, cancel', 'ai-post-scheduler'),
+                'deletedSuccess'       => __('Items deleted successfully.', 'ai-post-scheduler'),
+                'clearedSuccess'       => __('History cleared successfully.', 'ai-post-scheduler'),
+                'errorDeleting'        => __('Error deleting items.', 'ai-post-scheduler'),
+                'errorClearing'        => __('Error clearing history.', 'ai-post-scheduler'),
+                'deleting'             => __('Deleting…', 'ai-post-scheduler'),
+                'retrying'             => __('Retrying…', 'ai-post-scheduler'),
+                'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+            ));
         }
 
         if (strpos($hook, 'aips-dev-tools') !== false) {
