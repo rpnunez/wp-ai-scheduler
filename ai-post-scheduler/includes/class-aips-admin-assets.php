@@ -277,7 +277,6 @@ class AIPS_Admin_Assets {
               'authorId'        => $page_author_id,
               'deepLinkAuthorId' => $deep_link_author_id,
             ));
-          }
         
 			// Embeddings script (queues background embedding jobs from author pages)
 			wp_enqueue_script(

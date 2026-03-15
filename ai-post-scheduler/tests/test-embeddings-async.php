@@ -18,15 +18,24 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 	/** @var int Fake author ID used across tests */
 	private $author_id = 42;
 
+	/** @var array Original $_REQUEST saved before each test */
+	private $original_request;
+
+	/** @var array Original $_POST saved before each test */
+	private $original_post;
+
 	public function setUp(): void {
 		parent::setUp();
+		$this->original_request = $_REQUEST;
+		$this->original_post    = $_POST;
 		$_REQUEST['nonce'] = wp_create_nonce('aips_ajax_nonce');
 		delete_transient('aips_embeddings_progress_' . $this->author_id);
 	}
 
 	public function tearDown(): void {
 		delete_transient('aips_embeddings_progress_' . $this->author_id);
-		unset($_REQUEST['nonce'], $_POST);
+		$_REQUEST = $this->original_request;
+		$_POST    = $this->original_post;
 		parent::tearDown();
 	}
 
@@ -75,7 +84,8 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 	 * A topic that already has an embedding stored in metadata is skipped.
 	 */
 	public function test_service_batch_skips_existing_embedding() {
-		$topic        = $this->make_topic(10, array('embedding' => array(0.1, 0.2)));
+		// Pass the raw embedding vector — make_topic() wraps it under 'embedding' key.
+		$topic        = $this->make_topic(10, array(0.1, 0.2));
 		$mock_repo    = $this->make_mock_repo(array($topic));
 		$mock_embeddings = $this->createMock(AIPS_Embeddings_Service::class);
 		// generate_embedding must NOT be called.
@@ -179,7 +189,7 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 	 * When the batch is done the completion action fires and the transient is deleted.
 	 */
 	public function test_cron_fires_completion_action_and_deletes_transient() {
-		$transient_key = 'aips_embeddings_progress_' . $this->author_id;
+		$transient_key = AIPS_Embeddings_Cron::TRANSIENT_PREFIX . $this->author_id;
 		set_transient($transient_key, 5, HOUR_IN_SECONDS);
 
 		$completed_author = null;
@@ -187,12 +197,7 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 			$completed_author = $id;
 		});
 
-		// No topics in repo → done immediately.
-		$mock_repo       = $this->make_mock_repo(array());
-		$mock_embeddings = $this->createMock(AIPS_Embeddings_Service::class);
-		$mock_logger     = $this->createMock(AIPS_Logger::class);
-
-		$this->run_cron_with_mocked_service(array(
+		$mock_service = $this->make_mock_expansion_service(array(
 			'success'           => 0,
 			'failed'            => 0,
 			'skipped'           => 0,
@@ -201,17 +206,24 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 			'done'              => true,
 		));
 
-		$this->assertEquals($this->author_id, $completed_author);
-		$this->assertFalse(get_transient($transient_key));
+		$cron = new AIPS_Embeddings_Cron($mock_service);
+		$cron->process_author_embeddings(array(
+			'author_id'         => $this->author_id,
+			'batch_size'        => 20,
+			'last_processed_id' => 0,
+		));
+
+		$this->assertEquals($this->author_id, $completed_author, 'Completion action must fire with the correct author ID.');
+		$this->assertFalse(get_transient($transient_key), 'Transient must be deleted when processing is complete.');
 	}
 
 	/**
 	 * When work remains the transient stores the cursor and is not deleted.
 	 */
 	public function test_cron_stores_progress_transient_when_not_done() {
-		$transient_key = 'aips_embeddings_progress_' . $this->author_id;
+		$transient_key = AIPS_Embeddings_Cron::TRANSIENT_PREFIX . $this->author_id;
 
-		$this->run_cron_with_mocked_service(array(
+		$mock_service = $this->make_mock_expansion_service(array(
 			'success'           => 2,
 			'failed'            => 0,
 			'skipped'           => 0,
@@ -220,7 +232,14 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 			'done'              => false,
 		));
 
-		$this->assertEquals(42, get_transient($transient_key));
+		$cron = new AIPS_Embeddings_Cron($mock_service);
+		$cron->process_author_embeddings(array(
+			'author_id'         => $this->author_id,
+			'batch_size'        => 20,
+			'last_processed_id' => 0,
+		));
+
+		$this->assertEquals(42, get_transient($transient_key), 'Transient must store last_processed_id when batch is not done.');
 	}
 
 	/**
@@ -235,6 +254,42 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 		$cron->process_author_embeddings(array('author_id' => 0));
 
 		$this->assertTrue(true); // Reached here without exception.
+	}
+
+	/**
+	 * Batch service is called with the correct author_id, batch_size, and last_processed_id.
+	 */
+	public function test_cron_passes_correct_args_to_service() {
+		$received_args = null;
+
+		$mock_service = $this->getMockBuilder(AIPS_Topic_Expansion_Service::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('process_approved_embeddings_batch'))
+			->getMock();
+
+		$mock_service
+			->expects($this->once())
+			->method('process_approved_embeddings_batch')
+			->willReturnCallback(function($author_id, $batch_size, $last_processed_id) use (&$received_args) {
+				$received_args = array($author_id, $batch_size, $last_processed_id);
+				return array(
+					'success'           => 0,
+					'failed'            => 0,
+					'skipped'           => 0,
+					'processed_count'   => 0,
+					'last_processed_id' => 99,
+					'done'              => true,
+				);
+			});
+
+		$cron = new AIPS_Embeddings_Cron($mock_service);
+		$cron->process_author_embeddings(array(
+			'author_id'         => $this->author_id,
+			'batch_size'        => 50,
+			'last_processed_id' => 10,
+		));
+
+		$this->assertEquals(array($this->author_id, 50, 10), $received_args);
 	}
 
 	// -------------------------------------------------------------------------
@@ -317,29 +372,21 @@ class AIPS_Embeddings_Async_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Run the cron worker with a mocked expansion service that returns $batch_result.
+	 * Build a mock AIPS_Topic_Expansion_Service whose process_approved_embeddings_batch()
+	 * returns the provided $batch_result array.
 	 *
-	 * @param array $batch_result What process_approved_embeddings_batch() should return.
+	 * @param array $batch_result Stats array to return.
+	 * @return AIPS_Topic_Expansion_Service (mock)
 	 */
-	private function run_cron_with_mocked_service(array $batch_result) {
-		// We invoke the cron worker's logic directly, bypassing real service instantiation,
-		// by replicating the relevant branching here so that the transient + action behaviour
-		// can be asserted without a real DB.
-		$author_id     = $this->author_id;
-		$transient_key = 'aips_embeddings_progress_' . $author_id;
+	private function make_mock_expansion_service(array $batch_result) {
+		$mock = $this->getMockBuilder(AIPS_Topic_Expansion_Service::class)
+			->disableOriginalConstructor()
+			->onlyMethods(array('process_approved_embeddings_batch'))
+			->getMock();
 
-		if (!$batch_result['done']) {
-			set_transient($transient_key, $batch_result['last_processed_id'], HOUR_IN_SECONDS);
-			// wp_schedule_single_event is a no-op stub in tests.
-			wp_schedule_single_event(time() + 5, 'aips_process_author_embeddings', array(array(
-				'author_id'         => $author_id,
-				'batch_size'        => 20,
-				'last_processed_id' => $batch_result['last_processed_id'],
-			)));
-		} else {
-			delete_transient($transient_key);
-			do_action('aips_author_embeddings_completed', $author_id);
-		}
+		$mock->method('process_approved_embeddings_batch')->willReturn($batch_result);
+
+		return $mock;
 	}
 
 	/**

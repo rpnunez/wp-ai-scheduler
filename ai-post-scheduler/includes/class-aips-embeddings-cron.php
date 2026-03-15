@@ -45,9 +45,22 @@ class AIPS_Embeddings_Cron {
 	const RESCHEDULE_DELAY = 5;
 
 	/**
-	 * Register the cron action hook.
+	 * Optional pre-built expansion service (primarily for testing).
+	 *
+	 * When null, a fresh AIPS_Topic_Expansion_Service is instantiated on demand.
+	 *
+	 * @var AIPS_Topic_Expansion_Service|null
 	 */
-	public function __construct() {
+	private $expansion_service;
+
+	/**
+	 * Register the cron action hook.
+	 *
+	 * @param AIPS_Topic_Expansion_Service|null $expansion_service Optional service override
+	 *                                                             (used in tests via DI).
+	 */
+	public function __construct($expansion_service = null) {
+		$this->expansion_service = $expansion_service;
 		add_action('aips_process_author_embeddings', array($this, 'process_author_embeddings'));
 	}
 
@@ -77,8 +90,8 @@ class AIPS_Embeddings_Cron {
 			return;
 		}
 
-		$expansion_service = new AIPS_Topic_Expansion_Service();
-		$stats             = $expansion_service->process_approved_embeddings_batch(
+		$service = $this->expansion_service ?: new AIPS_Topic_Expansion_Service();
+		$stats   = $service->process_approved_embeddings_batch(
 			$author_id,
 			$batch_size,
 			$last_processed_id
