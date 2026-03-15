@@ -107,6 +107,7 @@
 	--aips-container-lg: 1024px;
 	--aips-container-xl: 1200px;
 	--aips-container-2xl: 1400px;
+    --aips-container-3xl: 1500px;
 
 	/* Transitions */
 	--aips-transition-fast: 150ms ease;
@@ -134,7 +135,7 @@
 
 /* Main Page Container */
 .aips-page-container {
-	max-width: var(--aips-container-xl);
+	max-width: var(--aips-container-3xl);
 	margin: var(--aips-space-6) auto;
 	padding: 0 var(--aips-space-5);
 	position: relative;
@@ -970,7 +971,7 @@
    ========================================================================== */
 
 .aips-wrap {
-    max-width: 1200px;
+    max-width: var(--aips-container-3xl);
     position: relative;
     z-index: 1;
 }
