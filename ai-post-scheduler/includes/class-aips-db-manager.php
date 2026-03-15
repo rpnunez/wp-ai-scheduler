@@ -75,6 +75,7 @@ class AIPS_DB_Manager {
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
             creation_method varchar(20) DEFAULT NULL,
+            container_type tinyint(4) DEFAULT NULL,
             status varchar(50) NOT NULL DEFAULT 'pending',
             prompt text,
             generated_title varchar(500),
@@ -92,7 +93,8 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
-            KEY template_created (template_id, created_at)
+            KEY template_created (template_id, created_at),
+            KEY container_type (container_type)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (

@@ -48,13 +48,14 @@ class AIPS_History_Repository {
      * @param array $args {
      *     Optional. Query arguments.
      *
-     *     @type int    $per_page    Number of items per page. Default 20.
-     *     @type int    $page        Current page number. Default 1.
-     *     @type string $status      Filter by status. Default empty.
-     *     @type string $search      Search term for title. Default empty.
-     *     @type int    $template_id Filter by template ID. Default 0.
-     *     @type string $orderby     Column to order by. Default 'created_at'.
-     *     @type string $order       Order direction (ASC/DESC). Default 'DESC'.
+     *     @type int    $per_page        Number of items per page. Default 20.
+     *     @type int    $page            Current page number. Default 1.
+     *     @type string $status          Filter by status. Default empty.
+     *     @type string $search          Search term for title. Default empty.
+     *     @type int    $template_id     Filter by template ID. Default 0.
+     *     @type array  $container_types Filter by container type constants. Default empty (all).
+     *     @type string $orderby         Column to order by. Default 'created_at'.
+     *     @type string $order           Order direction (ASC/DESC). Default 'DESC'.
      * }
      * @return array {
      *     @type array $items        Array of history items.
@@ -65,15 +66,16 @@ class AIPS_History_Repository {
      */
     public function get_history($args = array()) {
         $defaults = array(
-            'per_page' => 20,
-            'page' => 1,
-            'status' => '',
-            'search' => '',
-            'template_id' => 0,
-            'author_id' => 0,
-            'orderby' => 'created_at',
-            'order' => 'DESC',
-            'fields' => 'all',
+            'per_page'        => 20,
+            'page'            => 1,
+            'status'          => '',
+            'search'          => '',
+            'template_id'     => 0,
+            'author_id'       => 0,
+            'container_types' => array(),
+            'orderby'         => 'created_at',
+            'order'           => 'DESC',
+            'fields'          => 'all',
         );
         
         $args = wp_parse_args($args, $defaults);
@@ -83,7 +85,7 @@ class AIPS_History_Repository {
         // Build select fields
         $fields_sql = "h.*, t.name as template_name";
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.post_id, h.template_id, h.topic_id, h.container_type, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, t.name as template_name";
         }
 
         // Build where clauses
@@ -108,6 +110,15 @@ class AIPS_History_Repository {
         if (!empty($args['search'])) {
             $where_clauses[] = "h.generated_title LIKE %s";
             $where_args[] = '%' . $this->wpdb->esc_like($args['search']) . '%';
+        }
+
+        if (!empty($args['container_types']) && is_array($args['container_types'])) {
+            $type_ints = array_map('absint', $args['container_types']);
+            $placeholders = implode(', ', array_fill(0, count($type_ints), '%d'));
+            $where_clauses[] = "h.container_type IN ($placeholders)";
+            foreach ($type_ints as $t) {
+                $where_args[] = $t;
+            }
         }
         
         $where_sql = implode(' AND ', $where_clauses);
@@ -143,9 +154,9 @@ class AIPS_History_Repository {
         }
         
         return array(
-            'items' => $results,
-            'total' => (int) $total,
-            'pages' => ceil($total / $args['per_page']),
+            'items'        => $results,
+            'total'        => (int) $total,
+            'pages'        => ceil($total / $args['per_page']),
             'current_page' => $args['page'],
         );
     }
@@ -559,20 +570,21 @@ class AIPS_History_Repository {
      */
     public function create($data) {
         $insert_data = array(
-            'uuid' => isset($data['uuid']) ? $data['uuid'] : null,
-            'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
-            'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
-            'topic_id' => isset($data['topic_id']) ? absint($data['topic_id']) : null,
-            'creation_method' => isset($data['creation_method']) ? sanitize_text_field($data['creation_method']) : null,
-            'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'pending',
-            'prompt' => isset($data['prompt']) ? wp_kses_post($data['prompt']) : '',
-            'generated_title' => isset($data['generated_title']) ? sanitize_text_field($data['generated_title']) : '',
+            'uuid'             => isset($data['uuid']) ? $data['uuid'] : null,
+            'template_id'      => isset($data['template_id']) ? absint($data['template_id']) : null,
+            'author_id'        => isset($data['author_id']) ? absint($data['author_id']) : null,
+            'topic_id'         => isset($data['topic_id']) ? absint($data['topic_id']) : null,
+            'creation_method'  => isset($data['creation_method']) ? sanitize_text_field($data['creation_method']) : null,
+            'container_type'   => isset($data['container_type']) ? absint($data['container_type']) : null,
+            'status'           => isset($data['status']) ? sanitize_text_field($data['status']) : 'pending',
+            'prompt'           => isset($data['prompt']) ? wp_kses_post($data['prompt']) : '',
+            'generated_title'  => isset($data['generated_title']) ? sanitize_text_field($data['generated_title']) : '',
             'generated_content' => isset($data['generated_content']) ? wp_kses_post($data['generated_content']) : '',
-            'error_message' => isset($data['error_message']) ? sanitize_text_field($data['error_message']) : '',
-            'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
+            'error_message'    => isset($data['error_message']) ? sanitize_text_field($data['error_message']) : '',
+            'post_id'          => isset($data['post_id']) ? absint($data['post_id']) : null,
         );
         
-        $format = array('%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
+        $format = array('%s', '%d', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         

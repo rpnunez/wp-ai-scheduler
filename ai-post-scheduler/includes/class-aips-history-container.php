@@ -202,11 +202,14 @@ class AIPS_History_Container {
 		if ($this->is_persisted) {
 			return true;
 		}
-		
+
+		$container_type = AIPS_History_Container_Type::resolve_from_string($this->type);
+
 		$data = array_merge(
 			array(
-				'uuid' => $this->uuid,
-				'status' => 'processing',
+				'uuid'           => $this->uuid,
+				'status'         => 'processing',
+				'container_type' => $container_type,
 			),
 			$this->metadata
 		);
