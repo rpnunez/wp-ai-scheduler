@@ -73,6 +73,138 @@
 			// Topic search (author-topics page)
 			$(document).on('keyup search', '#aips-topic-search', this.filterTopics.bind(this));
 			$(document).on('click', '#aips-topic-search-clear', this.clearTopicSearch.bind(this));
+
+			// Authors list bulk actions
+			$(document).on('change', '#aips-authors-select-all', this.toggleSelectAllAuthors.bind(this));
+			$(document).on('click', '#aips-authors-bulk-apply', this.executeAuthorsBulkAction.bind(this));
+		},
+
+		/**
+		 * Toggle all author row checkboxes from the master checkbox.
+		 *
+		 * @param {Event} e - Change event from `#aips-authors-select-all`.
+		 */
+		toggleSelectAllAuthors: function (e) {
+			const isChecked = $(e.currentTarget).prop('checked');
+			$('.aips-author-checkbox').prop('checked', isChecked);
+		},
+
+		/**
+		 * Execute bulk actions for selected authors.
+		 *
+		 * Supported actions: `generate_topics`, `delete`.
+		 *
+		 * @param {Event} e - Click event from `#aips-authors-bulk-apply`.
+		 */
+		executeAuthorsBulkAction: function (e) {
+			e.preventDefault();
+
+			const action = $('#aips-authors-bulk-action-select').val();
+			const authorIds = $('.aips-author-checkbox:checked').map(function () {
+				return parseInt($(this).val(), 10);
+			}).get().filter(function (id) { return Number.isInteger(id) && id > 0; });
+
+			if (!action) {
+				AIPS.Utilities.showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
+				return;
+			}
+
+			if (authorIds.length === 0) {
+				AIPS.Utilities.showToast(aipsAuthorsL10n.noAuthorsSelected || 'Please select at least one author.', 'warning');
+				return;
+			}
+
+			if (action === 'generate_topics') {
+				this.bulkGenerateTopics(authorIds);
+				return;
+			}
+
+			if (action === 'delete') {
+				this.bulkDeleteAuthors(authorIds);
+				return;
+			}
+
+			AIPS.Utilities.showToast(aipsAuthorsL10n.invalidAction || 'Invalid action.', 'error');
+		},
+
+		/**
+		 * Bulk-generate topics for selected authors.
+		 *
+		 * @param {Array<number>} authorIds - Selected author IDs.
+		 */
+		bulkGenerateTopics: function (authorIds) {
+			const message = (aipsAuthorsL10n.confirmGenerateTopicsBulk || 'Generate topics now for %d selected author(s)?').replace('%d', authorIds.length);
+
+			AIPS.Utilities.confirm(message, 'Notice', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, generate',
+					className: 'aips-btn aips-btn-danger-solid',
+					action: () => {
+						const requests = authorIds.map((authorId) => {
+							return $.ajax({
+								url: ajaxurl,
+								type: 'POST',
+								data: {
+									action: 'aips_generate_topics_now',
+									nonce: aipsAuthorsL10n.nonce,
+									author_id: authorId
+								}
+							});
+						});
+
+						Promise.allSettled(requests).then((results) => {
+							const successCount = results.filter((r) => r.status === 'fulfilled' && r.value && r.value.success).length;
+							if (successCount > 0) {
+								AIPS.Utilities.showToast((aipsAuthorsL10n.topicsGeneratedBulk || '%d author(s) queued for topic generation.').replace('%d', successCount), 'success');
+								setTimeout(() => location.reload(), 800);
+							} else {
+								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating topics.', 'error');
+							}
+						});
+					}
+				}
+			]);
+		},
+
+		/**
+		 * Bulk-delete selected authors.
+		 *
+		 * @param {Array<number>} authorIds - Selected author IDs.
+		 */
+		bulkDeleteAuthors: function (authorIds) {
+			const message = (aipsAuthorsL10n.confirmDeleteBulk || 'Delete %d selected author(s)?').replace('%d', authorIds.length);
+
+			AIPS.Utilities.confirm(message, 'Notice', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, delete',
+					className: 'aips-btn aips-btn-danger-solid',
+					action: () => {
+						const requests = authorIds.map((authorId) => {
+							return $.ajax({
+								url: ajaxurl,
+								type: 'POST',
+								data: {
+									action: 'aips_delete_author',
+									nonce: aipsAuthorsL10n.nonce,
+									author_id: authorId
+								}
+							});
+						});
+
+						Promise.allSettled(requests).then((results) => {
+							const successCount = results.filter((r) => r.status === 'fulfilled' && r.value && r.value.success).length;
+							if (successCount > 0) {
+								AIPS.Utilities.showToast((aipsAuthorsL10n.authorDeletedBulk || '%d author(s) deleted.').replace('%d', successCount), 'success');
+								setTimeout(() => location.reload(), 800);
+							} else {
+								AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeleting || 'Error deleting authors.', 'error');
+							}
+						});
+					}
+				}
+			]);
 		},
 
 		/**
@@ -349,11 +481,11 @@
 				return;
 			}
 
-			let html = '<table class="wp-list-table widefat fixed striped aips-topics-table"><thead><tr>';
+			let html = '<table class="aips-table aips-topics-table"><thead><tr>';
 			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>';
-			html += '<th style="width:60%">' + (aipsAuthorsL10n.topicDetails || 'Topic Details') + '</th>';
-			html += '<th style="width:10%">' + aipsAuthorsL10n.generatedAt + '</th>';
-			html += '<th style="width:30%">' + aipsAuthorsL10n.actions + '</th>';
+			html += '<th class="column-topic">' + (aipsAuthorsL10n.topicDetails || 'Topic Details') + '</th>';
+			html += '<th class="column-generated">' + aipsAuthorsL10n.generatedAt + '</th>';
+			html += '<th class="column-actions">' + aipsAuthorsL10n.actions + '</th>';
 			html += '</tr></thead><tbody>';
 
 			topics.forEach(topic => {
@@ -397,7 +529,7 @@
 
 				html += '<tr data-topic-id="' + topic.id + '">';
 				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
-				html += '<td class="topic-title-cell">';
+				html += '<td class="topic-title-cell column-topic">';
 				html += '<div class="aips-topic-row">';
 
 				// Expand button is only shown when detail content exists.
@@ -449,24 +581,28 @@
 				}
 
 				html += '</td>';
-				html += '<td>' + topic.generated_at + '</td>';
-				html += '<td class="topic-actions">';
+				html += '<td class="column-generated">' + topic.generated_at + '</td>';
+				html += '<td class="topic-actions column-actions">';
 
 				// Actions based on status
 				if (status === 'pending') {
 					// Pending actions: feedback actions and edit
-					html += '<div class="aips-btn-group">';
+					html += '<div class="cell-actions">';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
 					html += '</div>';
-					html += '<div class="aips-btn-group" style="margin-top: 6px;">';
+					html += '<div class="cell-actions" style="margin-top: 6px;">';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '</button>';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '</button>';
 					html += '</div>';
 				} else if (status === 'approved') {
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button> ';
+					html += '<div class="cell-actions">';
+					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button>';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
+					html += '</div>';
 				} else {
+					html += '<div class="cell-actions">';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
+					html += '</div>';
 				}
 
 				html += '</td></tr>';
@@ -846,13 +982,13 @@
 				return;
 			}
 
-			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
+			let html = '<table class="aips-table aips-feedback-table"><thead><tr>';
 			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>';
-			html += '<th>' + aipsAuthorsL10n.topic + '</th>';
-			html += '<th>' + aipsAuthorsL10n.action + '</th>';
-			html += '<th>' + aipsAuthorsL10n.reason + '</th>';
-			html += '<th>' + aipsAuthorsL10n.user + '</th>';
-			html += '<th>' + aipsAuthorsL10n.date + '</th>';
+			html += '<th class="column-topic">' + aipsAuthorsL10n.topic + '</th>';
+			html += '<th class="column-action">' + aipsAuthorsL10n.action + '</th>';
+			html += '<th class="column-reason">' + aipsAuthorsL10n.reason + '</th>';
+			html += '<th class="column-user">' + aipsAuthorsL10n.user + '</th>';
+			html += '<th class="column-date">' + aipsAuthorsL10n.date + '</th>';
 			html += '</tr></thead><tbody>';
 
 			feedback.forEach(item => {
@@ -1654,6 +1790,11 @@
 	
 	// Generation Queue Module
 	const GenerationQueueModule = {
+		queueTopics: [],
+		filteredQueueTopics: [],
+		queueCurrentPage: 1,
+		queuePerPage: 10,
+
 		/**
 		 * Initialise the Generation Queue module by binding all event listeners.
 		 */
@@ -1667,44 +1808,31 @@
 		 * execution.
 		 */
 		bindEvents: function () {
-			// Main page tab switching
-			$(document).on('click', '.aips-authors-tab-link', this.switchMainTab.bind(this));
+			// React to shared tab switching events for top-level Authors tabs.
+			$(document).on('aips:tabSwitch', this.handleSharedTabSwitch.bind(this));
 			
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
+			$(document).on('click', '#aips-queue-filter-submit', this.applyQueueFilters.bind(this));
+			$(document).on('change', '#aips-queue-author-filter, #aips-queue-field-filter', this.applyQueueFilters.bind(this));
+			$(document).on('keyup search', '#aips-queue-search', this.onQueueSearch.bind(this));
+			$(document).on('click', '#aips-queue-search-clear', this.clearQueueSearch.bind(this));
+			$(document).on('click', '#aips-queue-reload-btn', this.loadQueueTopics.bind(this));
+			$(document).on('click', '.aips-queue-page-link', this.goToQueuePage.bind(this));
 		},
 
 		/**
-		 * Switch between the "Authors List" and "Generation Queue" main tabs.
+		 * Handle shared AIPS tab-switch events for the Authors page top tabs.
 		 *
-		 * Validates the target tab ID against an allow-list to prevent XSS via
-		 * injected `data-tab` values. Updates `.aips-authors-tab-link` active
-		 * state, shows the matching `.aips-authors-tab-content`, and loads
-		 * queue data when switching to the generation-queue tab.
-		 *
-		 * @param {Event} e - Click event from an `.aips-authors-tab-link` element.
+		 * @param {jQuery.Event} e     - Custom event object.
+		 * @param {string}       tabId - The activated tab ID.
 		 */
-		switchMainTab: function (e) {
-			e.preventDefault();
-			const $tab = $(e.currentTarget);
-			const tabId = $tab.data('tab');
-
-			// Validate tabId to prevent XSS
-			const allowedTabs = ['authors-list', 'generation-queue'];
-			if (!allowedTabs.includes(tabId)) {
+		handleSharedTabSwitch: function (e, tabId) {
+			if (!$('#generation-queue-tab').length) {
 				return;
 			}
 
-			// Update active tab button
-			$('.aips-authors-tab-link').removeClass('active');
-			$tab.addClass('active');
-
-			// Show/hide tab content
-			$('.aips-authors-tab-content').hide();
-			$('#' + tabId + '-tab').show();
-
-			// Load queue data if switching to generation queue
 			if (tabId === 'generation-queue') {
 				this.loadQueueTopics();
 			}
@@ -1718,7 +1846,8 @@
 		 * failure.
 		 */
 		loadQueueTopics: function () {
-			$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.loadingQueue || 'Loading queue...') + '</p>');
+			$('#aips-queue-topics-list').html('<div class="aips-panel-body"><p>' + (aipsAuthorsL10n.loadingQueue || 'Loading queue...') + '</p></div>');
+			$('#aips-queue-tablenav').hide();
 
 			$.ajax({
 				url: ajaxurl,
@@ -1729,17 +1858,100 @@
 				},
 				success: (response) => {
 					if (response.success && response.data.topics) {
-						this.renderQueueTopics(response.data.topics);
+						this.queueTopics = response.data.topics;
+						this.populateQueueFilters();
+						this.applyQueueFilters();
 					} else {
 						$('#aips-queue-topics-list').html(
-							'<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p>'
+							'<div class="aips-panel-body"><p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p></div>'
 						);
+						$('#aips-queue-tablenav').hide();
 					}
 				},
 				error: () => {
-					$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p>');
+					$('#aips-queue-topics-list').html('<div class="aips-panel-body"><p>' + (aipsAuthorsL10n.errorLoadingQueue || 'Error loading queue.') + '</p></div>');
+					$('#aips-queue-tablenav').hide();
 				}
 			});
+		},
+
+		/**
+		 * Populate queue filter dropdowns from loaded queue data.
+		 */
+		populateQueueFilters: function () {
+			const authorValue = $('#aips-queue-author-filter').val() || '';
+			const fieldValue = $('#aips-queue-field-filter').val() || '';
+			const authorSet = new Set();
+			const fieldSet = new Set();
+
+			this.queueTopics.forEach(topic => {
+				if (topic.author_name) {
+					authorSet.add(topic.author_name);
+				}
+				if (topic.field_niche) {
+					fieldSet.add(topic.field_niche);
+				}
+			});
+
+			const authors = Array.from(authorSet).sort((a, b) => a.localeCompare(b));
+			const fields = Array.from(fieldSet).sort((a, b) => a.localeCompare(b));
+
+			const $authorFilter = $('#aips-queue-author-filter');
+			const $fieldFilter = $('#aips-queue-field-filter');
+
+			$authorFilter.find('option:not(:first)').remove();
+			$fieldFilter.find('option:not(:first)').remove();
+
+			authors.forEach(author => {
+				$authorFilter.append('<option value="' + AuthorsModule.escapeHtml(author) + '">' + AuthorsModule.escapeHtml(author) + '</option>');
+			});
+
+			fields.forEach(field => {
+				$fieldFilter.append('<option value="' + AuthorsModule.escapeHtml(field) + '">' + AuthorsModule.escapeHtml(field) + '</option>');
+			});
+
+			$authorFilter.val(authorValue);
+			$fieldFilter.val(fieldValue);
+		},
+
+		/**
+		 * Apply queue filters and redraw queue table and footer.
+		 */
+		applyQueueFilters: function () {
+			const selectedAuthor = $('#aips-queue-author-filter').val() || '';
+			const selectedField = $('#aips-queue-field-filter').val() || '';
+			const searchTerm = ($('#aips-queue-search').val() || '').toLowerCase().trim();
+
+			this.queueCurrentPage = 1;
+			this.filteredQueueTopics = this.queueTopics.filter(topic => {
+				const matchesAuthor = !selectedAuthor || topic.author_name === selectedAuthor;
+				const matchesField = !selectedField || topic.field_niche === selectedField;
+				const haystack = ((topic.topic_title || '') + ' ' + (topic.author_name || '') + ' ' + (topic.field_niche || '')).toLowerCase();
+				const matchesSearch = !searchTerm || haystack.indexOf(searchTerm) !== -1;
+				return matchesAuthor && matchesField && matchesSearch;
+			});
+
+			$('#aips-queue-search-clear').toggle(searchTerm.length > 0);
+			this.renderQueueTopics();
+		},
+
+		/**
+		 * React to queue search input changes.
+		 */
+		onQueueSearch: function () {
+			this.applyQueueFilters();
+		},
+
+		/**
+		 * Clear queue search input and re-apply filters.
+		 *
+		 * @param {Event} e - Click event from the clear button.
+		 */
+		clearQueueSearch: function (e) {
+			e.preventDefault();
+			$('#aips-queue-search').val('');
+			this.applyQueueFilters();
+			$('#aips-queue-search').focus();
 		},
 
 		/**
@@ -1751,33 +1963,118 @@
 		 *
 		 * @param {Array<Object>} topics - Array of queue-entry objects from the server.
 		 */
-		renderQueueTopics: function (topics) {
+		renderQueueTopics: function () {
+			const topics = this.filteredQueueTopics;
+
 			if (!topics || topics.length === 0) {
-				$('#aips-queue-topics-list').html('<p>' + (aipsAuthorsL10n.noQueueTopics || 'No approved topics in the queue yet.') + '</p>');
+				$('#aips-queue-topics-list').html(
+					'<div class="aips-panel-body"><div class="aips-empty-state">'
+					+ '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>'
+					+ '<h3 class="aips-empty-state-title">' + (aipsAuthorsL10n.noQueueTopicsTitle || 'No Queue Topics Found') + '</h3>'
+					+ '<p class="aips-empty-state-description">' + (aipsAuthorsL10n.noQueueTopics || 'No approved topics in the queue yet.') + '</p>'
+					+ '</div></div>'
+				);
+				$('#aips-queue-tablenav').hide();
 				return;
 			}
 
-			let html = '<table class="wp-list-table widefat fixed striped">';
+			const totalItems = topics.length;
+			const totalPages = Math.max(1, Math.ceil(totalItems / this.queuePerPage));
+			if (this.queueCurrentPage > totalPages) {
+				this.queueCurrentPage = totalPages;
+			}
+			const start = (this.queueCurrentPage - 1) * this.queuePerPage;
+			const pageItems = topics.slice(start, start + this.queuePerPage);
+
+			let html = '<table class="aips-table aips-queue-table">';
 			html += '<thead><tr>';
-			html += '<th class="check-column"><input type="checkbox" class="aips-queue-select-all"></th>';
-			html += '<th>' + (aipsAuthorsL10n.topicTitle || 'Topic Title') + '</th>';
-			html += '<th>' + (aipsAuthorsL10n.author || 'Author') + '</th>';
-			html += '<th>' + (aipsAuthorsL10n.fieldNiche || 'Field/Niche') + '</th>';
-			html += '<th>' + (aipsAuthorsL10n.approvedDate || 'Approved Date') + '</th>';
+			html += '<th scope="col" style="width: 30px;"><input type="checkbox" class="aips-queue-select-all"></th>';
+			html += '<th scope="col">' + (aipsAuthorsL10n.topicTitle || 'Topic Title') + '</th>';
+			html += '<th scope="col">' + (aipsAuthorsL10n.author || 'Author') + '</th>';
+			html += '<th scope="col">' + (aipsAuthorsL10n.fieldNiche || 'Field/Niche') + '</th>';
+			html += '<th scope="col">' + (aipsAuthorsL10n.approvedDate || 'Approved Date') + '</th>';
 			html += '</tr></thead><tbody>';
 
-			topics.forEach(topic => {
+			pageItems.forEach(topic => {
 				html += '<tr>';
-				html += '<th class="check-column"><input type="checkbox" class="aips-queue-topic-checkbox" value="' + topic.id + '"></th>';
-				html += '<td>' + AuthorsModule.escapeHtml(topic.topic_title) + '</td>';
+				html += '<td><input type="checkbox" class="aips-queue-topic-checkbox" value="' + topic.id + '"></td>';
+				html += '<td><span class="cell-primary">' + AuthorsModule.escapeHtml(topic.topic_title) + '</span></td>';
 				html += '<td>' + AuthorsModule.escapeHtml(topic.author_name) + '</td>';
 				html += '<td>' + AuthorsModule.escapeHtml(topic.field_niche) + '</td>';
-				html += '<td>' + (topic.reviewed_at || aipsAuthorsL10n.notAvailable || 'N/A') + '</td>';
+				html += '<td><div class="cell-meta">' + (topic.reviewed_at || aipsAuthorsL10n.notAvailable || 'N/A') + '</div></td>';
 				html += '</tr>';
 			});
 
 			html += '</tbody></table>';
 			$('#aips-queue-topics-list').html(html);
+
+			const topicLabel = totalItems === 1 ? (aipsAuthorsL10n.topic || 'topic') : (aipsAuthorsL10n.topics || 'topics');
+			$('#aips-queue-table-footer-count').text(totalItems + ' ' + topicLabel);
+			this.renderQueuePagination(totalPages);
+			$('#aips-queue-tablenav').show();
+		},
+
+		/**
+		 * Render queue pagination controls in the queue footer.
+		 *
+		 * @param {number} totalPages - Total number of pages.
+		 */
+		renderQueuePagination: function (totalPages) {
+			const current = this.queueCurrentPage;
+			let html = '';
+
+			if (totalPages <= 1) {
+				$('#aips-queue-pagination-links').html('');
+				return;
+			}
+
+			html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + (current - 1) + '" ' + (current <= 1 ? 'disabled' : '') + '><span class="dashicons dashicons-arrow-left-alt2"></span></button>';
+			html += '<span class="aips-history-page-numbers">';
+
+			const start = Math.max(1, current - 3);
+			const end = Math.min(totalPages, current + 3);
+
+			if (start > 1) {
+				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="1">1</button>';
+				if (start > 2) {
+					html += '<span class="aips-history-page-ellipsis">…</span>';
+				}
+			}
+
+			for (let p = start; p <= end; p++) {
+				if (p === current) {
+					html += '<span class="aips-btn aips-btn-sm aips-btn-primary" aria-current="page">' + p + '</span>';
+				} else {
+					html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + p + '">' + p + '</button>';
+				}
+			}
+
+			if (end < totalPages) {
+				if (end < totalPages - 1) {
+					html += '<span class="aips-history-page-ellipsis">…</span>';
+				}
+				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + totalPages + '">' + totalPages + '</button>';
+			}
+
+			html += '</span>';
+			html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + (current + 1) + '" ' + (current >= totalPages ? 'disabled' : '') + '><span class="dashicons dashicons-arrow-right-alt2"></span></button>';
+
+			$('#aips-queue-pagination-links').html(html);
+		},
+
+		/**
+		 * Navigate queue pagination.
+		 *
+		 * @param {Event} e - Click event from queue pagination links.
+		 */
+		goToQueuePage: function (e) {
+			e.preventDefault();
+			const page = parseInt($(e.currentTarget).data('page'), 10);
+			if (!Number.isInteger(page) || page < 1) {
+				return;
+			}
+			this.queueCurrentPage = page;
+			this.renderQueueTopics();
 		},
 
 		/**

@@ -66,10 +66,12 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             </div>
         </div>
         
-        <!-- Research Form -->
-        <div class="aips-card">
-            <h2><?php echo esc_html__('New Research', 'ai-post-scheduler'); ?></h2>
-            
+        <!-- New Research Panel -->
+        <div class="aips-content-panel">
+            <div class="aips-panel-header">
+                <h2 class="aips-panel-title"><?php esc_html_e('New Research', 'ai-post-scheduler'); ?></h2>
+            </div>
+            <div class="aips-panel-body">
             <form id="aips-research-form" method="post">
                 <?php wp_nonce_field('aips_ajax_nonce', 'aips_nonce'); ?>
                 
@@ -113,24 +115,27 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                     </tr>
                 </table>
                 
-                <p class="submit">
-                    <button type="submit" class="button button-primary" id="research-submit">
+                <div style="margin-top: 8px; display: flex; align-items: center; gap: 12px;">
+                    <button type="submit" class="aips-btn aips-btn-primary" id="research-submit">
                         <span class="dashicons dashicons-search" aria-hidden="true"></span>
-                        <?php echo esc_html__('Research Trending Topics', 'ai-post-scheduler'); ?>
+                        <?php esc_html_e('Research Trending Topics', 'ai-post-scheduler'); ?>
                     </button>
-                    <span class="spinner" style="float: none; margin-left: 10px;"></span>
-                </p>
+                    <span class="spinner" style="float: none; margin: 0;"></span>
+                </div>
             </form>
             
-            <div id="research-results" style="display: none; margin-top: 30px;">
-                <h3><?php echo esc_html__('Research Results', 'ai-post-scheduler'); ?></h3>
+            <div id="research-results" style="display: none; margin-top: 24px;">
+                <h3><?php esc_html_e('Research Results', 'ai-post-scheduler'); ?></h3>
                 <div id="research-results-content"></div>
             </div>
-        </div>
-        
-        <!-- Existing Research -->
-        <div class="aips-card">
-            <h2><?php echo esc_html__('Trending Topics Library', 'ai-post-scheduler'); ?></h2>
+            </div><!-- .aips-panel-body -->
+        </div><!-- .aips-content-panel (research) -->
+
+        <!-- Trending Topics Library Panel -->
+        <div class="aips-content-panel">
+            <div class="aips-panel-header">
+                <h2 class="aips-panel-title"><?php esc_html_e('Trending Topics Library', 'ai-post-scheduler'); ?></h2>
+            </div>
             
             <!-- Filters -->
             <div class="aips-filter-bar">
@@ -157,9 +162,9 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                         <?php echo esc_html__('Fresh Only (Last 7 Days)', 'ai-post-scheduler'); ?>
                     </label>
                     
-                    <button type="button" class="aips-btn aips-btn-secondary" id="load-topics">
-                        <span class="dashicons dashicons-search"></span>
-                        <?php echo esc_html__('Load Topics', 'ai-post-scheduler'); ?>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="load-topics">
+                        <span class="dashicons dashicons-filter"></span>
+                        <?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
                     </button>
                 </div>
                 <div class="aips-filter-right">
@@ -169,87 +174,118 @@ if (!in_array($active_tab, $valid_tabs, true)) {
                 </div>
             </div>
             
-            <!-- Topics Table -->
-            <div id="topics-container">
-                <p class="description"><?php echo esc_html__('Click "Load Topics" to view your research library.', 'ai-post-scheduler'); ?></p>
+            <!-- Bulk Actions Toolbar -->
+            <div class="aips-panel-toolbar">
+                <div class="aips-toolbar-left">
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-btn-danger-solid" id="aips-delete-selected-topics" disabled>
+                        <span class="dashicons dashicons-trash"></span>
+                        <?php esc_html_e('Delete Selected', 'ai-post-scheduler'); ?>
+                    </button>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-primary" id="aips-generate-selected-topics" disabled>
+                        <span class="dashicons dashicons-media-text"></span>
+                        <?php esc_html_e('Generate Selected', 'ai-post-scheduler'); ?>
+                    </button>
+                    <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-reload-topics-btn">
+                        <span class="dashicons dashicons-update"></span>
+                        <?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
             </div>
-            
-            <!-- Bulk Schedule -->
-            <div id="bulk-schedule-section" style="display: none; margin-top: 30px;">
-                <h3><?php echo esc_html__('Schedule Selected Topics', 'ai-post-scheduler'); ?></h3>
-                
+
+            <!-- Topics Table -->
+            <div class="aips-panel-body no-padding">
+                <div id="topics-container">
+                    <div class="aips-panel-body">
+                        <p class="description"><?php esc_html_e('Click "Filter" to view your research library.', 'ai-post-scheduler'); ?></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Footer -->
+            <div class="tablenav" id="topics-tablenav" style="display: none;">
+                <span class="aips-table-footer-count" id="topics-count"></span>
+            </div>
+        </div><!-- .aips-content-panel (library) -->
+
+        <!-- Schedule Selected Topics Panel -->
+        <div id="bulk-schedule-section" class="aips-content-panel" style="display: none;">
+            <div class="aips-panel-header">
+                <h2 class="aips-panel-title"><?php esc_html_e('Schedule Selected Topics', 'ai-post-scheduler'); ?></h2>
+            </div>
+            <div class="aips-panel-body">
                 <form id="bulk-schedule-form">
                     <table class="form-table">
                         <tr>
                             <th scope="row">
-                                <label for="schedule-template"><?php echo esc_html__('Template', 'ai-post-scheduler'); ?></label>
+                                <label for="schedule-template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?></label>
                             </th>
                             <td>
-                            <select id="schedule-template" name="template_id" required>
-                                <option value=""><?php echo esc_html__('Select Template', 'ai-post-scheduler'); ?></option>
-                                <?php foreach ($templates as $template):
-                                    $template = (object) $template;
-                                ?>
-                                    <option value="<?php echo esc_attr($template->id); ?>">
-                                        <?php echo esc_html($template->name); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="schedule-start-date"><?php echo esc_html__('Start Date', 'ai-post-scheduler'); ?></label>
-                        </th>
-                        <td>
-                            <input type="datetime-local" id="schedule-start-date" name="start_date" required>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <?php echo esc_html__( 'Frequency', 'ai-post-scheduler' ); ?>
-                        </th>
-                        <td>
-                            <?php AIPS_Template_Helper::render_frequency_dropdown( 'schedule-frequency', 'frequency', $default_research_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
-                        </td>
-                    </tr>
-                </table>
-                    
-                    <p class="submit">
-                        <button type="submit" class="button button-primary">
+                                <select id="schedule-template" name="template_id" required class="aips-form-select">
+                                    <option value=""><?php esc_html_e('Select Template', 'ai-post-scheduler'); ?></option>
+                                    <?php foreach ($templates as $template):
+                                        $template = (object) $template;
+                                    ?>
+                                        <option value="<?php echo esc_attr($template->id); ?>">
+                                            <?php echo esc_html($template->name); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <label for="schedule-start-date"><?php esc_html_e('Start Date', 'ai-post-scheduler'); ?></label>
+                            </th>
+                            <td>
+                                <input type="datetime-local" id="schedule-start-date" name="start_date" required>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <?php esc_html_e('Frequency', 'ai-post-scheduler'); ?>
+                            </th>
+                            <td>
+                                <?php AIPS_Template_Helper::render_frequency_dropdown('schedule-frequency', 'frequency', $default_research_frequency, __('Frequency', 'ai-post-scheduler')); ?>
+                            </td>
+                        </tr>
+                    </table>
+                    <div style="margin-top: 8px; display: flex; align-items: center; gap: 12px;">
+                        <button type="submit" class="aips-btn aips-btn-primary">
                             <span class="dashicons dashicons-calendar-alt"></span>
-                            <?php echo esc_html__('Schedule Topics', 'ai-post-scheduler'); ?>
+                            <?php esc_html_e('Schedule Topics', 'ai-post-scheduler'); ?>
                         </button>
-                        <span class="spinner" style="float: none; margin-left: 10px;"></span>
-                    </p>
+                        <span class="spinner" style="float: none; margin: 0;"></span>
+                    </div>
                 </form>
-            </div>
-        </div>
-    </div>
+            </div><!-- .aips-panel-body -->
+        </div><!-- #bulk-schedule-section -->
+    </div><!-- #trending-tab -->
 
     <div id="gap-analysis-tab" class="aips-tab-content<?php echo $active_tab === 'gap-analysis' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'gap-analysis' ? '' : 'display:none;'; ?>">
-        <div class="aips-card">
-            <h2><?php echo esc_html__('Content Gap Analysis', 'ai-post-scheduler'); ?></h2>
-            <p class="description"><?php echo esc_html__('Analyze your existing content against your target niche to identify missing sub-topics and opportunities.', 'ai-post-scheduler'); ?></p>
-            
-            <div class="aips-gap-analysis-controls">
-                <input type="text" id="gap-niche" class="regular-text" placeholder="<?php echo esc_attr__('Enter Target Niche (e.g., Sustainable Gardening)', 'ai-post-scheduler'); ?>">
-                <button type="button" class="button button-primary" id="analyze-gaps-btn">
-                    <span class="dashicons dashicons-chart-area"></span>
-                    <?php echo esc_html__('Analyze Site for Gaps', 'ai-post-scheduler'); ?>
-                </button>
-                <span class="spinner" style="float: none; margin-left: 10px;"></span>
+        <div class="aips-content-panel">
+            <div class="aips-panel-header">
+                <h2 class="aips-panel-title"><?php esc_html_e('Content Gap Analysis', 'ai-post-scheduler'); ?></h2>
             </div>
+            <div class="aips-panel-body">
+                <p class="description"><?php esc_html_e('Analyze your existing content against your target niche to identify missing sub-topics and opportunities.', 'ai-post-scheduler'); ?></p>
 
-            <div id="gap-results-container" style="margin-top: 30px; display: none;">
-                <h3><?php echo esc_html__('Identified Content Gaps', 'ai-post-scheduler'); ?></h3>
-                <div class="aips-gap-grid">
-                    <!-- Gap cards will be injected here -->
+                <div class="aips-gap-analysis-controls">
+                    <input type="text" id="gap-niche" class="regular-text" placeholder="<?php esc_attr_e('Enter Target Niche (e.g., Sustainable Gardening)', 'ai-post-scheduler'); ?>">
+                    <button type="button" class="aips-btn aips-btn-primary" id="analyze-gaps-btn">
+                        <span class="dashicons dashicons-chart-area"></span>
+                        <?php esc_html_e('Analyze Site for Gaps', 'ai-post-scheduler'); ?>
+                    </button>
+                    <span class="spinner" style="float: none; margin-left: 10px;"></span>
                 </div>
-            </div>
-        </div>
+
+                <div id="gap-results-container" style="margin-top: 30px; display: none;">
+                    <h3><?php esc_html_e('Identified Content Gaps', 'ai-post-scheduler'); ?></h3>
+                    <div class="aips-gap-grid">
+                        <!-- Gap cards will be injected here -->
+                    </div>
+                </div>
+            </div><!-- .aips-panel-body -->
+        </div><!-- .aips-content-panel -->
     </div>
 
     <div id="planner-tab" class="aips-tab-content<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'planner' ? '' : 'display:none;'; ?>">
