@@ -62,7 +62,10 @@ class AIPS_Post_Manager {
             $post_category = !empty($template->post_category) ? $template->post_category : null;
             $post_tags = !empty($template->post_tags) ? $template->post_tags : '';
         } else {
-            return new WP_Error('missing_context', 'Either a template object or generation context is required for post creation.');
+            return new WP_Error(
+                'missing_context',
+                __('Either a template object or generation context is required for post creation.', 'ai-post-scheduler')
+            );
         }
 
         $post_data = array(
