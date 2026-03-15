@@ -37,9 +37,7 @@ class AIPS_Dashboard_Controller {
         $pending_scheduled = $schedule_counts['active'];
         $total_templates = $template_counts['active'];
         $failed_count = $history_stats['failed'];
-
-        // New KPIs
-        $partial_generations = $history_repo->get_partial_generations();
+        $partial_generations = $history_repo->get_partial_generations(array('per_page' => -1))['total'] ?? 0;
         $pending_reviews = $post_review_repo->get_draft_count();
         $topics_in_queue = isset($topic_counts['approved']) ? $topic_counts['approved'] : 0;
 

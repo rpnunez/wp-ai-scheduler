@@ -423,16 +423,6 @@ class AIPS_History_Repository {
     }
 
     /**
-     * Get the count of partially generated posts.
-     *
-     * @return int Number of partial generations.
-     */
-    public function get_partial_generations() {
-        $stats = $this->get_stats();
-        return isset($stats['partial']) ? $stats['partial'] : 0;
-    }
-
-    /**
      * Get statistics for a specific template.
      *
      * @param int $template_id Template ID.
