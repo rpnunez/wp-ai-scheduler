@@ -550,16 +550,14 @@ class AIPS_Generator {
         // Extract source information from context
         $history_metadata = array();
 
-        if ($context->get_type() === 'template') {
+        if ($context instanceof AIPS_Template_Context) {
             $history_metadata['template_id'] = $context->get_id();
-        } elseif ($context->get_type() === 'topic') {
+        } elseif ($context instanceof AIPS_Topic_Context) {
             // For topic context, store author_id and topic_id
             $history_metadata['topic_id'] = $context->get_id();
-            if (method_exists($context, 'get_author')) {
-                $author = $context->get_author();
-                if ($author && isset($author->id)) {
-                    $history_metadata['author_id'] = $author->id;
-                }
+            $author = $context->get_author();
+            if ($author && isset($author->id)) {
+                $history_metadata['author_id'] = $author->id;
             }
         }
 
@@ -707,6 +705,10 @@ class AIPS_Generator {
         $generation_incomplete = in_array(false, $component_statuses, true);
         $this->post_creator->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
+        if ($generation_incomplete) {
+            do_action('aips_post_generation_incomplete', $post_id, $component_statuses, $context, $this->current_history ? $this->current_history->get_id() : 0);
+        }
+
         // Use new history API to complete with success
         $this->current_history->complete_success(array(
             'post_id' => $post_id,
@@ -717,35 +719,57 @@ class AIPS_Generator {
         ));
 
         // Log activity
-        $this->current_history->record(
-            'activity',
-            sprintf('Post "%s" generated successfully', $title),
-            null,
-            null,
-            array(
+        if ($generation_incomplete) {
+            $this->current_history->record(
+                'warning',
+                sprintf('Post "%s" generated with missing components', $title),
+                null,
+                null,
+                array(
+                    'post_id' => $post_id,
+                    'context_type' => $context->get_type(),
+                    'context_id' => $context->get_id(),
+                    'component_statuses' => $component_statuses,
+                )
+            );
+
+            $this->generation_logger->log('Post generated with missing components', 'warning', array(
                 'post_id' => $post_id,
                 'context_type' => $context->get_type(),
                 'context_id' => $context->get_id(),
-            )
-        );
+                'title' => $title,
+                'component_statuses' => $component_statuses,
+            ));
+        } else {
+            $this->current_history->record(
+                'activity',
+                sprintf('Post "%s" generated successfully', $title),
+                null,
+                null,
+                array(
+                    'post_id' => $post_id,
+                    'context_type' => $context->get_type(),
+                    'context_id' => $context->get_id(),
+                )
+            );
 
-        $this->generation_logger->log('Post generated successfully', 'info', array(
-            'post_id' => $post_id,
-            'context_type' => $context->get_type(),
-            'context_id' => $context->get_id(),
-            'title' => $title
-        ));
+            $this->generation_logger->log('Post generated successfully', 'info', array(
+                'post_id' => $post_id,
+                'context_type' => $context->get_type(),
+                'context_id' => $context->get_id(),
+                'title' => $title
+            ));
+        }
 
         // Trigger hook for other systems to respond to the new post
         // For backward compatibility, extract template if it's a template context
-        if ($context->get_type() === 'template') {
+        if ($context instanceof AIPS_Template_Context) {
             $template_obj = $context->get_template();
             do_action('aips_post_generated', $post_id, $template_obj, $this->current_history->get_id());
         } else {
             do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id());
         }
 
-        $this->history_id = null;
         $this->generation_logger->set_history_id(null);
 
         return $post_id;

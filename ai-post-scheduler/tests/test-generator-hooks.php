@@ -694,6 +694,7 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 	public function test_featured_image_failure_still_saves_post_with_incomplete_meta() {
 		global $aips_test_meta;
 		$aips_test_meta = array();
+		$incomplete_action_calls = array();
 
 		$logger = new class {
 			public function log($message, $level = 'info', $context = array()) {}
@@ -780,6 +781,20 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			$prompt_builder
 		);
 
+		add_action(
+			'aips_post_generation_incomplete',
+			function($post_id, $component_statuses, $context, $history_id) use (&$incomplete_action_calls) {
+				$incomplete_action_calls[] = array(
+					'post_id' => $post_id,
+					'component_statuses' => $component_statuses,
+					'context' => $context,
+					'history_id' => $history_id,
+				);
+			},
+			10,
+			4
+		);
+
 		$template = (object) array(
 			'id' => 11,
 			'prompt_template' => 'Prompt for {{topic}}',
@@ -809,5 +824,10 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 			),
 			$component_statuses
 		);
+
+		$this->assertCount(1, $incomplete_action_calls);
+		$this->assertSame($post_id, $incomplete_action_calls[0]['post_id']);
+		$this->assertSame(99, $incomplete_action_calls[0]['history_id']);
+		$this->assertSame($component_statuses, $incomplete_action_calls[0]['component_statuses']);
 	}
 }
