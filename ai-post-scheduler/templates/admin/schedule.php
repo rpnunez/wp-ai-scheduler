@@ -56,24 +56,6 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
         <div class="aips-content-panel">
             <!-- Filter Bar -->
             <div class="aips-filter-bar">
-                <div class="aips-filter-left">
-                    <span class="aips-result-count">
-                        <?php
-                        $schedule_count = count( $schedules );
-                        printf(
-                            esc_html(
-                                _n(
-                                    '%s schedule',
-                                    '%s schedules',
-                                    $schedule_count,
-                                    'ai-post-scheduler'
-                                )
-                            ),
-                            number_format_i18n( $schedule_count )
-                        );
-                        ?>
-                    </span>
-                </div>
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-schedule-search"><?php esc_html_e('Search Schedules:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-schedule-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search schedules...', 'ai-post-scheduler'); ?>">
@@ -249,6 +231,25 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
                         </button>
                     </div>
                 </div>
+            </div>
+            <!-- Table footer -->
+            <div class="tablenav">
+                <span class="aips-table-footer-count">
+                    <?php
+                    $schedule_count = count( $schedules );
+                    printf(
+                        esc_html(
+                            _n(
+                                '%s schedule',
+                                '%s schedules',
+                                $schedule_count,
+                                'ai-post-scheduler'
+                            )
+                        ),
+                        number_format_i18n( $schedule_count )
+                    );
+                    ?>
+                </span>
             </div>
         </div>
         <?php else: ?>

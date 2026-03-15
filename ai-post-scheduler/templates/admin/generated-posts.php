@@ -44,9 +44,6 @@ if (!defined('ABSPATH')) {
 					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
 						<div class="aips-filter-left">
-							<span class="aips-result-count">
-								<?php printf( esc_html( _n( '%s post', '%s posts', $history['total'], 'ai-post-scheduler' ) ), number_format_i18n( $history['total'] ) ); ?>
-							</span>
 							<?php if (!empty($authors)): ?>
 							<label class="screen-reader-text" for="aips-filter-author"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>
 							<select name="author_id" id="aips-filter-author" class="aips-form-select">
@@ -169,36 +166,34 @@ if (!defined('ABSPATH')) {
 					<?php endif; ?>
 				</div>
 
-				<!-- Pagination controls -->
-				<?php if ($history['pages'] > 1): ?>
-					<div class="tablenav">
-						<div class="tablenav-pages">
-							<?php
-							$page_links = paginate_links(array(
-								'base' => add_query_arg('generated_paged', '%#%'),
-								'format' => '',
-								'prev_text' => '&laquo;',
-								'next_text' => '&raquo;',
-								'total' => $history['pages'],
-								'current' => $current_page,
-								'add_args' => array_filter(array(
-									'author_id' => $author_id ? $author_id : false,
-									'template_id' => $template_id ? $template_id : false,
-									's' => $search_query ? $search_query : false,
-								)),
-							));
-							if ($page_links) {
-								echo '<span class="displaying-num">' . sprintf(
-									/* translators: %s: total number of items */
-									_n('%s item', '%s items', $history['total'], 'ai-post-scheduler'),
-									number_format_i18n($history['total'])
-								) . '</span>';
-								echo wp_kses_post( $page_links );
-							}
-							?>
-						</div>
+				<!-- Table footer -->
+				<div class="tablenav">
+					<span class="aips-table-footer-count">
+						<?php printf( esc_html( _n( '%s post', '%s posts', $history['total'], 'ai-post-scheduler' ) ), number_format_i18n( $history['total'] ) ); ?>
+					</span>
+					<?php if ($history['pages'] > 1): ?>
+					<div class="tablenav-pages">
+						<?php
+						$page_links = paginate_links(array(
+							'base' => add_query_arg('generated_paged', '%#%'),
+							'format' => '',
+							'prev_text' => '&laquo;',
+							'next_text' => '&raquo;',
+							'total' => $history['pages'],
+							'current' => $current_page,
+							'add_args' => array_filter(array(
+								'author_id' => $author_id ? $author_id : false,
+								'template_id' => $template_id ? $template_id : false,
+								's' => $search_query ? $search_query : false,
+							)),
+						));
+						if ($page_links) {
+							echo wp_kses_post( $page_links );
+						}
+						?>
 					</div>
-				<?php endif; ?>
+					<?php endif; ?>
+				</div>
 			</div>
 		</div>
 
@@ -209,9 +204,6 @@ if (!defined('ABSPATH')) {
 					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
 						<div class="aips-filter-left">
-							<span class="aips-result-count">
-								<?php printf( esc_html( _n( '%s post', '%s posts', $partial_generations['total'], 'ai-post-scheduler' ) ), number_format_i18n( $partial_generations['total'] ) ); ?>
-							</span>
 							<?php if (!empty($authors)): ?>
 							<label class="screen-reader-text" for="aips-filter-author-partial"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>
 							<select name="author_id" id="aips-filter-author-partial" class="aips-form-select">
@@ -339,36 +331,35 @@ if (!defined('ABSPATH')) {
 					<?php endif; ?>
 				</div>
 
-				<?php if ($partial_generations['pages'] > 1): ?>
-					<div class="tablenav">
-						<div class="tablenav-pages">
-							<?php
-							$page_links = paginate_links(array(
-								'base' => add_query_arg('partial_paged', '%#%'),
-								'format' => '',
-								'prev_text' => '&laquo;',
-								'next_text' => '&raquo;',
-								'total' => $partial_generations['pages'],
-								'current' => $partial_current_page,
-								'add_fragment' => '#aips-partial-generations',
-								'add_args' => array_filter(array(
-									'author_id' => $author_id ? $author_id : false,
-									'template_id' => $template_id ? $template_id : false,
-									's' => $search_query ? $search_query : false,
-								)),
-							));
-							if ($page_links) {
-								echo '<span class="displaying-num">' . sprintf(
-									/* translators: %s: total number of items */
-									_n('%s item', '%s items', $partial_generations['total'], 'ai-post-scheduler'),
-									number_format_i18n($partial_generations['total'])
-								) . '</span>';
-								echo wp_kses_post($page_links);
-							}
-							?>
-						</div>
+				<!-- Table footer -->
+				<div class="tablenav">
+					<span class="aips-table-footer-count">
+						<?php printf( esc_html( _n( '%s post', '%s posts', $partial_generations['total'], 'ai-post-scheduler' ) ), number_format_i18n( $partial_generations['total'] ) ); ?>
+					</span>
+					<?php if ($partial_generations['pages'] > 1): ?>
+					<div class="tablenav-pages">
+						<?php
+						$page_links = paginate_links(array(
+							'base' => add_query_arg('partial_paged', '%#%'),
+							'format' => '',
+							'prev_text' => '&laquo;',
+							'next_text' => '&raquo;',
+							'total' => $partial_generations['pages'],
+							'current' => $partial_current_page,
+							'add_fragment' => '#aips-partial-generations',
+							'add_args' => array_filter(array(
+								'author_id' => $author_id ? $author_id : false,
+								'template_id' => $template_id ? $template_id : false,
+								's' => $search_query ? $search_query : false,
+							)),
+						));
+						if ($page_links) {
+							echo wp_kses_post($page_links);
+						}
+						?>
 					</div>
-				<?php endif; ?>
+					<?php endif; ?>
+				</div>
 			</div>
 		</div>
 
@@ -380,8 +371,7 @@ if (!defined('ABSPATH')) {
 					<form method="get" class="aips-post-review-filters aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
 						<div class="aips-filter-left">
-							<span class="aips-result-count"><?php printf(esc_html(_n('%d draft', '%d drafts', $draft_posts['total'], 'ai-post-scheduler')), $draft_posts['total']); ?></span>
-							<?php if (!empty($templates)): ?>
+								<?php if (!empty($templates)): ?>
 							<label class="screen-reader-text" for="aips-filter-template"><?php esc_html_e('Filter by Template:', 'ai-post-scheduler'); ?></label>
 							<select name="template_id" id="aips-filter-template" class="aips-form-select">
 								<option value=""><?php esc_html_e('All Templates', 'ai-post-scheduler'); ?></option>
@@ -534,52 +524,7 @@ if (!defined('ABSPATH')) {
 					</tbody>
 				</table>
 
-				<?php if ($draft_posts['pages'] > 1): ?>
-        <div class="tablenav bottom">
-          <div class="tablenav-pages">
-            <span class="displaying-num">
-              <?php printf(
-                esc_html(_n('%d item', '%d items', $draft_posts['total'], 'ai-post-scheduler')),
-                $draft_posts['total']
-              ); ?>
-            </span>
-            <span class="pagination-links">
-              <?php
-              $base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
-              if ($template_id) {
-                $base_url .= '&template_id=' . $template_id;
-              }
-              if ($search_query) {
-                $base_url .= '&s=' . urlencode($search_query);
-              }
-              $hash_fragment = '#aips-pending-review';
-
-              if ($review_current_page > 1): ?>
-              <a class="prev-page button" href="<?php echo esc_url($base_url . '&review_paged=' . ($review_current_page - 1) . $hash_fragment); ?>">
-                <span class="screen-reader-text"><?php esc_html_e('Previous page', 'ai-post-scheduler'); ?></span>
-                <span aria-hidden="true">&lsaquo;</span>
-              </a>
-              <?php endif; ?>
-
-              <span class="paging-input">
-                <span class="tablenav-paging-text">
-                  <?php echo esc_html($review_current_page); ?>
-                  <?php esc_html_e('of', 'ai-post-scheduler'); ?>
-                  <span class="total-pages"><?php echo esc_html($draft_posts['pages']); ?></span>
-                </span>
-              </span>
-
-              <?php if ($review_current_page < $draft_posts['pages']): ?>
-              <a class="next-page button" href="<?php echo esc_url($base_url . '&review_paged=' . ($review_current_page + 1) . $hash_fragment); ?>">
-                <span class="screen-reader-text"><?php esc_html_e('Next page', 'ai-post-scheduler'); ?></span>
-                <span aria-hidden="true">&rsaquo;</span>
-              </a>
-              <?php endif; ?>
-            </span>
-          </div>
-        </div>
-			<?php endif; ?>
-			</div><!-- .aips-panel-body -->
+				</div><!-- .aips-panel-body -->
 		</form>
 		<?php else: ?>
 		<div class="aips-panel-body">
@@ -590,6 +535,46 @@ if (!defined('ABSPATH')) {
 			</div>
 		</div>
 		<?php endif; ?>
+		<!-- Table footer -->
+		<div class="tablenav">
+			<span class="aips-table-footer-count">
+				<?php printf( esc_html( _n( '%d draft', '%d drafts', $draft_posts['total'], 'ai-post-scheduler' ) ), $draft_posts['total'] ); ?>
+			</span>
+			<?php if ($draft_posts['pages'] > 1): ?>
+			<div class="tablenav-pages">
+				<span class="pagination-links">
+					<?php
+					$base_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+					if ($template_id) {
+						$base_url .= '&template_id=' . $template_id;
+					}
+					if ($search_query) {
+						$base_url .= '&s=' . urlencode($search_query);
+					}
+					$hash_fragment = '#aips-pending-review';
+					if ($review_current_page > 1): ?>
+					<a class="prev-page button" href="<?php echo esc_url($base_url . '&review_paged=' . ($review_current_page - 1) . $hash_fragment); ?>">
+						<span class="screen-reader-text"><?php esc_html_e('Previous page', 'ai-post-scheduler'); ?></span>
+						<span aria-hidden="true">&lsaquo;</span>
+					</a>
+					<?php endif; ?>
+					<span class="paging-input">
+						<span class="tablenav-paging-text">
+							<?php echo esc_html($review_current_page); ?>
+							<?php esc_html_e('of', 'ai-post-scheduler'); ?>
+							<span class="total-pages"><?php echo esc_html($draft_posts['pages']); ?></span>
+						</span>
+					</span>
+					<?php if ($review_current_page < $draft_posts['pages']): ?>
+					<a class="next-page button" href="<?php echo esc_url($base_url . '&review_paged=' . ($review_current_page + 1) . $hash_fragment); ?>">
+						<span class="screen-reader-text"><?php esc_html_e('Next page', 'ai-post-scheduler'); ?></span>
+						<span aria-hidden="true">&rsaquo;</span>
+					</a>
+					<?php endif; ?>
+				</span>
+			</div>
+			<?php endif; ?>
+		</div>
 			</div><!-- .aips-content-panel -->
 		</div><!-- .aips-tab-content -->
 	</div>

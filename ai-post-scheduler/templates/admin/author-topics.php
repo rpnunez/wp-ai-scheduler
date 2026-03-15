@@ -145,23 +145,6 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 
 			<!-- Filter Bar -->
 			<div class="aips-filter-bar">
-				<div class="aips-filter-left">
-					<span class="aips-result-count" id="aips-topics-result-count">
-						<?php
-						printf(
-							esc_html(
-								_n(
-									'%s topic',
-									'%s topics',
-									$status_counts['pending'],
-									'ai-post-scheduler'
-								)
-							),
-							number_format_i18n( $status_counts['pending'] )
-						);
-						?>
-					</span>
-				</div>
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-topic-search"><?php esc_html_e('Search Topics:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-topic-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
@@ -201,6 +184,24 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 					</div>
 				</div>
 			</div>
+		</div>
+		<!-- Table footer -->
+		<div class="tablenav">
+			<span class="aips-table-footer-count" id="aips-topics-result-count">
+				<?php
+				printf(
+					esc_html(
+						_n(
+							'%s topic',
+							'%s topics',
+							$status_counts['pending'],
+							'ai-post-scheduler'
+						)
+					),
+					number_format_i18n( $status_counts['pending'] )
+				);
+				?>
+			</span>
 		</div>
 	</div>
 </div>

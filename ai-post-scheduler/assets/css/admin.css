@@ -249,12 +249,12 @@
 }
 
 /* Pagination tablenav inside content panels.
-   Override WordPress float-based layout with flexbox so the pagination
-   is right-aligned without ever overflowing the panel's border/radius. */
+   Override WordPress float-based layout with flexbox:
+   count on the left, pagination links on the right. */
 .aips-content-panel .tablenav {
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
+	justify-content: space-between;
 	padding: var(--aips-space-3) var(--aips-space-5);
 	border-top: 1px solid var(--aips-gray-100);
 	height: auto;
@@ -266,6 +266,13 @@
 	float: none;
 	height: auto;
 	margin: 0;
+}
+
+/* Row-count label in the table footer (left side of .tablenav) */
+.aips-table-footer-count {
+	font-size: var(--aips-text-sm);
+	color: var(--aips-gray-500);
+	white-space: nowrap;
 }
 
 /* Panel toolbar */
