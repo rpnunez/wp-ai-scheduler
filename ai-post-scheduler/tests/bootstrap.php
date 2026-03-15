@@ -923,6 +923,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-template-context.php',
         'class-aips-topic-context.php',
         'class-aips-generation-session.php',
+        'class-aips-post-manager.php',
         'class-aips-post-creator.php',
         'class-aips-markdown-parser.php',
         'class-aips-generator.php',
