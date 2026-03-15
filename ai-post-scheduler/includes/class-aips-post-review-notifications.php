@@ -9,8 +9,8 @@
  * @since 1.8.0
  */
 
-if (!defined('ABSPATH')) {
-exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
@@ -20,28 +20,28 @@ exit;
  */
 class AIPS_Post_Review_Notifications {
 
-/**
- * @var AIPS_Notifications
- */
-private $notifications;
+	/**
+	 * @var AIPS_Notifications
+	 */
+	private $notifications;
 
-/**
- * Initialize the notification handler.
- *
- * @deprecated 1.9.0
- */
-public function __construct() {
-$this->notifications = new AIPS_Notifications();
-}
+	/**
+	 * Initialize the notification handler.
+	 *
+	 * @deprecated 1.9.0
+	 */
+	public function __construct() {
+		$this->notifications = new AIPS_Notifications();
+	}
 
-/**
- * Send the daily review notification email.
- *
- * @deprecated 1.9.0 Use AIPS_Notifications::handle_review_notifications_cron() instead.
- *
- * @return void
- */
-public function send_review_notification_email() {
-$this->notifications->handle_review_notifications_cron();
-}
+	/**
+	 * Send the daily review notification email.
+	 *
+	 * @deprecated 1.9.0 Use AIPS_Notifications::handle_review_notifications_cron() instead.
+	 *
+	 * @return void
+	 */
+	public function send_review_notification_email() {
+		$this->notifications->handle_review_notifications_cron();
+	}
 }
