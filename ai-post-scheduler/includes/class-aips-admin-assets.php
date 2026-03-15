@@ -407,6 +407,10 @@ class AIPS_Admin_Assets {
                 'loadError' => __('Failed to load post components.', 'ai-post-scheduler'),
                 'confirmClose' => __('You have unsaved changes. Are you sure you want to close?', 'ai-post-scheduler'),
                 'noChanges' => __('No changes to save.', 'ai-post-scheduler'),
+                'revisionAiGenerated' => __('AI Generated', 'ai-post-scheduler'),
+                'revisionManualEdit' => __('Manual Edit', 'ai-post-scheduler'),
+                'revisionRestored' => __('Restored Version', 'ai-post-scheduler'),
+                'revisionUnknown' => __('Revision', 'ai-post-scheduler'),
             ));
         }
 

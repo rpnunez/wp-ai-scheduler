@@ -19,7 +19,9 @@
 		historyId: null,
 		components: {},
 		changedComponents: new Set(),
-		originalValues: {}
+		originalValues: {},
+		currentSources: {},
+		nonManualSnapshots: {}
 	};
 	
 	// Extend AIPS with AI Edit functionality
@@ -122,12 +124,17 @@
 			// Populate components and store original values
 			$('#aips-component-title').val(data.components.title.value);
 			aiEditState.originalValues.title = data.components.title.value;
+			window.AIPS.setAIEditComponentSource('title', data.components.title.value, 'persisted');
 			
 			$('#aips-component-excerpt').val(data.components.excerpt.value);
 			aiEditState.originalValues.excerpt = data.components.excerpt.value;
+			window.AIPS.setAIEditComponentSource('excerpt', data.components.excerpt.value, 'persisted');
 			
 			$('#aips-component-content').val(data.components.content.value);
 			aiEditState.originalValues.content = data.components.content.value;
+			window.AIPS.setAIEditComponentSource('content', data.components.content.value, 'persisted');
+			aiEditState.originalValues.featured_image = data.components.featured_image;
+			window.AIPS.setAIEditComponentSource('featured_image', data.components.featured_image, 'persisted');
 			
 			if (data.components.featured_image.url) {
 				$('#aips-component-image').attr('src', data.components.featured_image.url).show();
@@ -154,6 +161,19 @@
 			e.preventDefault();
 			var $btn = $(e.currentTarget);
 			var component = $btn.data('component');
+			var requestData = {
+				action: 'aips_regenerate_component',
+				post_id: aiEditState.postId,
+				history_id: aiEditState.historyId,
+				component: component,
+				nonce: aipsAIEditL10n.nonce
+			};
+
+			if (window.AIPS.shouldCaptureManualRevision(component)) {
+				requestData.current_value = window.AIPS.getAIEditCurrentComponentValue(component);
+				requestData.current_source = 'manual_edit';
+				requestData.current_reason = 'pre_regenerate_manual';
+			}
 			
 			// Disable button and show loading state
 			$btn.prop('disabled', true)
@@ -163,13 +183,7 @@
 			$.ajax({
 				url: aipsAIEditL10n.ajaxUrl,
 				type: 'POST',
-				data: {
-					action: 'aips_regenerate_component',
-					post_id: aiEditState.postId,
-					history_id: aiEditState.historyId,
-					component: component,
-					nonce: aipsAIEditL10n.nonce
-				},
+				data: requestData,
 				success: function(response) {
 					window.AIPS.onComponentRegenerated($btn, component, response);
 				},
@@ -190,7 +204,7 @@
 			
 			if (response.success) {
 				// Update component value
-				window.AIPS.updateAIEditComponentValue(component, response.data.new_value);
+				window.AIPS.updateAIEditComponentValue(component, response.data.new_value, 'ai_generated');
 				aiEditState.changedComponents.add(component);
 				
 				// Mark section as changed
@@ -198,8 +212,83 @@
 				
 				// Show success message
 				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+
+				// Ensure revision list reflects the new regeneration snapshot if panel is open.
+				window.AIPS.refreshComponentRevisions(component);
 			} else {
 				window.AIPS.showComponentStatus(component, 'error', response.data.message || aipsAIEditL10n.regenerateError);
+			}
+		},
+
+		/**
+		 * Track the current non-manual source/value for a component.
+		 */
+		setAIEditComponentSource: function(component, value, source) {
+			var normalizedValue = window.AIPS.normalizeAIEditComponentValue(component, value);
+			aiEditState.currentSources[component] = source;
+			aiEditState.nonManualSnapshots[component] = {
+				source: source,
+				value: normalizedValue
+			};
+		},
+
+		/**
+		 * Normalize a component value for reliable comparisons.
+		 */
+		normalizeAIEditComponentValue: function(component, value) {
+			if (component === 'featured_image') {
+				if (!value) {
+					return '';
+				}
+				return JSON.stringify({
+					attachment_id: value.attachment_id || 0,
+					url: value.url || ''
+				});
+			}
+
+			return String(value || '');
+		},
+
+		/**
+		 * Return true when the current component state is a manual edit that would be lost.
+		 */
+		shouldCaptureManualRevision: function(component) {
+			return aiEditState.currentSources[component] === 'manual_edit' && aiEditState.changedComponents.has(component);
+		},
+
+		/**
+		 * Get the current component value from the modal.
+		 */
+		getAIEditCurrentComponentValue: function(component) {
+			switch (component) {
+				case 'title':
+					return $('#aips-component-title').val();
+				case 'excerpt':
+					return $('#aips-component-excerpt').val();
+				case 'content':
+					return $('#aips-component-content').val();
+				case 'featured_image':
+					return aiEditState.components.featured_image || null;
+				default:
+					return null;
+			}
+		},
+
+		/**
+		 * Refresh revisions for a component if its revision panel is currently open
+		 */
+		refreshComponentRevisions: function(component) {
+			var $section = $('.aips-component-section[data-component="' + component + '"]');
+			var $revisions = $section.find('.aips-component-revisions');
+
+			if (!$revisions.length) {
+				return;
+			}
+
+			$revisions.data('loaded', false);
+
+			if ($revisions.is(':visible')) {
+				window.AIPS.loadComponentRevisions(component, $section);
 			}
 		},
 		
@@ -218,7 +307,7 @@
 		/**
 		 * Update component value in UI
 		 */
-		updateAIEditComponentValue: function(component, value) {
+		updateAIEditComponentValue: function(component, value, source) {
 			switch(component) {
 				case 'title':
 					$('#aips-component-title').val(value);
@@ -233,12 +322,20 @@
 					window.AIPS.updateAIEditCharCount('content');
 					break;
 				case 'featured_image':
-					if (value.url) {
+					if (value && value.url) {
 						$('#aips-component-image').attr('src', value.url).show();
 						$('#aips-component-image-none').hide();
 						aiEditState.components.featured_image = value;
+					} else {
+						$('#aips-component-image').attr('src', '').hide();
+						$('#aips-component-image-none').show();
+						aiEditState.components.featured_image = null;
 					}
 					break;
+			}
+
+			if (source) {
+				window.AIPS.setAIEditComponentSource(component, value, source);
 			}
 		},
 		
@@ -264,20 +361,31 @@
 		 */
 		onAIEditComponentChange: function(e) {
 			var $input = $(e.currentTarget);
-			var component = $input.closest('.aips-component-section').find('[data-component]').data('component');
+			var component = $input.closest('.aips-component-section').data('component');
 			var currentValue = $input.val();
 			var originalValue = aiEditState.originalValues[component];
+			var normalizedCurrent = window.AIPS.normalizeAIEditComponentValue(component, currentValue);
+			var normalizedOriginal = window.AIPS.normalizeAIEditComponentValue(component, originalValue);
+			var snapshot = aiEditState.nonManualSnapshots[component];
 			
 			// Update character count
 			window.AIPS.updateAIEditCharCount(component);
 			
 			// Track if changed from original
-			if (currentValue !== originalValue) {
+			if (normalizedCurrent !== normalizedOriginal) {
 				aiEditState.changedComponents.add(component);
 				$input.closest('.aips-component-section').addClass('changed');
 			} else {
 				aiEditState.changedComponents.delete(component);
 				$input.closest('.aips-component-section').removeClass('changed');
+			}
+
+			if (snapshot && normalizedCurrent === snapshot.value) {
+				aiEditState.currentSources[component] = snapshot.source;
+			} else if (normalizedCurrent !== normalizedOriginal) {
+				aiEditState.currentSources[component] = 'manual_edit';
+			} else {
+				aiEditState.currentSources[component] = 'persisted';
 			}
 		},
 		
@@ -417,6 +525,8 @@
 			aiEditState.components = {};
 			aiEditState.changedComponents = new Set();
 			aiEditState.originalValues = {};
+			aiEditState.currentSources = {};
+			aiEditState.nonManualSnapshots = {};
 			
 			// Clear all inputs
 			$('#aips-component-title').val('');
@@ -521,7 +631,7 @@
 					action: 'aips_get_component_revisions',
 					nonce: aipsAIEditL10n.nonce,
 					post_id: aiEditState.postId,
-					component_type: componentType,
+					component: componentType,
 					history_id: aiEditState.historyId
 				},
 				success: function(response) {
@@ -564,6 +674,8 @@
 		renderRevisionItem: function(revision, componentType) {
 			var $item = $('<div class="aips-revision-item"></div>');
 			$item.data('revision-id', revision.id);
+			var timestamp = revision.timestamp || '';
+			var revisionLabel = window.AIPS.getAIEditRevisionLabel(revision);
 			
 			// Content section
 			var $content = $('<div class="aips-revision-content"></div>');
@@ -571,7 +683,8 @@
 			// Meta information
 			var $meta = $('<div class="aips-revision-meta"></div>');
 			$meta.append('<span class="dashicons dashicons-backup"></span>');
-			$meta.append('<span class="aips-revision-timestamp">' + window.AIPS.escapeHtml(revision.created_at) + '</span>');
+			$meta.append('<span class="aips-revision-source">' + window.AIPS.escapeHtml(revisionLabel) + '</span>');
+			$meta.append('<span class="aips-revision-timestamp">' + window.AIPS.escapeHtml(timestamp) + '</span>');
 			$content.append($meta);
 			
 			// Value preview
@@ -624,7 +737,10 @@
 					nonce: aipsAIEditL10n.nonce,
 					post_id: aiEditState.postId,
 					revision_id: revisionId,
-					component_type: componentType
+					component: componentType,
+					current_value: window.AIPS.shouldCaptureManualRevision(componentType) ? window.AIPS.getAIEditCurrentComponentValue(componentType) : '',
+					current_source: window.AIPS.shouldCaptureManualRevision(componentType) ? 'manual_edit' : '',
+					current_reason: window.AIPS.shouldCaptureManualRevision(componentType) ? 'pre_restore_manual' : ''
 				},
 				success: function(response) {
 					$button.prop('disabled', false);
@@ -632,28 +748,42 @@
 					
 					if (response.success && response.data.value) {
 						// Update the component input with restored value
-						window.AIPS.updateComponentValue(componentType, response.data.value);
-						
-						// Mark as changed
-						window.AIPS.markComponentChanged(componentType);
-						
-						// Show success message
-						window.AIPS.showAIEditStatus('Revision restored successfully!', 'success');
+						window.AIPS.updateAIEditComponentValue(componentType, response.data.value, 'restored_revision');
+						aiEditState.changedComponents.add(componentType);
+						$item.closest('.aips-component-section').addClass('changed');
+						window.AIPS.showComponentStatus(componentType, 'success', response.data.message || 'Revision restored successfully!');
 						
 						// Close revision panel
 						var $section = $item.closest('.aips-component-section');
 						$section.find('.aips-view-revisions-btn').click();
 					} else {
-						window.AIPS.showAIEditStatus(response.data && response.data.message ? response.data.message : 'Failed to restore revision', 'error');
+						window.AIPS.showComponentStatus(componentType, 'error', response.data && response.data.message ? response.data.message : 'Failed to restore revision');
 					}
 				},
 				error: function(xhr, status, error) {
 					$button.prop('disabled', false);
 					$item.removeClass('restoring');
 					console.error('Failed to restore revision:', error);
-					window.AIPS.showAIEditStatus('Failed to restore revision. Please try again.', 'error');
+					window.AIPS.showComponentStatus(componentType, 'error', 'Failed to restore revision. Please try again.');
 				}
 			});
+		},
+
+		/**
+		 * Resolve a user-facing label for a revision source.
+		 */
+		getAIEditRevisionLabel: function(revision) {
+			var source = revision.source || (revision.context && revision.context.source) || 'ai_generated';
+
+			switch (source) {
+				case 'manual_edit':
+					return aipsAIEditL10n.revisionManualEdit;
+				case 'restored_revision':
+					return aipsAIEditL10n.revisionRestored;
+				case 'ai_generated':
+				default:
+					return aipsAIEditL10n.revisionAiGenerated || aipsAIEditL10n.revisionUnknown;
+			}
 		},
 		
 		/**
