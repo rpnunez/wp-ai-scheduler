@@ -268,6 +268,9 @@ class AIPS_Admin_Assets {
             'previouslyApproved' => __('Previously Approved', 'ai-post-scheduler'),
             'previouslyRejected' => __('Previously Rejected', 'ai-post-scheduler'),
             'potentialDuplicate' => __('Potential Duplicate', 'ai-post-scheduler'),
+            // Topic count display strings for the filter bar result count
+            'topicCountSingular' => __('topic', 'ai-post-scheduler'),
+            'topicCountPlural' => __('topics', 'ai-post-scheduler'),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
@@ -277,22 +280,22 @@ class AIPS_Admin_Assets {
               'authorId'        => $page_author_id,
               'deepLinkAuthorId' => $deep_link_author_id,
             ));
-        
-			// Embeddings script (queues background embedding jobs from author pages)
-			wp_enqueue_script(
-				'aips-admin-embeddings',
-				AIPS_PLUGIN_URL . 'assets/js/admin-embeddings.js',
-				array('jquery', 'aips-utilities-script', 'aips-admin-script'),
-				AIPS_VERSION,
-				true
-			);
+          
+          // Embeddings script (queues background embedding jobs from author pages)
+          wp_enqueue_script(
+            'aips-admin-embeddings',
+            AIPS_PLUGIN_URL . 'assets/js/admin-embeddings.js',
+            array('jquery', 'aips-utilities-script', 'aips-admin-script'),
+            AIPS_VERSION,
+            true
+          );
 
-			wp_localize_script('aips-admin-embeddings', 'aipsEmbeddingsL10n', array(
-				'queueing' => __('Queueing embedding jobs...', 'ai-post-scheduler'),
-				'queued'   => __('Embedding jobs queued. Processing will run in the background.', 'ai-post-scheduler'),
-				'error'    => __('Failed to queue embedding jobs.', 'ai-post-scheduler'),
-			));
-		}
+          wp_localize_script('aips-admin-embeddings', 'aipsEmbeddingsL10n', array(
+            'queueing' => __('Queueing embedding jobs...', 'ai-post-scheduler'),
+            'queued'   => __('Embedding jobs queued. Processing will run in the background.', 'ai-post-scheduler'),
+            'error'    => __('Failed to queue embedding jobs.', 'ai-post-scheduler'),
+          ));
+        }
 
         // Research Page Styles & Scripts
         if (strpos($hook, 'aips-research') !== false) {
