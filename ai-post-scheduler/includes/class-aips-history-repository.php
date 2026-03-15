@@ -518,7 +518,7 @@ class AIPS_History_Repository {
         delete_transient('aips_history_stats');
 
         if (empty($status)) {
-            return $this->wpdb->query("TRUNCATE TABLE {$this->table_name}");
+            return $this->wpdb->query("DELETE FROM {$this->table_name}");
         }
         
         return $this->wpdb->delete($this->table_name, array('status' => $status), array('%s'));
@@ -709,6 +709,8 @@ class AIPS_History_Repository {
                 'timestamp' => $row->timestamp,
                 'component_type' => $component_type,
                 'value' => $value,
+                'source' => isset($details['context']['source']) ? $details['context']['source'] : 'ai_generated',
+                'reason' => isset($details['context']['reason']) ? $details['context']['reason'] : '',
                 'context' => isset($details['context']) ? $details['context'] : array(),
             );
         }
