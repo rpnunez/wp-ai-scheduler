@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 }
 
 $author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
-$authors_page_url = admin_url('admin.php?page=aips-authors');
+$authors_page_url = AIPS_Admin_Menu_Helper::get_page_url('authors');
 
 if (!$author_id) {
 	?>
