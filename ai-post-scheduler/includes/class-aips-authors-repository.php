@@ -30,14 +30,22 @@ class AIPS_Authors_Repository {
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
+
+	/**
+	 * @var AIPS_History_Service History service for creating history containers.
+	 */
+	private $history_service;
 	
 	/**
 	 * Initialize the repository.
+	 *
+	 * @param AIPS_History_Service|null $history_service History service instance.
 	 */
-	public function __construct() {
+	public function __construct( $history_service = null ) {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_authors';
+		$this->history_service = $history_service ?: new AIPS_History_Service( new AIPS_History_Repository() );
 	}
 	
 	/**
@@ -79,8 +87,25 @@ class AIPS_Authors_Repository {
 	 * @return int|false The ID of the created author or false on failure.
 	 */
 	public function create($data) {
+		// Ensure author_history_id is not set initially
+		unset($data['author_history_id']);
+
 		$result = $this->wpdb->insert($this->table_name, $data);
-		return $result ? $this->wpdb->insert_id : false;
+		if (!$result) {
+			return false;
+		}
+
+		$author_id = $this->wpdb->insert_id;
+
+		// Create a history container for the author's lifecycle
+		$history_container = $this->history_service->create('author_lifecycle', array('author_id' => $author_id));
+
+		if ($history_container && $history_container->get_id()) {
+			// Link the history container to the author
+			$this->update($author_id, array('author_history_id' => $history_container->get_id()));
+		}
+
+		return $author_id;
 	}
 	
 	/**

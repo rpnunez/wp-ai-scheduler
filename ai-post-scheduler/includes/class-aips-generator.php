@@ -32,11 +32,6 @@ class AIPS_Generator {
      */
     private $current_history;
 
-    /**
-     * @var AIPS_Generation_Logger Handles logging logic.
-     */
-    private $generation_logger;
-
     private $template_processor;
     private $image_service;
     private $structure_manager;
@@ -92,9 +87,6 @@ class AIPS_Generator {
         } else {
             $this->markdown_parser = null;
         }
-
-        // Initialize logger wrapper
-        $this->generation_logger = new AIPS_Generation_Logger( $this->logger, $this->history_service, new AIPS_Generation_Session() );
     }
 
     /**
@@ -235,7 +227,11 @@ class AIPS_Generator {
         $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
 
         if (is_wp_error($result)) {
-            $this->generation_logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
+            if ($this->current_history) {
+                $this->current_history->record('warning', 'Failed to resolve AI variables: ' . $result->get_error_message());
+            } else {
+                $this->logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
+            }
             return array();
         }
 
@@ -245,15 +241,27 @@ class AIPS_Generator {
         if (empty($resolved_values)) {
             // AI call succeeded but we could not extract any variable values.
             // This usually indicates invalid JSON or an unexpected response format.
-            $this->generation_logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
-                'variables' => $ai_variables,
-                'raw_response' => $result,
-            ));
+            $msg = 'AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.';
+            if ($this->current_history) {
+                $this->current_history->record('warning', $msg, null, null, array(
+                    'variables' => $ai_variables,
+                    'raw_response' => $result,
+                ));
+            } else {
+                $this->logger->log($msg, 'warning', array(
+                    'variables' => $ai_variables,
+                    'raw_response' => $result,
+                ));
+            }
         } else {
-            $this->generation_logger->log('Resolved AI variables', 'info', array(
-                'variables' => $ai_variables,
-                'resolved'   => $resolved_values,
-            ));
+            if ($this->current_history) {
+                $this->current_history->record('info', 'Resolved AI variables', null, null, array(
+                    'variables' => $ai_variables,
+                    'resolved'   => $resolved_values,
+                ));
+            } else {
+                $this->logger->log('Resolved AI variables', 'info');
+            }
         }
 
         return $resolved_values;
@@ -546,30 +554,34 @@ class AIPS_Generator {
         // Dispatch post generation started event
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
 
-        // Create new history container using new API
-        // Extract source information from context
-        $history_metadata = array();
+        // If a history container is already set (e.g., by a schedule processor),
+        // use it. Otherwise, create a new one for this specific post generation.
+        if (!$this->current_history) {
+            $history_metadata = array();
 
-        if ($context instanceof AIPS_Template_Context) {
-            $history_metadata['template_id'] = $context->get_id();
-        } elseif ($context instanceof AIPS_Topic_Context) {
-            // For topic context, store author_id and topic_id
-            $history_metadata['topic_id'] = $context->get_id();
-            $author = $context->get_author();
-            if ($author && isset($author->id)) {
-                $history_metadata['author_id'] = $author->id;
+            if ($context->get_type() === 'template') {
+                $history_metadata['template_id'] = $context->get_id();
+            } elseif ($context->get_type() === 'topic') {
+                $history_metadata['topic_id'] = $context->get_id();
+                if (method_exists($context, 'get_author')) {
+                    $author = $context->get_author();
+                    if ($author && isset($author->id)) {
+                        $history_metadata['author_id'] = $author->id;
+                    }
+                }
             }
+
+            $creation_method = $context->get_creation_method() ?: 'manual';
+            $history_metadata['creation_method'] = $creation_method;
+
+            $this->current_history = $this->history_service->create('post_generation', $history_metadata);
         }
 
-        // Get creation_method from context, default to 'manual' if not specified
-        $creation_method = $context->get_creation_method() ?: 'manual';
-        $history_metadata['creation_method'] = $creation_method;
-
-        $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
+        // Attach a generation session to the history container.
+        $this->current_history->with_session($context);
 
         if (!$this->current_history->get_id()) {
-            // Fallback if history creation fails (though unlikely)
-            $this->logger->log('Failed to create history record', 'error');
+            $this->logger->log('Failed to create or attach to a history record', 'error');
         }
 
         // Build the full content prompt from context
@@ -632,14 +644,16 @@ class AIPS_Generator {
                 $has_unresolved_placeholders = true;
 
                 // Log a warning for observability when AI variables were not resolved correctly.
-                $this->generation_logger->warning(
-                    'Generated title contains unresolved AI variables; falling back to safe default title.',
-                    array(
+                $warning_msg = 'Generated title contains unresolved AI variables; falling back to safe default title.';
+                if ($this->current_history) {
+                    $this->current_history->record('warning', $warning_msg, null, null, array(
                         'context_type' => $context->get_type(),
                         'context_id' => $context->get_id(),
                         'topic'       => $context->get_topic(),
-                    )
-                );
+                    ));
+                } else {
+                    $this->logger->log($warning_msg, 'warning');
+                }
             }
         }
 
@@ -882,6 +896,8 @@ class AIPS_Generator {
                     null,
                     array('component' => 'featured_image', 'error' => $featured_image_result->get_error_message())
                 );
+            } else {
+                $this->logger->log('Featured image handling failed: ' . $featured_image_result->get_error_message(), 'error');
             }
         }
 

@@ -857,8 +857,10 @@ class AIPS_History_Repository {
                 'timestamp' => $row->timestamp,
                 'component_type' => $component_type,
                 'value' => $value,
-                'source' => isset($details['context']['source']) ? $details['context']['source'] : 'ai_generated',
-                'reason' => isset($details['context']['reason']) ? $details['context']['reason'] : '',
+                // Prefer context source, then top-level source, then default
+                'source' => isset($details['context']['source']) ? $details['context']['source'] : (isset($details['source']) ? $details['source'] : 'ai_generated'), 
+                // Prefer context reason, then top-level reason, then default
+                'reason' => isset($details['context']['reason']) ? $details['context']['reason'] : (isset($details['reason']) ? $details['reason'] : ''), 
                 'context' => isset($details['context']) ? $details['context'] : array(),
             );
         }

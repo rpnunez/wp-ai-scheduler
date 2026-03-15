@@ -293,7 +293,16 @@ class AIPS_Schedule_Processor {
         
         // Create context with creation_method
         $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
+
+        // Set the history container on the generator so all AI calls are logged
+        if ($history) {
+            $this->generator->set_history_container($history);
+        }
+
         $result = $this->generator->generate_post($context);
+
+        // Clear the history container from the generator after use
+        $this->generator->set_history_container(null);
 
         // Handle Post-Execution Logic (Cleanup/Updates)
         if (!$is_manual) {

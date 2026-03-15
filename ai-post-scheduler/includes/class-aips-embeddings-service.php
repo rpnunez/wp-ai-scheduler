@@ -49,9 +49,10 @@ class AIPS_Embeddings_Service {
 	 *
 	 * @param string $text The text to generate an embedding for.
 	 * @param array  $options Optional. Additional options for embedding generation.
+	 * @param AIPS_History_Container|null $history_container Optional history container for logging.
 	 * @return array|WP_Error The embedding vector or WP_Error on failure.
 	 */
-	public function generate_embedding($text, $options = array()) {
+	public function generate_embedding($text, $options = array(), $history_container = null) {
 		if (empty($text)) {
 			return new WP_Error('empty_text', __('Cannot generate embedding for empty text.', 'ai-post-scheduler'));
 		}
@@ -78,6 +79,13 @@ class AIPS_Embeddings_Service {
 		}
 		
 		try {
+			if ($history_container) {
+				$history_container->record('ai_request', 'Generating embedding', array(
+					'text_preview' => substr($text, 0, 100) . (strlen($text) > 100 ? '...' : ''),
+					'text_length' => strlen($text)
+				));
+			}
+
 			// Use Meow AI's embeddings functionality
 			// Note: This assumes Meow AI supports embeddings through a Query_Embed or similar class
 			if (class_exists('Meow_MWAI_Query_Embed')) {
@@ -99,15 +107,27 @@ class AIPS_Embeddings_Service {
 					$this->embedding_cache[$cache_key] = $embedding;
 					
 					$this->logger->log('Generated embedding for text: ' . substr($text, 0, 50) . '...', 'debug');
+					
+					if ($history_container) {
+						$history_container->record('ai_response', 'Embedding generated successfully', null, array('vector_dimensions' => count($embedding)));
+					}
+					
 					return $embedding;
 				}
 			}
 			
 			// Fallback: If Meow AI doesn't support embeddings directly, return an error
-			return new WP_Error('embeddings_not_supported', __('Embeddings are not supported by the current AI Engine configuration.', 'ai-post-scheduler'));
+			$error_msg = __('Embeddings are not supported by the current AI Engine configuration.', 'ai-post-scheduler');
+			if ($history_container) {
+				$history_container->record_error($error_msg);
+			}
+			return new WP_Error('embeddings_not_supported', $error_msg);
 			
 		} catch (Exception $e) {
 			$this->logger->log('Embedding generation failed: ' . $e->getMessage(), 'error');
+			if ($history_container) {
+				$history_container->record_error('Embedding generation failed: ' . $e->getMessage());
+			}
 			return new WP_Error('embedding_failed', $e->getMessage());
 		}
 	}

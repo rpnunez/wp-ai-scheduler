@@ -44,6 +44,16 @@ class AIPS_Author_Topics_Generator {
 	 * @var AIPS_Embeddings_Service Embeddings service for fuzzy duplicate checks
 	 */
 	private $embeddings_service;
+
+	/**
+	 * @var AIPS_History_Repository Repository for history data.
+	 */
+	private $history_repository;
+
+	/**
+	 * @var AIPS_History_Service Service for history operations.
+	 */
+	private $history_service;
 	
 	/**
 	 * Initialize the generator.
@@ -53,34 +63,68 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $topics_repository Topics repository (optional for testing).
 	 * @param object|null $logs_repository Logs repository (optional for testing).
 	 * @param object|null $embeddings_service Embeddings service (optional for testing).
+	 * @param object|null $history_repository History repository (optional for testing).
+	 * @param object|null $history_service History service (optional for testing).
 	 */
-	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null) {
+	public function __construct(
+		$ai_service = null,
+		$logger = null,
+		$topics_repository = null,
+		$logs_repository = null,
+		$embeddings_service = null,
+		$history_repository = null,
+		$history_service = null
+	) {
 		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
 		$this->logger = $logger ?: new AIPS_Logger();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
-		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
+		$this->history_repository = $history_repository ?: new AIPS_History_Repository();
+		$this->history_service = $history_service ?: new AIPS_History_Service( $this->history_repository );
+		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service( $this->ai_service, $this->logger, $this->history_repository );
 	}
 	
 	/**
 	 * Generate topics for an author.
 	 *
 	 * @param object $author Author object from database.
+	 * @param AIPS_History_Container|null $history_container Optional history container for logging.
 	 * @return array|WP_Error Array of generated topics or WP_Error on failure.
 	 */
-	public function generate_topics($author) {
+	public function generate_topics($author, $history_container = null) {
 		if (!$author || !isset($author->id)) {
 			return new WP_Error('invalid_author', 'Invalid author object provided');
 		}
-		
-		$this->logger->log("Starting topic generation for author: {$author->name} (ID: {$author->id})", 'info', array(
+
+		// If no history container is provided, load the author's main lifecycle container.
+		if (!$history_container && !empty($author->author_history_id)) {
+			$history_container = AIPS_History_Container::load_existing($this->history_repository, $author->author_history_id);
+		}
+
+		$log_message = "Starting topic generation for author: {$author->name} (ID: {$author->id})";
+		$this->logger->log($log_message, 'info', array(
 			'author_id' => $author->id,
 			'quantity' => $author->topic_generation_quantity
 		));
+
+		if ($history_container) {
+			$history_container->record('activity', $log_message, array(
+				'author_id' => $author->id,
+				'quantity' => $author->topic_generation_quantity
+			));
+		}
 		
 		// Build the prompt with feedback loop context
 		$prompt = $this->build_topic_generation_prompt($author);
 		
+		if ($history_container) {
+			$history_container->record('ai_request', 'Generating topics for author', array(
+				'prompt' => $prompt,
+				'author_id' => $author->id,
+				'quantity' => $author->topic_generation_quantity
+			));
+		}
+
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
 			'max_tokens' => 2000,
@@ -89,42 +133,75 @@ class AIPS_Author_Topics_Generator {
 		
 		if (is_wp_error($response)) {
 			$this->logger->log("Failed to generate topics for author {$author->id}: " . $response->get_error_message(), 'error');
+			if ($history_container) {
+				$history_container->record_error("Failed to generate topics: " . $response->get_error_message(), (array) $response);
+			}
 			return $response;
+		}
+
+		if ($history_container) {
+			$history_container->record('ai_response', 'Topics generated successfully', null, $response);
 		}
 		
 		// Parse the JSON response into database-ready topics
 		$topics = $this->parse_json_topics($response, $author);
 		
 		if (empty($topics)) {
-			$this->logger->log("No topics parsed from AI response for author {$author->id}", 'warning');
+			$log_message = "No topics parsed from AI response for author {$author->id}";
+			$this->logger->log($log_message, 'warning');
+			if ($history_container) {
+				$history_container->record('warning', $log_message);
+			}
 			return new WP_Error('no_topics_parsed', 'Failed to parse topics from AI response');
 		}
 		
 		// Flag semantically similar candidates before they reach editorial review.
-		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics);
+		$topics = $this->apply_fuzzy_duplicate_flags($author, $topics, $history_container);
 		
 		// Save topics to database
 		$saved_topics = array();
 
 		// Bolt Optimization: Use bulk insert to reduce database round-trips
 		if ($this->topics_repository->create_bulk($topics)) {
-			// Retrieve created topics to get IDs (fetch latest N topics for author)
+			// Retrieve created topics to get IDs
 			$created_topics = $this->topics_repository->get_latest_by_author($author->id, count($topics));
-
-			// Reverse to match original order (oldest to newest ID)
-			$created_topics = array_reverse($created_topics);
+			$created_topics = array_reverse($created_topics); // Match original order
 
 			foreach ($created_topics as $topic_obj) {
+				// Create a dedicated history container for each topic
+				$topic_history = $this->history_service->create('topic_lifecycle', array(
+					'topic_id' => $topic_obj->id,
+					'author_id' => $author->id,
+				));
+
+				if ($topic_history && $topic_history->get_id()) {
+					// Link the history container to the topic
+					$this->topics_repository->update($topic_obj->id, array('topic_history_id' => $topic_history->get_id()));
+					$topic_obj->topic_history_id = $topic_history->get_id(); // Add to object for return
+				}
+				
 				$topic_arr = (array) $topic_obj;
 				$saved_topics[] = $topic_arr;
 
 				$this->logger->log("Created topic: {$topic_arr['topic_title']}", 'info', array(
 					'topic_id' => $topic_arr['id'],
-					'author_id' => $author->id
+					'author_id' => $author->id,
+					'history_id' => $topic_history ? $topic_history->get_id() : null,
 				));
+
+				if ($history_container) {
+					$history_container->record('activity', "Generated and saved new topic: {$topic_arr['topic_title']}", array(
+						'topic_id' => $topic_arr['id'],
+						'topic_title' => $topic_arr['topic_title'],
+						'topic_history_id' => $topic_history ? $topic_history->get_id() : null,
+					));
+				}
 			}
 		} else {
 			$this->logger->log("Failed to bulk create topics for author {$author->id}", 'error');
+			if ($history_container) {
+				$history_container->record_error("Failed to save generated topics to the database.");
+			}
 			return new WP_Error('db_insert_error', 'Failed to save generated topics to database');
 		}
 		
@@ -133,6 +210,12 @@ class AIPS_Author_Topics_Generator {
 			'author_id' => $author->id,
 			'topic_count' => $count
 		));
+
+		if ($history_container) {
+			$history_container->record('activity', "Successfully generated {$count} new topics.", array(
+				'topic_count' => $count,
+			));
+		}
 		
 		return $saved_topics;
 	}
@@ -339,9 +422,10 @@ class AIPS_Author_Topics_Generator {
 	 *
 	 * @param object $author Author object.
 	 * @param array  $topics Generated topic arrays.
+	 * @param AIPS_History_Container|null $history_container Optional history container.
 	 * @return array Topics with updated metadata and score adjustments.
 	 */
-	private function apply_fuzzy_duplicate_flags($author, $topics) {
+	private function apply_fuzzy_duplicate_flags($author, $topics, $history_container = null) {
 		if (empty($topics) || !$this->embeddings_service->is_embeddings_supported()) {
 			return $topics;
 		}
@@ -375,7 +459,7 @@ class AIPS_Author_Topics_Generator {
 				continue;
 			}
 
-			$embedding = $this->embeddings_service->generate_embedding($text);
+			$embedding = $this->embeddings_service->generate_embedding($text, array(), $history_container);
 			if (is_wp_error($embedding) || !is_array($embedding)) {
 				continue;
 			}
