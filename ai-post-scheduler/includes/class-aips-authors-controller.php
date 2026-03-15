@@ -322,7 +322,7 @@ class AIPS_Authors_Controller {
 		// Create admin bar notification for manual topic generation
 		$author = $this->repository->get_by_id($author_id);
 		if ($author && is_array($result)) {
-			AIPS_Admin_Bar::notify_author_topics_generated($author->name, count($result), $author_id);
+			( new AIPS_Notifications() )->author_topics_generated($author->name, count($result), $author_id);
 		}
 
 		wp_send_json_success(array(

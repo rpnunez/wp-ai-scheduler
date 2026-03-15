@@ -163,7 +163,7 @@ class AIPS_Author_Topics_Scheduler {
 		$this->logger->log("Successfully generated topics for author {$author->id}", 'info');
 
 		// Create admin bar notification
-		AIPS_Admin_Bar::notify_author_topics_generated($author->name, $topic_count, $author->id);
+		( new AIPS_Notifications() )->author_topics_generated($author->name, $topic_count, $author->id);
 
 		return true;
 	}

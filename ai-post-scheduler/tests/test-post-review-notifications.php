@@ -1,202 +1,177 @@
 <?php
 /**
- * Tests for Post Review Email Notifications
+ * Tests for Post Review Notifications via AIPS_Notifications.
+ *
+ * Covers the deprecated AIPS_Post_Review_Notifications wrapper to ensure
+ * backward compatibility is preserved, as well as the cron handler on
+ * AIPS_Notifications directly.
  *
  * @package AI_Post_Scheduler
  */
 
 class Test_AIPS_Post_Review_Notifications extends WP_UnitTestCase {
-	
-	private $notifications;
-	private $repository;
-	private $test_post_ids = array();
-	private $test_history_ids = array();
-	
-	public function setUp(): void {
-		parent::setUp();
-		$this->notifications = new AIPS_Post_Review_Notifications();
-		$this->repository = new AIPS_Post_Review_Repository();
-	}
-	
-	public function tearDown(): void {
-		// Clean up test posts
-		foreach ($this->test_post_ids as $post_id) {
-			wp_delete_post($post_id, true);
-		}
-		
-		// Clean up test history
-		global $wpdb;
-		$history_table = $wpdb->prefix . 'aips_history';
-		foreach ($this->test_history_ids as $history_id) {
-			$wpdb->delete($history_table, array('id' => $history_id), array('%d'));
-		}
-		
-		// Clean up test options
-		delete_option('aips_review_notifications_enabled');
-		delete_option('aips_review_notifications_email');
-		
-		parent::tearDown();
-	}
-	
-	/**
-	 * Helper method to create a test post with history.
-	 */
-	private function create_test_post_with_history($post_status = 'draft', $template_id = 1) {
-		// Create a draft post
-		$post_id = wp_insert_post(array(
-			'post_title' => 'Test Draft Post ' . uniqid(),
-			'post_content' => 'Test content',
-			'post_status' => $post_status,
-			'post_type' => 'post',
-		));
-		
-		$this->test_post_ids[] = $post_id;
-		
-		// Create history record
-		global $wpdb;
-		$history_table = $wpdb->prefix . 'aips_history';
-		$wpdb->insert($history_table, array(
-			'post_id' => $post_id,
-			'template_id' => $template_id,
-			'status' => 'completed',
-			'generated_title' => 'Test Generated Title',
-			'generated_content' => 'Test generated content',
-			'created_at' => current_time('mysql'),
-			'completed_at' => current_time('mysql'),
-		));
-		
-		$history_id = $wpdb->insert_id;
-		$this->test_history_ids[] = $history_id;
-		
-		return array('post_id' => $post_id, 'history_id' => $history_id);
-	}
-	
-	/**
-	 * Test that notifications are not sent when disabled.
-	 */
-	public function test_notifications_not_sent_when_disabled() {
-		update_option('aips_review_notifications_enabled', 0);
-		update_option('aips_review_notifications_email', 'test@example.com');
-		
-		// Create draft posts
-		$this->create_test_post_with_history('draft', 1);
-		
-		// Reset email log
-		$GLOBALS['phpmailer']->mock_sent = array();
-		
-		// Call the notification method
-		$this->notifications->send_review_notification_email();
-		
-		// Should not send email when disabled
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
-	}
-	
-	/**
-	 * Test that notifications are not sent when no draft posts exist.
-	 */
-	public function test_notifications_not_sent_when_no_drafts() {
-		update_option('aips_review_notifications_enabled', 1);
-		update_option('aips_review_notifications_email', 'test@example.com');
-		
-		// No draft posts created
-		
-		// Reset email log
-		$GLOBALS['phpmailer']->mock_sent = array();
-		
-		// Call the notification method
-		$this->notifications->send_review_notification_email();
-		
-		// Should not send email when no drafts
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
-	}
-	
-	/**
-	 * Test that email message is built correctly.
-	 */
-	public function test_email_message_format() {
-		// Create draft posts
-		$this->create_test_post_with_history('draft', 1);
-		$this->create_test_post_with_history('draft', 1);
-		
-		$draft_posts = $this->repository->get_draft_posts(array(
-			'per_page' => 10,
-			'page' => 1,
-		));
-		
-		$draft_count = $this->repository->get_draft_count();
-		
-		// Use reflection to call private method
-		$reflection = new ReflectionClass($this->notifications);
-		$method = $reflection->getMethod('build_email_message');
-		$method->setAccessible(true);
-		
-		$message = $method->invoke($this->notifications, $draft_posts, $draft_count);
-		
-		// Verify message contains expected content
-		$this->assertStringContainsString('Posts Awaiting Review', $message);
-		// Check for the correct plural/singular form based on count
-		if ($draft_count === 1) {
-			$this->assertStringContainsString('Post Awaiting Review', $message);
-		} else {
-			$this->assertStringContainsString('Posts Awaiting Review', $message);
-		}
-		$this->assertStringContainsString('Review Posts', $message);
-		$this->assertStringContainsString(admin_url('admin.php?page=aips-generated-posts#aips-pending-review'), $message);
-	}
-	
-	/**
-	 * Test that cron job is scheduled correctly.
-	 */
-	public function test_cron_job_scheduling() {
-		// Clear any existing schedule
-		wp_clear_scheduled_hook('aips_send_review_notifications');
-		
-		// Schedule the job manually (simulating plugin activation)
-		wp_schedule_event(time(), 'daily', 'aips_send_review_notifications');
-		
-		// Verify it's scheduled
-		$timestamp = wp_next_scheduled('aips_send_review_notifications');
-		$this->assertNotFalse($timestamp);
-		$this->assertGreaterThanOrEqual(time(), $timestamp);
-		
-		// Clean up
-		wp_clear_scheduled_hook('aips_send_review_notifications');
-	}
-	
-	/**
-	 * Test that cron job is cleared correctly.
-	 */
-	public function test_cron_job_clearing() {
-		// Schedule the job first (simulating plugin activation)
-		wp_schedule_event(time(), 'daily', 'aips_send_review_notifications');
-		
-		// Verify it's scheduled
-		$this->assertNotFalse(wp_next_scheduled('aips_send_review_notifications'));
-		
-		// Clear it (simulating plugin deactivation)
-		wp_clear_scheduled_hook('aips_send_review_notifications');
-		
-		// Verify it's cleared
-		$this->assertFalse(wp_next_scheduled('aips_send_review_notifications'));
-	}
-	
-	/**
-	 * Test that invalid email address prevents sending.
-	 */
-	public function test_invalid_email_prevents_sending() {
-		update_option('aips_review_notifications_enabled', 1);
-		update_option('aips_review_notifications_email', 'not-an-email');
-		
-		// Create draft posts
-		$this->create_test_post_with_history('draft', 1);
-		
-		// Reset email log
-		$GLOBALS['phpmailer']->mock_sent = array();
-		
-		// Call the notification method
-		$this->notifications->send_review_notification_email();
-		
-		// Should not send email with invalid address
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
-	}
+
+/** @var AIPS_Post_Review_Notifications */
+private $notifications;
+
+/** @var AIPS_Post_Review_Repository */
+private $repository;
+
+/** @var int[] */
+private $test_post_ids = array();
+
+/** @var int[] */
+private $test_history_ids = array();
+
+public function setUp(): void {
+parent::setUp();
+AIPS_DB_Manager::install_tables();
+$this->notifications = new AIPS_Post_Review_Notifications();
+$this->repository    = new AIPS_Post_Review_Repository();
+}
+
+public function tearDown(): void {
+foreach ( $this->test_post_ids as $post_id ) {
+wp_delete_post( $post_id, true );
+}
+
+global $wpdb;
+$history_table = $wpdb->prefix . 'aips_history';
+foreach ( $this->test_history_ids as $history_id ) {
+$wpdb->delete( $history_table, array( 'id' => $history_id ), array( '%d' ) );
+}
+
+delete_option( 'aips_review_notifications_enabled' );
+delete_option( 'aips_review_notifications_email' );
+
+parent::tearDown();
+}
+
+// -----------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------
+
+private function create_test_post_with_history( $post_status = 'draft', $template_id = 1 ) {
+$post_id = wp_insert_post( array(
+'post_title'   => 'Test Draft Post ' . uniqid(),
+'post_content' => 'Test content',
+'post_status'  => $post_status,
+'post_type'    => 'post',
+) );
+
+$this->test_post_ids[] = $post_id;
+
+global $wpdb;
+$history_table = $wpdb->prefix . 'aips_history';
+$wpdb->insert( $history_table, array(
+'post_id'           => $post_id,
+'template_id'       => $template_id,
+'status'            => 'completed',
+'generated_title'   => 'Test Generated Title',
+'generated_content' => 'Test generated content',
+'created_at'        => current_time( 'mysql' ),
+'completed_at'      => current_time( 'mysql' ),
+) );
+
+$history_id = $wpdb->insert_id;
+$this->test_history_ids[] = $history_id;
+
+return array( 'post_id' => $post_id, 'history_id' => $history_id );
+}
+
+// -----------------------------------------------------------------------
+// Deprecated wrapper: send_review_notification_email()
+// -----------------------------------------------------------------------
+
+/**
+ * Deprecated wrapper must not send when notifications are disabled.
+ */
+public function test_notifications_not_sent_when_disabled() {
+update_option( 'aips_review_notifications_enabled', 0 );
+update_option( 'aips_review_notifications_email', 'test@example.com' );
+
+$this->create_test_post_with_history( 'draft', 1 );
+
+$GLOBALS['phpmailer']->mock_sent = array();
+
+$this->notifications->send_review_notification_email();
+
+$this->assertEmpty( $GLOBALS['phpmailer']->mock_sent );
+}
+
+/**
+ * Deprecated wrapper must not send when there are no draft posts.
+ */
+public function test_notifications_not_sent_when_no_drafts() {
+update_option( 'aips_review_notifications_enabled', 1 );
+update_option( 'aips_review_notifications_email', 'test@example.com' );
+
+$GLOBALS['phpmailer']->mock_sent = array();
+
+$this->notifications->send_review_notification_email();
+
+$this->assertEmpty( $GLOBALS['phpmailer']->mock_sent );
+}
+
+/**
+ * Deprecated wrapper must not send with an invalid email address.
+ */
+public function test_invalid_email_prevents_sending() {
+update_option( 'aips_review_notifications_enabled', 1 );
+update_option( 'aips_review_notifications_email', 'not-an-email' );
+
+$this->create_test_post_with_history( 'draft', 1 );
+
+$GLOBALS['phpmailer']->mock_sent = array();
+
+$this->notifications->send_review_notification_email();
+
+$this->assertEmpty( $GLOBALS['phpmailer']->mock_sent );
+}
+
+/**
+ * Email message should include "Posts Awaiting Review" when drafts exist.
+ */
+public function test_email_message_format() {
+update_option( 'aips_review_notifications_enabled', 1 );
+update_option( 'aips_review_notifications_email', 'test@example.com' );
+
+$this->create_test_post_with_history( 'draft', 1 );
+$this->create_test_post_with_history( 'draft', 1 );
+
+$GLOBALS['phpmailer']->mock_sent = array();
+
+$this->notifications->send_review_notification_email();
+
+$this->assertCount( 1, $GLOBALS['phpmailer']->mock_sent );
+
+$body = $GLOBALS['phpmailer']->mock_sent[0]['body'];
+
+$this->assertStringContainsString( 'Posts Awaiting Review', $body );
+$this->assertStringContainsString( 'Review Posts', $body );
+$this->assertStringContainsString( admin_url( 'admin.php?page=aips-generated-posts#aips-pending-review' ), $body );
+}
+
+// -----------------------------------------------------------------------
+// Cron scheduling (not coupled to class logic)
+// -----------------------------------------------------------------------
+
+public function test_cron_job_scheduling() {
+wp_clear_scheduled_hook( 'aips_send_review_notifications' );
+wp_schedule_event( time(), 'daily', 'aips_send_review_notifications' );
+
+$timestamp = wp_next_scheduled( 'aips_send_review_notifications' );
+$this->assertNotFalse( $timestamp );
+$this->assertGreaterThanOrEqual( time(), $timestamp );
+
+wp_clear_scheduled_hook( 'aips_send_review_notifications' );
+}
+
+public function test_cron_job_clearing() {
+wp_schedule_event( time(), 'daily', 'aips_send_review_notifications' );
+$this->assertNotFalse( wp_next_scheduled( 'aips_send_review_notifications' ) );
+
+wp_clear_scheduled_hook( 'aips_send_review_notifications' );
+$this->assertFalse( wp_next_scheduled( 'aips_send_review_notifications' ) );
+}
 }
