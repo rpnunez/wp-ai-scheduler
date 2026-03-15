@@ -481,11 +481,11 @@
 				return;
 			}
 
-			let html = '<table class="wp-list-table widefat fixed striped aips-topics-table"><thead><tr>';
+			let html = '<table class="aips-table aips-topics-table"><thead><tr>';
 			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>';
-			html += '<th style="width:60%">' + (aipsAuthorsL10n.topicDetails || 'Topic Details') + '</th>';
-			html += '<th style="width:10%">' + aipsAuthorsL10n.generatedAt + '</th>';
-			html += '<th style="width:30%">' + aipsAuthorsL10n.actions + '</th>';
+			html += '<th class="column-topic">' + (aipsAuthorsL10n.topicDetails || 'Topic Details') + '</th>';
+			html += '<th class="column-generated">' + aipsAuthorsL10n.generatedAt + '</th>';
+			html += '<th class="column-actions">' + aipsAuthorsL10n.actions + '</th>';
 			html += '</tr></thead><tbody>';
 
 			topics.forEach(topic => {
@@ -529,7 +529,7 @@
 
 				html += '<tr data-topic-id="' + topic.id + '">';
 				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
-				html += '<td class="topic-title-cell">';
+				html += '<td class="topic-title-cell column-topic">';
 				html += '<div class="aips-topic-row">';
 
 				// Expand button is only shown when detail content exists.
@@ -581,24 +581,28 @@
 				}
 
 				html += '</td>';
-				html += '<td>' + topic.generated_at + '</td>';
-				html += '<td class="topic-actions">';
+				html += '<td class="column-generated">' + topic.generated_at + '</td>';
+				html += '<td class="topic-actions column-actions">';
 
 				// Actions based on status
 				if (status === 'pending') {
 					// Pending actions: feedback actions and edit
-					html += '<div class="aips-btn-group">';
+					html += '<div class="cell-actions">';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
 					html += '</div>';
-					html += '<div class="aips-btn-group" style="margin-top: 6px;">';
+					html += '<div class="cell-actions" style="margin-top: 6px;">';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '</button>';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '</button>';
 					html += '</div>';
 				} else if (status === 'approved') {
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button> ';
+					html += '<div class="cell-actions">';
+					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button>';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
+					html += '</div>';
 				} else {
+					html += '<div class="cell-actions">';
 					html += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
+					html += '</div>';
 				}
 
 				html += '</td></tr>';
@@ -978,13 +982,13 @@
 				return;
 			}
 
-			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
+			let html = '<table class="aips-table aips-feedback-table"><thead><tr>';
 			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>';
-			html += '<th>' + aipsAuthorsL10n.topic + '</th>';
-			html += '<th>' + aipsAuthorsL10n.action + '</th>';
-			html += '<th>' + aipsAuthorsL10n.reason + '</th>';
-			html += '<th>' + aipsAuthorsL10n.user + '</th>';
-			html += '<th>' + aipsAuthorsL10n.date + '</th>';
+			html += '<th class="column-topic">' + aipsAuthorsL10n.topic + '</th>';
+			html += '<th class="column-action">' + aipsAuthorsL10n.action + '</th>';
+			html += '<th class="column-reason">' + aipsAuthorsL10n.reason + '</th>';
+			html += '<th class="column-user">' + aipsAuthorsL10n.user + '</th>';
+			html += '<th class="column-date">' + aipsAuthorsL10n.date + '</th>';
 			html += '</tr></thead><tbody>';
 
 			feedback.forEach(item => {

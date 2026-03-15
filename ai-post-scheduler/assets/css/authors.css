@@ -112,10 +112,16 @@
 /* Topics Content */
 #aips-topics-content {
 	min-height: 200px;
+	padding: 0;
 }
 
 #aips-topics-content table {
 	margin-top: 0;
+}
+
+#aips-topics-content > p {
+	padding: 20px;
+	margin: 0;
 }
 
 .topic-title-cell {
@@ -299,13 +305,27 @@
 
 /* Topics Table Checkboxes */
 .aips-topics-table .check-column {
-	width: 2.2em;
-	padding: 8px 0;
+	width: 2.5rem;
+	min-width: 2.5rem;
+	padding: 12px;
 	vertical-align: middle;
 	text-align: center;
 }
 
 .aips-topics-table .check-column input[type="checkbox"] {
+	margin: 0;
+	cursor: pointer;
+}
+
+.aips-feedback-table .check-column {
+	width: 2.5rem;
+	min-width: 2.5rem;
+	padding: 12px;
+	text-align: center;
+	vertical-align: middle;
+}
+
+.aips-feedback-table .check-column input[type="checkbox"] {
 	margin: 0;
 	cursor: pointer;
 }
@@ -340,13 +360,33 @@
 	height: 18px;
 }
 
-/* Keep topic rows clearly separated and consistently striped */
-.aips-topics-table tr:nth-child(odd) {
-	background-color: #fff !important;
+/* Use shared aips-table row styling for consistency across plugin pages */
+.aips-topics-table tr:nth-child(odd),
+.aips-topics-table tr:nth-child(even) {
+	background-color: transparent;
 }
 
-.aips-topics-table tr:nth-child(even) {
-	background-color: #f6f7f7 !important;
+.aips-topics-table .column-generated,
+.aips-feedback-table .column-date {
+	white-space: nowrap;
+	width: 190px;
+}
+
+.aips-topics-table .column-actions {
+	width: 340px;
+}
+
+.aips-topics-table .column-topic,
+.aips-feedback-table .column-topic {
+	min-width: 340px;
+}
+
+.aips-feedback-table .column-action {
+	width: 120px;
+}
+
+.aips-feedback-table .column-user {
+	width: 160px;
 }
 
 .aips-topic-row {
@@ -363,7 +403,7 @@
 	padding: 12px 14px;
 	border: 1px solid #dcdcde;
 	border-radius: 4px;
-	background: #fff;
+	background: #f6f7f7;
 	line-height: 1.6;
 }
 
@@ -577,6 +617,10 @@
 .aips-tab-link.active .aips-tab-count {
 	background: #2271b1;
 	color: #fff;
+}
+
+#aips-author-topics-panel .aips-filter-bar .aips-filter-left {
+	flex-wrap: nowrap;
 }
 
 @media screen and (max-width: 782px) {

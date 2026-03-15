@@ -351,7 +351,12 @@
             e.preventDefault();
             var $tabLink = $(e.currentTarget);
             var tabId = $tabLink.data('tab');
-            var $tabNav = $tabLink.closest('.aips-tab-nav');
+            var $tabNav = $tabLink.closest('.aips-tab-nav, .aips-topics-tabs, .aips-page-tabs');
+
+            if (!$tabNav.length) {
+                $tabNav = $tabLink.parent();
+            }
+
             var $scope = $tabNav.closest('.aips-page-container, .aips-modal-content, .aips-modal-body');
 
             if (!$scope.length) {
