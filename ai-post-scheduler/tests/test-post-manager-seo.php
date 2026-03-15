@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 /**
  * Validate that generated posts receive SEO metadata for Yoast and RankMath.
  */
-class AIPS_Post_Manager_SEO_Test extends WP_UnitTestCase {
+class AIPS_Post_Manager_SEO_Metadata_Test extends WP_UnitTestCase {
 
     /**
      * Reset shared meta storage between tests.
