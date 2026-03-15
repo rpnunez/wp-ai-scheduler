@@ -73,7 +73,7 @@ class AIPS_Partial_Generation_Notifications {
 		$sent = wp_mail($to_email, $subject, $message, $headers);
 
 		if ($sent) {
-			$history = $this->history_service->create('notification_sent', array());
+			$history = $this->history_service->create('notification_sent', array(), AIPS_History_Container_Type::NOTIFICATION);
 			$history->record(
 				'activity',
 				sprintf(__('Partial generation notification sent to %s', 'ai-post-scheduler'), $to_email),

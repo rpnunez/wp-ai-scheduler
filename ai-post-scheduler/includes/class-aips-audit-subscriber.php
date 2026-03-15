@@ -35,7 +35,7 @@ class AIPS_Audit_Subscriber {
         $history = $this->history_service->create('template_audit', [
             'template_id' => $new_data['id'],
             'user_id' => get_current_user_id(),
-        ]);
+        ], AIPS_History_Container_Type::TEMPLATE_AUDIT);
 
         $history->record(
             'activity',
@@ -66,7 +66,7 @@ class AIPS_Audit_Subscriber {
         $history = $this->history_service->create('template_audit', [
             'template_id' => $old_data->id,
             'user_id' => get_current_user_id(),
-        ]);
+        ], AIPS_History_Container_Type::TEMPLATE_AUDIT);
 
         $change_log = '';
         foreach ($changes as $change) {

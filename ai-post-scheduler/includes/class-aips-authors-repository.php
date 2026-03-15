@@ -98,7 +98,7 @@ class AIPS_Authors_Repository {
 		$author_id = $this->wpdb->insert_id;
 
 		// Create a history container for the author's lifecycle
-		$history_container = $this->history_service->create('author_lifecycle', array('author_id' => $author_id));
+		$history_container = $this->history_service->create('author_lifecycle', array('author_id' => $author_id), AIPS_History_Container_Type::AUTHOR);
 
 		if ($history_container && $history_container->get_id()) {
 			// Link the history container to the author

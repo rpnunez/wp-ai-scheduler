@@ -237,7 +237,7 @@ class AIPS_Scheduler {
                 // Create a new persistent history container for this schedule
                 $history_container = $this->history_service->create('schedule_lifecycle', array(
                     'schedule_id' => $new_id,
-                ));
+                ), AIPS_History_Container_Type::SCHEDULE);
 
                 if ($history_container && $history_container->get_id()) {
                     // Persist the history container ID on the schedule record
@@ -305,7 +305,7 @@ class AIPS_Scheduler {
         // No existing container — create one and attach it
         $container = $this->history_service->create('schedule_lifecycle', array(
             'schedule_id' => $schedule_id,
-        ));
+        ), AIPS_History_Container_Type::SCHEDULE);
 
         if ($container && $container->get_id()) {
             $this->repository->update($schedule_id, array(

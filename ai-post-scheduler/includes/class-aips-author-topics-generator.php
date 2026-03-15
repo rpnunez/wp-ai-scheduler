@@ -172,7 +172,7 @@ class AIPS_Author_Topics_Generator {
 				$topic_history = $this->history_service->create('topic_lifecycle', array(
 					'topic_id' => $topic_obj->id,
 					'author_id' => $author->id,
-				));
+				), AIPS_History_Container_Type::AUTHOR_TOPIC);
 
 				if ($topic_history && $topic_history->get_id()) {
 					// Link the history container to the topic

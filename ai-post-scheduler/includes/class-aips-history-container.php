@@ -54,6 +54,12 @@ class AIPS_History_Container {
 	 * @var bool Whether this history has been persisted to database
 	 */
 	private $is_persisted;
+
+	/**
+	 * @var int|null Explicit container type constant (AIPS_History_Container_Type::*).
+	 *               When null, the type is resolved from the $type string via resolve_from_string().
+	 */
+	private $container_type;
 	
 	/**
 	 * Initialize a new History container
@@ -62,10 +68,13 @@ class AIPS_History_Container {
 	 * @param string $type Type of history container
 	 * @param array $metadata Optional metadata
 	 * @param int|null $existing_history_id Optional. Load existing container by ID
+	 * @param int|null $container_type Optional. Explicit AIPS_History_Container_Type::* constant.
+	 *                                 When provided, overrides string-based type resolution.
 	 */
-	public function __construct($repository, $type, $metadata = array(), $existing_history_id = null) {
+	public function __construct($repository, $type, $metadata = array(), $existing_history_id = null, $container_type = null) {
 		$this->repository = $repository;
 		$this->session = null;
+		$this->container_type = $container_type;
 		
 		if ($existing_history_id) {
 			// Load existing history container
@@ -203,7 +212,9 @@ class AIPS_History_Container {
 			return true;
 		}
 
-		$container_type = AIPS_History_Container_Type::resolve_from_string($this->type);
+		$container_type = $this->container_type !== null
+			? $this->container_type
+			: AIPS_History_Container_Type::resolve_from_string($this->type);
 
 		$data = array_merge(
 			array(
