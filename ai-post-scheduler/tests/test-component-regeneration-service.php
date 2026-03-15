@@ -331,4 +331,90 @@ class Test_Component_Regeneration_Service extends WP_UnitTestCase {
 		// Should be either a string or WP_Error
 		$this->assertTrue(is_string($result) || is_wp_error($result));
 	}
+
+	/**
+	 * Regression test: featured image regeneration should use the generator's
+	 * resolved prompt output (template + AI variables already processed).
+	 */
+	public function test_regenerate_featured_image_uses_resolved_prompt_path() {
+		$post_id = $this->factory->post->create(array(
+			'post_title' => 'Prompt Resolution Post',
+			'post_content' => 'Original body content for regeneration context.',
+		));
+
+		$history_id = $this->history_repository->create(array(
+			'post_id' => $post_id,
+			'status' => 'completed',
+		));
+
+		$template = (object) array(
+			'id' => 77,
+			'name' => 'Prompt Resolution Template',
+			'prompt_template' => 'Write about {{topic}}',
+			'image_prompt' => 'Image for {{topic}} by {{Brand}} in {{year}}',
+		);
+
+		$generation_context = new AIPS_Template_Context($template, null, 'Security Automation');
+
+		$generator_stub = new class {
+			public $last_context = null;
+			public $last_content = null;
+			public $last_title = null;
+
+			public function process_featured_image_prompt($context, $content = '', $title = '') {
+				$this->last_context = $context;
+				$this->last_content = $content;
+				$this->last_title = $title;
+				return 'Resolved featured image prompt for Security Automation by Nimbus in 2026';
+			}
+		};
+
+		$image_service_stub = new class {
+			public $received_prompt = null;
+			public $received_title = null;
+
+			public function generate_and_upload_featured_image($prompt, $title) {
+				$this->received_prompt = $prompt;
+				$this->received_title = $title;
+				return 987;
+			}
+		};
+
+		$this->set_private_property($this->service, 'generator', $generator_stub);
+		$this->set_private_property($this->service, 'image_service', $image_service_stub);
+
+		$result = $this->service->regenerate_featured_image(array(
+			'generation_context' => $generation_context,
+			'current_title' => 'Regenerated Title',
+			'post_id' => $post_id,
+			'history_id' => $history_id,
+		));
+
+		$this->assertIsArray($result);
+		$this->assertArrayHasKey('attachment_id', $result);
+		$this->assertSame(987, $result['attachment_id']);
+		$this->assertSame(
+			'Resolved featured image prompt for Security Automation by Nimbus in 2026',
+			$image_service_stub->received_prompt
+		);
+		$this->assertSame('Regenerated Title', $image_service_stub->received_title);
+		$this->assertSame('Original body content for regeneration context.', $generator_stub->last_content);
+		$this->assertInstanceOf('AIPS_Template_Context', $generator_stub->last_context);
+		$this->assertSame('Regenerated Title', $generator_stub->last_title);
+	}
+
+	/**
+	 * Set a private property value on an object for test doubles.
+	 *
+	 * @param object $object Target object.
+	 * @param string $property Property name.
+	 * @param mixed  $value Value to assign.
+	 * @return void
+	 */
+	private function set_private_property($object, $property, $value) {
+		$reflection = new ReflectionClass($object);
+		$property_ref = $reflection->getProperty($property);
+		$property_ref->setAccessible(true);
+		$property_ref->setValue($object, $value);
+	}
 }
