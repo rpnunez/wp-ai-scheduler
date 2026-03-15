@@ -44,6 +44,9 @@ if (!defined('ABSPATH')) {
 					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
 						<div class="aips-filter-left">
+							<span class="aips-result-count">
+								<?php printf( esc_html( _n( '%s post', '%s posts', $history['total'], 'ai-post-scheduler' ) ), number_format_i18n( $history['total'] ) ); ?>
+							</span>
 							<?php if (!empty($authors)): ?>
 							<label class="screen-reader-text" for="aips-filter-author"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>
 							<select name="author_id" id="aips-filter-author" class="aips-form-select">
@@ -206,6 +209,9 @@ if (!defined('ABSPATH')) {
 					<form method="get" class="search-form aips-filter-form">
 						<input type="hidden" name="page" value="aips-generated-posts">
 						<div class="aips-filter-left">
+							<span class="aips-result-count">
+								<?php printf( esc_html( _n( '%s post', '%s posts', $partial_generations['total'], 'ai-post-scheduler' ) ), number_format_i18n( $partial_generations['total'] ) ); ?>
+							</span>
 							<?php if (!empty($authors)): ?>
 							<label class="screen-reader-text" for="aips-filter-author-partial"><?php esc_html_e('Filter by Author:', 'ai-post-scheduler'); ?></label>
 							<select name="author_id" id="aips-filter-author-partial" class="aips-form-select">
@@ -405,23 +411,27 @@ if (!defined('ABSPATH')) {
 					</form>
 				</div>
 
-				<div class="aips-panel-body">
-				<?php if (!empty($draft_posts['items'])): ?>
-		<form id="aips-post-review-form" method="post">
-			<div class="tablenav top">
-				<div class="alignleft actions bulkactions">
-					<select name="bulk_action" id="bulk-action-selector-top">
-						<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
-						<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
-						<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
-					</select>
-					<button type="button" id="aips-bulk-action-btn" class="button action"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+			<?php if (!empty($draft_posts['items'])): ?>
+			<form id="aips-post-review-form" method="post">
+				<!-- Bulk Actions Toolbar -->
+				<div class="aips-panel-toolbar">
+					<div class="aips-toolbar-left aips-btn-group aips-btn-group-inline">
+						<select name="bulk_action" id="bulk-action-selector-top" class="aips-form-select" style="width: auto;">
+							<option value=""><?php esc_html_e('Bulk Actions', 'ai-post-scheduler'); ?></option>
+							<option value="publish"><?php esc_html_e('Publish', 'ai-post-scheduler'); ?></option>
+							<option value="delete"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></option>
+						</select>
+						<button type="button" id="aips-bulk-action-btn" class="aips-btn aips-btn-sm aips-btn-secondary"><?php esc_html_e('Apply', 'ai-post-scheduler'); ?></button>
+					</div>
+					<div class="aips-toolbar-right">
+						<button type="button" id="aips-reload-posts-btn" class="aips-btn aips-btn-sm aips-btn-secondary">
+							<span class="dashicons dashicons-update"></span>
+							<?php esc_html_e('Reload', 'ai-post-scheduler'); ?>
+						</button>
+					</div>
 				</div>
-				<div class="alignright">
-					<button type="button" class="button" id="aips-reload-posts-btn"><?php esc_html_e('Reload', 'ai-post-scheduler'); ?></button>
-				</div>
-			</div>
-			
+
+				<div class="aips-panel-body no-padding">
 			<table class="wp-list-table widefat fixed striped aips-post-review-table">
 				<thead>
 					<tr>
@@ -569,17 +579,19 @@ if (!defined('ABSPATH')) {
           </div>
         </div>
 			<?php endif; ?>
+			</div><!-- .aips-panel-body -->
 		</form>
 		<?php else: ?>
-      <div class="aips-empty-state">
-        <span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
-        <h3><?php esc_html_e('No Draft Posts', 'ai-post-scheduler'); ?></h3>
-        <p><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
-      </div>
-      <?php endif; ?>
-				</div>
+		<div class="aips-panel-body">
+			<div class="aips-empty-state">
+				<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
+				<h3><?php esc_html_e('No Draft Posts', 'ai-post-scheduler'); ?></h3>
+				<p><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
 			</div>
 		</div>
+		<?php endif; ?>
+			</div><!-- .aips-content-panel -->
+		</div><!-- .aips-tab-content -->
 	</div>
 </div>
 
