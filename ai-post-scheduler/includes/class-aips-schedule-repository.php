@@ -473,6 +473,33 @@ class AIPS_Schedule_Repository {
     }
 
     /**
+     * Get all active schedules.
+     *
+     * Returns schedules with only the columns needed for schedule calculations
+     * (template_id, next_run, frequency), ordered by template_id.
+     *
+     * @return array Array of schedule objects (template_id, next_run, frequency).
+     */
+    public function get_active_schedules() {
+        return $this->wpdb->get_results(
+            "SELECT template_id, next_run, frequency FROM {$this->schedule_table} WHERE is_active = 1 ORDER BY template_id"
+        );
+    }
+
+    /**
+     * Get active schedules for a specific template.
+     *
+     * @param int $template_id Template ID.
+     * @return array Array of active schedule objects for this template.
+     */
+    public function get_active_schedules_by_template($template_id) {
+        return $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT * FROM {$this->schedule_table} WHERE template_id = %d AND is_active = 1",
+            absint($template_id)
+        ));
+    }
+
+    /**
      * Count schedules by status.
      *
      * @return array {

@@ -230,6 +230,20 @@ class AIPS_Author_Topics_Repository {
 	}
 	
 	/**
+	 * Delete all topics belonging to an author.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return int|false Number of rows deleted (0 if none matched), or false on failure.
+	 */
+	public function delete_by_author($author_id) {
+		return $this->wpdb->delete(
+			$this->table_name,
+			array('author_id' => absint($author_id)),
+			array('%d')
+		);
+	}
+
+	/**
 	 * Get approved topics for an author (for post generation).
 	 *
 	 * @param int $author_id Author ID.
