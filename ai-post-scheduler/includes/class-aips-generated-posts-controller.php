@@ -72,6 +72,7 @@ class AIPS_Generated_Posts_Controller {
 		// Use separate pagination parameters for each tab
 		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
 		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;
+		$partial_page = isset($_GET['partial_paged']) ? absint($_GET['partial_paged']) : 1;
 		$search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
@@ -127,10 +128,44 @@ class AIPS_Generated_Posts_Controller {
 			'search' => $search_query,
 			'template_id' => $template_id,
 		));
+
+		$partial_generations = $this->history_repository->get_partial_generations(array(
+			'page' => $partial_page,
+			'per_page' => 20,
+			'search' => $search_query,
+			'author_id' => $author_id,
+			'template_id' => $template_id,
+		));
+
+		$partial_posts_data = array();
+		foreach ($partial_generations['items'] as $item) {
+			if (!$item->post_id) {
+				continue;
+			}
+
+			$post = get_post($item->post_id);
+			if (!$post) {
+				continue;
+			}
+
+			$partial_posts_data[] = array(
+				'history_id' => $item->id,
+				'post_id' => $item->post_id,
+				'title' => $post->post_title,
+				'date_generated' => $item->created_at,
+				'date_updated' => $item->post_modified,
+				'edit_link' => get_edit_post_link($item->post_id),
+				'post_status' => $item->post_status,
+				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),
+				'source' => $this->format_source($item),
+				'missing_components' => $this->get_missing_components($item->component_statuses),
+			);
+		}
 		
 		// Pass separate page variables for each tab
 		$current_page = $generated_page; // For Generated Posts tab
 		$review_current_page = $review_page; // For Pending Review tab
+		$partial_current_page = $partial_page; // For Partial Generations tab
 		
 		// Get templates for filter dropdown
 		$template_repository = new AIPS_Template_Repository();
@@ -148,6 +183,50 @@ class AIPS_Generated_Posts_Controller {
 		$controller = $this;
 		
 		include AIPS_PLUGIN_DIR . 'templates/admin/generated-posts.php';
+	}
+
+	/**
+	 * Convert stored component status JSON into a list of failed component labels.
+	 *
+	 * @param string|null $component_statuses_json Stored component status JSON.
+	 * @return array List of missing component labels.
+	 */
+	public function get_missing_components($component_statuses_json) {
+		$labels = array(
+			'post_title' => __('Title', 'ai-post-scheduler'),
+			'post_excerpt' => __('Excerpt', 'ai-post-scheduler'),
+			'post_content' => __('Content', 'ai-post-scheduler'),
+			'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+		);
+
+		$decoded = json_decode((string) $component_statuses_json, true);
+		if (!is_array($decoded)) {
+			return array();
+		}
+
+		$missing = array();
+		foreach ($labels as $key => $label) {
+			if (array_key_exists($key, $decoded) && !$decoded[$key]) {
+				$missing[] = $label;
+			}
+		}
+
+		return $missing;
+	}
+
+	/**
+	 * Get a display label for a WordPress post status.
+	 *
+	 * @param string $post_status Post status slug.
+	 * @return string
+	 */
+	public function format_post_status($post_status) {
+		$status_object = get_post_status_object($post_status);
+		if ($status_object && !empty($status_object->label)) {
+			return $status_object->label;
+		}
+
+		return ucfirst(str_replace('_', ' ', (string) $post_status));
 	}
 	
 	/**
