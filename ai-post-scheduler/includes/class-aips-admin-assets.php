@@ -268,6 +268,9 @@ class AIPS_Admin_Assets {
             'previouslyApproved' => __('Previously Approved', 'ai-post-scheduler'),
             'previouslyRejected' => __('Previously Rejected', 'ai-post-scheduler'),
             'potentialDuplicate' => __('Potential Duplicate', 'ai-post-scheduler'),
+            // Topic count display strings for the filter bar result count
+            'topicCountSingular' => __('topic', 'ai-post-scheduler'),
+            'topicCountPlural' => __('topics', 'ai-post-scheduler'),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
