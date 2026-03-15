@@ -349,15 +349,25 @@
          */
         switchAipsTab: function(e) {
             e.preventDefault();
-            var tabId = $(e.currentTarget).data('tab');
+            var $tabLink = $(e.currentTarget);
+            var tabId = $tabLink.data('tab');
+            var $tabNav = $tabLink.closest('.aips-tab-nav');
+            var $scope = $tabNav.closest('.aips-page-container, .aips-modal-content, .aips-modal-body');
 
-            // Update active state on all .aips-tab-link elements
-            $('.aips-tab-link').removeClass('active');
-            $(e.currentTarget).addClass('active');
+            if (!$scope.length) {
+                $scope = $(document);
+            }
 
-            // Show the corresponding tab content
-            $('.aips-tab-content').hide();
-            $('#' + tabId + '-tab').show();
+            // Update active state only for the local tab nav
+            $tabNav.find('.aips-tab-link').removeClass('active');
+            $tabLink.addClass('active');
+
+            // Show corresponding tab content only within local scope
+            $scope.find('.aips-tab-content').hide();
+            var $targetTab = $scope.find('#' + tabId + '-tab').first();
+            if ($targetTab.length) {
+                $targetTab.show();
+            }
 
             // Notify other modules of the tab switch.
             // Passes tabId (string) as the first argument: $(document).on('aips:tabSwitch', function(e, tabId) { ... })
@@ -2217,7 +2227,7 @@
             $rows.each(function() {
                 var $row = $(this);
                 var name = $row.find('.column-name').text().toLowerCase();
-                var field = $row.find('.column-field').text().toLowerCase();
+                var field = ($row.data('field-niche') || '').toString().toLowerCase();
 
                 if (name.indexOf(term) > -1 || field.indexOf(term) > -1) {
                     $row.show();

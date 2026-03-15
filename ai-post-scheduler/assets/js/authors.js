@@ -73,6 +73,138 @@
 			// Topic search (author-topics page)
 			$(document).on('keyup search', '#aips-topic-search', this.filterTopics.bind(this));
 			$(document).on('click', '#aips-topic-search-clear', this.clearTopicSearch.bind(this));
+
+			// Authors list bulk actions
+			$(document).on('change', '#aips-authors-select-all', this.toggleSelectAllAuthors.bind(this));
+			$(document).on('click', '#aips-authors-bulk-apply', this.executeAuthorsBulkAction.bind(this));
+		},
+
+		/**
+		 * Toggle all author row checkboxes from the master checkbox.
+		 *
+		 * @param {Event} e - Change event from `#aips-authors-select-all`.
+		 */
+		toggleSelectAllAuthors: function (e) {
+			const isChecked = $(e.currentTarget).prop('checked');
+			$('.aips-author-checkbox').prop('checked', isChecked);
+		},
+
+		/**
+		 * Execute bulk actions for selected authors.
+		 *
+		 * Supported actions: `generate_topics`, `delete`.
+		 *
+		 * @param {Event} e - Click event from `#aips-authors-bulk-apply`.
+		 */
+		executeAuthorsBulkAction: function (e) {
+			e.preventDefault();
+
+			const action = $('#aips-authors-bulk-action-select').val();
+			const authorIds = $('.aips-author-checkbox:checked').map(function () {
+				return parseInt($(this).val(), 10);
+			}).get().filter(function (id) { return Number.isInteger(id) && id > 0; });
+
+			if (!action) {
+				AIPS.Utilities.showToast(aipsAuthorsL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
+				return;
+			}
+
+			if (authorIds.length === 0) {
+				AIPS.Utilities.showToast(aipsAuthorsL10n.noAuthorsSelected || 'Please select at least one author.', 'warning');
+				return;
+			}
+
+			if (action === 'generate_topics') {
+				this.bulkGenerateTopics(authorIds);
+				return;
+			}
+
+			if (action === 'delete') {
+				this.bulkDeleteAuthors(authorIds);
+				return;
+			}
+
+			AIPS.Utilities.showToast(aipsAuthorsL10n.invalidAction || 'Invalid action.', 'error');
+		},
+
+		/**
+		 * Bulk-generate topics for selected authors.
+		 *
+		 * @param {Array<number>} authorIds - Selected author IDs.
+		 */
+		bulkGenerateTopics: function (authorIds) {
+			const message = (aipsAuthorsL10n.confirmGenerateTopicsBulk || 'Generate topics now for %d selected author(s)?').replace('%d', authorIds.length);
+
+			AIPS.Utilities.confirm(message, 'Notice', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, generate',
+					className: 'aips-btn aips-btn-danger-solid',
+					action: () => {
+						const requests = authorIds.map((authorId) => {
+							return $.ajax({
+								url: ajaxurl,
+								type: 'POST',
+								data: {
+									action: 'aips_generate_topics_now',
+									nonce: aipsAuthorsL10n.nonce,
+									author_id: authorId
+								}
+							});
+						});
+
+						Promise.allSettled(requests).then((results) => {
+							const successCount = results.filter((r) => r.status === 'fulfilled' && r.value && r.value.success).length;
+							if (successCount > 0) {
+								AIPS.Utilities.showToast((aipsAuthorsL10n.topicsGeneratedBulk || '%d author(s) queued for topic generation.').replace('%d', successCount), 'success');
+								setTimeout(() => location.reload(), 800);
+							} else {
+								AIPS.Utilities.showToast(aipsAuthorsL10n.errorGenerating || 'Error generating topics.', 'error');
+							}
+						});
+					}
+				}
+			]);
+		},
+
+		/**
+		 * Bulk-delete selected authors.
+		 *
+		 * @param {Array<number>} authorIds - Selected author IDs.
+		 */
+		bulkDeleteAuthors: function (authorIds) {
+			const message = (aipsAuthorsL10n.confirmDeleteBulk || 'Delete %d selected author(s)?').replace('%d', authorIds.length);
+
+			AIPS.Utilities.confirm(message, 'Notice', [
+				{ label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+				{
+					label: 'Yes, delete',
+					className: 'aips-btn aips-btn-danger-solid',
+					action: () => {
+						const requests = authorIds.map((authorId) => {
+							return $.ajax({
+								url: ajaxurl,
+								type: 'POST',
+								data: {
+									action: 'aips_delete_author',
+									nonce: aipsAuthorsL10n.nonce,
+									author_id: authorId
+								}
+							});
+						});
+
+						Promise.allSettled(requests).then((results) => {
+							const successCount = results.filter((r) => r.status === 'fulfilled' && r.value && r.value.success).length;
+							if (successCount > 0) {
+								AIPS.Utilities.showToast((aipsAuthorsL10n.authorDeletedBulk || '%d author(s) deleted.').replace('%d', successCount), 'success');
+								setTimeout(() => location.reload(), 800);
+							} else {
+								AIPS.Utilities.showToast(aipsAuthorsL10n.errorDeleting || 'Error deleting authors.', 'error');
+							}
+						});
+					}
+				}
+			]);
 		},
 
 		/**
@@ -1672,8 +1804,8 @@
 		 * execution.
 		 */
 		bindEvents: function () {
-			// Main page tab switching
-			$(document).on('click', '.aips-authors-tab-link', this.switchMainTab.bind(this));
+			// React to shared tab switching events for top-level Authors tabs.
+			$(document).on('aips:tabSwitch', this.handleSharedTabSwitch.bind(this));
 			
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
@@ -1687,35 +1819,16 @@
 		},
 
 		/**
-		 * Switch between the "Authors List" and "Generation Queue" main tabs.
+		 * Handle shared AIPS tab-switch events for the Authors page top tabs.
 		 *
-		 * Validates the target tab ID against an allow-list to prevent XSS via
-		 * injected `data-tab` values. Updates `.aips-authors-tab-link` active
-		 * state, shows the matching `.aips-authors-tab-content`, and loads
-		 * queue data when switching to the generation-queue tab.
-		 *
-		 * @param {Event} e - Click event from an `.aips-authors-tab-link` element.
+		 * @param {jQuery.Event} e     - Custom event object.
+		 * @param {string}       tabId - The activated tab ID.
 		 */
-		switchMainTab: function (e) {
-			e.preventDefault();
-			const $tab = $(e.currentTarget);
-			const tabId = $tab.data('tab');
-
-			// Validate tabId to prevent XSS
-			const allowedTabs = ['authors-list', 'generation-queue'];
-			if (!allowedTabs.includes(tabId)) {
+		handleSharedTabSwitch: function (e, tabId) {
+			if (!$('#generation-queue-tab').length) {
 				return;
 			}
 
-			// Update active tab button
-			$('.aips-authors-tab-link').removeClass('active');
-			$tab.addClass('active');
-
-			// Show/hide tab content
-			$('.aips-authors-tab-content').hide();
-			$('#' + tabId + '-tab').show();
-
-			// Load queue data if switching to generation queue
 			if (tabId === 'generation-queue') {
 				this.loadQueueTopics();
 			}
