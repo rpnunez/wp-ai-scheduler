@@ -100,16 +100,9 @@ class AIPS_Component_Regeneration_Service {
 		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 		
-		// Find and reuse existing History Container for this post
-		$history_record = $this->history_repository->get_by_post_id($post_id);
-		if (!$history_record) {
-			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
-		}
-		
-		// Load the existing History Container
-		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
-		if (!$history_container) {
-			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
+		if (is_wp_error($history_container)) {
+			return $history_container;
 		}
 		
 		// Set the history container on the generator so it logs to the same container
@@ -117,7 +110,11 @@ class AIPS_Component_Regeneration_Service {
 		
 		// Get template, voice, and topic for generator
 		if ($generation_context->get_type() === 'template') {
-			$template = $generation_context->get_template();
+			if (!method_exists($generation_context, 'get_template')) {
+				return new WP_Error('invalid_context', __('Template context is missing template details.', 'ai-post-scheduler'));
+			}
+
+			$template = call_user_func(array($generation_context, 'get_template'));
 			$voice = $generation_context->get_voice();
 			$topic = $generation_context->get_topic();
 			
@@ -155,16 +152,9 @@ class AIPS_Component_Regeneration_Service {
 		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 		
-		// Find and reuse existing History Container for this post
-		$history_record = $this->history_repository->get_by_post_id($post_id);
-		if (!$history_record) {
-			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
-		}
-		
-		// Load the existing History Container
-		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
-		if (!$history_container) {
-			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
+		if (is_wp_error($history_container)) {
+			return $history_container;
 		}
 		
 		// Set the history container on the generator so it logs to the same container
@@ -203,16 +193,9 @@ class AIPS_Component_Regeneration_Service {
 		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 		
-		// Find and reuse existing History Container for this post
-		$history_record = $this->history_repository->get_by_post_id($post_id);
-		if (!$history_record) {
-			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
-		}
-		
-		// Load the existing History Container
-		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
-		if (!$history_container) {
-			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
+		if (is_wp_error($history_container)) {
+			return $history_container;
 		}
 		
 		// Set the history container on the generator so it logs to the same container
@@ -261,16 +244,9 @@ class AIPS_Component_Regeneration_Service {
 		$topic_str = $generation_context->get_topic();
 		$processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
 		
-		// Find and reuse existing History Container for this post
-		$history_record = $this->history_repository->get_by_post_id($post_id);
-		if (!$history_record) {
-			return new WP_Error('no_history', __('Could not find history record for post.', 'ai-post-scheduler'));
-		}
-		
-		// Load the existing History Container
-		$history_container = AIPS_History_Container::load_existing($this->history_repository, $history_record->id);
-		if (!$history_container) {
-			return new WP_Error('container_load_failed', __('Could not load history container.', 'ai-post-scheduler'));
+		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
+		if (is_wp_error($history_container)) {
+			return $history_container;
 		}
 		
 		// Log the AI request for image generation
@@ -315,6 +291,57 @@ class AIPS_Component_Regeneration_Service {
 			'url' => wp_get_attachment_url($attachment_id),
 		);
 	}
-	
+
+	/**
+	 * Capture the current component value as a revision snapshot.
+	 *
+	 * This enables immediate restore of the value that existed before a new
+	 * regeneration request changes the modal content.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param int    $history_id History ID.
+	 * @param string $component Component type.
+	 * @param mixed  $value Current component value.
+	 * @param string $reason Snapshot reason marker.
+	 * @return bool|WP_Error True on success, or WP_Error on failure.
+	 */
+	public function capture_component_revision($post_id, $history_id, $component, $value, $source = 'manual_edit', $reason = 'manual_edit') {
+		$post_id = absint($post_id);
+		$history_id = absint($history_id);
+		$source = sanitize_key($source);
+		$reason = sanitize_key($reason);
+
+		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		if (!in_array($component, $valid_components, true)) {
+			return new WP_Error('invalid_component', __('Invalid component type.', 'ai-post-scheduler'));
+		}
+
+		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
+		if (is_wp_error($history_container)) {
+			return $history_container;
+		}
+
+		$context = array(
+			'component' => $component,
+			'post_id' => $post_id,
+			'source' => $source ? $source : 'manual_edit',
+			'reason' => $reason,
+		);
+
+		if ('manual_edit' === $context['source']) {
+			$context['user_id'] = get_current_user_id();
+			$context['user_login'] = wp_get_current_user()->user_login;
+		}
+
+		$history_container->record(
+			'ai_response',
+			sprintf('Captured revision snapshot for %s before regeneration', $component),
+			null,
+			$value,
+			$context
+		);
+
+		return true;
+	}
 
 }

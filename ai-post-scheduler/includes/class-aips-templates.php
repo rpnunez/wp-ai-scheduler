@@ -13,14 +13,20 @@ class AIPS_Templates {
     private $repository;
     
     /**
+     * @var AIPS_Schedule_Repository Repository for schedule database operations
+     */
+    private $schedule_repository;
+    
+    /**
      * @var AIPS_Interval_Calculator Handles schedule interval calculations
      */
     private $interval_calculator;
     
     public function __construct() {
         global $wpdb;
-        $this->table_name = $wpdb->prefix . 'aips_templates';
-        $this->repository = new AIPS_Template_Repository();
+        $this->table_name          = $wpdb->prefix . 'aips_templates';
+        $this->repository          = new AIPS_Template_Repository();
+        $this->schedule_repository = new AIPS_Schedule_Repository();
         $this->interval_calculator = new AIPS_Interval_Calculator();
     }
     
@@ -90,13 +96,7 @@ class AIPS_Templates {
     }
     
     public function get_pending_stats($template_id) {
-        global $wpdb;
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
-
-        $schedules = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $table_schedule WHERE template_id = %d AND is_active = 1",
-            $template_id
-        ));
+        $schedules = $this->schedule_repository->get_active_schedules_by_template($template_id);
 
         $stats = array(
             'today' => 0,
@@ -161,12 +161,9 @@ class AIPS_Templates {
             return $cached_stats;
         }
 
-        global $wpdb;
-        $table_schedule = $wpdb->prefix . 'aips_schedule';
-
-        // Get all active schedules ordered by template_id
+        // Get all active schedules ordered by template_id via repository
         // OPTIMIZATION: Only select necessary columns to reduce memory usage (Bolt)
-        $schedules = $wpdb->get_results("SELECT template_id, next_run, frequency FROM $table_schedule WHERE is_active = 1 ORDER BY template_id");
+        $schedules = $this->schedule_repository->get_active_schedules();
 
         $stats = array();
         if (empty($schedules)) {
