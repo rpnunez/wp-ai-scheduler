@@ -153,6 +153,45 @@ class Test_AIPS_Notification_Templates extends WP_UnitTestCase {
 	}
 
 	// -----------------------------------------------------------------------
+	// aips_notification_templates action hook
+	// -----------------------------------------------------------------------
+
+	public function test_action_hook_allows_adding_custom_template() {
+		$custom_tpl = new AIPS_Notification_Template('custom_hook_type', 'Subject', '<p>Body</p>');
+
+		add_action('aips_notification_templates', function ( $registry ) use ( $custom_tpl ) {
+			$registry->register($custom_tpl);
+		});
+
+		$registry = new AIPS_Notification_Templates();
+		$this->assertSame($custom_tpl, $registry->get('custom_hook_type'));
+	}
+
+	// -----------------------------------------------------------------------
+	// Shared layout: built-in templates use the email layout file
+	// -----------------------------------------------------------------------
+
+	public function test_partial_generation_body_uses_shared_layout_chrome() {
+		$tpl  = $this->registry->get('partial_generation');
+		$body = $tpl->render_body(array());
+
+		// Verify the full HTML document structure from the shared layout is present.
+		$this->assertStringContainsString('<!DOCTYPE html>', $body);
+		$this->assertStringContainsString('<html>', $body);
+		$this->assertStringContainsString('.email-container', $body);
+		$this->assertStringContainsString('.email-header', $body);
+		$this->assertStringContainsString('.email-footer', $body);
+	}
+
+	public function test_posts_awaiting_review_body_uses_shared_layout_chrome() {
+		$tpl  = $this->registry->get('posts_awaiting_review');
+		$body = $tpl->render_body(array());
+
+		$this->assertStringContainsString('<!DOCTYPE html>', $body);
+		$this->assertStringContainsString('.email-footer', $body);
+	}
+
+	// -----------------------------------------------------------------------
 	// Built-in template token smoke tests
 	// -----------------------------------------------------------------------
 
@@ -500,4 +539,78 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 	public function test_channel_email_constant_value() {
 		$this->assertSame('email', AIPS_Notifications::CHANNEL_EMAIL);
 	}
+
+	// -----------------------------------------------------------------------
+	// Dynamic hook bindings: get_hook_bindings()
+	// -----------------------------------------------------------------------
+
+	public function test_get_hook_bindings_returns_array() {
+		$bindings = AIPS_Notifications::get_hook_bindings();
+		$this->assertIsArray($bindings);
+	}
+
+	public function test_get_hook_bindings_includes_review_notifications_cron() {
+		$bindings = AIPS_Notifications::get_hook_bindings();
+		$hooks    = array_column($bindings, 'hook');
+		$this->assertContains('aips_send_review_notifications', $hooks);
+	}
+
+	public function test_get_hook_bindings_includes_post_generation_incomplete() {
+		$bindings = AIPS_Notifications::get_hook_bindings();
+		$hooks    = array_column($bindings, 'hook');
+		$this->assertContains('aips_post_generation_incomplete', $hooks);
+	}
+
+	public function test_aips_notification_hook_bindings_filter_can_add_binding() {
+		add_filter('aips_notification_hook_bindings', function ( $bindings ) {
+			$bindings[] = array(
+				'hook'          => 'my_custom_event',
+				'method'        => 'handle_review_notifications_cron',
+				'priority'      => 20,
+				'accepted_args' => 1,
+			);
+			return $bindings;
+		});
+
+		$bindings = AIPS_Notifications::get_hook_bindings();
+		$hooks    = array_column($bindings, 'hook');
+
+		$this->assertContains('my_custom_event', $hooks);
+	}
+
+	public function test_binding_with_nonexistent_method_is_skipped_with_warning() {
+		// Reset static flag so hooks can re-register (test isolation).
+		$reflection = new ReflectionClass(AIPS_Notifications::class);
+		$prop       = $reflection->getProperty('hooks_registered');
+		$prop->setAccessible(true);
+		$prop->setValue(null, false);
+
+		add_filter('aips_notification_hook_bindings', function ( $bindings ) {
+			$bindings[] = array(
+				'hook'          => 'some_hook',
+				'method'        => 'method_that_does_not_exist',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			);
+			return $bindings;
+		});
+
+		// Instantiating should trigger a USER_WARNING (not a fatal) and skip the binding.
+		$warning_triggered = false;
+		set_error_handler(function ( $errno ) use ( &$warning_triggered ) {
+			if ( $errno === E_USER_WARNING ) {
+				$warning_triggered = true;
+			}
+			return true; // suppress the default handler
+		});
+
+		new AIPS_Notifications( $this->repository );
+		restore_error_handler();
+
+		$this->assertTrue($warning_triggered, 'Expected E_USER_WARNING for invalid method binding');
+
+		// Clean up: reset flag for other tests.
+		$prop->setValue(null, false);
+	}
 }
+

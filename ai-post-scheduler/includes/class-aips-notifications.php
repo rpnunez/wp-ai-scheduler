@@ -108,11 +108,68 @@ class AIPS_Notifications {
 	}
 
 	// -----------------------------------------------------------------------
-	// Hook registration
+	// Hook registry
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Register WordPress action hooks for the built-in scheduled notifications.
+	 * Declare the WordPress action hook bindings for this service.
+	 *
+	 * Returns an array of binding maps.  Each map may contain:
+	 *   - 'hook'          (string, required) — WordPress action hook name.
+	 *   - 'method'        (string, required) — Public method name on this class.
+	 *   - 'priority'      (int,    optional) — Hook priority.  Default 10.
+	 *   - 'accepted_args' (int,    optional) — Number of accepted arguments.  Default 1.
+	 *
+	 * Third-party code can add, modify, or remove bindings via the
+	 * `aips_notification_hook_bindings` filter before this service is
+	 * first instantiated.
+	 *
+	 * @return array<int, array{hook: string, method: string, priority?: int, accepted_args?: int}>
+	 */
+	public static function get_hook_bindings() {
+		$bindings = array(
+			array(
+				'hook'          => 'aips_send_review_notifications',
+				'method'        => 'handle_review_notifications_cron',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_post_generation_incomplete',
+				'method'        => 'handle_partial_generation',
+				'priority'      => 10,
+				'accepted_args' => 4,
+			),
+		);
+
+		/**
+		 * Filter: aips_notification_hook_bindings
+		 *
+		 * Modify the list of WordPress action hooks that AIPS_Notifications
+		 * registers automatically.  Each item is an associative array with
+		 * 'hook', 'method', optional 'priority', and optional 'accepted_args'.
+		 *
+		 * Example — add a binding for a custom notification hook:
+		 *
+		 *   add_filter( 'aips_notification_hook_bindings', function( $bindings ) {
+		 *       $bindings[] = array(
+		 *           'hook'          => 'my_plugin_event',
+		 *           'method'        => 'handle_my_event',
+		 *           'priority'      => 10,
+		 *           'accepted_args' => 2,
+		 *       );
+		 *       return $bindings;
+		 *   } );
+		 *
+		 * @since 1.9.0
+		 * @param array $bindings Current list of hook binding maps.
+		 * @return array Modified list.
+		 */
+		return apply_filters('aips_notification_hook_bindings', $bindings);
+	}
+
+	/**
+	 * Register WordPress action hooks for all declared notification bindings.
 	 *
 	 * Uses a static flag so that multiple instantiations (e.g. one in the main
 	 * plugin bootstrap and another inside a scheduler) do not register duplicate
@@ -126,11 +183,31 @@ class AIPS_Notifications {
 		}
 		self::$hooks_registered = true;
 
-		// Daily cron: send draft-posts-review digest email.
-		add_action('aips_send_review_notifications', array($this, 'handle_review_notifications_cron'));
+		foreach (self::get_hook_bindings() as $binding) {
+			if (empty($binding['hook']) || empty($binding['method'])) {
+				continue;
+			}
 
-		// Immediate: email alert when a post is saved with missing generated components.
-		add_action('aips_post_generation_incomplete', array($this, 'handle_partial_generation'), 10, 4);
+			if (!method_exists($this, $binding['method'])) {
+				// Log a warning to help debug misconfigured bindings from the filter.
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_trigger_error
+				trigger_error(
+					sprintf(
+						'AIPS_Notifications: hook binding skipped — method "%s" does not exist on %s (hook: %s)',
+						$binding['method'],
+						__CLASS__,
+						$binding['hook']
+					),
+					E_USER_WARNING
+				);
+				continue;
+			}
+
+			$priority      = isset($binding['priority'])      ? (int) $binding['priority']      : 10;
+			$accepted_args = isset($binding['accepted_args']) ? (int) $binding['accepted_args'] : 1;
+
+			add_action($binding['hook'], array($this, $binding['method']), $priority, $accepted_args);
+		}
 	}
 
 	// -----------------------------------------------------------------------

@@ -33,6 +33,13 @@ if (!defined('ABSPATH')) {
 class AIPS_Notification_Templates {
 
 	/**
+	 * Path to the shared email layout template, relative to the plugin root.
+	 *
+	 * @var string
+	 */
+	const EMAIL_LAYOUT_PATH = 'templates/email/email_layout.php';
+
+	/**
 	 * Registered templates keyed by type slug.
 	 *
 	 * @var AIPS_Notification_Template[]
@@ -40,25 +47,21 @@ class AIPS_Notification_Templates {
 	private $templates = array();
 
 	/**
-	 * Constructor – registers built-in templates then fires the filter.
+	 * Constructor – registers built-in templates then fires the action hook.
 	 */
 	public function __construct() {
 		$this->register_defaults();
 
 		/**
-		 * Filter: aips_notification_templates
+		 * Action: aips_notification_templates
 		 *
-		 * Allows third-party code to add, replace, or remove templates.
-		 * The filter receives the registry instance and must return it.
+		 * Fires after built-in templates are registered, allowing third-party
+		 * code to add, replace, or remove templates via register().
 		 *
 		 * @since 1.9.0
 		 * @param AIPS_Notification_Templates $registry This registry instance.
 		 */
-		$registry = apply_filters( 'aips_notification_templates', $this );
-
-		if ( $registry instanceof self && $registry !== $this ) {
-			$this->templates = $registry->all();
-		}
+		do_action('aips_notification_templates', $this);
 	}
 
 	/**
@@ -122,55 +125,29 @@ class AIPS_Notification_Templates {
 	private function build_partial_generation_template() {
 		$subject = '[{{site_name}}] ' . __('Partial AI Post Generation Detected', 'ai-post-scheduler');
 
-		$body = '<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<style>
-		body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; margin: 0; padding: 0; }
-		.email-container { max-width: 640px; margin: 20px auto; background: #ffffff; border: 1px solid #ddd; border-radius: 5px; overflow: hidden; }
-		.email-header { background: #b32d2e; color: #ffffff; padding: 20px; text-align: center; }
-		.email-header h1 { margin: 0; font-size: 24px; }
-		.email-body { padding: 30px; }
-		.alert-box { background: #fcf0f1; border-left: 4px solid #b32d2e; padding: 15px; margin: 20px 0; }
-		.component-list { margin: 16px 0 24px; padding-left: 18px; }
-		.button { display: inline-block; padding: 12px 24px; background: #2271b1; color: #ffffff; text-decoration: none; border-radius: 3px; font-weight: bold; margin-right: 12px; }
-		.button-secondary { background: #50575e; }
-		.email-footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #646970; }
-	</style>
-</head>
-<body>
-	<div class="email-container">
-		<div class="email-header">
-			<h1>' . esc_html__('Partial Generation Detected', 'ai-post-scheduler') . '</h1>
-		</div>
-		<div class="email-body">
-			<p>' . esc_html__('An AI-generated post was created, but one or more requested components failed to generate.', 'ai-post-scheduler') . '</p>
-			<div class="alert-box">
-				<strong>' . esc_html__('Post:', 'ai-post-scheduler') . '</strong> {{post_title}}<br>
-				<strong>' . esc_html__('Source:', 'ai-post-scheduler') . '</strong> {{source_label}}{{history_id_row}}
-			</div>
-			<p><strong>' . esc_html__('Missing Components:', 'ai-post-scheduler') . '</strong></p>
-			{{missing_components}}
-			<p>
-				<a href="{{edit_url}}" class="button">' . esc_html__('Edit Post', 'ai-post-scheduler') . '</a>
-				<a href="{{partial_url}}" class="button button-secondary">' . esc_html__('Open Partial Generations', 'ai-post-scheduler') . '</a>
-			</p>
-		</div>
-		<div class="email-footer">
-			<p>' . esc_html__('This email was sent by AI Post Scheduler on', 'ai-post-scheduler') . ' {{site_name}}</p>
-		</div>
-	</div>
-</body>
-</html>';
+		$body_content =
+			'<p>' . esc_html__('An AI-generated post was created, but one or more requested components failed to generate.', 'ai-post-scheduler') . '</p>'
+			. '<div class="alert-box">'
+			. '<strong>' . esc_html__('Post:', 'ai-post-scheduler') . '</strong> {{post_title}}<br>'
+			. '<strong>' . esc_html__('Source:', 'ai-post-scheduler') . '</strong> {{source_label}}{{history_id_row}}'
+			. '</div>'
+			. '<p><strong>' . esc_html__('Missing Components:', 'ai-post-scheduler') . '</strong></p>'
+			. '{{missing_components}}'
+			. '<p>'
+			. '<a href="{{edit_url}}" class="button">' . esc_html__('Edit Post', 'ai-post-scheduler') . '</a>'
+			. '<a href="{{partial_url}}" class="button button-secondary">' . esc_html__('Open Partial Generations', 'ai-post-scheduler') . '</a>'
+			. '</p>';
+
+		$header_title = __('Partial Generation Detected', 'ai-post-scheduler');
+		$header_color = '#b32d2e';
+		$body         = $this->render_layout($header_title, $header_color, $body_content);
 
 		return new AIPS_Notification_Template(
 			'partial_generation',
 			$subject,
 			$body,
-			__('Partial Generation Detected', 'ai-post-scheduler'),
-			'#b32d2e'
+			$header_title,
+			$header_color
 		);
 	}
 
@@ -189,57 +166,61 @@ class AIPS_Notification_Templates {
 	private function build_posts_awaiting_review_template() {
 		$subject = '[{{site_name}}] {{stats_label}}';
 
-		$body = '<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<style>
-		body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; margin: 0; padding: 0; }
-		.email-container { max-width: 600px; margin: 20px auto; background: #ffffff; border: 1px solid #ddd; border-radius: 5px; overflow: hidden; }
-		.email-header { background: #2271b1; color: #ffffff; padding: 20px; text-align: center; }
-		.email-header h1 { margin: 0; font-size: 24px; }
-		.email-body { padding: 30px; }
-		.email-body p { margin: 0 0 15px; }
-		.stats-box { background: #f0f6fc; border-left: 4px solid #2271b1; padding: 15px; margin: 20px 0; font-size: 18px; font-weight: bold; color: #2271b1; }
-		.post-list { list-style: none; padding: 0; margin: 20px 0; }
-		.post-item { padding: 12px; margin-bottom: 10px; background: #f9f9f9; border-left: 3px solid #2271b1; border-radius: 3px; }
-		.post-title { font-weight: bold; color: #1d2327; margin-bottom: 5px; }
-		.post-meta { font-size: 13px; color: #646970; }
-		.button { display: inline-block; padding: 12px 24px; background: #2271b1; color: #ffffff; text-decoration: none; border-radius: 3px; font-weight: bold; margin: 20px 0; }
-		.email-footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #646970; }
-	</style>
-</head>
-<body>
-	<div class="email-container">
-		<div class="email-header">
-			<h1>' . esc_html__('Posts Awaiting Review', 'ai-post-scheduler') . '</h1>
-		</div>
-		<div class="email-body">
-			<p>' . esc_html__('Hello,', 'ai-post-scheduler') . '</p>
-			<p>' . esc_html__('You have AI-generated posts waiting for review before publication.', 'ai-post-scheduler') . '</p>
-			<div class="stats-box">{{stats_label}}</div>
-			{{post_list}}
-			{{more_posts}}
-			<p style="text-align: center;">
-				<a href="{{review_url}}" class="button">' . esc_html__('Review Posts', 'ai-post-scheduler') . '</a>
-			</p>
-			<p>' . esc_html__('Click the button above to review and publish your posts.', 'ai-post-scheduler') . '</p>
-		</div>
-		<div class="email-footer">
-			<p>' . esc_html__('This email was sent by AI Post Scheduler on', 'ai-post-scheduler') . ' {{site_name}}</p>
-			<p>' . esc_html__('To disable these notifications, visit the plugin settings page.', 'ai-post-scheduler') . '</p>
-		</div>
-	</div>
-</body>
-</html>';
+		$body_content =
+			'<p>' . esc_html__('Hello,', 'ai-post-scheduler') . '</p>'
+			. '<p>' . esc_html__('You have AI-generated posts waiting for review before publication.', 'ai-post-scheduler') . '</p>'
+			. '<div class="stats-box">{{stats_label}}</div>'
+			. '{{post_list}}'
+			. '{{more_posts}}'
+			. '<p class="button-center">'
+			. '<a href="{{review_url}}" class="button">' . esc_html__('Review Posts', 'ai-post-scheduler') . '</a>'
+			. '</p>'
+			. '<p>' . esc_html__('Click the button above to review and publish your posts.', 'ai-post-scheduler') . '</p>'
+			. '<p>' . esc_html__('To disable these notifications, visit the plugin settings page.', 'ai-post-scheduler') . '</p>';
+
+		$header_title = __('Posts Awaiting Review', 'ai-post-scheduler');
+		$header_color = '#2271b1';
+		$body         = $this->render_layout($header_title, $header_color, $body_content);
 
 		return new AIPS_Notification_Template(
 			'posts_awaiting_review',
 			$subject,
 			$body,
-			__('Posts Awaiting Review', 'ai-post-scheduler'),
-			'#2271b1'
+			$header_title,
+			$header_color
 		);
+	}
+
+	// -----------------------------------------------------------------------
+	// Shared layout helper
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Render the shared email layout template with the given content.
+	 *
+	 * Loads `templates/email/email_layout.php`, injects the required variables,
+	 * and returns the full HTML string.  All shared chrome (DOCTYPE, CSS, header
+	 * banner, footer) lives in the layout template; only the body content fragment
+	 * is passed in here.
+	 *
+	 * @param string $header_title  Text for the coloured header banner.
+	 * @param string $header_color  CSS colour for the header banner.
+	 * @param string $body_content  HTML fragment for the email body section.  May contain `{{token}}` placeholders.
+	 * @return string Full HTML email document (with any remaining `{{token}}` placeholders intact).
+	 */
+	private function render_layout($header_title, $header_color, $body_content) {
+		$layout_path = AIPS_PLUGIN_DIR . self::EMAIL_LAYOUT_PATH;
+
+		if (!file_exists($layout_path)) {
+			// Graceful fallback: wrap the body content in a minimal shell.
+			return '<!DOCTYPE html><html><body>' . $body_content . '</body></html>';
+		}
+
+		// Expose local variables to the template scope.
+		$site_name = get_bloginfo('name');
+
+		ob_start();
+		include $layout_path;
+		return ob_get_clean();
 	}
 }
