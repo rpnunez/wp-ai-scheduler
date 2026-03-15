@@ -94,3 +94,13 @@
 - `ai-post-scheduler/templates/admin/templates.php`
 - `ai-post-scheduler/assets/js/admin.js`
 **Outcome:** Saves experienced users time and friction when making minor updates or quickly iterating on template parameters.
+
+## 2026-03-11 - Dashboard KPIs Optimization
+**Target Feature:** Dashboard
+**Improvement:** Optimized the Dashboard flow by introducing new key metrics ("Pending Reviews", "Topics in Queue", and "Partial Generations") and making all KPI summary cards clickable. Previously, the dashboard displayed read-only metrics, forcing users to manually navigate to other sections via the sidebar to take action. Now, the KPI cards serve as direct links to their respective management pages.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-history-repository.php`
+- `ai-post-scheduler/includes/class-aips-author-topics-repository.php`
+- `ai-post-scheduler/includes/class-aips-dashboard-controller.php`
+- `ai-post-scheduler/templates/admin/dashboard.php`
+**Outcome:** Enhances navigation efficiency by turning the static dashboard into an actionable launchpad, reducing the steps required to manage pending tasks and errors.

@@ -315,6 +315,32 @@ class AIPS_Author_Topics_Repository {
 		
 		return $counts;
 	}
+
+	/**
+	 * Get global topic counts by status across all authors.
+	 *
+	 * @return array Associative array of status => count.
+	 */
+	public function get_global_status_counts() {
+		$results = $this->wpdb->get_results(
+			"SELECT status, COUNT(*) as count
+			FROM {$this->table_name}
+			GROUP BY status",
+			ARRAY_A
+		);
+
+		$counts = array(
+			'pending' => 0,
+			'approved' => 0,
+			'rejected' => 0
+		);
+
+		foreach ($results as $row) {
+			$counts[$row['status']] = (int) $row['count'];
+		}
+
+		return $counts;
+	}
 	
 	/**
 	 * Get all approved topics across all authors for the generation queue.

@@ -29,38 +29,64 @@ if (!defined('ABSPATH')) {
         
         <!-- Status Summary -->
         <div class="aips-status-summary">
-            <div class="aips-summary-card highlight">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-generated-posts')); ?>" class="aips-summary-card highlight" style="text-decoration: none; color: inherit;">
                 <div class="dashicons dashicons-edit aips-summary-icon" aria-hidden="true"></div>
                 <div class="aips-summary-content">
                     <span class="aips-summary-number"><?php echo esc_html($total_generated); ?></span>
                     <span class="aips-summary-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
                 </div>
-            </div>
+            </a>
+
+            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-post-review')); ?>" class="aips-summary-card" style="text-decoration: none; color: inherit;">
+                <div class="dashicons dashicons-visibility aips-summary-icon" aria-hidden="true"></div>
+                <div class="aips-summary-content">
+                    <span class="aips-summary-number"><?php echo esc_html($pending_reviews); ?></span>
+                    <span class="aips-summary-label"><?php esc_html_e('Pending Reviews', 'ai-post-scheduler'); ?></span>
+                </div>
+            </a>
             
-            <div class="aips-summary-card">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-schedule')); ?>" class="aips-summary-card" style="text-decoration: none; color: inherit;">
                 <div class="dashicons dashicons-clock aips-summary-icon" aria-hidden="true"></div>
                 <div class="aips-summary-content">
                     <span class="aips-summary-number"><?php echo esc_html($pending_scheduled); ?></span>
                     <span class="aips-summary-label"><?php esc_html_e('Active Schedules', 'ai-post-scheduler'); ?></span>
                 </div>
-            </div>
+            </a>
             
-            <div class="aips-summary-card">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-templates')); ?>" class="aips-summary-card" style="text-decoration: none; color: inherit;">
                 <div class="dashicons dashicons-media-document aips-summary-icon" aria-hidden="true"></div>
                 <div class="aips-summary-content">
                     <span class="aips-summary-number"><?php echo esc_html($total_templates); ?></span>
                     <span class="aips-summary-label"><?php esc_html_e('Active Templates', 'ai-post-scheduler'); ?></span>
                 </div>
-            </div>
+            </a>
+
+            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-authors')); ?>" class="aips-summary-card" style="text-decoration: none; color: inherit;">
+                <div class="dashicons dashicons-list-view aips-summary-icon" aria-hidden="true"></div>
+                <div class="aips-summary-content">
+                    <span class="aips-summary-number"><?php echo esc_html($topics_in_queue); ?></span>
+                    <span class="aips-summary-label"><?php esc_html_e('Topics in Queue', 'ai-post-scheduler'); ?></span>
+                </div>
+            </a>
             
-            <?php if ($failed_count > 0): ?>
-            <div class="aips-summary-card error">
+            <?php if ($partial_generations > 0): ?>
+            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-generated-posts&s=partial')); ?>" class="aips-summary-card warning" style="text-decoration: none; color: inherit;">
                 <div class="dashicons dashicons-warning aips-summary-icon" aria-hidden="true"></div>
+                <div class="aips-summary-content">
+                    <span class="aips-summary-number"><?php echo esc_html($partial_generations); ?></span>
+                    <span class="aips-summary-label"><?php esc_html_e('Partial Generations', 'ai-post-scheduler'); ?></span>
+                </div>
+            </a>
+            <?php endif; ?>
+
+            <?php if ($failed_count > 0): ?>
+            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-generated-posts&s=failed')); ?>" class="aips-summary-card error" style="text-decoration: none; color: inherit;">
+                <div class="dashicons dashicons-dismiss aips-summary-icon" aria-hidden="true"></div>
                 <div class="aips-summary-content">
                     <span class="aips-summary-number"><?php echo esc_html($failed_count); ?></span>
                     <span class="aips-summary-label"><?php esc_html_e('Failed Generations', 'ai-post-scheduler'); ?></span>
                 </div>
-            </div>
+            </a>
             <?php endif; ?>
         </div>
         
