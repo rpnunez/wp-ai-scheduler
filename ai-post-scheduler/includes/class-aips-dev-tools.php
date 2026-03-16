@@ -81,7 +81,10 @@ class AIPS_Dev_Tools {
 
         // Call AI Service
         $ai_service = new AIPS_AI_Service();
-        $response = $ai_service->generate_text($prompt, array('max_tokens' => 2500, 'temperature' => 0.7));
+        $response = $ai_service->generate_text($prompt, array(
+            AIPS_AI_Service::OPT_MAX_TOKENS => 2500,
+            AIPS_AI_Service::OPT_TEMPERATURE => 0.7,
+        ));
 
         if (is_wp_error($response)) {
             wp_send_json_error(array('message' => $response->get_error_message()));

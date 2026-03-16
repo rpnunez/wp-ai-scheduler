@@ -278,15 +278,15 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 		$options = array();
 
 		if (!empty($this->template->ai_env_id)) {
-			$options['envId'] = $this->template->ai_env_id;
+			$options[AIPS_AI_Service::OPT_ENV_ID] = $this->template->ai_env_id;
 		}
 
 		if (!empty($this->template->ai_model)) {
-			$options['model'] = $this->template->ai_model;
+			$options[AIPS_AI_Service::OPT_MODEL] = $this->template->ai_model;
 		}
 
 		if (isset($this->template->ai_temperature) && $this->template->ai_temperature !== '' && $this->template->ai_temperature !== null) {
-			$options['temperature'] = (float) $this->template->ai_temperature;
+			$options[AIPS_AI_Service::OPT_TEMPERATURE] = (float) $this->template->ai_temperature;
 		}
 
 		return $options;

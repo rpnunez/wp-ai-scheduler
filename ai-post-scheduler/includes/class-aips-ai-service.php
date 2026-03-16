@@ -20,6 +20,25 @@ if (!defined('ABSPATH')) {
  * Handles error recovery, logging, and provides a consistent interface for AI operations.
  */
 class AIPS_AI_Service {
+    /**
+     * Canonical AI option key for max token count.
+     */
+    public const OPT_MAX_TOKENS = 'maxTokens';
+
+    /**
+     * Canonical AI option key for environment ID.
+     */
+    public const OPT_ENV_ID = 'envId';
+
+    /**
+     * Canonical AI option key for sampling temperature.
+     */
+    public const OPT_TEMPERATURE = 'temperature';
+
+    /**
+     * Canonical AI option key for model.
+     */
+    public const OPT_MODEL = 'model';
     
     /**
      * @var mixed AI Engine instance
@@ -49,15 +68,15 @@ class AIPS_AI_Service {
     /**
      * Optional query option keys supported by AI Engine.
      */
-    private const OPTIONAL_QUERY_OPTION_KEYS = array(
-        'context',
-        'instructions',
-        'messages',
-        'env_id',
-        'embeddings_env_id',
-        'max_results',
-        'api_key',
-    );
+	private const OPTIONAL_QUERY_OPTION_KEYS = array(
+		'context',
+		'instructions',
+		'messages',
+		self::OPT_ENV_ID,
+		'embeddings_env_id',
+		'max_results',
+		'api_key',
+	);
     
     /**
      * Initialize the AI Service.
@@ -105,7 +124,7 @@ class AIPS_AI_Service {
      * Includes retry logic, circuit breaker, and rate limiting.
      *
      * @param string $prompt  The prompt to send to the AI.
-     * @param array  $options Optional. AI generation options (model, max_tokens, temperature).
+    * @param array  $options Optional. AI generation options (model, maxTokens, temperature).
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_text($prompt, $options = array()) {
@@ -126,18 +145,18 @@ class AIPS_AI_Service {
                 $params = array();
                 
                 // Set model if specified
-                if (!empty($options['model'])) {
-                    $params['model'] = $options['model'];
+                if (!empty($options[self::OPT_MODEL])) {
+                    $params[self::OPT_MODEL] = $options[self::OPT_MODEL];
                 }
                 
                 // Set max tokens
-                if (isset($options['max_tokens'])) {
-                    $params['maxTokens'] = $options['max_tokens'];
+                if (isset($options[self::OPT_MAX_TOKENS])) {
+                    $params[self::OPT_MAX_TOKENS] = $options[self::OPT_MAX_TOKENS];
                 }
                 
                 // Set temperature
-                if (isset($options['temperature'])) {
-                    $params['temperature'] = $options['temperature'];
+                if (isset($options[self::OPT_TEMPERATURE])) {
+                    $params[self::OPT_TEMPERATURE] = $options[self::OPT_TEMPERATURE];
                 }
 
                 // Optional advanced parameters supported by AI Engine
@@ -188,7 +207,7 @@ class AIPS_AI_Service {
      * that needs to be reliably parsed as JSON.
      *
      * @param string $prompt  The prompt to send to the AI.
-     * @param array  $options Optional. AI generation options (model, max_tokens, temperature).
+    * @param array  $options Optional. AI generation options (model, maxTokens, temperature).
      * @return array|WP_Error The parsed JSON data as an array, or WP_Error on failure.
      */
     public function generate_json($prompt, $options = array()) {
@@ -217,8 +236,8 @@ class AIPS_AI_Service {
                 $json_query_params = array();
                 
                 // Only pass model if specified
-                if (!empty($options['model'])) {
-                    $json_query_params['model'] = $options['model'];
+                if (!empty($options[self::OPT_MODEL])) {
+                    $json_query_params[self::OPT_MODEL] = $options[self::OPT_MODEL];
                 }
                 
                 // Only pass temperature if specified
@@ -226,14 +245,11 @@ class AIPS_AI_Service {
                 //    $json_query_params['temperature'] = $options['temperature'];
                 // }
                 
-                // Convert max_tokens to maxTokens for AI Engine
-                // if (isset($options['max_tokens'])) {
-                //    $json_query_params['maxTokens'] = $options['max_tokens'];
-                // }
+                // Convert maxTokens only if required by AI Engine in the future.
                 
-                // Only pass env_id if specified  
-                if (isset($options['env_id'])) {
-                    $json_query_params['env_id'] = $options['env_id'];
+                // Only pass envId if specified
+                if (isset($options[self::OPT_ENV_ID])) {
+                    $json_query_params[self::OPT_ENV_ID] = $options[self::OPT_ENV_ID];
                 }
                 
                 // Log what we're sending to help debug
@@ -360,6 +376,8 @@ class AIPS_AI_Service {
             $this->log_call('image', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
+
+		$options = $this->normalize_option_keys($options);
 
         // Execute safely with retry, circuit breaker, and rate limiting
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
@@ -554,15 +572,39 @@ class AIPS_AI_Service {
      * @return array Normalized options array.
      */
     private function prepare_options($options) {
+        $options = $this->normalize_option_keys($options);
+
         $model = get_option('aips_ai_model', '');
-        
+
         $default_options = array(
-            'model' => $model,
-            'max_tokens' => 2000,
-            'temperature' => 0.7,
+            self::OPT_MODEL => $model,
+            self::OPT_MAX_TOKENS => 2000,
+            self::OPT_TEMPERATURE => 0.7,
         );
-        
+
         return wp_parse_args($options, $default_options);
+    }
+
+    /**
+     * Normalize legacy option keys to canonical AI Engine keys.
+     *
+     * @param array $options Raw options array.
+     * @return array Normalized options array.
+     */
+    private function normalize_option_keys($options) {
+        if (!is_array($options)) {
+            return array();
+        }
+
+        if (isset($options['max_tokens']) && !isset($options[self::OPT_MAX_TOKENS])) {
+            $options[self::OPT_MAX_TOKENS] = $options['max_tokens'];
+        }
+
+        if (isset($options['env_id']) && !isset($options[self::OPT_ENV_ID])) {
+            $options[self::OPT_ENV_ID] = $options['env_id'];
+        }
+
+        return $options;
     }
 
     /**
@@ -594,7 +636,7 @@ class AIPS_AI_Service {
                         $query->set_messages($options[$key]);
                     }
                     break;
-                case 'env_id':
+                case self::OPT_ENV_ID:
                     if (method_exists($query, 'set_env_id')) {
                         $query->set_env_id($options[$key]);
                     }

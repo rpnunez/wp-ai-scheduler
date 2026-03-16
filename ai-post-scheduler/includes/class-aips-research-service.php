@@ -84,12 +84,12 @@ class AIPS_Research_Service {
 
         // Use generate_json for structured data response
         // $result = $this->ai_service->generate_json($prompt, array(
-        //     'temperature' => 0.7,
-        //     'max_tokens' => 2000,
+        //     AIPS_AI_Service::OPT_TEMPERATURE => 0.7,
+        //     AIPS_AI_Service::OPT_MAX_TOKENS => 2000,
         // ));
         $result = $this->ai_service->generate_text($prompt, array(
-            'temperature' => 0.7,
-            'max_tokens' => 2000,
+            AIPS_AI_Service::OPT_TEMPERATURE => 0.7,
+            AIPS_AI_Service::OPT_MAX_TOKENS => 2000,
         ));
 
         $this->logger->log("Research response: " . print_r($result, true), 'info');
