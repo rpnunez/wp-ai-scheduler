@@ -852,11 +852,47 @@
 		},
 
 		/**
+		 * Populate the feedback category dropdown with options appropriate for the given action.
+		 *
+		 * Replaces all `<option>` elements in `#feedback_reason_category` with the
+		 * action-specific set supplied via `aipsAuthorsL10n.approvalCategories` or
+		 * `aipsAuthorsL10n.rejectionCategories`, then resets the selection to the
+		 * first option ("other").  Also updates the visible label and description
+		 * text next to the dropdown.
+		 *
+		 * @param {string} action - Either `'approve'` or `'reject'`.
+		 */
+		populateCategoryOptions: function (action) {
+			const isApprove = action === 'approve';
+			const categories = isApprove
+				? (aipsAuthorsL10n.approvalCategories || [])
+				: (aipsAuthorsL10n.rejectionCategories || []);
+
+			const $select = $('#feedback_reason_category');
+			$select.empty();
+			$.each(categories, function (i, cat) {
+				$select.append($('<option>').val(cat.value).text(cat.label));
+			});
+
+			// Update the label and helper description to match the action.
+			$('#feedback_reason_category_label').text(
+				isApprove
+					? (aipsAuthorsL10n.approvalCategoryLabel || 'Approval Reason')
+					: (aipsAuthorsL10n.rejectionCategoryLabel || 'Rejection Reason')
+			);
+			$('#feedback_reason_category_description').text(
+				isApprove
+					? (aipsAuthorsL10n.approvalCategoryDescription || 'Select a positive reason to help train future topic generation.')
+					: (aipsAuthorsL10n.rejectionCategoryDescription || 'Select a structured reason to improve future topic quality.')
+			);
+		},
+
+		/**
 		 * Open the feedback modal pre-configured for approving a topic.
 		 *
 		 * Sets the hidden `#feedback_topic_id` and `#feedback_action` fields,
-		 * updates the modal title and input placeholder, and fades the feedback
-		 * modal in.
+		 * updates the modal title, category dropdown, and input placeholder, and
+		 * fades the feedback modal in.
 		 *
 		 * @param {Event} e - Click event from an `.aips-approve-topic` element.
 		 */
@@ -870,6 +906,7 @@
 			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.approveTopicTitle || 'Approve Topic');
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.approveReasonPlaceholder || 'Why are you approving this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.approve);
+			this.populateCategoryOptions('approve');
 			$('#aips-feedback-modal').fadeIn();
 		},
 
@@ -877,8 +914,8 @@
 		 * Open the feedback modal pre-configured for rejecting a topic.
 		 *
 		 * Sets the hidden `#feedback_topic_id` and `#feedback_action` fields,
-		 * updates the modal title and input placeholder, and fades the feedback
-		 * modal in.
+		 * updates the modal title, category dropdown, and input placeholder, and
+		 * fades the feedback modal in.
 		 *
 		 * @param {Event} e - Click event from an `.aips-reject-topic` element.
 		 */
@@ -892,6 +929,7 @@
 			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic');
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
+			this.populateCategoryOptions('reject');
 			$('#aips-feedback-modal').fadeIn();
 		},
 
