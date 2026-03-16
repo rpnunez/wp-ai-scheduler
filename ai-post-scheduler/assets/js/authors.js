@@ -687,7 +687,7 @@
 		},
 
 		/**
-		 * Update the per-status topic count badges in the modal tab bar.
+		 * Update the per-status topic count badges in the tab bar and the Stats Cards.
 		 *
 		 * @param {Object} counts           - Map of status string → count number.
 		 * @param {number} [counts.pending] - Number of pending topics.
@@ -695,9 +695,21 @@
 		 * @param {number} [counts.rejected] - Number of rejected topics.
 		 */
 		updateTopicCounts: function (counts) {
-			$('#pending-count').text(counts.pending || 0);
-			$('#approved-count').text(counts.approved || 0);
-			$('#rejected-count').text(counts.rejected || 0);
+			const pending  = counts.pending  || 0;
+			const approved = counts.approved || 0;
+			const rejected = counts.rejected || 0;
+			const total    = pending + approved + rejected;
+
+			// Tab count badges
+			$('#pending-count').text(pending);
+			$('#approved-count').text(approved);
+			$('#rejected-count').text(rejected);
+
+			// Stats Cards
+			$('#stat-total-count').text(total);
+			$('#stat-pending-count').text(pending);
+			$('#stat-approved-count').text(approved);
+			$('#stat-rejected-count').text(rejected);
 		},
 
 		/**
