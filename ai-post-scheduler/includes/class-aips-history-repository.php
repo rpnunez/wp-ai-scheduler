@@ -405,7 +405,19 @@ class AIPS_History_Repository {
         // One row per post (latest completed history entry).
         $results = $this->wpdb->get_results($this->wpdb->prepare(
             "SELECT
-                h.*,
+                h.id,
+                h.schedule_id,
+                h.template_id,
+                h.post_id,
+                h.status,
+                h.run_type,
+                h.topic,
+                h.model,
+                h.tokens_input,
+                h.tokens_output,
+                h.cost,
+                h.created_at,
+                h.updated_at,
                 t.name AS template_name,
                 p.post_title,
                 p.post_status,
