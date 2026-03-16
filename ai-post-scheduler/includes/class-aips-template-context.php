@@ -278,7 +278,7 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 		$options = array();
 
 		if (!empty($this->template->ai_env_id)) {
-			$options['env_id'] = $this->template->ai_env_id;
+			$options['envId'] = $this->template->ai_env_id;
 		}
 
 		if (!empty($this->template->ai_model)) {
