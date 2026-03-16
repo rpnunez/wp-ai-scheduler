@@ -830,4 +830,125 @@ class Test_AIPS_Generator_Hooks extends WP_UnitTestCase {
 		$this->assertSame(99, $incomplete_action_calls[0]['history_id']);
 		$this->assertSame($component_statuses, $incomplete_action_calls[0]['component_statuses']);
 	}
+
+	/**
+	 * Ensure featured image prompts process both template and AI variables
+	 * before image generation is requested.
+	 *
+	 * @return void
+	 */
+	public function test_featured_image_prompt_resolves_template_and_ai_variables_before_image_generation() {
+		$logger = new class {
+			public function log($message, $level = 'info', $context = array()) {}
+		};
+
+		$ai_service = new class {
+			private $call_count = 0;
+
+			public function is_available() { return true; }
+
+			public function generate_text($prompt, $options = array()) {
+				$this->call_count++;
+
+				if ($this->call_count === 1) {
+					return 'Generated post content body for testing featured image prompts.';
+				}
+
+				if ($this->call_count === 2) {
+					return 'Generated Post Title';
+				}
+
+				if ($this->call_count === 3) {
+					return 'Generated post excerpt.';
+				}
+
+				return '{"Brand":"Nimbus"}';
+			}
+		};
+
+		$template_processor = new AIPS_Template_Processor();
+
+		$image_service = new class {
+			public static $captured_image_prompt = '';
+
+			public function generate_and_upload_featured_image($prompt, $title) {
+				self::$captured_image_prompt = $prompt;
+				return 777;
+			}
+
+			public function fetch_and_upload_unsplash_image($keywords, $title) {
+				return new WP_Error('not_used', 'Unsplash path not used in this test.');
+			}
+
+			public function select_media_library_image($media_ids) {
+				return new WP_Error('not_used', 'Media library path not used in this test.');
+			}
+		};
+
+		$prompt_builder = new class {
+			public function build_content_prompt($context) {
+				return 'Content prompt';
+			}
+
+			public function build_content_context($context) {
+				return 'Content context';
+			}
+
+			public function build_title_prompt($context, $x = null, $y = null, $content = '', $use_conversation_context = false) {
+				return 'Title prompt';
+			}
+
+			public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
+				return 'Excerpt prompt';
+			}
+		};
+
+		$history_service = new class {
+			public function create($type, $data = array()) {
+				return new class {
+					public function get_id() { return 101; }
+					public function with_session($context) { return $this; }
+					public function record($type, $message, $data = null, $result = null, $metadata = array()) {}
+					public function record_error($message, $metadata = array()) {}
+					public function complete_failure($error, $metadata = array()) {}
+					public function complete_success($data = array()) {}
+				};
+			}
+		};
+
+		$generator = new AIPS_Generator(
+			$logger,
+			$ai_service,
+			$template_processor,
+			$image_service,
+			new class {},
+			new AIPS_Post_Manager(),
+			$history_service,
+			$prompt_builder
+		);
+
+		$template = (object) array(
+			'id' => 22,
+			'prompt_template' => 'Prompt for {{topic}}',
+			'title_prompt' => 'Title prompt without AI vars',
+			'post_status' => 'draft',
+			'post_category' => '',
+			'post_tags' => '',
+			'post_author' => 1,
+			'post_quantity' => 1,
+			'generate_featured_image' => true,
+			'featured_image_source' => 'ai_prompt',
+			'image_prompt' => 'Featured image for {{topic}} in {{year}} by {{Brand}}',
+		);
+
+		$post_id = $generator->generate_post($template, null, 'Testing Topic');
+		$captured_image_prompt = $image_service::$captured_image_prompt;
+
+		$this->assertIsInt($post_id);
+		$this->assertNotEmpty($captured_image_prompt);
+		$this->assertStringContainsString('Testing Topic', $captured_image_prompt);
+		$this->assertStringContainsString(date('Y'), $captured_image_prompt);
+		$this->assertStringContainsString('Nimbus', $captured_image_prompt);
+		$this->assertStringNotContainsString('{{', $captured_image_prompt);
+	}
 }

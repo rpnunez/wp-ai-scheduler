@@ -241,8 +241,12 @@ class AIPS_Component_Regeneration_Service {
 		}
 		
 		// Process the image prompt with topic if available
-		$topic_str = $generation_context->get_topic();
-		$processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
+		$current_content = '';
+		if ($post_id > 0) {
+			$current_content = (string) get_post_field('post_content', $post_id);
+		}
+
+		$processed_image_prompt = $this->generator->process_featured_image_prompt($generation_context, $current_content, $title);
 		
 		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
 		if (is_wp_error($history_container)) {

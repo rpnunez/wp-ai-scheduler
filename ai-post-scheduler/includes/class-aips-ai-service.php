@@ -354,6 +354,8 @@ class AIPS_AI_Service {
      */
     public function generate_image($prompt, $options = array()) {
         $ai = $this->get_ai_engine();
+
+        // Check if AI Engine is available
         
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
