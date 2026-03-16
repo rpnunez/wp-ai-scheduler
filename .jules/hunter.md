@@ -5,3 +5,6 @@
 ## 2024-05-25 - Time-Dependent Test Failures
 **Learning:** Unit tests for time-dependent logic (like scheduling calculators) that use hardcoded dates become "time bombs" when those dates pass. Catch-up logic for past dates can further obscure the interval calculation logic being tested.
 **Action:** Use relative future dates (e.g., `strtotime('+1 year')`) in tests to ensure they remain valid regardless of when they are run and to isolate the interval logic from catch-up mechanisms.
+## 2024-05-25 - Fix missing SEO meta description fallback
+**Learning:** The AIPS_Post_Manager wasn't falling back to the post content when the excerpt and meta description inputs were missing, causing an undefined array key error in tests.
+**Action:** Added a fallback to use the generated content for the meta description if both meta_description and excerpt are empty.

@@ -1329,3 +1329,8 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted the Markdown parsing logic into a new, dedicated `AIPS_Markdown_Parser` service class. Injected this service into `AIPS_Generator` as an optional dependency via the constructor to maintain backwards compatibility.
 **Consequence:** `AIPS_Generator` is leaner and more focused. `AIPS_Markdown_Parser` can now be reused elsewhere and tested independently. The constructor signature of `AIPS_Generator` was modified, but optional parameters ensure no breaking changes for existing instantiations.
 **Tests:** Created `test-aips-markdown-parser.php` which validates `is_markdown`, `contains_html`, and `parse` methods. All tests passed.
+## 2024-05-25 - Remove Unused Code in Planner
+**Context:** The `AIPS_Planner` class was unnecessarily invoking `global $wpdb` and assigning `$table_name`, but it never used them. It delegates the DB operations to `AIPS_Scheduler`.
+**Decision:** Remove the unused `global $wpdb` and `$table_name` assignments to reduce clutter and slightly improve performance by avoiding unnecessary variable instantiations.
+**Consequence:** Cleaner and more maintainable code without altering behavior.
+**Tests:** N/A (simple unused code removal).

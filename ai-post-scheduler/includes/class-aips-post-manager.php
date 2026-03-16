@@ -45,7 +45,7 @@ class AIPS_Post_Manager {
         $title = isset($data['title']) ? $data['title'] : '';
         $content = isset($data['content']) ? $data['content'] : '';
         $excerpt = isset($data['excerpt']) ? $data['excerpt'] : '';
-        
+
         // Support both legacy template and new context approaches
         $context = isset($data['context']) ? $data['context'] : null;
         $template = isset($data['template']) ? $data['template'] : null;
@@ -110,6 +110,8 @@ class AIPS_Post_Manager {
             $meta_description = $data['meta_description'];
         } elseif ($excerpt !== '') {
             $meta_description = $excerpt;
+        } elseif ($content !== '') {
+            $meta_description = $content;
         }
 
         $seo_data = array(
