@@ -43,7 +43,12 @@ class AIPS_Authors_Controller {
 	 * @var AIPS_Author_Topics_Scheduler Topics scheduler
 	 */
 	private $topics_scheduler;
-	
+
+	/**
+	 * @var AIPS_Notifications Notifications service
+	 */
+	private $notifications;
+
 	/**
 	 * Initialize the controller.
 	 */
@@ -53,6 +58,7 @@ class AIPS_Authors_Controller {
 		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository = new AIPS_Feedback_Repository();
 		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
+		$this->notifications = new AIPS_Notifications();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));
@@ -322,7 +328,7 @@ class AIPS_Authors_Controller {
 		// Create admin bar notification for manual topic generation
 		$author = $this->repository->get_by_id($author_id);
 		if ($author && is_array($result)) {
-			AIPS_Admin_Bar::notify_author_topics_generated($author->name, count($result), $author_id);
+			$this->notifications->author_topics_generated($author->name, count($result), $author_id);
 		}
 
 		wp_send_json_success(array(

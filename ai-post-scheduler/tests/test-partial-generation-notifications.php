@@ -1,43 +1,105 @@
 <?php
 /**
- * Tests for Partial Generation Email Notifications.
+ * Tests for partial generation notifications via AIPS_Notifications.
+ *
+ * Covers the deprecated AIPS_Partial_Generation_Notifications wrapper to
+ * ensure backward compatibility is preserved.
  *
  * @package AI_Post_Scheduler
  */
 
 class Test_AIPS_Partial_Generation_Notifications extends WP_UnitTestCase {
 
-	/**
-	 * Test that the notification email body includes the partial generations link and missing components.
-	 */
-	public function test_email_message_includes_partial_generation_details() {
-		$notifications = new AIPS_Partial_Generation_Notifications();
-		$context = new AIPS_Template_Context((object) array(
-			'id' => 55,
-			'name' => 'Recovery Template',
-			'prompt_template' => 'Prompt',
-			'post_status' => 'draft',
-			'post_category' => 0,
-		));
+/** @var AIPS_Notifications_Repository */
+private $repository;
 
-		$reflection = new ReflectionClass($notifications);
-		$method = $reflection->getMethod('build_email_message');
-		$method->setAccessible(true);
+public function setUp(): void {
+parent::setUp();
+AIPS_DB_Manager::install_tables();
+$this->repository = new AIPS_Notifications_Repository();
+}
 
-		$message = $method->invoke(
-			$notifications,
-			123,
-			'Recovery Post',
-			array('Excerpt', 'Featured Image'),
-			$context,
-			77
-		);
+/**
+ * Deprecated wrapper: send_partial_generation_notification() delegates
+ * to AIPS_Notifications::partial_generation() and sends an email when
+ * components are missing.
+ */
+public function test_deprecated_wrapper_sends_email_for_missing_components() {
+update_option( 'aips_review_notifications_email', 'test@example.com' );
 
-		$this->assertStringContainsString('Recovery Post', $message);
-		$this->assertStringContainsString('Excerpt', $message);
-		$this->assertStringContainsString('Featured Image', $message);
-		$this->assertStringContainsString(admin_url('admin.php?page=aips-generated-posts#aips-partial-generations'), $message);
-		$this->assertStringContainsString('Recovery Template', $message);
-		$this->assertStringContainsString('77', $message);
-	}
+$post_id = wp_insert_post( array(
+'post_title'  => 'Recovery Post',
+'post_status' => 'draft',
+'post_type'   => 'post',
+) );
+
+$context = new AIPS_Template_Context( (object) array(
+'id'              => 55,
+'name'            => 'Recovery Template',
+'prompt_template' => 'Prompt',
+'post_status'     => 'draft',
+'post_category'   => 0,
+) );
+
+$GLOBALS['phpmailer']->mock_sent = array();
+
+$wrapper = new AIPS_Partial_Generation_Notifications();
+$wrapper->send_partial_generation_notification(
+$post_id,
+array(
+'post_title'     => true,
+'post_excerpt'   => false,
+'post_content'   => true,
+'featured_image' => false,
+),
+$context,
+77
+);
+
+$this->assertCount( 1, $GLOBALS['phpmailer']->mock_sent );
+$body = $GLOBALS['phpmailer']->mock_sent[0]['body'];
+
+$this->assertStringContainsString( 'Recovery Post', $body );
+$this->assertStringContainsString( 'Excerpt', $body );
+$this->assertStringContainsString( 'Featured Image', $body );
+$this->assertStringContainsString( admin_url( 'admin.php?page=aips-generated-posts#aips-partial-generations' ), $body );
+$this->assertStringContainsString( 'Recovery Template', $body );
+// Session ID should appear.
+$this->assertStringContainsString( '77', $body );
+
+wp_delete_post( $post_id, true );
+delete_option( 'aips_review_notifications_email' );
+}
+
+/**
+ * No email is sent when all components are present.
+ */
+public function test_no_email_when_all_components_succeed() {
+update_option( 'aips_review_notifications_email', 'test@example.com' );
+
+$post_id = wp_insert_post( array(
+'post_title'  => 'Complete Post',
+'post_status' => 'draft',
+'post_type'   => 'post',
+) );
+
+$GLOBALS['phpmailer']->mock_sent = array();
+
+$wrapper = new AIPS_Partial_Generation_Notifications();
+$wrapper->send_partial_generation_notification(
+$post_id,
+array(
+'post_title'     => true,
+'post_excerpt'   => true,
+'post_content'   => true,
+'featured_image' => true,
+),
+null
+);
+
+$this->assertEmpty( $GLOBALS['phpmailer']->mock_sent );
+
+wp_delete_post( $post_id, true );
+delete_option( 'aips_review_notifications_email' );
+}
 }
