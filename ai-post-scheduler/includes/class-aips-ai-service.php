@@ -355,8 +355,6 @@ class AIPS_AI_Service {
     public function generate_image($prompt, $options = array()) {
         $ai = $this->get_ai_engine();
 
-        error_log('generate_image() called with: '. var_export(['options' => $options, 'prompt' => $prompt]));
-
         // Check if AI Engine is available
         
         if (!$ai) {
@@ -378,8 +376,6 @@ class AIPS_AI_Service {
                 
                 // Use simpleImageQuery API method
                 $image_url = $ai->simpleImageQuery($prompt, $params);
-
-                error_log('AI Engine simpleImageQuery response: ' . var_export($image_url, true));
 
                 if (!$image_url || empty($image_url)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
