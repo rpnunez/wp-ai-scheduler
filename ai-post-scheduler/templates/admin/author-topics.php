@@ -101,19 +101,19 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		<!-- Author Stats -->
 		<div class="aips-author-topics-stats">
 			<div class="aips-stat-card">
-				<span class="aips-stat-value"><?php echo esc_html($total_topics); ?></span>
+				<span class="aips-stat-value" id="stat-total-count"><?php echo esc_html($total_topics); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Total Topics', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card aips-stat-pending">
-				<span class="aips-stat-value"><?php echo esc_html($status_counts['pending']); ?></span>
+				<span class="aips-stat-value" id="stat-pending-count"><?php echo esc_html($status_counts['pending']); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card aips-stat-approved">
-				<span class="aips-stat-value"><?php echo esc_html($status_counts['approved']); ?></span>
+				<span class="aips-stat-value" id="stat-approved-count"><?php echo esc_html($status_counts['approved']); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card aips-stat-rejected">
-				<span class="aips-stat-value"><?php echo esc_html($status_counts['rejected']); ?></span>
+				<span class="aips-stat-value" id="stat-rejected-count"><?php echo esc_html($status_counts['rejected']); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card aips-stat-generated">
