@@ -68,6 +68,9 @@ class AIPS_Templates {
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'is_active' => isset($data['is_active']) ? 1 : 0,
+            'ai_env_id' => isset($data['ai_env_id']) ? sanitize_text_field($data['ai_env_id']) : '',
+            'ai_model' => isset($data['ai_model']) ? sanitize_text_field($data['ai_model']) : '',
+            'ai_temperature' => isset($data['ai_temperature']) && $data['ai_temperature'] !== '' ? sanitize_text_field($data['ai_temperature']) : '',
         );
         
         if (!empty($data['id'])) {

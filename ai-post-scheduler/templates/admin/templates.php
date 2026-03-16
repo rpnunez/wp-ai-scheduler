@@ -489,6 +489,39 @@ if (!defined('ABSPATH')) {
                                 <?php esc_html_e('Template is active', 'ai-post-scheduler'); ?>
                             </label>
                         </div>
+
+                        <!-- AI Engine Settings -->
+                        <h4 style="margin-top: 24px;"><?php esc_html_e('AI Engine Settings', 'ai-post-scheduler'); ?></h4>
+                        <p class="description"><?php esc_html_e('Optional overrides for the Meow Apps AI Engine. Leave blank to use the default settings configured in the AI Engine plugin.', 'ai-post-scheduler'); ?></p>
+
+                        <div class="aips-form-columns">
+                            <div class="aips-form-row">
+                                <label for="ai_env_id">
+                                    <?php esc_html_e('Environment ID', 'ai-post-scheduler'); ?>
+                                    <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Override the AI Engine environment (API connection) used for this template. Leave blank to use the default.', 'ai-post-scheduler'); ?>"></span>
+                                </label>
+                                <input type="text" id="ai_env_id" name="ai_env_id" class="regular-text" placeholder="<?php esc_attr_e('e.g., my-openai-env', 'ai-post-scheduler'); ?>">
+                                <p class="description"><?php esc_html_e('AI Engine environment ID to use for generation. Leave blank for the default.', 'ai-post-scheduler'); ?></p>
+                            </div>
+
+                            <div class="aips-form-row">
+                                <label for="ai_model">
+                                    <?php esc_html_e('Model', 'ai-post-scheduler'); ?>
+                                    <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Override the AI model for this template (e.g., gpt-4, gpt-3.5-turbo). Leave blank to use the environment default.', 'ai-post-scheduler'); ?>"></span>
+                                </label>
+                                <input type="text" id="ai_model" name="ai_model" class="regular-text" placeholder="<?php esc_attr_e('e.g., gpt-4', 'ai-post-scheduler'); ?>">
+                                <p class="description"><?php esc_html_e('AI model identifier. Leave blank to use the environment default.', 'ai-post-scheduler'); ?></p>
+                            </div>
+                        </div>
+
+                        <div class="aips-form-row">
+                            <label for="ai_temperature">
+                                <?php esc_html_e('Temperature', 'ai-post-scheduler'); ?>
+                                <span class="aips-help-tooltip dashicons dashicons-editor-help" data-tooltip="<?php esc_attr_e('Override the sampling temperature (0.0–2.0). Lower values produce more focused output; higher values produce more creative output. Leave blank for the default.', 'ai-post-scheduler'); ?>"></span>
+                            </label>
+                            <input type="number" id="ai_temperature" name="ai_temperature" class="small-text" min="0" max="2" step="0.1" placeholder="<?php esc_attr_e('e.g., 0.7', 'ai-post-scheduler'); ?>">
+                            <p class="description"><?php esc_html_e('Sampling temperature between 0.0 and 2.0. Leave blank for the default.', 'ai-post-scheduler'); ?></p>
+                        </div>
                     </div>
                     
                     <!-- Step 6: Post-Save Next Steps (shown after successful save) -->

@@ -448,6 +448,12 @@ class AIPS_Generator {
             $content_options['context'] = $content_context;
         }
 
+        // Merge any AI Engine overrides (env_id, model, temperature) from the context.
+        $ai_options = $context->get_ai_options();
+        if (!empty($ai_options)) {
+            $content_options = array_merge($content_options, $ai_options);
+        }
+
         // Ask AI to generate the article body
         $content = $this->generate_content($content_prompt, $content_options, 'content_preview');
 
@@ -461,7 +467,7 @@ class AIPS_Generator {
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
 
         // Generate the title
-        $title = $this->generate_title_from_context($context, $content, $ai_variables);
+        $title = $this->generate_title_from_context($context, $content, $ai_variables, $ai_options);
 
         if (is_wp_error($title)) {
             // Fallback title on error
@@ -470,7 +476,7 @@ class AIPS_Generator {
 
         // Generate excerpt
         $excerpt_content = mb_substr($content, 0, 6000);
-        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context);
+        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, $ai_options);
 
         $result = array(
             'title' => $title,
@@ -593,6 +599,12 @@ class AIPS_Generator {
             $content_options['context'] = $content_context;
         }
 
+        // Merge any AI Engine overrides (env_id, model, temperature) from the context.
+        $ai_options = $context->get_ai_options();
+        if (!empty($ai_options)) {
+            $content_options = array_merge($content_options, $ai_options);
+        }
+
         // Ask AI to generate the article body
         $content = $this->generate_content($content_prompt, $content_options, 'content');
 
@@ -611,7 +623,7 @@ class AIPS_Generator {
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
 
         // Generate the title using the context and content.
-        $title = $this->generate_title_from_context($context, $content, $ai_variables);
+        $title = $this->generate_title_from_context($context, $content, $ai_variables, $ai_options);
 
         // Log post title
         if ($this->current_history) {
@@ -662,7 +674,7 @@ class AIPS_Generator {
         // Use actual generated content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
         $excerpt_success = false;
-        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, array(), $excerpt_success);
+        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, $ai_options, $excerpt_success);
         $component_statuses['post_excerpt'] = (bool) $excerpt_success;
 
         $generation_incomplete = in_array(false, $component_statuses, true);

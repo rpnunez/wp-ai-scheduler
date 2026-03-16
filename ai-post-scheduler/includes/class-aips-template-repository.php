@@ -134,9 +134,12 @@ class AIPS_Template_Repository {
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'is_active' => isset($data['is_active']) ? 1 : 0,
+            'ai_env_id' => isset($data['ai_env_id']) ? sanitize_text_field($data['ai_env_id']) : '',
+            'ai_model' => isset($data['ai_model']) ? sanitize_text_field($data['ai_model']) : '',
+            'ai_temperature' => isset($data['ai_temperature']) && $data['ai_temperature'] !== '' ? sanitize_text_field($data['ai_temperature']) : '',
         );
         
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%s', '%s');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -229,6 +232,21 @@ class AIPS_Template_Repository {
         if (isset($data['is_active'])) {
             $update_data['is_active'] = $data['is_active'] ? 1 : 0;
             $format[] = '%d';
+        }
+
+        if (isset($data['ai_env_id'])) {
+            $update_data['ai_env_id'] = sanitize_text_field($data['ai_env_id']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['ai_model'])) {
+            $update_data['ai_model'] = sanitize_text_field($data['ai_model']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['ai_temperature'])) {
+            $update_data['ai_temperature'] = $data['ai_temperature'] !== '' ? sanitize_text_field($data['ai_temperature']) : '';
+            $format[] = '%s';
         }
         
         if (empty($update_data)) {

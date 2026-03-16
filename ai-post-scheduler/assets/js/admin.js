@@ -471,6 +471,9 @@
                         $('#post_tags').val(t.post_tags);
                         $('#post_author').val(t.post_author);
                         $('#is_active').prop('checked', t.is_active == 1);
+                        $('#ai_env_id').val(t.ai_env_id || '');
+                        $('#ai_model').val(t.ai_model || '');
+                        $('#ai_temperature').val(t.ai_temperature || '');
                         AIPS.toggleImagePrompt();
                         AIPS.toggleFeaturedImageSourceFields();
                         // Scan for AI Variables after loading template data
@@ -655,7 +658,10 @@
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
                     post_author: $('#post_author').val(),
-                    is_active: $('#is_active').is(':checked') ? 1 : 0
+                    is_active: $('#is_active').is(':checked') ? 1 : 0,
+                    ai_env_id: $('#ai_env_id').val(),
+                    ai_model: $('#ai_model').val(),
+                    ai_temperature: $('#ai_temperature').val()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -722,7 +728,10 @@
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
                     post_author: $('#post_author').val(),
-                    is_active: 0 // Save as inactive draft
+                    is_active: 0, // Save as inactive draft
+                    ai_env_id: $('#ai_env_id').val(),
+                    ai_model: $('#ai_model').val(),
+                    ai_temperature: $('#ai_temperature').val()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -791,6 +800,9 @@
                 post_category: $('#post_category').val(),
                 post_tags: $('#post_tags').val(),
                 post_author: $('#post_author').val(),
+                ai_env_id: $('#ai_env_id').val(),
+                ai_model: $('#ai_model').val(),
+                ai_temperature: $('#ai_temperature').val(),
             };
 
             $.ajax({
