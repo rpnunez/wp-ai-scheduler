@@ -23,10 +23,10 @@
 
 ## Overview
 
-This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **81 core classes** organized into **9 functional categories**.
+This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **85 core classes** organized into **9 functional categories**.
 
-- **Total Lines of Code**: 25,907
-- **Total Features**: 81
+- **Total Lines of Code**: 26,817
+- **Total Features**: 85
 - **Categories**: Core Generation, Scheduling & Automation, Content Management, Data Management, User Interface, AI Integration, Database, Configuration, Utilities
 
 ## Architecture Diagram
@@ -56,7 +56,7 @@ flowchart TB
     subgraph Controllers
         AdminAssets
         AdminBar
-        AIEditController
+        AdminMenuHelper
     end
 
     subgraph Services
@@ -87,7 +87,7 @@ flowchart TB
 
 ### Core Generation
 
-This category contains 7 classes:
+This category contains 9 classes:
 
 - **Author Post Generator** (`AIPS_Author_Post_Generator`): Author Post Generator
 - **Author Topics Generator** (`AIPS_Author_Topics_Generator`): Author Topics Generator
@@ -96,6 +96,8 @@ This category contains 7 classes:
 - **Generation Logger** (`AIPS_Generation_Logger`): AIPS_Generation_Logger
 - **Generation Session** (`AIPS_Generation_Session`): Generation Session Tracker
 - **Generator** (`AIPS_Generator`): AIPS_Generator
+- **Partial Generation Notifications** (`AIPS_Partial_Generation_Notifications`): Partial Generation Email Notifications
+- **Partial Generation State Reconciler** (`AIPS_Partial_Generation_State_Reconciler`): Partial Generation State Reconciler
 
 #### Core Generation Architecture
 
@@ -110,10 +112,12 @@ flowchart TD
     Generation_Logger["Generation Logger"]
     Generation_Session["Generation Session"]
     Generator["Generator"]
+    Partial_Generation_Notifications["Partial Generation Notifications"]
+    Partial_Generation_State_Reconciler["Partial Generation State Reconciler"]
 
     Author_Post_Generator --> Generator
-    Component_Regeneration_Service --> Generation_Context_Factory
     Component_Regeneration_Service --> Generator
+    Component_Regeneration_Service --> Generation_Context_Factory
     Generator --> Generation_Logger
     Generator --> Generation_Session
 
@@ -148,8 +152,8 @@ flowchart TD
     Schedule_Controller --> Schedule_Repository
     Schedule_Controller --> Scheduler
     Schedule_Processor --> Schedule_Repository
-    Scheduler --> Schedule_Repository
     Scheduler --> Schedule_Processor
+    Scheduler --> Schedule_Repository
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
@@ -160,12 +164,13 @@ flowchart TD
 
 ### Content Management
 
-This category contains 15 classes:
+This category contains 16 classes:
 
 - **Article Structure Manager** (`AIPS_Article_Structure_Manager`): Article Structure Manager
 - **Article Structure Repository** (`AIPS_Article_Structure_Repository`): Article Structure Repository
 - **Content Auditor** (`AIPS_Content_Auditor`): Content Auditor Service
 - **Generated Posts Controller** (`AIPS_Generated_Posts_Controller`): Generated Posts Controller
+- **Post Creator** (`AIPS_Post_Creator`): Legacy Post Creator alias.
 - **Post Manager** (`AIPS_Post_Manager`): Post Manager Service
 - **Post Review Notifications** (`AIPS_Post_Review_Notifications`): Post Review Email Notifications
 - **Post Review Repository** (`AIPS_Post_Review_Repository`): Post Review Repository
@@ -188,6 +193,7 @@ flowchart TD
     Article_Structure_Repository[("Article Structure Repository")]
     Content_Auditor["Content Auditor"]
     Generated_Posts_Controller["Generated Posts Controller"]
+    Post_Creator["Post Creator"]
     Post_Manager["Post Manager"]
     Post_Review_Notifications["Post Review Notifications"]
     Post_Review_Repository[("Post Review Repository")]
@@ -200,8 +206,8 @@ flowchart TD
     Templates_Controller["Templates Controller"]
     Templates["Templates"]
 
-    Article_Structure_Manager --> Article_Structure_Repository
     Article_Structure_Manager --> Template_Processor
+    Article_Structure_Manager --> Article_Structure_Repository
     Generated_Posts_Controller --> Post_Review_Repository
     Generated_Posts_Controller --> Template_Repository
     Post_Review_Notifications --> Post_Review_Repository
@@ -251,10 +257,11 @@ flowchart TD
 
 ### User Interface
 
-This category contains 13 classes:
+This category contains 14 classes:
 
 - **Admin Assets** (`AIPS_Admin_Assets`): Class AIPS_Admin_Assets
 - **Admin Bar** (`AIPS_Admin_Bar`): Class AIPS_Admin_Bar
+- **Admin Menu Helper** (`AIPS_Admin_Menu_Helper`): Admin Menu Helper
 - **Ai Edit Controller** (`AIPS_AI_Edit_Controller`): AI Edit Controller
 - **Author Topics Controller** (`AIPS_Author_Topics_Controller`): Author Topics Controller
 - **Authors Controller** (`AIPS_Authors_Controller`): Authors Controller
@@ -275,6 +282,7 @@ flowchart TD
 
     Admin_Assets["Admin Assets"]
     Admin_Bar["Admin Bar"]
+    Admin_Menu_Helper["Admin Menu Helper"]
     AI_Edit_Controller["Ai Edit Controller"]
     Author_Topics_Controller["Author Topics Controller"]
     Authors_Controller["Authors Controller"]
@@ -287,6 +295,8 @@ flowchart TD
     Settings["Settings"]
     Structures_Controller["Structures Controller"]
 
+    Admin_Assets --> Admin_Menu_Helper
+    Admin_Bar --> Admin_Menu_Helper
     Authors_Controller --> Admin_Bar
     Settings --> Dashboard_Controller
 
@@ -444,8 +454,8 @@ flowchart TD
     Resilience_Service --> Logger
     Seeder_Service --> Voices
     Session_To_JSON --> History_Type
-    System_Status --> Logger
     System_Status --> Data_Management
+    System_Status --> Logger
     Topic_Expansion_Service --> Logger
     Topic_Penalty_Service --> Logger
     Upgrades --> Logger
@@ -468,13 +478,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_AI_Edit_Controller`
 
-**Lines of Code**: 494
+**Lines of Code**: 496
 
 **Technical Details**:
 
 - **Public Methods** (6): `__construct()`, `ajax_get_post_components()`, `ajax_regenerate_component()`, `ajax_save_post_components()`, `ajax_get_component_revisions()`, `ajax_restore_component_revision()`
 - **Dependencies** (2): `AIPS_Component_Regeneration_Service`, `AIPS_History_Repository`
-- **Action Hooks** (5): `wp_ajax_aips_get_component_revisions`, `wp_ajax_aips_get_post_components`, `wp_ajax_aips_regenerate_component`, `wp_ajax_aips_restore_component_revision`, `wp_ajax_aips_save_post_components`
+- **Action Hooks** (6): `aips_post_components_updated`, `wp_ajax_aips_get_component_revisions`, `wp_ajax_aips_get_post_components`, `wp_ajax_aips_regenerate_component`, `wp_ajax_aips_save_post_components`, ... and 1 more
 - **AJAX Handlers**: `wp_ajax_aips_get_post_components`, `wp_ajax_aips_regenerate_component`, `wp_ajax_aips_save_post_components`, `wp_ajax_aips_get_component_revisions`, `wp_ajax_aips_restore_component_revision`
 - **Database Operations**: Has Repository
 
@@ -526,12 +536,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Admin_Assets`
 
-**Lines of Code**: 506
+**Lines of Code**: 557
 
 **Technical Details**:
 
 - **Public Methods** (2): `__construct()`, `enqueue_admin_assets()`
-- **Dependencies** (1): `AIPS_Config`
+- **Dependencies** (2): `AIPS_Admin_Menu_Helper`, `AIPS_Config`
 - **Action Hooks** (1): `admin_enqueue_scripts`
 - **WordPress APIs Used**: Options
 
@@ -539,7 +549,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 506 lines (may violate SRP)
+1. Consider refactoring - class has 557 lines (may violate SRP)
 2. Document all custom hooks in HOOKS.md for third-party developers
 3. Ensure unit tests cover all public methods and edge cases
 
@@ -558,7 +568,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Technical Details**:
 
 - **Public Methods** (6): `__construct()`, `enqueue_assets()`, `add_toolbar_node()`, `ajax_mark_read()`, `ajax_mark_all_read()`, `notify_author_topics_generated()`
-- **Dependencies** (1): `AIPS_Notifications_Repository`
+- **Dependencies** (2): `AIPS_Admin_Menu_Helper`, `AIPS_Notifications_Repository`
 - **Action Hooks** (5): `admin_bar_menu`, `admin_enqueue_scripts`, `wp_ajax_aips_mark_all_notifications_read`, `wp_ajax_aips_mark_notification_read`, `wp_enqueue_scripts`
 - **AJAX Handlers**: `wp_ajax_aips_mark_notification_read`, `wp_ajax_aips_mark_all_notifications_read`
 - **Database Operations**: Has Repository
@@ -569,6 +579,28 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 1. Document all custom hooks in HOOKS.md for third-party developers
 2. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Admin Menu Helper
+
+**Summary**: Admin Menu Helper
+
+**File**: `ai-post-scheduler/includes/class-aips-admin-menu-helper.php`
+
+**Class**: `AIPS_Admin_Menu_Helper`
+
+**Lines of Code**: 73
+
+**Technical Details**:
+
+- **Public Methods** (2): `get_page_url()`, `get_slug()`
+
+**Missing Functionality**: None identified
+
+**Recommended Improvements**:
+
+1. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -749,11 +781,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Author_Topics_Repository`
 
-**Lines of Code**: 355
+**Lines of Code**: 381
 
 **Technical Details**:
 
-- **Public Methods** (15): `__construct()`, `get_by_author()`, `get_by_id()`, `create()`, `create_bulk()`, `get_latest_by_author()`, `update()`, `update_status()`, `delete()`, `delete_by_author()`, ... and 5 more
+- **Public Methods** (16): `__construct()`, `get_by_author()`, `get_by_id()`, `create()`, `create_bulk()`, `get_latest_by_author()`, `update()`, `update_status()`, `delete()`, `delete_by_author()`, ... and 6 more
 - **Database Operations**: Uses Wpdb, Has Repository
 
 **Missing Functionality**: None identified
@@ -984,7 +1016,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_DB_Manager`
 
-**Lines of Code**: 618
+**Lines of Code**: 619
 
 **Technical Details**:
 
@@ -997,7 +1029,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 618 lines (may violate SRP)
+1. Consider refactoring - class has 619 lines (may violate SRP)
 2. Consider using Repository pattern for database access instead of direct $wpdb
 3. Document all custom hooks in HOOKS.md for third-party developers
 4. Ensure unit tests cover all public methods and edge cases
@@ -1013,12 +1045,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Dashboard_Controller`
 
-**Lines of Code**: 48
+**Lines of Code**: 54
 
 **Technical Details**:
 
 - **Public Methods** (1): `render_page()`
-- **Dependencies** (3): `AIPS_History_Repository`, `AIPS_Schedule_Repository`, `AIPS_Template_Repository`
+- **Dependencies** (5): `AIPS_Author_Topics_Repository`, `AIPS_History_Repository`, `AIPS_Post_Review_Repository`, `AIPS_Schedule_Repository`, `AIPS_Template_Repository`
 - **Database Operations**: Has Repository
 
 **Missing Functionality**:
@@ -1292,11 +1324,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Generated_Posts_Controller`
 
-**Lines of Code**: 450
+**Lines of Code**: 529
 
 **Technical Details**:
 
-- **Public Methods** (6): `__construct()`, `render_page()`, `ajax_get_post_session()`, `ajax_download_session_json()`, `ajax_get_session_json()`, `format_source()`
+- **Public Methods** (8): `__construct()`, `render_page()`, `get_missing_components()`, `format_post_status()`, `ajax_get_post_session()`, `ajax_download_session_json()`, `ajax_get_session_json()`, `format_source()`
 - **Dependencies** (9): `AIPS_Author_Topics_Repository`, `AIPS_Authors_Repository`, `AIPS_Config`, `AIPS_History_Repository`, `AIPS_History_Type`, `AIPS_Post_Review_Repository`, `AIPS_Schedule_Repository`, `AIPS_Session_To_JSON`, `AIPS_Template_Repository`
 - **Action Hooks** (3): `wp_ajax_aips_download_session_json`, `wp_ajax_aips_get_post_session`, `wp_ajax_aips_get_session_json`
 - **AJAX Handlers**: `wp_ajax_aips_get_post_session`, `wp_ajax_aips_get_session_json`, `wp_ajax_aips_download_session_json`
@@ -1309,9 +1341,10 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. High coupling - depends on 9 classes
-2. Document all custom hooks in HOOKS.md for third-party developers
-3. Ensure unit tests cover all public methods and edge cases
+1. Consider refactoring - class has 529 lines (may violate SRP)
+2. High coupling - depends on 9 classes
+3. Document all custom hooks in HOOKS.md for third-party developers
+4. Ensure unit tests cover all public methods and edge cases
 
 ---
 
@@ -1394,13 +1427,13 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Generator`
 
-**Lines of Code**: 880
+**Lines of Code**: 927
 
 **Technical Details**:
 
 - **Public Methods** (9): `__construct()`, `is_available()`, `generate_content()`, `resolve_ai_variables()`, `generate_title()`, `generate_excerpt()`, `generate_preview()`, `generate_post()`, `set_history_container()`
 - **Dependencies** (13): `AIPS_AI_Service`, `AIPS_Article_Structure_Manager`, `AIPS_Generation_Logger`, `AIPS_Generation_Session`, `AIPS_History_Repository`, `AIPS_History_Service`, `AIPS_Image_Service`, `AIPS_Logger`, `AIPS_Markdown_Parser`, `AIPS_Post_Manager`, `AIPS_Prompt_Builder`, `AIPS_Template_Context`, `AIPS_Template_Processor`
-- **Action Hooks** (5): `aips_post_generated`, `aips_post_generation_before_post_create`, `aips_post_generation_failed`, `aips_post_generation_started`
+- **Action Hooks** (5): `aips_post_generated`, `aips_post_generation_before_post_create`, `aips_post_generation_incomplete`, `aips_post_generation_started`
 - **Database Operations**: Has Repository
 
 **Missing Functionality**:
@@ -1411,7 +1444,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 880 lines (may violate SRP)
+1. Consider refactoring - class has 927 lines (may violate SRP)
 2. High coupling - depends on 13 classes
 3. Document all custom hooks in HOOKS.md for third-party developers
 4. Add comprehensive error handling with specific exception types
@@ -1479,11 +1512,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_History_Repository`
 
-**Lines of Code**: 721
+**Lines of Code**: 871
 
 **Technical Details**:
 
-- **Public Methods** (18): `__construct()`, `get_history()`, `get_by_id()`, `post_has_history_and_completed()`, `get_by_post_id()`, `add_log_entry()`, `get_stats()`, `get_template_stats()`, `get_all_template_stats()`, `get_activity_feed()`, ... and 8 more
+- **Public Methods** (19): `__construct()`, `get_history()`, `get_partial_generations()`, `get_by_id()`, `post_has_history_and_completed()`, `get_by_post_id()`, `add_log_entry()`, `get_stats()`, `get_template_stats()`, `get_all_template_stats()`, ... and 9 more
 - **Dependencies** (1): `AIPS_History_Type`
 - **Database Operations**: Uses Wpdb, Has Repository
 - **WordPress APIs Used**: Transients
@@ -1492,7 +1525,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 721 lines (may violate SRP)
+1. Consider refactoring - class has 871 lines (may violate SRP)
 2. Ensure unit tests cover all public methods and edge cases
 
 ---
@@ -1670,6 +1703,58 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 ---
 
+### Partial Generation Notifications
+
+**Summary**: Partial Generation Email Notifications
+
+**File**: `ai-post-scheduler/includes/class-aips-partial-generation-notifications.php`
+
+**Class**: `AIPS_Partial_Generation_Notifications`
+
+**Lines of Code**: 222
+
+**Technical Details**:
+
+- **Public Methods** (2): `__construct()`, `send_partial_generation_notification()`
+- **Dependencies** (1): `AIPS_History_Service`
+- **Action Hooks** (1): `aips_post_generation_incomplete`
+- **WordPress APIs Used**: Options
+
+**Missing Functionality**: None identified
+
+**Recommended Improvements**:
+
+1. Document all custom hooks in HOOKS.md for third-party developers
+2. Ensure unit tests cover all public methods and edge cases
+
+---
+
+### Partial Generation State Reconciler
+
+**Summary**: Partial Generation State Reconciler
+
+**File**: `ai-post-scheduler/includes/class-aips-partial-generation-state-reconciler.php`
+
+**Class**: `AIPS_Partial_Generation_State_Reconciler`
+
+**Lines of Code**: 107
+
+**Technical Details**:
+
+- **Public Methods** (3): `__construct()`, `on_save_post()`, `on_post_components_updated()`
+- **Dependencies** (1): `AIPS_Post_Manager`
+- **Action Hooks** (4): `aips_partial_generation_state_reconciled`, `aips_post_components_updated`, `save_post`
+- **WordPress APIs Used**: Post Meta
+
+**Missing Functionality**: None identified
+
+**Recommended Improvements**:
+
+1. Document all custom hooks in HOOKS.md for third-party developers
+2. Ensure unit tests cover all public methods and edge cases
+
+---
+
 ### Planner
 
 **Summary**: No description available
@@ -1699,6 +1784,28 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 ---
 
+### Post Creator
+
+**Summary**: Legacy Post Creator alias.
+
+**File**: `ai-post-scheduler/includes/class-aips-post-creator.php`
+
+**Class**: `AIPS_Post_Creator`
+
+**Lines of Code**: 32
+
+**Technical Details**:
+
+- **Public Methods** (1): `__construct()`
+
+**Missing Functionality**: None identified
+
+**Recommended Improvements**:
+
+1. Ensure unit tests cover all public methods and edge cases
+
+---
+
 ### Post Manager
 
 **Summary**: Post Manager Service
@@ -1707,11 +1814,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Post_Manager`
 
-**Lines of Code**: 251
+**Lines of Code**: 356
 
 **Technical Details**:
 
-- **Public Methods** (2): `create_post()`, `set_featured_image()`
+- **Public Methods** (4): `create_post()`, `set_featured_image()`, `update_generation_status_meta()`, `reconcile_generation_status_meta_from_post()`
 - **Filter Hooks** (1): `aips_post_seo_metadata`
 - **WordPress APIs Used**: Options, Post Meta
 
@@ -1766,7 +1873,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 **Technical Details**:
 
 - **Public Methods** (2): `__construct()`, `send_review_notification_email()`
-- **Dependencies** (2): `AIPS_History_Service`, `AIPS_Post_Review_Repository`
+- **Dependencies** (3): `AIPS_Admin_Menu_Helper`, `AIPS_History_Service`, `AIPS_Post_Review_Repository`
 - **Action Hooks** (1): `aips_send_review_notifications`
 - **Database Operations**: Has Repository
 - **WordPress APIs Used**: Options
@@ -1979,7 +2086,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Schedule_Controller`
 
-**Lines of Code**: 431
+**Lines of Code**: 432
 
 **Technical Details**:
 
@@ -2038,7 +2145,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Schedule_Repository`
 
-**Lines of Code**: 524
+**Lines of Code**: 530
 
 **Technical Details**:
 
@@ -2049,7 +2156,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 524 lines (may violate SRP)
+1. Consider refactoring - class has 530 lines (may violate SRP)
 2. Ensure unit tests cover all public methods and edge cases
 
 ---
@@ -2150,7 +2257,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Session_To_JSON`
 
-**Lines of Code**: 454
+**Lines of Code**: 456
 
 **Technical Details**:
 
@@ -2619,11 +2726,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 | Category | Count | Classes |
 |----------|-------|----------|
-| Core Generation | 7 | Author_Post_Generator, Author_Topics_Generator, Component_Regeneration_Service, ... (4 more) |
+| Core Generation | 9 | Author_Post_Generator, Author_Topics_Generator, Component_Regeneration_Service, ... (6 more) |
 | Scheduling & Automation | 5 | Author_Topics_Scheduler, Schedule_Controller, Schedule_Processor, ... (2 more) |
-| Content Management | 15 | Article_Structure_Manager, Article_Structure_Repository, Content_Auditor, ... (12 more) |
+| Content Management | 16 | Article_Structure_Manager, Article_Structure_Repository, Content_Auditor, ... (13 more) |
 | Data Management | 6 | Data_Management_Export_JSON, Data_Management_Export_MySQL, Data_Management_Export, ... (3 more) |
-| User Interface | 13 | Admin_Assets, Admin_Bar, AI_Edit_Controller, ... (10 more) |
+| User Interface | 14 | Admin_Assets, Admin_Bar, Admin_Menu_Helper, ... (11 more) |
 | AI Integration | 2 | AI_Service, Embeddings_Service |
 | Database | 10 | Author_Topic_Logs_Repository, Author_Topics_Repository, Authors_Repository, ... (7 more) |
 | Configuration | 1 | Config |
@@ -2635,14 +2742,14 @@ Detailed analysis of each feature including files, functionality, and recommenda
 |-------|-------|------|
 | Settings | 978 | `class-aips-settings.php` |
 | Author Topics Controller | 961 | `class-aips-author-topics-controller.php` |
-| Generator | 880 | `class-aips-generator.php` |
+| Generator | 927 | `class-aips-generator.php` |
+| History Repository | 871 | `class-aips-history-repository.php` |
 | Ai Service | 751 | `class-aips-ai-service.php` |
-| History Repository | 721 | `class-aips-history-repository.php` |
 | Post Review | 693 | `class-aips-post-review.php` |
-| Db Manager | 618 | `class-aips-db-manager.php` |
+| Db Manager | 619 | `class-aips-db-manager.php` |
 | Trending Topics Repository | 617 | `class-aips-trending-topics-repository.php` |
-| Schedule Repository | 524 | `class-aips-schedule-repository.php` |
-| Admin Assets | 506 | `class-aips-admin-assets.php` |
+| Admin Assets | 557 | `class-aips-admin-assets.php` |
+| Schedule Repository | 530 | `class-aips-schedule-repository.php` |
 
 ### Most Connected Classes (by Dependencies)
 
