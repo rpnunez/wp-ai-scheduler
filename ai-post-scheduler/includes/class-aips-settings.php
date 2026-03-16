@@ -467,7 +467,12 @@ class AIPS_Settings {
     public function unsplash_access_key_field_callback() {
         $value = get_option('aips_unsplash_access_key', '');
         ?>
-        <input type="text" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
+        <div style="position: relative; display: inline-block;">
+            <input type="password" id="aips_unsplash_access_key" name="aips_unsplash_access_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password" style="padding-right: 32px;">
+            <button type="button" class="aips-toggle-password" data-target="#aips_unsplash_access_key" aria-label="<?php esc_attr_e('Toggle password visibility', 'ai-post-scheduler'); ?>" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: #787c82; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
+                <span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+            </button>
+        </div>
         <p class="description"><?php esc_html_e('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'); ?></p>
         <?php
     }

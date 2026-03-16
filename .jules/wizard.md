@@ -39,3 +39,7 @@
 ## 2024-05-19 - Add "Clear" buttons to search bars in Sections and Planner
 Learning: Consistent UX in search bars requires not just an input, but `screen-reader-text` labels and a hidden `Clear` button that can be toggled by JS. Wait to merge `class` attributes when copying elements to prevent duplicate attributes like `class="aips-form-input" class="aips-planner-topic-search"`.
 Action: Always check if the `admin.js` script handles specific clear button IDs even if they are missing from the PHP template, and add them proactively for completeness.
+
+## 2026-03-08 - Add password visibility toggle to API keys
+**Learning:** API keys are sensitive and often entered into settings pages. By default, inputs are plain text which exposes them, but forcing them to password prevents verification.
+**Action:** Implemented the "Password Visibility" toggle Spell. Added a relative wrapper around the `aips_unsplash_access_key` input, set its type to `password`, and appended a dashicons-based toggle button to the wrapper, handled globally in `admin.js` via `togglePasswordVisibility`.

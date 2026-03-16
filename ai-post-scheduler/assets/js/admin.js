@@ -171,6 +171,9 @@
             // Copy to Clipboard
             $(document).on('click', '.aips-copy-btn', this.copyToClipboard);
 
+            // Password Visibility Toggle
+            $(document).on('click', '.aips-toggle-password', this.togglePasswordVisibility);
+
             // Article Structures UI handlers
             $(document).on('click', '.aips-add-structure-btn', this.openAddStructureModal);
 
@@ -201,6 +204,33 @@
          *
          * @param {Event} e - Click event from an `.aips-copy-btn` element.
          */
+        /**
+         * Toggles password visibility by switching the input type and icon.
+         *
+         * Bound to the `click` event on `.aips-toggle-password`.
+         *
+         * @param {Event} e - Click event from an `.aips-toggle-password` element.
+         */
+        togglePasswordVisibility: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var targetId = $btn.data('target');
+            var $input = targetId ? $(targetId) : $btn.siblings('input');
+
+            if (!$input.length) return;
+
+            var $icon = $btn.find('.dashicons');
+            var currentType = $input.attr('type');
+
+            if (currentType === 'password') {
+                $input.attr('type', 'text');
+                $icon.removeClass('dashicons-visibility').addClass('dashicons-hidden');
+            } else {
+                $input.attr('type', 'password');
+                $icon.removeClass('dashicons-hidden').addClass('dashicons-visibility');
+            }
+        },
+
         copyToClipboard: function(e) {
             e.preventDefault();
             var $btn = $(this);
