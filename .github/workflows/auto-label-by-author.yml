@@ -13,15 +13,37 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const author = context.payload.pull_request.user.login;
+            const author = context.payload.pull_request.user.login.toLowerCase();
             const prNumber = context.payload.pull_request.number;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            const labelMap = ['bot-copilot', 'bot-jules'];
-            const labelName = labelMap.includes(author) ? author : null;
+            let labelName = null;
 
-            if (!labelName) {
+            // Map authors to labels
+            switch (author) {
+              case 'google-labs-jules':
+                labelName = 'bot-jules';
+                break;
+              case 'github-copilot[bot]':
+              case 'github-copilot':
+              case 'copilot-preview[bot]':
+              case 'copilot-chat[bot]':
+              case 'copilot-cli[bot]':
+              case 'copilot-labs[bot]':
+              case 'copilot-preview':
+              case 'copilot-chat':
+              case 'copilot-cli':
+              case 'copilot-labs':
+              case 'copilot':
+                labelName = 'bot-copilot';
+                break;
+              default:
+                labelName = null;
+                break;
+            }
+
+            if (labelName === null) {
               console.log(`Author "${author}" is not in the label map. Skipping.`);
               return;
             }
