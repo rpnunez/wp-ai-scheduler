@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * Voices Repository
  *
@@ -19,7 +21,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for voice data access.
  * Encapsulates all database operations related to voices.
  */
-class AIPS_Voices_Repository {
+class VoicesRepository {
 
     /**
      * @var string Table name (with prefix)

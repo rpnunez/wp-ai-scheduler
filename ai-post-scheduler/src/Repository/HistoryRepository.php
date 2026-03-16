@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * History Repository
  *
@@ -19,7 +21,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for history data access.
  * Encapsulates all database operations related to generation history.
  */
-class AIPS_History_Repository {
+class HistoryRepository {
     
     /**
      * @var string The history table name (with prefix)
@@ -354,13 +356,13 @@ class AIPS_History_Repository {
      * @param int    $history_id      The ID of the history item.
      * @param string $log_type        The type of log entry (e.g., 'ai_call', 'error').
      * @param array  $details         The details of the log entry.
-     * @param int    $history_type_id Optional. History type constant from AIPS_History_Type. Default AIPS_History_Type::LOG.
+     * @param int    $history_type_id Optional. History type constant from \AIPS_History_Type. Default \AIPS_History_Type::LOG.
      * @return int|false The inserted ID on success, false on failure.
      */
     public function add_log_entry($history_id, $log_type, $details, $history_type_id = null) {
         // Default to LOG type if not specified
         if ($history_type_id === null) {
-            $history_type_id = AIPS_History_Type::LOG;
+            $history_type_id = \AIPS_History_Type::LOG;
         }
         
         $insert_data = array(
@@ -468,7 +470,7 @@ class AIPS_History_Repository {
      */
     public function get_activity_feed($limit = 50, $offset = 0, $filters = array()) {
         $where_clauses = array("history_type_id = %d");
-        $where_args = array(AIPS_History_Type::ACTIVITY);
+        $where_args = array(\AIPS_History_Type::ACTIVITY);
 
         // Event type filter
         if (!empty($filters['event_type'])) {
@@ -512,7 +514,7 @@ class AIPS_History_Repository {
      * Get all log entries for a specific history record, ordered by timestamp ascending.
      *
      * @param int   $history_id      The history record ID.
-     * @param array $type_filter     Optional array of AIPS_History_Type constants to filter by.
+     * @param array $type_filter     Optional array of \AIPS_History_Type constants to filter by.
      * @return array Array of log entry objects.
      */
     public function get_logs_by_history_id($history_id, $type_filter = array()) {
@@ -816,7 +818,7 @@ class AIPS_History_Repository {
 			ORDER BY hl.timestamp DESC
 			LIMIT %d
 		",
-            AIPS_History_Type::AI_RESPONSE,
+            \AIPS_History_Type::AI_RESPONSE,
             '%"component":"' . $this->wpdb->esc_like($component_type) . '"%',
             $post_id,
             '%"post_id":' . absint($post_id) . '%',

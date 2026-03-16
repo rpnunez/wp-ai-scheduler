@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * Author Topics Repository
  *
@@ -19,7 +21,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for author topic data access.
  * Encapsulates all database operations related to author topics.
  */
-class AIPS_Author_Topics_Repository {
+class AuthorTopicsRepository {
 	
 	/**
 	 * @var string The author_topics table name (with prefix)
@@ -376,5 +378,3 @@ class AIPS_Author_Topics_Repository {
 		);
 	}
 }
-
-

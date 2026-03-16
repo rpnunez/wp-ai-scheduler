@@ -52,6 +52,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'post_id' => 1,
 			'history_id' => 1,
 		);
+		$_REQUEST = $_POST;
 		
 		// Should fail without nonce
 		$exception_thrown = false;
@@ -61,7 +62,7 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 		} catch (WPAjaxDieStopException $e) {
 			// Expected - nonce check failed with wp_die
 			$exception_thrown = true;
-		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieContinueException | WPAjaxDieStopException $e) {
 			// Also acceptable - nonce check failed with wp_send_json_error
 			$exception_thrown = true;
 		}
@@ -103,12 +104,13 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'history_id' => $history_id,
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$_REQUEST = $_POST;
 		
 		// This should succeed (just checking it doesn't throw an error)
 		ob_start();
 		try {
 			$this->controller->ajax_get_post_components();
-		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieContinueException | WPAjaxDieStopException $e) {
 			// wp_send_json_success throws this
 			$output = ob_get_clean();
 			$response = json_decode($output, true);
@@ -146,11 +148,12 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'component' => 'invalid_component',
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$_REQUEST = $_POST;
 		
 		ob_start();
 		try {
 			$this->controller->ajax_regenerate_component();
-		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieContinueException | WPAjaxDieStopException $e) {
 			// Expected exception from wp_send_json_error
 		}
 		$output = ob_get_clean();
@@ -175,11 +178,12 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'components' => array('title' => 'New Title'),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$_REQUEST = $_POST;
 		
 		ob_start();
 		try {
 			$this->controller->ajax_save_post_components();
-		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieContinueException | WPAjaxDieStopException $e) {
 			// Expected exception from wp_send_json_error
 		}
 		$output = ob_get_clean();
@@ -209,11 +213,12 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$_REQUEST = $_POST;
 		
 		ob_start();
 		try {
 			$this->controller->ajax_save_post_components();
-		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieContinueException | WPAjaxDieStopException $e) {
 			// Expected exception from wp_send_json_success
 		}
 		$output = ob_get_clean();
@@ -244,11 +249,12 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			),
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$_REQUEST = $_POST;
 		
 		ob_start();
 		try {
 			$this->controller->ajax_save_post_components();
-		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieContinueException | WPAjaxDieStopException $e) {
 			// Expected exception from wp_send_json_success
 		}
 		$output = ob_get_clean();
@@ -299,11 +305,12 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'component_type' => 'title',
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$_REQUEST = $_POST;
 
 		ob_start();
 		try {
 			$this->controller->ajax_get_component_revisions();
-		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieContinueException | WPAjaxDieStopException $e) {
 			// Expected.
 		}
 		$output = ob_get_clean();
@@ -358,11 +365,12 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'revision_id' => $revision_id,
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$_REQUEST = $_POST;
 
 		ob_start();
 		try {
 			$this->controller->ajax_restore_component_revision();
-		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieContinueException | WPAjaxDieStopException $e) {
 			// Expected.
 		}
 		$output = ob_get_clean();
@@ -411,11 +419,12 @@ class Test_AIPS_AI_Edit_Controller extends WP_UnitTestCase {
 			'current_reason' => 'pre_restore_manual',
 			'nonce' => wp_create_nonce('aips_ajax_nonce'),
 		);
+		$_REQUEST = $_POST;
 
 		ob_start();
 		try {
 			$this->controller->ajax_restore_component_revision();
-		} catch (WPAjaxDieContinueException $e) {
+		} catch (WPAjaxDieContinueException | WPAjaxDieStopException $e) {
 			// Expected.
 		}
 		ob_end_clean();

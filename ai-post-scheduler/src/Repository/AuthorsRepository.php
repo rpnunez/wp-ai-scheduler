@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * Authors Repository
  *
@@ -19,7 +21,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for author data access.
  * Encapsulates all database operations related to authors.
  */
-class AIPS_Authors_Repository {
+class AuthorsRepository {
 	
 	/**
 	 * @var string The authors table name (with prefix)

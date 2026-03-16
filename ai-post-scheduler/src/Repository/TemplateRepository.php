@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * Template Repository
  *
@@ -19,7 +21,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for template data access.
  * Encapsulates all database operations related to templates.
  */
-class AIPS_Template_Repository {
+class TemplateRepository {
     
     /**
      * @var string The templates table name (with prefix)
@@ -119,8 +121,8 @@ class AIPS_Template_Repository {
         $source = isset($data['featured_image_source']) ? sanitize_text_field($data['featured_image_source']) : 'ai_prompt';
 
         $insert_data = array(
-            'name' => sanitize_text_field($data['name']),
-            'prompt_template' => wp_kses_post($data['prompt_template']),
+            'name' => isset($data['name']) ? sanitize_text_field($data['name']) : '',
+            'prompt_template' => isset($data['prompt_template']) ? wp_kses_post($data['prompt_template']) : '',
             'title_prompt' => isset($data['title_prompt']) ? sanitize_text_field($data['title_prompt']) : '',
             'voice_id' => isset($data['voice_id']) ? absint($data['voice_id']) : null,
             'post_quantity' => isset($data['post_quantity']) ? absint($data['post_quantity']) : 1,
@@ -129,8 +131,8 @@ class AIPS_Template_Repository {
             'featured_image_source' => in_array($source, $allowed_sources, true) ? $source : 'ai_prompt',
             'featured_image_unsplash_keywords' => isset($data['featured_image_unsplash_keywords']) ? sanitize_textarea_field($data['featured_image_unsplash_keywords']) : '',
             'featured_image_media_ids' => isset($data['featured_image_media_ids']) ? sanitize_text_field($data['featured_image_media_ids']) : '',
-            'post_status' => sanitize_text_field($data['post_status']),
-            'post_category' => absint($data['post_category']),
+            'post_status' => isset($data['post_status']) ? sanitize_text_field($data['post_status']) : '',
+            'post_category' => isset($data['post_category']) ? absint($data['post_category']) : 0,
             'post_tags' => isset($data['post_tags']) ? sanitize_text_field($data['post_tags']) : '',
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'is_active' => isset($data['is_active']) ? 1 : 0,
@@ -156,12 +158,12 @@ class AIPS_Template_Repository {
         $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
         
         if (isset($data['name'])) {
-            $update_data['name'] = sanitize_text_field($data['name']);
+            $update_data['name'] = isset($data['name']) ? sanitize_text_field($data['name']) : '';
             $format[] = '%s';
         }
         
         if (isset($data['prompt_template'])) {
-            $update_data['prompt_template'] = wp_kses_post($data['prompt_template']);
+            $update_data['prompt_template'] = isset($data['prompt_template']) ? wp_kses_post($data['prompt_template']) : '';
             $format[] = '%s';
         }
         
@@ -207,12 +209,12 @@ class AIPS_Template_Repository {
         }
         
         if (isset($data['post_status'])) {
-            $update_data['post_status'] = sanitize_text_field($data['post_status']);
+            $update_data['post_status'] = isset($data['post_status']) ? sanitize_text_field($data['post_status']) : '';
             $format[] = '%s';
         }
         
         if (isset($data['post_category'])) {
-            $update_data['post_category'] = absint($data['post_category']);
+            $update_data['post_category'] = isset($data['post_category']) ? absint($data['post_category']) : 0;
             $format[] = '%d';
         }
         

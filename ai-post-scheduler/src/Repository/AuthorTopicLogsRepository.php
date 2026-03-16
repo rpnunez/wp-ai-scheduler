@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * Author Topic Logs Repository
  *
@@ -19,7 +21,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for author topic log data access.
  * Encapsulates all database operations related to author topic logs.
  */
-class AIPS_Author_Topic_Logs_Repository {
+class AuthorTopicLogsRepository {
 	
 	/**
 	 * @var string The author_topic_logs table name (with prefix)

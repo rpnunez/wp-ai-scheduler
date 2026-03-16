@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * Feedback Repository
  *
@@ -19,7 +21,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for feedback data access.
  * Encapsulates all database operations related to topic feedback.
  */
-class AIPS_Feedback_Repository {
+class FeedbackRepository {
 	
 	/**
 	 * @var string The feedback table name (with prefix)

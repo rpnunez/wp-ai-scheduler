@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * Prompt Section Repository
  *
@@ -19,7 +21,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for prompt section data access.
  * Encapsulates all database operations related to prompt sections.
  */
-class AIPS_Prompt_Section_Repository {
+class PromptSectionRepository {
 	
 	/**
 	 * @var string The prompt sections table name (with prefix)

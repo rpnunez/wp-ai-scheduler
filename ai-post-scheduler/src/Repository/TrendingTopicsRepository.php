@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * Trending Topics Repository
  *
@@ -19,7 +21,7 @@ if (!defined('ABSPATH')) {
  * Database access layer for trending topics research.
  * Provides CRUD operations and querying capabilities.
  */
-class AIPS_Trending_Topics_Repository {
+class TrendingTopicsRepository {
     
     /**
      * @var wpdb WordPress database instance

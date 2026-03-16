@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * Post Review Repository
  *
@@ -18,7 +20,7 @@ if (!defined('ABSPATH')) {
  *
  * Repository for querying and managing draft posts that need review.
  */
-class AIPS_Post_Review_Repository {
+class PostReviewRepository {
 	
 	/**
 	 * @var string The history table name (with prefix)

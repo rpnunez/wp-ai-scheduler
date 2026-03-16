@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 /**
  * Article Structure Repository
  *
@@ -19,7 +21,7 @@ if (!defined('ABSPATH')) {
  * Repository pattern implementation for article structure data access.
  * Encapsulates all database operations related to article structures.
  */
-class AIPS_Article_Structure_Repository {
+class ArticleStructureRepository {
 	
 	/**
 	 * @var string The article structures table name (with prefix)

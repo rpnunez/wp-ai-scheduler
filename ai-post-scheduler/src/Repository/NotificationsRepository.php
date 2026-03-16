@@ -1,4 +1,6 @@
 <?php
+namespace AIPS\Repository;
+
 if (!defined('ABSPATH')) {
 	exit;
 }
@@ -11,7 +13,7 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  * @since 1.8.0
  */
-class AIPS_Notifications_Repository {
+class NotificationsRepository {
 
 	/**
 	 * @var wpdb WordPress database object.
