@@ -291,7 +291,7 @@ class AIPS_Generator {
         }
 
         if (!empty($content)) {
-            $context_parts[] = 'Generated Article Content:\n' . $this->smart_truncate_content($content, 1600);
+            $context_parts[] = "Generated Article Content:\n" . $this->smart_truncate_content($content, 1600);
         }
 
         if (!empty($context->get_topic())) {
