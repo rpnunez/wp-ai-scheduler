@@ -126,11 +126,12 @@ class AIPS_Post_Manager {
          * The following parameters are passed to callbacks attached to the
          * {@see 'aips_post_seo_metadata'} filter.
          *
-         * @param array  $seo_data  SEO metadata array passed to the filter callback.
-         * @param int    $post_id   The post ID passed to the filter callback.
-         * @param object $template  Template object passed to the filter callback.
+         * @param array                       $seo_data  SEO metadata array passed to the filter callback.
+         * @param int                         $post_id   The post ID passed to the filter callback.
+         * @param object|null                 $template  Template object passed to the filter callback (may be null).
+         * @param AIPS_Generation_Context|null $context  Generation context for the post (may be null).
          */
-        $seo_data = apply_filters('aips_post_seo_metadata', $seo_data, $post_id, $template);
+        $seo_data = apply_filters('aips_post_seo_metadata', $seo_data, $post_id, $template, $context);
 
         $this->apply_seo_metadata($post_id, $seo_data);
 
