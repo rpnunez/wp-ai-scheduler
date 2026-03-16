@@ -1,0 +1,71 @@
+name: Auto Label by Author
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label PR by author
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const author = context.payload.pull_request.user.login;
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const labelMap = {
+              'bot-copilot': {
+                color: '0e8a16',
+                description: 'Auto-created label for bot-copilot',
+              },
+              'bot-jules': {
+                color: '1d76db',
+                description: 'Auto-created label for bot-jules',
+              },
+            };
+
+            const labelName = labelMap[author] ? author : null;
+
+            if (!labelName) {
+              console.log(`Author "${author}" is not in the label map. Skipping.`);
+              return;
+            }
+
+            console.log(`PR #${prNumber} authored by "${author}". Applying label "${labelName}".`);
+
+            // Ensure the label exists in the repository; create it if not.
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: labelName });
+              console.log(`Label "${labelName}" already exists.`);
+            } catch (err) {
+              if (err.status === 404) {
+                console.log(`Label "${labelName}" not found. Creating it now...`);
+                const { color, description } = labelMap[labelName];
+                try {
+                  await github.rest.issues.createLabel({ owner, repo, name: labelName, color, description });
+                  console.log(`Label "${labelName}" created successfully.`);
+                } catch (createErr) {
+                  core.setFailed(`Failed to create label "${labelName}": ${createErr.message}`);
+                  return;
+                }
+              } else {
+                core.setFailed(`Unexpected error checking label "${labelName}" (status ${err.status}): ${err.message}`);
+                return;
+              }
+            }
+
+            // Add the label to the PR.
+            try {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [labelName] });
+              console.log(`Label "${labelName}" successfully applied to PR #${prNumber}.`);
+            } catch (addErr) {
+              core.setFailed(`Failed to add label "${labelName}" to PR #${prNumber}: ${addErr.message}`);
+            }
