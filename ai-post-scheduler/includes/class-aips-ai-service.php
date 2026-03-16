@@ -231,28 +231,17 @@ class AIPS_AI_Service {
         // Execute safely with retry, circuit breaker, and rate limiting
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
             try {
-                // Filter options for simpleJsonQuery - it only supports specific parameters
-                // According to AI Engine docs, simpleJsonQuery has a very limited parameter set
+                // Filter options for simpleJsonQuery - it only supports envId and model
                 $json_query_params = array();
+
+                // Only pass envId if specified
+                if (isset($options[self::OPT_ENV_ID])) {
+                    $json_query_params[self::OPT_ENV_ID] = $options[self::OPT_ENV_ID];
+                }
                 
                 // Only pass model if specified
                 if (!empty($options[self::OPT_MODEL])) {
                     $json_query_params[self::OPT_MODEL] = $options[self::OPT_MODEL];
-                }
-                
-                // Only pass temperature if specified
-                // if (isset($options['temperature'])) {
-                //    $json_query_params['temperature'] = $options['temperature'];
-                // }
-                
-                // Only pass maxTokens if specified
-                if (isset($options[self::OPT_MAX_TOKENS])) {
-                    $json_query_params[self::OPT_MAX_TOKENS] = $options[self::OPT_MAX_TOKENS];
-                }
-                
-                // Only pass envId if specified
-                if (isset($options[self::OPT_ENV_ID])) {
-                    $json_query_params[self::OPT_ENV_ID] = $options[self::OPT_ENV_ID];
                 }
                 
                 // Log what we're sending to help debug
@@ -264,7 +253,7 @@ class AIPS_AI_Service {
                 if (empty($result)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
 
-                    error_log("AI Engine->simpleJsonQuery returned empty JSON data: " . var_export($result, true) . " for prompt: " . $prompt);
+                    $this->logger->log('AI Engine->simpleJsonQuery returned empty JSON data: ' . wp_json_encode($result), 'error');
 
                     $this->log_call('json', $prompt, null, $options, $error->get_error_message());
 
@@ -280,7 +269,7 @@ class AIPS_AI_Service {
                 if (!is_array($result)) {
                     $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
 
-                    error_log("AI Engine->simpleJsonQuery returned invalid JSON data: " . var_export($result, true) . " for prompt: " . $prompt);
+                    $this->logger->log('AI Engine->simpleJsonQuery returned invalid JSON data: ' . wp_json_encode($result), 'error');
 
                     $this->log_call('json', $prompt, null, $options, $error->get_error_message());
 
