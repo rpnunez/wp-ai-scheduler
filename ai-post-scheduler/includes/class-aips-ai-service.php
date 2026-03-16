@@ -219,14 +219,14 @@ class AIPS_AI_Service {
             $this->log_call('json', $prompt, null, $options, $error->get_error_message());
             return $error;
         }
+
+        $options = $this->prepare_options($options);
         
         // If $ai doesn't have simpleJsonQuery, fall back to text-based JSON
         if (!method_exists($ai, 'simpleJsonQuery')) {
             $this->logger->log('Using fallback JSON generation (simpleJsonQuery not available)', 'info');
             return $this->fallback_json_generation($prompt, $options);
         }
-        
-        $options = $this->prepare_options($options);
         
         // Execute safely with retry, circuit breaker, and rate limiting
         $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
@@ -245,7 +245,10 @@ class AIPS_AI_Service {
                 //    $json_query_params['temperature'] = $options['temperature'];
                 // }
                 
-                // Convert maxTokens only if required by AI Engine in the future.
+                // Only pass maxTokens if specified
+                if (isset($options[self::OPT_MAX_TOKENS])) {
+                    $json_query_params[self::OPT_MAX_TOKENS] = $options[self::OPT_MAX_TOKENS];
+                }
                 
                 // Only pass envId if specified
                 if (isset($options[self::OPT_ENV_ID])) {
@@ -260,26 +263,46 @@ class AIPS_AI_Service {
                 
                 if (empty($result)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
+
+                    error_log("AI Engine->simpleJsonQuery returned empty JSON data: " . var_export($result, true) . " for prompt: " . $prompt);
+
                     $this->log_call('json', $prompt, null, $options, $error->get_error_message());
-                    $this->resilience_service->record_failure();
-                    return $error;
+
+                    //$this->resilience_service->record_failure();
+
+                    //return $error;
+
+                    // Throw Exception to fall-back to text-based JSON generation, as empty response might be a quirk of simpleJsonQuery
+                    throw new Exception('Empty response from simpleJsonQuery, falling back to text-based JSON generation.');
                 }
                 
                 // Validate that we got valid JSON data
                 if (!is_array($result)) {
                     $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
+
+                    error_log("AI Engine->simpleJsonQuery returned invalid JSON data: " . var_export($result, true) . " for prompt: " . $prompt);
+
                     $this->log_call('json', $prompt, null, $options, $error->get_error_message());
-                    $this->resilience_service->record_failure();
-                    return $error;
+
+                    //$this->resilience_service->record_failure();
+
+                    //return $error;
+
+                    // Throw Exception to fall-back to text-based JSON generation, as empty response might be a quirk of simpleJsonQuery
+                    throw new Exception('Invalid JSON response from simpleJsonQuery, falling back to text-based JSON generation.');
                 }
                 
                 $this->log_call('json', $prompt, wp_json_encode($result), $options);
+
                 $this->resilience_service->record_success();
+
                 return $result;
-                
             } catch (Exception $e) {
                 // If simpleJsonQuery fails (e.g. unsupported params), try fallback
                 $this->logger->log('simpleJsonQuery failed, trying fallback: ' . $e->getMessage(), 'warning');
+
+                $this->log_call('json', $prompt, null, $options, $e->getMessage());
+
                 return $this->fallback_json_generation($prompt, $options);
             }
         }, 'json', $prompt, $options);
