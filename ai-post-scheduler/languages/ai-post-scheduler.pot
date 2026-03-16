@@ -1,0 +1,5880 @@
+# Copyright (C) 2026 Your Name
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: AI Post Scheduler 1.7.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ai-post-scheduler\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-03-16T00:18:10+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: ai-post-scheduler\n"
+
+#. Plugin Name of the plugin
+#: ai-post-scheduler.php
+#: includes/class-aips-admin-bar.php:104
+#: includes/class-aips-settings.php:44
+#: includes/class-aips-settings.php:45
+msgid "AI Post Scheduler"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: ai-post-scheduler.php
+msgid "https://example.com/ai-post-scheduler"
+msgstr ""
+
+#. Description of the plugin
+#: ai-post-scheduler.php
+msgid "Schedule AI-generated posts using Meow Apps AI Engine"
+msgstr ""
+
+#. Author of the plugin
+#: ai-post-scheduler.php
+msgid "Your Name"
+msgstr ""
+
+#. Author URI of the plugin
+#: ai-post-scheduler.php
+msgid "https://example.com"
+msgstr ""
+
+#: ai-post-scheduler.php:48
+msgid "AI Post Scheduler requires Meow Apps AI Engine plugin to be installed and activated."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:55
+#: includes/class-aips-i18n.php:27
+msgid "Close notification"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:57
+#: includes/class-aips-i18n.php:28
+#, php-format
+msgid "Estimated time remaining: %s"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:58
+#: includes/class-aips-i18n.php:29
+msgid "Generation complete!"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:59
+#: includes/class-aips-i18n.php:30
+msgid "seconds"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:60
+#: includes/class-aips-i18n.php:31
+msgid "1 minute"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:61
+#: includes/class-aips-i18n.php:32
+#, php-format
+msgid "%d minutes"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:62
+#: includes/class-aips-i18n.php:33
+#, php-format
+msgid "%dm %ds"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:80
+#: includes/class-aips-i18n.php:44
+msgid "Are you sure you want to delete this structure?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:81
+#: includes/class-aips-i18n.php:45
+msgid "Failed to save structure."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:82
+#: includes/class-aips-i18n.php:46
+msgid "Failed to load structure."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:83
+#: includes/class-aips-i18n.php:47
+msgid "Failed to delete structure."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:84
+#: includes/class-aips-i18n.php:48
+msgid "Are you sure you want to delete this prompt section?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:85
+#: includes/class-aips-i18n.php:49
+msgid "Failed to save prompt section."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:86
+#: includes/class-aips-i18n.php:50
+msgid "Failed to load prompt section."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:87
+#: includes/class-aips-i18n.php:51
+#: includes/class-aips-prompt-sections-controller.php:134
+msgid "Failed to delete prompt section."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:88
+#: includes/class-aips-i18n.php:52
+msgid "An error occurred."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:89
+#: includes/class-aips-admin-assets.php:492
+#: includes/class-aips-i18n.php:53
+#: includes/class-aips-i18n.php:82
+msgid "An error occurred. Please try again."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:91
+#: includes/class-aips-i18n.php:54
+msgid "Template Name is required."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:92
+#: includes/class-aips-i18n.php:55
+msgid "Content Prompt is required."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:94
+#: includes/class-aips-i18n.php:56
+msgid "Are you sure you want to run this schedule now? This will immediately generate posts."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:95
+#: includes/class-aips-i18n.php:57
+msgid "Running..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:120
+#: includes/class-aips-i18n.php:68
+#: templates/admin/authors.php:316
+msgid "Add New Author"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:121
+#: includes/class-aips-i18n.php:69
+#: templates/admin/author-topics.php:87
+msgid "Edit Author"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:122
+#: includes/class-aips-i18n.php:70
+#: templates/admin/authors.php:405
+msgid "Save Author"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:123
+#: includes/class-aips-admin-assets.php:366
+#: includes/class-aips-i18n.php:71
+msgid "Loading..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:124
+#: includes/class-aips-admin-assets.php:404
+#: includes/class-aips-i18n.php:72
+msgid "Saving..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:125
+#: includes/class-aips-i18n.php:73
+msgid "Generating..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:126
+#: includes/class-aips-i18n.php:74
+msgid "Are you sure you want to delete this author? This will also delete all associated topics and logs."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:127
+#: includes/class-aips-i18n.php:75
+msgid "Are you sure you want to delete this topic?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:128
+#: includes/class-aips-i18n.php:76
+msgid "Generate topics for this author now?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:129
+#: includes/class-aips-i18n.php:77
+msgid "Generate a post from this topic now?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:130
+#: includes/class-aips-authors-controller.php:128
+#: includes/class-aips-i18n.php:78
+msgid "Author saved successfully."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:131
+#: includes/class-aips-authors-controller.php:170
+msgid "Author deleted successfully."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:132
+#: includes/class-aips-authors-controller.php:329
+msgid "Topics generated successfully."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:133
+#: includes/class-aips-author-topics-controller.php:339
+msgid "Post generated successfully."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:134
+msgid "Generate Topics Now"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:135
+msgid "Generate Post Now"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:136
+msgid "Error loading author data."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:137
+msgid "Error saving author."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:138
+msgid "Error deleting author."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:139
+msgid "Error generating topics."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:140
+msgid "Error loading topics."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:141
+msgid "Error approving topic."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:142
+msgid "Error rejecting topic."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:143
+msgid "Error deleting topic."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:144
+msgid "Error saving topic."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:145
+msgid "Error generating post."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:146
+#: templates/admin/author-topics.php:162
+msgid "Loading topics..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:147
+msgid "No topics found."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:148
+msgid "Topic Title"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:149
+msgid "Topic Details"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:150
+msgid "Date Topic Generated"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:151
+#: templates/admin/authors.php:98
+#: templates/admin/generated-posts.php:96
+#: templates/admin/generated-posts.php:267
+#: templates/admin/history.php:161
+#: templates/admin/post-review.php:127
+#: templates/admin/schedule.php:101
+#: templates/admin/sections.php:45
+#: templates/admin/structures.php:82
+#: templates/admin/structures.php:177
+#: templates/admin/templates.php:64
+#: templates/admin/voices.php:50
+msgid "Actions"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:152
+#: templates/admin/author-topics.php:151
+#: templates/admin/author-topics.php:170
+msgid "Approve"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:153
+#: templates/admin/author-topics.php:152
+#: templates/admin/author-topics.php:171
+msgid "Reject"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:154
+#: includes/class-aips-admin-assets.php:169
+#: templates/admin/authors.php:225
+#: templates/admin/generated-posts.php:137
+#: templates/admin/generated-posts.php:309
+#: templates/admin/schedule.php:198
+#: templates/admin/sections.php:75
+#: templates/admin/structures.php:106
+#: templates/admin/structures.php:108
+#: templates/admin/structures.php:195
+#: templates/admin/structures.php:197
+#: templates/admin/templates.php:131
+#: templates/admin/templates.php:133
+#: templates/admin/voices.php:81
+#: templates/admin/voices.php:83
+msgid "Edit"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:155
+#: includes/class-aips-admin-assets.php:270
+#: includes/class-aips-admin-assets.php:369
+#: templates/admin/author-topics.php:153
+#: templates/admin/author-topics.php:172
+#: templates/admin/authors.php:231
+#: templates/admin/generated-posts.php:246
+#: templates/admin/generated-posts.php:348
+#: templates/admin/post-review.php:103
+#: templates/admin/schedule.php:75
+#: templates/admin/schedule.php:210
+#: templates/admin/sections.php:78
+#: templates/admin/structures.php:114
+#: templates/admin/structures.php:116
+#: templates/admin/structures.php:199
+#: templates/admin/structures.php:201
+#: templates/admin/templates.php:147
+#: templates/admin/templates.php:149
+#: templates/admin/voices.php:85
+#: templates/admin/voices.php:87
+msgid "Delete"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:156
+msgid "Save"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:157
+#: templates/admin/author-topics.php:233
+#: templates/admin/authors.php:406
+#: templates/admin/schedule.php:346
+#: templates/admin/sections.php:152
+#: templates/admin/structures.php:284
+#: templates/admin/structures.php:330
+#: templates/admin/templates.php:541
+#: templates/admin/voices.php:169
+#: templates/partials/ai-edit-modal.php:213
+msgid "Cancel"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:158
+msgid "Topic title is required."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:159
+msgid "Click to view posts generated from this topic"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:160
+#: templates/admin/author-topics.php:199
+msgid "Loading posts..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:161
+msgid "Error loading posts."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:162
+msgid "No posts have been generated from this topic yet."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:163
+#: templates/admin/author-topics.php:197
+msgid "Posts Generated from Topic"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:164
+#: includes/class-aips-admin-assets.php:472
+msgid "Post ID"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:165
+#: templates/admin/post-review.php:124
+msgid "Post Title"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:166
+msgid "Date Generated"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:167
+msgid "Date Published"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:168
+msgid "Not published"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:170
+#: templates/partials/history-row.php:81
+msgid "View"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:171
+msgid "Topic"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:172
+#: includes/class-aips-admin-assets.php:200
+msgid "Action"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:173
+msgid "Reason"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:174
+#: includes/class-aips-admin-assets.php:201
+msgid "User"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:175
+#: includes/class-aips-admin-assets.php:202
+#: templates/admin/dashboard.php:131
+msgid "Date"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:176
+msgid "Approve Topic"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:177
+msgid "Reject Topic"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:178
+msgid "Why are you approving this topic? (optional)"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:179
+msgid "Why are you rejecting this topic? (optional)"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:181
+#: templates/admin/authors.php:293
+msgid "Loading queue..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:182
+msgid "Error loading queue."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:183
+msgid "No approved topics in the queue yet."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:184
+#: templates/admin/templates.php:475
+msgid "Author"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:185
+#: templates/admin/authors.php:93
+#: templates/admin/authors.php:326
+msgid "Field/Niche"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:186
+msgid "Approved Date"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:187
+#: includes/class-aips-ai-edit-controller.php:104
+#: includes/class-aips-ai-edit-controller.php:105
+#: includes/class-aips-ai-edit-controller.php:110
+msgid "N/A"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:188
+msgid "Please select a bulk action."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:189
+msgid "Please select at least one topic."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:190
+msgid "This feature is coming soon."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:191
+msgid "Invalid action."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:192
+#, php-format
+msgid "Generate posts now for %d selected topic(s)?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:193
+msgid "Posts generated successfully."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:194
+#: templates/admin/author-topics.php:155
+#: templates/admin/author-topics.php:174
+#: templates/admin/authors.php:288
+msgid "Execute"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:196
+#: templates/admin/author-topics.php:186
+#: templates/admin/authors.php:305
+msgid "Topic History Log"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:197
+#: templates/admin/author-topics.php:188
+#: templates/admin/authors.php:307
+#: templates/admin/history.php:236
+msgid "Loading logs..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:198
+#: includes/class-aips-admin-assets.php:459
+msgid "Error loading logs."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:199
+msgid "No history found for this topic."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:203
+#: includes/class-aips-admin-assets.php:476
+#: includes/class-aips-i18n.php:186
+#: templates/admin/authors.php:338
+msgid "Details"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:205
+msgid "Processing..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:206
+msgid "Approve with Feedback"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:207
+msgid "Reject with Feedback"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:209
+#: templates/admin/authors.php:286
+msgid "Generate Now"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:210
+#, php-format
+msgid "Are you sure you want to generate posts for %d topics?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:211
+msgid "Please select at least one feedback item."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:212
+msgid "Error executing bulk action."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:214
+msgid "Generating Posts"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:215
+msgid "Please wait while your posts are being generated. This may take a few minutes."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:216
+#, php-format
+msgid "%d post(s) generated, %d failed."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:218
+msgid "Similar Suggestions"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:219
+msgid "Similarity"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:220
+msgid "Last Feedback"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:221
+msgid "Previously Approved"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:222
+msgid "Previously Rejected"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:223
+msgid "Potential Duplicate"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:261
+#: includes/class-aips-i18n.php:117
+msgid "topics saved for"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:262
+#: includes/class-aips-i18n.php:118
+msgid "Top 5 Topics:"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:263
+#: includes/class-aips-i18n.php:119
+msgid "No topics match your search criteria."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:264
+#: includes/class-aips-i18n.php:120
+msgid "No Topics Found"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:265
+#: includes/class-aips-i18n.php:121
+#: templates/admin/authors.php:249
+#: templates/admin/history.php:208
+#: templates/admin/schedule.php:228
+#: templates/admin/sections.php:94
+#: templates/admin/structures.php:131
+#: templates/admin/structures.php:216
+#: templates/admin/templates.php:166
+#: templates/admin/voices.php:105
+msgid "Clear Search"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:266
+msgid "Delete this topic?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:267
+msgid "Please select at least one topic to schedule."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:268
+msgid "An error occurred during research."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:269
+msgid "An error occurred during scheduling."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:306
+#: includes/class-aips-admin-assets.php:352
+#: includes/class-aips-i18n.php:134
+#: includes/class-aips-i18n.php:147
+msgid "Are you sure you want to publish this post?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:307
+#: includes/class-aips-admin-assets.php:357
+#: includes/class-aips-i18n.php:135
+msgid "Post published successfully!"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:308
+#: includes/class-aips-admin-assets.php:362
+#: includes/class-aips-i18n.php:136
+msgid "Failed to publish post."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:309
+msgid "Failed to load activity data."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:353
+#: includes/class-aips-i18n.php:148
+#, php-format
+msgid "Are you sure you want to publish %d selected post(s)?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:354
+#: includes/class-aips-i18n.php:149
+msgid "Are you sure you want to delete this post? This action cannot be undone."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:355
+#: includes/class-aips-i18n.php:150
+#, php-format
+msgid "Are you sure you want to delete %d selected post(s)? This action cannot be undone."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:356
+msgid "Are you sure you want to regenerate this post? The current post will be deleted."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:358
+#, php-format
+msgid "%d posts published successfully!"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:359
+msgid "Post deleted successfully!"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:360
+#, php-format
+msgid "%d posts deleted successfully!"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:361
+msgid "Post regeneration started!"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:363
+#: includes/class-aips-author-topics-controller.php:569
+#: includes/class-aips-post-review.php:544
+msgid "Failed to delete post."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:364
+msgid "Failed to regenerate post."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:365
+msgid "Failed to load draft posts."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:367
+#: templates/admin/generated-posts.php:245
+#: templates/admin/generated-posts.php:334
+#: templates/admin/post-review.php:102
+msgid "Publish"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:368
+msgid "Deleting..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:370
+#: includes/class-aips-admin-assets.php:400
+#: includes/class-aips-i18n.php:96
+#: includes/class-aips-i18n.php:163
+msgid "Regenerating..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:371
+#: includes/class-aips-admin-assets.php:399
+#: includes/class-aips-i18n.php:162
+#: templates/admin/generated-posts.php:341
+#: templates/partials/ai-edit-modal.php:63
+#: templates/partials/ai-edit-modal.php:100
+#: templates/partials/ai-edit-modal.php:137
+#: templates/partials/ai-edit-modal.php:174
+msgid "Re-generate"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:372
+msgid "Please select at least one post."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:373
+#: templates/admin/generated-posts.php:406
+#: templates/admin/post-review.php:264
+msgid "No Draft Posts"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:374
+msgid "There are no draft posts waiting for review."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:375
+#: templates/admin/generated-posts.php:421
+#: templates/admin/post-review.php:277
+msgid "Post Preview"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:376
+msgid "Loading preview..."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:377
+msgid "Failed to load preview."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:401
+#: includes/class-aips-i18n.php:164
+msgid "Component regenerated successfully!"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:402
+#: includes/class-aips-i18n.php:165
+msgid "Failed to regenerate component."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:403
+#: templates/partials/ai-edit-modal.php:216
+msgid "Save Changes"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:405
+#: includes/class-aips-ai-edit-controller.php:297
+msgid "Post updated successfully!"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:406
+msgid "Failed to update post."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:407
+msgid "Failed to load post components."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:408
+msgid "You have unsaved changes. Are you sure you want to close?"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:409
+msgid "No changes to save."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:410
+#: includes/class-aips-calendar-controller.php:202
+msgid "AI Generated"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:411
+msgid "Manual Edit"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:412
+msgid "Restored Version"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:413
+msgid "Revision"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:454
+#: includes/class-aips-i18n.php:178
+msgid "Loading…"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:455
+#: includes/class-aips-i18n.php:179
+msgid "Reloading…"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:456
+#: includes/class-aips-i18n.php:180
+msgid "Loading logs…"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:457
+#: includes/class-aips-i18n.php:181
+#: templates/admin/history.php:234
+msgid "History Details"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:458
+#: includes/class-aips-i18n.php:182
+#, php-format
+msgid "History Container for ID: %d"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:460
+msgid "Failed to reload history."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:461
+#, php-format
+msgid "Logs — %s"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:462
+msgid "Log Entries"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:463
+msgid "No log entries found for this container."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:464
+#: templates/admin/history.php:173
+msgid "No history containers match your current filters."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:465
+msgid "Container ID"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:466
+#: templates/admin/dashboard.php:129
+#: templates/admin/generated-posts.php:91
+#: templates/partials/ai-edit-modal.php:58
+msgid "Title"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:467
+#: includes/class-aips-generated-posts-controller.php:406
+#: templates/admin/dashboard.php:79
+#: templates/admin/history.php:158
+#: templates/admin/post-review.php:125
+#: templates/admin/research.php:185
+#: templates/admin/schedule.php:95
+#: templates/admin/schedule.php:273
+msgid "Template"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:468
+#: templates/admin/authors.php:97
+#: templates/admin/dashboard.php:130
+#: templates/admin/history.php:159
+#: templates/admin/schedule.php:100
+#: templates/admin/structures.php:176
+#: templates/admin/system-status.php:34
+#: templates/admin/templates.php:63
+#: templates/admin/voices.php:49
+msgid "Status"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:469
+#: templates/admin/generated-posts.php:265
+#: templates/admin/history.php:160
+#: templates/admin/post-review.php:126
+msgid "Created"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:470
+#: templates/admin/history.php:59
+#: templates/admin/history.php:108
+msgid "Completed"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:471
+#: includes/class-aips-history-type.php:78
+#: templates/admin/system-status.php:67
+msgid "Error"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:473
+msgid "Timestamp"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:474
+#: includes/class-aips-i18n.php:184
+msgid "Type"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:475
+msgid "Log Type"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:477
+msgid "Show details"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:478
+msgid "Hide details"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:479
+msgid "Delete this history container? This cannot be undone."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:480
+msgid "Delete the selected history containers? This cannot be undone."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:481
+msgid "Clear all history? This cannot be undone."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:482
+msgid "Clear all history entries with this status? This cannot be undone."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:483
+msgid "Yes, delete"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:484
+msgid "Yes, clear"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:485
+msgid "No, cancel"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:486
+msgid "Items deleted successfully."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:487
+#: includes/class-aips-history.php:79
+msgid "History cleared successfully."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:488
+msgid "Error deleting items."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:489
+msgid "Error clearing history."
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:490
+msgid "Deleting…"
+msgstr ""
+
+#: includes/class-aips-admin-assets.php:491
+msgid "Retrying…"
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:66
+msgid "Could not mark notification as read."
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:67
+msgid "Could not mark all notifications as read."
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:95
+msgid "AI Scheduler"
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:118
+#: includes/class-aips-settings.php:65
+#: includes/class-aips-settings.php:66
+#: templates/admin/seeder.php:42
+msgid "Templates"
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:123
+#: includes/class-aips-settings.php:92
+#: includes/class-aips-settings.php:93
+#: templates/admin/author-topics.php:65
+#: templates/admin/authors.php:38
+msgid "Authors"
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:128
+msgid "Schedules"
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:156
+#: assets/js/admin-bar.js:64
+msgid "No new notifications"
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:166
+msgid "Notifications"
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:169
+msgid "Mark all as read"
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:185
+msgid "Mark as read"
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:210
+#: includes/class-aips-admin-bar.php:235
+#: includes/class-aips-ai-edit-controller.php:58
+#: includes/class-aips-ai-edit-controller.php:147
+#: includes/class-aips-ai-edit-controller.php:244
+#: includes/class-aips-ai-edit-controller.php:311
+#: includes/class-aips-ai-edit-controller.php:353
+#: includes/class-aips-author-topics-controller.php:93
+#: includes/class-aips-author-topics-controller.php:161
+#: includes/class-aips-author-topics-controller.php:229
+#: includes/class-aips-author-topics-controller.php:266
+#: includes/class-aips-author-topics-controller.php:291
+#: includes/class-aips-author-topics-controller.php:351
+#: includes/class-aips-author-topics-controller.php:386
+#: includes/class-aips-author-topics-controller.php:416
+#: includes/class-aips-author-topics-controller.php:446
+#: includes/class-aips-author-topics-controller.php:498
+#: includes/class-aips-author-topics-controller.php:555
+#: includes/class-aips-author-topics-controller.php:580
+#: includes/class-aips-author-topics-controller.php:611
+#: includes/class-aips-author-topics-controller.php:646
+#: includes/class-aips-author-topics-controller.php:669
+#: includes/class-aips-author-topics-controller.php:699
+#: includes/class-aips-author-topics-controller.php:714
+#: includes/class-aips-author-topics-controller.php:787
+#: includes/class-aips-author-topics-controller.php:861
+#: includes/class-aips-author-topics-controller.php:919
+#: includes/class-aips-authors-controller.php:75
+#: includes/class-aips-authors-controller.php:143
+#: includes/class-aips-authors-controller.php:183
+#: includes/class-aips-authors-controller.php:208
+#: includes/class-aips-authors-controller.php:273
+#: includes/class-aips-authors-controller.php:307
+#: includes/class-aips-authors-controller.php:341
+#: includes/class-aips-authors-controller.php:372
+#: includes/class-aips-generated-posts-controller.php:160
+#: includes/class-aips-generated-posts-controller.php:270
+#: includes/class-aips-generated-posts-controller.php:364
+#: includes/class-aips-history.php:45
+#: includes/class-aips-history.php:72
+#: includes/class-aips-history.php:91
+#: includes/class-aips-history.php:160
+#: includes/class-aips-history.php:209
+#: includes/class-aips-history.php:273
+#: includes/class-aips-history.php:323
+#: includes/class-aips-planner.php:17
+#: includes/class-aips-planner.php:78
+#: includes/class-aips-post-review.php:76
+#: includes/class-aips-post-review.php:110
+#: includes/class-aips-post-review.php:141
+#: includes/class-aips-post-review.php:253
+#: includes/class-aips-post-review.php:377
+#: includes/class-aips-post-review.php:474
+#: includes/class-aips-post-review.php:584
+#: includes/class-aips-prompt-sections-controller.php:46
+#: includes/class-aips-prompt-sections-controller.php:57
+#: includes/class-aips-prompt-sections-controller.php:77
+#: includes/class-aips-prompt-sections-controller.php:124
+#: includes/class-aips-prompt-sections-controller.php:144
+#: includes/class-aips-research-controller.php:81
+#: includes/class-aips-research-controller.php:126
+#: includes/class-aips-research-controller.php:170
+#: includes/class-aips-research-controller.php:195
+#: includes/class-aips-research-controller.php:230
+#: includes/class-aips-research-controller.php:414
+#: includes/class-aips-research-controller.php:444
+#: includes/class-aips-schedule-controller.php:28
+#: includes/class-aips-schedule-controller.php:67
+#: includes/class-aips-schedule-controller.php:87
+#: includes/class-aips-schedule-controller.php:110
+#: includes/class-aips-schedule-controller.php:214
+#: includes/class-aips-schedule-controller.php:244
+#: includes/class-aips-schedule-controller.php:280
+#: includes/class-aips-schedule-controller.php:349
+#: includes/class-aips-schedule-controller.php:375
+#: includes/class-aips-seeder-admin.php:35
+#: includes/class-aips-structures-controller.php:25
+#: includes/class-aips-structures-controller.php:36
+#: includes/class-aips-structures-controller.php:56
+#: includes/class-aips-structures-controller.php:92
+#: includes/class-aips-structures-controller.php:113
+#: includes/class-aips-structures-controller.php:133
+#: includes/class-aips-templates-controller.php:25
+#: includes/class-aips-templates-controller.php:74
+#: includes/class-aips-templates-controller.php:94
+#: includes/class-aips-templates-controller.php:116
+#: includes/class-aips-templates-controller.php:166
+#: includes/class-aips-templates-controller.php:236
+#: includes/class-aips-voices.php:55
+#: includes/class-aips-voices.php:87
+#: includes/class-aips-voices.php:107
+#: includes/class-aips-voices.php:129
+msgid "Permission denied."
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:215
+msgid "Invalid notification ID."
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:221
+msgid "Notification could not be updated or was already read."
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:245
+msgid "Failed to mark notifications as read. Please try again."
+msgstr ""
+
+#: includes/class-aips-admin-bar.php:272
+#, php-format
+msgid "Author (%1$s) generated %2$d pending topic(s) for review"
+msgstr ""
+
+#: includes/class-aips-ai-edit-controller.php:65
+#: includes/class-aips-ai-edit-controller.php:158
+#: includes/class-aips-ai-edit-controller.php:251
+#: includes/class-aips-ai-edit-controller.php:321
+#: includes/class-aips-ai-edit-controller.php:367
+msgid "Invalid request."
+msgstr ""
+
+#: includes/class-aips-ai-edit-controller.php:70
+#: includes/class-aips-ai-edit-controller.php:169
+#: includes/class-aips-ai-edit-controller.php:256
+#: includes/class-aips-ai-edit-controller.php:378
+msgid "You do not have permission to edit this post."
+msgstr ""
+
+#: includes/class-aips-ai-edit-controller.php:76
+#: includes/class-aips-ai-edit-controller.php:186
+#: includes/class-aips-settings.php:943
+msgid "Post not found."
+msgstr ""
+
+#: includes/class-aips-ai-edit-controller.php:87
+#: includes/class-aips-ai-edit-controller.php:180
+msgid "Invalid history context for this post."
+msgstr ""
+
+#: includes/class-aips-ai-edit-controller.php:164
+#: includes/class-aips-ai-edit-controller.php:327
+#: includes/class-aips-ai-edit-controller.php:373
+#: includes/class-aips-component-regeneration-service.php:316
+msgid "Invalid component type."
+msgstr ""
+
+#: includes/class-aips-ai-edit-controller.php:332
+msgid "You do not have permission to access this post."
+msgstr ""
+
+#: includes/class-aips-ai-edit-controller.php:408
+msgid "Revision not found."
+msgstr ""
+
+#: includes/class-aips-ai-edit-controller.php:452
+msgid "Revision restored successfully!"
+msgstr ""
+
+#: includes/class-aips-ai-service.php:115
+#: includes/class-aips-ai-service.php:199
+#: includes/class-aips-ai-service.php:359
+#: includes/class-aips-ai-service.php:437
+#: includes/class-aips-embeddings-service.php:66
+#: includes/class-aips-embeddings-service.php:77
+msgid "AI Engine plugin is not available."
+msgstr ""
+
+#: includes/class-aips-ai-service.php:159
+msgid "AI Engine returned an empty response."
+msgstr ""
+
+#: includes/class-aips-ai-service.php:246
+msgid "AI Engine returned an empty JSON response."
+msgstr ""
+
+#: includes/class-aips-ai-service.php:254
+msgid "AI Engine did not return valid JSON data."
+msgstr ""
+
+#: includes/class-aips-ai-service.php:320
+#, php-format
+msgid "Failed to parse JSON: %s"
+msgstr ""
+
+#: includes/class-aips-ai-service.php:334
+msgid "Parsed JSON is not in expected array format."
+msgstr ""
+
+#: includes/class-aips-ai-service.php:379
+msgid "AI Engine returned an empty response for image generation."
+msgstr ""
+
+#: includes/class-aips-ai-service.php:391
+msgid "No image URL in AI response."
+msgstr ""
+
+#: includes/class-aips-ai-service.php:451
+#, php-format
+msgid "%s"
+msgstr ""
+
+#: includes/class-aips-ai-service.php:501
+#, php-format
+msgid "AI Engine returned an unexpected response type: %s"
+msgstr ""
+
+#: includes/class-aips-article-structure-manager.php:66
+#: includes/class-aips-article-structure-manager.php:238
+#: includes/class-aips-article-structure-manager.php:297
+msgid "Article structure not found."
+msgstr ""
+
+#: includes/class-aips-article-structure-manager.php:72
+msgid "Invalid article structure data."
+msgstr ""
+
+#: includes/class-aips-article-structure-manager.php:100
+msgid "No article structures available."
+msgstr ""
+
+#: includes/class-aips-article-structure-manager.php:192
+#: includes/class-aips-article-structure-manager.php:249
+#, php-format
+msgid "Invalid section keys: %s"
+msgstr ""
+
+#: includes/class-aips-article-structure-manager.php:214
+msgid "Failed to create article structure."
+msgstr ""
+
+#: includes/class-aips-article-structure-manager.php:279
+msgid "Failed to update article structure."
+msgstr ""
+
+#: includes/class-aips-article-structure-manager.php:306
+msgid "Cannot delete the default article structure. Create another structure first."
+msgstr ""
+
+#: includes/class-aips-article-structure-manager.php:314
+msgid "Failed to delete article structure."
+msgstr ""
+
+#: includes/class-aips-author-post-generator.php:178
+#, php-format
+msgid "Failed to generate post from topic \"%s\": %s"
+msgstr ""
+
+#: includes/class-aips-author-post-generator.php:221
+#, php-format
+msgid "Generated %s from topic \"%s\" for author \"%s\""
+msgstr ""
+
+#: includes/class-aips-author-post-generator.php:222
+msgid "post"
+msgstr ""
+
+#: includes/class-aips-author-post-generator.php:222
+msgid "draft"
+msgstr ""
+
+#: includes/class-aips-author-post-generator.php:257
+#, php-format
+msgid "Exception while generating post from topic \"%s\": %s"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:102
+#: includes/class-aips-author-topics-controller.php:170
+#: includes/class-aips-author-topics-controller.php:272
+#: includes/class-aips-author-topics-controller.php:297
+#: includes/class-aips-author-topics-controller.php:357
+#: includes/class-aips-author-topics-controller.php:586
+#: includes/class-aips-authors-controller.php:378
+msgid "Invalid topic ID."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:128
+#, php-format
+msgid "Topic approved: \"%s\""
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:148
+msgid "Topic approved successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:150
+msgid "Failed to approve topic."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:196
+#, php-format
+msgid "Topic rejected: \"%s\""
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:216
+msgid "Topic rejected successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:218
+msgid "Failed to reject topic."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:236
+msgid "Invalid topic ID or title."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:253
+msgid "Topic updated successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:255
+msgid "Failed to update topic."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:278
+#: includes/class-aips-research-controller.php:182
+msgid "Topic deleted successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:280
+#: includes/class-aips-research-controller.php:184
+msgid "Failed to delete topic."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:303
+msgid "Only approved topics can generate posts."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:316
+#, php-format
+msgid "User manually triggered post generation from topic: %s"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:324
+#, php-format
+msgid "Manual post generation failed for topic: %s"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:332
+msgid "Post generated successfully from topic"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:363
+#: includes/class-aips-authors-controller.php:385
+#: includes/class-aips-topic-expansion-service.php:63
+#: includes/class-aips-topic-penalty-service.php:69
+#: includes/class-aips-topic-penalty-service.php:113
+msgid "Topic not found."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:392
+#: includes/class-aips-author-topics-controller.php:422
+#: includes/class-aips-author-topics-controller.php:452
+#: includes/class-aips-author-topics-controller.php:720
+#: includes/class-aips-author-topics-controller.php:793
+msgid "No topics selected."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:405
+#, php-format
+msgid "%d topics approved successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:435
+#, php-format
+msgid "%d topics rejected successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:466
+#, php-format
+msgid "User initiated bulk delete for %d topics"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:476
+#, php-format
+msgid "Failed to delete topic ID %d"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:480
+#, php-format
+msgid "Deleted %d topics"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:487
+#: includes/class-aips-research-controller.php:213
+#, php-format
+msgid "%d topics deleted successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:505
+msgid "Invalid post or topic ID."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:519
+#, php-format
+msgid "User initiated post regeneration for post ID %d from topic ID %d"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:527
+#, php-format
+msgid "Post regeneration failed for post ID %d"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:535
+msgid "Post regenerated successfully"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:543
+msgid "Post regenerated successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:561
+#: includes/class-aips-post-review.php:82
+#: includes/class-aips-post-review.php:155
+#: includes/class-aips-post-review.php:489
+#: includes/class-aips-settings.php:938
+msgid "Invalid post ID."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:567
+#: includes/class-aips-post-review.php:572
+msgid "Post deleted successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:595
+#: includes/class-aips-authors-controller.php:356
+#: includes/class-aips-generated-posts-controller.php:436
+#: includes/class-aips-history-type.php:88
+msgid "Unknown"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:597
+#: includes/class-aips-authors-controller.php:358
+msgid "System"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:619
+msgid "Invalid topic or author ID."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:653
+#: includes/class-aips-authors-controller.php:149
+#: includes/class-aips-authors-controller.php:189
+#: includes/class-aips-authors-controller.php:215
+#: includes/class-aips-authors-controller.php:279
+#: includes/class-aips-authors-controller.php:313
+#: includes/class-aips-authors-controller.php:347
+#: templates/admin/author-topics.php:25
+msgid "Invalid author ID."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:683
+#, php-format
+msgid "Computed embeddings: %d successful, %d failed, %d skipped (already existed)."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:733
+#: includes/class-aips-author-topics-controller.php:807
+#, php-format
+msgid "User initiated bulk generation for %d topics"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:746
+#: includes/class-aips-author-topics-controller.php:820
+#, php-format
+msgid "Topic ID %d: %s"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:748
+#, php-format
+msgid "Bulk generation failed for topic ID %d"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:754
+#: includes/class-aips-author-topics-controller.php:828
+#, php-format
+msgid "Post generated for topic ID %d"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:761
+#: includes/class-aips-author-topics-controller.php:835
+#, php-format
+msgid "%d post(s) generated successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:763
+#: includes/class-aips-author-topics-controller.php:837
+#, php-format
+msgid "%d failed."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:765
+#: includes/class-aips-author-topics-controller.php:839
+#, php-format
+msgid "Bulk generation completed with %d failures"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:822
+#, php-format
+msgid "Failed to generate post for topic ID %d"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:867
+msgid "No feedback items selected."
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:881
+#, php-format
+msgid "User initiated bulk delete for %d feedback items"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:891
+#, php-format
+msgid "Failed to delete feedback ID %d"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:895
+#, php-format
+msgid "Deleted %d feedback items"
+msgstr ""
+
+#: includes/class-aips-author-topics-controller.php:902
+#, php-format
+msgid "%d feedback item(s) deleted successfully."
+msgstr ""
+
+#: includes/class-aips-author-topics-scheduler.php:110
+#, php-format
+msgid "Failed to generate topics for author \"%s\": %s"
+msgstr ""
+
+#: includes/class-aips-author-topics-scheduler.php:145
+#, php-format
+msgid "Generated %d topics for author \"%s\""
+msgstr ""
+
+#: includes/class-aips-authors-controller.php:84
+msgid "Name and Field/Niche are required."
+msgstr ""
+
+#: includes/class-aips-authors-controller.php:132
+msgid "Failed to save author."
+msgstr ""
+
+#: includes/class-aips-authors-controller.php:172
+msgid "Failed to delete author."
+msgstr ""
+
+#: includes/class-aips-authors-controller.php:197
+#: templates/admin/author-topics.php:45
+msgid "Author not found."
+msgstr ""
+
+#: includes/class-aips-calendar-controller.php:76
+#: templates/admin/dashboard.php:88
+#: templates/admin/schedule.php:132
+msgid "Unknown Template"
+msgstr ""
+
+#: includes/class-aips-calendar-controller.php:180
+msgid "General"
+msgstr ""
+
+#: includes/class-aips-calendar-controller.php:214
+#: includes/class-aips-dev-tools.php:40
+#: includes/class-aips-settings.php:844
+#: includes/class-aips-settings.php:866
+#: includes/class-aips-settings.php:932
+msgid "Unauthorized access."
+msgstr ""
+
+#: includes/class-aips-calendar-controller.php:222
+msgid "Invalid month."
+msgstr ""
+
+#: includes/class-aips-component-regeneration-service.php:96
+#: includes/class-aips-component-regeneration-service.php:146
+#: includes/class-aips-component-regeneration-service.php:189
+#: includes/class-aips-component-regeneration-service.php:225
+msgid "Generation context is required."
+msgstr ""
+
+#: includes/class-aips-component-regeneration-service.php:114
+msgid "Template context is missing template details."
+msgstr ""
+
+#: includes/class-aips-component-regeneration-service.php:229
+msgid "Post ID is required."
+msgstr ""
+
+#: includes/class-aips-component-regeneration-service.php:240
+msgid "No image prompt available for this context."
+msgstr ""
+
+#: includes/class-aips-config.php:295
+msgid "Advanced Retry Logic"
+msgstr ""
+
+#: includes/class-aips-config.php:296
+msgid "Enable exponential backoff and circuit breaker for AI requests."
+msgstr ""
+
+#: includes/class-aips-config.php:300
+msgid "Rate Limiting"
+msgstr ""
+
+#: includes/class-aips-config.php:301
+msgid "Limit the number of AI requests per time period."
+msgstr ""
+
+#: includes/class-aips-config.php:305
+msgid "Event System"
+msgstr ""
+
+#: includes/class-aips-config.php:306
+msgid "Enable event dispatching for better extensibility."
+msgstr ""
+
+#: includes/class-aips-config.php:310
+msgid "Performance Monitoring"
+msgstr ""
+
+#: includes/class-aips-config.php:311
+msgid "Track and log performance metrics."
+msgstr ""
+
+#: includes/class-aips-config.php:315
+msgid "Batch Generation"
+msgstr ""
+
+#: includes/class-aips-config.php:316
+msgid "Generate multiple posts in a single batch."
+msgstr ""
+
+#: includes/class-aips-data-management-import-json.php:38
+#: includes/class-aips-data-management-import-mysql.php:58
+msgid "File upload failed."
+msgstr ""
+
+#: includes/class-aips-data-management-import-json.php:43
+msgid "Invalid file extension. Expected .json file."
+msgstr ""
+
+#: includes/class-aips-data-management-import-json.php:49
+#: includes/class-aips-data-management-import-mysql.php:69
+msgid "File is too large. Maximum size is 50MB."
+msgstr ""
+
+#: includes/class-aips-data-management-import-json.php:54
+#: includes/class-aips-data-management-import-mysql.php:74
+msgid "Cannot read uploaded file."
+msgstr ""
+
+#: includes/class-aips-data-management-import-json.php:73
+msgid "Could not read the JSON file."
+msgstr ""
+
+#: includes/class-aips-data-management-import-json.php:80
+msgid "Invalid JSON format."
+msgstr ""
+
+#: includes/class-aips-data-management-import-json.php:85
+msgid "Invalid data structure in JSON file."
+msgstr ""
+
+#: includes/class-aips-data-management-import-json.php:122
+#, php-format
+msgid "Import completed with %d successful inserts and %d errors."
+msgstr ""
+
+#: includes/class-aips-data-management-import-mysql.php:63
+msgid "Invalid file extension. Expected .sql file."
+msgstr ""
+
+#: includes/class-aips-data-management-import-mysql.php:100
+msgid "Could not read the SQL file."
+msgstr ""
+
+#: includes/class-aips-data-management-import-mysql.php:107
+msgid "This does not appear to be a valid AI Post Scheduler export file."
+msgstr ""
+
+#: includes/class-aips-data-management-import-mysql.php:115
+msgid "No valid SQL queries found in file."
+msgstr ""
+
+#: includes/class-aips-data-management-import-mysql.php:144
+msgid "SQL file contains disallowed query type."
+msgstr ""
+
+#: includes/class-aips-data-management-import-mysql.php:163
+#: includes/class-aips-data-management-import-mysql.php:176
+#: includes/class-aips-data-management-import-mysql.php:184
+#: includes/class-aips-data-management-import-mysql.php:194
+#: includes/class-aips-data-management-import-mysql.php:207
+#: includes/class-aips-data-management-import-mysql.php:218
+msgid "SQL file contains queries for non-plugin tables or invalid format."
+msgstr ""
+
+#: includes/class-aips-data-management-import-mysql.php:256
+#, php-format
+msgid "Import completed with %d successful queries and %d errors. Last error: %s"
+msgstr ""
+
+#: includes/class-aips-data-management.php:81
+#: includes/class-aips-data-management.php:108
+msgid "Unauthorized"
+msgstr ""
+
+#: includes/class-aips-data-management.php:88
+msgid "Invalid export format"
+msgstr ""
+
+#: includes/class-aips-data-management.php:115
+msgid "Invalid import format"
+msgstr ""
+
+#: includes/class-aips-data-management.php:121
+msgid "No file uploaded"
+msgstr ""
+
+#: includes/class-aips-data-management.php:143
+msgid "Data imported successfully"
+msgstr ""
+
+#: includes/class-aips-dev-tools.php:52
+msgid "Topic is required."
+msgstr ""
+
+#: includes/class-aips-dev-tools.php:100
+msgid "Failed to parse AI response as JSON."
+msgstr ""
+
+#: includes/class-aips-dev-tools.php:120
+#, php-format
+msgid "Voice created: %s"
+msgstr ""
+
+#: includes/class-aips-dev-tools.php:168
+#, php-format
+msgid "Article Structure created: %s"
+msgstr ""
+
+#: includes/class-aips-dev-tools.php:196
+#, php-format
+msgid "Template created: %s"
+msgstr ""
+
+#: includes/class-aips-dev-tools.php:201
+msgid "Scaffold generated successfully!"
+msgstr ""
+
+#: includes/class-aips-embeddings-service.php:56
+msgid "Cannot generate embedding for empty text."
+msgstr ""
+
+#: includes/class-aips-embeddings-service.php:107
+msgid "Embeddings are not supported by the current AI Engine configuration."
+msgstr ""
+
+#: includes/class-aips-embeddings-service.php:124
+msgid "Invalid embedding vectors provided."
+msgstr ""
+
+#: includes/class-aips-embeddings-service.php:128
+msgid "Embedding vectors must have the same dimensions."
+msgstr ""
+
+#: includes/class-aips-embeddings-service.php:146
+msgid "Cannot calculate similarity with zero magnitude vectors."
+msgstr ""
+
+#: includes/class-aips-generated-posts-controller.php:166
+#: includes/class-aips-generated-posts-controller.php:276
+#: includes/class-aips-generated-posts-controller.php:370
+#: includes/class-aips-history.php:166
+#: includes/class-aips-history.php:215
+#: includes/class-aips-history.php:329
+#: includes/class-aips-post-review.php:383
+msgid "Invalid history ID."
+msgstr ""
+
+#: includes/class-aips-generated-posts-controller.php:173
+#: includes/class-aips-generated-posts-controller.php:282
+#: includes/class-aips-history.php:172
+#: includes/class-aips-session-to-json.php:47
+msgid "History item not found."
+msgstr ""
+
+#: includes/class-aips-generated-posts-controller.php:305
+msgid "Export file not found."
+msgstr ""
+
+#: includes/class-aips-generated-posts-controller.php:310
+msgid "Failed to read export file."
+msgstr ""
+
+#: includes/class-aips-generated-posts-controller.php:428
+msgid "Author Topic"
+msgstr ""
+
+#: includes/class-aips-generated-posts-controller.php:442
+msgid "Manual"
+msgstr ""
+
+#: includes/class-aips-generated-posts-controller.php:443
+#: templates/admin/generated-posts.php:93
+msgid "Scheduled"
+msgstr ""
+
+#: includes/class-aips-generation-context-factory.php:74
+msgid "Invalid history record."
+msgstr ""
+
+#: includes/class-aips-generation-context-factory.php:90
+msgid "Template data not found."
+msgstr ""
+
+#: includes/class-aips-generation-context-factory.php:117
+msgid "Author data not found."
+msgstr ""
+
+#: includes/class-aips-generation-context-factory.php:122
+msgid "Topic data not found."
+msgstr ""
+
+#: includes/class-aips-generation-context-factory.php:131
+msgid "Unable to determine generation context type."
+msgstr ""
+
+#: includes/class-aips-generator.php:465
+msgid "Error generating title"
+msgstr ""
+
+#: includes/class-aips-generator.php:648
+msgid "AI Generated Post"
+msgstr ""
+
+#: includes/class-aips-generator.php:823
+msgid "Image prompt is required to generate a featured image."
+msgstr ""
+
+#: includes/class-aips-history-container.php:150
+msgid "Could not find history record."
+msgstr ""
+
+#: includes/class-aips-history-container.php:154
+msgid "History record does not belong to this post."
+msgstr ""
+
+#: includes/class-aips-history-container.php:160
+msgid "Could not find history record for post."
+msgstr ""
+
+#: includes/class-aips-history-container.php:163
+msgid "History context is required."
+msgstr ""
+
+#: includes/class-aips-history-container.php:168
+msgid "Could not load history container."
+msgstr ""
+
+#: includes/class-aips-history-type.php:77
+msgid "Log"
+msgstr ""
+
+#: includes/class-aips-history-type.php:79
+#: templates/admin/authors.php:174
+#: templates/admin/system-status.php:62
+msgid "Warning"
+msgstr ""
+
+#: includes/class-aips-history-type.php:80
+#: templates/admin/system-status.php:72
+msgid "Info"
+msgstr ""
+
+#: includes/class-aips-history-type.php:81
+msgid "AI Request"
+msgstr ""
+
+#: includes/class-aips-history-type.php:82
+msgid "AI Response"
+msgstr ""
+
+#: includes/class-aips-history-type.php:83
+msgid "Debug"
+msgstr ""
+
+#: includes/class-aips-history-type.php:84
+#: templates/admin/activity.php:12
+msgid "Activity"
+msgstr ""
+
+#: includes/class-aips-history-type.php:85
+msgid "Session Metadata"
+msgstr ""
+
+#: includes/class-aips-history.php:51
+msgid "No items selected."
+msgstr ""
+
+#: includes/class-aips-history.php:57
+msgid "Failed to delete items."
+msgstr ""
+
+#: includes/class-aips-history.php:60
+msgid "Selected items deleted successfully."
+msgstr ""
+
+#: includes/class-aips-history.php:221
+msgid "History container not found."
+msgstr ""
+
+#: includes/class-aips-history.php:335
+#: includes/class-aips-post-review.php:390
+msgid "History item not found or no template associated."
+msgstr ""
+
+#: includes/class-aips-history.php:342
+msgid "Template no longer exists."
+msgstr ""
+
+#: includes/class-aips-history.php:353
+msgid "Post regenerated successfully!"
+msgstr ""
+
+#: includes/class-aips-i18n.php:79
+msgid "Topic saved successfully."
+msgstr ""
+
+#: includes/class-aips-i18n.php:80
+msgid "Topic approved."
+msgstr ""
+
+#: includes/class-aips-i18n.php:81
+msgid "Topic rejected."
+msgstr ""
+
+#: includes/class-aips-i18n.php:83
+msgid "Are you sure you want to reject this topic? It will not be used for post generation."
+msgstr ""
+
+#: includes/class-aips-i18n.php:84
+msgid "No topics found matching your criteria."
+msgstr ""
+
+#: includes/class-aips-i18n.php:85
+msgid "No topics available."
+msgstr ""
+
+#: includes/class-aips-i18n.php:86
+msgid "Please provide a reason."
+msgstr ""
+
+#: includes/class-aips-i18n.php:87
+msgid "Rejection Reason:"
+msgstr ""
+
+#: includes/class-aips-i18n.php:88
+msgid "Are you sure you want to clear all logs for this author? This cannot be undone."
+msgstr ""
+
+#: includes/class-aips-i18n.php:89
+msgid "Are you sure you want to clear ALL topic generation logs? This cannot be undone."
+msgstr ""
+
+#: includes/class-aips-i18n.php:90
+msgid "Logs cleared successfully."
+msgstr ""
+
+#: includes/class-aips-i18n.php:91
+msgid "Failed to clear logs."
+msgstr ""
+
+#: includes/class-aips-i18n.php:92
+msgid "No logs found."
+msgstr ""
+
+#: includes/class-aips-i18n.php:93
+#, php-format
+msgid "Reject %d selected topics? Please provide a reason."
+msgstr ""
+
+#: includes/class-aips-i18n.php:94
+#, php-format
+msgid "Reject %d topics"
+msgstr ""
+
+#: includes/class-aips-i18n.php:95
+msgid "Failed to bulk reject topics."
+msgstr ""
+
+#: includes/class-aips-i18n.php:97
+msgid "Topic regenerated successfully."
+msgstr ""
+
+#: includes/class-aips-i18n.php:98
+msgid "Please select topics to approve."
+msgstr ""
+
+#: includes/class-aips-i18n.php:99
+msgid "Please select topics to reject."
+msgstr ""
+
+#: includes/class-aips-i18n.php:100
+msgid "Please select topics to delete."
+msgstr ""
+
+#: includes/class-aips-i18n.php:101
+#: includes/class-aips-i18n.php:122
+#, php-format
+msgid "Are you sure you want to approve %d selected topics?"
+msgstr ""
+
+#: includes/class-aips-i18n.php:102
+#, php-format
+msgid "Are you sure you want to delete %d selected topics?"
+msgstr ""
+
+#: includes/class-aips-i18n.php:103
+msgid "Posts saved successfully!"
+msgstr ""
+
+#: includes/class-aips-i18n.php:104
+msgid "Failed to save posts."
+msgstr ""
+
+#: includes/class-aips-i18n.php:105
+msgid "Generating posts..."
+msgstr ""
+
+#: includes/class-aips-i18n.php:106
+msgid "Are you sure you want to regenerate this topic? The previous content will be overwritten."
+msgstr ""
+
+#: includes/class-aips-i18n.php:123
+#, php-format
+msgid "Are you sure you want to delete %d selected topics? This action cannot be undone."
+msgstr ""
+
+#: includes/class-aips-i18n.php:151
+msgid "An error occurred while processing your request."
+msgstr ""
+
+#: includes/class-aips-i18n.php:166
+msgid "Are you sure you want to re-generate this component? The current content will be replaced."
+msgstr ""
+
+#: includes/class-aips-i18n.php:167
+msgid "Server error occurred."
+msgstr ""
+
+#: includes/class-aips-i18n.php:183
+msgid "All operations associated with this entity"
+msgstr ""
+
+#: includes/class-aips-i18n.php:185
+msgid "Time"
+msgstr ""
+
+#: includes/class-aips-i18n.php:187
+msgid "Expand to view full details"
+msgstr ""
+
+#: includes/class-aips-i18n.php:188
+msgid "Collapse details"
+msgstr ""
+
+#: includes/class-aips-i18n.php:189
+msgid "View Raw JSON"
+msgstr ""
+
+#: includes/class-aips-i18n.php:190
+msgid "Failed to load logs."
+msgstr ""
+
+#: includes/class-aips-i18n.php:191
+msgid "Failed to load details."
+msgstr ""
+
+#: includes/class-aips-i18n.php:192
+msgid "No detailed logs found for this container."
+msgstr ""
+
+#: includes/class-aips-i18n.php:193
+msgid "Copy to clipboard"
+msgstr ""
+
+#: includes/class-aips-i18n.php:194
+msgid "Copied!"
+msgstr ""
+
+#: includes/class-aips-i18n.php:195
+msgid "Failed to load log details."
+msgstr ""
+
+#: includes/class-aips-i18n.php:196
+msgid "Are you absolutely sure you want to clear ALL history logs? This action cannot be undone and will permanently delete all records of past generations and errors."
+msgstr ""
+
+#: includes/class-aips-i18n.php:197
+msgid "All history logs have been successfully cleared."
+msgstr ""
+
+#: includes/class-aips-i18n.php:198
+msgid "Failed to clear history logs. Please check server error logs."
+msgstr ""
+
+#: includes/class-aips-i18n.php:199
+msgid "Clear History"
+msgstr ""
+
+#: includes/class-aips-i18n.php:200
+msgid "Clearing..."
+msgstr ""
+
+#: includes/class-aips-image-service.php:91
+msgid "No media library images were provided."
+msgstr ""
+
+#: includes/class-aips-image-service.php:108
+msgid "No valid image attachments were found in the selected media items."
+msgstr ""
+
+#: includes/class-aips-image-service.php:124
+msgid "Unsplash access key is not configured."
+msgstr ""
+
+#: includes/class-aips-image-service.php:128
+msgid "Please provide keywords to search for an Unsplash image."
+msgstr ""
+
+#: includes/class-aips-image-service.php:146
+msgid "Failed to contact Unsplash API."
+msgstr ""
+
+#: includes/class-aips-image-service.php:152
+#, php-format
+msgid "Unsplash API returned HTTP %d."
+msgstr ""
+
+#: includes/class-aips-image-service.php:158
+msgid "Invalid response from Unsplash API."
+msgstr ""
+
+#: includes/class-aips-image-service.php:170
+msgid "Unsplash did not return a usable image URL."
+msgstr ""
+
+#: includes/class-aips-image-service.php:197
+#, php-format
+msgid "Failed to fetch image: %s"
+msgstr ""
+
+#: includes/class-aips-image-service.php:208
+#, php-format
+msgid "Failed to fetch image. HTTP Code: %d"
+msgstr ""
+
+#: includes/class-aips-image-service.php:219
+#, php-format
+msgid "Invalid content type: %s. Expected an image."
+msgstr ""
+
+#: includes/class-aips-image-service.php:230
+msgid "Downloaded image has no content."
+msgstr ""
+
+#: includes/class-aips-image-service.php:245
+#, php-format
+msgid "Security check failed: Content appears to be %s, expected image."
+msgstr ""
+
+#: includes/class-aips-image-service.php:277
+#, php-format
+msgid "Failed to write image file: %s"
+msgstr ""
+
+#: includes/class-aips-image-service.php:327
+#, php-format
+msgid "Failed to insert attachment: %s"
+msgstr ""
+
+#: includes/class-aips-image-service.php:368
+msgid "Image URL is empty."
+msgstr ""
+
+#: includes/class-aips-image-service.php:372
+msgid "Image URL is not valid."
+msgstr ""
+
+#: includes/class-aips-image-service.php:381
+#, php-format
+msgid "Image URL is not accessible: %s"
+msgstr ""
+
+#: includes/class-aips-image-service.php:389
+#, php-format
+msgid "Image URL returned HTTP %d."
+msgstr ""
+
+#: includes/class-aips-interval-calculator.php:37
+#: templates/admin/authors.php:391
+msgid "Hourly"
+msgstr ""
+
+#: includes/class-aips-interval-calculator.php:43
+msgid "Every 4 Hours"
+msgstr ""
+
+#: includes/class-aips-interval-calculator.php:49
+msgid "Every 6 Hours"
+msgstr ""
+
+#: includes/class-aips-interval-calculator.php:55
+msgid "Every 12 Hours"
+msgstr ""
+
+#: includes/class-aips-interval-calculator.php:61
+#: templates/admin/authors.php:381
+#: templates/admin/authors.php:392
+msgid "Daily"
+msgstr ""
+
+#: includes/class-aips-interval-calculator.php:67
+msgid "Once Weekly"
+msgstr ""
+
+#: includes/class-aips-interval-calculator.php:73
+msgid "Every 2 Weeks"
+msgstr ""
+
+#: includes/class-aips-interval-calculator.php:79
+#: templates/admin/authors.php:384
+msgid "Monthly"
+msgstr ""
+
+#: includes/class-aips-interval-calculator.php:85
+msgid "Once"
+msgstr ""
+
+#: includes/class-aips-interval-calculator.php:94
+#, php-format
+msgid "Every %s"
+msgstr ""
+
+#: includes/class-aips-planner.php:24
+msgid "Please provide a niche or topic."
+msgstr ""
+
+#: includes/class-aips-planner.php:33
+msgid "AI Engine is not available."
+msgstr ""
+
+#: includes/class-aips-planner.php:64
+msgid "Failed to parse AI response. Raw response: "
+msgstr ""
+
+#: includes/class-aips-planner.php:87
+#: includes/class-aips-research-controller.php:239
+msgid "Missing required fields."
+msgstr ""
+
+#: includes/class-aips-planner.php:128
+msgid "Failed to schedule topics."
+msgstr ""
+
+#: includes/class-aips-planner.php:134
+#, php-format
+msgid "%d topics scheduled successfully."
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:73
+#, php-format
+msgid "[%s] %d Posts Awaiting Review"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:95
+#, php-format
+msgid "Review notification email sent to %s (%d posts)"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:209
+msgid "Posts Awaiting Review"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:213
+msgid "Hello,"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:215
+msgid "You have AI-generated posts waiting for review before publication."
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:218
+#, php-format
+msgid "%d Post Awaiting Review"
+msgid_plural "%d Posts Awaiting Review"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-aips-post-review-notifications.php:222
+msgid "Recent Draft Posts:"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:228
+#: templates/admin/dashboard.php:140
+#: templates/admin/dashboard.php:143
+#: templates/admin/generated-posts.php:283
+#: templates/admin/post-review.php:144
+#: templates/partials/history-row.php:19
+#: templates/partials/history-row.php:22
+msgid "Untitled"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:233
+#, php-format
+msgid "Template: %s | Created: %s"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:234
+#: templates/admin/templates.php:431
+msgid "None"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:248
+#, php-format
+msgid "...and %d more posts"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:259
+msgid "Review Posts"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:263
+msgid "Click the button above to review and publish your posts."
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:268
+#, php-format
+msgid "This email was sent by AI Post Scheduler on %s"
+msgstr ""
+
+#: includes/class-aips-post-review-notifications.php:271
+msgid "To disable these notifications, visit the plugin settings page."
+msgstr ""
+
+#: includes/class-aips-post-review.php:88
+#: includes/class-aips-post-review.php:169
+#: includes/class-aips-post-review.php:503
+msgid "Post not found or not a draft."
+msgstr ""
+
+#: includes/class-aips-post-review.php:136
+msgid "Post publish failed: Permission denied"
+msgstr ""
+
+#: includes/class-aips-post-review.php:150
+msgid "Post publish failed: Invalid post ID"
+msgstr ""
+
+#: includes/class-aips-post-review.php:164
+msgid "Post publish failed: Post not found or not a draft"
+msgstr ""
+
+#: includes/class-aips-post-review.php:177
+msgid "Post publish failed: Post not found in review queue"
+msgstr ""
+
+#: includes/class-aips-post-review.php:182
+#: includes/class-aips-post-review.php:516
+msgid "Post not found in review queue."
+msgstr ""
+
+#: includes/class-aips-post-review.php:190
+msgid "Post publish failed: Insufficient permissions"
+msgstr ""
+
+#: includes/class-aips-post-review.php:195
+msgid "You do not have permission to publish this post."
+msgstr ""
+
+#: includes/class-aips-post-review.php:207
+#, php-format
+msgid "Post publish failed: %s"
+msgstr ""
+
+#: includes/class-aips-post-review.php:219
+msgid "Post published from review queue"
+msgstr ""
+
+#: includes/class-aips-post-review.php:233
+msgid "Post published successfully."
+msgstr ""
+
+#: includes/class-aips-post-review.php:248
+msgid "Bulk publish failed: Permission denied"
+msgstr ""
+
+#: includes/class-aips-post-review.php:271
+msgid "Bulk publish failed: No posts selected"
+msgstr ""
+
+#: includes/class-aips-post-review.php:276
+#: includes/class-aips-post-review.php:590
+msgid "No posts selected."
+msgstr ""
+
+#: includes/class-aips-post-review.php:290
+msgid "Bulk publish failed: Post not found or not a draft"
+msgstr ""
+
+#: includes/class-aips-post-review.php:304
+msgid "Bulk publish failed: Post not in review queue"
+msgstr ""
+
+#: includes/class-aips-post-review.php:318
+msgid "Bulk publish failed: Insufficient permissions"
+msgstr ""
+
+#: includes/class-aips-post-review.php:338
+msgid "Post published from review queue (bulk)"
+msgstr ""
+
+#: includes/class-aips-post-review.php:355
+#, php-format
+msgid "Bulk publish failed: %s"
+msgstr ""
+
+#: includes/class-aips-post-review.php:364
+#, php-format
+msgid "%d posts published successfully."
+msgstr ""
+
+#: includes/class-aips-post-review.php:398
+#: includes/class-aips-schedule-controller.php:139
+#: includes/class-aips-schedule-processor.php:139
+#: includes/class-aips-templates-controller.php:108
+#: includes/class-aips-templates-controller.php:128
+msgid "Template not found."
+msgstr ""
+
+#: includes/class-aips-post-review.php:405
+msgid "You do not have permission to regenerate this post."
+msgstr ""
+
+#: includes/class-aips-post-review.php:426
+#, php-format
+msgid "Post regeneration failed: %s"
+msgstr ""
+
+#: includes/class-aips-post-review.php:440
+msgid "Post regenerated from review queue"
+msgstr ""
+
+#: includes/class-aips-post-review.php:454
+msgid "Post regeneration started successfully."
+msgstr ""
+
+#: includes/class-aips-post-review.php:469
+msgid "Post delete failed: Permission denied"
+msgstr ""
+
+#: includes/class-aips-post-review.php:484
+msgid "Post delete failed: Invalid post ID"
+msgstr ""
+
+#: includes/class-aips-post-review.php:498
+msgid "Post delete failed: Post not found or not a draft"
+msgstr ""
+
+#: includes/class-aips-post-review.php:511
+msgid "Post delete failed: Post not in review queue"
+msgstr ""
+
+#: includes/class-aips-post-review.php:524
+msgid "Post delete failed: Insufficient permissions"
+msgstr ""
+
+#: includes/class-aips-post-review.php:529
+msgid "You do not have permission to delete this post."
+msgstr ""
+
+#: includes/class-aips-post-review.php:539
+msgid "Post delete failed: Unable to delete post"
+msgstr ""
+
+#: includes/class-aips-post-review.php:558
+msgid "Draft post deleted from review queue"
+msgstr ""
+
+#: includes/class-aips-post-review.php:604
+#, php-format
+msgid "User initiated bulk delete for %d draft posts"
+msgstr ""
+
+#: includes/class-aips-post-review.php:629
+#, php-format
+msgid "Cannot delete post ID %d: Not found or not a draft"
+msgstr ""
+
+#: includes/class-aips-post-review.php:636
+#, php-format
+msgid "Cannot delete post ID %d: Not in review queue"
+msgstr ""
+
+#: includes/class-aips-post-review.php:643
+#, php-format
+msgid "Cannot delete post ID %d: Insufficient permissions"
+msgstr ""
+
+#: includes/class-aips-post-review.php:667
+#, php-format
+msgid "Failed to delete post ID %d"
+msgstr ""
+
+#: includes/class-aips-post-review.php:671
+#, php-format
+msgid "Bulk delete completed: %d deleted, %d failed"
+msgstr ""
+
+#: includes/class-aips-post-review.php:679
+#, php-format
+msgid "Bulk delete completed with %d failures"
+msgstr ""
+
+#: includes/class-aips-post-review.php:687
+#, php-format
+msgid "%d posts deleted successfully."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:62
+#: includes/class-aips-prompt-sections-controller.php:129
+#: includes/class-aips-prompt-sections-controller.php:151
+msgid "Invalid section ID."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:67
+msgid "Section not found."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:88
+msgid "Name, key, and content are required."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:92
+msgid "Section key already exists."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:106
+msgid "Failed to update prompt section."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:109
+msgid "Section updated."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:114
+msgid "Failed to create prompt section."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:117
+msgid "Section created."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:137
+msgid "Section deleted."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:156
+#: includes/class-aips-structures-controller.php:145
+msgid "Failed to update active status."
+msgstr ""
+
+#: includes/class-aips-prompt-sections-controller.php:159
+msgid "Section status updated."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:89
+#: includes/class-aips-research-controller.php:420
+msgid "Niche is required."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:103
+msgid "Failed to save research results."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:176
+msgid "Topic ID is required."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:206
+msgid "Topic IDs are required."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:217
+msgid "Failed to delete topics."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:252
+msgid "No valid topics found."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:261
+msgid "Invalid start date provided."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:267
+msgid "Invalid frequency provided."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:319
+#, php-format
+msgid "Successfully scheduled %d topics."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:323
+msgid "Failed to create schedules."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:451
+msgid "Gap topic and niche are required."
+msgstr ""
+
+#: includes/class-aips-research-controller.php:465
+#, php-format
+msgid "Generated and saved %d topics based on \"%s\"."
+msgstr ""
+
+#: includes/class-aips-research-service.php:63
+msgid "Niche parameter is required for research."
+msgstr ""
+
+#: includes/class-aips-research-service.php:67
+msgid "AI Engine is not available for research."
+msgstr ""
+
+#: includes/class-aips-research-service.php:198
+#: includes/class-aips-research-service.php:256
+msgid "AI response is not in expected array format."
+msgstr ""
+
+#: includes/class-aips-research-service.php:210
+#: includes/class-aips-research-service.php:268
+msgid "No valid topics found in AI response."
+msgstr ""
+
+#: includes/class-aips-research-service.php:364
+msgid "Failed to extract topics from AI response."
+msgstr ""
+
+#: includes/class-aips-resilience-service.php:133
+msgid "Circuit breaker is open. Too many recent failures."
+msgstr ""
+
+#: includes/class-aips-resilience-service.php:138
+msgid "Rate limit exceeded. Please try again later."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:43
+msgid "Please select a template."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:48
+msgid "Invalid frequency selected."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:55
+msgid "Schedule saved successfully."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:59
+msgid "Failed to save schedule."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:73
+#: includes/class-aips-schedule-controller.php:94
+#: includes/class-aips-schedule-controller.php:380
+msgid "Invalid schedule ID."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:77
+msgid "Schedule deleted successfully."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:79
+msgid "Failed to delete schedule."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:100
+msgid "Schedule updated."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:102
+msgid "Failed to update schedule."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:121
+msgid "Schedule executed successfully!"
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:132
+#: includes/class-aips-templates-controller.php:80
+#: includes/class-aips-templates-controller.php:100
+#: includes/class-aips-templates-controller.php:122
+msgid "Invalid template ID."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:178
+msgid "All generation attempts failed."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:184
+#, php-format
+msgid "%d post(s) generated successfully!"
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:190
+#, php-format
+msgid "(Limited to %d for manual run)"
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:197
+#, php-format
+msgid "(%d failed attempts)"
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:221
+#: includes/class-aips-schedule-controller.php:252
+#: includes/class-aips-schedule-controller.php:287
+msgid "No schedule IDs provided."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:230
+#, php-format
+msgid "%d schedule deleted successfully."
+msgid_plural "%d schedules deleted successfully."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-aips-schedule-controller.php:236
+msgid "Failed to delete schedules."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:260
+msgid "activated"
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:260
+msgid "paused"
+msgstr ""
+
+#. translators: 1: number of schedules, 2: action label (activated/paused)
+#: includes/class-aips-schedule-controller.php:264
+#, php-format
+msgid "%1$d schedule %2$s successfully."
+msgid_plural "%1$d schedules %2$s successfully."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-aips-schedule-controller.php:272
+msgid "Failed to update schedules."
+msgstr ""
+
+#. translators: 1: selected count, 2: maximum allowed
+#: includes/class-aips-schedule-controller.php:295
+#, php-format
+msgid "Too many schedules selected (%1$d). Please select no more than %2$d at a time to avoid timeouts."
+msgstr ""
+
+#. translators: 1: schedule ID, 2: error message
+#: includes/class-aips-schedule-controller.php:310
+#, php-format
+msgid "Schedule #%1$d: %2$s"
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:321
+msgid "All schedule runs failed."
+msgstr ""
+
+#: includes/class-aips-schedule-controller.php:327
+#, php-format
+msgid "%d post generated successfully!"
+msgid_plural "%d posts generated successfully!"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-aips-schedule-controller.php:333
+#, php-format
+msgid "(%d failed)"
+msgid_plural "(%d failed)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-aips-schedule-controller.php:387
+#: includes/class-aips-schedule-processor.php:133
+msgid "Schedule not found."
+msgstr ""
+
+#: includes/class-aips-schedule-processor.php:228
+#, php-format
+msgid "Manual execution of schedule \"%s\" started"
+msgstr ""
+
+#: includes/class-aips-schedule-processor.php:229
+#, php-format
+msgid "Schedule \"%s\" started execution"
+msgstr ""
+
+#: includes/class-aips-schedule-processor.php:345
+#, php-format
+msgid "One-time schedule \"%s\" failed and was deactivated"
+msgstr ""
+
+#: includes/class-aips-schedule-processor.php:383
+#, php-format
+msgid "Manual execution of schedule \"%s\" failed: %s"
+msgstr ""
+
+#: includes/class-aips-schedule-processor.php:383
+#, php-format
+msgid "Schedule \"%s\" failed to generate post: %s"
+msgstr ""
+
+#: includes/class-aips-schedule-processor.php:430
+#, php-format
+msgid "%s created by schedule \"%s\": %s"
+msgstr ""
+
+#: includes/class-aips-schedule-processor.php:431
+#: includes/class-aips-settings.php:388
+#: templates/admin/templates.php:451
+msgid "Draft"
+msgstr ""
+
+#: includes/class-aips-schedule-processor.php:431
+#: templates/admin/generated-posts.php:262
+msgid "Post"
+msgstr ""
+
+#: includes/class-aips-scheduler.php:195
+#: includes/class-aips-scheduler.php:249
+#: includes/class-aips-scheduler.php:336
+msgid "Unknown user"
+msgstr ""
+
+#. translators: 1: old frequency, 2: new frequency, 3: user login
+#: includes/class-aips-scheduler.php:202
+#, php-format
+msgid "Schedule interval updated from \"%1$s\" to \"%2$s\" by %3$s"
+msgstr ""
+
+#. translators: 1: user login
+#: includes/class-aips-scheduler.php:210
+#, php-format
+msgid "Schedule updated by %s"
+msgstr ""
+
+#. translators: 1: frequency, 2: user login
+#: includes/class-aips-scheduler.php:255
+#, php-format
+msgid "Schedule created to run %1$s by %2$s"
+msgstr ""
+
+#: includes/class-aips-scheduler.php:337
+msgid "enabled"
+msgstr ""
+
+#: includes/class-aips-scheduler.php:337
+msgid "disabled"
+msgstr ""
+
+#. translators: 1: enabled/disabled, 2: user login
+#: includes/class-aips-scheduler.php:343
+#, php-format
+msgid "Schedule %1$s by %2$s"
+msgstr ""
+
+#: includes/class-aips-session-to-json.php:317
+msgid "Failed to encode JSON."
+msgstr ""
+
+#: includes/class-aips-session-to-json.php:326
+msgid "Failed to create export directory."
+msgstr ""
+
+#: includes/class-aips-session-to-json.php:342
+msgid "Failed to write export file."
+msgstr ""
+
+#: includes/class-aips-settings.php:56
+#: includes/class-aips-settings.php:57
+#: templates/admin/dashboard.php:18
+msgid "Dashboard"
+msgstr ""
+
+#: includes/class-aips-settings.php:74
+#: includes/class-aips-settings.php:75
+#: templates/admin/seeder.php:36
+#: templates/admin/voices.php:12
+msgid "Voices"
+msgstr ""
+
+#: includes/class-aips-settings.php:83
+#: includes/class-aips-settings.php:84
+#: templates/admin/structures.php:22
+#: templates/admin/structures.php:40
+msgid "Article Structures"
+msgstr ""
+
+#: includes/class-aips-settings.php:102
+#: includes/class-aips-settings.php:103
+msgid "Author Topics"
+msgstr ""
+
+#: includes/class-aips-settings.php:111
+#: includes/class-aips-settings.php:112
+#: templates/admin/research.php:35
+msgid "Research"
+msgstr ""
+
+#: includes/class-aips-settings.php:120
+#: includes/class-aips-settings.php:121
+#: templates/admin/structures.php:110
+#: templates/admin/structures.php:112
+#: templates/admin/templates.php:139
+#: templates/admin/templates.php:141
+msgid "Schedule"
+msgstr ""
+
+#: includes/class-aips-settings.php:129
+#: includes/class-aips-settings.php:130
+#: templates/admin/calendar.php:14
+msgid "Schedule Calendar"
+msgstr ""
+
+#: includes/class-aips-settings.php:138
+#: includes/class-aips-settings.php:139
+#: templates/admin/generated-posts.php:24
+#: templates/admin/generated-posts.php:32
+msgid "Generated Posts"
+msgstr ""
+
+#: includes/class-aips-settings.php:147
+#: includes/class-aips-settings.php:148
+#: templates/admin/history.php:30
+msgid "History"
+msgstr ""
+
+#: includes/class-aips-settings.php:156
+#: includes/class-aips-settings.php:157
+#: templates/admin/settings.php:12
+msgid "Settings"
+msgstr ""
+
+#: includes/class-aips-settings.php:165
+#: includes/class-aips-settings.php:166
+#: templates/admin/system-status.php:12
+msgid "System Status"
+msgstr ""
+
+#: includes/class-aips-settings.php:174
+#: includes/class-aips-settings.php:175
+msgid "Seeder"
+msgstr ""
+
+#: includes/class-aips-settings.php:184
+#: includes/class-aips-settings.php:185
+msgid "Dev Tools"
+msgstr ""
+
+#: includes/class-aips-settings.php:274
+msgid "General Settings"
+msgstr ""
+
+#: includes/class-aips-settings.php:281
+msgid "Default Post Status"
+msgstr ""
+
+#: includes/class-aips-settings.php:289
+msgid "Default Category"
+msgstr ""
+
+#: includes/class-aips-settings.php:297
+msgid "AI Model"
+msgstr ""
+
+#: includes/class-aips-settings.php:305
+msgid "Chatbot ID"
+msgstr ""
+
+#: includes/class-aips-settings.php:313
+msgid "Unsplash Access Key"
+msgstr ""
+
+#: includes/class-aips-settings.php:321
+msgid "Max Retries on Failure"
+msgstr ""
+
+#: includes/class-aips-settings.php:329
+msgid "Enable Logging"
+msgstr ""
+
+#: includes/class-aips-settings.php:337
+msgid "Developer Mode"
+msgstr ""
+
+#: includes/class-aips-settings.php:345
+msgid "Send Email Notifications for Posts Awaiting Review"
+msgstr ""
+
+#: includes/class-aips-settings.php:353
+msgid "Notifications Email Address"
+msgstr ""
+
+#: includes/class-aips-settings.php:361
+msgid "Topic Similarity Threshold"
+msgstr ""
+
+#: includes/class-aips-settings.php:374
+msgid "Configure default settings for AI-generated posts."
+msgstr ""
+
+#: includes/class-aips-settings.php:389
+#: templates/admin/author-topics.php:109
+#: templates/admin/author-topics.php:130
+#: templates/admin/generated-posts.php:33
+#: templates/admin/templates.php:452
+msgid "Pending Review"
+msgstr ""
+
+#: includes/class-aips-settings.php:390
+#: templates/admin/activity.php:26
+#: templates/admin/generated-posts.php:94
+#: templates/admin/templates.php:453
+msgid "Published"
+msgstr ""
+
+#: includes/class-aips-settings.php:392
+msgid "Default status for newly generated posts."
+msgstr ""
+
+#: includes/class-aips-settings.php:408
+msgid "Select a category"
+msgstr ""
+
+#: includes/class-aips-settings.php:412
+msgid "Default category for generated posts."
+msgstr ""
+
+#: includes/class-aips-settings.php:426
+msgid "AI Engine model to use (leave empty to use AI Engine default)."
+msgstr ""
+
+#: includes/class-aips-settings.php:441
+msgid "AI Engine chatbot ID to use for post generation. This enables conversational context between title, content, and excerpt generation for better coherence."
+msgstr ""
+
+#: includes/class-aips-settings.php:471
+msgid "Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers."
+msgstr ""
+
+#: includes/class-aips-settings.php:486
+msgid "Number of retry attempts if generation fails."
+msgstr ""
+
+#: includes/class-aips-settings.php:502
+msgid "Enable detailed logging for debugging"
+msgstr ""
+
+#: includes/class-aips-settings.php:519
+msgid "Enable developer tools and features"
+msgstr ""
+
+#: includes/class-aips-settings.php:537
+msgid "Send daily email notifications when posts are awaiting review"
+msgstr ""
+
+#: includes/class-aips-settings.php:539
+msgid "A daily email will be sent with a list of draft posts pending review."
+msgstr ""
+
+#: includes/class-aips-settings.php:554
+msgid "Email address to receive notifications about posts awaiting review."
+msgstr ""
+
+#: includes/class-aips-settings.php:596
+msgid "Minimum similarity score (0.1–1.0) used to flag new topics as potential duplicates during generation. A higher value requires topics to be more similar before being flagged. Default: 0.8."
+msgstr ""
+
+#: includes/class-aips-settings.php:855
+msgid "Connection successful! AI response: "
+msgstr ""
+
+#: includes/class-aips-structures-controller.php:41
+#: includes/class-aips-structures-controller.php:97
+#: includes/class-aips-structures-controller.php:118
+#: includes/class-aips-structures-controller.php:140
+msgid "Invalid structure ID."
+msgstr ""
+
+#: includes/class-aips-structures-controller.php:46
+msgid "Structure not found."
+msgstr ""
+
+#: includes/class-aips-structures-controller.php:68
+#: includes/class-aips-templates-controller.php:51
+msgid "Name and prompt template are required."
+msgstr ""
+
+#: includes/class-aips-structures-controller.php:78
+msgid "Structure updated."
+msgstr ""
+
+#: includes/class-aips-structures-controller.php:84
+msgid "Structure created."
+msgstr ""
+
+#: includes/class-aips-structures-controller.php:106
+msgid "Structure deleted."
+msgstr ""
+
+#: includes/class-aips-structures-controller.php:123
+msgid "Failed to set default structure."
+msgstr ""
+
+#: includes/class-aips-structures-controller.php:126
+msgid "Default structure updated."
+msgstr ""
+
+#: includes/class-aips-structures-controller.php:148
+msgid "Structure status updated."
+msgstr ""
+
+#: includes/class-aips-template-processor.php:269
+msgid "Template has unclosed variable braces. Each {{ must have a matching }}."
+msgstr ""
+
+#: includes/class-aips-template-processor.php:291
+#, php-format
+msgid "Unknown variable: {{%s}}. Available variables: %s"
+msgstr ""
+
+#: includes/class-aips-template-type-selector.php:317
+msgid "Sequential (Cycle Through All)"
+msgstr ""
+
+#: includes/class-aips-template-type-selector.php:318
+msgid "Random"
+msgstr ""
+
+#: includes/class-aips-template-type-selector.php:319
+msgid "Weighted (Favor Default)"
+msgstr ""
+
+#: includes/class-aips-template-type-selector.php:320
+msgid "Alternating (Between Two)"
+msgstr ""
+
+#: includes/class-aips-templates-controller.php:62
+msgid "Template saved successfully."
+msgstr ""
+
+#: includes/class-aips-templates-controller.php:66
+msgid "Failed to save template."
+msgstr ""
+
+#: includes/class-aips-templates-controller.php:84
+msgid "Template deleted successfully."
+msgstr ""
+
+#: includes/class-aips-templates-controller.php:86
+msgid "Failed to delete template."
+msgstr ""
+
+#: includes/class-aips-templates-controller.php:132
+msgid "(Copy)"
+msgstr ""
+
+#: includes/class-aips-templates-controller.php:154
+msgid "Template cloned successfully."
+msgstr ""
+
+#: includes/class-aips-templates-controller.php:158
+msgid "Failed to clone template."
+msgstr ""
+
+#: includes/class-aips-templates-controller.php:193
+msgid "Prompt template is required."
+msgstr ""
+
+#: includes/class-aips-templates-controller.php:218
+msgid "Test generation successful."
+msgstr ""
+
+#: includes/class-aips-templates-controller.php:253
+msgid "Please enter a content prompt to generate the preview."
+msgstr ""
+
+#: includes/class-aips-topic-expansion-service.php:96
+msgid "Failed to store embedding."
+msgstr ""
+
+#: includes/class-aips-topic-penalty-service.php:99
+msgid "Failed to apply penalty."
+msgstr ""
+
+#: includes/class-aips-topic-penalty-service.php:136
+msgid "Failed to apply reward."
+msgstr ""
+
+#: includes/class-aips-voices.php:68
+msgid "Name, Title Prompt, and Content Instructions are required."
+msgstr ""
+
+#: includes/class-aips-voices.php:75
+msgid "Voice saved successfully."
+msgstr ""
+
+#: includes/class-aips-voices.php:79
+msgid "Failed to save voice."
+msgstr ""
+
+#: includes/class-aips-voices.php:93
+#: includes/class-aips-voices.php:113
+msgid "Invalid voice ID."
+msgstr ""
+
+#: includes/class-aips-voices.php:97
+msgid "Voice deleted successfully."
+msgstr ""
+
+#: includes/class-aips-voices.php:99
+msgid "Failed to delete voice."
+msgstr ""
+
+#: includes/class-aips-voices.php:121
+msgid "Voice not found."
+msgstr ""
+
+#: templates/admin/activity.php:13
+msgid "Monitor recent post generation activity including published posts, drafts, and failed attempts."
+msgstr ""
+
+#: templates/admin/activity.php:23
+msgid "All Activity"
+msgstr ""
+
+#: templates/admin/activity.php:29
+msgid "Drafts"
+msgstr ""
+
+#: templates/admin/activity.php:32
+#: templates/admin/history.php:68
+#: templates/admin/history.php:109
+#: templates/admin/schedule.php:170
+msgid "Failed"
+msgstr ""
+
+#: templates/admin/activity.php:37
+msgid "Search Activity:"
+msgstr ""
+
+#: templates/admin/activity.php:38
+msgid "Search activity..."
+msgstr ""
+
+#: templates/admin/activity.php:39
+#: templates/admin/generated-posts.php:76
+#: templates/admin/generated-posts.php:229
+#: templates/admin/post-review.php:88
+msgid "Search"
+msgstr ""
+
+#: templates/admin/activity.php:40
+#: templates/admin/authors.php:83
+#: templates/admin/generated-posts.php:79
+#: templates/admin/generated-posts.php:232
+#: templates/admin/history.php:120
+#: templates/admin/post-review.php:90
+#: templates/admin/research.php:168
+#: templates/admin/schedule.php:61
+#: templates/admin/structures.php:70
+#: templates/admin/structures.php:165
+#: templates/admin/templates.php:50
+#: templates/admin/voices.php:38
+msgid "Clear"
+msgstr ""
+
+#: templates/admin/activity.php:49
+msgid "Loading activity..."
+msgstr ""
+
+#: templates/admin/activity.php:54
+msgid "No Activity Found"
+msgstr ""
+
+#: templates/admin/activity.php:55
+msgid "No activity matches the selected filter."
+msgstr ""
+
+#: templates/admin/activity.php:67
+msgid "Post Details"
+msgstr ""
+
+#: templates/admin/activity.php:68
+#: templates/admin/author-topics.php:185
+#: templates/admin/author-topics.php:196
+#: templates/admin/author-topics.php:207
+#: templates/admin/authors.php:304
+#: templates/admin/authors.php:315
+#: templates/admin/calendar.php:132
+#: templates/admin/history.php:233
+#: templates/admin/schedule.php:266
+#: templates/admin/schedule.php:358
+#: templates/admin/sections.php:116
+#: templates/admin/structures.php:235
+#: templates/admin/structures.php:294
+#: templates/admin/templates.php:198
+#: templates/admin/templates.php:612
+#: templates/admin/templates.php:638
+#: templates/admin/templates.php:647
+#: templates/admin/voices.php:131
+msgid "Close modal"
+msgstr ""
+
+#: templates/admin/activity.php:73
+msgid "Loading post details..."
+msgstr ""
+
+#: templates/admin/activity.php:98
+#: templates/admin/calendar.php:151
+#: templates/admin/generated-posts.php:422
+#: templates/admin/post-review.php:278
+#: templates/admin/templates.php:638
+#: templates/admin/templates.php:660
+#: templates/partials/ai-edit-modal.php:22
+#: templates/partials/view-session-modal.php:30
+msgid "Close"
+msgstr ""
+
+#: templates/admin/activity.php:101
+msgid "Edit Post"
+msgstr ""
+
+#: templates/admin/activity.php:104
+msgid "Publish Post"
+msgstr ""
+
+#: templates/admin/activity.php:107
+#: templates/admin/templates.php:655
+#: templates/partials/history-row.php:79
+msgid "View Post"
+msgstr ""
+
+#: templates/admin/author-topics.php:26
+#: templates/admin/author-topics.php:46
+msgid "Back to Authors"
+msgstr ""
+
+#: templates/admin/author-topics.php:64
+msgid "Breadcrumb"
+msgstr ""
+
+#. translators: %s: author name
+#: templates/admin/author-topics.php:77
+#, php-format
+msgid "Topics: %s"
+msgstr ""
+
+#: templates/admin/author-topics.php:91
+#: templates/admin/authors.php:228
+#: templates/admin/planner.php:32
+msgid "Generate Topics"
+msgstr ""
+
+#: templates/admin/author-topics.php:95
+#: templates/admin/dashboard.php:194
+msgid "View Generated Posts"
+msgstr ""
+
+#: templates/admin/author-topics.php:105
+#: templates/admin/research.php:53
+msgid "Total Topics"
+msgstr ""
+
+#: templates/admin/author-topics.php:113
+#: templates/admin/author-topics.php:134
+msgid "Approved"
+msgstr ""
+
+#: templates/admin/author-topics.php:117
+#: templates/admin/author-topics.php:138
+msgid "Rejected"
+msgstr ""
+
+#: templates/admin/author-topics.php:121
+#: templates/admin/authors.php:95
+#: templates/admin/dashboard.php:36
+msgid "Posts Generated"
+msgstr ""
+
+#: templates/admin/author-topics.php:142
+msgid "Feedback"
+msgstr ""
+
+#: templates/admin/author-topics.php:150
+#: templates/admin/author-topics.php:169
+#: templates/admin/authors.php:285
+#: templates/admin/generated-posts.php:244
+#: templates/admin/post-review.php:101
+#: templates/admin/schedule.php:74
+msgid "Bulk Actions"
+msgstr ""
+
+#: templates/admin/author-topics.php:208
+msgid "Provide Feedback"
+msgstr ""
+
+#: templates/admin/author-topics.php:214
+msgid "Feedback Category"
+msgstr ""
+
+#: templates/admin/author-topics.php:216
+msgid "Other"
+msgstr ""
+
+#: templates/admin/author-topics.php:217
+msgid "Duplicate"
+msgstr ""
+
+#: templates/admin/author-topics.php:218
+#: templates/admin/authors.php:362
+msgid "Tone"
+msgstr ""
+
+#: templates/admin/author-topics.php:219
+msgid "Irrelevant"
+msgstr ""
+
+#: templates/admin/author-topics.php:220
+msgid "Policy"
+msgstr ""
+
+#: templates/admin/author-topics.php:222
+msgid "Select a structured reason to improve future topic quality."
+msgstr ""
+
+#: templates/admin/author-topics.php:226
+msgid "Reason (optional)"
+msgstr ""
+
+#: templates/admin/author-topics.php:227
+msgid "Why are you approving/rejecting this topic?"
+msgstr ""
+
+#: templates/admin/author-topics.php:228
+msgid "Your feedback helps improve future topic generation"
+msgstr ""
+
+#: templates/admin/author-topics.php:232
+msgid "Submit"
+msgstr ""
+
+#: templates/admin/authors.php:39
+msgid "Manage AI author profiles, generate topics, and create authentic content from different perspectives."
+msgstr ""
+
+#: templates/admin/authors.php:44
+#: templates/admin/authors.php:265
+msgid "Add Author"
+msgstr ""
+
+#: templates/admin/authors.php:52
+msgid "Authors List"
+msgstr ""
+
+#: templates/admin/authors.php:53
+msgid "Generation Queue"
+msgstr ""
+
+#: templates/admin/authors.php:68
+#, php-format
+msgid "%s author"
+msgid_plural "%s authors"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/authors.php:81
+msgid "Search Authors:"
+msgstr ""
+
+#: templates/admin/authors.php:82
+msgid "Search authors..."
+msgstr ""
+
+#: templates/admin/authors.php:92
+#: templates/admin/authors.php:321
+#: templates/admin/sections.php:41
+#: templates/admin/sections.php:123
+#: templates/admin/structures.php:78
+#: templates/admin/structures.php:173
+#: templates/admin/structures.php:242
+#: templates/admin/structures.php:301
+#: templates/admin/voices.php:47
+msgid "Name"
+msgstr ""
+
+#: templates/admin/authors.php:94
+msgid "Topics"
+msgstr ""
+
+#: templates/admin/authors.php:96
+msgid "Quality"
+msgstr ""
+
+#: templates/admin/authors.php:125
+#, php-format
+msgid "%d%% Approval Rate"
+msgstr ""
+
+#: templates/admin/authors.php:127
+msgid "No feedback yet"
+msgstr ""
+
+#: templates/admin/authors.php:131
+#, php-format
+msgid "%d Policy Violation"
+msgid_plural "%d Policy Violations"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/authors.php:140
+msgid "No Policy Violations"
+msgstr ""
+
+#: templates/admin/authors.php:155
+msgid "total"
+msgstr ""
+
+#: templates/admin/authors.php:171
+msgid "Critical"
+msgstr ""
+
+#: templates/admin/authors.php:177
+msgid "Healthy"
+msgstr ""
+
+#: templates/admin/authors.php:193
+#: templates/admin/authors.php:400
+#: templates/admin/schedule.php:181
+#: templates/admin/sections.php:44
+#: templates/admin/sections.php:65
+#: templates/admin/sections.php:146
+#: templates/admin/settings.php:49
+#: templates/admin/structures.php:80
+#: templates/admin/structures.php:92
+#: templates/admin/structures.php:188
+#: templates/admin/structures.php:271
+#: templates/admin/structures.php:324
+#: templates/admin/templates.php:120
+#: templates/admin/voices.php:70
+msgid "Active"
+msgstr ""
+
+#: templates/admin/authors.php:198
+#: templates/admin/schedule.php:175
+#: templates/admin/sections.php:70
+#: templates/admin/settings.php:62
+#: templates/admin/structures.php:94
+#: templates/admin/structures.php:190
+#: templates/admin/templates.php:125
+#: templates/admin/voices.php:75
+msgid "Inactive"
+msgstr ""
+
+#: templates/admin/authors.php:207
+#, php-format
+msgid "Policy flags: %d"
+msgstr ""
+
+#: templates/admin/authors.php:219
+msgid "View Topics"
+msgstr ""
+
+#: templates/admin/authors.php:223
+msgid "View Author's Posts"
+msgstr ""
+
+#: templates/admin/authors.php:225
+msgid "Edit author"
+msgstr ""
+
+#: templates/admin/authors.php:228
+msgid "Generate topics"
+msgstr ""
+
+#: templates/admin/authors.php:231
+msgid "Delete author"
+msgstr ""
+
+#: templates/admin/authors.php:244
+msgid "No Authors Found"
+msgstr ""
+
+#: templates/admin/authors.php:245
+msgid "No authors match your search criteria. Try a different search term."
+msgstr ""
+
+#: templates/admin/authors.php:260
+msgid "No Authors Yet"
+msgstr ""
+
+#: templates/admin/authors.php:261
+msgid "Create your first author to start generating topically diverse blog posts."
+msgstr ""
+
+#: templates/admin/authors.php:279
+msgid "This queue shows all approved topics across all authors, ready for post generation. Topics are prioritized by score (highest first), then by approval date."
+msgstr ""
+
+#: templates/admin/authors.php:327
+msgid "e.g., PHP Programming"
+msgstr ""
+
+#: templates/admin/authors.php:328
+msgid "The main topic or field this author covers"
+msgstr ""
+
+#: templates/admin/authors.php:332
+msgid "Keywords"
+msgstr ""
+
+#: templates/admin/authors.php:333
+msgid "e.g., Laravel, Symfony, Composer, PSR"
+msgstr ""
+
+#: templates/admin/authors.php:334
+msgid "Comma-separated keywords to focus on when generating topics"
+msgstr ""
+
+#: templates/admin/authors.php:339
+msgid "Additional context or instructions for topic generation..."
+msgstr ""
+
+#: templates/admin/authors.php:340
+msgid "Additional context that will be included when generating topics"
+msgstr ""
+
+#: templates/admin/authors.php:344
+#: templates/admin/sections.php:43
+#: templates/admin/sections.php:134
+#: templates/admin/structures.php:79
+#: templates/admin/structures.php:175
+#: templates/admin/structures.php:247
+#: templates/admin/structures.php:312
+msgid "Description"
+msgstr ""
+
+#: templates/admin/authors.php:349
+#: templates/admin/schedule.php:96
+msgid "Article Structure"
+msgstr ""
+
+#: templates/admin/authors.php:351
+msgid "None (use default)"
+msgstr ""
+
+#: templates/admin/authors.php:358
+msgid "Optional: Select a specific article structure for posts generated from this author"
+msgstr ""
+
+#: templates/admin/authors.php:363
+msgid "e.g., Professional, Witty, Academic"
+msgstr ""
+
+#: templates/admin/authors.php:364
+msgid "Specify the tone of voice for the generated content"
+msgstr ""
+
+#: templates/admin/authors.php:368
+msgid "Writing Style"
+msgstr ""
+
+#: templates/admin/authors.php:369
+msgid "e.g., Tutorial, Opinion Piece, Case Study"
+msgstr ""
+
+#: templates/admin/authors.php:370
+msgid "Specify the writing style for the generated content"
+msgstr ""
+
+#: templates/admin/authors.php:374
+msgid "Number of Topics to Generate"
+msgstr ""
+
+#: templates/admin/authors.php:379
+msgid "Topic Generation Frequency"
+msgstr ""
+
+#: templates/admin/authors.php:382
+#: templates/admin/authors.php:393
+msgid "Weekly"
+msgstr ""
+
+#: templates/admin/authors.php:383
+msgid "Bi-weekly"
+msgstr ""
+
+#: templates/admin/authors.php:389
+msgid "Post Generation Frequency"
+msgstr ""
+
+#: templates/admin/calendar.php:17
+msgid "View all scheduled posts in a calendar format. Switch between month, week, and day views to see your content schedule."
+msgstr ""
+
+#: templates/admin/calendar.php:23
+msgid "List View"
+msgstr ""
+
+#: templates/admin/calendar.php:36
+msgid "Previous Month"
+msgstr ""
+
+#: templates/admin/calendar.php:42
+msgid "Next Month"
+msgstr ""
+
+#: templates/admin/calendar.php:49
+msgid "Month"
+msgstr ""
+
+#: templates/admin/calendar.php:52
+msgid "Week"
+msgstr ""
+
+#: templates/admin/calendar.php:55
+msgid "Day"
+msgstr ""
+
+#: templates/admin/calendar.php:61
+msgid "Today"
+msgstr ""
+
+#: templates/admin/calendar.php:68
+msgid "Color Coding"
+msgstr ""
+
+#: templates/admin/calendar.php:72
+msgid "Template 1"
+msgstr ""
+
+#: templates/admin/calendar.php:76
+msgid "Template 2"
+msgstr ""
+
+#: templates/admin/calendar.php:80
+msgid "Template 3"
+msgstr ""
+
+#: templates/admin/calendar.php:84
+msgid "Other Templates"
+msgstr ""
+
+#: templates/admin/calendar.php:92
+msgid "Loading calendar..."
+msgstr ""
+
+#: templates/admin/calendar.php:99
+msgid "Sun"
+msgstr ""
+
+#: templates/admin/calendar.php:100
+msgid "Mon"
+msgstr ""
+
+#: templates/admin/calendar.php:101
+msgid "Tue"
+msgstr ""
+
+#: templates/admin/calendar.php:102
+msgid "Wed"
+msgstr ""
+
+#: templates/admin/calendar.php:103
+msgid "Thu"
+msgstr ""
+
+#: templates/admin/calendar.php:104
+msgid "Fri"
+msgstr ""
+
+#: templates/admin/calendar.php:105
+msgid "Sat"
+msgstr ""
+
+#: templates/admin/calendar.php:131
+msgid "Schedule Details"
+msgstr ""
+
+#: templates/admin/calendar.php:138
+#: templates/partials/ai-edit-modal.php:41
+msgid "Template:"
+msgstr ""
+
+#: templates/admin/calendar.php:139
+msgid "Scheduled Time:"
+msgstr ""
+
+#: templates/admin/calendar.php:140
+msgid "Frequency:"
+msgstr ""
+
+#: templates/admin/calendar.php:141
+#: templates/partials/ai-edit-modal.php:49
+msgid "Topic:"
+msgstr ""
+
+#: templates/admin/calendar.php:142
+msgid "Category:"
+msgstr ""
+
+#: templates/admin/calendar.php:143
+#: templates/partials/ai-edit-modal.php:45
+msgid "Author:"
+msgstr ""
+
+#: templates/admin/calendar.php:148
+msgid "View All Schedules"
+msgstr ""
+
+#: templates/admin/dashboard.php:9
+msgid "AI Engine plugin is not installed or activated. This plugin requires AI Engine to function."
+msgstr ""
+
+#: templates/admin/dashboard.php:19
+msgid "Overview of your AI content generation activity and quick actions."
+msgstr ""
+
+#: templates/admin/dashboard.php:24
+#: templates/admin/schedule.php:48
+#: templates/admin/templates.php:183
+msgid "Create Template"
+msgstr ""
+
+#: templates/admin/dashboard.php:44
+msgid "Active Schedules"
+msgstr ""
+
+#: templates/admin/dashboard.php:52
+msgid "Active Templates"
+msgstr ""
+
+#: templates/admin/dashboard.php:61
+msgid "Failed Generations"
+msgstr ""
+
+#: templates/admin/dashboard.php:72
+msgid "Upcoming Scheduled Posts"
+msgstr ""
+
+#: templates/admin/dashboard.php:80
+#: templates/admin/schedule.php:98
+msgid "Next Run"
+msgstr ""
+
+#: templates/admin/dashboard.php:81
+#: templates/admin/planner.php:100
+#: templates/admin/planner.php:101
+#: templates/admin/research.php:212
+#: templates/admin/research.php:215
+#: templates/admin/schedule.php:97
+#: templates/admin/schedule.php:283
+msgid "Frequency"
+msgstr ""
+
+#: templates/admin/dashboard.php:101
+#: templates/admin/schedule.php:240
+msgid "No Schedules Yet"
+msgstr ""
+
+#: templates/admin/dashboard.php:102
+msgid "Get started by creating your first schedule to automate content generation."
+msgstr ""
+
+#: templates/admin/dashboard.php:106
+#: templates/admin/schedule.php:246
+msgid "Create Schedule"
+msgstr ""
+
+#: templates/admin/dashboard.php:117
+msgid "Recent Activity"
+msgstr ""
+
+#: templates/admin/dashboard.php:120
+msgid "View All"
+msgstr ""
+
+#: templates/admin/dashboard.php:169
+msgid "No Posts Yet"
+msgstr ""
+
+#: templates/admin/dashboard.php:170
+msgid "Start generating content by creating templates and schedules."
+msgstr ""
+
+#: templates/admin/dashboard.php:180
+msgid "Quick Actions"
+msgstr ""
+
+#: templates/admin/dashboard.php:186
+msgid "Manage Templates"
+msgstr ""
+
+#: templates/admin/dashboard.php:190
+msgid "Manage Schedules"
+msgstr ""
+
+#: templates/admin/dashboard.php:198
+msgid "Manage Authors"
+msgstr ""
+
+#: templates/admin/dashboard.php:202
+msgid "Plugin Settings"
+msgstr ""
+
+#: templates/admin/dev-tools.php:12
+msgid "Developer Tools"
+msgstr ""
+
+#: templates/admin/dev-tools.php:13
+msgid "Generate test data and template scaffolds using AI to quickly prototype and test your workflow."
+msgstr ""
+
+#: templates/admin/dev-tools.php:25
+msgid "Generate Template Scaffold"
+msgstr ""
+
+#: templates/admin/dev-tools.php:28
+msgid "Create a complete template setup (Voice, Structure, Template) based on a topic."
+msgstr ""
+
+#: templates/admin/dev-tools.php:32
+msgid "Topic / Niche"
+msgstr ""
+
+#: templates/admin/dev-tools.php:33
+msgid "e.g. Urban Gardening, SaaS Marketing"
+msgstr ""
+
+#: templates/admin/dev-tools.php:34
+msgid "The main topic to base the prompts and structure on."
+msgstr ""
+
+#: templates/admin/dev-tools.php:38
+msgid "Options"
+msgstr ""
+
+#: templates/admin/dev-tools.php:42
+msgid "Generate Voice/Persona"
+msgstr ""
+
+#: templates/admin/dev-tools.php:46
+msgid "Generate Article Structure"
+msgstr ""
+
+#: templates/admin/dev-tools.php:50
+msgid "Include Title Prompt"
+msgstr ""
+
+#: templates/admin/dev-tools.php:54
+msgid "Include Content Prompt"
+msgstr ""
+
+#: templates/admin/dev-tools.php:58
+msgid "Include Image Prompt"
+msgstr ""
+
+#: templates/admin/dev-tools.php:66
+msgid "Generate Scaffold"
+msgstr ""
+
+#: templates/admin/dev-tools.php:78
+msgid "Generated Scaffold"
+msgstr ""
+
+#: templates/admin/generated-posts.php:25
+msgid "View and manage all AI-generated posts including published articles and drafts pending review."
+msgstr ""
+
+#: templates/admin/generated-posts.php:45
+msgid "Filter by Author:"
+msgstr ""
+
+#: templates/admin/generated-posts.php:47
+msgid "All Authors"
+msgstr ""
+
+#: templates/admin/generated-posts.php:56
+#: templates/admin/generated-posts.php:209
+msgid "Filter by Template:"
+msgstr ""
+
+#: templates/admin/generated-posts.php:58
+#: templates/admin/generated-posts.php:211
+#: templates/admin/post-review.php:74
+msgid "All Templates"
+msgstr ""
+
+#: templates/admin/generated-posts.php:68
+#: templates/admin/generated-posts.php:220
+#: templates/admin/history.php:114
+#: templates/admin/post-review.php:81
+msgid "Filter"
+msgstr ""
+
+#: templates/admin/generated-posts.php:72
+#: templates/admin/generated-posts.php:225
+#: templates/admin/post-review.php:86
+msgid "Search Posts:"
+msgstr ""
+
+#: templates/admin/generated-posts.php:73
+#: templates/admin/generated-posts.php:226
+#: templates/admin/post-review.php:87
+msgid "Search posts..."
+msgstr ""
+
+#: templates/admin/generated-posts.php:92
+#: templates/admin/generated-posts.php:264
+msgid "Source"
+msgstr ""
+
+#: templates/admin/generated-posts.php:95
+msgid "Generated"
+msgstr ""
+
+#: templates/admin/generated-posts.php:142
+#: templates/admin/generated-posts.php:144
+#: templates/admin/generated-posts.php:322
+msgid "AI Edit"
+msgstr ""
+
+#: templates/admin/generated-posts.php:148
+#: templates/admin/generated-posts.php:328
+#: templates/partials/history-row.php:84
+#: templates/partials/history-row.php:86
+#: templates/partials/view-session-modal.php:22
+msgid "View Session"
+msgstr ""
+
+#: templates/admin/generated-posts.php:160
+msgid "No Generated Posts"
+msgstr ""
+
+#: templates/admin/generated-posts.php:161
+msgid "No generated posts found. Start creating content by setting up templates and schedules."
+msgstr ""
+
+#. translators: %s: total number of items
+#: templates/admin/generated-posts.php:187
+#, php-format
+msgid "%s item"
+msgid_plural "%s items"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/generated-posts.php:207
+#, php-format
+msgid "%d draft"
+msgid_plural "%d drafts"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/generated-posts.php:248
+#: templates/admin/post-review.php:105
+#: templates/admin/schedule.php:81
+msgid "Apply"
+msgstr ""
+
+#: templates/admin/generated-posts.php:251
+#: templates/admin/history.php:133
+#: templates/admin/post-review.php:110
+msgid "Reload"
+msgstr ""
+
+#: templates/admin/generated-posts.php:259
+#: templates/admin/history.php:154
+#: templates/admin/planner.php:64
+#: templates/admin/post-review.php:121
+#: templates/admin/schedule.php:68
+msgid "Select All"
+msgstr ""
+
+#: templates/admin/generated-posts.php:263
+#: templates/admin/generated-posts.php:315
+msgid "Preview"
+msgstr ""
+
+#: templates/admin/generated-posts.php:266
+msgid "Modified"
+msgstr ""
+
+#: templates/admin/generated-posts.php:274
+#: templates/admin/post-review.php:134
+msgid "Select Post"
+msgstr ""
+
+#: templates/admin/generated-posts.php:290
+msgid "Hover to preview this post"
+msgstr ""
+
+#: templates/admin/generated-posts.php:308
+#: templates/admin/post-review.php:172
+msgid "Edit this post"
+msgstr ""
+
+#: templates/admin/generated-posts.php:314
+msgid "Preview this post"
+msgstr ""
+
+#: templates/admin/generated-posts.php:321
+msgid "AI Edit - Regenerate components"
+msgstr ""
+
+#: templates/admin/generated-posts.php:327
+#: templates/admin/post-review.php:184
+msgid "View generation session"
+msgstr ""
+
+#: templates/admin/generated-posts.php:333
+#: templates/admin/post-review.php:190
+msgid "Publish this post"
+msgstr ""
+
+#: templates/admin/generated-posts.php:340
+#: templates/admin/post-review.php:197
+msgid "Regenerate this post"
+msgstr ""
+
+#: templates/admin/generated-posts.php:347
+#: templates/admin/post-review.php:204
+msgid "Delete this post"
+msgstr ""
+
+#: templates/admin/generated-posts.php:362
+#: templates/admin/post-review.php:220
+#, php-format
+msgid "%d item"
+msgid_plural "%d items"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/generated-posts.php:379
+#: templates/admin/post-review.php:236
+#: templates/partials/history-pagination.php:23
+msgid "Previous page"
+msgstr ""
+
+#: templates/admin/generated-posts.php:387
+#: templates/admin/post-review.php:243
+msgid "of"
+msgstr ""
+
+#: templates/admin/generated-posts.php:394
+#: templates/admin/post-review.php:249
+#: templates/partials/history-pagination.php:41
+msgid "Next page"
+msgstr ""
+
+#: templates/admin/generated-posts.php:407
+#: templates/admin/post-review.php:265
+msgid "There are no draft posts waiting for review. All generated posts have been published or deleted."
+msgstr ""
+
+#: templates/admin/history.php:31
+msgid "View generation history containers and inspect every logged step, AI call, and error for each run."
+msgstr ""
+
+#: templates/admin/history.php:36
+msgid "Export CSV"
+msgstr ""
+
+#: templates/admin/history.php:50
+msgid "Total Generated"
+msgstr ""
+
+#: templates/admin/history.php:77
+msgid "Success Rate"
+msgstr ""
+
+#: templates/admin/history.php:95
+#, php-format
+msgid "%s container"
+msgid_plural "%s containers"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/history.php:107
+msgid "All Statuses"
+msgstr ""
+
+#: templates/admin/history.php:110
+msgid "Processing"
+msgstr ""
+
+#: templates/admin/history.php:118
+msgid "Search History:"
+msgstr ""
+
+#: templates/admin/history.php:119
+msgid "Search history..."
+msgstr ""
+
+#: templates/admin/history.php:129
+msgid "Delete Selected"
+msgstr ""
+
+#: templates/admin/history.php:139
+msgid "Clear Failed"
+msgstr ""
+
+#: templates/admin/history.php:143
+msgid "Clear All"
+msgstr ""
+
+#: templates/admin/history.php:157
+msgid "Title / Topic"
+msgstr ""
+
+#: templates/admin/history.php:178
+msgid "Clear Filters"
+msgstr ""
+
+#: templates/admin/history.php:192
+#: templates/partials/history-pagination.php:19
+#, php-format
+msgid "%d items"
+msgstr ""
+
+#: templates/admin/history.php:203
+msgid "No History Found"
+msgstr ""
+
+#: templates/admin/history.php:204
+msgid "No history containers match your search criteria. Try a different search term or filter."
+msgstr ""
+
+#: templates/admin/history.php:220
+#: templates/admin/schedule.php:367
+msgid "No History Yet"
+msgstr ""
+
+#: templates/admin/history.php:221
+msgid "Generation history containers will appear here once you start creating AI-powered content."
+msgstr ""
+
+#: templates/admin/planner.php:11
+msgid "Topic Brainstorming"
+msgstr ""
+
+#: templates/admin/planner.php:12
+msgid "Generate article ideas based on a niche, or paste your own list of topics."
+msgstr ""
+
+#: templates/admin/planner.php:19
+msgid "Niche / Topic"
+msgstr ""
+
+#: templates/admin/planner.php:20
+msgid "e.g. React.js Tutorials, Healthy Keto Recipes..."
+msgstr ""
+
+#: templates/admin/planner.php:24
+#: templates/admin/research.php:92
+msgid "Number of Topics"
+msgstr ""
+
+#: templates/admin/planner.php:40
+msgid "Or Paste Topics (One per line)"
+msgstr ""
+
+#: templates/admin/planner.php:41
+msgid "Topic 1&#10;Topic 2&#10;Topic 3"
+msgstr ""
+
+#: templates/admin/planner.php:43
+msgid "Add to List"
+msgstr ""
+
+#: templates/admin/planner.php:55
+msgid "Review & Schedule"
+msgstr ""
+
+#: templates/admin/planner.php:69
+msgid "Filter topics..."
+msgstr ""
+
+#: templates/admin/planner.php:70
+msgid "Copy Selected"
+msgstr ""
+
+#: templates/admin/planner.php:71
+msgid "Clear List"
+msgstr ""
+
+#: templates/admin/planner.php:80
+msgid "Bulk Schedule Settings"
+msgstr ""
+
+#: templates/admin/planner.php:84
+msgid "Use Template"
+msgstr ""
+
+#: templates/admin/planner.php:86
+msgid "Select a Template..."
+msgstr ""
+
+#: templates/admin/planner.php:91
+msgid "The {{topic}} variable in the template will be replaced by the topic title."
+msgstr ""
+
+#: templates/admin/planner.php:95
+#: templates/admin/research.php:203
+msgid "Start Date"
+msgstr ""
+
+#: templates/admin/planner.php:108
+#: templates/admin/research.php:179
+msgid "Schedule Selected Topics"
+msgstr ""
+
+#: templates/admin/post-review.php:42
+msgid "Post Review"
+msgstr ""
+
+#: templates/admin/post-review.php:44
+msgid "Review and manage draft posts generated by AI Post Scheduler before publishing."
+msgstr ""
+
+#: templates/admin/post-review.php:59
+msgid "Draft Posts"
+msgstr ""
+
+#: templates/admin/post-review.php:150
+#, php-format
+msgid "Modified: %s"
+msgstr ""
+
+#: templates/admin/post-review.php:178
+msgid "Preview post content"
+msgstr ""
+
+#: templates/admin/research.php:36
+msgid "Discover trending topics in your niche using AI-powered research and automatically schedule content creation."
+msgstr ""
+
+#: templates/admin/research.php:43
+msgid "Trending Topics"
+msgstr ""
+
+#: templates/admin/research.php:44
+msgid "Gap Analysis"
+msgstr ""
+
+#: templates/admin/research.php:45
+msgid "Planner"
+msgstr ""
+
+#: templates/admin/research.php:57
+msgid "Niches"
+msgstr ""
+
+#: templates/admin/research.php:61
+msgid "Avg Score"
+msgstr ""
+
+#: templates/admin/research.php:65
+msgid "Last 7 Days"
+msgstr ""
+
+#: templates/admin/research.php:71
+msgid "New Research"
+msgstr ""
+
+#: templates/admin/research.php:79
+msgid "Niche/Industry"
+msgstr ""
+
+#: templates/admin/research.php:83
+msgid "e.g., Digital Marketing, Health & Wellness, AI Technology"
+msgstr ""
+
+#: templates/admin/research.php:85
+msgid "Enter the niche or industry to research trending topics for."
+msgstr ""
+
+#: templates/admin/research.php:97
+msgid "How many trending topics to discover (1-50)."
+msgstr ""
+
+#: templates/admin/research.php:104
+msgid "Focus Keywords (Optional)"
+msgstr ""
+
+#: templates/admin/research.php:108
+msgid "e.g., SEO, content strategy, automation"
+msgstr ""
+
+#: templates/admin/research.php:110
+msgid "Comma-separated keywords to focus the research (optional)."
+msgstr ""
+
+#: templates/admin/research.php:119
+msgid "Research Trending Topics"
+msgstr ""
+
+#: templates/admin/research.php:126
+msgid "Research Results"
+msgstr ""
+
+#: templates/admin/research.php:133
+msgid "Trending Topics Library"
+msgstr ""
+
+#: templates/admin/research.php:139
+msgid "All Niches"
+msgstr ""
+
+#: templates/admin/research.php:150
+msgid "All Scores"
+msgstr ""
+
+#: templates/admin/research.php:151
+msgid "Score 80+"
+msgstr ""
+
+#: templates/admin/research.php:152
+msgid "Score 90+"
+msgstr ""
+
+#: templates/admin/research.php:157
+msgid "Fresh Only (Last 7 Days)"
+msgstr ""
+
+#: templates/admin/research.php:162
+msgid "Load Topics"
+msgstr ""
+
+#: templates/admin/research.php:166
+#: templates/admin/research.php:167
+msgid "Search topics..."
+msgstr ""
+
+#: templates/admin/research.php:168
+msgid "Clear search"
+msgstr ""
+
+#: templates/admin/research.php:174
+msgid "Click \"Load Topics\" to view your research library."
+msgstr ""
+
+#: templates/admin/research.php:189
+#: templates/admin/schedule.php:275
+msgid "Select Template"
+msgstr ""
+
+#: templates/admin/research.php:223
+msgid "Schedule Topics"
+msgstr ""
+
+#: templates/admin/research.php:234
+msgid "Content Gap Analysis"
+msgstr ""
+
+#: templates/admin/research.php:235
+msgid "Analyze your existing content against your target niche to identify missing sub-topics and opportunities."
+msgstr ""
+
+#: templates/admin/research.php:238
+msgid "Enter Target Niche (e.g., Sustainable Gardening)"
+msgstr ""
+
+#: templates/admin/research.php:241
+msgid "Analyze Site for Gaps"
+msgstr ""
+
+#: templates/admin/research.php:247
+msgid "Identified Content Gaps"
+msgstr ""
+
+#: templates/admin/schedule.php:26
+msgid "Post Schedules"
+msgstr ""
+
+#: templates/admin/schedule.php:27
+msgid "Automate post generation by setting up recurring schedules for your templates."
+msgstr ""
+
+#: templates/admin/schedule.php:32
+msgid "Add Schedule"
+msgstr ""
+
+#: templates/admin/schedule.php:43
+msgid "No Templates Available"
+msgstr ""
+
+#: templates/admin/schedule.php:44
+msgid "You need to create at least one active template before you can schedule posts."
+msgstr ""
+
+#: templates/admin/schedule.php:59
+msgid "Search Schedules:"
+msgstr ""
+
+#: templates/admin/schedule.php:60
+msgid "Search schedules..."
+msgstr ""
+
+#: templates/admin/schedule.php:71
+msgid "Unselect All"
+msgstr ""
+
+#: templates/admin/schedule.php:76
+msgid "Pause"
+msgstr ""
+
+#: templates/admin/schedule.php:77
+msgid "Activate"
+msgstr ""
+
+#: templates/admin/schedule.php:78
+#: templates/admin/schedule.php:201
+#: templates/admin/templates.php:135
+#: templates/admin/templates.php:137
+#: templates/admin/templates.php:507
+msgid "Run Now"
+msgstr ""
+
+#: templates/admin/schedule.php:93
+msgid "Select all schedules"
+msgstr ""
+
+#: templates/admin/schedule.php:99
+msgid "Last Run"
+msgstr ""
+
+#: templates/admin/schedule.php:110
+#: templates/admin/schedule.php:319
+#: templates/admin/structures.php:81
+#: templates/admin/structures.php:99
+msgid "Default"
+msgstr ""
+
+#: templates/admin/schedule.php:117
+msgid "Rotating"
+msgstr ""
+
+#: templates/admin/schedule.php:129
+#, php-format
+msgid "Select schedule %s"
+msgstr ""
+
+#: templates/admin/schedule.php:158
+msgid "Never"
+msgstr ""
+
+#: templates/admin/schedule.php:191
+msgid "Toggle schedule status"
+msgstr ""
+
+#: templates/admin/schedule.php:198
+msgid "Edit schedule"
+msgstr ""
+
+#: templates/admin/schedule.php:201
+msgid "Run now"
+msgstr ""
+
+#: templates/admin/schedule.php:204
+msgid "View history"
+msgstr ""
+
+#: templates/admin/schedule.php:204
+msgid "View History"
+msgstr ""
+
+#: templates/admin/schedule.php:207
+msgid "Clone schedule"
+msgstr ""
+
+#: templates/admin/schedule.php:207
+#: templates/admin/templates.php:143
+#: templates/admin/templates.php:145
+msgid "Clone"
+msgstr ""
+
+#: templates/admin/schedule.php:210
+msgid "Delete schedule"
+msgstr ""
+
+#: templates/admin/schedule.php:223
+msgid "No Schedules Found"
+msgstr ""
+
+#: templates/admin/schedule.php:224
+msgid "No schedules match your search criteria. Try a different search term."
+msgstr ""
+
+#: templates/admin/schedule.php:241
+msgid "Create a schedule to automatically generate posts on a regular basis using your templates."
+msgstr ""
+
+#: templates/admin/schedule.php:265
+msgid "Add New Schedule"
+msgstr ""
+
+#: templates/admin/schedule.php:301
+msgid "Start Time"
+msgstr ""
+
+#: templates/admin/schedule.php:303
+msgid "Leave empty to start from now"
+msgstr ""
+
+#: templates/admin/schedule.php:307
+msgid "Topic (Optional)"
+msgstr ""
+
+#: templates/admin/schedule.php:309
+msgid "Optional topic to pass to template variables"
+msgstr ""
+
+#: templates/admin/schedule.php:313
+msgid "Article Structure (Optional)"
+msgstr ""
+
+#: templates/admin/schedule.php:315
+msgid "Use Default"
+msgstr ""
+
+#: templates/admin/schedule.php:323
+msgid "Select a specific article structure or leave as default"
+msgstr ""
+
+#: templates/admin/schedule.php:327
+msgid "Rotation Pattern (Optional)"
+msgstr ""
+
+#: templates/admin/schedule.php:329
+msgid "No Rotation"
+msgstr ""
+
+#: templates/admin/schedule.php:334
+msgid "Automatically alternate between different article structures"
+msgstr ""
+
+#: templates/admin/schedule.php:340
+msgid "Schedule is active"
+msgstr ""
+
+#: templates/admin/schedule.php:347
+msgid "Save Schedule"
+msgstr ""
+
+#: templates/admin/schedule.php:357
+msgid "Schedule History"
+msgstr ""
+
+#: templates/admin/schedule.php:363
+msgid "Loading history..."
+msgstr ""
+
+#: templates/admin/schedule.php:368
+msgid "No history events have been recorded for this schedule yet."
+msgstr ""
+
+#: templates/admin/sections.php:16
+msgid "Prompt Sections"
+msgstr ""
+
+#: templates/admin/sections.php:17
+msgid "Create and manage reusable prompt sections that can be inserted into your templates using placeholders."
+msgstr ""
+
+#: templates/admin/sections.php:22
+msgid "Add Section"
+msgstr ""
+
+#: templates/admin/sections.php:33
+#: templates/admin/structures.php:164
+msgid "Search sections..."
+msgstr ""
+
+#: templates/admin/sections.php:42
+#: templates/admin/sections.php:128
+#: templates/admin/structures.php:174
+#: templates/admin/structures.php:306
+msgid "Key"
+msgstr ""
+
+#: templates/admin/sections.php:55
+msgid "Copy placeholder"
+msgstr ""
+
+#: templates/admin/sections.php:91
+#: templates/admin/structures.php:213
+msgid "No Sections Found"
+msgstr ""
+
+#: templates/admin/sections.php:92
+msgid "No prompt sections match your search criteria."
+msgstr ""
+
+#: templates/admin/sections.php:101
+#: templates/admin/structures.php:222
+msgid "No Prompt Sections"
+msgstr ""
+
+#: templates/admin/sections.php:102
+msgid "Create reusable prompt sections that can be inserted into your article structures using placeholders like {{section:key}}."
+msgstr ""
+
+#: templates/admin/sections.php:105
+msgid "Create First Section"
+msgstr ""
+
+#: templates/admin/sections.php:115
+#: templates/admin/structures.php:293
+msgid "Add New Prompt Section"
+msgstr ""
+
+#: templates/admin/sections.php:129
+#: templates/admin/structures.php:307
+msgid "e.g. introduction, steps, tips"
+msgstr ""
+
+#: templates/admin/sections.php:130
+#: templates/admin/structures.php:308
+msgid "Use a unique key. Lowercase letters, numbers, and underscores recommended."
+msgstr ""
+
+#: templates/admin/sections.php:139
+#: templates/admin/structures.php:317
+#: templates/admin/templates.php:213
+#: templates/partials/ai-edit-modal.php:132
+msgid "Content"
+msgstr ""
+
+#: templates/admin/sections.php:140
+#: templates/admin/structures.php:318
+msgid "Prompt text for this section"
+msgstr ""
+
+#: templates/admin/sections.php:153
+#: templates/admin/structures.php:331
+msgid "Save Section"
+msgstr ""
+
+#: templates/admin/seeder.php:12
+msgid "Database Seeder"
+msgstr ""
+
+#: templates/admin/seeder.php:13
+msgid "Generate test data to quickly populate your database with AI-generated templates, schedules, and content for testing purposes."
+msgstr ""
+
+#: templates/admin/seeder.php:25
+msgid "Seed Configuration"
+msgstr ""
+
+#: templates/admin/seeder.php:29
+msgid "Seeder Keywords"
+msgstr ""
+
+#: templates/admin/seeder.php:30
+msgid "e.g., technology, fitness, vegan recipes"
+msgstr ""
+
+#: templates/admin/seeder.php:31
+msgid "Comma-separated keywords to guide the AI generation (optional)."
+msgstr ""
+
+#: templates/admin/seeder.php:38
+msgid "Number of personas to create."
+msgstr ""
+
+#: templates/admin/seeder.php:44
+msgid "Number of post templates to create."
+msgstr ""
+
+#: templates/admin/seeder.php:48
+msgid "Scheduled Templates"
+msgstr ""
+
+#: templates/admin/seeder.php:50
+msgid "Recurring schedules (Daily, Weekly, etc.) using existing templates."
+msgstr ""
+
+#: templates/admin/seeder.php:54
+msgid "Planner Entries"
+msgstr ""
+
+#: templates/admin/seeder.php:56
+msgid "One-time scheduled posts with specific topics (simulating Planner)."
+msgstr ""
+
+#: templates/admin/seeder.php:63
+msgid "Run Seeder"
+msgstr ""
+
+#: templates/admin/seeder.php:75
+msgid "Seeder Log"
+msgstr ""
+
+#: templates/admin/settings.php:13
+msgid "Configure plugin settings, check system status, and manage AI Engine connection."
+msgstr ""
+
+#: templates/admin/settings.php:21
+msgid "Plugin Configuration"
+msgstr ""
+
+#: templates/admin/settings.php:39
+msgid "Cron Status"
+msgstr ""
+
+#: templates/admin/settings.php:53
+#, php-format
+msgid "Next scheduled check: %s"
+msgstr ""
+
+#: templates/admin/settings.php:64
+msgid "Cron job is not scheduled. Try deactivating and reactivating the plugin."
+msgstr ""
+
+#: templates/admin/settings.php:75
+msgid "AI Engine Status"
+msgstr ""
+
+#: templates/admin/settings.php:83
+msgid "Connected"
+msgstr ""
+
+#: templates/admin/settings.php:85
+msgid "AI Engine is installed and active."
+msgstr ""
+
+#: templates/admin/settings.php:90
+msgid "Test Connection"
+msgstr ""
+
+#: templates/admin/settings.php:99
+msgid "Not Found"
+msgstr ""
+
+#: templates/admin/settings.php:101
+msgid "AI Engine is not installed or not activated. Please install and activate the AI Engine plugin."
+msgstr ""
+
+#: templates/admin/settings.php:106
+msgid "Download AI Engine"
+msgstr ""
+
+#: templates/admin/structures.php:23
+msgid "Define how your AI-generated content is organized with customizable article structures and sections."
+msgstr ""
+
+#: templates/admin/structures.php:28
+msgid "Add Structure Section"
+msgstr ""
+
+#: templates/admin/structures.php:32
+msgid "Add New Structure"
+msgstr ""
+
+#: templates/admin/structures.php:41
+msgid "Structure Sections"
+msgstr ""
+
+#: templates/admin/structures.php:55
+#, php-format
+msgid "%s structure"
+msgid_plural "%s structures"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/structures.php:68
+msgid "Search Structures:"
+msgstr ""
+
+#: templates/admin/structures.php:69
+msgid "Search structures..."
+msgstr ""
+
+#: templates/admin/structures.php:128
+msgid "No Structures Found"
+msgstr ""
+
+#: templates/admin/structures.php:129
+msgid "No article structures match your search criteria."
+msgstr ""
+
+#: templates/admin/structures.php:137
+msgid "No Article Structures"
+msgstr ""
+
+#: templates/admin/structures.php:138
+msgid "Create article structures to customize how templates assemble content."
+msgstr ""
+
+#: templates/admin/structures.php:139
+msgid "Create Structure"
+msgstr ""
+
+#: templates/admin/structures.php:156
+#, php-format
+msgid "%s section"
+msgid_plural "%s sections"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/structures.php:163
+msgid "Search Sections:"
+msgstr ""
+
+#: templates/admin/structures.php:214
+msgid "No structure sections match your search criteria."
+msgstr ""
+
+#: templates/admin/structures.php:223
+msgid "Create prompt sections to reuse across article structures."
+msgstr ""
+
+#: templates/admin/structures.php:224
+msgid "Create Section"
+msgstr ""
+
+#: templates/admin/structures.php:234
+msgid "Add New Article Structure"
+msgstr ""
+
+#: templates/admin/structures.php:252
+msgid "Sections (Select one or more)"
+msgstr ""
+
+#: templates/admin/structures.php:260
+msgid "Choose sections that make up this article structure. Hold Ctrl (Cmd on Mac) to select multiple items."
+msgstr ""
+
+#: templates/admin/structures.php:264
+msgid "Prompt Template"
+msgstr ""
+
+#: templates/admin/structures.php:265
+msgid "Use {{section:key}} placeholders to inject section content"
+msgstr ""
+
+#: templates/admin/structures.php:278
+msgid "Set as Default"
+msgstr ""
+
+#: templates/admin/structures.php:285
+msgid "Save Structure"
+msgstr ""
+
+#: templates/admin/system-status.php:13
+msgid "Monitor system health, PHP configuration, WordPress environment, and plugin compatibility."
+msgstr ""
+
+#: templates/admin/system-status.php:32
+msgid "Check"
+msgstr ""
+
+#: templates/admin/system-status.php:33
+msgid "Value"
+msgstr ""
+
+#: templates/admin/system-status.php:46
+#: templates/admin/system-status.php:189
+msgid "Show Details"
+msgstr ""
+
+#: templates/admin/system-status.php:57
+msgid "OK"
+msgstr ""
+
+#: templates/admin/system-status.php:89
+msgid "Database Management"
+msgstr ""
+
+#: templates/admin/system-status.php:93
+msgid "Use these tools to repair, reinstall, or wipe the plugin's database tables. Destructive actions require confirmation."
+msgstr ""
+
+#: templates/admin/system-status.php:98
+msgid "Repair DB Tables"
+msgstr ""
+
+#: templates/admin/system-status.php:103
+msgid "Reinstall DB Tables"
+msgstr ""
+
+#: templates/admin/system-status.php:108
+msgid "Wipe Plugin Data"
+msgstr ""
+
+#: templates/admin/system-status.php:115
+msgid "Back up data before reinstalling (data will be restored afterwards)"
+msgstr ""
+
+#: templates/admin/system-status.php:126
+msgid "Data Management"
+msgstr ""
+
+#: templates/admin/system-status.php:132
+msgid "Export"
+msgstr ""
+
+#: templates/admin/system-status.php:133
+msgid "Download a backup of all plugin data in the selected format."
+msgstr ""
+
+#: templates/admin/system-status.php:136
+msgid "Export format"
+msgstr ""
+
+#: templates/admin/system-status.php:145
+msgid "Export Data"
+msgstr ""
+
+#: templates/admin/system-status.php:152
+msgid "Import"
+msgstr ""
+
+#: templates/admin/system-status.php:153
+msgid "Restore plugin data from a previously exported file. This will overwrite existing data."
+msgstr ""
+
+#: templates/admin/system-status.php:156
+msgid "Import format"
+msgstr ""
+
+#: templates/admin/system-status.php:164
+msgid "Import file"
+msgstr ""
+
+#: templates/admin/system-status.php:169
+msgid "Import Data"
+msgstr ""
+
+#: templates/admin/system-status.php:188
+msgid "Hide Details"
+msgstr ""
+
+#: templates/admin/templates.php:12
+msgid "Post Templates"
+msgstr ""
+
+#: templates/admin/templates.php:13
+msgid "Create and manage AI post generation templates with custom prompts and settings."
+msgstr ""
+
+#: templates/admin/templates.php:18
+msgid "Add Template"
+msgstr ""
+
+#: templates/admin/templates.php:35
+#, php-format
+msgid "%s template"
+msgid_plural "%s templates"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/templates.php:48
+msgid "Search Templates:"
+msgstr ""
+
+#: templates/admin/templates.php:49
+msgid "Search templates..."
+msgstr ""
+
+#: templates/admin/templates.php:59
+#: templates/admin/templates.php:239
+msgid "Template Name"
+msgstr ""
+
+#: templates/admin/templates.php:60
+#: templates/admin/templates.php:449
+msgid "Post Status"
+msgstr ""
+
+#: templates/admin/templates.php:61
+#: templates/admin/templates.php:458
+msgid "Category"
+msgstr ""
+
+#: templates/admin/templates.php:62
+msgid "Statistics"
+msgstr ""
+
+#: templates/admin/templates.php:103
+msgid "generated"
+msgstr ""
+
+#: templates/admin/templates.php:105
+msgid "(view)"
+msgstr ""
+
+#: templates/admin/templates.php:109
+msgid "Pending:"
+msgstr ""
+
+#: templates/admin/templates.php:110
+msgid "Today:"
+msgstr ""
+
+#: templates/admin/templates.php:111
+msgid "Week:"
+msgstr ""
+
+#: templates/admin/templates.php:112
+msgid "Month:"
+msgstr ""
+
+#: templates/admin/templates.php:161
+msgid "No Templates Found"
+msgstr ""
+
+#: templates/admin/templates.php:162
+msgid "No templates match your search criteria. Try a different search term."
+msgstr ""
+
+#: templates/admin/templates.php:178
+msgid "No Templates Yet"
+msgstr ""
+
+#: templates/admin/templates.php:179
+msgid "Templates define how your AI-generated posts are structured. Create your first template to start generating content automatically."
+msgstr ""
+
+#: templates/admin/templates.php:197
+msgid "Add New Template"
+msgstr ""
+
+#: templates/admin/templates.php:205
+msgid "Basic Info"
+msgstr ""
+
+#: templates/admin/templates.php:209
+msgid "Title & Excerpt"
+msgstr ""
+
+#: templates/admin/templates.php:217
+#: templates/partials/ai-edit-modal.php:169
+#: templates/partials/ai-edit-modal.php:180
+msgid "Featured Image"
+msgstr ""
+
+#: templates/admin/templates.php:221
+msgid "Summary"
+msgstr ""
+
+#: templates/admin/templates.php:232
+msgid "Basic Information"
+msgstr ""
+
+#: templates/admin/templates.php:233
+msgid "Give your template a unique name and optional description to help organize your templates."
+msgstr ""
+
+#: templates/admin/templates.php:235
+msgid "Give your template a name and brief description to help you identify it later."
+msgstr ""
+
+#: templates/admin/templates.php:240
+msgid "Enter a unique, descriptive name for this template. This helps you identify it when creating schedules."
+msgstr ""
+
+#: templates/admin/templates.php:242
+msgid "e.g., Tech News Blog Post"
+msgstr ""
+
+#: templates/admin/templates.php:243
+msgid "A descriptive name for your template"
+msgstr ""
+
+#: templates/admin/templates.php:248
+msgid "Template Description"
+msgstr ""
+
+#: templates/admin/templates.php:249
+msgid "Optional notes about what this template is used for, target audience, or any special instructions."
+msgstr ""
+
+#: templates/admin/templates.php:251
+msgid "Optional: Describe what this template is used for..."
+msgstr ""
+
+#: templates/admin/templates.php:252
+msgid "Optional. Helps you remember the purpose of this template."
+msgstr ""
+
+#: templates/admin/templates.php:259
+msgid "Title & Excerpt Settings"
+msgstr ""
+
+#: templates/admin/templates.php:260
+msgid "Configure how AI generates titles and excerpts for your posts. Leave blank to auto-generate from content."
+msgstr ""
+
+#: templates/admin/templates.php:262
+msgid "Configure how the AI generates titles and excerpts for your posts."
+msgstr ""
+
+#: templates/admin/templates.php:266
+#: templates/admin/templates.php:589
+#: templates/admin/voices.php:48
+#: templates/admin/voices.php:143
+msgid "Title Prompt"
+msgstr ""
+
+#: templates/admin/templates.php:267
+msgid "Optional. Instruct the AI how to generate titles. Leave empty to auto-generate based on content. Supports AI variables like {{Framework1}}."
+msgstr ""
+
+#: templates/admin/templates.php:269
+msgid "Leave empty to auto-generate from content prompt"
+msgstr ""
+
+#: templates/admin/templates.php:271
+msgid "Supports AI Variables: Use custom variables like {{PHPFramework1Name}} that AI will dynamically resolve based on your content. Example: \"PHP Framework Comparison: {{Framework1}} vs. {{Framework2}}\""
+msgstr ""
+
+#: templates/admin/templates.php:279
+msgid "AI Variables Detected"
+msgstr ""
+
+#: templates/admin/templates.php:280
+msgid "(Click to copy)"
+msgstr ""
+
+#: templates/admin/templates.php:288
+msgid "These variables will be dynamically resolved by AI based on your generated content. Each post generation may produce different values."
+msgstr ""
+
+#: templates/admin/templates.php:297
+msgid "How to use AI Variables"
+msgstr ""
+
+#: templates/admin/templates.php:300
+msgid "AI Variables allow you to create dynamic, context-aware titles. The AI will automatically fill in values based on the content it generates."
+msgstr ""
+
+#: templates/admin/templates.php:301
+msgid "Examples:"
+msgstr ""
+
+#: templates/admin/templates.php:307
+msgid "Tips:"
+msgstr ""
+
+#: templates/admin/templates.php:309
+msgid "Use descriptive variable names (e.g., {{PHPFramework}} instead of {{X}})"
+msgstr ""
+
+#: templates/admin/templates.php:310
+msgid "AI Variables work best with comparison or list-based content prompts"
+msgstr ""
+
+#: templates/admin/templates.php:311
+msgid "System variables like {{date}}, {{site_name}} are NOT AI Variables"
+msgstr ""
+
+#: templates/admin/templates.php:321
+msgid "Content Settings"
+msgstr ""
+
+#: templates/admin/templates.php:322
+msgid "Define the main content prompt that guides AI to generate your blog post content."
+msgstr ""
+
+#: templates/admin/templates.php:324
+msgid "Define the content prompt that guides AI to generate your post content."
+msgstr ""
+
+#: templates/admin/templates.php:328
+#: templates/admin/templates.php:584
+msgid "Content Prompt"
+msgstr ""
+
+#: templates/admin/templates.php:329
+msgid "Required. Detailed instructions for the AI about what content to generate. Be specific about topic, style, length, and target audience."
+msgstr ""
+
+#: templates/admin/templates.php:331
+msgid "Write a detailed blog post about..."
+msgstr ""
+
+#: templates/admin/templates.php:333
+msgid "Available variables: {{date}}, {{year}}, {{month}}, {{day}}, {{time}}, {{site_name}}, {{site_description}}, {{random_number}}"
+msgstr ""
+
+#: templates/admin/templates.php:338
+msgid "Voice"
+msgstr ""
+
+#: templates/admin/templates.php:340
+#: templates/admin/voices.php:37
+msgid "Search voices..."
+msgstr ""
+
+#: templates/admin/templates.php:342
+msgid "No Voice (Use Default)"
+msgstr ""
+
+#: templates/admin/templates.php:344
+msgid "Optional. A voice provides pre-configured title and content instructions."
+msgstr ""
+
+#: templates/admin/templates.php:349
+msgid "Number of Posts to Generate"
+msgstr ""
+
+#: templates/admin/templates.php:351
+msgid "Generate 1-20 posts when running this template. Useful for batch generation."
+msgstr ""
+
+#: templates/admin/templates.php:357
+msgid "Featured Image Options"
+msgstr ""
+
+#: templates/admin/templates.php:358
+msgid "Configure whether and how to generate featured images for your posts."
+msgstr ""
+
+#: templates/admin/templates.php:363
+msgid "Generate Featured Image?"
+msgstr ""
+
+#: templates/admin/templates.php:365
+msgid "If checked, a featured image will be attached to the generated post."
+msgstr ""
+
+#: templates/admin/templates.php:370
+msgid "Featured Image Source"
+msgstr ""
+
+#: templates/admin/templates.php:372
+msgid "Generate with AI Prompt"
+msgstr ""
+
+#: templates/admin/templates.php:373
+msgid "Unsplash (keywords)"
+msgstr ""
+
+#: templates/admin/templates.php:374
+msgid "Media Library (select images)"
+msgstr ""
+
+#: templates/admin/templates.php:376
+msgid "Choose how the featured image should be sourced for this template."
+msgstr ""
+
+#: templates/admin/templates.php:380
+#: templates/admin/templates.php:599
+msgid "Image Prompt"
+msgstr ""
+
+#: templates/admin/templates.php:381
+msgid "Describe the image you want generated..."
+msgstr ""
+
+#: templates/admin/templates.php:382
+msgid "Used when generating the image with AI."
+msgstr ""
+
+#: templates/admin/templates.php:386
+msgid "Unsplash Keywords"
+msgstr ""
+
+#: templates/admin/templates.php:387
+msgid "e.g. sunrise, mountains, drone view"
+msgstr ""
+
+#: templates/admin/templates.php:388
+msgid "Unsplash will return a random image that matches these keywords."
+msgstr ""
+
+#: templates/admin/templates.php:392
+msgid "Media Library Images"
+msgstr ""
+
+#: templates/admin/templates.php:395
+msgid "Select Images"
+msgstr ""
+
+#: templates/admin/templates.php:396
+msgid "Clear Selection"
+msgstr ""
+
+#: templates/admin/templates.php:397
+msgid "No images selected."
+msgstr ""
+
+#: templates/admin/templates.php:399
+msgid "One image will be chosen at random from the selected media library items."
+msgstr ""
+
+#: templates/admin/templates.php:406
+msgid "Review & Post Settings"
+msgstr ""
+
+#: templates/admin/templates.php:407
+msgid "Review your template configuration and set post publishing options."
+msgstr ""
+
+#: templates/admin/templates.php:411
+msgid "Template Summary"
+msgstr ""
+
+#: templates/admin/templates.php:414
+msgid "Template Name:"
+msgstr ""
+
+#: templates/admin/templates.php:418
+msgid "Description:"
+msgstr ""
+
+#: templates/admin/templates.php:422
+msgid "Title Prompt:"
+msgstr ""
+
+#: templates/admin/templates.php:423
+msgid "Auto-generate from content"
+msgstr ""
+
+#: templates/admin/templates.php:426
+msgid "Content Prompt:"
+msgstr ""
+
+#: templates/admin/templates.php:430
+#: templates/admin/templates.php:570
+msgid "Voice:"
+msgstr ""
+
+#: templates/admin/templates.php:434
+msgid "Post Quantity:"
+msgstr ""
+
+#: templates/admin/templates.php:438
+msgid "Featured Image:"
+msgstr ""
+
+#: templates/admin/templates.php:439
+msgid "No"
+msgstr ""
+
+#: templates/admin/templates.php:445
+msgid "Post Settings"
+msgstr ""
+
+#: templates/admin/templates.php:460
+msgid "Select Category"
+msgstr ""
+
+#: templates/admin/templates.php:469
+msgid "Tags"
+msgstr ""
+
+#: templates/admin/templates.php:470
+msgid "tag1, tag2, tag3"
+msgstr ""
+
+#: templates/admin/templates.php:471
+msgid "Comma-separated list of tags"
+msgstr ""
+
+#: templates/admin/templates.php:488
+msgid "Template is active"
+msgstr ""
+
+#: templates/admin/templates.php:497
+msgid "Template Saved Successfully!"
+msgstr ""
+
+#: templates/admin/templates.php:498
+msgid "Your template is ready. What would you like to do next?"
+msgstr ""
+
+#: templates/admin/templates.php:503
+msgid "Schedule This Template"
+msgstr ""
+
+#: templates/admin/templates.php:511
+msgid "Done"
+msgstr ""
+
+#: templates/admin/templates.php:522
+msgid "Back"
+msgstr ""
+
+#: templates/admin/templates.php:526
+msgid "Save current progress as inactive template"
+msgstr ""
+
+#: templates/admin/templates.php:528
+msgid "Save Draft"
+msgstr ""
+
+#: templates/admin/templates.php:530
+msgid "Generate a sample post using current settings"
+msgstr ""
+
+#: templates/admin/templates.php:532
+msgid "Test Generation"
+msgstr ""
+
+#: templates/admin/templates.php:534
+msgid "Preview the prompts that will be sent to AI"
+msgstr ""
+
+#: templates/admin/templates.php:536
+msgid "Preview Prompts"
+msgstr ""
+
+#: templates/admin/templates.php:544
+msgid "Next"
+msgstr ""
+
+#: templates/admin/templates.php:548
+msgid "Save Template"
+msgstr ""
+
+#: templates/admin/templates.php:556
+msgid "Toggle preview drawer"
+msgstr ""
+
+#: templates/admin/templates.php:558
+msgid "Prompt Preview"
+msgstr ""
+
+#: templates/admin/templates.php:564
+msgid "Generating preview..."
+msgstr ""
+
+#: templates/admin/templates.php:574
+msgid "Article Structure:"
+msgstr ""
+
+#: templates/admin/templates.php:578
+msgid "Sample Topic:"
+msgstr ""
+
+#: templates/admin/templates.php:594
+msgid "Excerpt Prompt"
+msgstr ""
+
+#: templates/admin/templates.php:611
+msgid "Test Generation Result"
+msgstr ""
+
+#: templates/admin/templates.php:617
+msgid "Generated Title:"
+msgstr ""
+
+#: templates/admin/templates.php:622
+msgid "Generated Excerpt:"
+msgstr ""
+
+#: templates/admin/templates.php:627
+msgid "Image Preview (Prompt/Keywords):"
+msgstr ""
+
+#: templates/admin/templates.php:632
+msgid "Generated Content:"
+msgstr ""
+
+#: templates/admin/templates.php:646
+msgid "Post Successfully Generated"
+msgstr ""
+
+#: templates/admin/templates.php:652
+msgid "Your post has been successfully generated!"
+msgstr ""
+
+#: templates/admin/templates.php:654
+msgid "Link to Post:"
+msgstr ""
+
+#: templates/admin/voices.php:14
+msgid "Define consistent tone and style templates for AI-generated content."
+msgstr ""
+
+#: templates/admin/voices.php:20
+msgid "Add Voice"
+msgstr ""
+
+#: templates/admin/voices.php:33
+#, php-format
+msgid "%d voices"
+msgstr ""
+
+#: templates/admin/voices.php:36
+msgid "Search Voices:"
+msgstr ""
+
+#: templates/admin/voices.php:102
+msgid "No Voices Found"
+msgstr ""
+
+#: templates/admin/voices.php:103
+msgid "No voices match your search criteria."
+msgstr ""
+
+#: templates/admin/voices.php:115
+msgid "No Voices Yet"
+msgstr ""
+
+#: templates/admin/voices.php:116
+msgid "Create a voice to establish consistent tone and style for your generated posts."
+msgstr ""
+
+#: templates/admin/voices.php:119
+msgid "Create Voice"
+msgstr ""
+
+#: templates/admin/voices.php:130
+msgid "Add New Voice"
+msgstr ""
+
+#: templates/admin/voices.php:138
+msgid "Voice Name"
+msgstr ""
+
+#: templates/admin/voices.php:144
+msgid "e.g., Generate a compelling blog post title for the following topic. The title should be engaging and SEO-optimized. Return only the title, nothing else."
+msgstr ""
+
+#: templates/admin/voices.php:145
+msgid "Instructions for generating the post title."
+msgstr ""
+
+#: templates/admin/voices.php:149
+msgid "Content Instructions"
+msgstr ""
+
+#: templates/admin/voices.php:150
+msgid "e.g., Write in a professional tone. Include practical examples. Use short paragraphs. Add a compelling conclusion."
+msgstr ""
+
+#: templates/admin/voices.php:151
+msgid "These instructions will be prepended to the template prompt when generating content."
+msgstr ""
+
+#: templates/admin/voices.php:155
+msgid "Excerpt Instructions (Optional)"
+msgstr ""
+
+#: templates/admin/voices.php:156
+msgid "e.g., Write a compelling summary. Use an engaging tone. Keep the excerpt concise."
+msgstr ""
+
+#: templates/admin/voices.php:157
+msgid "Optional. These instructions will influence excerpt generation for posts using this voice."
+msgstr ""
+
+#: templates/admin/voices.php:163
+msgid "Voice is active"
+msgstr ""
+
+#: templates/admin/voices.php:170
+msgid "Save Voice"
+msgstr ""
+
+#: templates/partials/ai-edit-modal.php:21
+msgid "AI Edit - Regenerate Components"
+msgstr ""
+
+#: templates/partials/ai-edit-modal.php:31
+msgid "Loading post components..."
+msgstr ""
+
+#: templates/partials/ai-edit-modal.php:38
+msgid "Original Generation Context"
+msgstr ""
+
+#: templates/partials/ai-edit-modal.php:76
+#: templates/partials/ai-edit-modal.php:113
+#: templates/partials/ai-edit-modal.php:150
+#: templates/partials/ai-edit-modal.php:189
+msgid "View Revisions"
+msgstr ""
+
+#: templates/partials/ai-edit-modal.php:82
+#: templates/partials/ai-edit-modal.php:119
+#: templates/partials/ai-edit-modal.php:156
+#: templates/partials/ai-edit-modal.php:195
+msgid "Loading revisions..."
+msgstr ""
+
+#: templates/partials/ai-edit-modal.php:86
+#: templates/partials/ai-edit-modal.php:123
+#: templates/partials/ai-edit-modal.php:160
+msgid "No previous revisions found."
+msgstr ""
+
+#: templates/partials/ai-edit-modal.php:95
+msgid "Excerpt"
+msgstr ""
+
+#: templates/partials/ai-edit-modal.php:182
+msgid "No featured image"
+msgstr ""
+
+#: templates/partials/ai-edit-modal.php:199
+msgid "No previous revisions found for this image."
+msgstr ""
+
+#: templates/partials/ai-edit-modal.php:209
+msgid "Changes marked with * will be saved"
+msgstr ""
+
+#: templates/partials/history-row.php:13
+msgid "Select Item"
+msgstr ""
+
+#: templates/partials/history-row.php:33
+#, php-format
+msgid "Template #%d (deleted)"
+msgstr ""
+
+#: templates/partials/history-row.php:35
+msgid "From Topic"
+msgstr ""
+
+#: templates/partials/history-row.php:73
+#: templates/partials/history-row.php:75
+msgid "View Logs"
+msgstr ""
+
+#: templates/partials/history-row.php:91
+msgid "Retry Generation"
+msgstr ""
+
+#: templates/partials/history-row.php:93
+msgid "Retry"
+msgstr ""
+
+#: templates/partials/view-session-modal.php:25
+msgid "Copy Session JSON"
+msgstr ""
+
+#: templates/partials/view-session-modal.php:28
+msgid "Download Session JSON"
+msgstr ""
+
+#: templates/partials/view-session-modal.php:37
+msgid "Post:"
+msgstr ""
+
+#: templates/partials/view-session-modal.php:38
+msgid "Generated:"
+msgstr ""
+
+#: templates/partials/view-session-modal.php:39
+msgid "Completed:"
+msgstr ""
+
+#: templates/partials/view-session-modal.php:44
+msgid "Logs"
+msgstr ""
+
+#: templates/partials/view-session-modal.php:45
+msgid "AI"
+msgstr ""
