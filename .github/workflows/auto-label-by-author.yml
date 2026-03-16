@@ -1,0 +1,37 @@
+name: Auto Label by Author
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label PR by author
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const author = context.payload.pull_request.user.login;
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const labelMap = ['bot-copilot', 'bot-jules'];
+            const labelName = labelMap.includes(author) ? author : null;
+
+            if (!labelName) {
+              console.log(`Author "${author}" is not in the label map. Skipping.`);
+              return;
+            }
+
+            console.log(`PR #${prNumber} authored by "${author}". Applying label "${labelName}".`);
+
+            // Add the label to the PR.
+            try {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: prNumber, labels: [labelName] });
+              console.log(`Label "${labelName}" successfully applied to PR #${prNumber}.`);
+            } catch (addErr) {
+              core.setFailed(`Failed to add label "${labelName}" to PR #${prNumber}: ${addErr.message}`);
+            }
