@@ -4,9 +4,6 @@ on:
   pull_request:
     types: [opened, reopened, synchronize]
 
-permissions:
-  issues: write
-
 jobs:
   label:
     runs-on: ubuntu-latest
@@ -21,18 +18,8 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            const labelMap = {
-              'bot-copilot': {
-                color: '0e8a16',
-                description: 'Auto-created label for bot-copilot',
-              },
-              'bot-jules': {
-                color: '1d76db',
-                description: 'Auto-created label for bot-jules',
-              },
-            };
-
-            const labelName = labelMap[author] ? author : null;
+            const labelMap = ['bot-copilot', 'bot-jules'];
+            const labelName = labelMap.includes(author) ? author : null;
 
             if (!labelName) {
               console.log(`Author "${author}" is not in the label map. Skipping.`);
@@ -40,27 +27,6 @@ jobs:
             }
 
             console.log(`PR #${prNumber} authored by "${author}". Applying label "${labelName}".`);
-
-            // Ensure the label exists in the repository; create it if not.
-            try {
-              await github.rest.issues.getLabel({ owner, repo, name: labelName });
-              console.log(`Label "${labelName}" already exists.`);
-            } catch (err) {
-              if (err.status === 404) {
-                console.log(`Label "${labelName}" not found. Creating it now...`);
-                const { color, description } = labelMap[labelName];
-                try {
-                  await github.rest.issues.createLabel({ owner, repo, name: labelName, color, description });
-                  console.log(`Label "${labelName}" created successfully.`);
-                } catch (createErr) {
-                  core.setFailed(`Failed to create label "${labelName}": ${createErr.message}`);
-                  return;
-                }
-              } else {
-                core.setFailed(`Unexpected error checking label "${labelName}" (status ${err.status}): ${err.message}`);
-                return;
-              }
-            }
 
             // Add the label to the PR.
             try {
