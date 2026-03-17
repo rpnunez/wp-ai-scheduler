@@ -53,19 +53,19 @@ REPO_BRANCH="${REPO_BRANCH:-main}"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --branch)
-            REPO_BRANCH="${2:?"--branch requires a value"}"
+            REPO_BRANCH="${2?"Error: --branch requires a value"}"
             shift 2
             ;;
         --repo-url)
-            REPO_URL="${2:?"--repo-url requires a value"}"
+            REPO_URL="${2?"Error: --repo-url requires a value"}"
             shift 2
             ;;
         --repo-path)
-            REPO_PATH="${2:?"--repo-path requires a value"}"
+            REPO_PATH="${2?"Error: --repo-path requires a value"}"
             shift 2
             ;;
         --wp-path)
-            WP_PATH="${2:?"--wp-path requires a value"}"
+            WP_PATH="${2?"Error: --wp-path requires a value"}"
             shift 2
             ;;
         -h|--help)
@@ -130,7 +130,7 @@ if [[ -d "${REPO_PATH}/.git" ]]; then
     git -C "$REPO_PATH" fetch --all --prune
     git -C "$REPO_PATH" checkout "$REPO_BRANCH"
     git -C "$REPO_PATH" pull --ff-only origin "$REPO_BRANCH" \
-        || warn "Could not fast-forward; you may have local changes. Skipping pull."
+        || warn "Could not fast-forward branch. This may indicate local changes or merge conflicts. Skipping pull."
     success "Repository updated to branch '${REPO_BRANCH}'."
 else
     info "Cloning ${REPO_URL} into ${REPO_PATH}…"
