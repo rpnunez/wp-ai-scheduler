@@ -118,7 +118,9 @@ if [[ ! -f "${WP_PATH}/wp-config.php" && ! -f "${WP_PATH}/../wp-config.php" ]]; 
 fi
 
 if [[ ! -d "$PLUGINS_DIR" ]]; then
-    error "Plugins directory not found: ${PLUGINS_DIR}. Is WP_PATH correct?"
+    info "Plugins directory not found. Creating ${PLUGINS_DIR}…"
+    mkdir -p "$PLUGINS_DIR"
+    success "Plugins directory created: ${PLUGINS_DIR}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -145,7 +147,9 @@ fi
 PLUGIN_SOURCE="${REPO_PATH}/ai-post-scheduler"
 
 if [[ ! -d "$PLUGIN_SOURCE" ]]; then
-    error "Plugin source directory not found: ${PLUGIN_SOURCE}"
+    info "Plugin source directory not found. Creating ${PLUGIN_SOURCE}…"
+    mkdir -p "$PLUGIN_SOURCE"
+    success "Plugin source directory created: ${PLUGIN_SOURCE}"
 fi
 
 # ---------------------------------------------------------------------------
