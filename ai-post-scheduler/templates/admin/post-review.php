@@ -85,7 +85,10 @@ $templates = $template_repository->get_all();
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-post-search-input" name="s" class="aips-form-input" value="<?php echo esc_attr($search_query); ?>" placeholder="<?php esc_attr_e('Search posts...', 'ai-post-scheduler'); ?>">
-					<button type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-secondary"><?php esc_html_e('Search', 'ai-post-scheduler'); ?></button>
+					<button type="submit" id="aips-post-search-btn" class="aips-btn aips-btn-secondary">
+						<span class="dashicons dashicons-search"></span>
+						<?php esc_html_e('Search', 'ai-post-scheduler'); ?>
+					</button>
 					<?php if (!empty($search_query)): ?>
 						<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-secondary"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></a>
 					<?php endif; ?>

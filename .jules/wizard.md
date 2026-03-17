@@ -39,3 +39,8 @@
 ## 2024-05-19 - Add "Clear" buttons to search bars in Sections and Planner
 Learning: Consistent UX in search bars requires not just an input, but `screen-reader-text` labels and a hidden `Clear` button that can be toggled by JS. Wait to merge `class` attributes when copying elements to prevent duplicate attributes like `class="aips-form-input" class="aips-planner-topic-search"`.
 Action: Always check if the `admin.js` script handles specific clear button IDs even if they are missing from the PHP template, and add them proactively for completeness.
+## 2024-05-19 - Clear Filters in Post Review Search
+
+Learning: Existing PHP-driven filter interfaces use simple link buttons (`<a>`) appending query strings (like `remove_query_arg('s')`) rather than Javascript-managed clear functions.
+
+Action: Always match the specific file's existing implementation pattern when adding standard UI components like search clear buttons, rather than assuming all pages use the same SPA-like approach.
