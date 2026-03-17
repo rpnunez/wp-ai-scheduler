@@ -1329,3 +1329,11 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted the Markdown parsing logic into a new, dedicated `AIPS_Markdown_Parser` service class. Injected this service into `AIPS_Generator` as an optional dependency via the constructor to maintain backwards compatibility.
 **Consequence:** `AIPS_Generator` is leaner and more focused. `AIPS_Markdown_Parser` can now be reused elsewhere and tested independently. The constructor signature of `AIPS_Generator` was modified, but optional parameters ensure no breaking changes for existing instantiations.
 **Tests:** Created `test-aips-markdown-parser.php` which validates `is_markdown`, `contains_html`, and `parse` methods. All tests passed.
+
+## 2024-05-28 - Extract Admin Menu Class
+**Context:** The `AIPS_Settings` class was a "God Class" that violated the Single Responsibility Principle by handling the registration of admin menu pages alongside general settings configuration and AJAX logic.
+**Decision:** Extracted the admin menu registration logic (`add_menu_pages`, `fix_author_topics_parent_file`, `fix_author_topics_submenu_file`) and page rendering routing into a new dedicated `AIPS_Admin_Menu` class.
+**Consequence:**
+- **Positive:** Improved separation of concerns. `AIPS_Settings` now focuses strictly on registering options and settings, while `AIPS_Admin_Menu` manages navigation and routing admin pages to their respective controllers.
+- **Negative:** Increased file count by 1.
+**Tests:** The existing test suite ensures controllers function correctly, and autoloader logic was updated to cover `AIPS_Admin_Menu`. No new dedicated test files were needed for the class as it primarily coordinates WordPress hooks.
