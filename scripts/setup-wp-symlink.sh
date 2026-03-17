@@ -147,7 +147,9 @@ fi
 PLUGIN_SOURCE="${REPO_PATH}/ai-post-scheduler"
 
 if [[ ! -d "$PLUGIN_SOURCE" ]]; then
-    error "Plugin source directory not found: ${PLUGIN_SOURCE}"
+    info "Plugin source directory not found. Creating ${PLUGIN_SOURCE}…"
+    mkdir -p "$PLUGIN_SOURCE"
+    success "Plugin source directory created: ${PLUGIN_SOURCE}"
 fi
 
 # ---------------------------------------------------------------------------
