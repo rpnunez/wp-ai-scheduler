@@ -118,7 +118,9 @@ if [[ ! -f "${WP_PATH}/wp-config.php" && ! -f "${WP_PATH}/../wp-config.php" ]]; 
 fi
 
 if [[ ! -d "$PLUGINS_DIR" ]]; then
-    error "Plugins directory not found: ${PLUGINS_DIR}. Is WP_PATH correct?"
+    info "Plugins directory not found. Creating ${PLUGINS_DIR}…"
+    mkdir -p "$PLUGINS_DIR"
+    success "Plugins directory created: ${PLUGINS_DIR}"
 fi
 
 # ---------------------------------------------------------------------------
