@@ -508,7 +508,7 @@
 					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.lastFeedback || 'Last Feedback') + ':</strong>';
 					detailContentHtml += ' <span class="aips-feedback-badge aips-feedback-badge-' + feedbackAction + '">' + this.escapeHtml(feedbackLabel) + '</span>';
 					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
-						detailContentHtml += ' <em>(' + this.escapeHtml(topic.last_feedback.reason_category) + ')</em>';
+						detailContentHtml += this.renderCategoryBadge(feedbackAction, topic.last_feedback.reason_category);
 					}
 					if (topic.last_feedback.reason) {
 						detailContentHtml += ' — ' + this.escapeHtml(topic.last_feedback.reason);
@@ -571,6 +571,10 @@
 						: this.escapeHtml(fbLabel);
 					html += ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '">';
 					html += '<span class="dashicons dashicons-admin-comments"></span> ' + this.escapeHtml(fbLabel) + '</span>';
+					// Render an inline reason category chip next to the feedback badge
+					if (topic.last_feedback.reason_category) {
+						html += this.renderCategoryBadge(fbAction, topic.last_feedback.reason_category);
+					}
 				}
 				
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
@@ -684,6 +688,55 @@
 			}
 
 			return 'aips-topic-similarity-low';
+		},
+
+		/**
+		 * Return the human-readable label for a feedback reason category.
+		 *
+		 * Looks up the category value in `aipsAuthorsL10n.approvalCategories` or
+		 * `aipsAuthorsL10n.rejectionCategories` depending on the feedback action.
+		 * Falls back to the raw category slug when no match is found or the action
+		 * is not one of the known values (`'approved'` / `'rejected'`).
+		 *
+		 * @param {string} action   - `'approved'` or `'rejected'`.
+		 * @param {string} category - The `reason_category` value.
+		 * @returns {string} Translated/human-readable label.
+		 */
+		getCategoryLabel: function (action, category) {
+			var list;
+			if (action === 'approved') {
+				list = aipsAuthorsL10n.approvalCategories || [];
+			} else if (action === 'rejected') {
+				list = aipsAuthorsL10n.rejectionCategories || [];
+			} else {
+				// Unknown action — return the raw slug so the badge still renders meaningfully.
+				return category;
+			}
+			const match = list.find(function (c) { return c.value === category; });
+			return match ? match.label : category;
+		},
+
+		/**
+		 * Build the HTML for a reason category chip/badge.
+		 *
+		 * Returns an empty string when category is falsy or `'other'`.
+		 *
+		 * @param {string} action   - `'approved'` or `'rejected'`.
+		 * @param {string} category - The `reason_category` value.
+		 * @returns {string} Badge HTML string.
+		 */
+		renderCategoryBadge: function (action, category) {
+			if (!category || category === 'other') {
+				return '';
+			}
+
+			const label = this.getCategoryLabel(action, category);
+			const isPositive = action === 'approved';
+			const groupClass = isPositive ? 'aips-reason-category-badge-positive' : 'aips-reason-category-badge-negative';
+			const specificClass = 'aips-reason-category-badge-' + category.replace(/_/g, '-');
+			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + this.escapeHtml(label) + '">'
+				+ this.escapeHtml(label)
+				+ '</span>';
 		},
 
 		/**
