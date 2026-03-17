@@ -145,3 +145,9 @@
 **Improvement:** Enabled clickable progress indicator steps in the Template Wizard to allow non-linear navigation.
 **Files Modified:** `ai-post-scheduler/assets/js/admin.js`, `ai-post-scheduler/assets/css/admin.css`
 **Outcome:** Reduces friction for users, allowing them to jump directly to previous steps or skip ahead (if intermediate steps are valid) without needing to click "Next" or "Back" multiple times, significantly improving the edit flow.
+
+## 2025-03-17 - Schedule Wizard Optimization
+**Target Feature:** Schedule Form
+**Improvement:** Transformed the basic schedule modal into a step-by-step Schedule Wizard, matching the recently completed Template Wizard UI. By splitting complex schedule configuration (Timing, Rules, Structure) across separate visual steps, we reduce cognitive load, enforce sequence constraints appropriately, and ensure a unified UI pattern across the WP AI Post Scheduler plugin.
+**Files Modified:** `ai-post-scheduler/assets/js/admin.js`, `ai-post-scheduler/templates/admin/schedule.php`, `ai-post-scheduler/includes/class-aips-admin-assets.php`
+**Outcome:** Enhances schedule configuration flow and efficiency for users via progressive disclosure, dramatically improving the previously overwhelming singular form format.
