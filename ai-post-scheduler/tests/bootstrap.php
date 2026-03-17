@@ -903,9 +903,11 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     // Load plugin classes
     $includes_dir = dirname(__DIR__) . '/includes/';
     $files = [
+        'class-aips-autoloader.php',
         'class-aips-logger.php',
         'class-aips-config.php',
         'class-aips-db-manager.php',
+        'class-aips-trending-topics-repository.php',
         'class-aips-history-repository.php',
         'class-aips-schedule-repository.php',
         'class-aips-template-repository.php',
@@ -919,6 +921,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-resilience-service.php',
         'class-aips-ai-service.php',
         'class-aips-image-service.php',
+        'class-aips-research-service.php',
         'interface-aips-generation-context.php',
         'class-aips-template-context.php',
         'class-aips-topic-context.php',
@@ -943,9 +946,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-settings.php',
         'class-aips-admin-assets.php',
         'class-aips-admin-menu-helper.php',
+        'class-aips-calendar-controller.php',
         'class-aips-system-status.php',
         'class-aips-templates.php',
         'class-aips-upgrades.php',
+        'class-aips-post-review-repository.php',
+        'class-aips-post-review-notifications.php',
+        'class-aips-partial-generation-notifications.php',
         'class-aips-voices-repository.php',
         'class-aips-voices.php',
         'class-aips-structures-controller.php',
