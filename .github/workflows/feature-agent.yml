@@ -34,12 +34,12 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
-          # Check if feature-report.md has changes
-          if git diff --quiet docs/feature-report.md; then
-            echo "No changes detected in feature-report.md"
+          # Check if either feature report file has changes
+          if git diff --quiet docs/feature-report.md docs/feature-report-feature-profiles.md; then
+            echo "No changes detected in feature report files"
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
-            echo "Changes detected in feature-report.md"
+            echo "Changes detected in feature report files"
             echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
       
@@ -60,12 +60,13 @@ jobs:
           git checkout -b "${BRANCH_NAME}"
           
           # Add and commit changes
-          git add docs/feature-report.md
+          git add docs/feature-report.md docs/feature-report-feature-profiles.md
           git commit -m "feat: Update feature report documentation
 
           Auto-generated feature documentation update by Feature Agent.
 
           - Updated feature profiles
+          - Updated summarized feature profiles
           - Refreshed architecture diagrams  
           - Updated statistics and recommendations
           - Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
@@ -82,6 +83,7 @@ jobs:
 
           ### Changes
           - Updated \`docs/feature-report.md\` with latest feature analysis
+          - Updated \`docs/feature-report-feature-profiles.md\` with summarized profiles
           - Refreshed architecture diagrams and flowcharts
           - Updated feature profiles with current codebase state
           - Included recommendations for improvements
@@ -89,15 +91,17 @@ jobs:
           ### What's Included
           The feature report contains:
           - 📊 Comprehensive feature profiles for all plugin classes
+          - 📋 Summarized profiles (no technical details) in \`feature-report-feature-profiles.md\`
           - 🎨 Mermaid flowcharts showing component relationships
           - 📈 Statistical analysis of codebase structure
           - ✨ Recommendations for improvements and missing functionality
 
           ### Review Instructions
           1. Review the updated feature profiles in \`docs/feature-report.md\`
-          2. Check that flowcharts render correctly (Mermaid syntax)
-          3. Verify that recommendations are actionable and relevant
-          4. Merge if the documentation accurately reflects the current codebase
+          2. Review the summarized profiles in \`docs/feature-report-feature-profiles.md\`
+          3. Check that flowcharts render correctly (Mermaid syntax)
+          4. Verify that recommendations are actionable and relevant
+          5. Merge if the documentation accurately reflects the current codebase
 
           ---
 
