@@ -121,7 +121,7 @@ class AIPS_Author_Topics_Controller {
 			if ($topic) {
 				$approve_history = $this->history_service->create('topic_approval', array(
 					'topic_id' => $topic_id,
-				));
+				), AIPS_History_Container_Type::AUTHOR_TOPIC);
 				$approve_history->record(
 					'activity',
 					sprintf(
@@ -189,7 +189,7 @@ class AIPS_Author_Topics_Controller {
 			if ($topic) {
 				$reject_history = $this->history_service->create('topic_rejection', array(
 					'topic_id' => $topic_id,
-				));
+				), AIPS_History_Container_Type::AUTHOR_TOPIC);
 				$reject_history->record(
 					'activity',
 					sprintf(
@@ -309,7 +309,7 @@ class AIPS_Author_Topics_Controller {
 			'user_id' => get_current_user_id(),
 			'source' => 'manual_ui',
 			'trigger' => 'ajax_generate_post_from_topic'
-		));
+		), AIPS_History_Container_Type::AUTHOR_TOPIC);
 		
 		$history->record_user_action(
 			'manual_topic_generation',
@@ -459,7 +459,7 @@ class AIPS_Author_Topics_Controller {
 			'trigger' => 'ajax_bulk_delete_topics',
 			'entity_type' => 'topics',
 			'entity_count' => count($topic_ids)
-		));
+		), AIPS_History_Container_Type::AUTHOR_TOPIC);
 		
 		$history->record_user_action(
 			'bulk_delete_topics',
@@ -512,7 +512,7 @@ class AIPS_Author_Topics_Controller {
 			'trigger' => 'ajax_regenerate_post',
 			'post_id' => $post_id,
 			'topic_id' => $topic_id
-		));
+		), AIPS_History_Container_Type::AUTHOR_TOPIC);
 		
 		$history->record_user_action(
 			'regenerate_post',
@@ -726,7 +726,7 @@ class AIPS_Author_Topics_Controller {
 			'source' => 'manual_ui',
 			'trigger' => 'ajax_bulk_generate_from_queue',
 			'topic_count' => count($topic_ids)
-		));
+		), AIPS_History_Container_Type::AUTHOR_TOPIC);
 		
 		$history->record_user_action(
 			'bulk_generation',
@@ -800,7 +800,7 @@ class AIPS_Author_Topics_Controller {
 			'trigger' => 'ajax_bulk_generate_topics',
 			'entity_type' => 'topics',
 			'entity_count' => count($topic_ids)
-		));
+		), AIPS_History_Container_Type::AUTHOR_TOPIC);
 		
 		$history->record_user_action(
 			'bulk_generate_topics',
@@ -874,7 +874,7 @@ class AIPS_Author_Topics_Controller {
 			'trigger' => 'ajax_bulk_delete_feedback',
 			'entity_type' => 'feedback',
 			'entity_count' => count($feedback_ids)
-		));
+		), AIPS_History_Container_Type::AUTHOR_TOPIC);
 		
 		$history->record_user_action(
 			'bulk_delete_feedback',

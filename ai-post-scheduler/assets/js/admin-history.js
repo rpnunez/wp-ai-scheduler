@@ -34,6 +34,9 @@
 		/** @type {string} Raw search query as entered by the user */
 		searchQuery: '',
 
+		/** @type {number[]} Currently selected container type IDs */
+		containerTypes: [],
+
 		/* ------------------------------------------------------------------ */
 		/* Init / events                                                        */
 		/* ------------------------------------------------------------------ */
@@ -42,8 +45,9 @@
 		 * Initialise the History module.
 		 */
 		init: function () {
-			this.statusFilter = $('#aips-filter-status').val() || '';
-			this.searchQuery  = $('#aips-history-search-input').val() || '';
+			this.statusFilter   = $('#aips-filter-status').val() || '';
+			this.searchQuery    = $('#aips-history-search-input').val() || '';
+			this.containerTypes = this.readCheckedTypes();
 			this.syncSearchClearButton();
 			this.bindEvents();
 		},
@@ -91,6 +95,17 @@
 			// Filter button and status dropdown.
 			$(document).on('click', '#aips-filter-btn', this.applyFilter.bind(this));
 			$(document).on('change', '#aips-filter-status', this.applyFilter.bind(this));
+
+			// Container-type multi-checkbox dropdown.
+			$(document).on('click', '#aips-type-filter-btn', this.toggleTypeDropdown.bind(this));
+			$(document).on('click', '#aips-type-filter-apply', this.applyTypeFilter.bind(this));
+			$(document).on('click', '#aips-type-filter-clear', this.clearTypeFilter.bind(this));
+			$(document).on('click', function (e) {
+				if (!$(e.target).closest('#aips-type-filter-wrap').length) {
+					$('#aips-type-filter-panel').hide();
+					$('#aips-type-filter-btn').attr('aria-expanded', 'false');
+				}
+			});
 
 			// Search: live client-side row filter + server reload on Enter.
 			$(document).on('input', '#aips-history-search-input', this.onSearchInput.bind(this));
@@ -211,8 +226,8 @@
 			if (container.generated_title) {
 				html += '<tr><th>' + self.esc(aipsHistoryL10n.labelTitle || 'Title') + '</th><td>' + self.esc(container.generated_title) + '</td></tr>';
 			}
-			if (container.template_name) {
-				html += '<tr><th>' + self.esc(aipsHistoryL10n.labelTemplate || 'Template') + '</th><td>' + self.esc(container.template_name) + '</td></tr>';
+			if (container.container_type_label) {
+				html += '<tr><th>' + self.esc(aipsHistoryL10n.labelHistoryType || 'History Type') + '</th><td>' + self.esc(container.container_type_label) + '</td></tr>';
 			}
 
 			var statusClass = container.status === 'completed' ? 'aips-badge-success'
@@ -627,6 +642,7 @@
 					nonce: aipsAjax.nonce,
 					status: self.statusFilter,
 					search: self.searchQuery,
+					container_types: self.containerTypes,
 					paged: paged
 				},
 				success: function (response) {
@@ -795,7 +811,9 @@
 			}
 			$('#aips-history-search-input').val('');
 			this.searchQuery = '';
+			this.containerTypes = [];
 			this.syncSearchClearButton();
+			this.clearTypeFilterDisplay();
 			$('#aips-history-search-no-results').hide();
 			$('#aips-history-tbody tr').show();
 			this.reload(1);
@@ -807,6 +825,96 @@
 		syncSearchClearButton: function () {
 			var hasValue = $('#aips-history-search-input').val().trim().length > 0;
 			$('#aips-history-search-clear').toggle(hasValue);
+		},
+
+		/* ------------------------------------------------------------------ */
+		/* Container-type dropdown filter                                       */
+		/* ------------------------------------------------------------------ */
+
+		/**
+		 * Read the currently checked type checkboxes and return their integer values.
+		 *
+		 * @return {number[]}
+		 */
+		readCheckedTypes: function () {
+			var types = [];
+			$('.aips-type-checkbox:checked').each(function () {
+				types.push(parseInt($(this).val(), 10));
+			});
+			return types;
+		},
+
+		/**
+		 * Toggle the container-type dropdown panel open/closed.
+		 *
+		 * @param {Event} e
+		 */
+		toggleTypeDropdown: function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			var $panel = $('#aips-type-filter-panel');
+			var $btn   = $('#aips-type-filter-btn');
+			var isOpen = $panel.is(':visible');
+			$panel.toggle(!isOpen);
+			$btn.attr('aria-expanded', !isOpen ? 'true' : 'false');
+		},
+
+		/**
+		 * Apply the selected container type checkboxes and trigger a reload.
+		 *
+		 * @param {Event} e
+		 */
+		applyTypeFilter: function (e) {
+			e.preventDefault();
+			this.containerTypes = this.readCheckedTypes();
+			$('#aips-type-filter-panel').hide();
+			$('#aips-type-filter-btn').attr('aria-expanded', 'false');
+			this.syncTypeFilterLabel();
+			this.reload(1);
+		},
+
+		/**
+		 * Clear all container type selections and trigger a reload.
+		 *
+		 * @param {Event} e
+		 */
+		clearTypeFilter: function (e) {
+			e.preventDefault();
+			$('.aips-type-checkbox').prop('checked', false);
+			this.containerTypes = [];
+			$('#aips-type-filter-panel').hide();
+			$('#aips-type-filter-btn').attr('aria-expanded', 'false');
+			this.clearTypeFilterDisplay();
+			this.reload(1);
+		},
+
+		/**
+		 * Update the dropdown button label to reflect the current type selection.
+		 */
+		syncTypeFilterLabel: function () {
+			var $label = $('#aips-type-filter-label');
+			if (!$label.length) {
+				return;
+			}
+			var allTypes = aipsHistoryL10n.containerTypes || {};
+			if (!this.containerTypes.length) {
+				$label.text(aipsHistoryL10n.allTypesLabel || 'All Types');
+				return;
+			}
+			var names = [];
+			for (var i = 0; i < this.containerTypes.length; i++) {
+				var id = String(this.containerTypes[i]);
+				names.push(allTypes[id] ? allTypes[id] : id);
+			}
+			$label.text(names.join(', '));
+		},
+
+		/**
+		 * Reset the type filter button label and uncheck all type checkboxes.
+		 */
+		clearTypeFilterDisplay: function () {
+			$('.aips-type-checkbox').prop('checked', false);
+			$('#aips-type-filter-label').text(aipsHistoryL10n.allTypesLabel || 'All Types');
 		},
 
 		/* ------------------------------------------------------------------ */

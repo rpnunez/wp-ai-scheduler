@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIPS_VERSION', '1.7.1');
+define('AIPS_VERSION', '1.7.2');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -161,6 +161,7 @@ final class AI_Post_Scheduler {
             new AIPS_Templates();
             new AIPS_Templates_Controller();
             new AIPS_History();
+            new AIPS_Audit_Subscriber();
             
             // Initialize Post Review handler globally to avoid duplicate AJAX registration
             global $aips_post_review_handler;

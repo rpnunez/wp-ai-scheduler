@@ -88,7 +88,7 @@ class AIPS_Post_Review_Notifications {
 		
 		// Log the result
 		if ($sent) {
-			$history = $this->history_service->create('notification_sent', array());
+			$history = $this->history_service->create('notification_sent', array(), AIPS_History_Container_Type::NOTIFICATION);
 			$history->record(
 				'activity',
 				sprintf(
@@ -100,6 +100,7 @@ class AIPS_Post_Review_Notifications {
 				null,
 				array('to_email' => $to_email, 'draft_count' => $draft_count)
 			);
+			$history->complete_success(array('to_email' => $to_email, 'draft_count' => $draft_count));
 		}
 	}
 	

@@ -71,10 +71,23 @@ class AIPS_Templates {
         );
         
         if (!empty($data['id'])) {
-            $this->repository->update(absint($data['id']), $template_data);
-            return absint($data['id']);
+            $template_id = absint($data['id']);
+            $old_template = $this->repository->get_by_id($template_id);
+            
+            $this->repository->update($template_id, $template_data);
+            
+            do_action('aips_template_updated', $template_data, $old_template);
+            
+            return $template_id;
         } else {
-            return $this->repository->create($template_data);
+            $template_id = $this->repository->create($template_data);
+            
+            if ($template_id) {
+                $template_data['id'] = $template_id;
+                do_action('aips_template_created', $template_data);
+            }
+            
+            return $template_id;
         }
     }
     

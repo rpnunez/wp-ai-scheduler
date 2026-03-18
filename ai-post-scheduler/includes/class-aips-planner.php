@@ -5,7 +5,13 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Planner {
 
+    /**
+     * @var AIPS_History_Service History service for logging
+     */
+    private $history_service;
+
     public function __construct() {
+        $this->history_service = new AIPS_History_Service();
         add_action('wp_ajax_aips_generate_topics', array($this, 'ajax_generate_topics'));
         add_action('wp_ajax_aips_bulk_schedule', array($this, 'ajax_bulk_schedule'));
     }
@@ -33,6 +39,24 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('AI Engine is not available.', 'ai-post-scheduler')));
         }
 
+        // Create history container for this planner topic generation run
+        $history = $this->history_service->create('planner_topics_generation', array(
+            'creation_method' => 'manual_planner',
+        ), AIPS_History_Container_Type::PLANNER);
+        $history->record_user_action(
+            'planner_topics_generation',
+            sprintf(
+                /* translators: 1: number of topics 2: niche/topic */
+                __('Generating %1$d topics for niche/topic: %2$s', 'ai-post-scheduler'),
+                $count,
+                $niche
+            ),
+            array(
+                'niche' => $niche,
+                'count' => $count,
+            )
+        );
+
         $prompt = "Generate a list of {$count} unique, engaging blog post titles/topics about '{$niche}'. \n";
         $prompt .= "Return ONLY a valid JSON array of strings. Do not include any other text, markdown formatting, or numbering. \n";
         $prompt .= "Example: [\"Topic 1\", \"Topic 2\", \"Topic 3\"]";
@@ -40,6 +64,7 @@ class AIPS_Planner {
         $result = $generator->generate_content($prompt, array('temperature' => 0.7, 'max_tokens' => 1000), 'planner_topics');
 
         if (is_wp_error($result)) {
+            $history->complete_failure($result->get_error_message());
             wp_send_json_error(array('message' => $result->get_error_message()));
         }
 
@@ -60,11 +85,30 @@ class AIPS_Planner {
             // But if the AI followed instructions, it should be JSON.
             // If it failed JSON, let's just log it and return error or try best effort.
             if (empty($topics)) {
+                $history->complete_failure(__('Failed to parse AI response.', 'ai-post-scheduler'));
                 wp_send_json_error(array(
                     'message' => __('Failed to parse AI response. Raw response: ', 'ai-post-scheduler') . substr($json_str, 0, 100) . '...'
                 ));
             }
         }
+
+        // Log each generated topic as an individual history entry
+        foreach ($topics as $topic) {
+            $topic_text = is_string($topic) ? $topic : (string) $topic;
+            $history->record(
+                'activity',
+                sprintf(
+                    /* translators: %s: generated topic title */
+                    __('Topic generated: %s', 'ai-post-scheduler'),
+                    $topic_text
+                ),
+                null,
+                null,
+                array('topic' => $topic_text)
+            );
+        }
+
+        $history->complete_success(array('topics_count' => count($topics)));
 
         do_action('aips_planner_topics_generated', $topics, $niche);
 

@@ -25,14 +25,11 @@ if (!defined('ABSPATH')) {
         <div class="aips-error-message" style="font-size: 12px; color: #dc3232; margin-top: 4px;"><?php echo esc_html($item->error_message); ?></div>
         <?php endif; ?>
     </td>
-    <td class="column-template">
+    <td class="column-history-type">
         <span class="aips-meta-text"><?php
-        if (!empty($item->template_name)) {
-            echo esc_html($item->template_name);
-        } elseif (!empty($item->template_id)) {
-            echo esc_html(sprintf(__('Template #%d (deleted)', 'ai-post-scheduler'), $item->template_id));
-        } elseif (!empty($item->topic_id)) {
-            echo esc_html__('From Topic', 'ai-post-scheduler');
+        $ct = isset($item->container_type) ? (int) $item->container_type : 0;
+        if ($ct > 0) {
+            echo esc_html(AIPS_History_Container_Type::get_label($ct));
         } else {
             echo '-';
         }

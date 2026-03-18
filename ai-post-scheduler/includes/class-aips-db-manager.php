@@ -75,6 +75,7 @@ class AIPS_DB_Manager {
             author_id bigint(20) DEFAULT NULL,
             topic_id bigint(20) DEFAULT NULL,
             creation_method varchar(20) DEFAULT NULL,
+            container_type tinyint(4) DEFAULT NULL,
             status varchar(50) NOT NULL DEFAULT 'pending',
             prompt text,
             generated_title varchar(500),
@@ -92,7 +93,8 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
-            KEY template_created (template_id, created_at)
+            KEY template_created (template_id, created_at),
+            KEY container_type (container_type)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (
@@ -230,11 +232,13 @@ class AIPS_DB_Manager {
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
             voice_tone varchar(100) DEFAULT NULL,
             writing_style varchar(100) DEFAULT NULL,
+            author_history_id bigint(20) DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY article_structure_id (article_structure_id),
+            KEY author_history_id (author_history_id),
             KEY is_active (is_active),
             KEY topic_generation_next_run (topic_generation_next_run),
             KEY post_generation_next_run (post_generation_next_run)
@@ -248,12 +252,14 @@ class AIPS_DB_Manager {
             status varchar(20) DEFAULT 'pending',
             score int DEFAULT 50,
             metadata longtext,
+            topic_history_id bigint(20) DEFAULT NULL,
             generated_at datetime DEFAULT CURRENT_TIMESTAMP,
             reviewed_at datetime DEFAULT NULL,
             reviewed_by bigint(20) DEFAULT NULL,
             PRIMARY KEY  (id),
             KEY author_id (author_id),
             KEY status (status),
+            KEY topic_history_id (topic_history_id),
             KEY generated_at (generated_at),
             KEY author_id_status (author_id, status),
             KEY status_score_reviewed (status, score, reviewed_at)

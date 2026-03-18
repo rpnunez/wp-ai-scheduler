@@ -128,8 +128,23 @@ class AIPS_Component_Regeneration_Service {
 		}
 		
 		if (is_wp_error($result)) {
+			$history_container->record(
+				'activity',
+				sprintf(__('Post component %s regeneration failed', 'ai-post-scheduler'), $this->get_component_label('title')),
+				array('event_type' => 'component_regenerated', 'event_status' => 'failed'),
+				null,
+				array('component' => 'title', 'post_id' => $post_id, 'error' => $result->get_error_message())
+			);
 			return $result;
 		}
+
+		$history_container->record(
+			'activity',
+			sprintf(__('Post component %s regenerated', 'ai-post-scheduler'), $this->get_component_label('title')),
+			array('event_type' => 'component_regenerated', 'event_status' => 'success'),
+			null,
+			array('component' => 'title', 'post_id' => $post_id)
+		);
 		
 		// Clean and return
 		return trim($result);
@@ -172,8 +187,27 @@ class AIPS_Component_Regeneration_Service {
 		$result = $this->generator->generate_excerpt($title, $content, $voice, $topic_str);
 		
 		if (is_wp_error($result)) {
+			$error_message = ($result instanceof WP_Error)
+				? $result->get_error_message()
+				: __('Unknown regeneration error.', 'ai-post-scheduler');
+
+			$history_container->record(
+				'activity',
+				sprintf(__('Post component %s regeneration failed', 'ai-post-scheduler'), $this->get_component_label('excerpt')),
+				array('event_type' => 'component_regenerated', 'event_status' => 'failed'),
+				null,
+				array('component' => 'excerpt', 'post_id' => $post_id, 'error' => $error_message)
+			);
 			return $result;
 		}
+
+		$history_container->record(
+			'activity',
+			sprintf(__('Post component %s regenerated', 'ai-post-scheduler'), $this->get_component_label('excerpt')),
+			array('event_type' => 'component_regenerated', 'event_status' => 'success'),
+			null,
+			array('component' => 'excerpt', 'post_id' => $post_id)
+		);
 		
 		return trim($result);
 	}
@@ -208,8 +242,23 @@ class AIPS_Component_Regeneration_Service {
 		$result = $this->generator->generate_content($prompt);
 		
 		if (is_wp_error($result)) {
+			$history_container->record(
+				'activity',
+				sprintf(__('Post component %s regeneration failed', 'ai-post-scheduler'), $this->get_component_label('content')),
+				array('event_type' => 'component_regenerated', 'event_status' => 'failed'),
+				null,
+				array('component' => 'content', 'post_id' => $post_id, 'error' => $result->get_error_message())
+			);
 			return $result;
 		}
+
+		$history_container->record(
+			'activity',
+			sprintf(__('Post component %s regenerated', 'ai-post-scheduler'), $this->get_component_label('content')),
+			array('event_type' => 'component_regenerated', 'event_status' => 'success'),
+			null,
+			array('component' => 'content', 'post_id' => $post_id)
+		);
 		
 		return $result;
 	}
@@ -270,6 +319,13 @@ class AIPS_Component_Regeneration_Service {
 				'component' => 'featured_image',
 				'post_id' => $post_id,
 			));
+			$history_container->record(
+				'activity',
+				sprintf(__('Post component %s regeneration failed', 'ai-post-scheduler'), $this->get_component_label('featured_image')),
+				array('event_type' => 'component_regenerated', 'event_status' => 'failed'),
+				null,
+				array('component' => 'featured_image', 'post_id' => $post_id, 'error' => $attachment_id->get_error_message())
+			);
 			return $attachment_id;
 		}
 		
@@ -283,6 +339,14 @@ class AIPS_Component_Regeneration_Service {
 				'url' => wp_get_attachment_url($attachment_id),
 			),
 			array('component' => 'featured_image', 'post_id' => $post_id)
+		);
+
+		$history_container->record(
+			'activity',
+			sprintf(__('Post component %s regenerated', 'ai-post-scheduler'), $this->get_component_label('featured_image')),
+			array('event_type' => 'component_regenerated', 'event_status' => 'success'),
+			null,
+			array('component' => 'featured_image', 'post_id' => $post_id, 'attachment_id' => $attachment_id)
 		);
 		
 		// Return attachment ID and URL
@@ -342,6 +406,62 @@ class AIPS_Component_Regeneration_Service {
 		);
 
 		return true;
+	}
+
+	/**
+	 * Log a component revision restoration event to the parent history container.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param int    $history_id History ID.
+	 * @param string $component Component type.
+	 * @param int    $revision_id Restored revision ID.
+	 * @return bool|WP_Error True on success, or WP_Error on failure.
+	 */
+	public function log_component_revision_restored($post_id, $history_id, $component, $revision_id) {
+		$post_id = absint($post_id);
+		$history_id = absint($history_id);
+		$revision_id = absint($revision_id);
+
+		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
+		if (is_wp_error($history_container)) {
+			return $history_container;
+		}
+
+		$history_container->record(
+			'activity',
+			sprintf(
+				__('Post component %1$s revision %2$d restored', 'ai-post-scheduler'),
+				$this->get_component_label($component),
+				$revision_id
+			),
+			array('event_type' => 'component_revision_restored', 'event_status' => 'success'),
+			null,
+			array(
+				'component' => $component,
+				'post_id' => $post_id,
+				'revision_id' => $revision_id,
+				'user_id' => get_current_user_id(),
+			)
+		);
+
+		return true;
+	}
+
+	/**
+	 * Convert component slug into human-friendly label for history messages.
+	 *
+	 * @param string $component Component slug.
+	 * @return string
+	 */
+	private function get_component_label($component) {
+		$labels = array(
+			'title' => __('Title', 'ai-post-scheduler'),
+			'excerpt' => __('Excerpt', 'ai-post-scheduler'),
+			'content' => __('Content', 'ai-post-scheduler'),
+			'featured_image' => __('Featured Image', 'ai-post-scheduler'),
+		);
+
+		return isset($labels[$component]) ? $labels[$component] : __('Component', 'ai-post-scheduler');
 	}
 
 }

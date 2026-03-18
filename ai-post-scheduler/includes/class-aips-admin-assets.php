@@ -516,6 +516,7 @@ class AIPS_Admin_Assets {
                 'labelContainerId'     => __('Container ID', 'ai-post-scheduler'),
                 'labelTitle'           => __('Title', 'ai-post-scheduler'),
                 'labelTemplate'        => __('Template', 'ai-post-scheduler'),
+                'labelHistoryType'     => __('History Type', 'ai-post-scheduler'),
                 'labelStatus'          => __('Status', 'ai-post-scheduler'),
                 'labelCreated'         => __('Created', 'ai-post-scheduler'),
                 'labelCompleted'       => __('Completed', 'ai-post-scheduler'),
@@ -527,6 +528,7 @@ class AIPS_Admin_Assets {
                 'colDetails'           => __('Details', 'ai-post-scheduler'),
                 'showDetails'          => __('Show details', 'ai-post-scheduler'),
                 'hideDetails'          => __('Hide details', 'ai-post-scheduler'),
+                'allTypesLabel'        => __('All Types', 'ai-post-scheduler'),
                 'confirmDelete'        => __('Delete this history container? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmBulkDelete'    => __('Delete the selected history containers? This cannot be undone.', 'ai-post-scheduler'),
                 'confirmClearAll'      => __('Clear all history? This cannot be undone.', 'ai-post-scheduler'),
@@ -541,6 +543,7 @@ class AIPS_Admin_Assets {
                 'deleting'             => __('Deleting…', 'ai-post-scheduler'),
                 'retrying'             => __('Retrying…', 'ai-post-scheduler'),
                 'errorRetrying'        => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+                'containerTypes'       => AIPS_History_Container_Type::get_all_types(),
             ));
         }
 

@@ -247,14 +247,17 @@ class AIPS_History {
 
         wp_send_json_success(array(
             'container' => array(
-                'id'              => (int) $history_item->id,
-                'status'          => $history_item->status,
-                'generated_title' => $history_item->generated_title,
-                'template_name'   => isset($history_item->template_name) ? $history_item->template_name : '',
-                'created_at'      => $history_item->created_at,
-                'completed_at'    => $history_item->completed_at,
-                'error_message'   => $history_item->error_message,
-                'post_id'         => $history_item->post_id ? (int) $history_item->post_id : null,
+                'id'                   => (int) $history_item->id,
+                'status'               => $history_item->status,
+                'generated_title'      => $history_item->generated_title,
+                'template_name'        => isset($history_item->template_name) ? $history_item->template_name : '',
+                'container_type_label' => isset($history_item->container_type)
+                    ? AIPS_History_Container_Type::get_label((int) $history_item->container_type)
+                    : '',
+                'created_at'           => $history_item->created_at,
+                'completed_at'         => $history_item->completed_at,
+                'error_message'        => $history_item->error_message,
+                'post_id'              => $history_item->post_id ? (int) $history_item->post_id : null,
             ),
             'logs'      => $logs,
         ));
@@ -273,15 +276,20 @@ class AIPS_History {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
-        $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
-        $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
+        $status_filter     = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+        $search_query      = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $paged             = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
+        $container_types   = array();
+        if (!empty($_POST['container_types']) && is_array($_POST['container_types'])) {
+            $container_types = array_map('absint', $_POST['container_types']);
+        }
 
         $history = $this->get_history(array(
-            'page' => $paged,
-            'status' => $status_filter,
-            'search' => $search_query,
-            'fields' => 'list',
+            'page'            => $paged,
+            'status'          => $status_filter,
+            'search'          => $search_query,
+            'container_types' => $container_types,
+            'fields'          => 'list',
         ));
 
         $stats = $this->get_stats();
@@ -299,13 +307,13 @@ class AIPS_History {
         $pagination_html = ob_get_clean();
 
         wp_send_json_success(array(
-            'items_html' => $items_html,
+            'items_html'      => $items_html,
             'pagination_html' => $pagination_html,
-            'paged' => $paged,
-            'stats' => array(
-                'total' => (int) $stats['total'],
-                'completed' => (int) $stats['completed'],
-                'failed' => (int) $stats['failed'],
+            'paged'           => $paged,
+            'stats'           => array(
+                'total'        => (int) $stats['total'],
+                'completed'    => (int) $stats['completed'],
+                'failed'       => (int) $stats['failed'],
                 'success_rate' => (float) $stats['success_rate'],
             ),
         ));
@@ -470,15 +478,20 @@ class AIPS_History {
      * @return void
      */
     public function render_page() {
-        $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
-        $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
-        $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        
+        $current_page    = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+        $status_filter   = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+        $search_query    = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+        $container_types = array();
+        if (!empty($_GET['container_types']) && is_array($_GET['container_types'])) {
+            $container_types = array_map('absint', $_GET['container_types']);
+        }
+
         $history = $this->get_history(array(
-            'page' => $current_page,
-            'status' => $status_filter,
-            'search' => $search_query,
-            'fields' => 'list',
+            'page'            => $current_page,
+            'status'          => $status_filter,
+            'search'          => $search_query,
+            'container_types' => $container_types,
+            'fields'          => 'list',
         ));
         
         $stats = $this->get_stats();

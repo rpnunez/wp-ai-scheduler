@@ -146,131 +146,106 @@ class AIPS_Author_Post_Generator {
 	 */
 	public function generate_post_from_topic($topic, $author, $creation_method = 'manual') {
 		$this->logger->log("Generating post from topic: {$topic->topic_title} (ID: {$topic->id})", 'info');
-		
+
+		// Load parent history containers
+		$author_history = !empty($author->author_history_id)
+			? AIPS_History_Container::load_existing($this->history_repository, $author->author_history_id)
+			: null;
+
+		$topic_history = !empty($topic->topic_history_id)
+			? AIPS_History_Container::load_existing($this->history_repository, $topic->topic_history_id)
+			: null;
+
+		// Create a new history container for this post generation, linked to the topic
+		$post_history_metadata = [
+			'topic_id' => $topic->id,
+			'author_id' => $author->id,
+			'creation_method' => $creation_method,
+		];
+		if ($topic_history) {
+			$post_history_metadata['parent_id'] = $topic_history->get_id();
+		}
+		$post_history = $this->history_service->create('post_generation', $post_history_metadata, AIPS_History_Container_Type::POST_GENERATION);
+
 		// Get expanded context from similar approved topics
 		$expanded_context = $this->expansion_service->get_expanded_context($author->id, $topic->id, 5);
-		
 		if (!empty($expanded_context)) {
 			$this->logger->log("Added expanded context to prompt for topic {$topic->id}", 'debug');
 		}
 		
-		// Build a context object for the generator with the creation method
+		// Build a context object for the generator
 		$context = new AIPS_Topic_Context($author, $topic, $expanded_context, $creation_method);
 		
-		// Generate the post using the context
-		// Note: The Generator internally creates its own history container
 		try {
+			// Set the history container on the generator before running it
+			$this->generator->set_history_container($post_history);
 			$post_id = $this->generator->generate_post($context);
 			
 			if (is_wp_error($post_id)) {
-				$this->logger->log("Failed to generate post for topic {$topic->id}: " . $post_id->get_error_message(), 'error');
-				
-				// The Generator now handles all logging internally via History Container
-				// We can optionally log additional high-level activity here
-				$history = $this->history_service->create('topic_post_generation', array(
+				// Log failure to parent containers
+				$error_message = $post_id->get_error_message();
+				$log_data = [
 					'topic_id' => $topic->id,
-					'author_id' => $author->id,
-				));
-				
-				$history->record(
-					'activity',
-					sprintf(
-						__('Failed to generate post from topic "%s": %s', 'ai-post-scheduler'),
-						$topic->topic_title,
-						$post_id->get_error_message()
-					),
-					array(
-						'topic_id' => $topic->id,
-						'topic_title' => $topic->topic_title,
-					),
-					null,
-					array(
-						'author_id' => $author->id,
-						'author_name' => $author->name,
-						'error' => $post_id->get_error_message(),
-					)
-				);
-				
+					'topic_title' => $topic->topic_title,
+					'error' => $error_message,
+				];
+				if ($author_history) {
+					$author_history->record('error', sprintf(__('Failed to generate post from topic "%s": %s', 'ai-post-scheduler'), $topic->topic_title, $error_message), $log_data);
+				}
+				if ($topic_history) {
+					$topic_history->record('error', sprintf(__('Failed to generate post: %s', 'ai-post-scheduler'), $error_message), $log_data);
+				}
 				return $post_id;
 			}
 			
-			// Log the post generation
+			// Log the post generation for backward compatibility
 			$this->logs_repository->log_post_generation(
 				$topic->id,
 				$post_id,
-				wp_json_encode(array(
-					'author_id' => $author->id
-				))
+				wp_json_encode(['author_id' => $author->id])
 			);
-			
-			// Get post status for activity log
+
 			$post = get_post($post_id);
 			$post_status = $post ? $post->post_status : 'unknown';
 			$post_title = $post ? $post->post_title : $topic->topic_title;
-			
-			// Log successful post generation using new History API
-			$history = $this->history_service->create('topic_post_generation', array(
-				'post_id' => $post_id,
+
+			// Log success to parent containers
+			$log_data = [
 				'topic_id' => $topic->id,
-				'author_id' => $author->id,
-			));
-			
-			$history->record(
-				'activity',
-				sprintf(
-					__('Generated %s from topic "%s" for author "%s"', 'ai-post-scheduler'),
-					$post_status === 'publish' ? __('post', 'ai-post-scheduler') : __('draft', 'ai-post-scheduler'),
-					$topic->topic_title,
-					$author->name
-				),
-				array(
-					'topic_id' => $topic->id,
-					'topic_title' => $topic->topic_title,
-				),
-				array(
-					'post_id' => $post_id,
-					'post_title' => $post_title,
-					'post_status' => $post_status,
-				),
-				array(
-					'author_id' => $author->id,
-					'author_name' => $author->name,
-				)
-			);
-			
+				'topic_title' => $topic->topic_title,
+				'post_id' => $post_id,
+				'post_title' => $post_title,
+				'post_status' => $post_status,
+			];
+			if ($author_history) {
+				$author_history->record('activity', sprintf(__('Generated %s "%s" from topic "%s"', 'ai-post-scheduler'), $post_status, $post_title, $topic->topic_title), $log_data);
+			}
+			if ($topic_history) {
+				$topic_history->record('activity', sprintf(__('Generated %s: "%s"', 'ai-post-scheduler'), $post_status, $post_title), $log_data);
+			}
+
 			$this->logger->log("Successfully generated post {$post_id} from topic {$topic->id}", 'info');
 			
 			return $post_id;
 			
 		} catch (Exception $e) {
-			$this->logger->log("Exception generating post for topic {$topic->id}: " . $e->getMessage(), 'error');
-			
-			// Log exception using new History API
-			$history = $this->history_service->create('topic_post_generation', array(
+			$error_message = $e->getMessage();
+			$this->logger->log("Exception generating post for topic {$topic->id}: " . $error_message, 'error');
+
+			// Log exception to parent containers
+			$log_data = [
 				'topic_id' => $topic->id,
-				'author_id' => $author->id,
-			));
+				'topic_title' => $topic->topic_title,
+				'error' => $error_message,
+			];
+			if ($author_history) {
+				$author_history->record('error', sprintf(__('Exception generating post from topic "%s": %s', 'ai-post-scheduler'), $topic->topic_title, $error_message), $log_data);
+			}
+			if ($topic_history) {
+				$topic_history->record('error', sprintf(__('Exception generating post: %s', 'ai-post-scheduler'), $error_message), $log_data);
+			}
 			
-			$history->record(
-				'activity',
-				sprintf(
-					__('Exception while generating post from topic "%s": %s', 'ai-post-scheduler'),
-					$topic->topic_title,
-					$e->getMessage()
-				),
-				array(
-					'topic_id' => $topic->id,
-					'topic_title' => $topic->topic_title,
-				),
-				null,
-				array(
-					'author_id' => $author->id,
-					'author_name' => $author->name,
-					'error' => $e->getMessage(),
-				)
-			);
-			
-			return new WP_Error('generation_failed', $e->getMessage());
+			return new WP_Error('generation_failed', $error_message);
 		}
 	}
 	
