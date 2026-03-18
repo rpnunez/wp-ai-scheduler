@@ -141,6 +141,28 @@ Fires immediately before the content prompt is constructed.
     *   `object $template`: The template object.
     *   `string $topic`: The topic being processed.
 
+### Resilience / Circuit Breaker
+
+#### `aips_circuit_breaker_opened`
+Fires when a circuit breaker opens (trips) due to reaching the failure threshold or a failure during half-open state.
+
+*   **Arguments:**
+    *   `string $service`: The service name (e.g. 'text', 'image', 'json').
+    *   `int $failures`: Total failure count.
+    *   `int $threshold`: Configured failure threshold.
+
+#### `aips_circuit_breaker_half_open`
+Fires when a circuit breaker enters the half-open state after the timeout period.
+
+*   **Arguments:**
+    *   `string $service`: The service name.
+
+#### `aips_circuit_breaker_closed`
+Fires when a circuit breaker closes (recovers) after a successful request in half-open state.
+
+*   **Arguments:**
+    *   `string $service`: The service name.
+
 ---
 
 ## Filter Hooks
