@@ -1052,4 +1052,39 @@ class AIPS_Settings {
 
         wp_send_json_success(array('post' => $detail));
     }
+	/**
+	 * Settings section description for the "AI & External APIs" section.
+	 *
+	 * @return void
+	 */
+	public function ai_section_callback() {
+		echo '<p>' . esc_html__( 'Configure how AI Post Scheduler connects to your AI engine and any external APIs used for generation.', 'ai-post-scheduler' ) . '</p>';
+	}
+
+	/**
+	 * Settings section description for the "Resilience & Rate Limiting" section.
+	 *
+	 * @return void
+	 */
+	public function resilience_section_callback() {
+		echo '<p>' . esc_html__( 'Control retry behavior, rate limiting, and other resilience options to keep generation stable.', 'ai-post-scheduler' ) . '</p>';
+	}
+
+	/**
+	 * Settings section description for the "Notifications" section.
+	 *
+	 * @return void
+	 */
+	public function notifications_section_callback() {
+		echo '<p>' . esc_html__( 'Manage email notifications and alerts related to generated posts and review workflows.', 'ai-post-scheduler' ) . '</p>';
+	}
+
+	/**
+	 * Settings section description for the "Advanced & Logging" section.
+	 *
+	 * @return void
+	 */
+	public function advanced_section_callback() {
+		echo '<p>' . esc_html__( 'Access advanced options, logging controls, and developer-focused settings.', 'ai-post-scheduler' ) . '</p>';
+	}
 }

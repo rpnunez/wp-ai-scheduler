@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 
         <!-- Plugin Settings Form -->
         <div class="aips-content-panel aips-settings-panel">
-            <div class="aips-topics-tabs aips-page-tabs" id="aips-settings-tabs" style="border-bottom: 1px solid #c3c4c7; padding: 0 15px;">
+            <div class="aips-topics-tabs aips-page-tabs aips-settings-tabs" id="aips-settings-tabs">
                 <button type="button" class="aips-tab-link active" data-tab="general">
                     <?php esc_html_e('General', 'ai-post-scheduler'); ?>
                 </button>
@@ -51,15 +51,29 @@ if (!defined('ABSPATH')) {
                 // Wrap WordPress settings API output
                 $('.aips-panel-body form > h2').each(function(index) {
                     var $title = $(this);
-                    var text = $title.text().trim();
-                    var tabId = 'general';
+                    var tabId;
 
-                    if (text === 'General Settings') tabId = 'general';
-                    else if (text === 'AI & External APIs') tabId = 'ai';
-                    else if (text === 'Resilience & Rate Limiting') tabId = 'resilience';
-                    else if (text === 'Notifications') tabId = 'notifications';
-                    else if (text === 'Advanced & Logging') tabId = 'advanced';
-                    else tabId = 'custom-' + index;
+                    // Map sections to tabs by index, not by localized title text
+                    switch (index) {
+                        case 0:
+                            tabId = 'general';
+                            break;
+                        case 1:
+                            tabId = 'ai';
+                            break;
+                        case 2:
+                            tabId = 'resilience';
+                            break;
+                        case 3:
+                            tabId = 'notifications';
+                            break;
+                        case 4:
+                            tabId = 'advanced';
+                            break;
+                        default:
+                            tabId = 'custom-' + index;
+                            break;
+                    }
 
                     // The description <p> (if exists) and <table class="form-table">
                     var $next = $title.next();
