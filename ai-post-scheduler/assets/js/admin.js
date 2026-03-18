@@ -1073,10 +1073,11 @@
         },
 
         /**
-         * Reset and open the schedule modal in "Add New" mode.
+         * Open the schedule wizard in "Add New" mode.
          *
-         * Clears the schedule form, empties the hidden ID field, sets the
-         * modal title to "Add New Schedule", and displays the modal.
+         * Resets the wizard form, initialises the wizard to step 1, and shows
+         * the schedule wizard modal. Falls back to the legacy modal if the
+         * wizard modal is not present on the page.
          *
          * @param {Event} e - Click event from an `.aips-add-schedule-btn` element.
          */
@@ -3189,13 +3190,13 @@
             var rotationText = $('#sw_rotation_pattern option:selected').text();
             var isActive = $('#sw_schedule_is_active').is(':checked');
 
-            $modal.find('#sw_summary_title').text(title || aipsAdminL10n.noTitle || '(' + (aipsAdminL10n.noTitle || 'No title') + ')');
+            $modal.find('#sw_summary_title').text(title || '(' + (aipsAdminL10n.noTitle || 'No title') + ')');
             $modal.find('#sw_summary_template').text(templateText || '-');
-            $modal.find('#sw_summary_topic').text(topic || aipsAdminL10n.noneOption);
+            $modal.find('#sw_summary_topic').text(topic || aipsAdminL10n.noneOption || '-');
             $modal.find('#sw_summary_frequency').text(frequencyText || '-');
             $modal.find('#sw_summary_start_time').text(startTime || aipsAdminL10n.startNow || 'Now');
             $modal.find('#sw_summary_structure').text(structureText || aipsAdminL10n.useDefault || 'Use Default');
-            $modal.find('#sw_summary_rotation').text(rotationText || aipsAdminL10n.noneOption);
+            $modal.find('#sw_summary_rotation').text(rotationText || aipsAdminL10n.noneOption || '-');
             $modal.find('#sw_summary_active').text(isActive ? (aipsAdminL10n.yes || 'Yes') : (aipsAdminL10n.no || 'No'));
         },
 
