@@ -43,69 +43,6 @@ if (!defined('ABSPATH')) {
 
                     <?php submit_button(); ?>
                 </form>
-
-                                    <script>
-            jQuery(document).ready(function($) {
-                var $tabs = $('#aips-settings-tabs .aips-tab-link');
-
-                // Wrap WordPress settings API output
-                $('.aips-panel-body form > h2').each(function(index) {
-                    var $title = $(this);
-                    var tabId;
-
-                    // Map sections to tabs by index, not by localized title text
-                    switch (index) {
-                        case 0:
-                            tabId = 'general';
-                            break;
-                        case 1:
-                            tabId = 'ai';
-                            break;
-                        case 2:
-                            tabId = 'resilience';
-                            break;
-                        case 3:
-                            tabId = 'notifications';
-                            break;
-                        case 4:
-                            tabId = 'advanced';
-                            break;
-                        default:
-                            tabId = 'custom-' + index;
-                            break;
-                    }
-
-                    // The description <p> (if exists) and <table class="form-table">
-                    var $next = $title.next();
-                    var hasDescription = $next.is('p') && !$next.hasClass('submit');
-                    var $description = hasDescription ? $next : null;
-                    var $table = hasDescription ? $description.next('table.form-table') : $title.next('table.form-table');
-
-                    // Wrap them
-                    var $wrapper = $('<div class="aips-settings-section-wrapper" id="section-' + tabId + '" style="display: none; padding-top: 15px;"></div>');
-                    $title.before($wrapper);
-                    $wrapper.append($title);
-                    if (hasDescription) $wrapper.append($description);
-                    if ($table.length) $wrapper.append($table);
-                });
-
-                // Show default tab
-                $('#section-general').show();
-                $tabs.removeClass('active');
-                $tabs.filter('[data-tab="general"]').addClass('active');
-
-                $tabs.on('click', function(e) {
-                    e.preventDefault();
-                    var targetTab = $(this).data('tab');
-
-                    $tabs.removeClass('active');
-                    $(this).addClass('active');
-
-                    $('.aips-settings-section-wrapper').hide();
-                    $('#section-' + targetTab).show();
-                });
-            });
-            </script>
             </div>
         </div>
 

@@ -25,6 +25,7 @@
         init: function() {
             this.bindEvents();
             this.initAIVariablesScanner();
+            this.initSettingsTabs();
             this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
         },
@@ -2965,6 +2966,54 @@
         initAIVariablesScanner: function() {
             // Initial scan when modal opens or form loads
             AIPS.scanAllAIVariables();
+        },
+
+        /**
+         * Initialize Settings page section-to-tab wrapping.
+         *
+         * Only runs when `#aips-settings-tabs` is present (i.e. on the Settings
+         * page). Wraps each WordPress Settings API section (h2 + optional
+         * description p + table.form-table) in an `.aips-tab-content` div whose
+         * ID matches the corresponding tab (`general-tab`, `ai-tab`, etc.) so
+         * the generic `switchAipsTab` handler can show/hide sections when the
+         * user clicks the tab bar. Shows the `general` section by default.
+         */
+        initSettingsTabs: function() {
+            if (!$('#aips-settings-tabs').length) {
+                return;
+            }
+
+            var tabMap = ['general', 'ai', 'resilience', 'notifications', 'advanced'];
+
+            $('.aips-panel-body form > h2').each(function(index) {
+                var $title = $(this);
+                var tabId;
+
+                if (tabMap[index] !== undefined) {
+                    tabId = tabMap[index];
+                } else {
+                    console.warn('AIPS: Unmapped settings section at index ' + index + '. Update tabMap in initSettingsTabs.');
+                    tabId = 'custom-' + index;
+                }
+
+                var $next = $title.next();
+                var hasDescription = $next.is('p') && !$next.hasClass('submit');
+                var $description = hasDescription ? $next : null;
+                var $table = hasDescription ? $description.next('table.form-table') : $title.next('table.form-table');
+
+                var $wrapper = $('<div class="aips-tab-content" id="' + tabId + '-tab" style="display: none; padding-top: 15px;"></div>');
+                $title.before($wrapper);
+                $wrapper.append($title);
+                if (hasDescription) {
+                    $wrapper.append($description);
+                }
+                if ($table.length) {
+                    $wrapper.append($table);
+                }
+            });
+
+            // Show the general tab by default
+            $('#general-tab').show();
         },
 
         /**

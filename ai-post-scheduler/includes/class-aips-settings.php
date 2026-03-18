@@ -260,7 +260,7 @@ class AIPS_Settings {
             'default' => 2000
         ));
         register_setting('aips_settings', 'aips_temperature', array(
-            'sanitize_callback' => 'floatval',
+            'sanitize_callback' => array($this, 'sanitize_temperature'),
             'default' => 0.7
         ));
         register_setting('aips_settings', 'aips_topic_similarity_threshold', array(
@@ -631,6 +631,23 @@ class AIPS_Settings {
         <input type="email" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
         <p class="description"><?php esc_html_e('Email address to receive notifications about posts awaiting review.', 'ai-post-scheduler'); ?></p>
         <?php
+    }
+
+    /**
+     * Sanitize the AI temperature value.
+     *
+     * Returns the default 0.7 for non-numeric input and clamps numeric values
+     * to the valid range [0.0, 2.0] used by supported AI providers.
+     *
+     * @param mixed $value Raw input value.
+     * @return float Sanitized temperature float.
+     */
+    public function sanitize_temperature($value) {
+        if (!is_numeric($value)) {
+            return 0.7;
+        }
+        $float = (float) $value;
+        return min(2.0, max(0.0, $float));
     }
 
     /**
