@@ -388,6 +388,59 @@ class AIPS_History_Repository {
      *     @type float $success_rate Success rate percentage.
      * }
      */
+
+    /**
+     * Get the estimated generation time based on recent successful generations.
+     *
+     * Retrieves the average of the most recent recorded generation times
+     * from post metadata to provide an estimate for bulk generation tasks.
+     *
+     * @param int $limit Number of recent samples to use for calculation (default: 20).
+     * @return array {
+     *     @type int $per_post_seconds Estimated seconds per post.
+     *     @type int $sample_size      Number of valid samples used for the estimate.
+     * }
+     */
+    public function get_estimated_generation_time($limit = 20) {
+        $default_seconds = 30;
+        $limit           = absint($limit);
+
+        // Retrieve the most recent recorded generation times.
+        $times = $this->wpdb->get_col(
+            $this->wpdb->prepare(
+                "SELECT meta_value FROM {$this->wpdb->postmeta}
+                 WHERE meta_key = %s
+                 ORDER BY meta_id DESC
+                 LIMIT %d",
+                '_aips_post_generation_total_time',
+                $limit
+            )
+        );
+
+        if (!empty($times)) {
+            $numeric_times = array_filter(array_map('floatval', $times), function($v) {
+                return $v > 0;
+            });
+
+            if (!empty($numeric_times)) {
+                $avg              = array_sum($numeric_times) / count($numeric_times);
+                $per_post_seconds = (int) ceil($avg);
+            } else {
+                $per_post_seconds = $default_seconds;
+            }
+
+            $sample_size = count($numeric_times);
+        } else {
+            $per_post_seconds = $default_seconds;
+            $sample_size      = 0;
+        }
+
+        return array(
+            'per_post_seconds' => $per_post_seconds,
+            'sample_size'      => $sample_size,
+        );
+    }
+
     public function get_stats() {
         $cached_stats = get_transient('aips_history_stats');
 

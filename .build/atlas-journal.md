@@ -1329,3 +1329,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted the Markdown parsing logic into a new, dedicated `AIPS_Markdown_Parser` service class. Injected this service into `AIPS_Generator` as an optional dependency via the constructor to maintain backwards compatibility.
 **Consequence:** `AIPS_Generator` is leaner and more focused. `AIPS_Markdown_Parser` can now be reused elsewhere and tested independently. The constructor signature of `AIPS_Generator` was modified, but optional parameters ensure no breaking changes for existing instantiations.
 **Tests:** Created `test-aips-markdown-parser.php` which validates `is_markdown`, `contains_html`, and `parse` methods. All tests passed.
+
+## 2024-03-18 - [Extract Bulk Generate Estimate Database Query to Repository]
+**Context:** `AIPS_Author_Topics_Controller::ajax_get_bulk_generate_estimate` contained a hardcoded, direct database query using `global $wpdb` to select the recent `_aips_post_generation_total_time` postmeta entries. This violated the Separation of Concerns principle, bypassing repository layers that should handle database operations.
+**Decision:** Extracted the data retrieval and time estimate calculation logic into `AIPS_History_Repository::get_estimated_generation_time()`. The controller now instantiates this repository and delegates the query to it, maintaining encapsulation.
+**Consequence:** The controller is strictly limited to handling the request payload and responding with JSON. The `AIPS_History_Repository` now manages this historical post metadata lookup, resulting in better testability, compliance with domain architecture boundaries, and no raw `$wpdb` querying in the controller space.
+**Tests:** Existing tests for generation timings function unchanged, and the `get_estimated_generation_time` abstraction handles database fetching robustly.
