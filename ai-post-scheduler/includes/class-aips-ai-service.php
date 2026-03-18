@@ -152,19 +152,16 @@ class AIPS_AI_Service {
                 
                 if ($result && !empty($result)) {
                     $this->log_call('text', $prompt, $result, $options);
-                    $this->resilience_service->record_success();
                     return $result;
                 }
                 
                 $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
                 $this->log_call('text', $prompt, null, $options, $error->get_error_message());
-                $this->resilience_service->record_failure();
                 return $error;
                 
             } catch (Exception $e) {
                 $error = new WP_Error('generation_failed', $e->getMessage());
                 $this->log_call('text', $prompt, null, $options, $e->getMessage());
-                $this->resilience_service->record_failure();
                 return $error;
             }
         }, 'text', $prompt, $options);
@@ -245,7 +242,6 @@ class AIPS_AI_Service {
                 if (empty($result)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
                     $this->log_call('json', $prompt, null, $options, $error->get_error_message());
-                    $this->resilience_service->record_failure();
                     return $error;
                 }
                 
@@ -253,12 +249,10 @@ class AIPS_AI_Service {
                 if (!is_array($result)) {
                     $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
                     $this->log_call('json', $prompt, null, $options, $error->get_error_message());
-                    $this->resilience_service->record_failure();
                     return $error;
                 }
                 
                 $this->log_call('json', $prompt, wp_json_encode($result), $options);
-                $this->resilience_service->record_success();
                 return $result;
                 
             } catch (Exception $e) {
@@ -378,7 +372,6 @@ class AIPS_AI_Service {
                 if (!$image_url || empty($image_url)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
                     $this->log_call('image', $prompt, null, $options, $error->get_error_message());
-                    $this->resilience_service->record_failure();
                     return $error;
                 }
 
@@ -390,18 +383,15 @@ class AIPS_AI_Service {
                 if (empty($image_url)) {
                     $error = new WP_Error('no_image_url', __('No image URL in AI response.', 'ai-post-scheduler'));
                     $this->log_call('image', $prompt, null, $options, $error->get_error_message());
-                    $this->resilience_service->record_failure();
                     return $error;
                 }
 
                 $this->log_call('image', $prompt, $image_url, $options);
-                $this->resilience_service->record_success();
                 return $image_url;
 
             } catch (Exception $e) {
                 $error = new WP_Error('generation_failed', $e->getMessage());
                 $this->log_call('image', $prompt, null, $options, $e->getMessage());
-                $this->resilience_service->record_failure();
                 return $error;
             }
         }, 'image', $prompt, $options);
@@ -503,8 +493,6 @@ class AIPS_AI_Service {
 
                     $this->log_call($log_type, $message, null, $options, $error->get_error_message());
 
-                    $this->resilience_service->record_failure();
-
                     return $error;
                 }
                 
@@ -522,14 +510,11 @@ class AIPS_AI_Service {
                     'response' => var_export($response, true)
                 ));
                 
-                $this->resilience_service->record_success();
-                
                 return $result;
                 
             } catch (Exception $e) {
                 $error = new WP_Error('chatbot_failed', $e->getMessage());
                 $this->log_call($log_type, $message, null, $options, $e->getMessage());
-                $this->resilience_service->record_failure();
                 return $error;
             }
         }, $log_type, $message, $options);
@@ -724,10 +709,12 @@ class AIPS_AI_Service {
     /**
      * Get circuit breaker status.
      *
+     * Returns the default circuit breaker state for backward compatibility.
+     *
      * @return array Circuit breaker status.
      */
     public function get_circuit_breaker_status() {
-        return $this->resilience_service->get_circuit_breaker_status();
+        return $this->resilience_service->get_circuit_breaker_status('default');
     }
     
     /**
