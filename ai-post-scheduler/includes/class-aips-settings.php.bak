@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
  * @package AI_Post_Scheduler
  */
 class AIPS_Settings {
-    
+
     /**
      * Initialize the settings class.
      *
@@ -27,7 +27,7 @@ class AIPS_Settings {
         add_filter('parent_file', array($this, 'fix_author_topics_parent_file'));
         add_filter('submenu_file', array($this, 'fix_author_topics_submenu_file'));
     }
-    
+
     /**
      * Add menu pages to the WordPress admin dashboard.
      *
@@ -95,7 +95,7 @@ class AIPS_Settings {
             'aips-authors',
             array($this, 'render_authors_page')
         );
-      
+
         // Author Topics page - hidden from menu navigation, accessible via URL
         add_submenu_page(
             null,
@@ -189,7 +189,7 @@ class AIPS_Settings {
             );
         }
     }
-    
+
     /**
      * Expand the "AI Post Scheduler" top-level menu when on the hidden Author Topics page.
      *
@@ -233,18 +233,21 @@ class AIPS_Settings {
      * @return void
      */
     public function register_settings() {
-        // GENERAL OPTIONS
         register_setting('aips_settings', 'aips_default_post_status', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
         register_setting('aips_settings', 'aips_default_category', array(
             'sanitize_callback' => 'absint'
         ));
-        register_setting('aips_settings', 'aips_default_post_author', array(
+        register_setting('aips_settings', 'aips_enable_logging', array(
             'sanitize_callback' => 'absint'
         ));
-
-        // API / AI OPTIONS
+        register_setting('aips_settings', 'aips_developer_mode', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_retry_max_attempts', array(
+            'sanitize_callback' => 'absint'
+        ));
         register_setting('aips_settings', 'aips_ai_model', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
@@ -255,105 +258,24 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
-        register_setting('aips_settings', 'aips_max_tokens', array(
-            'sanitize_callback' => 'absint',
-            'default' => 2000
-        ));
-        register_setting('aips_settings', 'aips_temperature', array(
-            'sanitize_callback' => 'floatval',
-            'default' => 0.7
-        ));
-        register_setting('aips_settings', 'aips_topic_similarity_threshold', array(
-            'sanitize_callback' => array($this, 'sanitize_similarity_threshold'),
-            'default' => 0.8
-        ));
-
-        // RESILIENCE OPTIONS
-        register_setting('aips_settings', 'aips_enable_retry', array(
-            'sanitize_callback' => 'absint'
-        ));
-        register_setting('aips_settings', 'aips_retry_max_attempts', array(
-            'sanitize_callback' => 'absint'
-        ));
-        register_setting('aips_settings', 'aips_retry_initial_delay', array(
-            'sanitize_callback' => 'absint',
-            'default' => 1
-        ));
-        register_setting('aips_settings', 'aips_enable_rate_limiting', array(
-            'sanitize_callback' => 'absint'
-        ));
-        register_setting('aips_settings', 'aips_rate_limit_requests', array(
-            'sanitize_callback' => 'absint',
-            'default' => 10
-        ));
-        register_setting('aips_settings', 'aips_rate_limit_period', array(
-            'sanitize_callback' => 'absint',
-            'default' => 60
-        ));
-        register_setting('aips_settings', 'aips_enable_circuit_breaker', array(
-            'sanitize_callback' => 'absint'
-        ));
-        register_setting('aips_settings', 'aips_circuit_breaker_threshold', array(
-            'sanitize_callback' => 'absint',
-            'default' => 5
-        ));
-        register_setting('aips_settings', 'aips_circuit_breaker_timeout', array(
-            'sanitize_callback' => 'absint',
-            'default' => 300
-        ));
-
-        // ADVANCED / LOGGING OPTIONS
-        register_setting('aips_settings', 'aips_enable_logging', array(
-            'sanitize_callback' => 'absint'
-        ));
-        register_setting('aips_settings', 'aips_log_retention_days', array(
-            'sanitize_callback' => 'absint',
-            'default' => 30
-        ));
-        register_setting('aips_settings', 'aips_developer_mode', array(
-            'sanitize_callback' => 'absint'
-        ));
-
-        // NOTIFICATIONS OPTIONS
         register_setting('aips_settings', 'aips_review_notifications_enabled', array(
             'sanitize_callback' => 'absint'
         ));
         register_setting('aips_settings', 'aips_review_notifications_email', array(
             'sanitize_callback' => 'sanitize_email'
         ));
-        
-        // ADD SECTIONS
+        register_setting('aips_settings', 'aips_topic_similarity_threshold', array(
+            'sanitize_callback' => array($this, 'sanitize_similarity_threshold'),
+            'default' => 0.8
+        ));
+
         add_settings_section(
             'aips_general_section',
             __('General Settings', 'ai-post-scheduler'),
             array($this, 'general_section_callback'),
             'aips-settings'
         );
-        add_settings_section(
-            'aips_ai_section',
-            __('AI & External APIs', 'ai-post-scheduler'),
-            array($this, 'ai_section_callback'),
-            'aips-settings'
-        );
-        add_settings_section(
-            'aips_resilience_section',
-            __('Resilience & Rate Limiting', 'ai-post-scheduler'),
-            array($this, 'resilience_section_callback'),
-            'aips-settings'
-        );
-        add_settings_section(
-            'aips_notifications_section',
-            __('Notifications', 'ai-post-scheduler'),
-            array($this, 'notifications_section_callback'),
-            'aips-settings'
-        );
-        add_settings_section(
-            'aips_advanced_section',
-            __('Advanced & Logging', 'ai-post-scheduler'),
-            array($this, 'advanced_section_callback'),
-            'aips-settings'
-        );
-        
+
         add_settings_field(
             'aips_default_post_status',
             __('Default Post Status', 'ai-post-scheduler'),
@@ -361,7 +283,7 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
-        
+
         add_settings_field(
             'aips_default_category',
             __('Default Category', 'ai-post-scheduler'),
@@ -369,7 +291,7 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
-        
+
         add_settings_field(
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
@@ -377,7 +299,7 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
-        
+
         add_settings_field(
             'aips_chatbot_id',
             __('Chatbot ID', 'ai-post-scheduler'),
@@ -393,7 +315,7 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
-        
+
         add_settings_field(
             'aips_retry_max_attempts',
             __('Max Retries on Failure', 'ai-post-scheduler'),
@@ -401,7 +323,7 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
-        
+
         add_settings_field(
             'aips_enable_logging',
             __('Enable Logging', 'ai-post-scheduler'),
@@ -417,7 +339,7 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
-        
+
         add_settings_field(
             'aips_review_notifications_enabled',
             __('Send Email Notifications for Posts Awaiting Review', 'ai-post-scheduler'),
@@ -425,7 +347,7 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
-        
+
         add_settings_field(
             'aips_review_notifications_email',
             __('Notifications Email Address', 'ai-post-scheduler'),
@@ -442,7 +364,7 @@ class AIPS_Settings {
             'aips_general_section'
         );
     }
-        
+
     /**
      * Render the description for the general settings section.
      *
@@ -451,7 +373,7 @@ class AIPS_Settings {
     public function general_section_callback() {
         echo '<p>' . esc_html__('Configure default settings for AI-generated posts.', 'ai-post-scheduler') . '</p>';
     }
-    
+
     /**
      * Render the default post status setting field.
      *
@@ -470,7 +392,7 @@ class AIPS_Settings {
         <p class="description"><?php esc_html_e('Default status for newly generated posts.', 'ai-post-scheduler'); ?></p>
         <?php
     }
-    
+
     /**
      * Render the default category setting field.
      *
@@ -489,7 +411,7 @@ class AIPS_Settings {
         ));
         echo '<p class="description">' . esc_html__('Default category for generated posts.', 'ai-post-scheduler') . '</p>';
     }
-    
+
     /**
      * Render the AI model setting field.
      *
@@ -504,7 +426,7 @@ class AIPS_Settings {
         <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
         <?php
     }
-    
+
     /**
      * Render the Chatbot ID field.
      *
@@ -549,7 +471,7 @@ class AIPS_Settings {
         <p class="description"><?php esc_html_e('Required for fetching images from Unsplash. Generate a Client ID at unsplash.com/developers.', 'ai-post-scheduler'); ?></p>
         <?php
     }
-    
+
     /**
      * Render the max retries setting field.
      *
@@ -564,7 +486,7 @@ class AIPS_Settings {
         <p class="description"><?php esc_html_e('Number of retry attempts if generation fails.', 'ai-post-scheduler'); ?></p>
         <?php
     }
-    
+
     /**
      * Render the logging enable setting field.
      *
@@ -598,7 +520,7 @@ class AIPS_Settings {
         </label>
         <?php
     }
-    
+
     /**
      * Render the review notifications enabled setting field.
      *
@@ -617,7 +539,7 @@ class AIPS_Settings {
         <p class="description"><?php esc_html_e('A daily email will be sent with a list of draft posts pending review.', 'ai-post-scheduler'); ?></p>
         <?php
     }
-    
+
     /**
      * Render the review notifications email setting field.
      *
@@ -688,7 +610,7 @@ class AIPS_Settings {
         $controller = new AIPS_Dashboard_Controller();
         $controller->render_page();
     }
-    
+
     /**
      * Render the Voices management page.
      *
@@ -700,7 +622,7 @@ class AIPS_Settings {
         $voices_handler = new AIPS_Voices();
         $voices_handler->render_page();
     }
-    
+
     /**
      * Render the Templates management page.
      *
@@ -712,7 +634,7 @@ class AIPS_Settings {
         $templates_handler = new AIPS_Templates();
         $templates_handler->render_page();
     }
-    
+
     /**
      * Render the Schedule management page.
      *
@@ -723,7 +645,7 @@ class AIPS_Settings {
     public function render_schedule_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/schedule.php';
     }
-    
+
     /**
      * Render the Schedule Calendar page.
      *
@@ -734,7 +656,7 @@ class AIPS_Settings {
     public function render_schedule_calendar_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/calendar.php';
     }
-    
+
     /**
      * Render the Trending Topics Research page.
      *
@@ -745,7 +667,7 @@ class AIPS_Settings {
     public function render_research_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
     }
-    
+
     /**
      * Render the Authors management page.
      *
@@ -768,7 +690,7 @@ class AIPS_Settings {
     public function render_author_topics_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/author-topics.php';
     }
-    
+
     /**
      * Render the Activity page.
      *
@@ -779,15 +701,15 @@ class AIPS_Settings {
     public function render_activity_page() {
         // Use History Service to get activity feed
         $history_service = new AIPS_History_Service();
-        
+
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
         $per_page = 50;
         $offset = ($current_page - 1) * $per_page;
-        
+
         $event_type = isset($_GET['event_type']) ? sanitize_text_field($_GET['event_type']) : '';
         $event_status = isset($_GET['event_status']) ? sanitize_text_field($_GET['event_status']) : '';
         $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        
+
         $filters = array();
         if ($event_type) {
             $filters['event_type'] = $event_type;
@@ -798,12 +720,12 @@ class AIPS_Settings {
         if ($search_query) {
             $filters['search'] = $search_query;
         }
-        
+
         $activities = $history_service->get_activity_feed($per_page, $offset, $filters);
-        
+
         include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
     }
-    
+
     /**
      * Render the Generated Posts page.
      *
@@ -843,13 +765,13 @@ class AIPS_Settings {
     public function render_structures_page() {
         $structure_repo = new AIPS_Article_Structure_Repository();
         $section_repo = new AIPS_Prompt_Section_Repository();
-        
+
         $structures = $structure_repo->get_all(false);
         $sections = $section_repo->get_all(false);
-        
+
         include AIPS_PLUGIN_DIR . 'templates/admin/structures.php';
     }
-    
+
     /**
      * Render the Prompt Sections page.
      *
@@ -860,10 +782,10 @@ class AIPS_Settings {
     public function render_prompt_sections_page() {
         $section_repo = new AIPS_Prompt_Section_Repository();
         $sections = $section_repo->get_all(false);
-        
+
         include AIPS_PLUGIN_DIR . 'templates/admin/sections.php';
     }
-    
+
     /**
      * Render the History page.
      *
@@ -875,7 +797,7 @@ class AIPS_Settings {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
     }
-    
+
     /**
      * Render the Settings page.
      *
@@ -949,7 +871,7 @@ class AIPS_Settings {
         $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 50;
 
         $history_service = new AIPS_History_Service();
-        
+
         // Build filters
         $filters = array();
         if ($search) {
@@ -971,7 +893,7 @@ class AIPS_Settings {
         $activities = array();
         foreach ($activity_logs as $log) {
             $details = json_decode($log->details, true);
-            
+
             $activity = array(
                 'id' => $log->id,
                 'message' => $log->log_type,

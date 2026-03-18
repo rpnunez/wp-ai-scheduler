@@ -16,18 +16,82 @@ if (!defined('ABSPATH')) {
         </div>
 
         <!-- Plugin Settings Form -->
-        <div class="aips-content-panel">
-            <div class="aips-panel-header">
-                <h2><?php esc_html_e('Plugin Configuration', 'ai-post-scheduler'); ?></h2>
+        <div class="aips-content-panel aips-settings-panel">
+            <div class="aips-topics-tabs aips-page-tabs" id="aips-settings-tabs" style="border-bottom: 1px solid #c3c4c7; padding: 0 15px;">
+                <button type="button" class="aips-tab-link active" data-tab="general">
+                    <?php esc_html_e('General', 'ai-post-scheduler'); ?>
+                </button>
+                <button type="button" class="aips-tab-link" data-tab="ai">
+                    <?php esc_html_e('AI & APIs', 'ai-post-scheduler'); ?>
+                </button>
+                <button type="button" class="aips-tab-link" data-tab="resilience">
+                    <?php esc_html_e('Resilience & Rate Limiting', 'ai-post-scheduler'); ?>
+                </button>
+                <button type="button" class="aips-tab-link" data-tab="notifications">
+                    <?php esc_html_e('Notifications', 'ai-post-scheduler'); ?>
+                </button>
+                <button type="button" class="aips-tab-link" data-tab="advanced">
+                    <?php esc_html_e('Advanced', 'ai-post-scheduler'); ?>
+                </button>
             </div>
+
             <div class="aips-panel-body">
-                <form method="post" action="options.php">
-                    <?php
-                    settings_fields('aips_settings');
-                    do_settings_sections('aips-settings');
-                    submit_button();
-                    ?>
+                <form method="post" action="options.php" id="aips-settings-form">
+                    <?php settings_fields('aips_settings'); ?>
+
+                    <?php do_settings_sections('aips-settings'); ?>
+
+                    <?php submit_button(); ?>
                 </form>
+
+                                    <script>
+            jQuery(document).ready(function($) {
+                var $tabs = $('#aips-settings-tabs .aips-tab-link');
+
+                // Wrap WordPress settings API output
+                $('.aips-panel-body form > h2').each(function(index) {
+                    var $title = $(this);
+                    var text = $title.text().trim();
+                    var tabId = 'general';
+
+                    if (text === 'General Settings') tabId = 'general';
+                    else if (text === 'AI & External APIs') tabId = 'ai';
+                    else if (text === 'Resilience & Rate Limiting') tabId = 'resilience';
+                    else if (text === 'Notifications') tabId = 'notifications';
+                    else if (text === 'Advanced & Logging') tabId = 'advanced';
+                    else tabId = 'custom-' + index;
+
+                    // The description <p> (if exists) and <table class="form-table">
+                    var $next = $title.next();
+                    var hasDescription = $next.is('p') && !$next.hasClass('submit');
+                    var $description = hasDescription ? $next : null;
+                    var $table = hasDescription ? $description.next('table.form-table') : $title.next('table.form-table');
+
+                    // Wrap them
+                    var $wrapper = $('<div class="aips-settings-section-wrapper" id="section-' + tabId + '" style="display: none; padding-top: 15px;"></div>');
+                    $title.before($wrapper);
+                    $wrapper.append($title);
+                    if (hasDescription) $wrapper.append($description);
+                    if ($table.length) $wrapper.append($table);
+                });
+
+                // Show default tab
+                $('#section-general').show();
+                $tabs.removeClass('active');
+                $tabs.filter('[data-tab="general"]').addClass('active');
+
+                $tabs.on('click', function(e) {
+                    e.preventDefault();
+                    var targetTab = $(this).data('tab');
+
+                    $tabs.removeClass('active');
+                    $(this).addClass('active');
+
+                    $('.aips-settings-section-wrapper').hide();
+                    $('#section-' + targetTab).show();
+                });
+            });
+            </script>
             </div>
         </div>
 

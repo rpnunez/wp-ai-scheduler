@@ -174,7 +174,7 @@ class AIPS_Config {
     public function get_retry_config() {
         return array(
             //@TODO: Intentionally disabled due to making too many requests to the AI Engine
-            'enabled' => false,//(bool) $this->get_option('aips_enable_retry', true),
+            'enabled' => (bool) $this->get_option('aips_enable_retry', true),
             'max_attempts' => (int) $this->get_option('aips_retry_max_attempts', 3),
             'initial_delay' => (int) $this->get_option('aips_retry_initial_delay', 1),
             'exponential' => true,
