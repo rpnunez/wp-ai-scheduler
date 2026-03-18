@@ -846,7 +846,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 return array();
             }
             
+            public $get_row_return_val = null;
+
             public function get_row($query, $output = OBJECT, $y = 0) {
+                if (isset($this->get_row_return_val)) {
+                    return $this->get_row_return_val;
+                }
                 // Return a default object with common properties to prevent null reference errors
                 $obj = new stdClass();
                 $obj->id = 1; // Default ID
