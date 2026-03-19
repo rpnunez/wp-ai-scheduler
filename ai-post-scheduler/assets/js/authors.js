@@ -63,16 +63,17 @@
 			$(document).on('click', '.aips-select-all-topics', this.toggleSelectAll.bind(this));
 			$(document).on('click', '.aips-select-all-feedback', this.toggleSelectAllFeedback.bind(this));
 			$(document).on('click', '.aips-bulk-action-execute', this.executeBulkAction.bind(this));
-			
+
 			// View topic posts
 			$(document).on('click', '.aips-post-count-badge', this.viewTopicPosts.bind(this));
-			
+
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
 
 			// Topic search (author-topics page)
 			$(document).on('keyup search', '#aips-topic-search', this.filterTopics.bind(this));
 			$(document).on('click', '#aips-topic-search-clear', this.clearTopicSearch.bind(this));
+			$(document).on('click', '#aips-clear-topic-search-btn', this.clearTopicSearch.bind(this));
 
 			// Authors list bulk actions
 			$(document).on('change', '#aips-authors-select-all', this.toggleSelectAllAuthors.bind(this));
@@ -541,7 +542,7 @@
 
 				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
 				html += '<span class="aips-topic-similarity-slot" data-topic-id="' + topic.id + '"></span>';
-				
+
 				// Add post count badge if there are any posts
 				if (topic.post_count && topic.post_count > 0) {
 					html += ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + aipsAuthorsL10n.viewPosts + '">';
@@ -572,7 +573,7 @@
 					html += ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '">';
 					html += '<span class="dashicons dashicons-admin-comments"></span> ' + this.escapeHtml(fbLabel) + '</span>';
 				}
-				
+
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
 				html += '</div>';
 
@@ -752,6 +753,7 @@
 			var term = $('#aips-topic-search').val().toLowerCase().trim();
 			var $rows = $('.aips-topics-table tbody tr');
 			var $clearBtn = $('#aips-topic-search-clear');
+			var visibleRows = 0;
 
 			if (term.length > 0) {
 				$clearBtn.show();
@@ -764,10 +766,19 @@
 				var title = $row.find('.topic-title').text().toLowerCase();
 				if (title.indexOf(term) > -1) {
 					$row.show();
+					visibleRows++;
 				} else {
 					$row.hide();
 				}
 			});
+
+			if (term.length > 0 && visibleRows === 0) {
+				$('#aips-topics-content').hide();
+				$('#aips-topic-search-no-results').show();
+			} else {
+				$('#aips-topics-content').show();
+				$('#aips-topic-search-no-results').hide();
+			}
 		},
 
 		/**
@@ -793,12 +804,12 @@
 		 */
 		updateBulkActionDropdown: function (status) {
 			const $dropdowns = $('.aips-bulk-action-select');
-			
+
 			// Clear existing options except the default one
 			$dropdowns.each(function() {
 				const $dropdown = $(this);
 				$dropdown.find('option:not(:first)').remove();
-				
+
 				// Add options based on the active tab
 				if (status === 'pending') {
 					// Pending Review tab: Approve, Reject, Delete
@@ -952,7 +963,7 @@
 		loadFeedback: function () {
 			if (!this.currentAuthorId) {
 				$('#aips-topics-content').html('<p>No author selected.</p>');
-				
+
 				return;
 			}
 
@@ -1292,7 +1303,7 @@
 			html += '</tbody></table>';
 			$('#aips-topic-logs-content').html(html);
 		},
-		
+
 		/**
 		 * Open the topic-posts modal and start loading posts for the given topic.
 		 *
@@ -1305,15 +1316,15 @@
 		viewTopicPosts: function (e) {
 			e.preventDefault();
 			e.stopPropagation();
-			
+
 			const topicId = $(e.currentTarget).data('topic-id');
-			
+
 			$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.loadingPosts + '</p>');
 			$('#aips-topic-posts-modal').fadeIn();
-			
+
 			this.loadTopicPosts(topicId);
 		},
-		
+
 		/**
 		 * Fetch posts generated from a topic via `aips_get_topic_posts`.
 		 *
@@ -1335,11 +1346,11 @@
 					if (response.success) {
 						const topic = response.data.topic;
 						const posts = response.data.posts;
-						
+
 						$('#aips-topic-posts-modal-title').text(
 							aipsAuthorsL10n.postsGeneratedFrom + ': ' + this.escapeHtml(topic.topic_title)
 						);
-						
+
 						this.renderTopicPosts(posts);
 					} else {
 						$('#aips-topic-posts-content').html(
@@ -1352,7 +1363,7 @@
 				}
 			});
 		},
-		
+
 		/**
 		 * Build and inject the topic-posts HTML table into `#aips-topic-posts-content`.
 		 *
@@ -1367,7 +1378,7 @@
 				$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
 				return;
 			}
-			
+
 			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
 			html += '<th>' + aipsAuthorsL10n.postId + '</th>';
 			html += '<th>' + aipsAuthorsL10n.postTitle + '</th>';
@@ -1375,7 +1386,7 @@
 			html += '<th>' + aipsAuthorsL10n.datePublished + '</th>';
 			html += '<th>' + aipsAuthorsL10n.actions + '</th>';
 			html += '</tr></thead><tbody>';
-			
+
 			posts.forEach(post => {
 				html += '<tr>';
 				html += '<td>' + this.escapeHtml(post.post_id) + '</td>';
@@ -1392,7 +1403,7 @@
 				html += '</td>';
 				html += '</tr>';
 			});
-			
+
 			html += '</tbody></table>';
 			$('#aips-topic-posts-content').html(html);
 		},
@@ -1457,7 +1468,7 @@
 			}
 
 			if (ids.length === 0) {
-				const message = activeTab === 'feedback' 
+				const message = activeTab === 'feedback'
 					? (aipsAuthorsL10n.noFeedbackSelected || 'Please select at least one feedback item.')
 					: (aipsAuthorsL10n.noTopicsSelected || 'Please select at least one topic.');
 				AIPS.Utilities.showToast(message, 'warning');
@@ -1584,7 +1595,7 @@
 			const messages = {
 				approve: aipsAuthorsL10n.confirmBulkApprove || 'Are you sure you want to approve %d topics?',
 				reject: aipsAuthorsL10n.confirmBulkReject || 'Are you sure you want to reject %d topics?',
-				delete: activeTab === 'feedback' 
+				delete: activeTab === 'feedback'
 					? (aipsAuthorsL10n.confirmBulkDeleteFeedback || 'Are you sure you want to delete %d feedback items? This action cannot be undone.')
 					: (aipsAuthorsL10n.confirmBulkDelete || 'Are you sure you want to delete %d topics? This action cannot be undone.'),
 				generate_now: aipsAuthorsL10n.confirmBulkGenerate || 'Are you sure you want to generate posts for %d topics?'
@@ -1723,10 +1734,10 @@
 				if (text === null || text === undefined) {
 					return '';
 				}
-				
+
 				// Convert to string if not already
 				const str = String(text);
-				
+
 				const map = {
 					'&': '&amp;',
 					'<': '&lt;',
@@ -1754,25 +1765,25 @@
 				if (!url) {
 					return '';
 				}
-				
+
 				// Convert to string and trim whitespace
 				const urlStr = String(url).trim();
-				
+
 				if (!urlStr) {
 					return '';
 				}
-				
+
 				// Check for dangerous protocols (case-insensitive)
 				const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
 				const lowerUrl = urlStr.toLowerCase();
-				
+
 				for (const protocol of dangerousProtocols) {
 					if (lowerUrl.startsWith(protocol)) {
 						console.warn('Dangerous URL protocol detected:', protocol);
 						return '';
 					}
 				}
-				
+
 				// For absolute URLs, validate with URL constructor
 				if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
 					try {
@@ -1784,12 +1795,12 @@
 						return '';
 					}
 				}
-				
+
 				// For relative URLs (WordPress admin paths), return as-is after validation
 				if (urlStr.startsWith('/')) {
 					return urlStr;
 				}
-				
+
 				// Reject anything else
 				console.warn('URL does not match allowed patterns:', urlStr);
 				return '';
@@ -1799,7 +1810,7 @@
 			}
 		}
 	};
-	
+
 	// Generation Queue Module
 	const GenerationQueueModule = {
 		queueTopics: [],
@@ -1822,7 +1833,7 @@
 		bindEvents: function () {
 			// React to shared tab switching events for top-level Authors tabs.
 			$(document).on('aips:tabSwitch', this.handleSharedTabSwitch.bind(this));
-			
+
 			// Queue-specific actions
 			$(document).on('click', '.aips-queue-bulk-action-execute', this.executeQueueBulkAction.bind(this));
 			$(document).on('click', '.aips-queue-select-all', this.toggleQueueSelectAll.bind(this));
@@ -2199,7 +2210,7 @@
 			]);
 		}
 	};
-  
+
 	// Initialize when document is ready
 	$(document).ready(function () {
 		AuthorsModule.init();

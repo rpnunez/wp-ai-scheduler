@@ -39,3 +39,7 @@
 ## 2024-05-19 - Add "Clear" buttons to search bars in Sections and Planner
 Learning: Consistent UX in search bars requires not just an input, but `screen-reader-text` labels and a hidden `Clear` button that can be toggled by JS. Wait to merge `class` attributes when copying elements to prevent duplicate attributes like `class="aips-form-input" class="aips-planner-topic-search"`.
 Action: Always check if the `admin.js` script handles specific clear button IDs even if they are missing from the PHP template, and add them proactively for completeness.
+
+## 2026-03-19 - Empty State for Author Topics Search
+**Learning:** The "Author Topics" list had a client-side search input, but lacked an empty state when a search query returned no results, leading to a blank screen without feedback.
+**Action:** Implemented the `.aips-empty-state` container for `#aips-topic-search-no-results` in the PHP template and updated the JS `filterTopics` function to toggle its visibility based on the number of `visibleRows`. Added an event listener to the clear search button within the empty state for a unified UX.

@@ -161,6 +161,18 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				</div>
 			</div>
 
+			<div id="aips-topic-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+				<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No Topics Found', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('No topics match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
+				<div class="aips-empty-state-actions">
+					<button type="button" class="aips-btn aips-btn-primary" id="aips-clear-topic-search-btn">
+						<span class="dashicons dashicons-dismiss"></span>
+						<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
+			</div>
+
 			<!-- Topics Content -->
 			<div class="aips-panel-body no-padding">
 				<div id="aips-topics-content">
