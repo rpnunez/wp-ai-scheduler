@@ -349,6 +349,139 @@ class AIPS_History_Repository {
     }
     
     /**
+     * Get all history container IDs associated with a post.
+     *
+     * @param int $post_id WordPress post ID.
+     * @return int[] Array of history container IDs. Returns an empty array for an invalid post ID.
+     */
+    public function get_ids_by_post_id($post_id) {
+        $post_id = absint($post_id);
+
+        if (!$post_id) {
+            return array();
+        }
+
+        $results = $this->wpdb->get_col($this->wpdb->prepare(
+            "SELECT id FROM {$this->table_name} WHERE post_id = %d",
+            $post_id
+        ));
+
+        return array_map('intval', $results ?: array());
+    }
+
+    /**
+     * Get history container IDs optionally filtered by status.
+     *
+     * @param string $status Optional status filter.
+     * @return int[] Array of history container IDs.
+     */
+    public function get_ids_by_status($status = '') {
+        if (!empty($status)) {
+            $results = $this->wpdb->get_col($this->wpdb->prepare(
+                "SELECT id FROM {$this->table_name} WHERE status = %s",
+                $status
+            ));
+        } else {
+            $results = $this->wpdb->get_col("SELECT id FROM {$this->table_name}");
+        }
+
+        return array_map('intval', $results ?: array());
+    }
+
+    /**
+     * Get history container IDs for an author that are safe to delete.
+     *
+     * Returns only containers whose associated WordPress post either does not
+     * exist in `wp_posts` at all (permanently deleted) or whose `post_id` is
+     * NULL (topic-generation / failed-generation runs that never produced a post).
+     *
+     * Containers that have a `post_id` pointing to a row that still exists in
+     * `wp_posts` (any status, including trash) are intentionally excluded so
+     * that the post's generation history is preserved even after its author is
+     * deleted.
+     *
+     * @param int $author_id Author ID.
+     * @return int[] Array of history container IDs safe to delete.
+     */
+    public function get_deletable_ids_by_author_id($author_id) {
+        $author_id = absint($author_id);
+
+        if (!$author_id) {
+            return array();
+        }
+
+        $posts_table = $this->wpdb->prefix . 'posts';
+
+        $results = $this->wpdb->get_col($this->wpdb->prepare(
+            "SELECT h.id
+             FROM {$this->table_name} h
+             LEFT JOIN {$posts_table} p ON h.post_id = p.ID
+             WHERE h.author_id = %d
+             AND (h.post_id IS NULL OR p.ID IS NULL)",
+            $author_id
+        ));
+
+        return array_map('intval', $results ?: array());
+    }
+
+    /**
+     * Delete all history log entries associated with the given history container IDs.
+     *
+     * @param int[] $history_ids Array of history container IDs.
+     * @return int|false Number of rows deleted, or false on failure. Returns 0 for an empty array.
+     */
+    public function delete_logs_by_history_ids(array $history_ids) {
+        if (empty($history_ids)) {
+            return 0;
+        }
+
+        $history_ids  = array_map('absint', $history_ids);
+        $history_ids  = array_filter($history_ids);
+
+        if (empty($history_ids)) {
+            return 0;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($history_ids), '%d'));
+
+        return $this->wpdb->query(
+            $this->wpdb->prepare(
+                "DELETE FROM {$this->table_name_log} WHERE history_id IN ({$placeholders})",
+                ...$history_ids
+            )
+        );
+    }
+
+    /**
+     * Delete all history containers associated with a post.
+     *
+     * NOTE: This method deletes only the containers (`aips_history` rows). The
+     * associated `aips_history_log` rows are NOT deleted here to keep this method
+     * focused on a single responsibility. Callers that need a full cascade delete
+     * should call `delete_logs_by_history_ids()` first with the IDs returned by
+     * `get_ids_by_post_id()`. See `AIPS_Data_Cleanup::on_before_delete_post()` for
+     * the canonical usage pattern.
+     *
+     * Also clears the history stats transient.
+     *
+     * @param int $post_id WordPress post ID.
+     * @return int|false Number of rows deleted, or false on failure.
+     */
+    public function delete_by_post_id($post_id) {
+        $result = $this->wpdb->delete(
+            $this->table_name,
+            array('post_id' => absint($post_id)),
+            array('%d')
+        );
+
+        if ($result !== false) {
+            delete_transient('aips_history_stats');
+        }
+
+        return $result;
+    }
+
+    /**
      * Add a log entry to a history item.
      *
      * @param int    $history_id      The ID of the history item.

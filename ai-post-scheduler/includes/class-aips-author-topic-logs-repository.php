@@ -187,6 +187,20 @@ class AIPS_Author_Topic_Logs_Repository {
 	}
 
 	/**
+	 * Delete all logs associated with a WordPress post ID.
+	 *
+	 * @param int $post_id WordPress post ID.
+	 * @return int|false Number of rows deleted, or false on failure.
+	 */
+	public function delete_by_post_id($post_id) {
+		return $this->wpdb->delete(
+			$this->table_name,
+			array('post_id' => absint($post_id)),
+			array('%d')
+		);
+	}
+
+	/**
 	 * Count the number of generated posts for a specific author.
 	 *
 	 * More efficient than get_generated_posts_by_author() when only the count is needed,
