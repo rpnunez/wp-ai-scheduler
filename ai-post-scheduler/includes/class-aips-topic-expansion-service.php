@@ -294,6 +294,112 @@ class AIPS_Topic_Expansion_Service {
 	}
 	
 	/**
+	 * Process a single batch of approved topics for embedding computation.
+	 *
+	 * Uses ID-based pagination to avoid slow OFFSET queries. Processes topics
+	 * with id > $last_processed_id so each call safely advances the cursor.
+	 * Topics that already have an embedding stored in their metadata are skipped.
+	 *
+	 * @param int $author_id         Author ID.
+	 * @param int $batch_size        Number of topics to process in this batch. Default 20.
+	 * @param int $last_processed_id Return only topics with id greater than this value. Default 0.
+	 * @return array {
+	 *     @type int  $success            Number of topics for which an embedding was successfully computed.
+	 *     @type int  $failed             Number of topics for which embedding computation failed.
+	 *     @type int  $skipped            Number of topics that already had an embedding (skipped).
+	 *     @type int  $processed_count    Total topics inspected in this batch.
+	 *     @type int  $last_processed_id  Highest topic id seen in this batch (use as cursor for next call).
+	 *     @type bool $done               True when the batch returned fewer rows than $batch_size,
+	 *                                    meaning no more topics remain for this author.
+	 * }
+	 */
+	public function process_approved_embeddings_batch($author_id, $batch_size = 20, $last_processed_id = 0) {
+		$topics = $this->topics_repository->get_approved_for_embeddings_batch($author_id, $batch_size, $last_processed_id);
+
+		$stats = array(
+			'success'           => 0,
+			'failed'            => 0,
+			'skipped'           => 0,
+			'processed_count'   => count($topics),
+			'last_processed_id' => $last_processed_id,
+			'done'              => count($topics) < $batch_size,
+		);
+
+		foreach ($topics as $topic) {
+			$stats['last_processed_id'] = max($stats['last_processed_id'], (int) $topic->id);
+
+			// Parse metadata directly from the already-fetched topic object to avoid
+			// an extra get_by_id() DB read per topic (N+1 prevention).
+			$metadata           = $this->parse_topic_metadata($topic);
+			$existing_embedding = !empty($metadata['embedding']) ? $metadata['embedding'] : null;
+
+			if ($existing_embedding) {
+				$stats['skipped']++;
+				continue;
+			}
+
+			$result = $this->compute_and_store_embedding_from_topic_object($topic);
+			if (is_wp_error($result)) {
+				$stats['failed']++;
+			} else {
+				$stats['success']++;
+			}
+		}
+
+		return $stats;
+	}
+
+	/**
+	 * Compute and store an embedding using an already-fetched topic object.
+	 *
+	 * This avoids the extra get_by_id() DB read that compute_topic_embedding()
+	 * performs when called by ID, making it safe to call from a batch loop.
+	 *
+	 * @param object $topic Topic row object (must have id, topic_title, topic_prompt, metadata).
+	 * @return bool|WP_Error True on success, WP_Error on failure.
+	 */
+	private function compute_and_store_embedding_from_topic_object($topic) {
+		$text = $topic->topic_title;
+		if (!empty($topic->topic_prompt)) {
+			$text .= ' ' . $topic->topic_prompt;
+		}
+
+		$embedding = $this->embeddings_service->generate_embedding($text);
+
+		if (is_wp_error($embedding)) {
+			$this->logger->log('Failed to generate embedding for topic ' . $topic->id . ': ' . $embedding->get_error_message(), 'error');
+			return $embedding;
+		}
+
+		$metadata              = $this->parse_topic_metadata($topic);
+		$metadata['embedding'] = $embedding;
+
+		$result = $this->topics_repository->update($topic->id, array(
+			'metadata' => wp_json_encode($metadata),
+		));
+
+		if ($result !== false) {
+			$this->logger->log('Computed embedding for topic ' . $topic->id, 'debug');
+			return true;
+		}
+
+		return new WP_Error('update_failed', __('Failed to store embedding.', 'ai-post-scheduler'));
+	}
+
+	/**
+	 * Decode and return the metadata array for a topic object.
+	 *
+	 * Returns an empty array when metadata is absent, empty, or not valid JSON.
+	 *
+	 * @param object $topic Topic row object with a `metadata` property.
+	 * @return array Decoded metadata array.
+	 */
+	private function parse_topic_metadata($topic) {
+		$metadata = !empty($topic->metadata) ? json_decode($topic->metadata, true) : array();
+		return is_array($metadata) ? $metadata : array();
+	}
+
+	/**
 	 * Batch compute embeddings for all approved topics of an author.
 	 *
 	 * @param int $author_id Author ID.

@@ -661,32 +661,110 @@ class AIPS_Author_Topics_Controller {
 	
 	/**
 	 * AJAX handler for computing topic embeddings.
+	 *
+	 * Instead of running synchronously, this handler schedules background jobs
+	 * so the request returns immediately. When author_id is 0 it schedules one
+	 * job per active author; otherwise it schedules a single job for the given
+	 * author. Jobs are dispatched via Action Scheduler when available and fall
+	 * back to wp_schedule_single_event otherwise.
+	 *
+	 * Deduplication: if a background job is already queued or in progress for an
+	 * author (indicated by the aips_embeddings_progress_{id} transient), that
+	 * author is skipped to avoid duplicate concurrent runs.
 	 */
 	public function ajax_compute_topic_embeddings() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
-		
+
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
-		
-		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		
-		$expansion_service = new AIPS_Topic_Expansion_Service();
-		if ($author_id > 0) {
-			$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
-		} else {
-			$stats = $expansion_service->batch_compute_all_approved_embeddings();
+
+		$author_id  = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
+		$batch_size = isset($_POST['batch_size']) ? min(200, max(1, absint($_POST['batch_size']))) : 20;
+
+		$queued_authors  = array();
+		$skipped_authors = array();
+		$delay           = 2;
+
+		if ($author_id === 0) {
+			// Schedule one background job per active author.
+			$authors_repository = new AIPS_Authors_Repository();
+			$authors            = $authors_repository->get_all(true);
+
+			foreach ($authors as $author) {
+				$aid           = (int) $author->id;
+				$transient_key = AIPS_Embeddings_Cron::TRANSIENT_PREFIX . $aid;
+
+				// Skip if a job is already queued or in progress for this author.
+				if (false !== get_transient($transient_key)) {
+					$skipped_authors[] = $aid;
+					continue;
+				}
+
+				// Mark as 'queued' before scheduling so a rapid second call won't double-schedule.
+				set_transient($transient_key, 'queued', HOUR_IN_SECONDS);
+
+				$this->schedule_embeddings_job($aid, $batch_size, 0, $delay);
+				$queued_authors[] = $aid;
+				$delay           += 2;
+			}
+
+			wp_send_json_success(array(
+				'message'         => sprintf(
+					/* translators: %d: number of authors queued */
+					__('Scheduled embedding jobs for %d author(s). Processing will run in the background.', 'ai-post-scheduler'),
+					count($queued_authors)
+				),
+				'queued_authors'  => $queued_authors,
+				'skipped_authors' => $skipped_authors,
+			));
 		}
-		
+
+		// Single author: check dedup, then schedule.
+		$transient_key = AIPS_Embeddings_Cron::TRANSIENT_PREFIX . $author_id;
+		if (false !== get_transient($transient_key)) {
+			wp_send_json_error(array(
+				'message'   => __('Embedding computation is already in progress for this author.', 'ai-post-scheduler'),
+				'author_id' => $author_id,
+			));
+		}
+
+		// Mark as 'queued' before scheduling so a rapid second call won't double-schedule.
+		set_transient($transient_key, 'queued', HOUR_IN_SECONDS);
+		$this->schedule_embeddings_job($author_id, $batch_size, 0, $delay);
+
 		wp_send_json_success(array(
-			'message' => sprintf(
-				__('Computed embeddings: %d successful, %d failed, %d skipped (already existed).', 'ai-post-scheduler'),
-				$stats['success'],
-				$stats['failed'],
-				$stats['skipped']
+			'message'        => sprintf(
+				/* translators: %d: author ID */
+				__('Scheduled embedding job for author %d. Processing will run in the background.', 'ai-post-scheduler'),
+				$author_id
 			),
-			'stats' => $stats
+			'queued_authors' => array($author_id),
 		));
+	}
+
+	/**
+	 * Schedule a single background embedding job for one author.
+	 *
+	 * Uses Action Scheduler (as_schedule_single_action) when available and falls
+	 * back to wp_schedule_single_event otherwise.
+	 *
+	 * @param int $author_id         Author to process.
+	 * @param int $batch_size        Topics to process per run.
+	 * @param int $last_processed_id ID-based cursor for ID > pagination.
+	 * @param int $delay             Seconds from now to run the job.
+	 */
+	private function schedule_embeddings_job($author_id, $batch_size, $last_processed_id, $delay = 2) {
+		$args = array(
+			'author_id'         => $author_id,
+			'batch_size'        => $batch_size,
+			'last_processed_id' => $last_processed_id,
+		);
+		if (function_exists('as_schedule_single_action')) {
+			as_schedule_single_action(time() + $delay, 'aips_process_author_embeddings', array($args));
+		} else {
+			wp_schedule_single_event(time() + $delay, 'aips_process_author_embeddings', array($args));
+		}
 	}
 	
 	/**

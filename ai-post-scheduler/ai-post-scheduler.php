@@ -195,8 +195,9 @@ final class AI_Post_Scheduler {
         new AIPS_Author_Topics_Scheduler();
         new AIPS_Author_Post_Generator();
         new AIPS_Post_Review_Notifications();
-		new AIPS_Partial_Generation_Notifications();
-		new AIPS_Partial_Generation_State_Reconciler();
+        new AIPS_Embeddings_Cron();
+        new AIPS_Partial_Generation_Notifications();
+        new AIPS_Partial_Generation_State_Reconciler();
 
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();

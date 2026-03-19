@@ -285,6 +285,25 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return delete_option('_transient_' . $transient);
         }
     }
+
+    if (!function_exists('wp_schedule_single_event')) {
+        function wp_schedule_single_event($timestamp, $hook, $args = array(), $wp_error = false) {
+            // No-op stub for test environments; just return true.
+            return true;
+        }
+    }
+
+    if (!function_exists('wp_next_scheduled')) {
+        function wp_next_scheduled($hook, $args = array()) {
+            return false;
+        }
+    }
+
+    if (!function_exists('wp_clear_scheduled_hook')) {
+        function wp_clear_scheduled_hook($hook, $args = array()) {
+            return 0;
+        }
+    }
     
     if (!function_exists('current_time')) {
         function current_time($type = 'mysql', $gmt = 0) {
@@ -966,6 +985,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-topic-penalty-service.php',
         'class-aips-embeddings-service.php',
         'class-aips-topic-expansion-service.php',
+        'class-aips-embeddings-cron.php',
         'class-aips-author-topics-generator.php',
         'class-aips-author-topics-scheduler.php',
         'class-aips-authors-controller.php',

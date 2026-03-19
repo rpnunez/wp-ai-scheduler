@@ -76,6 +76,28 @@ Fires when a schedule item is successfully executed.
     *   `int $schedule_id`: The ID of the schedule.
     *   `int $result`: The result of the execution (post ID).
 
+### Background Embeddings Processing
+
+#### `aips_process_author_embeddings`
+Fires when a background batch of topic embeddings should be processed for a single author.
+This hook is scheduled via `wp_schedule_single_event` (or `as_schedule_single_action` when Action
+Scheduler is available) by `AIPS_Author_Topics_Controller::ajax_compute_topic_embeddings()`.
+The hook is handled by `AIPS_Embeddings_Cron::process_author_embeddings()`.
+
+*   **Arguments:**
+    *   `array $args`: Associative array containing:
+        *   `int $args['author_id']`: The author whose approved topics are being processed.
+        *   `int $args['batch_size']`: Number of topics to process in a single run (default 20).
+        *   `int $args['last_processed_id']`: ID-based cursor; only topics with `id > last_processed_id` are fetched.
+
+#### `aips_author_embeddings_completed`
+Fires when all approved topic embeddings for an author have been successfully processed.
+After this fires the background jobs for that author are finished and the progress transient
+(`aips_embeddings_progress_{author_id}`) is deleted.
+
+*   **Arguments:**
+    *   `int $author_id`: The ID of the author whose processing just completed.
+
 ### Research & Trending Topics
 
 #### `aips_trending_topic_scheduled`
