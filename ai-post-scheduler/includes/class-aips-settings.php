@@ -233,21 +233,18 @@ class AIPS_Settings {
      * @return void
      */
     public function register_settings() {
+        // GENERAL OPTIONS
         register_setting('aips_settings', 'aips_default_post_status', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
         register_setting('aips_settings', 'aips_default_category', array(
             'sanitize_callback' => 'absint'
         ));
-        register_setting('aips_settings', 'aips_enable_logging', array(
+        register_setting('aips_settings', 'aips_default_post_author', array(
             'sanitize_callback' => 'absint'
         ));
-        register_setting('aips_settings', 'aips_developer_mode', array(
-            'sanitize_callback' => 'absint'
-        ));
-        register_setting('aips_settings', 'aips_retry_max_attempts', array(
-            'sanitize_callback' => 'absint'
-        ));
+
+        // API / AI OPTIONS
         register_setting('aips_settings', 'aips_ai_model', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
@@ -258,21 +255,102 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
+        register_setting('aips_settings', 'aips_max_tokens', array(
+            'sanitize_callback' => 'absint',
+            'default' => 2000
+        ));
+        register_setting('aips_settings', 'aips_temperature', array(
+            'sanitize_callback' => array($this, 'sanitize_temperature'),
+            'default' => 0.7
+        ));
+        register_setting('aips_settings', 'aips_topic_similarity_threshold', array(
+            'sanitize_callback' => array($this, 'sanitize_similarity_threshold'),
+            'default' => 0.8
+        ));
+
+        // RESILIENCE OPTIONS
+        register_setting('aips_settings', 'aips_enable_retry', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_retry_max_attempts', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_retry_initial_delay', array(
+            'sanitize_callback' => 'absint',
+            'default' => 1
+        ));
+        register_setting('aips_settings', 'aips_enable_rate_limiting', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_rate_limit_requests', array(
+            'sanitize_callback' => 'absint',
+            'default' => 10
+        ));
+        register_setting('aips_settings', 'aips_rate_limit_period', array(
+            'sanitize_callback' => 'absint',
+            'default' => 60
+        ));
+        register_setting('aips_settings', 'aips_enable_circuit_breaker', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_circuit_breaker_threshold', array(
+            'sanitize_callback' => 'absint',
+            'default' => 5
+        ));
+        register_setting('aips_settings', 'aips_circuit_breaker_timeout', array(
+            'sanitize_callback' => 'absint',
+            'default' => 300
+        ));
+
+        // ADVANCED / LOGGING OPTIONS
+        register_setting('aips_settings', 'aips_enable_logging', array(
+            'sanitize_callback' => 'absint'
+        ));
+        register_setting('aips_settings', 'aips_log_retention_days', array(
+            'sanitize_callback' => 'absint',
+            'default' => 30
+        ));
+        register_setting('aips_settings', 'aips_developer_mode', array(
+            'sanitize_callback' => 'absint'
+        ));
+
+        // NOTIFICATIONS OPTIONS
         register_setting('aips_settings', 'aips_review_notifications_enabled', array(
             'sanitize_callback' => 'absint'
         ));
         register_setting('aips_settings', 'aips_review_notifications_email', array(
             'sanitize_callback' => 'sanitize_email'
         ));
-        register_setting('aips_settings', 'aips_topic_similarity_threshold', array(
-            'sanitize_callback' => array($this, 'sanitize_similarity_threshold'),
-            'default' => 0.8
-        ));
         
+        // ADD SECTIONS
         add_settings_section(
             'aips_general_section',
             __('General Settings', 'ai-post-scheduler'),
             array($this, 'general_section_callback'),
+            'aips-settings'
+        );
+        add_settings_section(
+            'aips_ai_section',
+            __('AI & External APIs', 'ai-post-scheduler'),
+            array($this, 'ai_section_callback'),
+            'aips-settings'
+        );
+        add_settings_section(
+            'aips_resilience_section',
+            __('Resilience & Rate Limiting', 'ai-post-scheduler'),
+            array($this, 'resilience_section_callback'),
+            'aips-settings'
+        );
+        add_settings_section(
+            'aips_notifications_section',
+            __('Notifications', 'ai-post-scheduler'),
+            array($this, 'notifications_section_callback'),
+            'aips-settings'
+        );
+        add_settings_section(
+            'aips_advanced_section',
+            __('Advanced & Logging', 'ai-post-scheduler'),
+            array($this, 'advanced_section_callback'),
             'aips-settings'
         );
         
@@ -553,6 +631,23 @@ class AIPS_Settings {
         <input type="email" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
         <p class="description"><?php esc_html_e('Email address to receive notifications about posts awaiting review.', 'ai-post-scheduler'); ?></p>
         <?php
+    }
+
+    /**
+     * Sanitize the AI temperature value.
+     *
+     * Returns the default 0.7 for non-numeric input and clamps numeric values
+     * to the valid range [0.0, 2.0] used by supported AI providers.
+     *
+     * @param mixed $value Raw input value.
+     * @return float Sanitized temperature float.
+     */
+    public function sanitize_temperature($value) {
+        if (!is_numeric($value)) {
+            return 0.7;
+        }
+        $float = (float) $value;
+        return min(2.0, max(0.0, $float));
     }
 
     /**
@@ -974,4 +1069,39 @@ class AIPS_Settings {
 
         wp_send_json_success(array('post' => $detail));
     }
+	/**
+	 * Settings section description for the "AI & External APIs" section.
+	 *
+	 * @return void
+	 */
+	public function ai_section_callback() {
+		echo '<p>' . esc_html__( 'Configure how AI Post Scheduler connects to your AI engine and any external APIs used for generation.', 'ai-post-scheduler' ) . '</p>';
+	}
+
+	/**
+	 * Settings section description for the "Resilience & Rate Limiting" section.
+	 *
+	 * @return void
+	 */
+	public function resilience_section_callback() {
+		echo '<p>' . esc_html__( 'Control retry behavior, rate limiting, and other resilience options to keep generation stable.', 'ai-post-scheduler' ) . '</p>';
+	}
+
+	/**
+	 * Settings section description for the "Notifications" section.
+	 *
+	 * @return void
+	 */
+	public function notifications_section_callback() {
+		echo '<p>' . esc_html__( 'Manage email notifications and alerts related to generated posts and review workflows.', 'ai-post-scheduler' ) . '</p>';
+	}
+
+	/**
+	 * Settings section description for the "Advanced & Logging" section.
+	 *
+	 * @return void
+	 */
+	public function advanced_section_callback() {
+		echo '<p>' . esc_html__( 'Access advanced options, logging controls, and developer-focused settings.', 'ai-post-scheduler' ) . '</p>';
+	}
 }
