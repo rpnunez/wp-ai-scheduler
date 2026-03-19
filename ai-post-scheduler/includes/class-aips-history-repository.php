@@ -299,6 +299,208 @@ class AIPS_History_Repository {
     }
     
     /**
+     * Get a unified paginated list of all generated posts (one row per post).
+     *
+     * Returns the latest completed history entry per post, enriched with
+     * WordPress post status and partial-generation metadata. An optional
+     * `post_status_filter` argument limits the result set to a specific
+     * category of posts:
+     *   - ''               : all generated posts
+     *   - 'published'      : posts whose WP status is 'publish'
+     *   - 'pending_review' : posts whose WP status is 'draft'
+     *   - 'partial'        : posts that had one or more missing components
+     *
+     * @param array $args {
+     *     Optional. Query arguments.
+     *
+     *     @type int    $per_page           Number of items per page. Default 20.
+     *     @type int    $page               Current page number. Default 1.
+     *     @type string $search             Search term for title. Default empty.
+     *     @type int    $template_id        Filter by template ID. Default 0.
+     *     @type int    $author_id          Filter by author ID. Default 0.
+     *     @type string $post_status_filter One of '', 'published', 'pending_review', 'partial'. Default ''.
+     *     @type string $orderby            Column to order by. Default 'created_at'.
+     *     @type string $order              Order direction (ASC/DESC). Default 'DESC'.
+     * }
+     * @return array {
+     *     @type array $items        Array of history items enriched with post data.
+     *     @type int   $total        Total number of matching items.
+     *     @type int   $pages        Total number of pages.
+     *     @type int   $current_page Current page number.
+     * }
+     */
+    public function get_posts_unified($args = array()) {
+        $defaults = array(
+            'per_page'           => 20,
+            'page'               => 1,
+            'search'             => '',
+            'template_id'        => 0,
+            'author_id'          => 0,
+            'post_status_filter' => '',
+            'orderby'            => 'created_at',
+            'order'              => 'DESC',
+        );
+
+        $args = wp_parse_args($args, $defaults);
+        $offset = ($args['page'] - 1) * $args['per_page'];
+
+        $where_clauses = array(
+            "h.status = 'completed'",
+            "h.post_id IS NOT NULL",
+        );
+        $where_args = array();
+
+        // Post-status-specific filters
+        switch ($args['post_status_filter']) {
+            case 'published':
+                $where_clauses[] = "p.post_status = 'publish'";
+                break;
+            case 'pending_review':
+                $where_clauses[] = "p.post_status = 'draft'";
+                break;
+            case 'partial':
+                $where_clauses[] = "(pm_incomplete.meta_value = 'true' OR pm_had_partial.meta_value = 'true')";
+                break;
+        }
+
+        if (!empty($args['template_id'])) {
+            $where_clauses[] = 'h.template_id = %d';
+            $where_args[] = $args['template_id'];
+        }
+
+        if (!empty($args['author_id'])) {
+            $where_clauses[] = 'h.author_id = %d';
+            $where_args[] = $args['author_id'];
+        }
+
+        if (!empty($args['search'])) {
+            $where_clauses[] = '(h.generated_title LIKE %s OR p.post_title LIKE %s)';
+            $search_term = '%' . $this->wpdb->esc_like($args['search']) . '%';
+            $where_args[] = $search_term;
+            $where_args[] = $search_term;
+        }
+
+        $where_sql = implode(' AND ', $where_clauses);
+
+        $valid_orderby = array('created_at', 'completed_at', 'post_title', 'post_modified', 'post_status');
+        $orderby = in_array($args['orderby'], $valid_orderby, true) ? $args['orderby'] : 'created_at';
+        $order   = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
+
+        if ($orderby === 'post_title') {
+            $orderby_sql = "p.post_title $order";
+        } elseif (in_array($orderby, array('post_modified', 'post_status'), true)) {
+            $orderby_sql = "p.$orderby $order";
+        } else {
+            $orderby_sql = "h.$orderby $order";
+        }
+
+        $templates_table = $this->wpdb->prefix . 'aips_templates';
+        $posts_table     = $this->wpdb->posts;
+        $postmeta_table  = $this->wpdb->postmeta;
+
+        $query_args   = $where_args;
+        $query_args[] = $args['per_page'];
+        $query_args[] = $offset;
+
+        // One row per post (latest completed history entry).
+        $results = $this->wpdb->get_results($this->wpdb->prepare(
+            "SELECT
+                h.id,
+                h.schedule_id,
+                h.template_id,
+                h.post_id,
+                h.status,
+                h.run_type,
+                h.topic,
+                h.model,
+                h.tokens_input,
+                h.tokens_output,
+                h.cost,
+                h.created_at,
+                h.updated_at,
+                t.name AS template_name,
+                p.post_title,
+                p.post_status,
+                p.post_modified,
+                p.post_date,
+                pm_incomplete.meta_value  AS is_currently_incomplete,
+                pm_had_partial.meta_value AS had_partial,
+                pm_status.meta_value      AS component_statuses
+            FROM {$this->table_name} h
+            INNER JOIN (
+                SELECT post_id, MAX(id) AS latest_history_id
+                FROM {$this->table_name}
+                WHERE status = 'completed' AND post_id IS NOT NULL
+                GROUP BY post_id
+            ) latest ON latest.latest_history_id = h.id
+            INNER JOIN {$posts_table} p ON h.post_id = p.ID
+            LEFT JOIN {$postmeta_table} pm_incomplete
+                ON pm_incomplete.post_id = p.ID
+                AND pm_incomplete.meta_key = 'aips_post_generation_incomplete'
+            LEFT JOIN {$postmeta_table} pm_had_partial
+                ON pm_had_partial.post_id = p.ID
+                AND pm_had_partial.meta_key = 'aips_post_generation_had_partial'
+            LEFT JOIN {$postmeta_table} pm_status
+                ON pm_status.post_id = p.ID
+                AND pm_status.meta_key = 'aips_post_generation_component_statuses'
+            LEFT JOIN {$templates_table} t ON h.template_id = t.id
+            WHERE $where_sql
+            ORDER BY $orderby_sql
+            LIMIT %d OFFSET %d",
+            $query_args
+        ));
+
+        $count_args = $where_args;
+        if (!empty($count_args)) {
+            $total = $this->wpdb->get_var($this->wpdb->prepare(
+                "SELECT COUNT(*)
+                FROM {$this->table_name} h
+                INNER JOIN (
+                    SELECT post_id, MAX(id) AS latest_history_id
+                    FROM {$this->table_name}
+                    WHERE status = 'completed' AND post_id IS NOT NULL
+                    GROUP BY post_id
+                ) latest ON latest.latest_history_id = h.id
+                INNER JOIN {$posts_table} p ON h.post_id = p.ID
+                LEFT JOIN {$postmeta_table} pm_incomplete
+                    ON pm_incomplete.post_id = p.ID
+                    AND pm_incomplete.meta_key = 'aips_post_generation_incomplete'
+                LEFT JOIN {$postmeta_table} pm_had_partial
+                    ON pm_had_partial.post_id = p.ID
+                    AND pm_had_partial.meta_key = 'aips_post_generation_had_partial'
+                WHERE $where_sql",
+                $count_args
+            ));
+        } else {
+            $total = $this->wpdb->get_var(
+                "SELECT COUNT(*)
+                FROM {$this->table_name} h
+                INNER JOIN (
+                    SELECT post_id, MAX(id) AS latest_history_id
+                    FROM {$this->table_name}
+                    WHERE status = 'completed' AND post_id IS NOT NULL
+                    GROUP BY post_id
+                ) latest ON latest.latest_history_id = h.id
+                INNER JOIN {$posts_table} p ON h.post_id = p.ID
+                LEFT JOIN {$postmeta_table} pm_incomplete
+                    ON pm_incomplete.post_id = p.ID
+                    AND pm_incomplete.meta_key = 'aips_post_generation_incomplete'
+                LEFT JOIN {$postmeta_table} pm_had_partial
+                    ON pm_had_partial.post_id = p.ID
+                    AND pm_had_partial.meta_key = 'aips_post_generation_had_partial'
+                WHERE $where_sql"
+            );
+        }
+
+        return array(
+            'items'        => $results,
+            'total'        => (int) $total,
+            'pages'        => (int) ceil($total / max(1, $args['per_page'])),
+            'current_page' => $args['page'],
+        );
+    }
+
+    /**
      * Get a single history item by ID.
      *
      * @param int $id History item ID.

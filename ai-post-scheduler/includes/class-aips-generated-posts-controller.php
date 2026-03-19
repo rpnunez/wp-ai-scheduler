@@ -69,104 +69,50 @@ class AIPS_Generated_Posts_Controller {
 	 * Render the Generated Posts admin page
 	 */
 	public function render_page() {
-		// Use separate pagination parameters for each tab
-		$generated_page = isset($_GET['generated_paged']) ? absint($_GET['generated_paged']) : 1;
-		$review_page = isset($_GET['review_paged']) ? absint($_GET['review_paged']) : 1;
-		$partial_page = isset($_GET['partial_paged']) ? absint($_GET['partial_paged']) : 1;
-		$search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
-		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
+		$current_page        = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
+		$search_query        = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+		$author_id           = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
+		$template_id         = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
+		$post_status_filter  = isset($_GET['post_status_filter']) ? sanitize_key($_GET['post_status_filter']) : '';
 
-		// Get completed history entries with post IDs (for Generated Posts tab)
-		$history = $this->history_repository->get_history(array(
-			'page' => $generated_page,
-			'per_page' => 20,
-			'status' => 'completed',
-			'search' => $search_query,
-			'author_id' => $author_id,
-			'template_id' => $template_id,
+		// Validate post_status_filter to one of the known values.
+		$allowed_status_filters = array('', 'published', 'pending_review', 'partial');
+		if (!in_array($post_status_filter, $allowed_status_filters, true)) {
+			$post_status_filter = '';
+		}
+
+		// Unified query: one row per post, latest history entry.
+		$unified = $this->history_repository->get_posts_unified(array(
+			'page'               => $current_page,
+			'per_page'           => 20,
+			'search'             => $search_query,
+			'author_id'          => $author_id,
+			'template_id'        => $template_id,
+			'post_status_filter' => $post_status_filter,
 		));
-		
-		// Get schedule data for each post
+
+		// Build a normalised posts_data array consumable by the template.
 		$posts_data = array();
-		foreach ($history['items'] as $item) {
-			if (!$item->post_id) {
-				continue;
-			}
-			
-			$post = get_post($item->post_id);
-			if (!$post) {
-				continue;
-			}
-			
-			// Get most recent schedule for this template (if exists)
-			$schedule = null;
-			if ($item->template_id) {
-				$schedules = $this->schedule_repository->get_by_template($item->template_id);
-				// get_by_template returns multiple schedules, get the first one
-				$schedule = !empty($schedules) ? $schedules[0] : null;
-			}
-			
-			// Format source information
-			$source = $this->format_source($item);
-			
+		foreach ($unified['items'] as $item) {
+			$is_incomplete = ('true' === (string) $item->is_currently_incomplete);
+			$had_partial   = ('true' === (string) $item->had_partial);
+			$is_partial    = $is_incomplete || $had_partial;
+
 			$posts_data[] = array(
-				'history_id' => $item->id,
-				'post_id' => $item->post_id,
-				'title' => $post->post_title,
-				'date_generated' => $item->created_at,
-				'date_published' => $post->post_date,
-				'date_scheduled' => $schedule ? $schedule->next_run : null,
-				'edit_link' => get_edit_post_link($item->post_id),
-				'source' => $source,
+				'history_id'          => $item->id,
+				'post_id'             => $item->post_id,
+				'title'               => $item->post_title ?: ($item->generated_title ?: __('Untitled', 'ai-post-scheduler')),
+				'date_generated'      => $item->created_at,
+				'date_updated'        => $item->post_modified,
+				'edit_link'           => get_edit_post_link($item->post_id),
+				'post_status'         => $item->post_status,
+				'source'              => $this->format_source($item),
+				'is_partial'          => $is_partial,
+				'is_currently_incomplete' => $is_incomplete,
+				'missing_components'  => $this->get_missing_components($item->component_statuses),
 			);
 		}
-		
-		// Get draft posts for Post Review tab
-		$draft_posts = $this->post_review_repository->get_draft_posts(array(
-			'page' => $review_page,
-			'search' => $search_query,
-			'template_id' => $template_id,
-		));
 
-		$partial_generations = $this->history_repository->get_partial_generations(array(
-			'page' => $partial_page,
-			'per_page' => 20,
-			'search' => $search_query,
-			'author_id' => $author_id,
-			'template_id' => $template_id,
-		));
-
-		$partial_posts_data = array();
-		foreach ($partial_generations['items'] as $item) {
-			if (!$item->post_id) {
-				continue;
-			}
-
-			$post = get_post($item->post_id);
-			if (!$post) {
-				continue;
-			}
-
-			$partial_posts_data[] = array(
-				'history_id' => $item->id,
-				'post_id' => $item->post_id,
-				'title' => $post->post_title,
-				'date_generated' => $item->created_at,
-				'date_updated' => $item->post_modified,
-				'edit_link' => get_edit_post_link($item->post_id),
-				'post_status' => $item->post_status,
-				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),
-				'source' => $this->format_source($item),
-				'missing_components' => $this->get_missing_components($item->component_statuses),
-			);
-		}
-		
-		// Pass separate page variables for each tab
-		$current_page = $generated_page; // For Generated Posts tab
-		$review_current_page = $review_page; // For Pending Review tab
-		$partial_current_page = $partial_page; // For Partial Generations tab
-		
 		// Get templates for filter dropdown
 		$template_repository = new AIPS_Template_Repository();
 		$templates = $template_repository->get_all();
@@ -174,14 +120,10 @@ class AIPS_Generated_Posts_Controller {
 		// Get authors for filter dropdown
 		$authors_repository = new AIPS_Authors_Repository();
 		$authors = $authors_repository->get_all();
-		
-		// Get globally-initialized Post Review handler
-		global $aips_post_review_handler;
-		$post_review_handler = isset($aips_post_review_handler) ? $aips_post_review_handler : $this->post_review_repository;
-		
+
 		// Make controller available to template for formatting
 		$controller = $this;
-		
+
 		include AIPS_PLUGIN_DIR . 'templates/admin/generated-posts.php';
 	}
 
