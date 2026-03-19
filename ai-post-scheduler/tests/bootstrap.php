@@ -130,6 +130,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $url;
         }
     }
+
+    if (!function_exists('esc_url_raw')) {
+        function esc_url_raw($url) {
+            return $url;
+        }
+    }
     
     if (!function_exists('plugin_dir_path')) {
         function plugin_dir_path($file) {
