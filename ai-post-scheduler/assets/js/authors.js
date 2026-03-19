@@ -77,6 +77,11 @@
 			// Authors list bulk actions
 			$(document).on('change', '#aips-authors-select-all', this.toggleSelectAllAuthors.bind(this));
 			$(document).on('click', '#aips-authors-bulk-apply', this.executeAuthorsBulkAction.bind(this));
+
+			// Author Suggestions
+			$(document).on('click', '#aips-suggest-authors-btn', this.openSuggestModal.bind(this));
+			$(document).on('submit', '#aips-suggest-authors-form', this.suggestAuthors.bind(this));
+			$(document).on('click', '.aips-import-suggested-author', this.importSuggestedAuthor.bind(this));
 		},
 
 		/**
@@ -1797,6 +1802,207 @@
 				console.error('Error in sanitizeUrl:', error);
 				return '';
 			}
+		},
+
+		/**
+		 * Open the Author Suggestions modal.
+		 *
+		 * @param {Event} e - Click event from `#aips-suggest-authors-btn`.
+		 */
+		openSuggestModal: function (e) {
+			e.preventDefault();
+			$('#aips-suggest-authors-results').hide();
+			$('#aips-suggest-authors-cards').html('');
+			$('#aips-suggest-authors-modal').fadeIn();
+		},
+
+		/**
+		 * Submit the Author Suggestions form and display results.
+		 *
+		 * Sends `aips_suggest_authors` with the form inputs and renders suggestion
+		 * cards in `#aips-suggest-authors-cards` on success.
+		 *
+		 * @param {Event} e - Submit event from `#aips-suggest-authors-form`.
+		 */
+		suggestAuthors: function (e) {
+			e.preventDefault();
+
+			const siteNiche = $('#aips-suggest-site-niche').val().trim();
+			if (!siteNiche) {
+				AIPS.Utilities.showToast(aipsAuthorsL10n.siteNicheRequired || 'Site niche is required.', 'warning');
+				return;
+			}
+
+			const $btn = $('#aips-suggest-authors-submit');
+			$btn.prop('disabled', true).html(
+				'<span class="dashicons dashicons-update aips-spin"></span> ' +
+				(aipsAuthorsL10n.generatingSuggestions || 'Generating suggestions...')
+			);
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_suggest_authors',
+					nonce: aipsAuthorsL10n.nonce,
+					site_niche: siteNiche,
+					target_audience: $('#aips-suggest-target-audience').val().trim(),
+					content_goals: $('#aips-suggest-content-goals').val().trim(),
+					count: $('#aips-suggest-count').val()
+				},
+				success: (response) => {
+					if (response.success && response.data.suggestions && response.data.suggestions.length > 0) {
+						this.renderSuggestedAuthors(response.data.suggestions);
+						$('#aips-suggest-authors-results').show();
+					} else {
+						const msg = (response.data && response.data.message)
+							? response.data.message
+							: (aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.');
+						AIPS.Utilities.showToast(msg, 'error');
+					}
+				},
+				error: () => {
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.', 'error');
+				},
+				complete: () => {
+					$btn.prop('disabled', false).html(
+						'<span class="dashicons dashicons-lightbulb"></span> ' +
+						(aipsAuthorsL10n.suggestAuthors || 'Generate Suggestions')
+					);
+				}
+			});
+		},
+
+		/**
+		 * Render the suggested author cards into `#aips-suggest-authors-cards`.
+		 *
+		 * Each card shows the author's name, niche, description, keywords, tone,
+		 * writing style, and a topic generation prompt excerpt. An "Import Author"
+		 * button sends `aips_save_author` to create the profile.
+		 *
+		 * @param {Array<Object>} suggestions - Array of suggestion objects from the server.
+		 */
+		renderSuggestedAuthors: function (suggestions) {
+			let html = '';
+
+			suggestions.forEach((suggestion, index) => {
+				html += '<div class="aips-suggestion-card" style="border: 1px solid #ddd; border-radius: 4px; padding: 16px; margin-bottom: 16px; background: #f9f9f9;">';
+				html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">';
+				html += '<div>';
+				html += '<h4 style="margin: 0 0 4px;">' + this.escapeHtml(suggestion.name) + '</h4>';
+				html += '<span class="aips-badge aips-badge-neutral">' + this.escapeHtml(suggestion.field_niche) + '</span>';
+				html += '</div>';
+				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-import-suggested-author" data-index="' + index + '" aria-label="' + (aipsAuthorsL10n.importAuthor || 'Import Author') + ': ' + this.escapeHtml(suggestion.name) + '">';
+				html += '<span class="dashicons dashicons-download"></span> ' + (aipsAuthorsL10n.importAuthor || 'Import Author');
+				html += '</button>';
+				html += '</div>';
+
+				if (suggestion.description) {
+					html += '<p style="margin: 0 0 8px; color: #555;">' + this.escapeHtml(suggestion.description) + '</p>';
+				}
+
+				const meta = [];
+				if (suggestion.keywords) {
+					meta.push('<strong>' + this.escapeHtml(aipsAuthorsL10n.fieldNiche || 'Keywords') + ':</strong> ' + this.escapeHtml(suggestion.keywords));
+				}
+				if (suggestion.voice_tone) {
+					meta.push('<strong>' + this.escapeHtml(aipsAuthorsL10n.voiceToneLabel || 'Voice/Tone') + ':</strong> ' + this.escapeHtml(suggestion.voice_tone));
+				}
+				if (suggestion.writing_style) {
+					meta.push('<strong>' + this.escapeHtml(aipsAuthorsL10n.writingStyleLabel || 'Writing Style') + ':</strong> ' + this.escapeHtml(suggestion.writing_style));
+				}
+				if (suggestion.topic_generation_prompt) {
+					meta.push('<strong>' + this.escapeHtml(aipsAuthorsL10n.topicPromptLabel || 'Topic Prompt') + ':</strong> ' + this.escapeHtml(suggestion.topic_generation_prompt));
+				}
+
+				if (meta.length > 0) {
+					html += '<div style="font-size: 12px; color: #666; display: flex; flex-direction: column; gap: 4px;">';
+					meta.forEach(item => {
+						html += '<span>' + item + '</span>';
+					});
+					html += '</div>';
+				}
+
+				html += '</div>';
+			});
+
+			// Store suggestions data on the container for later retrieval on import
+			const $cards = $('#aips-suggest-authors-cards');
+			$cards.html(html);
+			$cards.data('suggestions', suggestions);
+		},
+
+		/**
+		 * Import a suggested author profile by saving it via `aips_save_author`.
+		 *
+		 * Reads the suggestion data stored on `#aips-suggest-authors-cards` by
+		 * index, sends the AJAX request, and shows a success toast on completion.
+		 * Disables the import button while the request is in flight.
+		 *
+		 * @param {Event} e - Click event from an `.aips-import-suggested-author` element.
+		 */
+		importSuggestedAuthor: function (e) {
+			e.preventDefault();
+
+			const $btn = $(e.currentTarget);
+			const index = parseInt($btn.data('index'), 10);
+			const suggestions = $('#aips-suggest-authors-cards').data('suggestions');
+
+			if (!suggestions || !suggestions[index]) {
+				return;
+			}
+
+			const suggestion = suggestions[index];
+			$btn.prop('disabled', true).html(
+				'<span class="dashicons dashicons-update aips-spin"></span> ' +
+				(aipsAuthorsL10n.importingAuthor || 'Importing...')
+			);
+
+			$.ajax({
+				url: ajaxurl,
+				type: 'POST',
+				data: {
+					action: 'aips_save_author',
+					nonce: aipsAuthorsL10n.nonce,
+					name: suggestion.name,
+					field_niche: suggestion.field_niche,
+					description: suggestion.description || '',
+					keywords: suggestion.keywords || '',
+					voice_tone: suggestion.voice_tone || '',
+					writing_style: suggestion.writing_style || '',
+					topic_generation_prompt: suggestion.topic_generation_prompt || '',
+					topic_generation_frequency: 'weekly',
+					topic_generation_quantity: 5,
+					post_generation_frequency: 'daily',
+					post_status: 'draft',
+					is_active: 1
+				},
+				success: (response) => {
+					if (response.success) {
+						AIPS.Utilities.showToast(aipsAuthorsL10n.authorImported || 'Author imported successfully.', 'success');
+						$btn.prop('disabled', true).html(
+							'<span class="dashicons dashicons-yes"></span> ' +
+							(aipsAuthorsL10n.importAuthor || 'Imported')
+						);
+					} else {
+						const msg = (response.data && response.data.message)
+							? response.data.message
+							: (aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.');
+						AIPS.Utilities.showToast(msg, 'error');
+						$btn.prop('disabled', false).html(
+							'<span class="dashicons dashicons-download"></span> ' +
+							(aipsAuthorsL10n.importAuthor || 'Import Author')
+						);
+					}
+				},
+				error: () => {
+					AIPS.Utilities.showToast(aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.', 'error');
+					$btn.prop('disabled', false).html(
+						'<span class="dashicons dashicons-download"></span> ' +
+						(aipsAuthorsL10n.importAuthor || 'Import Author')
+					);
+				}
+			});
 		}
 	};
 	

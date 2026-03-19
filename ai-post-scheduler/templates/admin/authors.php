@@ -39,6 +39,10 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                     <p class="aips-page-description"><?php esc_html_e('Manage AI author profiles, generate topics, and create authentic content from different perspectives.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
+                    <button class="aips-btn aips-btn-secondary" id="aips-suggest-authors-btn">
+                        <span class="dashicons dashicons-lightbulb"></span>
+                        <?php esc_html_e('Suggest Authors', 'ai-post-scheduler'); ?>
+                    </button>
                     <button class="aips-btn aips-btn-primary aips-add-author-btn">
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
@@ -472,7 +476,58 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     </div>
 </div>
 
+<!-- Author Suggestions Modal -->
+<div id="aips-suggest-authors-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-suggest-authors-modal-title">
+    <div class="aips-modal-content aips-modal-large">
+        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+        <div class="aips-modal-header">
+            <h2 id="aips-suggest-authors-modal-title"><?php esc_html_e('Suggest Authors with AI', 'ai-post-scheduler'); ?></h2>
+            <p class="description"><?php esc_html_e('Describe your site and goals. The AI will suggest author profiles tailored to your content strategy.', 'ai-post-scheduler'); ?></p>
+        </div>
+        <div class="aips-modal-body">
+            <form id="aips-suggest-authors-form">
+                <div class="form-group">
+                    <label for="aips-suggest-site-niche"><?php esc_html_e('Site Niche / Primary Topic', 'ai-post-scheduler'); ?> *</label>
+                    <input type="text" id="aips-suggest-site-niche" name="site_niche" required placeholder="<?php esc_attr_e('e.g., WordPress development, personal finance, fitness', 'ai-post-scheduler'); ?>">
+                    <p class="description"><?php esc_html_e('The main topic or industry your site covers.', 'ai-post-scheduler'); ?></p>
+                </div>
+                <div class="form-group">
+                    <label for="aips-suggest-target-audience"><?php esc_html_e('Target Audience', 'ai-post-scheduler'); ?></label>
+                    <input type="text" id="aips-suggest-target-audience" name="target_audience" placeholder="<?php esc_attr_e('e.g., beginner developers, busy professionals, parents', 'ai-post-scheduler'); ?>">
+                    <p class="description"><?php esc_html_e('Who are you writing for?', 'ai-post-scheduler'); ?></p>
+                </div>
+                <div class="form-group">
+                    <label for="aips-suggest-content-goals"><?php esc_html_e('Content Goals', 'ai-post-scheduler'); ?></label>
+                    <textarea id="aips-suggest-content-goals" name="content_goals" rows="3" placeholder="<?php esc_attr_e('e.g., educate readers, drive product sign-ups, build a community', 'ai-post-scheduler'); ?>"></textarea>
+                    <p class="description"><?php esc_html_e('What do you want your content to achieve?', 'ai-post-scheduler'); ?></p>
+                </div>
+                <div class="form-group">
+                    <label for="aips-suggest-count"><?php esc_html_e('Number of Suggestions', 'ai-post-scheduler'); ?></label>
+                    <select id="aips-suggest-count" name="count">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3" selected>3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="aips-suggest-authors-submit" class="aips-btn aips-btn-primary">
+                        <span class="dashicons dashicons-lightbulb"></span>
+                        <?php esc_html_e('Generate Suggestions', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
+            </form>
 
+            <div id="aips-suggest-authors-results" style="display: none; margin-top: 24px;">
+                <hr>
+                <h3><?php esc_html_e('Suggested Authors', 'ai-post-scheduler'); ?></h3>
+                <p class="description"><?php esc_html_e('Review the suggestions below. Click "Import Author" to add a suggestion as a new author profile.', 'ai-post-scheduler'); ?></p>
+                <div id="aips-suggest-authors-cards"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
 
 

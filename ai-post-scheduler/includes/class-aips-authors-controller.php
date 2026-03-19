@@ -63,6 +63,7 @@ class AIPS_Authors_Controller {
 		add_action('wp_ajax_aips_get_author_feedback', array($this, 'ajax_get_author_feedback'));
 		add_action('wp_ajax_aips_generate_topics_now', array($this, 'ajax_generate_topics_now'));
 		add_action('wp_ajax_aips_get_topic_posts', array($this, 'ajax_get_topic_posts'));
+		add_action('wp_ajax_aips_suggest_authors', array($this, 'ajax_suggest_authors'));
 	}
 	
 	/**
@@ -410,6 +411,51 @@ class AIPS_Authors_Controller {
 		wp_send_json_success(array(
 			'topic' => $topic,
 			'posts' => $posts
+		));
+	}
+
+	/**
+	 * AJAX handler for generating AI-powered author profile suggestions.
+	 *
+	 * Accepts site context inputs and returns an array of suggested author
+	 * profiles that the admin can review and import with one click.
+	 */
+	public function ajax_suggest_authors() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$site_niche      = isset($_POST['site_niche']) ? sanitize_text_field($_POST['site_niche']) : '';
+		$target_audience = isset($_POST['target_audience']) ? sanitize_text_field($_POST['target_audience']) : '';
+		$content_goals   = isset($_POST['content_goals']) ? sanitize_textarea_field($_POST['content_goals']) : '';
+		$site_url        = isset($_POST['site_url']) ? esc_url_raw($_POST['site_url']) : '';
+		$count           = isset($_POST['count']) ? absint($_POST['count']) : 3;
+
+		if (empty($site_niche)) {
+			wp_send_json_error(array('message' => __('Site niche is required.', 'ai-post-scheduler')));
+		}
+
+		$service = new AIPS_Author_Suggestions_Service();
+		$suggestions = $service->suggest_authors(array(
+			'site_niche'      => $site_niche,
+			'target_audience' => $target_audience,
+			'content_goals'   => $content_goals,
+			'site_url'        => $site_url,
+		), $count);
+
+		if (is_wp_error($suggestions)) {
+			wp_send_json_error(array('message' => $suggestions->get_error_message()));
+		}
+
+		wp_send_json_success(array(
+			'suggestions' => $suggestions,
+			'message'     => sprintf(
+				/* translators: %d: number of author suggestions generated */
+				_n('%d author suggestion generated.', '%d author suggestions generated.', count($suggestions), 'ai-post-scheduler'),
+				count($suggestions)
+			),
 		));
 	}
 }

@@ -44,6 +44,11 @@ class AIPS_Author_Topics_Generator {
 	 * @var AIPS_Embeddings_Service Embeddings service for fuzzy duplicate checks
 	 */
 	private $embeddings_service;
+
+	/**
+	 * @var AIPS_Feedback_Repository Feedback repository for building quality context
+	 */
+	private $feedback_repository;
 	
 	/**
 	 * Initialize the generator.
@@ -53,13 +58,15 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $topics_repository Topics repository (optional for testing).
 	 * @param object|null $logs_repository Logs repository (optional for testing).
 	 * @param object|null $embeddings_service Embeddings service (optional for testing).
+	 * @param object|null $feedback_repository Feedback repository (optional for testing).
 	 */
-	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null) {
+	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null) {
 		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
 		$this->logger = $logger ?: new AIPS_Logger();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
+		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
 	}
 	
 	/**
@@ -195,7 +202,13 @@ class AIPS_Author_Topics_Generator {
 			}
 			$prompt .= "\n";
 		}
-		
+
+		// Add qualitative feedback guidance derived from admin rejection/approval reasons
+		$feedback_guidance = $this->build_feedback_guidance_section($author);
+		if (!empty($feedback_guidance)) {
+			$prompt .= $feedback_guidance;
+		}
+
 		$prompt .= "Requirements:\n";
 		$prompt .= "- Each topic should be specific and actionable\n";
 		$prompt .= "- Topics should be diverse and cover different aspects of {$author->field_niche}\n";
@@ -219,6 +232,86 @@ class AIPS_Author_Topics_Generator {
 		return $prompt;
 	}
 	
+	/**
+	 * Build feedback-derived quality guidance for the topic generation prompt.
+	 *
+	 * Analyses the admin's approval/rejection feedback patterns and translates them
+	 * into concrete instructions that the AI can act on. This helps close the loop
+	 * so that repeated rejections steer future generation away from problematic
+	 * patterns (tone, relevance, policy, duplicates) while boosting what works.
+	 *
+	 * @param object $author Author object from the database.
+	 * @return string Formatted guidance block ready to be appended to the prompt, or empty string if no feedback exists.
+	 */
+	private function build_feedback_guidance_section($author) {
+		$stats = $this->feedback_repository->get_reason_category_statistics($author->id);
+
+		if (empty($stats)) {
+			return '';
+		}
+
+		$rejection_guidance = array();
+		$approval_notes = array();
+
+		// --- Rejection patterns ---
+		if (!empty($stats['duplicate']['rejected'])) {
+			$rejection_guidance[] = 'Topics that are similar or duplicate to previous ones keep getting rejected — generate ideas with clearly distinct angles and fresh perspectives.';
+		}
+
+		if (!empty($stats['tone']['rejected'])) {
+			$tone_hint = !empty($author->voice_tone) ? " Stick to a {$author->voice_tone} tone." : '';
+			$rejection_guidance[] = "Several topics were rejected for tone mismatch.{$tone_hint} Ensure suggested topics naturally lend themselves to the author's established voice and writing style.";
+		}
+
+		if (!empty($stats['irrelevant']['rejected'])) {
+			$rejection_guidance[] = "Multiple topics were rejected as off-topic. Stay strictly within the '{$author->field_niche}' space — avoid peripheral subjects that do not directly serve this niche.";
+		}
+
+		if (!empty($stats['policy']['rejected'])) {
+			$rejection_guidance[] = 'Some topics were flagged for policy or content concerns. Avoid controversial, sensitive, or policy-violating subject matter entirely.';
+		}
+
+		if (!empty($stats['other']['rejected'])) {
+			$rejection_guidance[] = 'Some topics were rejected for miscellaneous reasons. Prioritise well-scoped, clearly defined topics that are easy to execute.';
+		}
+
+		// --- Approval patterns (positive reinforcement) ---
+		if (!empty($stats['duplicate']['approved'])) {
+			$approval_notes[] = 'Topics with unique, specific angles tend to be approved.';
+		}
+
+		if (!empty($stats['tone']['approved'])) {
+			$tone_hint = !empty($author->voice_tone) ? " in a {$author->voice_tone} tone" : '';
+			$approval_notes[] = "Topics that align well with the author's voice{$tone_hint} are consistently approved.";
+		}
+
+		if (!empty($stats['irrelevant']['approved'])) {
+			$approval_notes[] = "Topics tightly focused on '{$author->field_niche}' are well received.";
+		}
+
+		if (empty($rejection_guidance) && empty($approval_notes)) {
+			return '';
+		}
+
+		$section = "Quality guidance derived from admin feedback:\n";
+
+		if (!empty($rejection_guidance)) {
+			$section .= "Patterns to avoid:\n";
+			foreach ($rejection_guidance as $note) {
+				$section .= "- {$note}\n";
+			}
+		}
+
+		if (!empty($approval_notes)) {
+			$section .= "Patterns that work well:\n";
+			foreach ($approval_notes as $note) {
+				$section .= "- {$note}\n";
+			}
+		}
+
+		return $section . "\n";
+	}
+
 	/**
 	 * Parse topics from JSON response.
 	 *
@@ -432,6 +525,18 @@ class AIPS_Author_Topics_Generator {
 		
 		if (!empty($rejected)) {
 			$context .= "Rejected topics:\n" . implode("\n", $rejected) . "\n\n";
+		}
+
+		$stats = $this->feedback_repository->get_reason_category_statistics($author_id);
+		if (!empty($stats)) {
+			$context .= "Feedback patterns:\n";
+			foreach ($stats as $category => $counts) {
+				$approved_count = isset($counts['approved']) ? (int) $counts['approved'] : 0;
+				$rejected_count = isset($counts['rejected']) ? (int) $counts['rejected'] : 0;
+				if ($rejected_count > 0 || $approved_count > 0) {
+					$context .= "- {$category}: {$approved_count} approved, {$rejected_count} rejected\n";
+				}
+			}
 		}
 		
 		return $context;
