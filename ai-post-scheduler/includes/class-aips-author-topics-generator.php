@@ -145,6 +145,7 @@ class AIPS_Author_Topics_Generator {
 	}
 	
 	/**
+	/**
 	 * Build the prompt for topic generation with feedback loop context.
 	 *
 	 * @param object $author Author object from database.
@@ -155,34 +156,83 @@ class AIPS_Author_Topics_Generator {
 		if ($quantity < 1) {
 			$quantity = 5;
 		}
-		
+
 		$prompt = "Generate {$quantity} unique and engaging blog post topic ideas about: {$author->field_niche}\n\n";
-		
+
+		// ---- Site-wide context ----
+		$site_context = AIPS_Site_Context::build_prompt_context();
+		if (!empty($site_context)) {
+			$prompt .= $site_context;
+		}
+
+		// ---- Extended author profile fields ----
+		if (!empty($author->target_audience)) {
+			$prompt .= "Target audience for this author: {$author->target_audience}\n\n";
+		}
+
+		if (!empty($author->expertise_level)) {
+			$prompt .= "Author expertise level: {$author->expertise_level}\n\n";
+		}
+
+		if (!empty($author->content_goals)) {
+			$prompt .= "Content goals for this author: {$author->content_goals}\n\n";
+		}
+
 		// Add keywords if provided
 		if (!empty($author->keywords)) {
 			$prompt .= "Keywords/Focus Areas: {$author->keywords}\n\n";
 		}
-		
+
 		// Add details/context if provided
 		if (!empty($author->details)) {
 			$prompt .= "Additional Context:\n{$author->details}\n\n";
 		}
-		
+
 		// Add voice/tone if provided
 		if (!empty($author->voice_tone)) {
 			$prompt .= "Tone: {$author->voice_tone}\n\n";
 		}
-		
+
 		// Add writing style if provided
 		if (!empty($author->writing_style)) {
 			$prompt .= "Writing Style: {$author->writing_style}\n\n";
 		}
-		
+
+		// Preferred content length
+		if (!empty($author->preferred_content_length)) {
+			$length_map = array(
+				'short'  => 'under 800 words',
+				'medium' => '800–1,500 words',
+				'long'   => '1,500 words or more',
+			);
+			$length_label = isset($length_map[$author->preferred_content_length]) ? $length_map[$author->preferred_content_length] : $author->preferred_content_length;
+			$prompt .= "Preferred post length: {$length_label}\n\n";
+		}
+
+		// Language (only explicit when non-English)
+		$lang = !empty($author->language) ? $author->language : 'en';
+		if ($lang !== 'en') {
+			$prompt .= "Generate topics in language code: {$lang}\n\n";
+		}
+
+		// Excluded topics (merge site-wide + author-level)
+		$excluded_parts = array();
+		$site_excluded  = AIPS_Site_Context::get_setting('excluded_topics', '');
+		if (!empty($site_excluded)) {
+			$excluded_parts[] = $site_excluded;
+		}
+		if (!empty($author->excluded_topics)) {
+			$excluded_parts[] = $author->excluded_topics;
+		}
+		if (!empty($excluded_parts)) {
+			$prompt .= 'Topics to avoid: ' . implode(', ', $excluded_parts) . "\n\n";
+		}
+
 		// Add custom prompt if provided
 		if (!empty($author->topic_generation_prompt)) {
 			$prompt .= "{$author->topic_generation_prompt}\n\n";
 		}
-		
+
 		// Add feedback loop context from approved topics
 		$approved_topics = $this->topics_repository->get_approved_summary($author->id, 10);
 		if (!empty($approved_topics)) {
@@ -192,7 +242,7 @@ class AIPS_Author_Topics_Generator {
 			}
 			$prompt .= "\n";
 		}
-		
+
 		// Add feedback loop context from rejected topics
 		$rejected_topics = $this->topics_repository->get_rejected_summary($author->id, 10);
 		if (!empty($rejected_topics)) {
@@ -214,12 +264,12 @@ class AIPS_Author_Topics_Generator {
 		$prompt .= "- Topics should be diverse and cover different aspects of {$author->field_niche}\n";
 		$prompt .= "- Avoid duplicating previously approved or rejected topics\n";
 		$prompt .= "- Format each topic as a clear, engaging blog post title\n\n";
-		
+
 		$prompt .= "Return a JSON array of objects. Each object must have:\n";
 		$prompt .= "- \"title\": The blog post topic/title (string)\n";
 		$prompt .= "- \"score\": Estimated engagement score 1-100 (integer)\n";
 		$prompt .= "- \"keywords\": 3-5 relevant keywords (array of strings)\n\n";
-		
+
 		$prompt .= "Example format:\n";
 		$prompt .= "[\n";
 		$prompt .= "  {\n";
@@ -228,7 +278,7 @@ class AIPS_Author_Topics_Generator {
 		$prompt .= "    \"keywords\": [\"WordPress\", \"SEO\", \"best practices\", \"2025\", \"optimization\"]\n";
 		$prompt .= "  }\n";
 		$prompt .= "]";
-		
+
 		return $prompt;
 	}
 	

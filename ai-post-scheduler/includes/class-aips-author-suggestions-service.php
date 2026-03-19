@@ -61,12 +61,27 @@ class AIPS_Author_Suggestions_Service {
 	public function suggest_authors(array $inputs, $count = 3) {
 		$count = max(1, min(10, (int) $count));
 
-		$site_niche = isset($inputs['site_niche']) ? sanitize_text_field($inputs['site_niche']) : '';
+		// Fall back to site-wide content settings when a field is not provided in $inputs.
+		$site_ctx = AIPS_Site_Context::get();
+
+		$site_niche = !empty($inputs['site_niche']) ? sanitize_text_field($inputs['site_niche']) : $site_ctx['niche'];
 		if (empty($site_niche)) {
 			return new WP_Error('missing_niche', __('Site niche is required to generate author suggestions.', 'ai-post-scheduler'));
 		}
 
-		$prompt = $this->build_suggestion_prompt($inputs, $count);
+		// Merge site defaults into inputs so build_suggestion_prompt() has a complete picture.
+		$merged_inputs = array_merge(
+			array(
+				'target_audience' => $site_ctx['target_audience'],
+				'content_goals'   => $site_ctx['content_goals'],
+				'brand_voice'     => $site_ctx['brand_voice'],
+				'site_url'        => '',
+			),
+			$inputs,
+			array('site_niche' => $site_niche)
+		);
+
+		$prompt = $this->build_suggestion_prompt($merged_inputs, $count);
 
 		$this->logger->log(
 			"Generating {$count} author suggestion(s) for niche: {$site_niche}",
@@ -111,6 +126,7 @@ class AIPS_Author_Suggestions_Service {
 		$site_niche      = isset($inputs['site_niche']) ? sanitize_text_field($inputs['site_niche']) : '';
 		$target_audience = isset($inputs['target_audience']) ? sanitize_text_field($inputs['target_audience']) : '';
 		$content_goals   = isset($inputs['content_goals']) ? sanitize_textarea_field($inputs['content_goals']) : '';
+		$brand_voice     = isset($inputs['brand_voice']) ? sanitize_text_field($inputs['brand_voice']) : '';
 		$site_url        = isset($inputs['site_url']) ? esc_url_raw($inputs['site_url']) : '';
 
 		$prompt  = "You are an expert content strategist.\n\n";
@@ -123,6 +139,10 @@ class AIPS_Author_Suggestions_Service {
 
 		if (!empty($content_goals)) {
 			$prompt .= "Content goals: {$content_goals}\n";
+		}
+
+		if (!empty($brand_voice)) {
+			$prompt .= "Overall brand voice/tone: {$brand_voice} — each author's voice should complement but remain distinct from this.\n";
 		}
 
 		if (!empty($site_url)) {

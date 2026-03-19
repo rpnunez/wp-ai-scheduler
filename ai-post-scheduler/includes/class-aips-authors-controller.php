@@ -105,6 +105,14 @@ class AIPS_Authors_Controller {
 			'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
 			'voice_tone' => isset($_POST['voice_tone']) ? sanitize_text_field($_POST['voice_tone']) : '',
 			'writing_style' => isset($_POST['writing_style']) ? sanitize_text_field($_POST['writing_style']) : '',
+			// New expanded author profile fields
+			'target_audience' => isset($_POST['target_audience']) ? sanitize_text_field($_POST['target_audience']) : '',
+			'expertise_level' => isset($_POST['expertise_level']) ? sanitize_text_field($_POST['expertise_level']) : '',
+			'content_goals' => isset($_POST['content_goals']) ? sanitize_textarea_field($_POST['content_goals']) : '',
+			'excluded_topics' => isset($_POST['excluded_topics']) ? sanitize_textarea_field($_POST['excluded_topics']) : '',
+			'preferred_content_length' => isset($_POST['preferred_content_length']) ? sanitize_text_field($_POST['preferred_content_length']) : '',
+			'language' => isset($_POST['language']) ? sanitize_text_field($_POST['language']) : 'en',
+			'max_posts_per_topic' => isset($_POST['max_posts_per_topic']) ? max(1, absint($_POST['max_posts_per_topic'])) : 1,
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		

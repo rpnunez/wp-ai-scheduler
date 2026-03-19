@@ -271,6 +271,14 @@
 						$('#article_structure_id').val(author.article_structure_id || '');
 						$('#voice_tone').val(author.voice_tone || '');
 						$('#writing_style').val(author.writing_style || '');
+						// Extended profile fields
+						$('#author_target_audience').val(author.target_audience || '');
+						$('#author_expertise_level').val(author.expertise_level || '');
+						$('#author_content_goals').val(author.content_goals || '');
+						$('#author_excluded_topics').val(author.excluded_topics || '');
+						$('#author_preferred_content_length').val(author.preferred_content_length || '');
+						$('#author_language').val(author.language || 'en');
+						$('#author_max_posts_per_topic').val(author.max_posts_per_topic || 1);
 						$('#topic_generation_quantity').val(author.topic_generation_quantity);
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
@@ -1971,6 +1979,13 @@
 					voice_tone: suggestion.voice_tone || '',
 					writing_style: suggestion.writing_style || '',
 					topic_generation_prompt: suggestion.topic_generation_prompt || '',
+					target_audience: suggestion.target_audience || '',
+					expertise_level: suggestion.expertise_level || '',
+					content_goals: suggestion.content_goals || '',
+					excluded_topics: suggestion.excluded_topics || '',
+					preferred_content_length: suggestion.preferred_content_length || '',
+					language: suggestion.language || 'en',
+					max_posts_per_topic: suggestion.max_posts_per_topic || 1,
 					topic_generation_frequency: 'weekly',
 					topic_generation_quantity: 5,
 					post_generation_frequency: 'daily',

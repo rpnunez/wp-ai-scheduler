@@ -972,6 +972,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-topic-penalty-service.php',
         'class-aips-embeddings-service.php',
         'class-aips-topic-expansion-service.php',
+        'class-aips-site-context.php',
         'class-aips-author-topics-generator.php',
         'class-aips-author-topics-scheduler.php',
         'class-aips-authors-controller.php',

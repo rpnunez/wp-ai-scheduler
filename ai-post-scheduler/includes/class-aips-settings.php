@@ -363,6 +363,95 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
+
+        // -----------------------------------------------------------------------
+        // Site-wide Content Strategy settings
+        // -----------------------------------------------------------------------
+        register_setting('aips_settings', 'aips_site_niche', array(
+            'sanitize_callback' => 'sanitize_text_field',
+        ));
+        register_setting('aips_settings', 'aips_site_target_audience', array(
+            'sanitize_callback' => 'sanitize_text_field',
+        ));
+        register_setting('aips_settings', 'aips_site_content_goals', array(
+            'sanitize_callback' => 'sanitize_textarea_field',
+        ));
+        register_setting('aips_settings', 'aips_site_brand_voice', array(
+            'sanitize_callback' => 'sanitize_text_field',
+        ));
+        register_setting('aips_settings', 'aips_site_content_language', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => 'en',
+        ));
+        register_setting('aips_settings', 'aips_site_content_guidelines', array(
+            'sanitize_callback' => 'sanitize_textarea_field',
+        ));
+        register_setting('aips_settings', 'aips_site_excluded_topics', array(
+            'sanitize_callback' => 'sanitize_textarea_field',
+        ));
+
+        add_settings_section(
+            'aips_content_strategy_section',
+            __('Site Content Strategy', 'ai-post-scheduler'),
+            array($this, 'content_strategy_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_site_niche',
+            __('Site Niche / Primary Topic', 'ai-post-scheduler'),
+            array($this, 'site_niche_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_target_audience',
+            __('Target Audience', 'ai-post-scheduler'),
+            array($this, 'site_target_audience_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_content_goals',
+            __('Content Goals', 'ai-post-scheduler'),
+            array($this, 'site_content_goals_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_brand_voice',
+            __('Brand Voice / Tone', 'ai-post-scheduler'),
+            array($this, 'site_brand_voice_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_content_language',
+            __('Content Language', 'ai-post-scheduler'),
+            array($this, 'site_content_language_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_content_guidelines',
+            __('Content Guidelines', 'ai-post-scheduler'),
+            array($this, 'site_content_guidelines_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_excluded_topics',
+            __('Excluded Topics (site-wide)', 'ai-post-scheduler'),
+            array($this, 'site_excluded_topics_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
     }
         
     /**
@@ -595,6 +684,135 @@ class AIPS_Settings {
         <p class="description">
             <?php esc_html_e('Minimum similarity score (0.1–1.0) used to flag new topics as potential duplicates during generation. A higher value requires topics to be more similar before being flagged. Default: 0.8.', 'ai-post-scheduler'); ?>
         </p>
+        <?php
+    }
+
+    // -------------------------------------------------------------------------
+    // Site Content Strategy field callbacks
+    // -------------------------------------------------------------------------
+
+    /**
+     * Render the description for the site content strategy settings section.
+     *
+     * @return void
+     */
+    public function content_strategy_section_callback() {
+        echo '<p>' . esc_html__('Define the overall content identity of your website. These settings are shared across Author Suggestions, topic generation, and post generation to ensure consistent, on-brand output.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the Site Niche / Primary Topic field.
+     *
+     * @return void
+     */
+    public function site_niche_field_callback() {
+        $value = get_option('aips_site_niche', '');
+        ?>
+        <input type="text" name="aips_site_niche" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Personal Finance, WordPress Development, Fitness', 'ai-post-scheduler'); ?>">
+        <p class="description"><?php esc_html_e('The main topic or industry your website covers. Used as context for Author Suggestions and AI generation.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Target Audience field.
+     *
+     * @return void
+     */
+    public function site_target_audience_field_callback() {
+        $value = get_option('aips_site_target_audience', '');
+        ?>
+        <input type="text" name="aips_site_target_audience" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Beginner developers, Small business owners, Parents', 'ai-post-scheduler'); ?>">
+        <p class="description"><?php esc_html_e('Who your content is written for. Helps the AI tailor the language and depth of generated topics and posts.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Content Goals field.
+     *
+     * @return void
+     */
+    public function site_content_goals_field_callback() {
+        $value = get_option('aips_site_content_goals', '');
+        ?>
+        <textarea name="aips_site_content_goals" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., Educate readers, Drive product sign-ups, Build a community, Rank on search engines', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
+        <p class="description"><?php esc_html_e('What you want your content to achieve. Informs the angle and call-to-action emphasis in generated content.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Brand Voice / Tone field.
+     *
+     * @return void
+     */
+    public function site_brand_voice_field_callback() {
+        $value = get_option('aips_site_brand_voice', '');
+        ?>
+        <input type="text" name="aips_site_brand_voice" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Friendly and approachable, Authoritative, Conversational', 'ai-post-scheduler'); ?>">
+        <p class="description"><?php esc_html_e('The overall voice and tone of your brand. Applied as a default across all authors unless overridden per-author.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Content Language field.
+     *
+     * @return void
+     */
+    public function site_content_language_field_callback() {
+        $value = get_option('aips_site_content_language', 'en');
+        $languages = array(
+            'en'    => __('English', 'ai-post-scheduler'),
+            'es'    => __('Spanish', 'ai-post-scheduler'),
+            'fr'    => __('French', 'ai-post-scheduler'),
+            'de'    => __('German', 'ai-post-scheduler'),
+            'it'    => __('Italian', 'ai-post-scheduler'),
+            'pt'    => __('Portuguese', 'ai-post-scheduler'),
+            'nl'    => __('Dutch', 'ai-post-scheduler'),
+            'pl'    => __('Polish', 'ai-post-scheduler'),
+            'ru'    => __('Russian', 'ai-post-scheduler'),
+            'ja'    => __('Japanese', 'ai-post-scheduler'),
+            'ko'    => __('Korean', 'ai-post-scheduler'),
+            'zh'    => __('Chinese (Simplified)', 'ai-post-scheduler'),
+            'ar'    => __('Arabic', 'ai-post-scheduler'),
+            'hi'    => __('Hindi', 'ai-post-scheduler'),
+            'tr'    => __('Turkish', 'ai-post-scheduler'),
+            'sv'    => __('Swedish', 'ai-post-scheduler'),
+            'da'    => __('Danish', 'ai-post-scheduler'),
+            'fi'    => __('Finnish', 'ai-post-scheduler'),
+            'nb'    => __('Norwegian', 'ai-post-scheduler'),
+        );
+        ?>
+        <select name="aips_site_content_language">
+            <?php foreach ($languages as $code => $label) : ?>
+                <option value="<?php echo esc_attr($code); ?>" <?php selected($value, $code); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('The primary language for all AI-generated content. Individual authors can override this.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Content Guidelines field.
+     *
+     * @return void
+     */
+    public function site_content_guidelines_field_callback() {
+        $value = get_option('aips_site_content_guidelines', '');
+        ?>
+        <textarea name="aips_site_content_guidelines" class="large-text" rows="4" placeholder="<?php esc_attr_e('e.g., Always include at least one actionable tip per post. Avoid profanity. Cite sources where possible.', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
+        <p class="description"><?php esc_html_e('General rules and guidelines for all generated content. Included in every generation prompt as hard constraints.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Excluded Topics (site-wide) field.
+     *
+     * @return void
+     */
+    public function site_excluded_topics_field_callback() {
+        $value = get_option('aips_site_excluded_topics', '');
+        ?>
+        <textarea name="aips_site_excluded_topics" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., competitor brand names, controversial political topics, adult content', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
+        <p class="description"><?php esc_html_e('Topics or subjects that should never appear in any generated post or topic suggestion. Applied globally.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
