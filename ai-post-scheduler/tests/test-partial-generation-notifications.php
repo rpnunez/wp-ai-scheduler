@@ -36,7 +36,7 @@ class Test_AIPS_Partial_Generation_Notifications extends WP_UnitTestCase {
 		$this->assertStringContainsString('Recovery Post', $message);
 		$this->assertStringContainsString('Excerpt', $message);
 		$this->assertStringContainsString('Featured Image', $message);
-		$this->assertStringContainsString(admin_url('admin.php?page=aips-generated-posts#aips-partial-generations'), $message);
+		$this->assertStringContainsString(AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-partial-generations', $message);
 		$this->assertStringContainsString('Recovery Template', $message);
 		$this->assertStringContainsString('77', $message);
 	}
