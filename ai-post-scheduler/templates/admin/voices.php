@@ -99,15 +99,16 @@ if (!defined('ABSPATH')) {
                 </div>
 
                 <!-- No Search Results -->
-                <div id="aips-voice-search-no-results" class="aips-empty-state" style="display: none;">
-                    <div class="aips-empty-icon">
-                        <span class="dashicons dashicons-search"></span>
+                <div id="aips-voice-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+                    <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+                    <h3 class="aips-empty-state-title"><?php esc_html_e('No Voices Found', 'ai-post-scheduler'); ?></h3>
+                    <p class="aips-empty-state-description"><?php esc_html_e('No voices match your search criteria.', 'ai-post-scheduler'); ?></p>
+                    <div class="aips-empty-state-actions">
+                        <button type="button" class="aips-btn aips-btn-primary aips-clear-voice-search-btn">
+                            <span class="dashicons dashicons-dismiss"></span>
+                            <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+                        </button>
                     </div>
-                    <h3 class="aips-empty-title"><?php esc_html_e('No Voices Found', 'ai-post-scheduler'); ?></h3>
-                    <p class="aips-empty-description"><?php esc_html_e('No voices match your search criteria.', 'ai-post-scheduler'); ?></p>
-                    <button type="button" class="aips-btn aips-btn-primary aips-clear-voice-search-btn">
-                        <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-                    </button>
                 </div>
 
                 <?php else: ?>

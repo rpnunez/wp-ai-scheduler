@@ -125,13 +125,16 @@ if (!isset($sections) || !is_array($sections)) {
 				</span>
 			</div>
 
-			<div id="aips-structure-search-no-results" class="aips-empty-state" style="display: none;">
-				<span class="dashicons dashicons-search" aria-hidden="true"></span>
-				<h3><?php esc_html_e('No Structures Found', 'ai-post-scheduler'); ?></h3>
-				<p><?php esc_html_e('No article structures match your search criteria.', 'ai-post-scheduler'); ?></p>
-				<button type="button" class="aips-btn aips-btn-primary aips-clear-structure-search-btn">
-					<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-				</button>
+			<div id="aips-structure-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+				<span class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></span>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No Structures Found', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('No article structures match your search criteria.', 'ai-post-scheduler'); ?></p>
+				<div class="aips-empty-state-actions">
+					<button type="button" class="aips-btn aips-btn-primary aips-clear-structure-search-btn">
+						<span class="dashicons dashicons-dismiss"></span>
+						<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
 			</div>
 			<?php else: ?>
 			<div class="aips-empty-state">
@@ -212,13 +215,16 @@ if (!isset($sections) || !is_array($sections)) {
 				</span>
 			</div>
 
-			<div id="aips-section-search-no-results" class="aips-empty-state" style="display: none;">
-				<span class="dashicons dashicons-search" aria-hidden="true"></span>
-				<h3><?php esc_html_e('No Sections Found', 'ai-post-scheduler'); ?></h3>
-				<p><?php esc_html_e('No structure sections match your search criteria.', 'ai-post-scheduler'); ?></p>
-				<button type="button" class="aips-btn aips-btn-primary aips-clear-section-search-btn">
-					<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
-				</button>
+			<div id="aips-section-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+				<span class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></span>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No Sections Found', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('No structure sections match your search criteria.', 'ai-post-scheduler'); ?></p>
+				<div class="aips-empty-state-actions">
+					<button type="button" class="aips-btn aips-btn-primary aips-clear-section-search-btn">
+						<span class="dashicons dashicons-dismiss"></span>
+						<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
 			</div>
 			<?php else : ?>
 			<div class="aips-empty-state">
