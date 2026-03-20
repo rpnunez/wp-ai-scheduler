@@ -584,7 +584,7 @@ class AIPS_History_Repository {
 
         foreach ($event_types as $event_type) {
             $where_events[] = 'hl.details LIKE %s';
-            $args[] = '%\"event_type\":\"' . $this->wpdb->esc_like($event_type) . '\"%';
+            $args[] = '%"event_type":"' . $this->wpdb->esc_like($event_type) . '"%';
         }
 
         $args[] = $limit;
