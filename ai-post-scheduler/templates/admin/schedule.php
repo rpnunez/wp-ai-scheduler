@@ -33,7 +33,7 @@ if (!function_exists('aips_frequency_label')) {
 		if (isset($schedules[$frequency])) {
 			return $schedules[$frequency]['display'];
 		}
-		return esc_html(ucfirst(str_replace('_', ' ', $frequency)));
+		return ucfirst(str_replace('_', ' ', $frequency));
 	}
 }
 
