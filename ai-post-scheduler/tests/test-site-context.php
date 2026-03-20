@@ -2,7 +2,7 @@
 /**
  * Tests for AIPS_Site_Context.
  *
- * Verifies that get(), get_setting(), build_prompt_context(), and
+ * Verifies that get(), get_setting(), build_site_context_block(), and
  * is_configured() behave correctly with and without stored options.
  *
  * @package AI_Post_Scheduler
