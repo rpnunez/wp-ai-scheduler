@@ -130,6 +130,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $url;
         }
     }
+
+    if (!function_exists('esc_url_raw')) {
+        function esc_url_raw($url) {
+            return $url;
+        }
+    }
     
     if (!function_exists('plugin_dir_path')) {
         function plugin_dir_path($file) {
@@ -922,6 +928,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-prompt-section-repository.php',
         'class-aips-template-processor.php',
         'class-aips-prompt-builder.php',
+        'class-aips-prompt-builder-topic.php',
+        'class-aips-prompt-builder-authors.php',
         'class-aips-article-structure-manager.php',
         'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
@@ -973,11 +981,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-topic-penalty-service.php',
         'class-aips-embeddings-service.php',
         'class-aips-topic-expansion-service.php',
+        'class-aips-site-context.php',
         'class-aips-author-topics-generator.php',
         'class-aips-author-topics-scheduler.php',
         'class-aips-authors-controller.php',
         'class-aips-author-post-generator.php',
         'class-aips-author-topics-controller.php',
+        'class-aips-author-suggestions-service.php',
     ];
     
     foreach ($files as $file) {

@@ -93,6 +93,18 @@ class AIPS_Admin_Assets {
             // Schedule strings
             'runScheduleConfirm' => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
             'scheduleRunning' => __('Running...', 'ai-post-scheduler'),
+            // Schedule Wizard strings
+            'scheduleTemplateRequired' => __('Please select a Template to continue.', 'ai-post-scheduler'),
+            'addNewSchedule'           => __('Add New Schedule', 'ai-post-scheduler'),
+            'editSchedule'             => __('Edit Schedule', 'ai-post-scheduler'),
+            'cloneSchedule'            => __('Clone Schedule', 'ai-post-scheduler'),
+            'saveSchedule'             => __('Save Schedule', 'ai-post-scheduler'),
+            'scheduleSavedSuccess'     => __('Schedule saved successfully.', 'ai-post-scheduler'),
+            'startNow'                 => __('Now', 'ai-post-scheduler'),
+            'useDefault'               => __('Use Default', 'ai-post-scheduler'),
+            'noTitle'                  => __('No title', 'ai-post-scheduler'),
+            'yes'                      => __('Yes', 'ai-post-scheduler'),
+            'no'                       => __('No', 'ai-post-scheduler'),
             // Status/button strings
             'saving'              => __('Saving...', 'ai-post-scheduler'),
             'generating'          => __('Generating...', 'ai-post-scheduler'),
@@ -153,9 +165,17 @@ class AIPS_Admin_Assets {
           );
 
           wp_enqueue_script(
+            'aips-templates-script',
+            AIPS_PLUGIN_URL . 'assets/js/templates.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+          );
+
+          wp_enqueue_script(
             'aips-authors-script',
             AIPS_PLUGIN_URL . 'assets/js/authors.js',
-            array('jquery', 'aips-utilities-script'),
+            array('jquery', 'aips-utilities-script', 'aips-templates-script'),
             AIPS_VERSION,
             true
           );
@@ -291,6 +311,21 @@ class AIPS_Admin_Assets {
             // Topic count display strings for the filter bar result count
             'topicCountSingular' => __('topic', 'ai-post-scheduler'),
             'topicCountPlural' => __('topics', 'ai-post-scheduler'),
+            // Author Suggestions
+            'suggestAuthors' => __('Suggest Authors', 'ai-post-scheduler'),
+            'suggestAuthorsTitle' => __('Suggest Authors with AI', 'ai-post-scheduler'),
+            'siteNicheRequired' => __('Site niche is required.', 'ai-post-scheduler'),
+            'generateSuggestions' => __('Generate Suggestions', 'ai-post-scheduler'),
+            'generatingSuggestions' => __('Generating suggestions...', 'ai-post-scheduler'),
+            'errorGeneratingSuggestions' => __('Error generating author suggestions.', 'ai-post-scheduler'),
+            'importAuthor' => __('Import Author', 'ai-post-scheduler'),
+            'importedAuthor' => __('Imported Author', 'ai-post-scheduler'),
+            'importingAuthor' => __('Importing...', 'ai-post-scheduler'),
+            'authorImported' => __('Author imported successfully.', 'ai-post-scheduler'),
+            'errorImportingAuthor' => __('Error importing author.', 'ai-post-scheduler'),
+            'voiceToneLabel' => __('Voice/Tone', 'ai-post-scheduler'),
+            'writingStyleLabel' => __('Writing Style', 'ai-post-scheduler'),
+            'topicPromptLabel' => __('Topic Generation Prompt', 'ai-post-scheduler'),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
