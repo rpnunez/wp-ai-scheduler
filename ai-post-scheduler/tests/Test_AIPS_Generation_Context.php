@@ -228,4 +228,86 @@ class Test_AIPS_Generation_Context extends WP_UnitTestCase {
 		$this->assertEquals('Voice title prompt', $context->get_title_prompt());
 		$this->assertEquals(456, $context->get_voice_id());
 	}
+
+	/**
+	 * Test that get_ai_options returns only non-empty values from the template.
+	 *
+	 * @return void
+	 */
+	public function test_template_context_get_ai_options_with_all_fields() {
+		$template = (object) array(
+			'id' => 1,
+			'name' => 'AI Override Template',
+			'prompt_template' => 'Write about {{topic}}',
+			'title_prompt' => '',
+			'post_status' => 'draft',
+			'post_category' => 1,
+			'post_tags' => '',
+			'post_author' => 1,
+			'ai_env_id' => 'my-env',
+			'ai_model' => 'gpt-4',
+			'ai_temperature' => '0.7',
+		);
+
+		$context = new AIPS_Template_Context($template);
+		$options = $context->get_ai_options();
+
+		$this->assertIsArray($options);
+		$this->assertSame('my-env', $options['env_id']);
+		$this->assertSame('gpt-4', $options['model']);
+		$this->assertSame(0.7, $options['temperature']);
+	}
+
+	/**
+	 * Test that get_ai_options returns an empty array when template AI fields are empty.
+	 *
+	 * @return void
+	 */
+	public function test_template_context_get_ai_options_empty_when_fields_absent() {
+		$template = (object) array(
+			'id' => 2,
+			'name' => 'Default Template',
+			'prompt_template' => 'Write about {{topic}}',
+			'title_prompt' => '',
+			'post_status' => 'draft',
+			'post_category' => 1,
+			'post_tags' => '',
+			'post_author' => 1,
+		);
+
+		$context = new AIPS_Template_Context($template);
+		$options = $context->get_ai_options();
+
+		$this->assertIsArray($options);
+		$this->assertEmpty($options);
+	}
+
+	/**
+	 * Test that get_ai_options returns only the fields that are set.
+	 *
+	 * @return void
+	 */
+	public function test_template_context_get_ai_options_partial_fields() {
+		$template = (object) array(
+			'id' => 3,
+			'name' => 'Partial Override Template',
+			'prompt_template' => 'Write about {{topic}}',
+			'title_prompt' => '',
+			'post_status' => 'draft',
+			'post_category' => 1,
+			'post_tags' => '',
+			'post_author' => 1,
+			'ai_env_id' => '',
+			'ai_model' => 'gpt-3.5-turbo',
+			'ai_temperature' => '',
+		);
+
+		$context = new AIPS_Template_Context($template);
+		$options = $context->get_ai_options();
+
+		$this->assertIsArray($options);
+		$this->assertArrayNotHasKey('env_id', $options);
+		$this->assertSame('gpt-3.5-turbo', $options['model']);
+		$this->assertArrayNotHasKey('temperature', $options);
+	}
 }

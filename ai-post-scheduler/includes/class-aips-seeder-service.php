@@ -217,7 +217,10 @@ class AIPS_Seeder_Service {
     }
 
     private function generate_json($prompt) {
-        $result = $this->generator->generate_content($prompt, array('temperature' => 0.7, 'max_tokens' => 2000), 'seeder_json');
+        $result = $this->generator->generate_content($prompt, array(
+            AIPS_AI_Service::OPT_TEMPERATURE => 0.7,
+            AIPS_AI_Service::OPT_MAX_TOKENS => 2000,
+        ), 'seeder_json');
 
         if (is_wp_error($result)) {
             return null;

@@ -45,6 +45,9 @@ class AIPS_Templates_Controller {
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
+            'ai_env_id' => isset($_POST['ai_env_id']) ? sanitize_text_field($_POST['ai_env_id']) : '',
+            'ai_model' => isset($_POST['ai_model']) ? sanitize_text_field($_POST['ai_model']) : '',
+            'ai_temperature' => isset($_POST['ai_temperature']) && $_POST['ai_temperature'] !== '' ? sanitize_text_field($_POST['ai_temperature']) : '',
         );
 
         if (empty($data['name']) || empty($data['prompt_template'])) {
@@ -145,6 +148,9 @@ class AIPS_Templates_Controller {
             'post_tags' => $template->post_tags,
             'post_author' => $template->post_author,
             'is_active' => $template->is_active,
+            'ai_env_id' => isset($template->ai_env_id) ? $template->ai_env_id : '',
+            'ai_model' => isset($template->ai_model) ? $template->ai_model : '',
+            'ai_temperature' => isset($template->ai_temperature) ? $template->ai_temperature : '',
         );
 
         $new_id = $this->templates->save($new_data);
@@ -187,6 +193,9 @@ class AIPS_Templates_Controller {
             'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
+            'ai_env_id' => isset($_POST['ai_env_id']) ? sanitize_text_field($_POST['ai_env_id']) : '',
+            'ai_model' => isset($_POST['ai_model']) ? sanitize_text_field($_POST['ai_model']) : '',
+            'ai_temperature' => isset($_POST['ai_temperature']) && $_POST['ai_temperature'] !== '' ? sanitize_text_field($_POST['ai_temperature']) : '',
         );
 
         if (empty($data['prompt_template'])) {

@@ -157,4 +157,20 @@ interface AIPS_Generation_Context {
 	 * @return array Context data array.
 	 */
 	public function to_array();
+
+	/**
+	 * Get AI Engine options to override the default environment settings.
+	 *
+	 * Returns an array of options that are passed to the AI Engine when generating
+	 * content from this context. Only non-empty values are included so that the
+	 * AI Engine's own defaults are preserved for any unset keys.
+	 *
+	 * Supported keys (all optional):
+	 *   - env_id      (string) Override the AI Engine environment ID.
+	 *   - model       (string) Override the model (e.g., 'gpt-4').
+	 *   - temperature (float)  Override the sampling temperature (e.g., 0.7).
+	 *
+	 * @return array Associative array of AI Engine option overrides (may be empty).
+	 */
+	public function get_ai_options();
 }

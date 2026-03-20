@@ -808,7 +808,9 @@ class AIPS_Settings {
         }
 
         $ai_service = new AIPS_AI_Service();
-        $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('max_tokens' => 10));
+        $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array(
+            AIPS_AI_Service::OPT_MAX_TOKENS => 10,
+        ));
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));

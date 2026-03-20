@@ -284,4 +284,16 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 			'writing_style' => isset($this->author->writing_style) ? $this->author->writing_style : '',
 		);
 	}
+
+	/**
+	 * Get AI Engine options to override the default environment settings.
+	 *
+	 * Topic contexts do not yet define per-author AI Engine overrides.
+	 * Returns an empty array so the AI Engine uses its configured defaults.
+	 *
+	 * @return array Empty array (no overrides).
+	 */
+	public function get_ai_options() {
+		return array();
+	}
 }

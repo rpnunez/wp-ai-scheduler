@@ -125,6 +125,9 @@ class AIPS_DB_Manager {
             post_tags text,
             post_author bigint(20) DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
+            ai_env_id varchar(255) DEFAULT NULL,
+            ai_model varchar(255) DEFAULT NULL,
+            ai_temperature varchar(10) DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id)

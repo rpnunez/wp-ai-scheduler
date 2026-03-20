@@ -264,4 +264,31 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 
 		return $data;
 	}
+
+	/**
+	 * Get AI Engine options to override the default environment settings.
+	 *
+	 * Reads the template's ai_env_id, ai_model, and ai_temperature fields and
+	 * returns only those that are non-empty so that the AI Engine uses its own
+	 * defaults for any unset values.
+	 *
+	 * @return array Associative array of AI Engine option overrides (may be empty).
+	 */
+	public function get_ai_options() {
+		$options = array();
+
+		if (!empty($this->template->ai_env_id)) {
+			$options[AIPS_AI_Service::OPT_ENV_ID] = $this->template->ai_env_id;
+		}
+
+		if (!empty($this->template->ai_model)) {
+			$options[AIPS_AI_Service::OPT_MODEL] = $this->template->ai_model;
+		}
+
+		if (isset($this->template->ai_temperature) && $this->template->ai_temperature !== '' && $this->template->ai_temperature !== null) {
+			$options[AIPS_AI_Service::OPT_TEMPERATURE] = (float) $this->template->ai_temperature;
+		}
+
+		return $options;
+	}
 }

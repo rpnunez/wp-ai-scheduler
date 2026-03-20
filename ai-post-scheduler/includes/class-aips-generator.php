@@ -231,7 +231,7 @@ class AIPS_Generator {
 
         // Call AI to resolve the variables.
         // Max tokens of 200 is sufficient for JSON responses with typical variable values.
-        $options = array('max_tokens' => 200);
+        $options = array(AIPS_AI_Service::OPT_MAX_TOKENS => 200);
         $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
 
         if (is_wp_error($result)) {
@@ -312,7 +312,7 @@ class AIPS_Generator {
      * @param object|null $voice    Optional voice object with overrides.
      * @param string|null $topic    Optional topic to be injected into prompts.
      * @param string      $content  Generated article content used as context.
-     * @param array       $options  AI options (e.g., model, max_tokens override).
+    * @param array       $options  AI options (e.g., model, maxTokens override).
      * @param array       $ai_variables Optional resolved AI variables.
      * @return string|WP_Error      Generated title string or WP_Error on failure.
      */
@@ -328,7 +328,7 @@ class AIPS_Generator {
      * @param AIPS_Generation_Context $context      Generation context.
      * @param string                  $content      Generated article content used as context.
      * @param array                   $ai_variables Optional resolved AI variables.
-     * @param array                   $options      AI options (e.g., model, max_tokens override).
+    * @param array                   $options      AI options (e.g., model, maxTokens override).
      * @return string|WP_Error Generated title string or WP_Error on failure.
      */
     private function generate_title_from_context($context, $content = '', $ai_variables = array(), $options = array()) {
@@ -336,7 +336,7 @@ class AIPS_Generator {
         $prompt = $this->prompt_builder->build_title_prompt($context, null, null, $content);
 
         // Set token limit for title generation
-        $options['max_tokens'] = 100;
+        $options[AIPS_AI_Service::OPT_MAX_TOKENS] = 100;
 
         // Request title from AI service
         $result = $this->generate_content($prompt, $options, 'title');
@@ -372,7 +372,7 @@ class AIPS_Generator {
         $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice, $topic);
 
         // Set token limit for excerpt generation
-        //$options['max_tokens'] = 150;
+        $options[AIPS_AI_Service::OPT_MAX_TOKENS] = 150;
 
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
@@ -412,7 +412,7 @@ class AIPS_Generator {
         $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice_obj, $topic_str);
 
         // Set token limit for excerpt generation
-        $options['max_tokens'] = 150;
+        $options[AIPS_AI_Service::OPT_MAX_TOKENS] = 150;
 
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
@@ -448,11 +448,20 @@ class AIPS_Generator {
             $content_options['context'] = $content_context;
         }
 
+        // Merge any AI Engine overrides (envId, model, temperature) from the context.
+        $ai_options = $context->get_ai_options();
+        if (!empty($ai_options)) {
+            $content_options = array_merge($content_options, $ai_options);
+        }
+
         // Ask AI to generate the article body
         $content = $this->generate_content($content_prompt, $content_options, 'content_preview');
 
         if (is_wp_error($content)) {
-            return $content;
+            // Log this error, but continue with an empty string for content
+            $this->generation_logger->log('Failed to generate content for preview: ' . $content->get_error_message(), 'warning');
+
+            $content = '';
         }
 
         $content = $this->normalize_generated_content_for_wordpress($content);
@@ -461,16 +470,18 @@ class AIPS_Generator {
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
 
         // Generate the title
-        $title = $this->generate_title_from_context($context, $content, $ai_variables);
+        $title = $this->generate_title_from_context($context, $content, $ai_variables, $ai_options);
 
         if (is_wp_error($title)) {
-            // Fallback title on error
-            $title = __('Error generating title', 'ai-post-scheduler');
+            // Log this error, but continue with an empty string for title
+            $this->generation_logger->log('Failed to generate title for preview: ' . $title->get_error_message(), 'warning');
+            
+            $title = '';
         }
 
         // Generate excerpt
         $excerpt_content = mb_substr($content, 0, 6000);
-        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context);
+        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, $ai_options);
 
         $result = array(
             'title' => $title,
@@ -593,6 +604,12 @@ class AIPS_Generator {
             $content_options['context'] = $content_context;
         }
 
+		// Merge any AI Engine overrides (envId, model, temperature) from the context.
+        $ai_options = $context->get_ai_options();
+        if (!empty($ai_options)) {
+            $content_options = array_merge($content_options, $ai_options);
+        }
+
         // Ask AI to generate the article body
         $content = $this->generate_content($content_prompt, $content_options, 'content');
 
@@ -611,7 +628,7 @@ class AIPS_Generator {
         $ai_variables = $this->resolve_ai_variables_from_context($context, $content);
 
         // Generate the title using the context and content.
-        $title = $this->generate_title_from_context($context, $content, $ai_variables);
+        $title = $this->generate_title_from_context($context, $content, $ai_variables, $ai_options);
 
         // Log post title
         if ($this->current_history) {
@@ -662,7 +679,7 @@ class AIPS_Generator {
         // Use actual generated content for excerpt, truncated to prevent token limits
         $excerpt_content = mb_substr($content, 0, 6000);
         $excerpt_success = false;
-        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, array(), $excerpt_success);
+        $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, $ai_options, $excerpt_success);
         $component_statuses['post_excerpt'] = (bool) $excerpt_success;
 
         $generation_incomplete = in_array(false, $component_statuses, true);

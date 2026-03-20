@@ -105,14 +105,14 @@ class AIPS_Content_Auditor {
 
         // 3. Call AI Service
         $options = array(
-            'max_tokens' => 2000,
-            'temperature' => 0.7
+			AIPS_AI_Service::OPT_MAX_TOKENS => 2000,
+			AIPS_AI_Service::OPT_TEMPERATURE => 0.7
         );
 
         // Check if a specific model is configured in settings, if it's "gpt-5-mini" (which doesn't exist publicly yet), override it.
         $configured_model = get_option('aips_ai_model', '');
         if ($configured_model === 'gpt-5-mini') {
-             $options['model'] = ''; // Clear model to use AI Engine default (e.g. Gemini)
+    			$options[AIPS_AI_Service::OPT_MODEL] = ''; // Clear model to use AI Engine default (e.g. Gemini)
         }
 
         $response = $this->ai_service->generate_json($prompt, $options);
@@ -157,14 +157,14 @@ class AIPS_Content_Auditor {
 
         // 3. Call AI Service
         $options = array(
-            'temperature' => 0.7,
-            'max_tokens' => 2000,
+			AIPS_AI_Service::OPT_TEMPERATURE => 0.7,
+			AIPS_AI_Service::OPT_MAX_TOKENS => 2000,
         );
         
         // Override potentially bad model setting
         $configured_model = get_option('aips_ai_model', '');
         if ($configured_model === 'gpt-5-mini') {
-             $options['model'] = ''; // Clear model to use AI Engine default (e.g. Gemini)
+    			$options[AIPS_AI_Service::OPT_MODEL] = ''; // Clear model to use AI Engine default (e.g. Gemini)
         }
 
         $response = $this->ai_service->generate_text($prompt, $options);
