@@ -264,7 +264,7 @@ class Test_Research_Service extends WP_UnitTestCase {
      * With the native simpleJsonQuery method, structured data arrives as an array
      * without any markdown wrapping.
      */
-    public function test_json_parsing_with_markdown() {
+    public function test_research_trending_topics_uses_native_json_array_when_available() {
         $this->mock_ai_service->method('is_available')->willReturn(true);
         
         // generate_json returns a clean array — no markdown to strip
