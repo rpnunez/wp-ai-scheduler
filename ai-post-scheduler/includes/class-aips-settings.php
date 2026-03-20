@@ -1175,7 +1175,7 @@ class AIPS_Settings {
                         'id' => $post->ID,
                         'title' => $post->post_title,
                         'status' => $post->post_status,
-                        'edit_url' => get_edit_post_link($post->ID, 'raw')
+                        'edit_url' => esc_url_raw(get_edit_post_link($post->ID, 'raw'))
                     );
                 }
             }
@@ -1215,9 +1215,9 @@ class AIPS_Settings {
             'status' => $post->post_status,
             'date' => mysql2date(get_option('date_format') . ' ' . get_option('time_format'), $post->post_date),
             'author' => get_the_author_meta('display_name', $post->post_author),
-            'edit_url' => get_edit_post_link($post->ID, 'raw'),
-            'view_url' => get_permalink($post->ID),
-            'featured_image_url' => get_the_post_thumbnail_url($post->ID, 'large'),
+            'edit_url' => esc_url_raw(get_edit_post_link($post->ID, 'raw')),
+            'view_url' => esc_url_raw(get_permalink($post->ID)),
+            'featured_image_url' => esc_url_raw(get_the_post_thumbnail_url($post->ID, 'large')),
             'categories' => array(),
             'tags' => array()
         );

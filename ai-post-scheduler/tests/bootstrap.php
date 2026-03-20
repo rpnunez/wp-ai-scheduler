@@ -817,6 +817,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         $GLOBALS['wpdb'] = new class {
             public $prefix = 'wp_';
             public $insert_id = 0;
+            public $postmeta = 'wp_postmeta';
+            public $get_col_return_val = null;
+            public $get_results_return_val = null;
+            public $get_var_return_val = null;
             private $data = array();
             
             public function esc_like($text) {
@@ -896,6 +900,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
 
             public function get_col($query = null, $x = 0) {
+                if (isset($this->get_col_return_val)) {
+                    return $this->get_col_return_val;
+                }
                 return array();
             }
         };
