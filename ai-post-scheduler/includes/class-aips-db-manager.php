@@ -320,6 +320,9 @@ class AIPS_DB_Manager {
         
         // Seed default data for new installations or upgrades
         self::seed_default_data();
+
+        // Record that the DB schema is now at the current plugin version
+        update_option('aips_db_version', AIPS_VERSION);
     }
 
     public function drop_tables() {
