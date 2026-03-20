@@ -266,6 +266,10 @@ class AIPS_Settings {
             'sanitize_callback' => array($this, 'sanitize_similarity_threshold'),
             'default' => 0.8
         ));
+        register_setting('aips_settings', 'aips_max_tokens', array(
+            'sanitize_callback' => 'absint',
+            'default' => 0,
+        ));
         
         add_settings_section(
             'aips_general_section',
@@ -294,6 +298,14 @@ class AIPS_Settings {
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
             array($this, 'ai_model_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_max_tokens',
+            __('Max Output Tokens', 'ai-post-scheduler'),
+            array($this, 'max_tokens_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -422,6 +434,27 @@ class AIPS_Settings {
         ?>
         <input type="text" name="aips_ai_model" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
         <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Max Output Tokens setting field.
+     *
+     * Allows admins to set a site-wide output token cap for AI content generation.
+     * Setting this to 0 lets the AI Engine use each model's own context-window
+     * maximum, which is recommended for long-form blog posts and articles.
+     * Short-form tasks (titles, excerpts, topic lists) use their own fixed limits
+     * regardless of this value.
+     *
+     * @return void
+     */
+    public function max_tokens_field_callback() {
+        $value = absint(get_option('aips_max_tokens', 0));
+        ?>
+        <input type="number" name="aips_max_tokens" value="<?php echo esc_attr($value); ?>" min="0" step="100" class="small-text">
+        <p class="description">
+            <?php esc_html_e('Maximum number of tokens the AI may output for content generation. Set to 0 to let the model decide (recommended — prevents unintentional truncation of long posts). Specific short-form tasks (titles, excerpts) use their own fixed limits.', 'ai-post-scheduler'); ?>
+        </p>
         <?php
     }
     

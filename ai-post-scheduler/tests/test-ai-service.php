@@ -404,4 +404,125 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
             $mwai_core = $original_core;
         }
     }
+
+    // =========================================================================
+    // Tests for prepare_options() / max_tokens behaviour (issue fix)
+    // =========================================================================
+
+    /**
+     * Helper: build a mock $mwai that captures simpleTextQuery params.
+     */
+    private function mock_mwai_text_query(&$captured_params, $return_value = 'ok') {
+        return new class($captured_params, $return_value) {
+            private $captured;
+            private $return_value;
+            public function __construct(&$captured, $return_value) {
+                $this->captured     = &$captured;
+                $this->return_value = $return_value;
+            }
+            public function simpleTextQuery($prompt, $params) {
+                $this->captured = $params;
+                return $this->return_value;
+            }
+        };
+    }
+
+    /**
+     * When aips_max_tokens is 0 (default), maxTokens must NOT be sent to the AI
+     * Engine so the model can use its own context-window maximum.
+     */
+    public function test_no_max_tokens_sent_when_option_is_zero() {
+        global $mwai;
+        $original = $mwai;
+        $captured  = null;
+        $mwai      = $this->mock_mwai_text_query($captured);
+
+        update_option('aips_max_tokens', 0);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $result  = $service->generate_text('Write a long blog post.');
+            $this->assertNotInstanceOf('WP_Error', $result);
+            $this->assertIsArray($captured);
+            $this->assertArrayNotHasKey('maxTokens', $captured,
+                'maxTokens must not be sent when aips_max_tokens is 0.');
+        } finally {
+            $mwai = $original;
+            delete_option('aips_max_tokens');
+        }
+    }
+
+    /**
+     * When the admin configures aips_max_tokens > 0, that value must be sent as
+     * the maxTokens cap for calls that do not supply their own limit.
+     */
+    public function test_site_max_tokens_option_is_applied_as_default() {
+        global $mwai;
+        $original = $mwai;
+        $captured  = null;
+        $mwai      = $this->mock_mwai_text_query($captured);
+
+        update_option('aips_max_tokens', 8000);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text('Write a blog post.');
+            $this->assertIsArray($captured);
+            $this->assertArrayHasKey('maxTokens', $captured);
+            $this->assertEquals(8000, $captured['maxTokens']);
+        } finally {
+            $mwai = $original;
+            delete_option('aips_max_tokens');
+        }
+    }
+
+    /**
+     * An explicit per-call max_tokens must override the site-wide option.
+     * This is critical for short-form tasks (title=100, excerpt=150) that
+     * supply their own limit regardless of any global setting.
+     */
+    public function test_explicit_max_tokens_overrides_site_option() {
+        global $mwai;
+        $original = $mwai;
+        $captured  = null;
+        $mwai      = $this->mock_mwai_text_query($captured, 'A short title');
+
+        update_option('aips_max_tokens', 8000);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text('Generate a title', array('max_tokens' => 100));
+            $this->assertIsArray($captured);
+            $this->assertArrayHasKey('maxTokens', $captured);
+            $this->assertEquals(100, $captured['maxTokens'],
+                'Caller-supplied max_tokens must take precedence over the site option.');
+        } finally {
+            $mwai = $original;
+            delete_option('aips_max_tokens');
+        }
+    }
+
+    /**
+     * When aips_max_tokens is 0 and no per-call limit is given, temperature
+     * must still default to 0.7.
+     */
+    public function test_default_temperature_applied_without_max_tokens() {
+        global $mwai;
+        $original = $mwai;
+        $captured  = null;
+        $mwai      = $this->mock_mwai_text_query($captured);
+
+        update_option('aips_max_tokens', 0);
+
+        try {
+            $service = new AIPS_AI_Service();
+            $service->generate_text('A prompt');
+            $this->assertIsArray($captured);
+            $this->assertArrayHasKey('temperature', $captured);
+            $this->assertEquals(0.7, $captured['temperature']);
+        } finally {
+            $mwai = $original;
+            delete_option('aips_max_tokens');
+        }
+    }
 }
