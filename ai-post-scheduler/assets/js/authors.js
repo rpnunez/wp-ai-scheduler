@@ -1875,7 +1875,7 @@
 				complete: () => {
 					$btn.prop('disabled', false).html(
 						'<span class="dashicons dashicons-lightbulb"></span> ' +
-						(aipsAuthorsL10n.suggestAuthors || 'Generate Suggestions')
+						(aipsAuthorsL10n.generateSuggestions || 'Generate Suggestions')
 					);
 				}
 			});
@@ -1991,7 +1991,7 @@
 						AIPS.Utilities.showToast(aipsAuthorsL10n.authorImported || 'Author imported successfully.', 'success');
 						$btn.prop('disabled', true).html(
 							'<span class="dashicons dashicons-yes"></span> ' +
-							(aipsAuthorsL10n.importAuthor || 'Imported')
+							(aipsAuthorsL10n.importedAuthor || 'Imported Author')
 						);
 					} else {
 						const msg = (response.data && response.data.message)
