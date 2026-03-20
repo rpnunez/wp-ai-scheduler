@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: AI Post Scheduler
- * Plugin URI: https://example.com/ai-post-scheduler
- * Description: Schedule AI-generated posts using Meow Apps AI Engine
- * Version: 1.7.2
- * Author: Your Name
- * Author URI: https://example.com
+ * Plugin URI: https://nunezserver.com/nunezscheduler
+ * Description: Schedule AI-generated posts using advanced features & scheduling options.
+ * Version: 1.7.3
+ * Author: Raymond Nunez
+ * Author URI: https://nunezserver.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: ai-post-scheduler
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('AIPS_VERSION', '1.7.2');
+define('AIPS_VERSION', '1.7.3');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
