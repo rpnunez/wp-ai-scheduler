@@ -426,6 +426,61 @@ class FeatureScanner:
         
         return chart
 
+    def generate_profiles_summary(self, output_file: str):
+        """Generate a summarized Feature Profiles document (no technical details)."""
+        lines = []
+
+        lines.append("## Feature Profiles\n\n")
+
+        for class_name in sorted(self.features.keys()):
+            feature = self.features[class_name]
+            lines.append(f"### {feature['name']}\n")
+            lines.append(f"* **Summary**: {feature['summary']}\n")
+            lines.append(f"* **File**: `ai-post-scheduler/includes/{feature['file']}`\n")
+            lines.append(f"* **Class**: `{class_name}`\n")
+
+            # Missing functionality
+            missing = self.identify_missing_functionality(class_name, feature)
+            if not missing:
+                lines.append("* **Missing Functionality**: None identified\n")
+            elif len(missing) == 1:
+                lines.append(f"* **Missing Functionality**: {missing[0]}\n")
+            else:
+                lines.append("* **Missing Functionality**: \n")
+                for item in missing:
+                    lines.append(f"    * {item}\n")
+
+            # Recommended improvements
+            improvements = self.suggest_improvements(class_name, feature)
+            if improvements:
+                lines.append("* **Recommended Improvements**: \n")
+                for i, item in enumerate(improvements, 1):
+                    lines.append(f"    {i}. {item}\n")
+
+            lines.append("\n---\n\n")
+
+        new_content = ''.join(lines)
+
+        output_path = Path(output_file)
+        should_write = True
+
+        if output_path.exists():
+            try:
+                with open(output_file, 'r', encoding='utf-8') as f:
+                    existing_content = f.read()
+                if existing_content == new_content:
+                    should_write = False
+                    print(f"✓ Feature profiles summary unchanged: {output_file}")
+            except Exception as e:
+                print(f"Warning: Could not read existing profiles summary file: {e}")
+
+        if should_write:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            print(f"✓ Feature profiles summary updated: {output_file}")
+        else:
+            print(f"✓ Feature profiles summary is up to date: {output_file}")
+
     def generate_report(self, output_file: str):
         """Generate the complete feature report in Markdown format."""
         categories = self.categorize_features()
@@ -672,7 +727,10 @@ def main():
     
     output_file = docs_dir / "feature-report.md"
     scanner.generate_report(str(output_file))
-    
+
+    profiles_file = docs_dir / "feature-report-feature-profiles.md"
+    scanner.generate_profiles_summary(str(profiles_file))
+
     print("\nFeature scanning complete!")
 
 
