@@ -91,7 +91,8 @@ class AIPS_Upgrades {
                     $args = isset($schedule_data['args']) ? $schedule_data['args'] : array();
 
                     // Ensure timestamp is in the future; if not, schedule immediately.
-                    $run_at = (int) $timestamp > time() ? (int) $timestamp : time();
+                    $int_timestamp = (int) $timestamp;
+                    $run_at        = $int_timestamp > time() ? $int_timestamp : time();
 
                     if (function_exists('as_schedule_single_action')) {
                         as_schedule_single_action($run_at, $hook, $args, 'aips');

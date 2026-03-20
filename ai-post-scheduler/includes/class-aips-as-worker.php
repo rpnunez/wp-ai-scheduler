@@ -118,31 +118,23 @@ class AIPS_AS_Worker {
     }
 
     /**
-     * Invoke the generator using the safest available public method.
+     * Invoke the generator via AIPS_Generator::generate_post().
      *
-     * Implements a defensive fallback chain to remain compatible with any
-     * future generator API changes.
+     * Throws an Exception if the expected public method is not present so that
+     * Action Scheduler records the failure rather than silently doing nothing.
      *
      * @param object      $template Template object.
      * @param string|null $topic    Optional topic override.
      * @return int|WP_Error WordPress post ID on success, WP_Error on failure.
-     * @throws Exception When no suitable generator method is found.
+     * @throws Exception When generate_post() is not available on the generator.
      */
     private function run_generator($template, $topic = null) {
         $generator = $this->generator;
 
-        if (method_exists($generator, 'generate_post')) {
-            return $generator->generate_post($template, null, $topic);
+        if (!method_exists($generator, 'generate_post')) {
+            throw new \Exception('AIPS_AS_Worker: AIPS_Generator::generate_post() not found.');
         }
 
-        if (method_exists($generator, 'generate_from_template')) {
-            return $generator->generate_from_template($template->id ?? 0, $topic);
-        }
-
-        if (method_exists($generator, 'generate')) {
-            return $generator->generate($template->id ?? 0);
-        }
-
-        throw new \Exception('AIPS_AS_Worker: AIPS_Generator has no usable generation method.');
+        return $generator->generate_post($template, null, $topic);
     }
 }
