@@ -367,9 +367,9 @@ class AIPS_Settings {
         // -----------------------------------------------------------------------
         // Site-wide Content Strategy settings
         //
-        // Each option is registered via self::register_content_strategy_option()
-        // so the full list is maintained in ONE place (the static registry).
-        // AIPS_Site_Context::get() reads from that registry — no duplicate list.
+        // Options are defined via self::get_content_strategy_options(), so the
+        // full list is maintained in ONE place. Both settings registration here
+        // and AIPS_Site_Context::get() read from that shared list — no duplicates.
         // -----------------------------------------------------------------------
         $cs_options = self::get_content_strategy_options();
         foreach ($cs_options as $option_key => $meta) {
