@@ -51,6 +51,11 @@ class AIPS_Author_Topics_Generator {
 	private $feedback_repository;
 	
 	/**
+	 * @var AIPS_Prompt_Builder_Topic Topic prompt builder.
+	 */
+	private $prompt_builder;
+
+	/**
 	 * Initialize the generator.
 	 *
 	 * @param object|null $ai_service AI service instance (optional for testing).
@@ -59,14 +64,16 @@ class AIPS_Author_Topics_Generator {
 	 * @param object|null $logs_repository Logs repository (optional for testing).
 	 * @param object|null $embeddings_service Embeddings service (optional for testing).
 	 * @param object|null $feedback_repository Feedback repository (optional for testing).
+	 * @param object|null $prompt_builder Topic prompt builder (optional for testing).
 	 */
-	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null) {
+	public function __construct($ai_service = null, $logger = null, $topics_repository = null, $logs_repository = null, $embeddings_service = null, $feedback_repository = null, $prompt_builder = null) {
 		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
 		$this->logger = $logger ?: new AIPS_Logger();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logs_repository = $logs_repository ?: new AIPS_Author_Topic_Logs_Repository();
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
+		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic();
 	}
 	
 	/**
@@ -85,8 +92,12 @@ class AIPS_Author_Topics_Generator {
 			'quantity' => $author->topic_generation_quantity
 		));
 		
-		// Build the prompt with feedback loop context
-		$prompt = $this->build_topic_generation_prompt($author);
+		// Build the prompt via the dedicated prompt builder
+		$approved_topics   = $this->topics_repository->get_approved_summary($author->id, 10);
+		$rejected_topics   = $this->topics_repository->get_rejected_summary($author->id, 10);
+		$feedback_guidance = $this->build_feedback_guidance_section($author);
+
+		$prompt = $this->prompt_builder->build($author, $approved_topics, $rejected_topics, $feedback_guidance);
 		
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
@@ -142,144 +153,6 @@ class AIPS_Author_Topics_Generator {
 		));
 		
 		return $saved_topics;
-	}
-	
-	/**
-	/**
-	 * Build the prompt for topic generation with feedback loop context.
-	 *
-	 * @param object $author Author object from database.
-	 * @return string The complete prompt.
-	 */
-	private function build_topic_generation_prompt($author) {
-		$quantity = (int) $author->topic_generation_quantity;
-		if ($quantity < 1) {
-			$quantity = 5;
-		}
-
-		$prompt = "Generate {$quantity} unique and engaging blog post topic ideas about: {$author->field_niche}\n\n";
-
-		// ---- Site-wide context ----
-		$site_context = AIPS_Site_Context::build_prompt_context();
-		if (!empty($site_context)) {
-			$prompt .= $site_context;
-		}
-
-		// ---- Extended author profile fields ----
-		if (!empty($author->target_audience)) {
-			$prompt .= "Target audience for this author: {$author->target_audience}\n\n";
-		}
-
-		if (!empty($author->expertise_level)) {
-			$prompt .= "Author expertise level: {$author->expertise_level}\n\n";
-		}
-
-		if (!empty($author->content_goals)) {
-			$prompt .= "Content goals for this author: {$author->content_goals}\n\n";
-		}
-
-		// Add keywords if provided
-		if (!empty($author->keywords)) {
-			$prompt .= "Keywords/Focus Areas: {$author->keywords}\n\n";
-		}
-
-		// Add details/context if provided
-		if (!empty($author->details)) {
-			$prompt .= "Additional Context:\n{$author->details}\n\n";
-		}
-
-		// Add voice/tone if provided
-		if (!empty($author->voice_tone)) {
-			$prompt .= "Tone: {$author->voice_tone}\n\n";
-		}
-
-		// Add writing style if provided
-		if (!empty($author->writing_style)) {
-			$prompt .= "Writing Style: {$author->writing_style}\n\n";
-		}
-
-		// Preferred content length
-		if (!empty($author->preferred_content_length)) {
-			$length_map = array(
-				'short'  => 'under 800 words',
-				'medium' => '800–1,500 words',
-				'long'   => '1,500 words or more',
-			);
-			$length_label = isset($length_map[$author->preferred_content_length]) ? $length_map[$author->preferred_content_length] : $author->preferred_content_length;
-			$prompt .= "Preferred post length: {$length_label}\n\n";
-		}
-
-		// Language (only explicit when non-English)
-		$lang = !empty($author->language) ? $author->language : 'en';
-		if ($lang !== 'en') {
-			$prompt .= "Generate topics in language code: {$lang}\n\n";
-		}
-
-		// Excluded topics (merge site-wide + author-level)
-		$excluded_parts = array();
-		$site_excluded  = AIPS_Site_Context::get_setting('excluded_topics', '');
-		if (!empty($site_excluded)) {
-			$excluded_parts[] = $site_excluded;
-		}
-		if (!empty($author->excluded_topics)) {
-			$excluded_parts[] = $author->excluded_topics;
-		}
-		if (!empty($excluded_parts)) {
-			$prompt .= 'Topics to avoid: ' . implode(', ', $excluded_parts) . "\n\n";
-		}
-
-		// Add custom prompt if provided
-		if (!empty($author->topic_generation_prompt)) {
-			$prompt .= "{$author->topic_generation_prompt}\n\n";
-		}
-
-		// Add feedback loop context from approved topics
-		$approved_topics = $this->topics_repository->get_approved_summary($author->id, 10);
-		if (!empty($approved_topics)) {
-			$prompt .= "Previously approved topics (for diversity - avoid duplicating these concepts):\n";
-			foreach ($approved_topics as $topic) {
-				$prompt .= "- {$topic}\n";
-			}
-			$prompt .= "\n";
-		}
-
-		// Add feedback loop context from rejected topics
-		$rejected_topics = $this->topics_repository->get_rejected_summary($author->id, 10);
-		if (!empty($rejected_topics)) {
-			$prompt .= "Previously rejected topics (avoid similar ideas):\n";
-			foreach ($rejected_topics as $topic) {
-				$prompt .= "- {$topic}\n";
-			}
-			$prompt .= "\n";
-		}
-
-		// Add qualitative feedback guidance derived from admin rejection/approval reasons
-		$feedback_guidance = $this->build_feedback_guidance_section($author);
-		if (!empty($feedback_guidance)) {
-			$prompt .= $feedback_guidance;
-		}
-
-		$prompt .= "Requirements:\n";
-		$prompt .= "- Each topic should be specific and actionable\n";
-		$prompt .= "- Topics should be diverse and cover different aspects of {$author->field_niche}\n";
-		$prompt .= "- Avoid duplicating previously approved or rejected topics\n";
-		$prompt .= "- Format each topic as a clear, engaging blog post title\n\n";
-
-		$prompt .= "Return a JSON array of objects. Each object must have:\n";
-		$prompt .= "- \"title\": The blog post topic/title (string)\n";
-		$prompt .= "- \"score\": Estimated engagement score 1-100 (integer)\n";
-		$prompt .= "- \"keywords\": 3-5 relevant keywords (array of strings)\n\n";
-
-		$prompt .= "Example format:\n";
-		$prompt .= "[\n";
-		$prompt .= "  {\n";
-		$prompt .= "    \"title\": \"10 Best Practices for WordPress SEO in 2025\",\n";
-		$prompt .= "    \"score\": 85,\n";
-		$prompt .= "    \"keywords\": [\"WordPress\", \"SEO\", \"best practices\", \"2025\", \"optimization\"]\n";
-		$prompt .= "  }\n";
-		$prompt .= "]";
-
-		return $prompt;
 	}
 	
 	/**

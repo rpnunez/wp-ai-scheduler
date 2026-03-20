@@ -35,6 +35,38 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Build a stub history service that returns a no-op history container.
+	 *
+	 * @return object
+	 */
+	private function make_history_service() {
+		return new class {
+			public function create( $type, $metadata = array() ) {
+				return new class {
+					public function record( $log_type, $message, $input = null, $output = null, $context = array() ) {}
+					public function record_error( $message, $error_details = array(), $wp_error = null ) {}
+					public function complete_success( $result_data = array() ) {}
+					public function complete_failure( $error_message, $error_data = array() ) {}
+				};
+			}
+		};
+	}
+
+	/**
+	 * Build a minimal AIPS_Author_Suggestions_Service with all stubs injected.
+	 *
+	 * @param mixed $ai_payload What the AI service should return.
+	 * @return AIPS_Author_Suggestions_Service
+	 */
+	private function make_service( $ai_payload ) {
+		return new AIPS_Author_Suggestions_Service(
+			$this->make_ai_service( $ai_payload ),
+			$this->make_logger(),
+			$this->make_history_service()
+		);
+	}
+
+	/**
 	 * Build a minimal valid suggestion payload as the AI would return.
 	 *
 	 * @param array $overrides Field overrides.
@@ -63,7 +95,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 * An empty site_niche must return a WP_Error.
 	 */
 	public function test_suggest_authors_returns_error_when_niche_empty() {
-		$service = new AIPS_Author_Suggestions_Service( $this->make_ai_service( array() ), $this->make_logger() );
+		$service = $this->make_service( array() );
 		$result  = $service->suggest_authors( array( 'site_niche' => '' ), 3 );
 
 		$this->assertTrue( is_wp_error( $result ), 'Should return WP_Error when site_niche is empty' );
@@ -75,7 +107,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 */
 	public function test_suggest_authors_propagates_ai_error() {
 		$ai_error = new WP_Error( 'ai_unavailable', 'AI Engine not available.' );
-		$service  = new AIPS_Author_Suggestions_Service( $this->make_ai_service( $ai_error ), $this->make_logger() );
+		$service  = $this->make_service( $ai_error );
 		$result   = $service->suggest_authors( array( 'site_niche' => 'Technology' ), 3 );
 
 		$this->assertTrue( is_wp_error( $result ), 'Should return WP_Error when AI service fails' );
@@ -86,7 +118,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 * An empty AI response array returns a WP_Error.
 	 */
 	public function test_suggest_authors_returns_error_when_ai_returns_empty_array() {
-		$service = new AIPS_Author_Suggestions_Service( $this->make_ai_service( array() ), $this->make_logger() );
+		$service = $this->make_service( array() );
 		$result  = $service->suggest_authors( array( 'site_niche' => 'Technology' ), 3 );
 
 		$this->assertTrue( is_wp_error( $result ), 'Should return WP_Error when AI response is empty' );
@@ -102,7 +134,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 */
 	public function test_suggest_authors_returns_suggestions_on_success() {
 		$payload = array( $this->make_suggestion() );
-		$service = new AIPS_Author_Suggestions_Service( $this->make_ai_service( $payload ), $this->make_logger() );
+		$service = $this->make_service( $payload );
 		$result  = $service->suggest_authors( array( 'site_niche' => 'Personal Finance' ), 1 );
 
 		$this->assertIsArray( $result, 'Result should be an array' );
@@ -120,7 +152,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 			$this->make_suggestion( array( 'name' => 'Author Two', 'field_niche' => 'Niche B' ) ),
 			$this->make_suggestion( array( 'name' => 'Author Three', 'field_niche' => 'Niche C' ) ),
 		);
-		$service = new AIPS_Author_Suggestions_Service( $this->make_ai_service( $payload ), $this->make_logger() );
+		$service = $this->make_service( $payload );
 		$result  = $service->suggest_authors( array( 'site_niche' => 'Tech' ), 2 );
 
 		$this->assertIsArray( $result );
@@ -135,7 +167,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 			array( 'field_niche' => 'No Name Niche' ), // Missing 'name'
 			$this->make_suggestion( array( 'name' => 'Valid Author' ) ),
 		);
-		$service = new AIPS_Author_Suggestions_Service( $this->make_ai_service( $payload ), $this->make_logger() );
+		$service = $this->make_service( $payload );
 		$result  = $service->suggest_authors( array( 'site_niche' => 'Tech' ), 3 );
 
 		$this->assertIsArray( $result );
@@ -151,7 +183,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 			array( 'name' => 'No Niche Author' ), // Missing 'field_niche'
 			$this->make_suggestion( array( 'name' => 'Complete Author' ) ),
 		);
-		$service = new AIPS_Author_Suggestions_Service( $this->make_ai_service( $payload ), $this->make_logger() );
+		$service = $this->make_service( $payload );
 		$result  = $service->suggest_authors( array( 'site_niche' => 'Tech' ), 3 );
 
 		$this->assertIsArray( $result );
@@ -165,7 +197,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 		$payload = array(
 			array( 'name' => 'Minimal Author', 'field_niche' => 'Tech' ),
 		);
-		$service = new AIPS_Author_Suggestions_Service( $this->make_ai_service( $payload ), $this->make_logger() );
+		$service = $this->make_service( $payload );
 		$result  = $service->suggest_authors( array( 'site_niche' => 'Tech' ), 1 );
 
 		$this->assertIsArray( $result );
@@ -186,7 +218,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 			$many[] = $this->make_suggestion( array( 'name' => "Author $i", 'field_niche' => "Niche $i" ) );
 		}
 
-		$service = new AIPS_Author_Suggestions_Service( $this->make_ai_service( $many ), $this->make_logger() );
+		$service = $this->make_service( $many );
 
 		// Count of 0 should be clamped to 1
 		$result_low = $service->suggest_authors( array( 'site_niche' => 'Tech' ), 0 );
@@ -208,7 +240,7 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	 */
 	public function test_suggest_authors_returns_all_expected_keys() {
 		$payload = array( $this->make_suggestion() );
-		$service = new AIPS_Author_Suggestions_Service( $this->make_ai_service( $payload ), $this->make_logger() );
+		$service = $this->make_service( $payload );
 		$result  = $service->suggest_authors( array( 'site_niche' => 'Finance' ), 1 );
 
 		$this->assertIsArray( $result );

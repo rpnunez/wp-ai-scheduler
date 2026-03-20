@@ -366,29 +366,18 @@ class AIPS_Settings {
 
         // -----------------------------------------------------------------------
         // Site-wide Content Strategy settings
+        //
+        // Each option is registered via self::register_content_strategy_option()
+        // so the full list is maintained in ONE place (the static registry).
+        // AIPS_Site_Context::get() reads from that registry — no duplicate list.
         // -----------------------------------------------------------------------
-        register_setting('aips_settings', 'aips_site_niche', array(
-            'sanitize_callback' => 'sanitize_text_field',
-        ));
-        register_setting('aips_settings', 'aips_site_target_audience', array(
-            'sanitize_callback' => 'sanitize_text_field',
-        ));
-        register_setting('aips_settings', 'aips_site_content_goals', array(
-            'sanitize_callback' => 'sanitize_textarea_field',
-        ));
-        register_setting('aips_settings', 'aips_site_brand_voice', array(
-            'sanitize_callback' => 'sanitize_text_field',
-        ));
-        register_setting('aips_settings', 'aips_site_content_language', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default'           => 'en',
-        ));
-        register_setting('aips_settings', 'aips_site_content_guidelines', array(
-            'sanitize_callback' => 'sanitize_textarea_field',
-        ));
-        register_setting('aips_settings', 'aips_site_excluded_topics', array(
-            'sanitize_callback' => 'sanitize_textarea_field',
-        ));
+        $cs_options = self::get_content_strategy_options();
+        foreach ($cs_options as $option_key => $meta) {
+            register_setting('aips_settings', $option_key, array(
+                'sanitize_callback' => $meta['sanitize_callback'],
+                'default'           => $meta['default'],
+            ));
+        }
 
         add_settings_section(
             'aips_content_strategy_section',
@@ -451,6 +440,63 @@ class AIPS_Settings {
             array($this, 'site_excluded_topics_field_callback'),
             'aips-settings',
             'aips_content_strategy_section'
+        );
+    }
+
+    /**
+     * Return the canonical registry of site-wide content strategy options.
+     *
+     * This is the single source of truth for every option that belongs to the
+     * "Site Content Strategy" settings group. Adding a new option here
+     * automatically makes it available to AIPS_Site_Context::get() and
+     * AIPS_Prompt_Builder::build_site_context_block() without touching those
+     * classes.
+     *
+     * Each entry has:
+     *   - 'key'               Short key used by AIPS_Site_Context (e.g. 'niche')
+     *   - 'sanitize_callback' Callable used to sanitize the option value on save
+     *   - 'default'           Default value returned when the option is not set
+     *
+     * @return array<string, array{key: string, sanitize_callback: callable, default: mixed}>
+     *     Associative array keyed by the full WordPress option name.
+     */
+    public static function get_content_strategy_options() {
+        return array(
+            'aips_site_niche' => array(
+                'key'               => 'niche',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            ),
+            'aips_site_target_audience' => array(
+                'key'               => 'target_audience',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            ),
+            'aips_site_content_goals' => array(
+                'key'               => 'content_goals',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => '',
+            ),
+            'aips_site_brand_voice' => array(
+                'key'               => 'brand_voice',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            ),
+            'aips_site_content_language' => array(
+                'key'               => 'content_language',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => 'en',
+            ),
+            'aips_site_content_guidelines' => array(
+                'key'               => 'content_guidelines',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => '',
+            ),
+            'aips_site_excluded_topics' => array(
+                'key'               => 'excluded_topics',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => '',
+            ),
         );
     }
         

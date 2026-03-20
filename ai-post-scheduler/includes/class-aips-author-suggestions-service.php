@@ -34,14 +34,28 @@ class AIPS_Author_Suggestions_Service {
 	private $logger;
 
 	/**
+	 * @var AIPS_History_Service History service for recording activity.
+	 */
+	private $history_service;
+
+	/**
+	 * @var AIPS_Prompt_Builder_Authors Prompt builder for author suggestions.
+	 */
+	private $prompt_builder;
+
+	/**
 	 * Initialize the service.
 	 *
-	 * @param AIPS_AI_Service|null $ai_service AI service instance (optional for testing).
-	 * @param AIPS_Logger|null     $logger     Logger instance (optional for testing).
+	 * @param AIPS_AI_Service|null             $ai_service      AI service instance (optional for testing).
+	 * @param AIPS_Logger|null                 $logger          Logger instance (optional for testing).
+	 * @param AIPS_History_Service|null        $history_service History service (optional for testing).
+	 * @param AIPS_Prompt_Builder_Authors|null $prompt_builder  Prompt builder (optional for testing).
 	 */
-	public function __construct($ai_service = null, $logger = null) {
-		$this->ai_service = $ai_service ?: new AIPS_AI_Service();
-		$this->logger     = $logger ?: new AIPS_Logger();
+	public function __construct($ai_service = null, $logger = null, $history_service = null, $prompt_builder = null) {
+		$this->ai_service      = $ai_service ?: new AIPS_AI_Service();
+		$this->logger          = $logger ?: new AIPS_Logger();
+		$this->history_service = $history_service ?: new AIPS_History_Service();
+		$this->prompt_builder  = $prompt_builder ?: new AIPS_Prompt_Builder_Authors();
 	}
 
 	/**
@@ -69,7 +83,7 @@ class AIPS_Author_Suggestions_Service {
 			return new WP_Error('missing_niche', __('Site niche is required to generate author suggestions.', 'ai-post-scheduler'));
 		}
 
-		// Merge site defaults into inputs so build_suggestion_prompt() has a complete picture.
+		// Merge site defaults into inputs so the prompt builder has a complete picture.
 		$merged_inputs = array_merge(
 			array(
 				'target_audience' => $site_ctx['target_audience'],
@@ -81,7 +95,31 @@ class AIPS_Author_Suggestions_Service {
 			array('site_niche' => $site_niche)
 		);
 
-		$prompt = $this->build_suggestion_prompt($merged_inputs, $count);
+		// ---- History container ----
+		$history = $this->history_service->create(
+			'author_suggestion',
+			array(
+				'niche' => $site_niche,
+				'count' => $count,
+			)
+		);
+
+		$prompt = $this->prompt_builder->build($merged_inputs, $count);
+
+		$history->record(
+			'activity',
+			sprintf('Generating %d author suggestion(s) for niche: %s', $count, $site_niche),
+			array('count' => $count, 'niche' => $site_niche)
+		);
+
+		$history->record(
+			'ai_request',
+			'Author suggestion prompt sent to AI',
+			array(
+				'prompt'   => $prompt,
+				'options'  => array('max_tokens' => 2000, 'temperature' => 0.8),
+			)
+		);
 
 		$this->logger->log(
 			"Generating {$count} author suggestion(s) for niche: {$site_niche}",
@@ -90,89 +128,58 @@ class AIPS_Author_Suggestions_Service {
 		);
 
 		$response = $this->ai_service->generate_json($prompt, array(
-			'max_tokens' => 2000,
+			'max_tokens'  => 2000,
 			'temperature' => 0.8,
 		));
 
 		if (is_wp_error($response)) {
-			$this->logger->log('Author suggestions AI call failed: ' . $response->get_error_message(), 'error');
+			$error_msg = $response->get_error_message();
+
+			$history->record_error(
+				'AI call failed during author suggestion generation',
+				array('error_code' => $response->get_error_code()),
+				$response
+			);
+			$history->complete_failure($error_msg);
+
+			$this->logger->log('Author suggestions AI call failed: ' . $error_msg, 'error');
 			return $response;
 		}
+
+		$history->record(
+			'ai_response',
+			'AI response received for author suggestions',
+			null,
+			$response
+		);
 
 		$suggestions = $this->parse_suggestions($response, $count);
 
 		if (empty($suggestions)) {
+			$history->record_error('No author suggestions could be parsed from the AI response.');
+			$history->complete_failure('No suggestions parsed');
+
 			$this->logger->log('No author suggestions parsed from AI response.', 'warning');
 			return new WP_Error('no_suggestions_parsed', __('Could not parse author suggestions from the AI response. Please try again.', 'ai-post-scheduler'));
 		}
 
+		$suggestion_count = count($suggestions);
+
+		$history->record(
+			'activity',
+			sprintf('Successfully generated %d author suggestion(s).', $suggestion_count),
+			null,
+			array('count' => $suggestion_count)
+		);
+		$history->complete_success(array('count' => $suggestion_count));
+
 		$this->logger->log(
-			'Generated ' . count($suggestions) . ' author suggestion(s).',
+			'Generated ' . $suggestion_count . ' author suggestion(s).',
 			'info',
-			array('count' => count($suggestions))
+			array('count' => $suggestion_count)
 		);
 
 		return $suggestions;
-	}
-
-	/**
-	 * Build the AI prompt for author suggestion generation.
-	 *
-	 * @param array $inputs Context inputs (see suggest_authors()).
-	 * @param int   $count  Number of suggestions to request.
-	 * @return string The assembled prompt.
-	 */
-	private function build_suggestion_prompt(array $inputs, $count) {
-		$site_niche      = isset($inputs['site_niche']) ? sanitize_text_field($inputs['site_niche']) : '';
-		$target_audience = isset($inputs['target_audience']) ? sanitize_text_field($inputs['target_audience']) : '';
-		$content_goals   = isset($inputs['content_goals']) ? sanitize_textarea_field($inputs['content_goals']) : '';
-		$brand_voice     = isset($inputs['brand_voice']) ? sanitize_text_field($inputs['brand_voice']) : '';
-		$site_url        = isset($inputs['site_url']) ? esc_url_raw($inputs['site_url']) : '';
-
-		$prompt  = "You are an expert content strategist.\n\n";
-		$prompt .= "A blog or website needs {$count} distinct AI author persona(s) to produce varied, high-quality content.\n\n";
-		$prompt .= "Site niche / primary topic: {$site_niche}\n";
-
-		if (!empty($target_audience)) {
-			$prompt .= "Target audience: {$target_audience}\n";
-		}
-
-		if (!empty($content_goals)) {
-			$prompt .= "Content goals: {$content_goals}\n";
-		}
-
-		if (!empty($brand_voice)) {
-			$prompt .= "Overall brand voice/tone: {$brand_voice} — each author's voice should complement but remain distinct from this.\n";
-		}
-
-		if (!empty($site_url)) {
-			$prompt .= "Site URL (for reference only): {$site_url}\n";
-		}
-
-		$prompt .= "\nFor each author persona, devise:\n";
-		$prompt .= "- A realistic-sounding pen name\n";
-		$prompt .= "- A specific sub-niche or specialisation within the primary topic\n";
-		$prompt .= "- A short bio that establishes credibility and perspective\n";
-		$prompt .= "- 3-6 focus keywords that define their content territory\n";
-		$prompt .= "- A writing voice/tone (e.g. \"conversational\", \"authoritative\", \"empathetic\")\n";
-		$prompt .= "- A writing style (e.g. \"how-to guides\", \"opinion pieces\", \"data-driven analysis\")\n";
-		$prompt .= "- A one-sentence topic generation prompt that instructs the AI on what kinds of post ideas to create for this author\n\n";
-
-		$prompt .= "Important: Make each persona clearly distinct from the others. Avoid overlapping niches.\n\n";
-
-		$prompt .= "Return a JSON array of exactly {$count} object(s). Each object must have these keys:\n";
-		$prompt .= "- \"name\": string — pen name\n";
-		$prompt .= "- \"field_niche\": string — specific sub-niche / specialisation\n";
-		$prompt .= "- \"description\": string — short bio (2-3 sentences)\n";
-		$prompt .= "- \"keywords\": string — comma-separated focus keywords\n";
-		$prompt .= "- \"voice_tone\": string — writing voice/tone\n";
-		$prompt .= "- \"writing_style\": string — writing style type\n";
-		$prompt .= "- \"topic_generation_prompt\": string — one-sentence instruction for topic generation\n\n";
-
-		$prompt .= "Example format:\n";
-		$prompt .= "[\n  {\n    \"name\": \"Alex Rivera\",\n    \"field_niche\": \"Personal Finance for Millennials\",\n    \"description\": \"Alex is a certified financial planner who specialises in helping millennials navigate student debt, investing and home ownership. He writes in a down-to-earth way that makes money talk accessible.\",\n    \"keywords\": \"budgeting, investing, debt payoff, savings, retirement\",\n    \"voice_tone\": \"conversational and encouraging\",\n    \"writing_style\": \"practical how-to guides with real examples\",\n    \"topic_generation_prompt\": \"Generate actionable personal finance topics aimed at millennials dealing with student loans, career changes and early investing.\"\n  }\n]";
-
-		return $prompt;
 	}
 
 	/**

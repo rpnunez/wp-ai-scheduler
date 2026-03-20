@@ -14,7 +14,7 @@ class Test_AIPS_Site_Context extends WP_UnitTestCase {
 	 * Restore option state after each test.
 	 */
 	public function tearDown(): void {
-		foreach ( AIPS_Site_Context::OPTIONS as $option ) {
+		foreach ( array_keys( AIPS_Settings::get_content_strategy_options() ) as $option ) {
 			delete_option( $option );
 		}
 		parent::tearDown();
@@ -81,18 +81,20 @@ class Test_AIPS_Site_Context extends WP_UnitTestCase {
 	}
 
 	// ------------------------------------------------------------------
-	// build_prompt_context()
+	// AIPS_Prompt_Builder::build_site_context_block()
 	// ------------------------------------------------------------------
 
 	/** @test */
 	public function test_build_prompt_context_returns_empty_when_no_settings() {
-		$this->assertSame( '', AIPS_Site_Context::build_prompt_context() );
+		$builder = new AIPS_Prompt_Builder();
+		$this->assertSame( '', $builder->build_site_context_block() );
 	}
 
 	/** @test */
 	public function test_build_prompt_context_includes_niche_when_set() {
 		update_option( 'aips_site_niche', 'SaaS Marketing' );
-		$ctx = AIPS_Site_Context::build_prompt_context();
+		$builder = new AIPS_Prompt_Builder();
+		$ctx = $builder->build_site_context_block();
 
 		$this->assertStringContainsString( 'SaaS Marketing', $ctx );
 		$this->assertStringContainsString( 'Site niche:', $ctx );
@@ -103,7 +105,8 @@ class Test_AIPS_Site_Context extends WP_UnitTestCase {
 		update_option( 'aips_site_niche', 'Test' );
 		update_option( 'aips_site_content_language', 'en' );
 
-		$ctx = AIPS_Site_Context::build_prompt_context();
+		$builder = new AIPS_Prompt_Builder();
+		$ctx = $builder->build_site_context_block();
 		$this->assertStringNotContainsString( 'Language:', $ctx );
 	}
 
@@ -112,7 +115,8 @@ class Test_AIPS_Site_Context extends WP_UnitTestCase {
 		update_option( 'aips_site_niche', 'Tech' );
 		update_option( 'aips_site_content_language', 'es' );
 
-		$ctx = AIPS_Site_Context::build_prompt_context();
+		$builder = new AIPS_Prompt_Builder();
+		$ctx = $builder->build_site_context_block();
 		$this->assertStringContainsString( 'Language: es', $ctx );
 	}
 
@@ -121,7 +125,8 @@ class Test_AIPS_Site_Context extends WP_UnitTestCase {
 		update_option( 'aips_site_niche', 'Health' );
 		update_option( 'aips_site_excluded_topics', 'competitor products, adult content' );
 
-		$ctx = AIPS_Site_Context::build_prompt_context();
+		$builder = new AIPS_Prompt_Builder();
+		$ctx = $builder->build_site_context_block();
 		$this->assertStringContainsString( 'competitor products', $ctx );
 		$this->assertStringContainsString( 'Topics to avoid globally:', $ctx );
 	}
@@ -131,7 +136,8 @@ class Test_AIPS_Site_Context extends WP_UnitTestCase {
 		update_option( 'aips_site_niche', 'Finance' );
 		update_option( 'aips_site_brand_voice', 'Friendly and approachable' );
 
-		$ctx = AIPS_Site_Context::build_prompt_context();
+		$builder = new AIPS_Prompt_Builder();
+		$ctx = $builder->build_site_context_block();
 		$this->assertStringContainsString( 'Brand voice/tone: Friendly and approachable', $ctx );
 	}
 }

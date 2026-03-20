@@ -613,7 +613,35 @@ $site_ctx = AIPS_Site_Context::get();
     </div>
 </div>
 
+<?php /* ------------------------------------------------------------------ */
+/* HTML template used by AIPS.Templates.renderRaw() in authors.js          */
+/* The {{token}} placeholders are replaced at run-time with data from the   */
+/* AI-generated suggestion object; values are escaped by the template       */
+/* engine so keep the markup as-is.                                         */
+/* ------------------------------------------------------------------ */ ?>
+<script type="text/html" id="aips-tmpl-suggestion-card">
+<div class="aips-suggestion-card">
+    <div class="aips-suggestion-card-header">
+        <div class="aips-suggestion-card-identity">
+            <h4 class="aips-suggestion-card-name">{{name}}</h4>
+            <span class="aips-badge aips-badge-neutral">{{field_niche}}</span>
+        </div>
+        <button type="button"
+                class="aips-btn aips-btn-sm aips-btn-primary aips-import-suggested-author"
+                data-index="{{index}}"
+                aria-label="{{importAriaLabel}}">
+            <span class="dashicons dashicons-download" aria-hidden="true"></span>
+            {{importLabel}}
+        </button>
+    </div>
+    <p class="aips-suggestion-card-description">{{description}}</p>
+    <div class="aips-suggestion-card-meta">{{meta}}</div>
+</div>
+</script>
 
-
+<?php /* Template for a single meta row inside the suggestion card */ ?>
+<script type="text/html" id="aips-tmpl-suggestion-meta-row">
+<span class="aips-suggestion-meta-row"><strong>{{label}}:</strong> {{value}}</span>
+</script>
 
 

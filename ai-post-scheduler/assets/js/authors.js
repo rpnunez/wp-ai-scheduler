@@ -1884,58 +1884,52 @@
 		/**
 		 * Render the suggested author cards into `#aips-suggest-authors-cards`.
 		 *
-		 * Each card shows the author's name, niche, description, keywords, tone,
-		 * writing style, and a topic generation prompt excerpt. An "Import Author"
-		 * button sends `aips_save_author` to create the profile.
+		 * Uses the `#aips-tmpl-suggestion-card` and `#aips-tmpl-suggestion-meta-row`
+		 * HTML templates (defined in authors.php) so the markup lives in one place
+		 * and is not duplicated in JavaScript.
 		 *
 		 * @param {Array<Object>} suggestions - Array of suggestion objects from the server.
 		 */
 		renderSuggestedAuthors: function (suggestions) {
-			let html = '';
+			var html = '';
 
-			suggestions.forEach((suggestion, index) => {
-				html += '<div class="aips-suggestion-card" style="border: 1px solid #ddd; border-radius: 4px; padding: 16px; margin-bottom: 16px; background: #f9f9f9;">';
-				html += '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">';
-				html += '<div>';
-				html += '<h4 style="margin: 0 0 4px;">' + this.escapeHtml(suggestion.name) + '</h4>';
-				html += '<span class="aips-badge aips-badge-neutral">' + this.escapeHtml(suggestion.field_niche) + '</span>';
-				html += '</div>';
-				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-import-suggested-author" data-index="' + index + '" aria-label="' + (aipsAuthorsL10n.importAuthor || 'Import Author') + ': ' + this.escapeHtml(suggestion.name) + '">';
-				html += '<span class="dashicons dashicons-download"></span> ' + (aipsAuthorsL10n.importAuthor || 'Import Author');
-				html += '</button>';
-				html += '</div>';
+			suggestions.forEach(function (suggestion, index) {
+				// Build the meta rows from optional fields using the meta-row template.
+				// render() auto-escapes tokens so values are safe to insert.
+				var metaRows = '';
+				var metaFields = [
+					{ key: 'keywords',                label: aipsAuthorsL10n.keywordsLabel        || 'Keywords' },
+					{ key: 'voice_tone',               label: aipsAuthorsL10n.voiceToneLabel       || 'Voice/Tone' },
+					{ key: 'writing_style',            label: aipsAuthorsL10n.writingStyleLabel    || 'Writing Style' },
+					{ key: 'topic_generation_prompt',  label: aipsAuthorsL10n.topicPromptLabel     || 'Topic Generation Prompt' },
+				];
+				metaFields.forEach(function (field) {
+					if (suggestion[field.key]) {
+						metaRows += AIPS.Templates.render('aips-tmpl-suggestion-meta-row', {
+							label: field.label,
+							value: suggestion[field.key],
+						});
+					}
+				});
 
-				if (suggestion.description) {
-					html += '<p style="margin: 0 0 8px; color: #555;">' + this.escapeHtml(suggestion.description) + '</p>';
-				}
+				var importLabel = aipsAuthorsL10n.importAuthor || 'Import Author';
+				var ariaLabel  = importLabel + ': ' + (suggestion.name || '');
 
-				const meta = [];
-				if (suggestion.keywords) {
-					meta.push('<strong>' + this.escapeHtml(aipsAuthorsL10n.fieldNiche || 'Keywords') + ':</strong> ' + this.escapeHtml(suggestion.keywords));
-				}
-				if (suggestion.voice_tone) {
-					meta.push('<strong>' + this.escapeHtml(aipsAuthorsL10n.voiceToneLabel || 'Voice/Tone') + ':</strong> ' + this.escapeHtml(suggestion.voice_tone));
-				}
-				if (suggestion.writing_style) {
-					meta.push('<strong>' + this.escapeHtml(aipsAuthorsL10n.writingStyleLabel || 'Writing Style') + ':</strong> ' + this.escapeHtml(suggestion.writing_style));
-				}
-				if (suggestion.topic_generation_prompt) {
-					meta.push('<strong>' + this.escapeHtml(aipsAuthorsL10n.topicPromptLabel || 'Topic Prompt') + ':</strong> ' + this.escapeHtml(suggestion.topic_generation_prompt));
-				}
-
-				if (meta.length > 0) {
-					html += '<div style="font-size: 12px; color: #666; display: flex; flex-direction: column; gap: 4px;">';
-					meta.forEach(item => {
-						html += '<span>' + item + '</span>';
-					});
-					html += '</div>';
-				}
-
-				html += '</div>';
+				// render() handles escaping of all string tokens; only `meta` and `index`
+				// are safe to insert as-is (meta is already rendered HTML, index is a number).
+				html += AIPS.Templates.renderRaw('aips-tmpl-suggestion-card', {
+					index:           index,
+					name:            AIPS.Templates.escape(suggestion.name || ''),
+					field_niche:     AIPS.Templates.escape(suggestion.field_niche || ''),
+					description:     AIPS.Templates.escape(suggestion.description || ''),
+					meta:            metaRows,
+					importLabel:     AIPS.Templates.escape(importLabel),
+					importAriaLabel: AIPS.Templates.escape(ariaLabel),
+				});
 			});
 
 			// Store suggestions data on the container for later retrieval on import
-			const $cards = $('#aips-suggest-authors-cards');
+			var $cards = $('#aips-suggest-authors-cards');
 			$cards.html(html);
 			$cards.data('suggestions', suggestions);
 		},

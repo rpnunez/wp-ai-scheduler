@@ -921,6 +921,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-prompt-section-repository.php',
         'class-aips-template-processor.php',
         'class-aips-prompt-builder.php',
+        'class-aips-prompt-builder-topic.php',
+        'class-aips-prompt-builder-authors.php',
         'class-aips-article-structure-manager.php',
         'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
