@@ -42,6 +42,7 @@ class AIPS_Generator {
     private $structure_manager;
     private $post_manager;
     private $prompt_builder;
+    private $post_content_prompt_builder;
     private $post_title_prompt_builder;
     private $post_excerpt_prompt_builder;
 
@@ -86,6 +87,7 @@ class AIPS_Generator {
         $this->history_service    = $history_service ?: new AIPS_History_Service();
         $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
+        $this->post_content_prompt_builder = new AIPS_Prompt_Builder_Post_Content( $this->template_processor, $this->structure_manager );
         $this->post_title_prompt_builder = new AIPS_Prompt_Builder_Post_Title( $this->prompt_builder, $this->template_processor );
         $this->post_excerpt_prompt_builder = new AIPS_Prompt_Builder_Post_Excerpt( $this->prompt_builder, $this->template_processor );
 
@@ -442,7 +444,7 @@ class AIPS_Generator {
      */
     public function generate_preview($context) {
         // Build the full content prompt from context
-        $content_prompt = $this->prompt_builder->build_content_prompt($context);
+        $content_prompt = $this->post_content_prompt_builder->build($context);
 
         // Build contextual instructions
         $content_context = $this->prompt_builder->build_content_context($context);
@@ -577,7 +579,7 @@ class AIPS_Generator {
         }
 
         // Build the full content prompt from context
-        $content_prompt = $this->prompt_builder->build_content_prompt($context);
+        $content_prompt = $this->post_content_prompt_builder->build($context);
 
         if ($this->current_history) {
             $this->current_history->record(

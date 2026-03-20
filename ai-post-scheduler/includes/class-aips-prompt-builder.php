@@ -7,6 +7,7 @@ class AIPS_Prompt_Builder {
 
 	private $template_processor;
 	private $structure_manager;
+	private $post_content_builder;
 	private $post_title_builder;
 	private $post_excerpt_builder;
 
@@ -26,79 +27,7 @@ class AIPS_Prompt_Builder {
      * @return string The constructed prompt.
      */
     public function build_content_prompt($template_or_context, $topic = null, $voice = null) {
-        // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
-            $context = $template_or_context;
-            
-            do_action('aips_before_build_content_prompt', $context, null);
-            
-            // Get the base content prompt from context
-            $processed_prompt = $context->get_content_prompt();
-            
-            // Check if article_structure_id is provided
-            $article_structure_id = $context->get_article_structure_id();
-            $topic_str = $context->get_topic();
-            
-            if ($article_structure_id && $topic_str) {
-                // Use article structure to build prompt
-                $structured_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic_str);
-                
-                if (!is_wp_error($structured_prompt)) {
-                    $processed_prompt = $structured_prompt;
-                } else {
-                    // Fall back to processing the base prompt with topic
-                    $processed_prompt = $this->template_processor->process($processed_prompt, $topic_str);
-                }
-            } elseif ($topic_str) {
-                // Process template variables in the prompt
-                $processed_prompt = $this->template_processor->process($processed_prompt, $topic_str);
-            }
-            
-            // For template contexts with voice, add voice instructions
-            if ($context->get_type() === 'template' && $context->get_voice_id()) {
-                $voice_obj = $context->get_voice();
-                if ($voice_obj && !empty($voice_obj->content_instructions)) {
-                    $voice_instructions = $this->template_processor->process($voice_obj->content_instructions, $topic_str);
-                    $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
-                }
-            }
-            
-            $content_prompt = apply_filters('aips_content_prompt', $processed_prompt, $context, $topic_str);
-            
-            return $content_prompt;
-        }
-        
-        // Legacy template-based approach
-        $template = $template_or_context;
-        
-        do_action('aips_before_build_content_prompt', $template, $topic);
-
-        // Check if article_structure_id is provided, build prompt with structure
-        $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
-
-        if ($article_structure_id) {
-            // Use article structure to build prompt
-            $processed_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic);
-
-            if (is_wp_error($processed_prompt)) {
-                // Fall back to regular template processing
-                $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-            }
-        } else {
-            // Use traditional template processing
-            $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-        }
-
-        if ($voice) {
-            $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
-            $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
-        }
-
-        $content_prompt = $processed_prompt;
-
-        $content_prompt = apply_filters('aips_content_prompt', $content_prompt, $template, $topic);
-
-        return $content_prompt;
+        return $this->get_post_content_builder()->build($template_or_context, $topic, $voice);
     }
 
     /**
@@ -316,7 +245,7 @@ class AIPS_Prompt_Builder {
         }
 
         // Build content prompt
-        $content_prompt = $this->build_content_prompt($template_data, $sample_topic, $voice);
+        $content_prompt = $this->get_post_content_builder()->build($template_data, $sample_topic, $voice);
 
         // Build title prompt
         $sample_content = '[Generated article content would appear here]';
@@ -406,5 +335,18 @@ class AIPS_Prompt_Builder {
 		}
 
 		return $this->post_excerpt_builder;
+	}
+
+	/**
+	 * Get the dedicated post content prompt builder.
+	 *
+	 * @return AIPS_Prompt_Builder_Post_Content
+	 */
+	public function get_post_content_builder() {
+		if (null === $this->post_content_builder) {
+			$this->post_content_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $this->structure_manager);
+		}
+
+		return $this->post_content_builder;
 	}
 }

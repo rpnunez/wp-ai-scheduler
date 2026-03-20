@@ -32,6 +32,11 @@ class AIPS_Component_Regeneration_Service {
 	private $prompt_builder;
 
 	/**
+	 * @var AIPS_Prompt_Builder_Post_Content Post content prompt builder instance
+	 */
+	private $post_content_prompt_builder;
+
+	/**
 	 * @var AIPS_Prompt_Builder_Post_Title Post title prompt builder instance
 	 */
 	private $post_title_prompt_builder;
@@ -75,6 +80,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->generator = new AIPS_Generator(null, $ai_service);
 		$this->image_service = new AIPS_Image_Service($ai_service);
 		$this->prompt_builder = new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
+		$this->post_content_prompt_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $this->structure_manager);
 		$this->post_title_prompt_builder = new AIPS_Prompt_Builder_Post_Title($this->prompt_builder, $this->template_processor);
 	}
 	
@@ -208,7 +214,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->generator->set_history_container($history_container);
 		
 		// Build the content prompt using the generation context
-		$prompt = $this->prompt_builder->build_content_prompt($generation_context);
+		$prompt = $this->post_content_prompt_builder->build($generation_context);
 		
 		// Generate content using the prompt
 		$result = $this->generator->generate_content($prompt);

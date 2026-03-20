@@ -52,6 +52,24 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test dedicated post content builder uses the same prompt rules.
+	 */
+	public function test_post_content_builder_build_basic() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager = new AIPS_Article_Structure_Manager();
+		$builder = new AIPS_Prompt_Builder_Post_Content($template_processor, $structure_manager);
+
+		$template = (object) array(
+			'prompt_template' => 'Write about {{topic}}',
+			'article_structure_id' => null,
+		);
+
+		$result = $builder->build($template, 'AI Technology', null);
+
+		$this->assertStringContainsString('Write about AI Technology', $result);
+	}
+
+	/**
 	 * Test build_title_prompt with template only.
 	 */
 	public function test_build_title_prompt_template_only() {
@@ -345,6 +363,15 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$builder = new AIPS_Prompt_Builder();
 
 		$this->assertInstanceOf('AIPS_Prompt_Builder_Post_Title', $builder->get_post_title_builder());
+	}
+
+	/**
+	 * Test base prompt builder exposes the dedicated content builder.
+	 */
+	public function test_get_post_content_builder_returns_specialized_builder() {
+		$builder = new AIPS_Prompt_Builder();
+
+		$this->assertInstanceOf('AIPS_Prompt_Builder_Post_Content', $builder->get_post_content_builder());
 	}
 
 	/**
