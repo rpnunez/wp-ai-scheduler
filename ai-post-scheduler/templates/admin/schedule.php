@@ -285,6 +285,209 @@ $rotation_patterns = $template_type_selector->get_rotation_patterns();
 $preselect_template_id = isset($_GET['schedule_template']) ? absint($_GET['schedule_template']) : 0;
 $preselect_structure_id = isset($_GET['schedule_structure']) ? absint($_GET['schedule_structure']) : 0;
 ?>
+
+<!-- Schedule Wizard Modal (4-step) -->
+<div id="aips-schedule-wizard-modal" class="aips-modal aips-wizard-modal" style="display: none;"
+	data-wizard-steps="4"
+	data-preselect-template="<?php echo esc_attr($preselect_template_id); ?>"
+	data-preselect-structure="<?php echo esc_attr($preselect_structure_id); ?>">
+	<div class="aips-modal-content aips-modal-large">
+		<div class="aips-modal-header">
+			<h2 id="aips-schedule-wizard-modal-title"><?php esc_html_e('Add New Schedule', 'ai-post-scheduler'); ?></h2>
+			<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+
+		<!-- Wizard Progress Indicator -->
+		<div class="aips-wizard-progress">
+			<div class="aips-wizard-step" data-step="1">
+				<div class="aips-step-number">1</div>
+				<div class="aips-step-label"><?php esc_html_e('Basic Info', 'ai-post-scheduler'); ?></div>
+			</div>
+			<div class="aips-wizard-step" data-step="2">
+				<div class="aips-step-number">2</div>
+				<div class="aips-step-label"><?php esc_html_e('Timing', 'ai-post-scheduler'); ?></div>
+			</div>
+			<div class="aips-wizard-step" data-step="3">
+				<div class="aips-step-number">3</div>
+				<div class="aips-step-label"><?php esc_html_e('Advanced', 'ai-post-scheduler'); ?></div>
+			</div>
+			<div class="aips-wizard-step" data-step="4">
+				<div class="aips-step-number">4</div>
+				<div class="aips-step-label"><?php esc_html_e('Review', 'ai-post-scheduler'); ?></div>
+			</div>
+		</div>
+
+		<div class="aips-modal-body">
+			<form id="aips-schedule-wizard-form">
+				<input type="hidden" name="sw_schedule_id" id="sw_schedule_id" value="">
+
+				<!-- Step 1: Basic Information -->
+				<div class="aips-wizard-step-content" data-step="1">
+					<h3><?php esc_html_e('Basic Information', 'ai-post-scheduler'); ?></h3>
+					<p class="description"><?php esc_html_e('Name your schedule and choose the template and topic that drive content generation.', 'ai-post-scheduler'); ?></p>
+
+					<div class="aips-form-row">
+						<label for="sw_schedule_title"><?php esc_html_e('Title (Optional)', 'ai-post-scheduler'); ?></label>
+						<input type="text" id="sw_schedule_title" name="sw_schedule_title" class="regular-text" placeholder="<?php esc_attr_e('e.g., Daily Tech News', 'ai-post-scheduler'); ?>">
+						<p class="description"><?php esc_html_e('A friendly name for this schedule to help identify it in the list.', 'ai-post-scheduler'); ?></p>
+					</div>
+
+					<div class="aips-form-row">
+						<label for="sw_schedule_template"><?php esc_html_e('Template', 'ai-post-scheduler'); ?> <span class="required">*</span></label>
+						<select id="sw_schedule_template" name="sw_template_id" required>
+							<option value=""><?php esc_html_e('Select Template', 'ai-post-scheduler'); ?></option>
+							<?php foreach ($templates as $template): ?>
+							<option value="<?php echo esc_attr($template->id); ?>"><?php echo esc_html($template->name); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php esc_html_e('Choose which template provides the content prompts for this schedule.', 'ai-post-scheduler'); ?></p>
+					</div>
+
+					<div class="aips-form-row">
+						<label for="sw_schedule_topic"><?php esc_html_e('Topic (Optional)', 'ai-post-scheduler'); ?></label>
+						<input type="text" id="sw_schedule_topic" name="sw_topic" class="regular-text" placeholder="<?php esc_attr_e('e.g., Artificial Intelligence', 'ai-post-scheduler'); ?>">
+						<p class="description"><?php esc_html_e('Optional topic passed to template variables such as {{topic}}.', 'ai-post-scheduler'); ?></p>
+					</div>
+				</div>
+
+				<!-- Step 2: Timing -->
+				<div class="aips-wizard-step-content" data-step="2" style="display: none;">
+					<h3><?php esc_html_e('Timing', 'ai-post-scheduler'); ?></h3>
+					<p class="description"><?php esc_html_e('Configure how often and when this schedule runs.', 'ai-post-scheduler'); ?></p>
+
+					<div class="aips-form-row">
+						<label for="sw_schedule_frequency"><?php esc_html_e('Frequency', 'ai-post-scheduler'); ?></label>
+						<select id="sw_schedule_frequency" name="sw_frequency">
+							<?php
+							$cron_schedules = wp_get_schedules();
+							uasort($cron_schedules, function($a, $b) {
+								return $a['interval'] - $b['interval'];
+							});
+							foreach ($cron_schedules as $key => $schedule) {
+								echo '<option value="' . esc_attr($key) . '" ' . selected('daily', $key, false) . '>' . esc_html($schedule['display']) . '</option>';
+							}
+							?>
+						</select>
+						<p class="description"><?php esc_html_e('How often the schedule should generate new posts.', 'ai-post-scheduler'); ?></p>
+					</div>
+
+					<div class="aips-form-row">
+						<label for="sw_schedule_start_time"><?php esc_html_e('Start Time', 'ai-post-scheduler'); ?></label>
+						<input type="datetime-local" id="sw_schedule_start_time" name="sw_start_time">
+						<p class="description"><?php esc_html_e('Leave empty to start from now. Times are in your local timezone.', 'ai-post-scheduler'); ?></p>
+					</div>
+				</div>
+
+				<!-- Step 3: Advanced Options -->
+				<div class="aips-wizard-step-content" data-step="3" style="display: none;">
+					<h3><?php esc_html_e('Advanced Options', 'ai-post-scheduler'); ?></h3>
+					<p class="description"><?php esc_html_e('Optionally customise article structure and rotation behaviour.', 'ai-post-scheduler'); ?></p>
+
+					<div class="aips-form-row">
+						<label for="sw_article_structure_id"><?php esc_html_e('Article Structure (Optional)', 'ai-post-scheduler'); ?></label>
+						<select id="sw_article_structure_id" name="sw_article_structure_id">
+							<option value=""><?php esc_html_e('Use Default', 'ai-post-scheduler'); ?></option>
+							<?php foreach ($article_structures as $structure): ?>
+							<option value="<?php echo esc_attr($structure->id); ?>">
+								<?php echo esc_html($structure->name); ?>
+								<?php if (!empty($structure->is_default)): ?> (<?php esc_html_e('Default', 'ai-post-scheduler'); ?>)<?php endif; ?>
+							</option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php esc_html_e('Override the template\'s default article structure for this schedule.', 'ai-post-scheduler'); ?></p>
+					</div>
+
+					<div class="aips-form-row">
+						<label for="sw_rotation_pattern"><?php esc_html_e('Rotation Pattern (Optional)', 'ai-post-scheduler'); ?></label>
+						<select id="sw_rotation_pattern" name="sw_rotation_pattern">
+							<option value=""><?php esc_html_e('No Rotation', 'ai-post-scheduler'); ?></option>
+							<?php foreach ($rotation_patterns as $key => $label): ?>
+							<option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php esc_html_e('Automatically alternate between different article structures on each run.', 'ai-post-scheduler'); ?></p>
+					</div>
+				</div>
+
+				<!-- Step 4: Review & Activate -->
+				<div class="aips-wizard-step-content" data-step="4" style="display: none;">
+					<h3><?php esc_html_e('Review & Activate', 'ai-post-scheduler'); ?></h3>
+					<p class="description"><?php esc_html_e('Review your schedule settings before saving.', 'ai-post-scheduler'); ?></p>
+
+					<!-- Summary display -->
+					<div class="aips-template-summary">
+						<h4><?php esc_html_e('Schedule Summary', 'ai-post-scheduler'); ?></h4>
+						<div class="aips-summary-grid">
+							<div class="aips-summary-item">
+								<strong><?php esc_html_e('Title:', 'ai-post-scheduler'); ?></strong>
+								<span id="sw_summary_title">-</span>
+							</div>
+							<div class="aips-summary-item">
+								<strong><?php esc_html_e('Template:', 'ai-post-scheduler'); ?></strong>
+								<span id="sw_summary_template">-</span>
+							</div>
+							<div class="aips-summary-item">
+								<strong><?php esc_html_e('Topic:', 'ai-post-scheduler'); ?></strong>
+								<span id="sw_summary_topic"><?php esc_html_e('None', 'ai-post-scheduler'); ?></span>
+							</div>
+							<div class="aips-summary-item">
+								<strong><?php esc_html_e('Frequency:', 'ai-post-scheduler'); ?></strong>
+								<span id="sw_summary_frequency">-</span>
+							</div>
+							<div class="aips-summary-item">
+								<strong><?php esc_html_e('Start Time:', 'ai-post-scheduler'); ?></strong>
+								<span id="sw_summary_start_time"><?php esc_html_e('Now', 'ai-post-scheduler'); ?></span>
+							</div>
+							<div class="aips-summary-item">
+								<strong><?php esc_html_e('Article Structure:', 'ai-post-scheduler'); ?></strong>
+								<span id="sw_summary_structure"><?php esc_html_e('Use Default', 'ai-post-scheduler'); ?></span>
+							</div>
+							<div class="aips-summary-item">
+								<strong><?php esc_html_e('Rotation Pattern:', 'ai-post-scheduler'); ?></strong>
+								<span id="sw_summary_rotation"><?php esc_html_e('None', 'ai-post-scheduler'); ?></span>
+							</div>
+							<div class="aips-summary-item">
+								<strong><?php esc_html_e('Active:', 'ai-post-scheduler'); ?></strong>
+								<span id="sw_summary_active"><?php esc_html_e('Yes', 'ai-post-scheduler'); ?></span>
+							</div>
+						</div>
+					</div>
+
+					<div class="aips-form-row" style="margin-top: 20px;">
+						<label class="aips-checkbox-label">
+							<input type="checkbox" id="sw_schedule_is_active" name="sw_is_active" value="1" checked>
+							<?php esc_html_e('Schedule is active', 'ai-post-scheduler'); ?>
+						</label>
+						<p class="description"><?php esc_html_e('Active schedules run automatically according to the frequency you set.', 'ai-post-scheduler'); ?></p>
+					</div>
+				</div>
+			</form>
+		</div>
+
+		<div class="aips-modal-footer aips-wizard-footer">
+			<div class="aips-footer-left">
+				<button type="button" class="button aips-wizard-back" style="display: none;">
+					<span class="dashicons dashicons-arrow-left-alt2"></span>
+					<?php esc_html_e('Back', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+			<div class="aips-footer-right">
+				<button type="button" class="button aips-modal-close">
+					<?php esc_html_e('Cancel', 'ai-post-scheduler'); ?>
+				</button>
+				<button type="button" class="button button-primary aips-wizard-next">
+					<?php esc_html_e('Next', 'ai-post-scheduler'); ?>
+					<span class="dashicons dashicons-arrow-right-alt2"></span>
+				</button>
+				<button type="button" class="button button-secondary aips-save-schedule-wizard aips-wizard-save-btn">
+					<?php esc_html_e('Save Schedule', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Legacy schedule modal (preserved for compatibility, not shown to users) -->
 <div id="aips-schedule-modal" class="aips-modal" style="display: none;" data-preselect-template="<?php echo esc_attr($preselect_template_id); ?>" data-preselect-structure="<?php echo esc_attr($preselect_structure_id); ?>">
         <div class="aips-modal-content">
             <div class="aips-modal-header">
