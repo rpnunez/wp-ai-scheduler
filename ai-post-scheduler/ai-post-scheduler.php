@@ -23,6 +23,9 @@ define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
+// Detect Action Scheduler availability.
+define('AIPS_AS_AVAILABLE', function_exists('as_schedule_single_action') || class_exists('\ActionScheduler'));
+
 final class AI_Post_Scheduler {
     
     private static $instance = null;
@@ -47,6 +50,23 @@ final class AI_Post_Scheduler {
                     echo '<div class="notice notice-error"><p>';
                     echo esc_html__('AI Post Scheduler requires Meow Apps AI Engine plugin to be installed and activated.', 'ai-post-scheduler');
                     echo '</p></div>';
+                });
+            }
+
+            if (!AIPS_AS_AVAILABLE) {
+                add_action('admin_notices', function() {
+                    echo '<div class="notice notice-error"><p>';
+                    echo esc_html__('AI Post Scheduler requires the Action Scheduler plugin (or a plugin that includes it, such as WooCommerce) to be installed and activated. Please install and activate Action Scheduler.', 'ai-post-scheduler');
+                    echo '</p></div>';
+                });
+            }
+
+            // Show activation error transient (e.g. when deactivated due to missing AS)
+            $activation_error = get_transient('aips_activation_error');
+            if ($activation_error) {
+                delete_transient('aips_activation_error');
+                add_action('admin_notices', function() use ($activation_error) {
+                    echo '<div class="notice notice-error"><p>' . esc_html($activation_error) . '</p></div>';
                 });
             }
         });
@@ -74,6 +94,18 @@ final class AI_Post_Scheduler {
         $logger = new AIPS_Logger();
 
         $logger->log('Running plugin activation.');
+
+        // Action Scheduler is a required dependency. Deactivate and show an admin
+        // notice if it is not present so the administrator knows what to install.
+        if (!AIPS_AS_AVAILABLE) {
+            deactivate_plugins(AIPS_PLUGIN_BASENAME);
+            set_transient(
+                'aips_activation_error',
+                esc_html__('AI Post Scheduler could not be activated: Action Scheduler plugin is required. Please install and activate Action Scheduler first.', 'ai-post-scheduler'),
+                60
+            );
+            return;
+        }
 
         $this->set_default_options();
         $this->check_upgrades();
@@ -197,6 +229,11 @@ final class AI_Post_Scheduler {
         new AIPS_Post_Review_Notifications();
 		new AIPS_Partial_Generation_Notifications();
 		new AIPS_Partial_Generation_State_Reconciler();
+
+        // Register Action Scheduler worker when AS is available.
+        if (AIPS_AS_AVAILABLE) {
+            new AIPS_AS_Worker();
+        }
 
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();

@@ -70,6 +70,50 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         define('AIPS_PLUGIN_BASENAME', 'ai-post-scheduler/ai-post-scheduler.php');
     }
 
+    // Action Scheduler stubs — defined early so AIPS_AS_AVAILABLE resolves to true
+    // in tests. These are no-ops that record calls in a global for assertions.
+    if (!function_exists('as_schedule_single_action')) {
+        function as_schedule_single_action($timestamp, $hook, $args = array(), $group = '') {
+            if (!isset($GLOBALS['aips_test_as_scheduled'])) {
+                $GLOBALS['aips_test_as_scheduled'] = array();
+            }
+            $id = count($GLOBALS['aips_test_as_scheduled']) + 1;
+            $GLOBALS['aips_test_as_scheduled'][] = array(
+                'timestamp' => $timestamp,
+                'hook'      => $hook,
+                'args'      => $args,
+                'group'     => $group,
+                'recurring' => false,
+            );
+            return $id;
+        }
+    }
+
+    if (!function_exists('as_schedule_recurring_action')) {
+        function as_schedule_recurring_action($timestamp, $interval, $hook, $args = array(), $group = '') {
+            if (!isset($GLOBALS['aips_test_as_scheduled'])) {
+                $GLOBALS['aips_test_as_scheduled'] = array();
+            }
+            $id = count($GLOBALS['aips_test_as_scheduled']) + 1;
+            $GLOBALS['aips_test_as_scheduled'][] = array(
+                'timestamp' => $timestamp,
+                'hook'      => $hook,
+                'args'      => $args,
+                'group'     => $group,
+                'recurring' => true,
+                'interval'  => $interval,
+            );
+            return $id;
+        }
+    }
+
+    // AIPS_AS_AVAILABLE mirrors the definition in ai-post-scheduler.php. In the
+    // test fallback environment ai-post-scheduler.php is not loaded directly, so
+    // we define it here after the stubs above are in place.
+    if (!defined('AIPS_AS_AVAILABLE')) {
+        define('AIPS_AS_AVAILABLE', function_exists('as_schedule_single_action') || class_exists('\ActionScheduler'));
+    }
+
     if (!isset($GLOBALS['aips_test_hooks'])) {
         $GLOBALS['aips_test_hooks'] = array(
             'actions' => array(),
@@ -978,6 +1022,8 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-authors-controller.php',
         'class-aips-author-post-generator.php',
         'class-aips-author-topics-controller.php',
+        // Action Scheduler worker
+        'class-aips-as-worker.php',
     ];
     
     foreach ($files as $file) {

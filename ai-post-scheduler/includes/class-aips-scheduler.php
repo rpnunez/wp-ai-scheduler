@@ -391,4 +391,45 @@ class AIPS_Scheduler {
     public function process_scheduled_posts() {
         $this->processor->process_due_schedules();
     }
+
+    /**
+     * Schedule a generation action using Action Scheduler when available,
+     * falling back to WP-Cron otherwise.
+     *
+     * @param int    $timestamp Unix timestamp for when the action should run.
+     * @param array  $args      Primitive args array to pass to the worker callback.
+     * @param bool   $recurring Whether to schedule a recurring action.
+     * @param int    $interval  Interval in seconds (only used when $recurring is true).
+     * @return int|string|bool Action Scheduler action ID on success when AS is used,
+     *                         true on success when WP-Cron is used, false on failure.
+     */
+    public function schedule_generation_action($timestamp, $args = array(), $recurring = false, $interval = HOUR_IN_SECONDS) {
+        if (AIPS_AS_AVAILABLE) {
+            if ($recurring && function_exists('as_schedule_recurring_action')) {
+                return as_schedule_recurring_action(
+                    (int) $timestamp,
+                    (int) $interval,
+                    'aips_action_generate_post',
+                    $args,
+                    'aips'
+                );
+            }
+
+            if (function_exists('as_schedule_single_action')) {
+                return as_schedule_single_action(
+                    (int) $timestamp,
+                    'aips_action_generate_post',
+                    $args,
+                    'aips'
+                );
+            }
+        }
+
+        // WP-Cron fallback.
+        if ($recurring) {
+            return wp_schedule_event((int) $timestamp, 'hourly', 'aips_action_generate_post', $args);
+        }
+
+        return wp_schedule_single_event((int) $timestamp, 'aips_action_generate_post', $args);
+    }
 }
