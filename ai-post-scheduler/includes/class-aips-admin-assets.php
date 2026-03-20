@@ -225,6 +225,25 @@ class AIPS_Admin_Assets {
             'rejectTopicTitle' => __('Reject Topic', 'ai-post-scheduler'),
             'approveReasonPlaceholder' => __('Why are you approving this topic? (optional)', 'ai-post-scheduler'),
             'rejectReasonPlaceholder' => __('Why are you rejecting this topic? (optional)', 'ai-post-scheduler'),
+            'approvalCategoryLabel' => __('Approval Reason', 'ai-post-scheduler'),
+            'rejectionCategoryLabel' => __('Rejection Reason', 'ai-post-scheduler'),
+            'approvalCategoryDescription' => __('Select a positive reason to help train future topic generation.', 'ai-post-scheduler'),
+            'rejectionCategoryDescription' => __('Select a structured reason to improve future topic quality.', 'ai-post-scheduler'),
+            'approvalCategories' => array(
+                array( 'value' => 'other',           'label' => __('Other', 'ai-post-scheduler') ),
+                array( 'value' => 'timely',          'label' => __('Timely / On-trend', 'ai-post-scheduler') ),
+                array( 'value' => 'relevant',        'label' => __('Relevant to niche', 'ai-post-scheduler') ),
+                array( 'value' => 'well_researched', 'label' => __('Well-researched angle', 'ai-post-scheduler') ),
+                array( 'value' => 'engaging',        'label' => __('Engaging hook', 'ai-post-scheduler') ),
+                array( 'value' => 'original',        'label' => __('Original perspective', 'ai-post-scheduler') ),
+            ),
+            'rejectionCategories' => array(
+                array( 'value' => 'other',      'label' => __('Other', 'ai-post-scheduler') ),
+                array( 'value' => 'duplicate',  'label' => __('Duplicate', 'ai-post-scheduler') ),
+                array( 'value' => 'tone',       'label' => __('Tone', 'ai-post-scheduler') ),
+                array( 'value' => 'irrelevant', 'label' => __('Irrelevant', 'ai-post-scheduler') ),
+                array( 'value' => 'policy',     'label' => __('Policy', 'ai-post-scheduler') ),
+            ),
             // Generation Queue strings
             'loadingQueue' => __('Loading queue...', 'ai-post-scheduler'),
             'errorLoadingQueue' => __('Error loading queue.', 'ai-post-scheduler'),
@@ -340,25 +359,6 @@ class AIPS_Admin_Assets {
             AIPS_VERSION,
             true
         );
-
-        // Activity Page Scripts
-
-        wp_enqueue_script(
-            'aips-admin-activity',
-            AIPS_PLUGIN_URL . 'assets/js/admin-activity.js',
-            array('aips-admin-script'),
-            AIPS_VERSION,
-            true
-        );
-
-        wp_localize_script('aips-admin-activity', 'aipsActivityL10n', array(
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('aips_ajax_nonce'),
-            'confirmPublish' => __('Are you sure you want to publish this post?', 'ai-post-scheduler'),
-            'publishSuccess' => __('Post published successfully!', 'ai-post-scheduler'),
-            'publishError' => __('Failed to publish post.', 'ai-post-scheduler'),
-            'loadingError' => __('Failed to load activity data.', 'ai-post-scheduler'),
-        ));
 
         // Generated Posts Page Scripts
         if (strpos($hook, 'aips-generated-posts') !== false) {
