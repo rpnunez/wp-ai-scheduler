@@ -931,6 +931,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-prompt-builder-post-content.php',
         'class-aips-prompt-builder-post-title.php',
         'class-aips-prompt-builder-post-excerpt.php',
+        'class-aips-prompt-builder-post-featured-image.php',
         'class-aips-prompt-builder-topic.php',
         'class-aips-prompt-builder-authors.php',
         'class-aips-article-structure-manager.php',

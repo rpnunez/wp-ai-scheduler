@@ -401,6 +401,24 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test dedicated featured image prompt builder processes prompt variables.
+	 */
+	public function test_post_featured_image_builder_build_basic() {
+		$template_processor = new AIPS_Template_Processor();
+		$builder = new AIPS_Prompt_Builder_Post_Featured_Image($template_processor);
+
+		$template = (object) array(
+			'image_prompt' => 'A photo of {{topic}}',
+			'generate_featured_image' => 1,
+			'featured_image_source' => 'ai_prompt',
+		);
+
+		$result = $builder->build($template, 'Example Topic');
+
+		$this->assertSame('A photo of Example Topic', $result);
+	}
+
+	/**
 	 * Test build_prompts method generates all prompts.
 	 */
 	public function test_build_prompts_basic() {
@@ -484,6 +502,15 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 
 		$this->assertNotEmpty($result['prompts']['image']);
 		$this->assertStringContainsString('Example Topic', $result['prompts']['image']);
+	}
+
+	/**
+	 * Test base prompt builder exposes the dedicated featured image builder.
+	 */
+	public function test_get_post_featured_image_builder_returns_specialized_builder() {
+		$builder = new AIPS_Prompt_Builder();
+
+		$this->assertInstanceOf('AIPS_Prompt_Builder_Post_Featured_Image', $builder->get_post_featured_image_builder());
 	}
 
 	/**

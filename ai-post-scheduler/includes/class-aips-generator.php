@@ -45,6 +45,7 @@ class AIPS_Generator {
     private $post_content_prompt_builder;
     private $post_title_prompt_builder;
     private $post_excerpt_prompt_builder;
+    private $post_featured_image_prompt_builder;
 
     /**
      * @var AIPS_Markdown_Parser Markdown parser
@@ -90,6 +91,7 @@ class AIPS_Generator {
         $this->post_content_prompt_builder = new AIPS_Prompt_Builder_Post_Content( $this->template_processor, $this->structure_manager );
         $this->post_title_prompt_builder = new AIPS_Prompt_Builder_Post_Title( $this->prompt_builder, $this->template_processor );
         $this->post_excerpt_prompt_builder = new AIPS_Prompt_Builder_Post_Excerpt( $this->prompt_builder, $this->template_processor );
+        $this->post_featured_image_prompt_builder = new AIPS_Prompt_Builder_Post_Featured_Image( $this->template_processor );
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -489,10 +491,7 @@ class AIPS_Generator {
         // Handle image preview data (not generation)
         if ($context->should_generate_featured_image()) {
             if ($context->get_featured_image_source() === 'ai_prompt') {
-                $image_prompt = $context->get_image_prompt();
-                $topic_str = $context->get_topic();
-                $processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
-                $result['image_prompt'] = $processed_image_prompt;
+                $result['image_prompt'] = $this->post_featured_image_prompt_builder->build($context);
             } elseif ($context->get_featured_image_source() === 'unsplash') {
                 $keywords = $context->get_unsplash_keywords();
                 $topic_str = $context->get_topic();
@@ -834,9 +833,7 @@ class AIPS_Generator {
                 $component_success = true;
             }
         } elseif ($context->get_image_prompt()) {
-            $image_prompt = $context->get_image_prompt();
-            $topic_str = $context->get_topic();
-            $processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
+            $processed_image_prompt = $this->post_featured_image_prompt_builder->build($context);
 
             // Log AI request for featured image
             if ($this->current_history) {

@@ -40,6 +40,11 @@ class AIPS_Component_Regeneration_Service {
 	 * @var AIPS_Prompt_Builder_Post_Title Post title prompt builder instance
 	 */
 	private $post_title_prompt_builder;
+
+	/**
+	 * @var AIPS_Prompt_Builder_Post_Featured_Image Post featured image prompt builder instance
+	 */
+	private $post_featured_image_prompt_builder;
 	
 	/**
 	 * @var AIPS_Image_Service Image service instance
@@ -82,6 +87,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->prompt_builder = new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
 		$this->post_content_prompt_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $this->structure_manager);
 		$this->post_title_prompt_builder = new AIPS_Prompt_Builder_Post_Title($this->prompt_builder, $this->template_processor);
+		$this->post_featured_image_prompt_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor);
 	}
 	
 	/**
@@ -246,15 +252,10 @@ class AIPS_Component_Regeneration_Service {
 		$post_id = absint($context['post_id']);
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 		
-		// Get the image prompt from the generation context
-		$image_prompt = $generation_context->get_image_prompt();
-		if (empty($image_prompt)) {
+		$processed_image_prompt = $this->post_featured_image_prompt_builder->build($generation_context);
+		if (empty($processed_image_prompt)) {
 			return new WP_Error('no_image_prompt', __('No image prompt available for this context.', 'ai-post-scheduler'));
 		}
-		
-		// Process the image prompt with topic if available
-		$topic_str = $generation_context->get_topic();
-		$processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
 		
 		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
 		if (is_wp_error($history_container)) {

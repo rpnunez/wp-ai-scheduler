@@ -10,6 +10,7 @@ class AIPS_Prompt_Builder {
 	private $post_content_builder;
 	private $post_title_builder;
 	private $post_excerpt_builder;
+	private $post_featured_image_builder;
 
 	public function __construct($template_processor = null, $structure_manager = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
@@ -167,6 +168,17 @@ class AIPS_Prompt_Builder {
         return $this->get_post_excerpt_builder()->build_instructions($voice, $topic);
     }
 
+	/**
+	 * Build the processed featured image prompt.
+	 *
+	 * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+	 * @param string|null                    $topic Topic string for legacy flows.
+	 * @return string
+	 */
+	public function build_featured_image_prompt($template_or_context, $topic = null) {
+		return $this->get_post_featured_image_builder()->build($template_or_context, $topic);
+	}
+
     /**
      * Standard output instructions for article formatting.
      *
@@ -256,12 +268,7 @@ class AIPS_Prompt_Builder {
         $excerpt_prompt = $this->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic, true);
 
         // Build image prompt if enabled
-        $image_prompt_processed = '';
-        if (isset($template_data->generate_featured_image) && $template_data->generate_featured_image 
-            && isset($template_data->featured_image_source) && $template_data->featured_image_source === 'ai_prompt' 
-            && !empty($template_data->image_prompt)) {
-            $image_prompt_processed = $this->template_processor->process($template_data->image_prompt, $sample_topic);
-        }
+        $image_prompt_processed = $this->get_post_featured_image_builder()->build($template_data, $sample_topic);
 
         // Get voice name if applicable
         $voice_name = '';
@@ -348,5 +355,18 @@ class AIPS_Prompt_Builder {
 		}
 
 		return $this->post_content_builder;
+	}
+
+	/**
+	 * Get the dedicated post featured image prompt builder.
+	 *
+	 * @return AIPS_Prompt_Builder_Post_Featured_Image
+	 */
+	public function get_post_featured_image_builder() {
+		if (null === $this->post_featured_image_builder) {
+			$this->post_featured_image_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor);
+		}
+
+		return $this->post_featured_image_builder;
 	}
 }
