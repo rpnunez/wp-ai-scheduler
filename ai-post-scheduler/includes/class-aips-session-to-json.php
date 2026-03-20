@@ -135,19 +135,19 @@ class AIPS_Session_To_JSON {
 		if ($thumbnail_id) {
 			$post_data['featured_image'] = array(
 				'id' => $thumbnail_id,
-				'url' => get_the_post_thumbnail_url($post_id, 'full'),
+				'url' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'full')),
 				'sizes' => array(
-					'thumbnail' => get_the_post_thumbnail_url($post_id, 'thumbnail'),
-					'medium' => get_the_post_thumbnail_url($post_id, 'medium'),
-					'large' => get_the_post_thumbnail_url($post_id, 'large'),
-					'full' => get_the_post_thumbnail_url($post_id, 'full'),
+					'thumbnail' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'thumbnail')),
+					'medium' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'medium')),
+					'large' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'large')),
+					'full' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'full')),
 				),
 			);
 		}
 		
 		// Add permalink
-		$post_data['permalink'] = get_permalink($post_id);
-		$post_data['edit_link'] = get_edit_post_link($post_id, 'raw');
+		$post_data['permalink'] = esc_url_raw(get_permalink($post_id));
+		$post_data['edit_link'] = esc_url_raw(get_edit_post_link($post_id, 'raw'));
 		
 		return $post_data;
 	}

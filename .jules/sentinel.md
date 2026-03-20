@@ -38,7 +38,7 @@
 **Risk**: `TRUNCATE TABLE` bypasses normal table deletion constraints (such as `ON DELETE` triggers) and always reports returning a boolean rather than the count of rows removed. If this method is called inadvertently with an empty string due to an invalid request or logical bug upstream, the entire history table would be completely cleared without safety mechanisms.
 **Resolution**: Changed the query to `DELETE FROM {$this->table_name}`, which behaves predictably within MySQL's transactional bounds, safely processes trigger conditions, and returns the expected integer count of deleted rows.
 
-## 2026-03-20 - Fix missing URL escaping in JSON response
-**Vulnerability:** Missing URL escaping in `AIPS_Settings::ajax_get_activity_detail()` and `AIPS_Settings::ajax_get_activity()`. WordPress-generated URLs (such as `get_permalink()`, `get_edit_post_link()`, and `get_the_post_thumbnail_url()`) were being passed directly into the JSON response without proper sanitization.
-**Learning:** Returning unescaped dynamic URLs, even if they're generated internally, can present XSS and injection vulnerabilities if they reflect user-controllable input (such as post titles within permalinks in certain setups or manipulated IDs).
-**Prevention:** Ensure that URLs are properly escaped with `esc_url_raw()` when returning them as data within API or JSON/AJAX responses to enforce secure output formatting.
+## 2025-10-27 - [Output Escaping on Generated Links]
+**Vulnerability:** Unescaped usage of `get_permalink()`, `get_edit_post_link()`, and `get_the_post_thumbnail_url()` in various backend classes and API responses.
+**Learning:** While WordPress core functions generally return safe URLs, generating URLs dynamically for JSON/API responses or within variables that will later be rendered without escaping violates Defense in Depth. Unescaped outputs could be an attack vector if internal filters are compromised or data states are poisoned (e.g., via malicious inputs impacting `post_link` filters).
+**Prevention:** Always wrap dynamically generated URLs with `esc_url_raw()` (for data structures/APIs) or `esc_url()` (for direct HTML output) to ensure they are properly sanitized immediately at the point of generation.
