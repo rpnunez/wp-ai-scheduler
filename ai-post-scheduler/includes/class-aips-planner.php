@@ -46,7 +46,7 @@ class AIPS_Planner {
         if (is_array($result)) {
             foreach ($result as $item) {
                 if (is_string($item) && !empty(trim($item))) {
-                    $topics[] = trim($item);
+                    $topics[] = sanitize_text_field(trim($item));
                 } elseif (is_array($item)) {
                     // Handle objects with a title/topic key
                     if (!empty($item['title'])) {
