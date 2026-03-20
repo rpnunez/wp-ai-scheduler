@@ -296,7 +296,7 @@ class AIPS_Unified_Schedule_Service {
 					__('%s – Topic Generation', 'ai-post-scheduler'),
 					$author->name
 				),
-				'subtitle'    => esc_html($author->field_niche),
+				'subtitle'    => isset($author->field_niche) ? $author->field_niche : '',
 				'cron_hook'   => 'aips_generate_author_topics',
 				'frequency'   => $author->topic_generation_frequency,
 				'last_run'    => $author->topic_generation_last_run,
