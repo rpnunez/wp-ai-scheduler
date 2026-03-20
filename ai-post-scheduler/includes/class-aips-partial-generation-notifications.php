@@ -101,7 +101,7 @@ class AIPS_Partial_Generation_Notifications {
 	 */
 	private function build_email_message($post_id, $post_title, $missing_components, $context, $history_id = 0) {
 		$edit_url = get_edit_post_link($post_id);
-		$partial_url = admin_url('admin.php?page=aips-generated-posts#aips-partial-generations');
+		$partial_url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-partial-generations';
 		$source_label = $this->get_source_label($context);
 
 		ob_start();
