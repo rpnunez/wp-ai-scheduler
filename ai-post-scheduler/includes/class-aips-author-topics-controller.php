@@ -919,38 +919,12 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		global $wpdb;
+		// Use the history repository to get the estimate based on historical performance
+		$history_repository = new AIPS_History_Repository();
+		$estimate           = $history_repository->get_estimated_generation_time(20);
 
-		// Retrieve the most recent recorded generation times (up to 20 samples).
-		$times = $wpdb->get_col(
-			$wpdb->prepare(
-				"SELECT meta_value FROM {$wpdb->postmeta}
-				 WHERE meta_key = %s
-				 ORDER BY meta_id DESC
-				 LIMIT 20",
-				'_aips_post_generation_total_time'
-			)
-		);
-
-		$default_seconds = 30;
-
-		if (!empty($times)) {
-			$numeric_times = array_filter(array_map('floatval', $times), function($v) {
-				return $v > 0;
-			});
-
-			if (!empty($numeric_times)) {
-				$avg = array_sum($numeric_times) / count($numeric_times);
-				$per_post_seconds = (int) ceil($avg);
-			} else {
-				$per_post_seconds = $default_seconds;
-			}
-
-			$sample_size = count($numeric_times);
-		} else {
-			$per_post_seconds = $default_seconds;
-			$sample_size      = 0;
-		}
+		$per_post_seconds   = $estimate['per_post_seconds'];
+		$sample_size        = $estimate['sample_size'];
 
 		wp_send_json_success(array(
 			'per_post_seconds' => $per_post_seconds,

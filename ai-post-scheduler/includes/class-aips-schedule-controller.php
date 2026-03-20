@@ -121,7 +121,7 @@ class AIPS_Schedule_Controller {
                  wp_send_json_success(array(
                     'message' => __('Schedule executed successfully!', 'ai-post-scheduler'),
                     'post_ids' => array($result),
-                    'edit_url' => get_edit_post_link($result, 'raw')
+                    'edit_url' => esc_url_raw(get_edit_post_link($result, 'raw'))
                 ));
             }
             return;
@@ -204,7 +204,7 @@ class AIPS_Schedule_Controller {
             'message' => $message,
             'post_ids' => $post_ids,
             'errors' => $errors,
-            'edit_url' => !empty($post_ids) ? get_edit_post_link($post_ids[0], 'raw') : ''
+            'edit_url' => !empty($post_ids) ? esc_url_raw(get_edit_post_link($post_ids[0], 'raw')) : ''
         ));
     }
 
