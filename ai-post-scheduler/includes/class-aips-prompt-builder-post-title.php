@@ -23,21 +23,14 @@ if (!defined('ABSPATH')) {
 class AIPS_Prompt_Builder_Post_Title {
 
 	/**
-	 * @var AIPS_Prompt_Builder Base prompt builder for shared helpers.
-	 */
-	private $base_builder;
-
-	/**
 	 * @var AIPS_Template_Processor Template processor for prompt variables.
 	 */
 	private $template_processor;
 
 	/**
-	 * @param AIPS_Prompt_Builder|null     $base_builder        Optional shared/base builder.
-	 * @param AIPS_Template_Processor|null $template_processor  Optional template processor.
+	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
 	 */
-	public function __construct($base_builder = null, $template_processor = null) {
-		$this->base_builder = $base_builder ?: new AIPS_Prompt_Builder();
+	public function __construct($template_processor = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 	}
 
