@@ -26,6 +26,11 @@ class AIPS_Sources_Repository {
 	private $table_name;
 
 	/**
+	 * @var string The source group terms table name (with prefix).
+	 */
+	private $groups_table;
+
+	/**
 	 * @var wpdb WordPress database abstraction object.
 	 */
 	private $wpdb;
@@ -35,8 +40,9 @@ class AIPS_Sources_Repository {
 	 */
 	public function __construct() {
 		global $wpdb;
-		$this->wpdb       = $wpdb;
-		$this->table_name = $wpdb->prefix . 'aips_sources';
+		$this->wpdb         = $wpdb;
+		$this->table_name   = $wpdb->prefix . 'aips_sources';
+		$this->groups_table = $wpdb->prefix . 'aips_source_group_terms';
 	}
 
 	/**
@@ -209,5 +215,100 @@ class AIPS_Sources_Repository {
 		}
 
 		return $count > 0;
+	}
+
+	/**
+	 * Get the term IDs (source group IDs) associated with a source.
+	 *
+	 * @param int $source_id Source ID.
+	 * @return int[] Array of term IDs.
+	 */
+	public function get_source_term_ids($source_id) {
+		$rows = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT term_id FROM {$this->groups_table} WHERE source_id = %d",
+				$source_id
+			)
+		);
+
+		return array_map(function ($row) {
+			return (int) $row->term_id;
+		}, $rows);
+	}
+
+	/**
+	 * Set the source group term assignments for a source.
+	 *
+	 * Replaces all existing term assignments with the provided term IDs.
+	 *
+	 * @param int   $source_id Source ID.
+	 * @param int[] $term_ids  Array of term IDs (may be empty to clear all groups).
+	 * @return void
+	 */
+	public function set_source_terms($source_id, array $term_ids) {
+		// Remove all existing assignments for this source.
+		$this->wpdb->delete(
+			$this->groups_table,
+			array('source_id' => $source_id),
+			array('%d')
+		);
+
+		foreach ($term_ids as $term_id) {
+			$term_id = (int) $term_id;
+			if ($term_id > 0) {
+				$this->wpdb->insert(
+					$this->groups_table,
+					array('source_id' => $source_id, 'term_id' => $term_id),
+					array('%d', '%d')
+				);
+			}
+		}
+	}
+
+	/**
+	 * Get the active URLs of sources belonging to specific source groups.
+	 *
+	 * @param int[] $term_ids   Term IDs (source group IDs) to filter by.
+	 * @param bool  $active_only Only return active sources. Default true.
+	 * @return string[] Array of URL strings.
+	 */
+	public function get_urls_by_group_term_ids(array $term_ids, $active_only = true) {
+		if (empty($term_ids)) {
+			return array();
+		}
+
+		$placeholders = implode(',', array_fill(0, count($term_ids), '%d'));
+		$active_clause = $active_only ? 'AND s.is_active = 1' : '';
+
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$query = $this->wpdb->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT DISTINCT s.url FROM {$this->table_name} s
+			INNER JOIN {$this->groups_table} sgt ON sgt.source_id = s.id
+			WHERE sgt.term_id IN ($placeholders) $active_clause
+			ORDER BY s.created_at ASC",
+			...$term_ids
+		);
+		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+		$rows = $this->wpdb->get_results($query);
+
+		return array_map(function ($row) {
+			return $row->url;
+		}, $rows);
+	}
+
+	/**
+	 * Delete all source-group term assignments for a given source (used on source delete).
+	 *
+	 * @param int $source_id Source ID.
+	 * @return void
+	 */
+	public function delete_source_terms($source_id) {
+		$this->wpdb->delete(
+			$this->groups_table,
+			array('source_id' => $source_id),
+			array('%d')
+		);
 	}
 }

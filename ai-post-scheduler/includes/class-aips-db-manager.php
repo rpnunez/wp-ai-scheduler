@@ -20,6 +20,7 @@ class AIPS_DB_Manager {
         'aips_topic_feedback',
         'aips_notifications',
         'aips_sources',
+        'aips_source_group_terms',
     );
 
     public function __construct() {
@@ -64,8 +65,9 @@ class AIPS_DB_Manager {
         $table_author_topics = $tables['aips_author_topics'];
         $table_author_topic_logs = $tables['aips_author_topic_logs'];
         $table_topic_feedback = $tables['aips_topic_feedback'];
-        $table_notifications  = $tables['aips_notifications'];
-        $table_sources        = $tables['aips_sources'];
+        $table_notifications        = $tables['aips_notifications'];
+        $table_sources              = $tables['aips_sources'];
+        $table_source_group_terms   = $tables['aips_source_group_terms'];
 
         $sql = array();
 
@@ -126,6 +128,8 @@ class AIPS_DB_Manager {
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
             post_author bigint(20) DEFAULT NULL,
+            include_sources tinyint(1) DEFAULT 0,
+            source_group_ids text DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -241,6 +245,8 @@ class AIPS_DB_Manager {
             preferred_content_length varchar(50) DEFAULT NULL,
             language varchar(10) DEFAULT 'en',
             max_posts_per_topic int DEFAULT 1,
+            include_sources tinyint(1) DEFAULT 0,
+            source_group_ids text DEFAULT NULL,
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -329,6 +335,16 @@ class AIPS_DB_Manager {
             PRIMARY KEY  (id),
             KEY is_active (is_active),
             KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_source_group_terms (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_id bigint(20) NOT NULL,
+            term_id bigint(20) NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY source_term (source_id, term_id),
+            KEY source_id (source_id),
+            KEY term_id (term_id)
         ) $charset_collate;";
 
         return $sql;

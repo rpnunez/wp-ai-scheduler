@@ -1,7 +1,8 @@
 /**
  * Admin Sources – Trusted Sources management page JS.
  *
- * Handles add / edit / delete / toggle-active interactions for the Sources UI.
+ * Handles add / edit / delete / toggle-active interactions for the Sources UI,
+ * as well as Source Group management (create / delete taxonomy terms).
  *
  * @package AI_Post_Scheduler
  * @since 1.8.0
@@ -62,10 +63,17 @@
 			// Live search / filter.
 			$(document).on('input', '#aips-source-search', this.filterSources.bind(this));
 			$(document).on('click', '#aips-source-search-clear, #aips-source-search-clear-2', this.clearSearch.bind(this));
+
+			// Source Groups modal.
+			$(document).on('click', '#aips-manage-source-groups-btn', this.openGroupsModal.bind(this));
+			$(document).on('click', '#aips-groups-modal .aips-modal-close', this.closeGroupsModal.bind(this));
+			$(document).on('click', '#aips-groups-modal', this.onGroupsOverlayClick.bind(this));
+			$(document).on('click', '#aips-add-group-btn', this.addSourceGroup.bind(this));
+			$(document).on('click', '.aips-delete-source-group', this.deleteSourceGroup.bind(this));
 		},
 
 		// -----------------------------------------------------------------
-		// Modal helpers
+		// Modal helpers – Source
 		// -----------------------------------------------------------------
 
 		/**
@@ -101,6 +109,18 @@
 			$('#aips-source-label').val($row.data('label'));
 			$('#aips-source-description').val($row.data('description'));
 			$('#aips-source-is-active').prop('checked', parseInt($row.data('active'), 10) === 1);
+
+			// Restore group checkboxes.
+			var termIds = [];
+			try {
+				termIds = JSON.parse($row.attr('data-term-ids') || '[]');
+			} catch (err) {
+				termIds = [];
+			}
+			$('.aips-source-group-checkbox').prop('checked', false);
+			termIds.forEach(function (tid) {
+				$('.aips-source-group-checkbox[value="' + tid + '"]').prop('checked', true);
+			});
 
 			$('#aips-source-modal-title').text(aipsSourcesL10n.editSource);
 			$('#aips-source-modal').show();
@@ -140,6 +160,7 @@
 			$('#aips-source-label').val('');
 			$('#aips-source-description').val('');
 			$('#aips-source-is-active').prop('checked', true);
+			$('.aips-source-group-checkbox').prop('checked', false);
 		},
 
 		// -----------------------------------------------------------------
@@ -161,6 +182,12 @@
 				return;
 			}
 
+			// Collect checked source group term IDs.
+			var termIds = [];
+			$('.aips-source-group-checkbox:checked').each(function () {
+				termIds.push(parseInt($(this).val(), 10));
+			});
+
 			var data = {
 				action:    'aips_save_source',
 				nonce:     aipsAjax.nonce,
@@ -168,6 +195,7 @@
 				url:       url,
 				label:     $('#aips-source-label').val().trim(),
 				description: $('#aips-source-description').val().trim(),
+				term_ids:  termIds,
 			};
 
 			if ($('#aips-source-is-active').is(':checked')) {
@@ -263,6 +291,111 @@
 				self.refreshPage();
 			}).fail(function () {
 				AIPS.Utilities.showToast(aipsSourcesL10n.toggleFailed, 'error');
+			});
+		},
+
+		// -----------------------------------------------------------------
+		// Source Groups modal
+		// -----------------------------------------------------------------
+
+		/**
+		 * Open the Manage Source Groups modal.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		openGroupsModal: function (e) {
+			e.preventDefault();
+			$('#aips-new-group-name').val('');
+			$('#aips-groups-modal').show();
+		},
+
+		/**
+		 * Close the Groups modal.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		closeGroupsModal: function (e) {
+			e.preventDefault();
+			$('#aips-groups-modal').hide();
+		},
+
+		/**
+		 * Close groups modal when the user clicks on the backdrop.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		onGroupsOverlayClick: function (e) {
+			if ($(e.target).is('#aips-groups-modal')) {
+				$('#aips-groups-modal').hide();
+			}
+		},
+
+		/**
+		 * Send a request to create a new source group taxonomy term.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		addSourceGroup: function (e) {
+			e.preventDefault();
+			var name = $('#aips-new-group-name').val().trim();
+			if (!name) {
+				AIPS.Utilities.showToast(aipsSourcesL10n.groupNameRequired || 'Please enter a group name.', 'error');
+				return;
+			}
+
+			var $btn = $('#aips-add-group-btn');
+			$btn.prop('disabled', true);
+
+			$.post(aipsAjax.ajaxUrl, {
+				action: 'aips_save_source_group',
+				nonce:  aipsAjax.nonce,
+				name:   name,
+			}, function (response) {
+				$btn.prop('disabled', false);
+				if (!response.success) {
+					AIPS.Utilities.showToast(response.data.message || 'Failed to create group.', 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				// Reload so the new group shows up in all checklists.
+				window.location.reload();
+			}).fail(function () {
+				$btn.prop('disabled', false);
+				AIPS.Utilities.showToast('Failed to create group.', 'error');
+			});
+		},
+
+		/**
+		 * Confirm then delete a source group taxonomy term.
+		 *
+		 * @param {Event} e Click event.
+		 * @return {void}
+		 */
+		deleteSourceGroup: function (e) {
+			e.preventDefault();
+			var termId = parseInt($(e.currentTarget).data('term-id'), 10);
+
+			if (!confirm(aipsSourcesL10n.deleteGroupConfirm || 'Delete this Source Group? Sources in this group will not be deleted.')) {
+				return;
+			}
+
+			$.post(aipsAjax.ajaxUrl, {
+				action:  'aips_delete_source_group',
+				nonce:   aipsAjax.nonce,
+				term_id: termId,
+			}, function (response) {
+				if (!response.success) {
+					AIPS.Utilities.showToast(response.data.message || 'Failed to delete group.', 'error');
+					return;
+				}
+				AIPS.Utilities.showToast(response.data.message, 'success');
+				window.location.reload();
+			}).fail(function () {
+				AIPS.Utilities.showToast('Failed to delete group.', 'error');
 			});
 		},
 

@@ -599,15 +599,17 @@ class AIPS_Admin_Assets {
             );
 
             wp_localize_script('aips-admin-sources', 'aipsSourcesL10n', array(
-                'addNewSource'  => __('Add New Source', 'ai-post-scheduler'),
-                'editSource'    => __('Edit Source', 'ai-post-scheduler'),
-                'saveSource'    => __('Save Source', 'ai-post-scheduler'),
-                'saving'        => __('Saving…', 'ai-post-scheduler'),
-                'deleteConfirm' => __('Are you sure you want to delete this source?', 'ai-post-scheduler'),
-                'saveFailed'    => __('Failed to save source.', 'ai-post-scheduler'),
-                'deleteFailed'  => __('Failed to delete source.', 'ai-post-scheduler'),
-                'toggleFailed'  => __('Failed to update source status.', 'ai-post-scheduler'),
-                'urlRequired'   => __('A URL is required.', 'ai-post-scheduler'),
+                'addNewSource'      => __('Add New Source', 'ai-post-scheduler'),
+                'editSource'        => __('Edit Source', 'ai-post-scheduler'),
+                'saveSource'        => __('Save Source', 'ai-post-scheduler'),
+                'saving'            => __('Saving…', 'ai-post-scheduler'),
+                'deleteConfirm'     => __('Are you sure you want to delete this source?', 'ai-post-scheduler'),
+                'saveFailed'        => __('Failed to save source.', 'ai-post-scheduler'),
+                'deleteFailed'      => __('Failed to delete source.', 'ai-post-scheduler'),
+                'toggleFailed'      => __('Failed to update source status.', 'ai-post-scheduler'),
+                'urlRequired'       => __('A URL is required.', 'ai-post-scheduler'),
+                'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
+                'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
             ));
         }
     }

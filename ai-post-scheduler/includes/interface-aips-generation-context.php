@@ -152,6 +152,20 @@ interface AIPS_Generation_Context {
 	public function get_creation_method();
 
 	/**
+	 * Check whether sources should be injected into the content prompt.
+	 *
+	 * @return bool True if sources should be included.
+	 */
+	public function get_include_sources();
+
+	/**
+	 * Get the source group term IDs whose sources should be injected.
+	 *
+	 * @return int[] Array of term IDs. Empty array means all or none depending on include_sources.
+	 */
+	public function get_source_group_ids();
+
+	/**
 	 * Get all context data as an array for serialization/storage.
 	 *
 	 * @return array Context data array.

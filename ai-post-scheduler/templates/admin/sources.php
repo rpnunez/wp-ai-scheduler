@@ -4,7 +4,7 @@
  *
  * Displays the Trusted Sources management UI where admins can add, edit,
  * delete, and toggle URLs that the AI is encouraged to read from and cite
- * when generating post content.
+ * when generating post content. Also provides Source Groups management.
  *
  * @package AI_Post_Scheduler
  * @since 1.8.0
@@ -18,6 +18,15 @@ if (!defined('ABSPATH')) {
 if (!isset($sources) || !is_array($sources)) {
 	$sources = array();
 }
+
+// Load existing source groups (taxonomy terms).
+$source_groups = get_terms(array(
+	'taxonomy'   => 'aips_source_group',
+	'hide_empty' => false,
+));
+if (is_wp_error($source_groups)) {
+	$source_groups = array();
+}
 ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
@@ -27,9 +36,13 @@ if (!isset($sources) || !is_array($sources)) {
 			<div class="aips-page-header-top">
 				<div>
 					<h1 class="aips-page-title"><?php esc_html_e('Trusted Sources', 'ai-post-scheduler'); ?></h1>
-					<p class="aips-page-description"><?php esc_html_e('Add URLs that the AI should reference and cite when generating post content. Active sources are injected into every content generation prompt.', 'ai-post-scheduler'); ?></p>
+					<p class="aips-page-description"><?php esc_html_e('Add URLs that the AI should reference and cite when generating post content. Assign Sources to Source Groups to allow Authors and Templates to selectively include them in their prompts.', 'ai-post-scheduler'); ?></p>
 				</div>
 				<div class="aips-page-actions">
+					<button type="button" class="aips-btn aips-btn-secondary" id="aips-manage-source-groups-btn">
+						<span class="dashicons dashicons-category"></span>
+						<?php esc_html_e('Manage Groups', 'ai-post-scheduler'); ?>
+					</button>
 					<button type="button" class="aips-btn aips-btn-primary" id="aips-add-source-btn">
 						<span class="dashicons dashicons-plus-alt2"></span>
 						<?php esc_html_e('Add Source', 'ai-post-scheduler'); ?>
@@ -55,18 +68,29 @@ if (!isset($sources) || !is_array($sources)) {
 						<tr>
 							<th class="column-label"><?php esc_html_e('Label', 'ai-post-scheduler'); ?></th>
 							<th class="column-url"><?php esc_html_e('URL', 'ai-post-scheduler'); ?></th>
-							<th class="column-description"><?php esc_html_e('Description', 'ai-post-scheduler'); ?></th>
+							<th class="column-groups"><?php esc_html_e('Groups', 'ai-post-scheduler'); ?></th>
 							<th class="column-status"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
 							<th class="column-actions"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
 						</tr>
 					</thead>
 					<tbody>
-						<?php foreach ($sources as $source): ?>
+						<?php foreach ($sources as $source):
+							$repo       = new AIPS_Sources_Repository();
+							$term_ids   = $repo->get_source_term_ids((int) $source->id);
+							$group_names = array();
+							foreach ($term_ids as $tid) {
+								$term = get_term($tid, 'aips_source_group');
+								if ($term && !is_wp_error($term)) {
+									$group_names[] = $term->name;
+								}
+							}
+						?>
 						<tr data-source-id="<?php echo esc_attr($source->id); ?>"
 							data-url="<?php echo esc_attr($source->url); ?>"
 							data-label="<?php echo esc_attr($source->label); ?>"
 							data-description="<?php echo esc_attr($source->description); ?>"
-							data-active="<?php echo esc_attr($source->is_active); ?>">
+							data-active="<?php echo esc_attr($source->is_active); ?>"
+							data-term-ids="<?php echo esc_attr(wp_json_encode($term_ids)); ?>">
 							<td class="column-label cell-primary">
 								<?php echo esc_html(!empty($source->label) ? $source->label : '—'); ?>
 							</td>
@@ -75,8 +99,14 @@ if (!isset($sources) || !is_array($sources)) {
 									<?php echo esc_html($source->url); ?>
 								</a>
 							</td>
-							<td class="column-description">
-								<?php echo esc_html(!empty($source->description) ? $source->description : '—'); ?>
+							<td class="column-groups">
+								<?php if (!empty($group_names)): ?>
+									<?php foreach ($group_names as $gname): ?>
+										<span class="aips-badge aips-badge-neutral" style="margin:2px 2px 2px 0;"><?php echo esc_html($gname); ?></span>
+									<?php endforeach; ?>
+								<?php else: ?>
+									<span class="cell-meta">—</span>
+								<?php endif; ?>
 							</td>
 							<td class="column-status">
 								<?php if ($source->is_active): ?>
@@ -148,7 +178,7 @@ if (!isset($sources) || !is_array($sources)) {
 			<div class="aips-empty-state" id="aips-sources-empty">
 				<span class="dashicons dashicons-admin-links" aria-hidden="true"></span>
 				<h3><?php esc_html_e('No Trusted Sources Yet', 'ai-post-scheduler'); ?></h3>
-				<p><?php esc_html_e('Add URLs that the AI should reference when generating post content. The AI will be instructed to read from and cite these sources.', 'ai-post-scheduler'); ?></p>
+				<p><?php esc_html_e('Add URLs that the AI should reference when generating post content. Assign them to Source Groups so Authors and Templates can selectively include them in their prompts.', 'ai-post-scheduler'); ?></p>
 				<button type="button" class="aips-btn aips-btn-primary" id="aips-add-source-empty-btn">
 					<?php esc_html_e('Add Your First Source', 'ai-post-scheduler'); ?>
 				</button>
@@ -193,10 +223,33 @@ if (!isset($sources) || !is_array($sources)) {
 						placeholder="<?php esc_attr_e('Optional notes about why this source is trusted.', 'ai-post-scheduler'); ?>"></textarea>
 				</div>
 
+				<!-- Source Groups -->
+				<div class="aips-form-row">
+					<label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
+					<div id="aips-source-groups-checkboxes" class="aips-checkbox-group">
+						<?php if (!empty($source_groups)): ?>
+							<?php foreach ($source_groups as $group): ?>
+								<label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+									<input type="checkbox"
+										name="term_ids[]"
+										class="aips-source-group-checkbox"
+										value="<?php echo esc_attr($group->term_id); ?>">
+									<?php echo esc_html($group->name); ?>
+								</label>
+							<?php endforeach; ?>
+						<?php else: ?>
+							<p class="description" id="aips-no-groups-msg">
+								<?php esc_html_e('No Source Groups exist yet. Create groups using the "Manage Groups" button.', 'ai-post-scheduler'); ?>
+							</p>
+						<?php endif; ?>
+					</div>
+					<p class="description"><?php esc_html_e('Assign this source to one or more Source Groups. Authors and Templates can then choose which groups to include in their prompts.', 'ai-post-scheduler'); ?></p>
+				</div>
+
 				<div class="aips-form-row">
 					<label class="aips-checkbox-label">
 						<input type="checkbox" id="aips-source-is-active" name="is_active" value="1" checked>
-						<?php esc_html_e('Active (include in AI prompts)', 'ai-post-scheduler'); ?>
+						<?php esc_html_e('Active', 'ai-post-scheduler'); ?>
 					</label>
 				</div>
 			</form>
@@ -206,6 +259,60 @@ if (!isset($sources) || !is_array($sources)) {
 			<button type="button" class="button button-primary" id="aips-save-source-btn">
 				<?php esc_html_e('Save Source', 'ai-post-scheduler'); ?>
 			</button>
+		</div>
+	</div>
+</div>
+
+<!-- Manage Source Groups Modal -->
+<div id="aips-groups-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-groups-modal-title">
+	<div class="aips-modal-content">
+		<div class="aips-modal-header">
+			<h2 id="aips-groups-modal-title"><?php esc_html_e('Manage Source Groups', 'ai-post-scheduler'); ?></h2>
+			<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body">
+			<p class="description" style="margin-bottom:16px;"><?php esc_html_e('Source Groups let you categorize sources. Authors and Templates can then specify which groups to include in their AI prompts.', 'ai-post-scheduler'); ?></p>
+
+			<!-- Existing groups list -->
+			<div id="aips-groups-list" style="margin-bottom:20px;">
+				<?php if (!empty($source_groups)): ?>
+					<table class="aips-table" style="width:100%;">
+						<thead><tr>
+							<th><?php esc_html_e('Group Name', 'ai-post-scheduler'); ?></th>
+							<th style="width:80px;"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+						</tr></thead>
+						<tbody id="aips-groups-table-body">
+							<?php foreach ($source_groups as $group): ?>
+								<tr data-term-id="<?php echo esc_attr($group->term_id); ?>">
+									<td><?php echo esc_html($group->name); ?></td>
+									<td>
+										<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-source-group"
+											data-term-id="<?php echo esc_attr($group->term_id); ?>"
+											title="<?php esc_attr_e('Delete group', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-trash"></span>
+										</button>
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php else: ?>
+					<p id="aips-groups-empty-msg" class="description"><?php esc_html_e('No Source Groups yet.', 'ai-post-scheduler'); ?></p>
+				<?php endif; ?>
+			</div>
+
+			<!-- Add new group inline -->
+			<div style="display:flex; gap:8px; align-items:center;">
+				<input type="text" id="aips-new-group-name" class="regular-text"
+					placeholder="<?php esc_attr_e('New group name…', 'ai-post-scheduler'); ?>" style="flex:1;">
+				<button type="button" class="aips-btn aips-btn-primary" id="aips-add-group-btn">
+					<span class="dashicons dashicons-plus-alt2"></span>
+					<?php esc_html_e('Add Group', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+		</div>
+		<div class="aips-modal-footer">
+			<button type="button" class="button aips-modal-close"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
 		</div>
 	</div>
 </div>

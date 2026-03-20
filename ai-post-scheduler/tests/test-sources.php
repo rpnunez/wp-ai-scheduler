@@ -23,6 +23,11 @@ class Test_AIPS_Sources extends WP_UnitTestCase {
 		$table = $wpdb->prefix . 'aips_sources';
 		$wpdb->query( "DELETE FROM $table" );
 
+		$groups_table = $wpdb->prefix . 'aips_source_group_terms';
+		if ( $wpdb->get_var( "SHOW TABLES LIKE '$groups_table'" ) === $groups_table ) {
+			$wpdb->query( "DELETE FROM $groups_table" );
+		}
+
 		// Clean up any content strategy options set during tests.
 		foreach ( array_keys( AIPS_Settings::get_content_strategy_options() ) as $key ) {
 			delete_option( $key );
@@ -147,43 +152,20 @@ class Test_AIPS_Sources extends WP_UnitTestCase {
 	}
 
 	// ------------------------------------------------------------------
-	// Prompt builder integration
+	// Prompt builder integration — build_sources_block
 	// ------------------------------------------------------------------
 
 	/** @test */
-	public function test_build_site_context_block_includes_trusted_sources() {
+	public function test_build_site_context_block_no_longer_includes_sources() {
 		update_option( 'aips_site_niche', 'Tech Blog' );
 		$this->repo->create( array( 'url' => 'https://trusted.example.com', 'is_active' => 1 ) );
 
 		$builder = new AIPS_Prompt_Builder( null, null, $this->repo );
 		$block   = $builder->build_site_context_block();
 
-		$this->assertStringContainsString( 'Trusted sources', $block );
-		$this->assertStringContainsString( 'https://trusted.example.com', $block );
-	}
-
-	/** @test */
-	public function test_build_site_context_block_omits_inactive_sources() {
-		update_option( 'aips_site_niche', 'Tech Blog' );
-		$this->repo->create( array( 'url' => 'https://inactive.example.com', 'is_active' => 0 ) );
-
-		$builder = new AIPS_Prompt_Builder( null, null, $this->repo );
-		$block   = $builder->build_site_context_block();
-
-		$this->assertStringNotContainsString( 'https://inactive.example.com', $block );
-	}
-
-	/** @test */
-	public function test_build_site_context_block_includes_multiple_sources() {
-		update_option( 'aips_site_niche', 'Health' );
-		$this->repo->create( array( 'url' => 'https://source-one.example.com', 'is_active' => 1 ) );
-		$this->repo->create( array( 'url' => 'https://source-two.example.com', 'is_active' => 1 ) );
-
-		$builder = new AIPS_Prompt_Builder( null, null, $this->repo );
-		$block   = $builder->build_site_context_block();
-
-		$this->assertStringContainsString( 'https://source-one.example.com', $block );
-		$this->assertStringContainsString( 'https://source-two.example.com', $block );
+		// Sources are no longer automatically injected into the site context block.
+		$this->assertStringNotContainsString( 'Trusted sources', $block );
+		$this->assertStringNotContainsString( 'https://trusted.example.com', $block );
 	}
 
 	/** @test */
@@ -195,5 +177,73 @@ class Test_AIPS_Sources extends WP_UnitTestCase {
 		$block   = $builder->build_site_context_block();
 
 		$this->assertStringNotContainsString( 'Trusted sources', $block );
+	}
+
+	/** @test */
+	public function test_build_sources_block_returns_empty_for_empty_term_ids() {
+		$builder = new AIPS_Prompt_Builder( null, null, $this->repo );
+		$this->assertSame( '', $builder->build_sources_block( array() ) );
+	}
+
+	/** @test */
+	public function test_set_and_get_source_term_ids() {
+		global $wpdb;
+		AIPS_DB_Manager::install_tables();
+
+		$source_id = $this->repo->create( array( 'url' => 'https://grouped.example.com', 'is_active' => 1 ) );
+
+		$this->repo->set_source_terms( $source_id, array( 5, 7 ) );
+		$ids = $this->repo->get_source_term_ids( $source_id );
+
+		$this->assertContains( 5, $ids );
+		$this->assertContains( 7, $ids );
+		$this->assertCount( 2, $ids );
+	}
+
+	/** @test */
+	public function test_set_source_terms_replaces_existing() {
+		global $wpdb;
+		AIPS_DB_Manager::install_tables();
+
+		$source_id = $this->repo->create( array( 'url' => 'https://replace.example.com', 'is_active' => 1 ) );
+
+		$this->repo->set_source_terms( $source_id, array( 1, 2, 3 ) );
+		$this->repo->set_source_terms( $source_id, array( 9 ) );
+
+		$ids = $this->repo->get_source_term_ids( $source_id );
+		$this->assertCount( 1, $ids );
+		$this->assertContains( 9, $ids );
+	}
+
+	/** @test */
+	public function test_get_urls_by_group_term_ids_returns_correct_urls() {
+		global $wpdb;
+		AIPS_DB_Manager::install_tables();
+
+		$id_a = $this->repo->create( array( 'url' => 'https://group-a.example.com', 'is_active' => 1 ) );
+		$id_b = $this->repo->create( array( 'url' => 'https://group-b.example.com', 'is_active' => 1 ) );
+
+		$this->repo->set_source_terms( $id_a, array( 10 ) );
+		$this->repo->set_source_terms( $id_b, array( 20 ) );
+
+		$urls = $this->repo->get_urls_by_group_term_ids( array( 10 ) );
+		$this->assertContains( 'https://group-a.example.com', $urls );
+		$this->assertNotContains( 'https://group-b.example.com', $urls );
+	}
+
+	/** @test */
+	public function test_get_urls_by_group_term_ids_excludes_inactive() {
+		global $wpdb;
+		AIPS_DB_Manager::install_tables();
+
+		$id_active   = $this->repo->create( array( 'url' => 'https://active-group.example.com', 'is_active' => 1 ) );
+		$id_inactive = $this->repo->create( array( 'url' => 'https://inactive-group.example.com', 'is_active' => 0 ) );
+
+		$this->repo->set_source_terms( $id_active,   array( 30 ) );
+		$this->repo->set_source_terms( $id_inactive, array( 30 ) );
+
+		$urls = $this->repo->get_urls_by_group_term_ids( array( 30 ) );
+		$this->assertContains( 'https://active-group.example.com', $urls );
+		$this->assertNotContains( 'https://inactive-group.example.com', $urls );
 	}
 }

@@ -541,6 +541,48 @@ $site_ctx = AIPS_Site_Context::get();
                 </label>
             </div>
 
+            <?php
+            $author_source_groups = get_terms(array(
+                'taxonomy'   => 'aips_source_group',
+                'hide_empty' => false,
+            ));
+            if (is_wp_error($author_source_groups)) {
+                $author_source_groups = array();
+            }
+            ?>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="author_include_sources" name="include_sources" value="1">
+                    <?php esc_html_e('Include Sources?', 'ai-post-scheduler'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the topic generation prompt for this author.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div id="author-source-groups-selector" style="display:none;">
+                <div class="form-group">
+                    <label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
+                    <?php if (!empty($author_source_groups)): ?>
+                        <div class="aips-checkbox-group">
+                            <?php foreach ($author_source_groups as $asg): ?>
+                                <label style="display:block; margin-bottom:4px;">
+                                    <input type="checkbox"
+                                        name="source_group_ids[]"
+                                        class="aips-author-source-group-cb"
+                                        value="<?php echo esc_attr($asg->term_id); ?>">
+                                    <?php echo esc_html($asg->name); ?>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                        <p class="description"><?php esc_html_e('Select one or more Source Groups whose active sources will be included in the topic generation prompt.', 'ai-post-scheduler'); ?></p>
+                    <?php else: ?>
+                        <p class="description">
+                            <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
+                            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <div class="form-actions">
                 <button type="submit" class="button button-primary"><?php esc_html_e('Save Author', 'ai-post-scheduler'); ?></button>
                 <button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>

@@ -16,7 +16,8 @@ if (!defined('ABSPATH')) {
  * Class AIPS_Sources_Controller
  *
  * Registers wp_ajax_* actions for listing, saving, deleting, and toggling
- * trusted sources. All SQL lives in AIPS_Sources_Repository.
+ * trusted sources. Also manages Source Group (taxonomy) CRUD endpoints.
+ * All SQL lives in AIPS_Sources_Repository.
  */
 class AIPS_Sources_Controller {
 
@@ -37,6 +38,10 @@ class AIPS_Sources_Controller {
 		add_action('wp_ajax_aips_save_source', array($this, 'ajax_save_source'));
 		add_action('wp_ajax_aips_delete_source', array($this, 'ajax_delete_source'));
 		add_action('wp_ajax_aips_toggle_source_active', array($this, 'ajax_toggle_source_active'));
+		// Source Group (taxonomy) endpoints.
+		add_action('wp_ajax_aips_get_source_groups', array($this, 'ajax_get_source_groups'));
+		add_action('wp_ajax_aips_save_source_group', array($this, 'ajax_save_source_group'));
+		add_action('wp_ajax_aips_delete_source_group', array($this, 'ajax_delete_source_group'));
 	}
 
 	/**
@@ -52,13 +57,19 @@ class AIPS_Sources_Controller {
 		}
 
 		$sources = $this->repo->get_all(false);
+
+		// Attach term IDs to each source.
+		foreach ($sources as $source) {
+			$source->term_ids = $this->repo->get_source_term_ids((int) $source->id);
+		}
+
 		wp_send_json_success(array('sources' => $sources));
 	}
 
 	/**
 	 * Create or update a source.
 	 *
-	 * Expected POST params: source_id (0 = create), url, label, description, is_active.
+	 * Expected POST params: source_id (0 = create), url, label, description, is_active, term_ids[].
 	 *
 	 * @return void Sends JSON response.
 	 */
@@ -74,6 +85,9 @@ class AIPS_Sources_Controller {
 		$label       = isset($_POST['label']) ? sanitize_text_field(wp_unslash($_POST['label'])) : '';
 		$description = isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '';
 		$is_active   = isset($_POST['is_active']) ? 1 : 0;
+		$term_ids    = isset($_POST['term_ids']) && is_array($_POST['term_ids'])
+			? array_map('absint', $_POST['term_ids'])
+			: array();
 
 		if (empty($url)) {
 			wp_send_json_error(array('message' => __('A URL is required.', 'ai-post-scheduler')));
@@ -101,7 +115,10 @@ class AIPS_Sources_Controller {
 				wp_send_json_error(array('message' => __('Failed to update source.', 'ai-post-scheduler')));
 			}
 
-			$source = $this->repo->get_by_id($id);
+			$this->repo->set_source_terms($id, $term_ids);
+
+			$source          = $this->repo->get_by_id($id);
+			$source->term_ids = $this->repo->get_source_term_ids($id);
 			wp_send_json_success(array(
 				'message'   => __('Source updated.', 'ai-post-scheduler'),
 				'source_id' => $id,
@@ -117,7 +134,10 @@ class AIPS_Sources_Controller {
 				wp_send_json_error(array('message' => __('Failed to create source.', 'ai-post-scheduler')));
 			}
 
-			$source = $this->repo->get_by_id($new_id);
+			$this->repo->set_source_terms($new_id, $term_ids);
+
+			$source          = $this->repo->get_by_id($new_id);
+			$source->term_ids = $this->repo->get_source_term_ids($new_id);
 			wp_send_json_success(array(
 				'message'   => __('Source added.', 'ai-post-scheduler'),
 				'source_id' => $new_id,
@@ -144,6 +164,9 @@ class AIPS_Sources_Controller {
 		if (!$id) {
 			wp_send_json_error(array('message' => __('Invalid source ID.', 'ai-post-scheduler')));
 		}
+
+		// Clean up group term assignments first.
+		$this->repo->delete_source_terms($id);
 
 		$result = $this->repo->delete($id);
 		if (!$result) {
@@ -180,5 +203,107 @@ class AIPS_Sources_Controller {
 		}
 
 		wp_send_json_success(array('message' => __('Source status updated.', 'ai-post-scheduler')));
+	}
+
+	/**
+	 * Return all source group taxonomy terms.
+	 *
+	 * @return void Sends JSON response.
+	 */
+	public function ajax_get_source_groups() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$terms = get_terms(array(
+			'taxonomy'   => 'aips_source_group',
+			'hide_empty' => false,
+		));
+
+		if (is_wp_error($terms)) {
+			wp_send_json_error(array('message' => $terms->get_error_message()));
+		}
+
+		wp_send_json_success(array('groups' => $terms));
+	}
+
+	/**
+	 * Create or update a source group term.
+	 *
+	 * Expected POST params: term_id (0 = create), name, description.
+	 *
+	 * @return void Sends JSON response.
+	 */
+	public function ajax_save_source_group() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$term_id     = isset($_POST['term_id']) ? absint($_POST['term_id']) : 0;
+		$name        = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
+		$description = isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '';
+
+		if (empty($name)) {
+			wp_send_json_error(array('message' => __('A group name is required.', 'ai-post-scheduler')));
+		}
+
+		if ($term_id) {
+			$result = wp_update_term($term_id, 'aips_source_group', array(
+				'name'        => $name,
+				'description' => $description,
+			));
+		} else {
+			$result = wp_insert_term($name, 'aips_source_group', array(
+				'description' => $description,
+			));
+		}
+
+		if (is_wp_error($result)) {
+			wp_send_json_error(array('message' => $result->get_error_message()));
+		}
+
+		$saved_id = $term_id ?: $result['term_id'];
+		$term     = get_term($saved_id, 'aips_source_group');
+
+		wp_send_json_success(array(
+			'message' => $term_id ? __('Source group updated.', 'ai-post-scheduler') : __('Source group created.', 'ai-post-scheduler'),
+			'group'   => $term,
+		));
+	}
+
+	/**
+	 * Delete a source group term.
+	 *
+	 * Expected POST param: term_id.
+	 *
+	 * @return void Sends JSON response.
+	 */
+	public function ajax_delete_source_group() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$term_id = isset($_POST['term_id']) ? absint($_POST['term_id']) : 0;
+		if (!$term_id) {
+			wp_send_json_error(array('message' => __('Invalid group ID.', 'ai-post-scheduler')));
+		}
+
+		$result = wp_delete_term($term_id, 'aips_source_group');
+
+		if (is_wp_error($result)) {
+			wp_send_json_error(array('message' => $result->get_error_message()));
+		}
+
+		if (!$result) {
+			wp_send_json_error(array('message' => __('Failed to delete source group.', 'ai-post-scheduler')));
+		}
+
+		wp_send_json_success(array('message' => __('Source group deleted.', 'ai-post-scheduler')));
 	}
 }
