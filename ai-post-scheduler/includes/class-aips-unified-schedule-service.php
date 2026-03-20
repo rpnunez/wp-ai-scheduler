@@ -368,7 +368,7 @@ class AIPS_Unified_Schedule_Service {
 					__('%s – Post Generation', 'ai-post-scheduler'),
 					$author->name
 				),
-				'subtitle'    => esc_html($author->field_niche),
+				'subtitle'    => $author->field_niche,
 				'cron_hook'   => 'aips_generate_author_posts',
 				'frequency'   => $author->post_generation_frequency,
 				'last_run'    => $author->post_generation_last_run,
