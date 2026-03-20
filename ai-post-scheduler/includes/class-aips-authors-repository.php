@@ -124,6 +124,7 @@ class AIPS_Authors_Repository {
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} 
 			WHERE is_active = 1 
+			AND (topic_generation_is_active IS NULL OR topic_generation_is_active = 1)
 			AND topic_generation_next_run IS NOT NULL 
 			AND topic_generation_next_run <= %s
 			ORDER BY topic_generation_next_run ASC",
@@ -141,11 +142,46 @@ class AIPS_Authors_Repository {
 		return $this->wpdb->get_results($this->wpdb->prepare(
 			"SELECT * FROM {$this->table_name} 
 			WHERE is_active = 1 
+			AND (post_generation_is_active IS NULL OR post_generation_is_active = 1)
 			AND post_generation_next_run IS NOT NULL 
 			AND post_generation_next_run <= %s
 			ORDER BY post_generation_next_run ASC",
 			$current_time
 		));
+	}
+
+	/**
+	 * Set the active status for an author's topic generation schedule.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $is_active 1 to enable, 0 to disable.
+	 * @return int|false Rows updated or false on failure.
+	 */
+	public function update_topic_generation_active($author_id, $is_active) {
+		return $this->wpdb->update(
+			$this->table_name,
+			array('topic_generation_is_active' => (int) $is_active ? 1 : 0),
+			array('id' => absint($author_id)),
+			array('%d'),
+			array('%d')
+		);
+	}
+
+	/**
+	 * Set the active status for an author's post generation schedule.
+	 *
+	 * @param int $author_id Author ID.
+	 * @param int $is_active 1 to enable, 0 to disable.
+	 * @return int|false Rows updated or false on failure.
+	 */
+	public function update_post_generation_active($author_id, $is_active) {
+		return $this->wpdb->update(
+			$this->table_name,
+			array('post_generation_is_active' => (int) $is_active ? 1 : 0),
+			array('id' => absint($author_id)),
+			array('%d'),
+			array('%d')
+		);
 	}
 	
 	/**
