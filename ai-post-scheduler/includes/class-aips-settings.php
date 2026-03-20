@@ -22,8 +22,6 @@ class AIPS_Settings {
         add_action('admin_menu', array($this, 'add_menu_pages'));
         add_action('admin_init', array($this, 'register_settings'));
         add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
-        add_action('wp_ajax_aips_get_activity', array($this, 'ajax_get_activity'));
-        add_action('wp_ajax_aips_get_activity_detail', array($this, 'ajax_get_activity_detail'));
         add_filter('parent_file', array($this, 'fix_author_topics_parent_file'));
         add_filter('submenu_file', array($this, 'fix_author_topics_submenu_file'));
     }
@@ -640,6 +638,141 @@ class AIPS_Settings {
                 'default'           => '',
             ),
         );
+
+        // -----------------------------------------------------------------------
+        // Site-wide Content Strategy settings
+        //
+        // Options are defined via self::get_content_strategy_options(), so the
+        // full list is maintained in ONE place. Both settings registration here
+        // and AIPS_Site_Context::get() read from that shared list — no duplicates.
+        // -----------------------------------------------------------------------
+        $cs_options = self::get_content_strategy_options();
+        foreach ($cs_options as $option_key => $meta) {
+            register_setting('aips_settings', $option_key, array(
+                'sanitize_callback' => $meta['sanitize_callback'],
+                'default'           => $meta['default'],
+            ));
+        }
+
+        add_settings_section(
+            'aips_content_strategy_section',
+            __('Site Content Strategy', 'ai-post-scheduler'),
+            array($this, 'content_strategy_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_site_niche',
+            __('Site Niche / Primary Topic', 'ai-post-scheduler'),
+            array($this, 'site_niche_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_target_audience',
+            __('Target Audience', 'ai-post-scheduler'),
+            array($this, 'site_target_audience_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_content_goals',
+            __('Content Goals', 'ai-post-scheduler'),
+            array($this, 'site_content_goals_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_brand_voice',
+            __('Brand Voice / Tone', 'ai-post-scheduler'),
+            array($this, 'site_brand_voice_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_content_language',
+            __('Content Language', 'ai-post-scheduler'),
+            array($this, 'site_content_language_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_content_guidelines',
+            __('Content Guidelines', 'ai-post-scheduler'),
+            array($this, 'site_content_guidelines_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_excluded_topics',
+            __('Excluded Topics (site-wide)', 'ai-post-scheduler'),
+            array($this, 'site_excluded_topics_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+    }
+
+    /**
+     * Return the canonical registry of site-wide content strategy options.
+     *
+     * This is the single source of truth for every option that belongs to the
+     * "Site Content Strategy" settings group. Adding a new option here
+     * automatically makes it available to AIPS_Site_Context::get() and
+     * AIPS_Prompt_Builder::build_site_context_block() without touching those
+     * classes.
+     *
+     * Each entry has:
+     *   - 'key'               Short key used by AIPS_Site_Context (e.g. 'niche')
+     *   - 'sanitize_callback' Callable used to sanitize the option value on save
+     *   - 'default'           Default value returned when the option is not set
+     *
+     * @return array<string, array{key: string, sanitize_callback: callable, default: mixed}>
+     *     Associative array keyed by the full WordPress option name.
+     */
+    public static function get_content_strategy_options() {
+        return array(
+            'aips_site_niche' => array(
+                'key'               => 'niche',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            ),
+            'aips_site_target_audience' => array(
+                'key'               => 'target_audience',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            ),
+            'aips_site_content_goals' => array(
+                'key'               => 'content_goals',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => '',
+            ),
+            'aips_site_brand_voice' => array(
+                'key'               => 'brand_voice',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            ),
+            'aips_site_content_language' => array(
+                'key'               => 'content_language',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => 'en',
+            ),
+            'aips_site_content_guidelines' => array(
+                'key'               => 'content_guidelines',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => '',
+            ),
+            'aips_site_excluded_topics' => array(
+                'key'               => 'excluded_topics',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => '',
+            ),
+        );
     }
         
     /**
@@ -944,6 +1077,135 @@ class AIPS_Settings {
         <p class="description">
             <?php esc_html_e('Minimum similarity score (0.1–1.0) used to flag new topics as potential duplicates during generation. A higher value requires topics to be more similar before being flagged. Default: 0.8.', 'ai-post-scheduler'); ?>
         </p>
+        <?php
+    }
+
+    // -------------------------------------------------------------------------
+    // Site Content Strategy field callbacks
+    // -------------------------------------------------------------------------
+
+    /**
+     * Render the description for the site content strategy settings section.
+     *
+     * @return void
+     */
+    public function content_strategy_section_callback() {
+        echo '<p>' . esc_html__('Define the overall content identity of your website. These settings are shared across Author Suggestions, topic generation, and post generation to ensure consistent, on-brand output.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the Site Niche / Primary Topic field.
+     *
+     * @return void
+     */
+    public function site_niche_field_callback() {
+        $value = get_option('aips_site_niche', '');
+        ?>
+        <input type="text" name="aips_site_niche" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Personal Finance, WordPress Development, Fitness', 'ai-post-scheduler'); ?>">
+        <p class="description"><?php esc_html_e('The main topic or industry your website covers. Used as context for Author Suggestions and AI generation.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Target Audience field.
+     *
+     * @return void
+     */
+    public function site_target_audience_field_callback() {
+        $value = get_option('aips_site_target_audience', '');
+        ?>
+        <input type="text" name="aips_site_target_audience" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Beginner developers, Small business owners, Parents', 'ai-post-scheduler'); ?>">
+        <p class="description"><?php esc_html_e('Who your content is written for. Helps the AI tailor the language and depth of generated topics and posts.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Content Goals field.
+     *
+     * @return void
+     */
+    public function site_content_goals_field_callback() {
+        $value = get_option('aips_site_content_goals', '');
+        ?>
+        <textarea name="aips_site_content_goals" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., Educate readers, Drive product sign-ups, Build a community, Rank on search engines', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
+        <p class="description"><?php esc_html_e('What you want your content to achieve. Informs the angle and call-to-action emphasis in generated content.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Brand Voice / Tone field.
+     *
+     * @return void
+     */
+    public function site_brand_voice_field_callback() {
+        $value = get_option('aips_site_brand_voice', '');
+        ?>
+        <input type="text" name="aips_site_brand_voice" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php esc_attr_e('e.g., Friendly and approachable, Authoritative, Conversational', 'ai-post-scheduler'); ?>">
+        <p class="description"><?php esc_html_e('The overall voice and tone of your brand. Applied as a default across all authors unless overridden per-author.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Content Language field.
+     *
+     * @return void
+     */
+    public function site_content_language_field_callback() {
+        $value = get_option('aips_site_content_language', 'en');
+        $languages = array(
+            'en'    => __('English', 'ai-post-scheduler'),
+            'es'    => __('Spanish', 'ai-post-scheduler'),
+            'fr'    => __('French', 'ai-post-scheduler'),
+            'de'    => __('German', 'ai-post-scheduler'),
+            'it'    => __('Italian', 'ai-post-scheduler'),
+            'pt'    => __('Portuguese', 'ai-post-scheduler'),
+            'nl'    => __('Dutch', 'ai-post-scheduler'),
+            'pl'    => __('Polish', 'ai-post-scheduler'),
+            'ru'    => __('Russian', 'ai-post-scheduler'),
+            'ja'    => __('Japanese', 'ai-post-scheduler'),
+            'ko'    => __('Korean', 'ai-post-scheduler'),
+            'zh'    => __('Chinese (Simplified)', 'ai-post-scheduler'),
+            'ar'    => __('Arabic', 'ai-post-scheduler'),
+            'hi'    => __('Hindi', 'ai-post-scheduler'),
+            'tr'    => __('Turkish', 'ai-post-scheduler'),
+            'sv'    => __('Swedish', 'ai-post-scheduler'),
+            'da'    => __('Danish', 'ai-post-scheduler'),
+            'fi'    => __('Finnish', 'ai-post-scheduler'),
+            'nb'    => __('Norwegian', 'ai-post-scheduler'),
+        );
+        ?>
+        <select name="aips_site_content_language">
+            <?php foreach ($languages as $code => $label) : ?>
+                <option value="<?php echo esc_attr($code); ?>" <?php selected($value, $code); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e('The primary language for all AI-generated content. Individual authors can override this.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Content Guidelines field.
+     *
+     * @return void
+     */
+    public function site_content_guidelines_field_callback() {
+        $value = get_option('aips_site_content_guidelines', '');
+        ?>
+        <textarea name="aips_site_content_guidelines" class="large-text" rows="4" placeholder="<?php esc_attr_e('e.g., Always include at least one actionable tip per post. Avoid profanity. Cite sources where possible.', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
+        <p class="description"><?php esc_html_e('General rules and guidelines for all generated content. Included in every generation prompt as hard constraints.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Excluded Topics (site-wide) field.
+     *
+     * @return void
+     */
+    public function site_excluded_topics_field_callback() {
+        $value = get_option('aips_site_excluded_topics', '');
+        ?>
+        <textarea name="aips_site_excluded_topics" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., competitor brand names, controversial political topics, adult content', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
+        <p class="description"><?php esc_html_e('Topics or subjects that should never appear in any generated post or topic suggestion. Applied globally.', 'ai-post-scheduler'); ?></p>
         <?php
     }
 
@@ -1326,41 +1588,6 @@ class AIPS_Settings {
     }
     
     /**
-     * Render the Activity page.
-     *
-     * Includes the activity template file.
-     *
-     * @return void
-     */
-    public function render_activity_page() {
-        // Use History Service to get activity feed
-        $history_service = new AIPS_History_Service();
-        
-        $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
-        $per_page = 50;
-        $offset = ($current_page - 1) * $per_page;
-        
-        $event_type = isset($_GET['event_type']) ? sanitize_text_field($_GET['event_type']) : '';
-        $event_status = isset($_GET['event_status']) ? sanitize_text_field($_GET['event_status']) : '';
-        $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-        
-        $filters = array();
-        if ($event_type) {
-            $filters['event_type'] = $event_type;
-        }
-        if ($event_status) {
-            $filters['event_status'] = $event_status;
-        }
-        if ($search_query) {
-            $filters['search'] = $search_query;
-        }
-        
-        $activities = $history_service->get_activity_feed($per_page, $offset, $filters);
-        
-        include AIPS_PLUGIN_DIR . 'templates/admin/activity.php';
-    }
-    
-    /**
      * Render the Generated Posts page.
      *
      * @return void
@@ -1488,124 +1715,5 @@ class AIPS_Settings {
             // Even though the prompt is hardcoded ("Say Hello World"), the AI response should be treated as untrusted.
             wp_send_json_success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . esc_html($result)));
         }
-    }
-
-    /**
-     * AJAX handler to get activity feed.
-     */
-    public function ajax_get_activity() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
-        }
-
-        $filter = isset($_POST['filter']) ? sanitize_text_field($_POST['filter']) : 'all';
-        $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
-        $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 50;
-
-        $history_service = new AIPS_History_Service();
-        
-        // Build filters
-        $filters = array();
-        if ($search) {
-            $filters['search'] = $search;
-        }
-
-        // Map filter to event types or statuses
-        if ($filter === 'published') {
-            $filters['event_type'] = 'post_published';
-        } elseif ($filter === 'drafts') {
-            $filters['event_type'] = 'post_generated';
-        } elseif ($filter === 'failed') {
-            $filters['event_status'] = 'failed';
-        }
-
-        $activity_logs = $history_service->get_activity_feed($limit, 0, $filters);
-
-        // Format activities for the frontend
-        $activities = array();
-        foreach ($activity_logs as $log) {
-            $details = json_decode($log->details, true);
-            
-            $activity = array(
-                'id' => $log->id,
-                'message' => $log->log_type,
-                'type' => isset($details['event_type']) ? $details['event_type'] : 'info',
-                'status' => isset($details['event_status']) ? $details['event_status'] : 'info',
-                'date_formatted' => mysql2date(get_option('date_format') . ' ' . get_option('time_format'), $log->timestamp),
-                'post' => null
-            );
-
-            // Get post data if available
-            if ($log->post_id) {
-                $post = get_post($log->post_id);
-                if ($post) {
-                    $activity['post'] = array(
-                        'id' => $post->ID,
-                        'title' => $post->post_title,
-                        'status' => $post->post_status,
-                        'edit_url' => get_edit_post_link($post->ID, 'raw')
-                    );
-                }
-            }
-
-            $activities[] = $activity;
-        }
-
-        wp_send_json_success(array('activities' => $activities));
-    }
-
-    /**
-     * AJAX handler to get activity detail for a specific post.
-     */
-    public function ajax_get_activity_detail() {
-        check_ajax_referer('aips_ajax_nonce', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
-        }
-
-        $post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
-
-        if (!$post_id) {
-            wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
-        }
-
-        $post = get_post($post_id);
-        if (!$post) {
-            wp_send_json_error(array('message' => __('Post not found.', 'ai-post-scheduler')));
-        }
-
-        $detail = array(
-            'id' => $post->ID,
-            'title' => $post->post_title,
-            'content' => $post->post_content,
-            'excerpt' => $post->post_excerpt,
-            'status' => $post->post_status,
-            'date' => mysql2date(get_option('date_format') . ' ' . get_option('time_format'), $post->post_date),
-            'author' => get_the_author_meta('display_name', $post->post_author),
-            'edit_url' => get_edit_post_link($post->ID, 'raw'),
-            'view_url' => get_permalink($post->ID),
-            'featured_image_url' => get_the_post_thumbnail_url($post->ID, 'large'),
-            'categories' => array(),
-            'tags' => array()
-        );
-
-        // Get categories
-        $categories = get_the_category($post->ID);
-        foreach ($categories as $category) {
-            $detail['categories'][] = $category->name;
-        }
-
-        // Get tags
-        $tags = get_the_tags($post->ID);
-        if ($tags) {
-            foreach ($tags as $tag) {
-                $detail['tags'][] = $tag->name;
-            }
-        }
-
-        wp_send_json_success(array('post' => $detail));
     }
 }
