@@ -202,19 +202,10 @@ class AIPS_Author_Topics_Generator {
 		$prompt .= "- Avoid duplicating previously approved or rejected topics\n";
 		$prompt .= "- Format each topic as a clear, engaging blog post title\n\n";
 		
-		$prompt .= "Return a JSON array of objects. Each object must have:\n";
+		$prompt .= "Output schema for each topic:\n";
 		$prompt .= "- \"title\": The blog post topic/title (string)\n";
 		$prompt .= "- \"score\": Estimated engagement score 1-100 (integer)\n";
-		$prompt .= "- \"keywords\": 3-5 relevant keywords (array of strings)\n\n";
-		
-		$prompt .= "Example format:\n";
-		$prompt .= "[\n";
-		$prompt .= "  {\n";
-		$prompt .= "    \"title\": \"10 Best Practices for WordPress SEO in 2025\",\n";
-		$prompt .= "    \"score\": 85,\n";
-		$prompt .= "    \"keywords\": [\"WordPress\", \"SEO\", \"best practices\", \"2025\", \"optimization\"]\n";
-		$prompt .= "  }\n";
-		$prompt .= "]";
+		$prompt .= "- \"keywords\": 3-5 relevant keywords (array of strings)\n";
 		
 		return $prompt;
 	}

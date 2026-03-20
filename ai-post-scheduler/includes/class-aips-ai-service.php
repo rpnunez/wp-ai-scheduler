@@ -262,9 +262,11 @@ class AIPS_AI_Service {
                 return $result;
                 
             } catch (Exception $e) {
-                // If simpleJsonQuery fails (e.g. unsupported params), try fallback
-                $this->logger->log('simpleJsonQuery failed, trying fallback: ' . $e->getMessage(), 'warning');
-                return $this->fallback_json_generation($prompt, $options);
+                // Let the retry logic handle the failure; do not fall back here
+                $error = new WP_Error('generation_failed', $e->getMessage());
+                $this->log_call('json', $prompt, null, $options, $e->getMessage());
+                $this->resilience_service->record_failure();
+                return $error;
             }
         }, 'json', $prompt, $options);
 
@@ -273,7 +275,12 @@ class AIPS_AI_Service {
             $code = $result->get_error_code();
             if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
                 $this->log_call('json', $prompt, null, $options, $result->get_error_message());
+                return $result;
             }
+
+            // All native attempts failed — use fallback as absolute last resort
+            $this->logger->log('Native JSON generation failed after all retries, attempting fallback: ' . $result->get_error_message(), 'warning');
+            return $this->fallback_json_generation($prompt, $options);
         }
 
         return $result;
