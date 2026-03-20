@@ -28,6 +28,9 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     $structures_repository = new AIPS_Article_Structure_Repository();
     $article_structures = $structures_repository->get_all(true); // Get active structures only
 }
+
+// Site-wide content settings used to pre-fill the Author Suggestions modal
+$site_ctx = AIPS_Site_Context::get();
 ?>
 <div class="wrap aips-wrap">
     <div class="aips-page-container">
@@ -39,6 +42,10 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
                     <p class="aips-page-description"><?php esc_html_e('Manage AI author profiles, generate topics, and create authentic content from different perspectives.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
+                    <button class="aips-btn aips-btn-secondary" id="aips-suggest-authors-btn">
+                        <span class="dashicons dashicons-lightbulb"></span>
+                        <?php esc_html_e('Suggest Authors', 'ai-post-scheduler'); ?>
+                    </button>
                     <button class="aips-btn aips-btn-primary aips-add-author-btn">
                         <span class="dashicons dashicons-plus-alt"></span>
                         <?php esc_html_e('Add Author', 'ai-post-scheduler'); ?>
@@ -434,6 +441,76 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
             </div>
 
             <div class="form-group">
+                <label for="author_target_audience"><?php esc_html_e('Target Audience', 'ai-post-scheduler'); ?></label>
+                <input type="text" id="author_target_audience" name="target_audience" placeholder="<?php esc_attr_e('e.g., Beginner developers, Small business owners', 'ai-post-scheduler'); ?>">
+                <p class="description"><?php esc_html_e('Who this author writes for. Helps the AI tailor topic ideas and content depth.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label for="author_expertise_level"><?php esc_html_e('Expertise Level', 'ai-post-scheduler'); ?></label>
+                <select id="author_expertise_level" name="expertise_level">
+                    <option value=""><?php esc_html_e('— Not specified —', 'ai-post-scheduler'); ?></option>
+                    <option value="beginner"><?php esc_html_e('Beginner', 'ai-post-scheduler'); ?></option>
+                    <option value="intermediate"><?php esc_html_e('Intermediate', 'ai-post-scheduler'); ?></option>
+                    <option value="expert"><?php esc_html_e('Expert', 'ai-post-scheduler'); ?></option>
+                    <option value="thought_leader"><?php esc_html_e('Thought Leader', 'ai-post-scheduler'); ?></option>
+                </select>
+                <p class="description"><?php esc_html_e("The author's level of expertise. Influences the depth and complexity of generated content.", 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label for="author_content_goals"><?php esc_html_e('Content Goals', 'ai-post-scheduler'); ?></label>
+                <textarea id="author_content_goals" name="content_goals" rows="2" placeholder="<?php esc_attr_e('e.g., Educate readers, Drive conversions, Build community', 'ai-post-scheduler'); ?>"></textarea>
+                <p class="description"><?php esc_html_e('What the content from this author should achieve. Used to steer topic generation.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label for="author_excluded_topics"><?php esc_html_e('Excluded Topics', 'ai-post-scheduler'); ?></label>
+                <textarea id="author_excluded_topics" name="excluded_topics" rows="2" placeholder="<?php esc_attr_e('e.g., competitor products, controversial politics', 'ai-post-scheduler'); ?>"></textarea>
+                <p class="description"><?php esc_html_e('Topics this author should never write about. Combined with site-wide exclusions.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label for="author_preferred_content_length"><?php esc_html_e('Preferred Content Length', 'ai-post-scheduler'); ?></label>
+                <select id="author_preferred_content_length" name="preferred_content_length">
+                    <option value=""><?php esc_html_e('— Not specified —', 'ai-post-scheduler'); ?></option>
+                    <option value="short"><?php esc_html_e('Short (under 800 words)', 'ai-post-scheduler'); ?></option>
+                    <option value="medium"><?php esc_html_e('Medium (800–1,500 words)', 'ai-post-scheduler'); ?></option>
+                    <option value="long"><?php esc_html_e('Long (1,500+ words)', 'ai-post-scheduler'); ?></option>
+                </select>
+                <p class="description"><?php esc_html_e('Guides the AI on how long each generated post should be.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label for="author_language"><?php esc_html_e('Content Language', 'ai-post-scheduler'); ?></label>
+                <select id="author_language" name="language">
+                    <option value="en"><?php esc_html_e('English (default)', 'ai-post-scheduler'); ?></option>
+                    <option value="es"><?php esc_html_e('Spanish', 'ai-post-scheduler'); ?></option>
+                    <option value="fr"><?php esc_html_e('French', 'ai-post-scheduler'); ?></option>
+                    <option value="de"><?php esc_html_e('German', 'ai-post-scheduler'); ?></option>
+                    <option value="it"><?php esc_html_e('Italian', 'ai-post-scheduler'); ?></option>
+                    <option value="pt"><?php esc_html_e('Portuguese', 'ai-post-scheduler'); ?></option>
+                    <option value="nl"><?php esc_html_e('Dutch', 'ai-post-scheduler'); ?></option>
+                    <option value="pl"><?php esc_html_e('Polish', 'ai-post-scheduler'); ?></option>
+                    <option value="ru"><?php esc_html_e('Russian', 'ai-post-scheduler'); ?></option>
+                    <option value="ja"><?php esc_html_e('Japanese', 'ai-post-scheduler'); ?></option>
+                    <option value="ko"><?php esc_html_e('Korean', 'ai-post-scheduler'); ?></option>
+                    <option value="zh"><?php esc_html_e('Chinese (Simplified)', 'ai-post-scheduler'); ?></option>
+                    <option value="ar"><?php esc_html_e('Arabic', 'ai-post-scheduler'); ?></option>
+                    <option value="hi"><?php esc_html_e('Hindi', 'ai-post-scheduler'); ?></option>
+                    <option value="tr"><?php esc_html_e('Turkish', 'ai-post-scheduler'); ?></option>
+                    <option value="sv"><?php esc_html_e('Swedish', 'ai-post-scheduler'); ?></option>
+                </select>
+                <p class="description"><?php esc_html_e('Language for content generated by this author. Overrides the site-wide language setting.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label for="author_max_posts_per_topic"><?php esc_html_e('Max Posts per Topic', 'ai-post-scheduler'); ?></label>
+                <input type="number" id="author_max_posts_per_topic" name="max_posts_per_topic" value="1" min="1" max="10">
+                <p class="description"><?php esc_html_e('Maximum number of posts that can be generated from a single approved topic.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
                 <label for="topic_generation_quantity"><?php esc_html_e('Number of Topics to Generate', 'ai-post-scheduler'); ?></label>
                 <input type="number" id="topic_generation_quantity" name="topic_generation_quantity" value="5" min="1" max="20">
             </div>
@@ -472,9 +549,99 @@ if (isset($_GET['page']) && $_GET['page'] === 'aips-authors') {
     </div>
 </div>
 
+<!-- Author Suggestions Modal -->
+<div id="aips-suggest-authors-modal" class="aips-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="aips-suggest-authors-modal-title">
+    <div class="aips-modal-content aips-modal-large">
+        <button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+        <div class="aips-modal-header">
+            <h2 id="aips-suggest-authors-modal-title"><?php esc_html_e('Suggest Authors with AI', 'ai-post-scheduler'); ?></h2>
+            <p class="description">
+                <?php esc_html_e('Describe your site and goals. The AI will suggest author profiles tailored to your content strategy.', 'ai-post-scheduler'); ?>
+                <?php if (!empty($site_ctx['niche'])) : ?>
+                    <?php esc_html_e('Fields below are pre-filled from your Site Content Strategy settings.', 'ai-post-scheduler'); ?>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings#content-strategy')); ?>"><?php esc_html_e('Edit settings', 'ai-post-scheduler'); ?></a>
+                <?php endif; ?>
+            </p>
+        </div>
+        <div class="aips-modal-body">
+            <form id="aips-suggest-authors-form">
+                <div class="form-group">
+                    <label for="aips-suggest-site-niche"><?php esc_html_e('Site Niche / Primary Topic', 'ai-post-scheduler'); ?> *</label>
+                    <input type="text" id="aips-suggest-site-niche" name="site_niche" required
+                        value="<?php echo esc_attr($site_ctx['niche']); ?>"
+                        placeholder="<?php esc_attr_e('e.g., WordPress development, personal finance, fitness', 'ai-post-scheduler'); ?>">
+                    <p class="description"><?php esc_html_e('The main topic or industry your site covers.', 'ai-post-scheduler'); ?></p>
+                </div>
+                <div class="form-group">
+                    <label for="aips-suggest-target-audience"><?php esc_html_e('Target Audience', 'ai-post-scheduler'); ?></label>
+                    <input type="text" id="aips-suggest-target-audience" name="target_audience"
+                        value="<?php echo esc_attr($site_ctx['target_audience']); ?>"
+                        placeholder="<?php esc_attr_e('e.g., beginner developers, busy professionals, parents', 'ai-post-scheduler'); ?>">
+                    <p class="description"><?php esc_html_e('Who are you writing for?', 'ai-post-scheduler'); ?></p>
+                </div>
+                <div class="form-group">
+                    <label for="aips-suggest-content-goals"><?php esc_html_e('Content Goals', 'ai-post-scheduler'); ?></label>
+                    <textarea id="aips-suggest-content-goals" name="content_goals" rows="3"
+                        placeholder="<?php esc_attr_e('e.g., educate readers, drive product sign-ups, build a community', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($site_ctx['content_goals']); ?></textarea>
+                    <p class="description"><?php esc_html_e('What do you want your content to achieve?', 'ai-post-scheduler'); ?></p>
+                </div>
+                <div class="form-group">
+                    <label for="aips-suggest-count"><?php esc_html_e('Number of Suggestions', 'ai-post-scheduler'); ?></label>
+                    <select id="aips-suggest-count" name="count">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3" selected>3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="aips-suggest-authors-submit" class="aips-btn aips-btn-primary">
+                        <span class="dashicons dashicons-lightbulb"></span>
+                        <?php esc_html_e('Generate Suggestions', 'ai-post-scheduler'); ?>
+                    </button>
+                </div>
+            </form>
 
+            <div id="aips-suggest-authors-results" style="display: none; margin-top: 24px;">
+                <hr>
+                <h3><?php esc_html_e('Suggested Authors', 'ai-post-scheduler'); ?></h3>
+                <p class="description"><?php esc_html_e('Review the suggestions below. Click "Import Author" to add a suggestion as a new author profile.', 'ai-post-scheduler'); ?></p>
+                <div id="aips-suggest-authors-cards"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
+<?php /* ------------------------------------------------------------------ */
+/* HTML template used by AIPS.Templates.renderRaw() in authors.js          */
+/* The {{token}} placeholders are replaced at run-time with data from the   */
+/* AI-generated suggestion object; values are escaped by the template       */
+/* engine so keep the markup as-is.                                         */
+/* ------------------------------------------------------------------ */ ?>
+<script type="text/html" id="aips-tmpl-suggestion-card">
+<div class="aips-suggestion-card">
+    <div class="aips-suggestion-card-header">
+        <div class="aips-suggestion-card-identity">
+            <h4 class="aips-suggestion-card-name">{{name}}</h4>
+            <span class="aips-badge aips-badge-neutral">{{field_niche}}</span>
+        </div>
+        <button type="button"
+                class="aips-btn aips-btn-sm aips-btn-primary aips-import-suggested-author"
+                data-index="{{index}}"
+                aria-label="{{importAriaLabel}}">
+            <span class="dashicons dashicons-download" aria-hidden="true"></span>
+            {{importLabel}}
+        </button>
+    </div>
+    <p class="aips-suggestion-card-description">{{description}}</p>
+    <div class="aips-suggestion-card-meta">{{meta}}</div>
+</div>
+</script>
 
-
+<?php /* Template for a single meta row inside the suggestion card */ ?>
+<script type="text/html" id="aips-tmpl-suggestion-meta-row">
+<span class="aips-suggestion-meta-row"><strong>{{label}}:</strong> {{value}}</span>
+</script>
 
 
