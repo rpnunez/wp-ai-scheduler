@@ -8,6 +8,7 @@ class AIPS_Prompt_Builder {
 	private $template_processor;
 	private $structure_manager;
 	private $post_title_builder;
+	private $post_excerpt_builder;
 
 	public function __construct($template_processor = null, $structure_manager = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
@@ -219,32 +220,7 @@ class AIPS_Prompt_Builder {
      * @return string The complete excerpt generation prompt.
      */
     public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
-        // Build the excerpt prompt
-        // If using conversation context (chatId), reference the article just created
-        // Otherwise, include the full title and content in the prompt
-        if ($use_conversation_context) {
-            $excerpt_prompt = "Based on the article content and title you just created, please write a short excerpt between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
-        } else {
-            $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
-        }
-        
-        // Add voice-specific excerpt instructions if provided
-        if ($voice && !empty($voice->excerpt_instructions)) {
-            $voice_instructions = $this->template_processor->process($voice->excerpt_instructions, $topic);
-            $excerpt_prompt .= $voice_instructions . "\n\n";
-        }
-        
-        // Only include title and body if not using conversation context
-        if (!$use_conversation_context) {
-            $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
-            $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
-            $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
-        }
-        
-        // Allow filtering of excerpt prompt
-        $excerpt_prompt = apply_filters('aips_excerpt_prompt', $excerpt_prompt, $title, $content, $voice, $topic);
-        
-        return $excerpt_prompt;
+        return $this->get_post_excerpt_builder()->build($title, $content, $voice, $topic, $use_conversation_context);
     }
 
     /**
@@ -259,10 +235,7 @@ class AIPS_Prompt_Builder {
      * @return string|null
      */
     public function build_excerpt_instructions($voice, $topic) {
-        if ($voice && !empty($voice->excerpt_instructions)) {
-            return $this->template_processor->process($voice->excerpt_instructions, $topic);
-        }
-        return null;
+        return $this->get_post_excerpt_builder()->build_instructions($voice, $topic);
     }
 
     /**
@@ -351,7 +324,7 @@ class AIPS_Prompt_Builder {
 
         // Build excerpt prompt (requires title and content)
         $sample_title = '[Generated title would appear here]';
-        $excerpt_prompt = $this->build_excerpt_prompt($sample_title, $sample_content, $voice, $sample_topic, true);
+        $excerpt_prompt = $this->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic, true);
 
         // Build image prompt if enabled
         $image_prompt_processed = '';
@@ -420,5 +393,18 @@ class AIPS_Prompt_Builder {
 		}
 
 		return $this->post_title_builder;
+	}
+
+	/**
+	 * Get the dedicated post excerpt prompt builder.
+	 *
+	 * @return AIPS_Prompt_Builder_Post_Excerpt
+	 */
+	public function get_post_excerpt_builder() {
+		if (null === $this->post_excerpt_builder) {
+			$this->post_excerpt_builder = new AIPS_Prompt_Builder_Post_Excerpt($this, $this->template_processor);
+		}
+
+		return $this->post_excerpt_builder;
 	}
 }

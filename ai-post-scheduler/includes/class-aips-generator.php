@@ -43,6 +43,7 @@ class AIPS_Generator {
     private $post_manager;
     private $prompt_builder;
     private $post_title_prompt_builder;
+    private $post_excerpt_prompt_builder;
 
     /**
      * @var AIPS_Markdown_Parser Markdown parser
@@ -86,6 +87,7 @@ class AIPS_Generator {
         $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
         $this->post_title_prompt_builder = new AIPS_Prompt_Builder_Post_Title( $this->prompt_builder, $this->template_processor );
+        $this->post_excerpt_prompt_builder = new AIPS_Prompt_Builder_Post_Excerpt( $this->prompt_builder, $this->template_processor );
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -371,7 +373,7 @@ class AIPS_Generator {
      */
     public function generate_excerpt($title, $content, $voice = null, $topic = null, $options = array()) {
         // Delegate prompt building to Prompt Builder
-        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice, $topic);
+        $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic);
 
         // Set token limit for excerpt generation
         //$options['max_tokens'] = 150;
@@ -411,7 +413,7 @@ class AIPS_Generator {
         $topic_str = $context->get_topic();
 
         // Delegate prompt building to Prompt Builder
-        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice_obj, $topic_str);
+        $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str);
 
         // Set token limit for excerpt generation
         $options['max_tokens'] = 150;

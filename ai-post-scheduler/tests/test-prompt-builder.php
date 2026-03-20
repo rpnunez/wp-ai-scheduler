@@ -157,6 +157,26 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test dedicated post excerpt builder uses the same prompt rules.
+	 */
+	public function test_post_excerpt_builder_build_basic() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager = new AIPS_Article_Structure_Manager();
+		$base_builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new AIPS_Prompt_Builder_Post_Excerpt($base_builder, $template_processor);
+
+		$title = 'Understanding AI Technology';
+		$content = 'This article discusses various aspects of artificial intelligence...';
+
+		$result = $builder->build($title, $content, null, null);
+
+		$this->assertStringContainsString('Write an excerpt for an article', $result);
+		$this->assertStringContainsString('ARTICLE TITLE:', $result);
+		$this->assertStringContainsString('Understanding AI Technology', $result);
+		$this->assertStringContainsString('ARTICLE BODY:', $result);
+	}
+
+	/**
 	 * Test build_excerpt_prompt with voice instructions.
 	 */
 	public function test_build_excerpt_prompt_with_voice() {
@@ -325,6 +345,15 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$builder = new AIPS_Prompt_Builder();
 
 		$this->assertInstanceOf('AIPS_Prompt_Builder_Post_Title', $builder->get_post_title_builder());
+	}
+
+	/**
+	 * Test base prompt builder exposes the dedicated excerpt builder.
+	 */
+	public function test_get_post_excerpt_builder_returns_specialized_builder() {
+		$builder = new AIPS_Prompt_Builder();
+
+		$this->assertInstanceOf('AIPS_Prompt_Builder_Post_Excerpt', $builder->get_post_excerpt_builder());
 	}
 
 	/**
