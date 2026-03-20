@@ -33,6 +33,9 @@ if (!defined('ABSPATH')) {
                 <button type="button" class="aips-tab-link" data-tab="advanced">
                     <?php esc_html_e('Advanced', 'ai-post-scheduler'); ?>
                 </button>
+                <button type="button" class="aips-tab-link" data-tab="content-strategy">
+                    <?php esc_html_e('Content Strategy', 'ai-post-scheduler'); ?>
+                </button>
             </div>
 
             <div class="aips-panel-body">

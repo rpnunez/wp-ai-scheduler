@@ -2983,7 +2983,7 @@
                 return;
             }
 
-            var tabMap = ['general', 'ai', 'resilience', 'notifications', 'advanced'];
+            var tabMap = ['general', 'ai', 'resilience', 'notifications', 'advanced', 'content-strategy'];
 
             $('.aips-panel-body form > h2').each(function(index) {
                 var $title = $(this);
