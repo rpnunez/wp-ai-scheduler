@@ -159,8 +159,6 @@ class AIPS_Unified_Schedule_Service {
 	 * @return array Normalised log entry arrays.
 	 */
 	public function get_history($id, $type) {
-		global $wpdb;
-
 		switch ($type) {
 			case self::TYPE_TEMPLATE:
 				$schedule = $this->schedule_repository->get_by_id($id);
@@ -174,22 +172,19 @@ class AIPS_Unified_Schedule_Service {
 				return $this->format_history_logs($logs);
 
 			case self::TYPE_AUTHOR_TOPIC:
-			case self::TYPE_AUTHOR_POST:
-				$history_table     = $wpdb->prefix . 'aips_history';
-				$history_log_table = $wpdb->prefix . 'aips_history_log';
-
-				$logs = $wpdb->get_results($wpdb->prepare(
-					"SELECT hl.*
-					 FROM {$history_log_table} hl
-					 INNER JOIN {$history_table} h ON hl.history_id = h.id
-					 WHERE h.author_id = %d
-					   AND hl.history_type_id IN (%d, %d)
-					 ORDER BY hl.timestamp DESC
-					 LIMIT 100",
+				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
 					$id,
-					AIPS_History_Type::ACTIVITY,
-					AIPS_History_Type::ERROR
-				));
+					array('author_topic_generation'),
+					100
+				);
+				return $this->format_history_logs($logs);
+
+			case self::TYPE_AUTHOR_POST:
+				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
+					$id,
+					array('topic_post_generation'),
+					100
+				);
 				return $this->format_history_logs($logs);
 
 			default:
@@ -210,11 +205,18 @@ class AIPS_Unified_Schedule_Service {
 		$raw    = $this->schedule_repository->get_all();
 		$result = array();
 
-		// Batch-fetch stats (completed posts per template) in a single query.
-		$template_stats = $this->history_repository->get_all_template_stats();
+		// Batch-fetch generated-post counts by schedule history container.
+		$history_ids = array();
+		foreach ($raw as $schedule) {
+			if (!empty($schedule->schedule_history_id)) {
+				$history_ids[] = absint($schedule->schedule_history_id);
+			}
+		}
+		$schedule_stats = $this->history_repository->get_schedule_generated_post_counts($history_ids);
 
 		foreach ($raw as $schedule) {
-			$stats  = isset($template_stats[$schedule->template_id]) ? (int) $template_stats[$schedule->template_id] : 0;
+			$schedule_history_id = !empty($schedule->schedule_history_id) ? (int) $schedule->schedule_history_id : 0;
+			$stats  = isset($schedule_stats[$schedule_history_id]) ? (int) $schedule_stats[$schedule_history_id] : 0;
 			$status = !empty($schedule->is_active) ? 'active' : 'inactive';
 			if (isset($schedule->status) && $schedule->status === 'failed') {
 				$status = 'failed';
@@ -237,7 +239,7 @@ class AIPS_Unified_Schedule_Service {
 				'stats_count' => $stats,
 				'stats_label' => _n('post generated', 'posts generated', $stats, 'ai-post-scheduler'),
 				'can_delete'  => true,
-				'history_id'  => !empty($schedule->schedule_history_id) ? (int) $schedule->schedule_history_id : null,
+				'history_id'  => $schedule_history_id ? $schedule_history_id : null,
 				'template_id' => (int) $schedule->template_id,
 			);
 		}

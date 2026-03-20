@@ -194,7 +194,14 @@ class AIPS_Author_Topics_Scheduler {
 		if (!$author) {
 			return new WP_Error('invalid_author', 'Author not found');
 		}
-		
-		return $this->topics_generator->generate_topics($author);
+
+		$result = $this->topics_generator->generate_topics($author);
+
+		// Keep manual "Run Now" behavior aligned with cron runs by advancing
+		// schedule timestamps regardless of success/failure to avoid re-running
+		// immediately on the next cron tick.
+		$this->update_author_schedule($author);
+
+		return $result;
 	}
 }
