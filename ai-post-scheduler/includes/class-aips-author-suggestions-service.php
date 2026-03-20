@@ -18,8 +18,10 @@ if (!defined('ABSPATH')) {
  *
  * Generates AI-powered author profile suggestions based on a site's niche,
  * target audience and content goals. Each suggestion is a complete author
- * profile (name, niche, description, keywords, voice_tone, writing_style,
- * topic_generation_prompt) that can be imported directly from the Authors UI.
+ * profile (name, niche, description, details, keywords, voice_tone,
+ * writing_style, target_audience, expertise_level, content_goals,
+ * preferred_content_length, topic_generation_prompt) that can be imported
+ * directly from the Authors UI.
  */
 class AIPS_Author_Suggestions_Service {
 
@@ -207,13 +209,21 @@ class AIPS_Author_Suggestions_Service {
 				continue;
 			}
 
+			$expertise_level = isset($item['expertise_level']) ? sanitize_text_field($item['expertise_level']) : '';
+			$preferred_content_length = isset($item['preferred_content_length']) ? sanitize_text_field($item['preferred_content_length']) : '';
+
 			$suggestions[] = array(
 				'name'                     => $name,
 				'field_niche'              => $field_niche,
 				'description'              => isset($item['description']) ? sanitize_textarea_field($item['description']) : '',
+				'details'                  => isset($item['details']) ? sanitize_textarea_field($item['details']) : '',
 				'keywords'                 => isset($item['keywords']) ? sanitize_text_field($item['keywords']) : '',
 				'voice_tone'               => isset($item['voice_tone']) ? sanitize_text_field($item['voice_tone']) : '',
 				'writing_style'            => isset($item['writing_style']) ? sanitize_text_field($item['writing_style']) : '',
+				'target_audience'          => isset($item['target_audience']) ? sanitize_text_field($item['target_audience']) : '',
+				'expertise_level'          => $this->normalize_expertise_level($expertise_level),
+				'content_goals'            => isset($item['content_goals']) ? sanitize_textarea_field($item['content_goals']) : '',
+				'preferred_content_length' => $this->normalize_preferred_content_length($preferred_content_length),
 				'topic_generation_prompt'  => isset($item['topic_generation_prompt']) ? sanitize_textarea_field($item['topic_generation_prompt']) : '',
 			);
 
@@ -223,5 +233,71 @@ class AIPS_Author_Suggestions_Service {
 		}
 
 		return $suggestions;
+	}
+
+	/**
+	 * Normalize AI expertise level output to allowed database/UI values.
+	 *
+	 * @param string $value Raw expertise level from AI response.
+	 * @return string
+	 */
+	private function normalize_expertise_level($value) {
+		$value = strtolower(trim((string) $value));
+
+		$map = array(
+			'beginner'      => 'beginner',
+			'entry'         => 'beginner',
+			'entry level'   => 'beginner',
+			'entry-level'   => 'beginner',
+			'novice'        => 'beginner',
+			'intermediate'  => 'intermediate',
+			'mid'           => 'intermediate',
+			'mid-level'     => 'intermediate',
+			'mid level'     => 'intermediate',
+			'advanced'      => 'expert',
+			'expert'        => 'expert',
+			'thoughtleader' => 'thought_leader',
+			'thought leader'=> 'thought_leader',
+			'thought-leader'=> 'thought_leader',
+		);
+
+		if (isset($map[$value])) {
+			return $map[$value];
+		}
+
+		return '';
+	}
+
+	/**
+	 * Normalize AI preferred length output to allowed database/UI values.
+	 *
+	 * @param string $value Raw preferred content length from AI response.
+	 * @return string
+	 */
+	private function normalize_preferred_content_length($value) {
+		$value = strtolower(trim((string) $value));
+
+		$map = array(
+			'short'           => 'short',
+			'short-form'      => 'short',
+			'short form'      => 'short',
+			'brief'           => 'short',
+			'medium'          => 'medium',
+			'medium-length'   => 'medium',
+			'medium length'   => 'medium',
+			'standard'        => 'medium',
+			'long'            => 'long',
+			'long-form'       => 'long',
+			'long form'       => 'long',
+			'in-depth'        => 'long',
+			'indepth'         => 'long',
+			'comprehensive'   => 'long',
+		);
+
+		if (isset($map[$value])) {
+			return $map[$value];
+		}
+
+		return '';
 	}
 }

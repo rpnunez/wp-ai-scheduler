@@ -75,13 +75,18 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 	private function make_suggestion( $overrides = array() ) {
 		return array_merge(
 			array(
-				'name'                    => 'Alex Rivera',
-				'field_niche'             => 'Personal Finance for Millennials',
-				'description'             => 'Alex helps millennials tackle debt and build wealth.',
-				'keywords'                => 'budgeting, investing, debt payoff',
-				'voice_tone'              => 'conversational',
-				'writing_style'           => 'practical how-to guides',
-				'topic_generation_prompt' => 'Generate actionable personal finance topics for millennials.',
+				'name'                     => 'Alex Rivera',
+				'field_niche'              => 'Personal Finance for Millennials',
+				'description'              => 'Alex helps millennials tackle debt and build wealth.',
+				'details'                  => 'Use practical examples and include easy first steps.',
+				'keywords'                 => 'budgeting, investing, debt payoff',
+				'voice_tone'               => 'conversational',
+				'writing_style'            => 'practical how-to guides',
+				'target_audience'          => 'Millennials early in their careers',
+				'expertise_level'          => 'expert',
+				'content_goals'            => 'Educate readers and help them build confidence.',
+				'preferred_content_length' => 'medium',
+				'topic_generation_prompt'  => 'Generate actionable personal finance topics for millennials.',
 			),
 			$overrides
 		);
@@ -203,9 +208,14 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 		$this->assertIsArray( $result );
 		$this->assertCount( 1, $result );
 		$this->assertEquals( '', $result[0]['description'] );
+		$this->assertEquals( '', $result[0]['details'] );
 		$this->assertEquals( '', $result[0]['keywords'] );
 		$this->assertEquals( '', $result[0]['voice_tone'] );
 		$this->assertEquals( '', $result[0]['writing_style'] );
+		$this->assertEquals( '', $result[0]['target_audience'] );
+		$this->assertEquals( '', $result[0]['expertise_level'] );
+		$this->assertEquals( '', $result[0]['content_goals'] );
+		$this->assertEquals( '', $result[0]['preferred_content_length'] );
 		$this->assertEquals( '', $result[0]['topic_generation_prompt'] );
 	}
 
@@ -246,8 +256,27 @@ class Test_Author_Suggestions_Service extends WP_UnitTestCase {
 		$this->assertIsArray( $result );
 		$suggestion = $result[0];
 
-		foreach ( array( 'name', 'field_niche', 'description', 'keywords', 'voice_tone', 'writing_style', 'topic_generation_prompt' ) as $key ) {
+		foreach ( array( 'name', 'field_niche', 'description', 'details', 'keywords', 'voice_tone', 'writing_style', 'target_audience', 'expertise_level', 'content_goals', 'preferred_content_length', 'topic_generation_prompt' ) as $key ) {
 			$this->assertArrayHasKey( $key, $suggestion, "Suggestion should contain key '$key'" );
 		}
+	}
+
+	/**
+	 * Expertise level and preferred length values are normalized to supported options.
+	 */
+	public function test_suggest_authors_normalizes_enum_fields() {
+		$payload = array(
+			$this->make_suggestion(
+				array(
+					'expertise_level'          => 'Thought Leader',
+					'preferred_content_length' => 'Long-form',
+				)
+			),
+		);
+		$service = $this->make_service( $payload );
+		$result  = $service->suggest_authors( array( 'site_niche' => 'Finance' ), 1 );
+
+		$this->assertEquals( 'thought_leader', $result[0]['expertise_level'] );
+		$this->assertEquals( 'long', $result[0]['preferred_content_length'] );
 	}
 }

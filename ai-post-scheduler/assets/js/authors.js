@@ -2071,6 +2071,7 @@
 					name: suggestion.name,
 					field_niche: suggestion.field_niche,
 					description: suggestion.description || '',
+					details: suggestion.details || '',
 					keywords: suggestion.keywords || '',
 					voice_tone: suggestion.voice_tone || '',
 					writing_style: suggestion.writing_style || '',
