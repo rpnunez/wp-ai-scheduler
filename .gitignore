@@ -17,6 +17,7 @@ coverage/
 *.swp
 *.swo
 *~
+.vscode/launch.json
 
 # Environment variables (security)
 .env
