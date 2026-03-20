@@ -11,6 +11,7 @@
 	// Authors Module
 	const AuthorsModule = {
 		currentAuthorId: null,
+		hasImportedSuggestedAuthor: false,
 
 		/**
 		 * Initialise the Authors module by binding all event listeners.
@@ -1807,7 +1808,16 @@
 		 */
 		closeModals: function (e) {
 			e.preventDefault();
-			$('.aips-modal').fadeOut();
+			const shouldReloadAfterClose = $('#aips-suggest-authors-modal').is(':visible') && this.hasImportedSuggestedAuthor;
+			const $visibleModals = $('.aips-modal:visible');
+
+			$visibleModals.fadeOut();
+
+			if (shouldReloadAfterClose) {
+				$visibleModals.promise().done(function () {
+					window.location.reload();
+				});
+			}
 		},
 
 		/**
@@ -1910,6 +1920,7 @@
 		 */
 		openSuggestModal: function (e) {
 			e.preventDefault();
+			this.hasImportedSuggestedAuthor = false;
 			$('#aips-suggest-authors-results').hide();
 			$('#aips-suggest-authors-cards').html('');
 			$('#aips-suggest-authors-modal').fadeIn();
@@ -2079,6 +2090,7 @@
 				},
 				success: (response) => {
 					if (response.success) {
+						this.hasImportedSuggestedAuthor = true;
 						AIPS.Utilities.showToast(aipsAuthorsL10n.authorImported || 'Author imported successfully.', 'success');
 						$btn.prop('disabled', true).html(
 							'<span class="dashicons dashicons-yes"></span> ' +
