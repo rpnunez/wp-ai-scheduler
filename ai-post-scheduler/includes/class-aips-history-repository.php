@@ -544,9 +544,9 @@ class AIPS_History_Repository {
         $args = $history_ids;
         $args[] = AIPS_History_Type::ACTIVITY;
         $args[] = AIPS_History_Type::ERROR;
-        $args[] = '%\"event_type\":\"post_published\"%';
-        $args[] = '%\"event_type\":\"post_draft\"%';
-        $args[] = '%\"event_type\":\"manual_schedule_completed\"%';
+        $args[] = '%"event_type":"post_published"%';
+        $args[] = '%"event_type":"post_draft"%';
+        $args[] = '%"event_type":"manual_schedule_completed"%';
 
         $results = $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
 
