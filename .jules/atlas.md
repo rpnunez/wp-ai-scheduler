@@ -48,3 +48,6 @@
 **Consequence:**
 - **Positive:** clearer separation of concerns; `AIPS_Scheduler` is now a thin coordinator; `AIPS_Schedule_Processor` encapsulates the "how" of execution; improved testability of execution logic.
 - **Negative:** Increased file count (1 new file).
+## 2026-03-24 - Extract Admin Menu Logic from Settings God Object
+**Learning:** Always verify that newly created classes are covered by the testing framework and specifically the autoloader tests, so that they correctly load in the plugin lifecycle without causing fatal errors.
+**Action:** Added `AIPS_Admin_Menu` to the `test_autoloader_loads_controller_classes` array inside `test-autoloader.php`. Ensured temporary Python scripts generated during task creation and text processing were cleaned up from the workspace before pre-commit.
