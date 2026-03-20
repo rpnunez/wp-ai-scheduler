@@ -521,7 +521,7 @@
 					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.lastFeedback || 'Last Feedback') + ':</strong>';
 					detailContentHtml += ' <span class="aips-feedback-badge aips-feedback-badge-' + feedbackAction + '">' + this.escapeHtml(feedbackLabel) + '</span>';
 					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
-						detailContentHtml += ' <em>(' + this.escapeHtml(topic.last_feedback.reason_category) + ')</em>';
+						detailContentHtml += this.renderCategoryBadge(feedbackAction, topic.last_feedback.reason_category);
 					}
 					if (topic.last_feedback.reason) {
 						detailContentHtml += ' — ' + this.escapeHtml(topic.last_feedback.reason);
@@ -584,6 +584,10 @@
 						: this.escapeHtml(fbLabel);
 					html += ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '">';
 					html += '<span class="dashicons dashicons-admin-comments"></span> ' + this.escapeHtml(fbLabel) + '</span>';
+					// Render an inline reason category chip next to the feedback badge
+					if (topic.last_feedback.reason_category) {
+						html += this.renderCategoryBadge(fbAction, topic.last_feedback.reason_category);
+					}
 				}
 				
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
@@ -697,6 +701,55 @@
 			}
 
 			return 'aips-topic-similarity-low';
+		},
+
+		/**
+		 * Return the human-readable label for a feedback reason category.
+		 *
+		 * Looks up the category value in `aipsAuthorsL10n.approvalCategories` or
+		 * `aipsAuthorsL10n.rejectionCategories` depending on the feedback action.
+		 * Falls back to the raw category slug when no match is found or the action
+		 * is not one of the known values (`'approved'` / `'rejected'`).
+		 *
+		 * @param {string} action   - `'approved'` or `'rejected'`.
+		 * @param {string} category - The `reason_category` value.
+		 * @returns {string} Translated/human-readable label.
+		 */
+		getCategoryLabel: function (action, category) {
+			var list;
+			if (action === 'approved') {
+				list = aipsAuthorsL10n.approvalCategories || [];
+			} else if (action === 'rejected') {
+				list = aipsAuthorsL10n.rejectionCategories || [];
+			} else {
+				// Unknown action — return the raw slug so the badge still renders meaningfully.
+				return category;
+			}
+			const match = list.find(function (c) { return c.value === category; });
+			return match ? match.label : category;
+		},
+
+		/**
+		 * Build the HTML for a reason category chip/badge.
+		 *
+		 * Returns an empty string when category is falsy or `'other'`.
+		 *
+		 * @param {string} action   - `'approved'` or `'rejected'`.
+		 * @param {string} category - The `reason_category` value.
+		 * @returns {string} Badge HTML string.
+		 */
+		renderCategoryBadge: function (action, category) {
+			if (!category || category === 'other') {
+				return '';
+			}
+
+			const label = this.getCategoryLabel(action, category);
+			const isPositive = action === 'approved';
+			const groupClass = isPositive ? 'aips-reason-category-badge-positive' : 'aips-reason-category-badge-negative';
+			const specificClass = 'aips-reason-category-badge-' + category.replace(/_/g, '-');
+			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + this.escapeHtml(label) + '">'
+				+ this.escapeHtml(label)
+				+ '</span>';
 		},
 
 		/**
@@ -865,11 +918,47 @@
 		},
 
 		/**
+		 * Populate the feedback category dropdown with options appropriate for the given action.
+		 *
+		 * Replaces all `<option>` elements in `#feedback_reason_category` with the
+		 * action-specific set supplied via `aipsAuthorsL10n.approvalCategories` or
+		 * `aipsAuthorsL10n.rejectionCategories`, then resets the selection to the
+		 * first option ("other").  Also updates the visible label and description
+		 * text next to the dropdown.
+		 *
+		 * @param {string} action - Either `'approve'` or `'reject'`.
+		 */
+		populateCategoryOptions: function (action) {
+			const isApprove = action === 'approve';
+			const categories = isApprove
+				? (aipsAuthorsL10n.approvalCategories || [])
+				: (aipsAuthorsL10n.rejectionCategories || []);
+
+			const $select = $('#feedback_reason_category');
+			$select.empty();
+			$.each(categories, function (i, cat) {
+				$select.append($('<option>').val(cat.value).text(cat.label));
+			});
+
+			// Update the label and helper description to match the action.
+			$('#feedback_reason_category_label').text(
+				isApprove
+					? (aipsAuthorsL10n.approvalCategoryLabel || 'Approval Reason')
+					: (aipsAuthorsL10n.rejectionCategoryLabel || 'Rejection Reason')
+			);
+			$('#feedback_reason_category_description').text(
+				isApprove
+					? (aipsAuthorsL10n.approvalCategoryDescription || 'Select a positive reason to help train future topic generation.')
+					: (aipsAuthorsL10n.rejectionCategoryDescription || 'Select a structured reason to improve future topic quality.')
+			);
+		},
+
+		/**
 		 * Open the feedback modal pre-configured for approving a topic.
 		 *
 		 * Sets the hidden `#feedback_topic_id` and `#feedback_action` fields,
-		 * updates the modal title and input placeholder, and fades the feedback
-		 * modal in.
+		 * updates the modal title, category dropdown, and input placeholder, and
+		 * fades the feedback modal in.
 		 *
 		 * @param {Event} e - Click event from an `.aips-approve-topic` element.
 		 */
@@ -883,6 +972,7 @@
 			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.approveTopicTitle || 'Approve Topic');
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.approveReasonPlaceholder || 'Why are you approving this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.approve);
+			this.populateCategoryOptions('approve');
 			$('#aips-feedback-modal').fadeIn();
 		},
 
@@ -890,8 +980,8 @@
 		 * Open the feedback modal pre-configured for rejecting a topic.
 		 *
 		 * Sets the hidden `#feedback_topic_id` and `#feedback_action` fields,
-		 * updates the modal title and input placeholder, and fades the feedback
-		 * modal in.
+		 * updates the modal title, category dropdown, and input placeholder, and
+		 * fades the feedback modal in.
 		 *
 		 * @param {Event} e - Click event from an `.aips-reject-topic` element.
 		 */
@@ -905,6 +995,7 @@
 			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic');
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
+			this.populateCategoryOptions('reject');
 			$('#aips-feedback-modal').fadeIn();
 		},
 
