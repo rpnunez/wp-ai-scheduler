@@ -121,23 +121,41 @@
          */
         renderResearchResults: function(data) {
             var $container = $('#research-results-content');
-            var html = '<p><strong>' + this.escapeHtml(data.saved_count) + ' ' + aipsResearchL10n.topicsSaved + ' "' + this.escapeHtml(data.niche) + '"</strong></p>';
+            var templates = AIPS.Templates;
+            var topTopicsBlockHtml = '';
+            var esc = templates ? templates.escape : function(str) { return String(str || ''); };
 
-            if (data.top_topics && data.top_topics.length > 0) {
-                html += '<h4>' + aipsResearchL10n.topTopics + '</h4><ol>';
-                data.top_topics.forEach(function(topic) {
+            if (templates && data.top_topics && data.top_topics.length > 0) {
+                var itemsHtml = data.top_topics.map(function(topic) {
                     var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
-                    html += '<li><strong>' + AIPS.escapeHtml(topic.topic) + '</strong> ';
-                    html += '<span class="aips-score-badge aips-score-' + scoreClass + '">' + AIPS.escapeHtml(topic.score) + '</span>';
-                    if (topic.reason) {
-                        html += '<br><small><em>' + AIPS.escapeHtml(topic.reason) + '</em></small>';
-                    }
-                    html += '</li>';
+                    var reasonHtml = topic.reason
+                        ? templates.render('aips-tmpl-research-top-topic-reason', { reason: topic.reason })
+                        : '';
+
+                    return templates.renderRaw('aips-tmpl-research-top-topic-item', {
+                        topic: esc(topic.topic),
+                        score_class: esc(scoreClass),
+                        score: esc(topic.score),
+                        reason_html: reasonHtml
+                    });
+                }).join('');
+
+                topTopicsBlockHtml = templates.renderRaw('aips-tmpl-research-top-topics-block', {
+                    top_topics_label: esc(aipsResearchL10n.topTopics),
+                    items_html: itemsHtml
                 });
-                html += '</ol>';
             }
 
-            $container.html(html);
+            var html = templates
+                ? templates.renderRaw('aips-tmpl-research-results-summary', {
+                    saved_count: esc(data.saved_count),
+                    topics_saved: esc(aipsResearchL10n.topicsSaved),
+                    niche: esc(data.niche),
+                    top_topics_block_html: topTopicsBlockHtml
+                })
+                : '';
+
+            $container.html(html || '');
             $('#research-results').slideDown();
         },
 
@@ -187,25 +205,24 @@
             var minScore = $('#filter-score').val();
             var freshOnly = $('#filter-fresh').is(':checked');
             var isFiltered = niche || minScore !== '0' || freshOnly;
+            var templates = AIPS.Templates;
+            var esc = templates ? templates.escape : function(str) { return String(str || ''); };
 
             this.researchSelectedTopics = [];
             this.updateSelectedTopics();
 
             if (!topics || topics.length === 0) {
-                html = '<div class="aips-panel-body"><div class="aips-empty-state">';
-                html += '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>';
-
-                if (isFiltered) {
-                    html += '<h3 class="aips-empty-state-title">' + aipsResearchL10n.noTopicsFound + '</h3>';
-                    html += '<p class="aips-empty-state-description">' + aipsResearchL10n.noTopicsFound + '</p>';
-                    html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="aips-clear-filters">' + aipsResearchL10n.clearFilters + '</button>';
-                } else {
-                    html += '<h3 class="aips-empty-state-title">' + aipsResearchL10n.libraryEmpty + '</h3>';
-                    html += '<p class="aips-empty-state-description">' + aipsResearchL10n.libraryEmpty + '</p>';
-                    html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-primary" id="aips-start-research">' + aipsResearchL10n.startResearch + '</button>';
+                if (templates) {
+                    html = templates.render('aips-tmpl-research-empty-state', {
+                        title: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
+                        description: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
+                        button_id: isFiltered ? 'aips-clear-filters' : 'aips-start-research',
+                        button_class: isFiltered ? 'aips-btn-secondary' : 'aips-btn-primary',
+                        button_label: isFiltered
+                            ? (aipsResearchL10n.clearFilters || aipsResearchL10n.clearSearch || 'Clear Filters')
+                            : (aipsResearchL10n.startResearch || 'Start Research')
+                    });
                 }
-
-                html += '</div></div>';
 
                 $('#topics-container').html(html);
                 $('#bulk-schedule-section').hide();
@@ -213,49 +230,42 @@
                 return;
             }
 
-            html = '<table class="aips-table aips-research-table">';
-            html += '<thead><tr>';
-            html += '<th scope="col" style="width:30px;"><input type="checkbox" id="select-all-topics"></th>';
-            html += '<th scope="col">Topic</th>';
-            html += '<th scope="col">Score</th>';
-            html += '<th scope="col">Niche</th>';
-            html += '<th scope="col">Keywords</th>';
-            html += '<th scope="col">Researched</th>';
-            html += '<th scope="col">Actions</th>';
-            html += '</tr></thead><tbody>';
+            if (templates) {
+                var rowsHtml = topics.map(function(topic) {
+                    var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
+                    var keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
+                    var keywordsHtml = keywords.map(function(kw) {
+                        return templates.render('aips-tmpl-research-keyword-tag', { keyword: kw });
+                    }).join('');
 
-            topics.forEach(function(topic) {
-                var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
-                var keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
+                    var reasonHtml = topic.reason
+                        ? templates.render('aips-tmpl-research-topic-reason', { reason: topic.reason })
+                        : '';
 
-                html += '<tr>';
-                html += '<td><input type="checkbox" class="topic-checkbox" value="' + AIPS.escapeHtml(topic.id) + '"></td>';
-                html += '<td><strong>' + AIPS.escapeHtml(topic.topic) + '</strong>';
-                if (topic.reason) {
-                    html += '<br><small>' + AIPS.escapeHtml(topic.reason) + '</small>';
-                }
-                html += '</td>';
-                html += '<td><span class="aips-score-badge aips-score-' + scoreClass + '">' + AIPS.escapeHtml(topic.score) + '</span></td>';
-                html += '<td>' + AIPS.escapeHtml(topic.niche) + '</td>';
-                html += '<td><div class="aips-keywords-list">';
-                keywords.forEach(function(kw) {
-                    html += '<span class="aips-keyword-tag">' + AIPS.escapeHtml(kw) + '</span>';
+                    return templates.renderRaw('aips-tmpl-research-topics-row', {
+                        id: esc(topic.id),
+                        topic: esc(topic.topic),
+                        reason_html: reasonHtml,
+                        score_class: esc(scoreClass),
+                        score: esc(topic.score),
+                        niche: esc(topic.niche),
+                        keywords_html: keywordsHtml,
+                        researched_at: esc(new Date(topic.researched_at).toLocaleDateString()),
+                        delete_label: esc(aipsResearchL10n.delete)
+                    });
+                }).join('');
+
+                var searchEmptyHtml = templates.render('aips-tmpl-research-topics-search-empty', {
+                    title: aipsResearchL10n.noTopicsFoundTitle,
+                    description: aipsResearchL10n.noTopicsFound,
+                    clear_label: aipsResearchL10n.clearSearch
                 });
-                html += '</div></td>';
-                html += '<td>' + new Date(topic.researched_at).toLocaleDateString() + '</td>';
-                html += '<td><div class="aips-topic-actions">';
-                html += '<button class="aips-btn aips-btn-sm aips-btn-danger delete-topic" data-id="' + AIPS.escapeHtml(topic.id) + '"><span class="dashicons dashicons-trash"></span> ' + aipsResearchL10n.delete + '</button>';
-                html += '</div></td>';
-                html += '</tr>';
-            });
 
-            html += '</tbody></table>';
-            html += '<div id="topics-search-empty" class="aips-empty-state" style="display:none; padding: 40px 20px;">';
-            html += '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>';
-            html += '<h3 class="aips-empty-state-title">' + aipsResearchL10n.noTopicsFoundTitle + '</h3>';
-            html += '<p class="aips-empty-state-description">' + aipsResearchL10n.noTopicsFound + '</p>';
-            html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="clear-topics-search">' + aipsResearchL10n.clearSearch + '</button>';
-            html += '</div>';
+                html = templates.renderRaw('aips-tmpl-research-topics-table', {
+                    rows_html: rowsHtml,
+                    search_empty_html: searchEmptyHtml
+                });
+            }
 
             $('#topics-container').html(html);
 
@@ -531,27 +541,42 @@
             var $container = $('#gap-results-container');
             var $grid = $container.find('.aips-gap-grid');
             $grid.empty();
+            var templates = AIPS.Templates;
 
             if (!gaps || gaps.length === 0) {
-                $grid.html('<p>No gaps found.</p>');
+                if (templates) {
+                    $grid.html(templates.renderRaw('aips-tmpl-research-gap-empty', {}));
+                } else {
+                    $grid.html('<p>No gaps found.</p>');
+                }
                 $container.show();
                 return;
             }
 
             gaps.forEach(function(gap) {
                 var priorityClass = (gap.priority || 'Medium').toLowerCase();
-                var cardHtml = '';
 
-                cardHtml += '<div class="aips-gap-card priority-' + AIPS.escapeHtml(priorityClass) + '">';
-                cardHtml += '<span class="aips-gap-badge ' + AIPS.escapeHtml(priorityClass) + '">' + AIPS.escapeHtml(gap.priority) + ' Priority</span>';
-                cardHtml += '<h4>' + AIPS.escapeHtml(gap.missing_topic) + '</h4>';
-                cardHtml += '<p class="aips-gap-reason">' + AIPS.escapeHtml(gap.reason) + '</p>';
-                cardHtml += '<p class="aips-gap-intent">Intent: ' + AIPS.escapeHtml(gap.search_intent) + '</p>';
-                cardHtml += '<div class="aips-gap-actions">';
-                cardHtml += '<button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="' + AIPS.escapeHtml(gap.missing_topic) + '">Generate Ideas</button>';
-                cardHtml += '</div></div>';
-
-                $grid.append(cardHtml);
+                if (templates) {
+                    $grid.append(templates.render('aips-tmpl-research-gap-card', {
+                        priority_class: priorityClass,
+                        priority: gap.priority || 'Medium',
+                        missing_topic: gap.missing_topic,
+                        reason: gap.reason,
+                        search_intent: gap.search_intent,
+                        generate_ideas_label: (aipsResearchL10n.generateIdeas || 'Generate Ideas')
+                    }));
+                } else {
+                    var cardHtml = '';
+                    cardHtml += '<div class="aips-gap-card priority-' + AIPS.escapeHtml(priorityClass) + '">';
+                    cardHtml += '<span class="aips-gap-badge ' + AIPS.escapeHtml(priorityClass) + '">' + AIPS.escapeHtml(gap.priority) + ' Priority</span>';
+                    cardHtml += '<h4>' + AIPS.escapeHtml(gap.missing_topic) + '</h4>';
+                    cardHtml += '<p class="aips-gap-reason">' + AIPS.escapeHtml(gap.reason) + '</p>';
+                    cardHtml += '<p class="aips-gap-intent">Intent: ' + AIPS.escapeHtml(gap.search_intent) + '</p>';
+                    cardHtml += '<div class="aips-gap-actions">';
+                    cardHtml += '<button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="' + AIPS.escapeHtml(gap.missing_topic) + '">' + (aipsResearchL10n.generateIdeas || 'Generate Ideas') + '</button>';
+                    cardHtml += '</div></div>';
+                    $grid.append(cardHtml);
+                }
             });
 
             $container.slideDown();
@@ -569,7 +594,7 @@
             var topic = $btn.data('topic');
             var niche = $('#gap-niche').val();
 
-            $btn.prop('disabled', true).text('Generating...');
+            $btn.prop('disabled', true).text(aipsResearchL10n.generatingIdeas || 'Generating...');
 
             $.ajax({
                 url: ajaxurl,
@@ -595,7 +620,7 @@
                     AIPS.Utilities.showToast('An error occurred while generating topics.', 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text('Generate Ideas');
+                    $btn.prop('disabled', false).text(aipsResearchL10n.generateIdeas || 'Generate Ideas');
                 }
             });
         },
