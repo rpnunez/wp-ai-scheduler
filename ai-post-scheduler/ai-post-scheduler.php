@@ -184,6 +184,8 @@ final class AI_Post_Scheduler {
             // AI Edit + Calendar controllers (AJAX endpoints)
             new AIPS_AI_Edit_Controller();
             new AIPS_Calendar_Controller();
+            // Sources controller (AJAX endpoints for trusted sources management)
+            new AIPS_Sources_Controller();
             // Dev Tools
             if (get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();

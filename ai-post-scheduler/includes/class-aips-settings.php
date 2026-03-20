@@ -151,6 +151,15 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Sources', 'ai-post-scheduler'),
+            __('Sources', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-sources',
+            array($this, 'render_sources_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
             __('Settings', 'ai-post-scheduler'),
             'manage_options',
@@ -1023,6 +1032,19 @@ class AIPS_Settings {
     public function render_history_page() {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
+    }
+
+    /**
+     * Render the Sources page.
+     *
+     * Loads all sources from the repository and includes the sources template.
+     *
+     * @return void
+     */
+    public function render_sources_page() {
+        $repo    = new AIPS_Sources_Repository();
+        $sources = $repo->get_all(false);
+        include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
     }
     
     /**

@@ -7,10 +7,12 @@ class AIPS_Prompt_Builder {
 
     private $template_processor;
     private $structure_manager;
+    private $sources_repo;
 
-    public function __construct($template_processor = null, $structure_manager = null) {
+    public function __construct($template_processor = null, $structure_manager = null, $sources_repo = null) {
         $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
         $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
+        $this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
     }
 
     /**
@@ -359,6 +361,9 @@ class AIPS_Prompt_Builder {
      * formats them into a structured text block. Only non-empty / non-default
      * values are included so the prompt is not padded with placeholder lines.
      *
+     * When trusted sources are configured, the block also instructs the AI to
+     * reference those URLs when generating content.
+     *
      * Returns an empty string when no site-wide settings have been configured,
      * allowing callers to safely append the result without extra whitespace.
      *
@@ -394,6 +399,15 @@ class AIPS_Prompt_Builder {
 
         if (!empty($ctx['excluded_topics'])) {
             $lines[] = 'Topics to avoid globally: ' . $ctx['excluded_topics'];
+        }
+
+        // Inject trusted sources when available.
+        $source_urls = $this->sources_repo->get_active_urls();
+        if (!empty($source_urls)) {
+            $lines[] = 'Trusted sources (reference and cite these URLs when relevant):';
+            foreach ($source_urls as $url) {
+                $lines[] = '  - ' . $url;
+            }
         }
 
         if (empty($lines)) {
