@@ -76,6 +76,8 @@ final class AI_Post_Scheduler {
         $logger->log('Running plugin activation.');
 
         $this->set_default_options();
+        // Redirect admins to onboarding wizard once after activation.
+        set_transient('aips_onboarding_redirect', 1, MINUTE_IN_SECONDS * 10);
         $this->check_upgrades();
 
         // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
@@ -156,6 +158,7 @@ final class AI_Post_Scheduler {
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Settings();
+            new AIPS_Onboarding_Wizard();
             new AIPS_Admin_Assets();
             new AIPS_Voices();
             new AIPS_Templates();
