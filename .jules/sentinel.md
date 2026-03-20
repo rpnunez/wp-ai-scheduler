@@ -37,3 +37,8 @@
 **Finding**: `AIPS_History_Repository::delete_by_status()` used a `TRUNCATE TABLE` query to clear out the entire table when the status filter is empty.
 **Risk**: `TRUNCATE TABLE` bypasses normal table deletion constraints (such as `ON DELETE` triggers) and always reports returning a boolean rather than the count of rows removed. If this method is called inadvertently with an empty string due to an invalid request or logical bug upstream, the entire history table would be completely cleared without safety mechanisms.
 **Resolution**: Changed the query to `DELETE FROM {$this->table_name}`, which behaves predictably within MySQL's transactional bounds, safely processes trigger conditions, and returns the expected integer count of deleted rows.
+
+## 2026-03-20 - Fix missing URL escaping in JSON response
+**Vulnerability:** Missing URL escaping in `AIPS_Settings::ajax_get_activity_detail()` and `AIPS_Settings::ajax_get_activity()`. WordPress-generated URLs (such as `get_permalink()`, `get_edit_post_link()`, and `get_the_post_thumbnail_url()`) were being passed directly into the JSON response without proper sanitization.
+**Learning:** Returning unescaped dynamic URLs, even if they're generated internally, can present XSS and injection vulnerabilities if they reflect user-controllable input (such as post titles within permalinks in certain setups or manipulated IDs).
+**Prevention:** Ensure that URLs are properly escaped with `esc_url_raw()` when returning them as data within API or JSON/AJAX responses to enforce secure output formatting.
