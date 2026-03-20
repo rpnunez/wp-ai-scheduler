@@ -24,30 +24,34 @@ $date_format = get_option('date_format') . ' ' . get_option('time_format');
 /**
  * Helper: render a human-readable frequency label.
  */
-function aips_frequency_label($frequency) {
-	if (empty($frequency)) {
-		return __('—', 'ai-post-scheduler');
+if (!function_exists('aips_frequency_label')) {
+	function aips_frequency_label($frequency) {
+		if (empty($frequency)) {
+			return __('—', 'ai-post-scheduler');
+		}
+		$schedules = wp_get_schedules();
+		if (isset($schedules[$frequency])) {
+			return $schedules[$frequency]['display'];
+		}
+		return esc_html(ucfirst(str_replace('_', ' ', $frequency)));
 	}
-	$schedules = wp_get_schedules();
-	if (isset($schedules[$frequency])) {
-		return $schedules[$frequency]['display'];
-	}
-	return esc_html(ucfirst(str_replace('_', ' ', $frequency)));
 }
 
 /**
  * Helper: render a type badge.
  */
-function aips_type_badge($type) {
-	switch ($type) {
-		case AIPS_Unified_Schedule_Service::TYPE_TEMPLATE:
-			return '<span class="aips-badge aips-badge-type-template">' . esc_html__('Post Generation', 'ai-post-scheduler') . '</span>';
-		case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC:
-			return '<span class="aips-badge aips-badge-type-topic">' . esc_html__('Author Topics', 'ai-post-scheduler') . '</span>';
-		case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST:
-			return '<span class="aips-badge aips-badge-type-post">' . esc_html__('Author Posts', 'ai-post-scheduler') . '</span>';
+if (!function_exists('aips_type_badge')) {
+	function aips_type_badge($type) {
+		switch ($type) {
+			case AIPS_Unified_Schedule_Service::TYPE_TEMPLATE:
+				return '<span class="aips-badge aips-badge-type-template">' . esc_html__('Post Generation', 'ai-post-scheduler') . '</span>';
+			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC:
+				return '<span class="aips-badge aips-badge-type-topic">' . esc_html__('Author Topics', 'ai-post-scheduler') . '</span>';
+			case AIPS_Unified_Schedule_Service::TYPE_AUTHOR_POST:
+				return '<span class="aips-badge aips-badge-type-post">' . esc_html__('Author Posts', 'ai-post-scheduler') . '</span>';
+		}
+		return '';
 	}
-	return '';
 }
 ?>
 <div class="wrap aips-wrap">
