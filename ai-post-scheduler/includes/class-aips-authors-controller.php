@@ -288,8 +288,8 @@ class AIPS_Authors_Controller {
 				if ($wp_post) {
 					$post->post_title = $wp_post->post_title;
 					$post->post_status = $wp_post->post_status;
-					$post->post_url = get_permalink($wp_post->ID);
-					$post->edit_url = get_edit_post_link($wp_post->ID, 'raw');
+					$post->post_url = esc_url_raw(get_permalink($wp_post->ID));
+					$post->edit_url = esc_url_raw(get_edit_post_link($wp_post->ID, 'raw'));
 				}
 			}
 		}
@@ -400,8 +400,8 @@ class AIPS_Authors_Controller {
 						'post_status' => $wp_post->post_status,
 						'date_generated' => $log->created_at,
 						'date_published' => $wp_post->post_status === 'publish' ? $wp_post->post_date : null,
-						'post_url' => get_permalink($wp_post->ID),
-						'edit_url' => get_edit_post_link($wp_post->ID, 'raw')
+						'post_url' => esc_url_raw(get_permalink($wp_post->ID)),
+						'edit_url' => esc_url_raw(get_edit_post_link($wp_post->ID, 'raw'))
 					);
 				}
 			}
