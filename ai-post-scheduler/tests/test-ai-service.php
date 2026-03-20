@@ -192,6 +192,23 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     }
 
     /**
+     * Test call log captures duration metric
+     */
+    public function test_call_log_captures_duration_metric() {
+        if (!$this->service->is_available()) {
+            $this->service->generate_text('Test');
+
+            $log = $this->service->get_call_log();
+            $this->assertArrayHasKey('metrics', $log[0]);
+            $this->assertArrayHasKey('duration_ms', $log[0]['metrics']);
+            $this->assertIsInt($log[0]['metrics']['duration_ms']);
+            $this->assertGreaterThanOrEqual(0, $log[0]['metrics']['duration_ms']);
+        } else {
+            $this->markTestSkipped('AI Engine is available, cannot test failure scenario');
+        }
+    }
+
+    /**
      * Test call log captures success status
      */
     public function test_call_log_captures_success_status() {
