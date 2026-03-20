@@ -289,14 +289,15 @@ class AIPS_AI_Service {
     /**
      * Fallback JSON generation using text query with JSON parsing.
      *
-     * Used when simpleJsonQuery is not available. Generates text and parses as JSON.
+     * Used as an absolute last resort when simpleJsonQuery is not available or all
+     * native attempts have been exhausted. Generates text and parses the response as JSON.
      *
      * @param string $prompt  The prompt to send to the AI.
      * @param array  $options Optional. AI generation options.
      * @return array|WP_Error The parsed JSON data or WP_Error on failure.
      */
     private function fallback_json_generation($prompt, $options = array()) {
-        $this->logger->log('Using fallback JSON generation (simpleJsonQuery not available)', 'info');
+        $this->logger->log('Using fallback JSON generation via simpleTextQuery', 'info');
         
         // Log the JSON generation attempt in fallback mode for accurate statistics
         $start_time = microtime(true);

@@ -231,19 +231,6 @@ class AIPS_Author_Topics_Generator {
 				$section .= "- {$note}\n";
 			}
 		}
-		
-		/*$prompt .= "Requirements:\n";
-		$prompt .= "- Each topic should be specific and actionable\n";
-		$prompt .= "- Topics should be diverse and cover different aspects of {$author->field_niche}\n";
-		$prompt .= "- Avoid duplicating previously approved or rejected topics\n";
-		$prompt .= "- Format each topic as a clear, engaging blog post title\n\n";
-		
-		$prompt .= "Output schema for each topic:\n";
-		$prompt .= "- \"title\": The blog post topic/title (string)\n";
-		$prompt .= "- \"score\": Estimated engagement score 1-100 (integer)\n";
-		$prompt .= "- \"keywords\": 3-5 relevant keywords (array of strings)\n";
-		
-		return $prompt;*/
 
 		return $section . "\n";
 	}

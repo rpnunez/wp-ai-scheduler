@@ -28,14 +28,13 @@ class AIPS_Planner {
             $count = 10;
         }
 
-        $generator = new AIPS_Generator();
-        if (!$generator->is_available()) {
+        $ai_service = new AIPS_AI_Service();
+        if (!$ai_service->is_available()) {
             wp_send_json_error(array('message' => __('AI Engine is not available.', 'ai-post-scheduler')));
         }
 
         $prompt = "Generate a list of {$count} unique, engaging blog post titles/topics about '{$niche}'.";
 
-        $ai_service = new AIPS_AI_Service();
         $result = $ai_service->generate_json($prompt, array('temperature' => 0.7, 'max_tokens' => 1000));
 
         if (is_wp_error($result)) {
