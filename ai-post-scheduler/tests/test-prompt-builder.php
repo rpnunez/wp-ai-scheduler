@@ -72,6 +72,27 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test dedicated post title builder uses the same template-only prompt rules.
+	 */
+	public function test_post_title_builder_build_template_only() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager = new AIPS_Article_Structure_Manager();
+		$base_builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
+		$builder = new AIPS_Prompt_Builder_Post_Title($base_builder, $template_processor);
+
+		$template = (object) array(
+			'title_prompt' => 'Create an engaging title about {{topic}}',
+		);
+
+		$content = 'This is the article content about AI technology...';
+		$result = $builder->build($template, 'AI', null, $content);
+
+		$this->assertStringContainsString('Generate a title for a blog post', $result);
+		$this->assertStringContainsString('Create an engaging title about AI', $result);
+		$this->assertStringContainsString('This is the article content about AI technology', $result);
+	}
+
+	/**
 	 * Test build_title_prompt with voice override.
 	 */
 	public function test_build_title_prompt_voice_override() {
@@ -295,6 +316,15 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 
 		$this->assertStringContainsString('Generate a title for a blog post', $result);
 		$this->assertStringContainsString('Here is the content:', $result);
+	}
+
+	/**
+	 * Test base prompt builder delegates title prompt construction to the dedicated builder.
+	 */
+	public function test_get_post_title_builder_returns_specialized_builder() {
+		$builder = new AIPS_Prompt_Builder();
+
+		$this->assertInstanceOf('AIPS_Prompt_Builder_Post_Title', $builder->get_post_title_builder());
 	}
 
 	/**

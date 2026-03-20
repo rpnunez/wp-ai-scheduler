@@ -42,6 +42,7 @@ class AIPS_Generator {
     private $structure_manager;
     private $post_manager;
     private $prompt_builder;
+    private $post_title_prompt_builder;
 
     /**
      * @var AIPS_Markdown_Parser Markdown parser
@@ -84,6 +85,7 @@ class AIPS_Generator {
         $this->history_service    = $history_service ?: new AIPS_History_Service();
         $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
+        $this->post_title_prompt_builder = new AIPS_Prompt_Builder_Post_Title( $this->prompt_builder, $this->template_processor );
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -333,7 +335,7 @@ class AIPS_Generator {
      */
     private function generate_title_from_context($context, $content = '', $ai_variables = array(), $options = array()) {
         // Delegate prompt building to Prompt Builder
-        $prompt = $this->prompt_builder->build_title_prompt($context, null, null, $content);
+        $prompt = $this->post_title_prompt_builder->build($context, null, null, $content);
 
         // Set token limit for title generation
         $options['max_tokens'] = 100;

@@ -5,13 +5,14 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Prompt_Builder {
 
-    private $template_processor;
-    private $structure_manager;
+	private $template_processor;
+	private $structure_manager;
+	private $post_title_builder;
 
-    public function __construct($template_processor = null, $structure_manager = null) {
-        $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-        $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
-    }
+	public function __construct($template_processor = null, $structure_manager = null) {
+		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
+		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
+	}
 
     /**
      * Builds the complete content prompt based on context.
@@ -198,88 +199,9 @@ class AIPS_Prompt_Builder {
      * @param bool        $use_conversation_context Whether chatbot conversation context is available (chatId exists).
      * @return string The complete title generation prompt.
      */
-    public function build_title_prompt($template_or_context, $topic = null, $voice = null, $content = '', $use_conversation_context = false) {
-        // Build title instructions based on voice or template configuration.
-        // Voice title prompt takes precedence over template title prompt.
-        $title_instructions = '';
-        
-        // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
-            $context = $template_or_context;
-            $topic_str = $context->get_topic();
-            
-            // For template contexts with voice, check voice title prompt first
-            if ($context->get_type() === 'template' && $context->get_voice_id()) {
-                $voice_obj = $context->get_voice();
-                if ($voice_obj && !empty($voice_obj->title_prompt)) {
-                    $title_instructions = $this->template_processor->process($voice_obj->title_prompt, $topic_str);
-                }
-            }
-            
-            // If no voice title prompt, use context title prompt
-            if (empty($title_instructions)) {
-                $title_prompt = $context->get_title_prompt();
-                if (!empty($title_prompt)) {
-                    $title_instructions = $this->template_processor->process($title_prompt, $topic_str);
-                }
-            }
-            
-            // Build the title generation prompt
-            // If using conversation context (chatId), reference the article just generated
-            // Otherwise, include the full content in the prompt
-            if ($use_conversation_context) {
-                $prompt = "Based on the article content you just generated, please create a compelling title. Respond with ONLY the most relevant title, nothing else.";
-            } else {
-                $prompt = "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.";
-            }
-            
-            if (!empty($title_instructions)) {
-                $prompt .= " Here are your instructions:\n\n" . $title_instructions;
-            }
-            
-            // Only include content if not using conversation context
-            if (!$use_conversation_context && !empty($content)) {
-                $prompt .= "\n\nHere is the content:\n\n" . $content;
-            }
-
-            // Allow filtering of title prompt
-            $prompt = apply_filters('aips_title_prompt', $prompt, $context, $topic_str, null, $content);
-
-            return $prompt;
-        }
-        
-        // Legacy template-based approach
-        $template = $template_or_context;
-
-        if ($voice && !empty($voice->title_prompt)) {
-            $title_instructions = $this->template_processor->process($voice->title_prompt, $topic);
-        } elseif (!empty($template->title_prompt)) {
-            $title_instructions = $this->template_processor->process($template->title_prompt, $topic);
-        }
-
-        // Build the title generation prompt
-        // If using conversation context (chatId), reference the article just generated
-        // Otherwise, include the full content in the prompt
-        if ($use_conversation_context) {
-            $prompt = "Based on the article content you just generated, please create a compelling title. Respond with ONLY the most relevant title, nothing else.";
-        } else {
-            $prompt = "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.";
-        }
-
-        if (!empty($title_instructions)) {
-            $prompt .= " Here are your instructions:\n\n" . $title_instructions;
-        }
-
-        // Only include content if not using conversation context
-        if (!$use_conversation_context && !empty($content)) {
-            $prompt .= "\n\nHere is the content:\n\n" . $content;
-        }
-
-        // Allow filtering of title prompt
-        $prompt = apply_filters('aips_title_prompt', $prompt, $template, $topic, $voice, $content);
-
-        return $prompt;
-    }
+	public function build_title_prompt($template_or_context, $topic = null, $voice = null, $content = '', $use_conversation_context = false) {
+		return $this->get_post_title_builder()->build($template_or_context, $topic, $voice, $content, $use_conversation_context);
+	}
 
     /**
      * Builds the complete prompt for excerpt generation.
@@ -425,7 +347,7 @@ class AIPS_Prompt_Builder {
 
         // Build title prompt
         $sample_content = '[Generated article content would appear here]';
-        $title_prompt = $this->build_title_prompt($template_data, $sample_topic, $voice, $sample_content, true);
+        $title_prompt = $this->get_post_title_builder()->build($template_data, $sample_topic, $voice, $sample_content, true);
 
         // Build excerpt prompt (requires title and content)
         $sample_title = '[Generated title would appear here]';
@@ -486,4 +408,17 @@ class AIPS_Prompt_Builder {
         $voice_service = new AIPS_Voices();
         return $voice_service->get($voice_id);
     }
+
+	/**
+	 * Get the dedicated post title prompt builder.
+	 *
+	 * @return AIPS_Prompt_Builder_Post_Title
+	 */
+	public function get_post_title_builder() {
+		if (null === $this->post_title_builder) {
+			$this->post_title_builder = new AIPS_Prompt_Builder_Post_Title($this, $this->template_processor);
+		}
+
+		return $this->post_title_builder;
+	}
 }

@@ -30,6 +30,11 @@ class AIPS_Component_Regeneration_Service {
 	 * @var AIPS_Prompt_Builder Prompt builder instance
 	 */
 	private $prompt_builder;
+
+	/**
+	 * @var AIPS_Prompt_Builder_Post_Title Post title prompt builder instance
+	 */
+	private $post_title_prompt_builder;
 	
 	/**
 	 * @var AIPS_Image_Service Image service instance
@@ -70,6 +75,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->generator = new AIPS_Generator(null, $ai_service);
 		$this->image_service = new AIPS_Image_Service($ai_service);
 		$this->prompt_builder = new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
+		$this->post_title_prompt_builder = new AIPS_Prompt_Builder_Post_Title($this->prompt_builder, $this->template_processor);
 	}
 	
 	/**
@@ -122,7 +128,7 @@ class AIPS_Component_Regeneration_Service {
 			$result = $this->generator->generate_title($template, $voice, $topic);
 		} else {
 			// For topic context, build the prompt and generate using generic method
-			$prompt = $this->prompt_builder->build_title_prompt($generation_context, null, null, '');
+			$prompt = $this->post_title_prompt_builder->build($generation_context, null, null, '');
 			// Use generate_content with log_type 'title' for proper logging
 			$result = $this->generator->generate_content($prompt, array(), 'title');
 		}
