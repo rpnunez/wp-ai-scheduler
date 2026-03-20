@@ -2037,16 +2037,68 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success');
-                        // Update each row's badge and toggle to reflect new state
-                        items.forEach(function(item) {
+                        var data = response.data || {};
+                        var updatedItems = Array.isArray(data.updated_items) ? data.updated_items : null;
+                        var failedItems  = Array.isArray(data.failed_items) ? data.failed_items : null;
+                        var errorItems   = (!updatedItems && Array.isArray(data.errors)) ? data.errors : null;
+
+                        var failedKeysMap = {};
+                        var successfulItems;
+
+                        // Normalize failed items from either failed_items or errors.
+                        if (failedItems) {
+                            failedItems.forEach(function(item) {
+                                if (item && item.type && typeof item.id !== 'undefined') {
+                                    failedKeysMap[item.type + ':' + item.id] = true;
+                                }
+                            });
+                        } else if (errorItems) {
+                            errorItems.forEach(function(item) {
+                                if (item && item.type && typeof item.id !== 'undefined') {
+                                    failedKeysMap[item.type + ':' + item.id] = true;
+                                }
+                            });
+                            failedItems = errorItems;
+                        }
+
+                        if (updatedItems) {
+                            // Backend explicitly told us which items were updated.
+                            successfulItems = updatedItems;
+                        } else if (Object.keys(failedKeysMap).length > 0) {
+                            // Infer successes as "requested items minus failed".
+                            successfulItems = items.filter(function(item) {
+                                var key = item.type + ':' + item.id;
+                                return !failedKeysMap[key];
+                            });
+                        } else {
+                            // No per-item info available; fall back to previous behavior.
+                            successfulItems = items;
+                        }
+
+                        AIPS.Utilities.showToast(data.message, 'success');
+
+                        // Update each successful row's badge and toggle to reflect new state.
+                        successfulItems.forEach(function(item) {
+                            if (!item || !item.type || typeof item.id === 'undefined') {
+                                return;
+                            }
                             var key  = item.type + ':' + item.id;
                             var $row = $('tr[data-row-key="' + key + '"]');
-                            AIPS.updateUnifiedRowStatus($row, isActive);
+                            if ($row.length) {
+                                AIPS.updateUnifiedRowStatus($row, isActive);
+                                // In partial success, unselect only successful rows to keep failures visible.
+                                if (Object.keys(failedKeysMap).length > 0) {
+                                    $row.find('.aips-unified-select').prop('checked', false);
+                                }
+                            }
                         });
-                        AIPS.unselectAllUnified();
+
+                        // If there were no known failures, keep existing behavior (unselect all).
+                        if (Object.keys(failedKeysMap).length === 0) {
+                            AIPS.unselectAllUnified();
+                        }
                     } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.errorOccurred, 'error');
+                        AIPS.Utilities.showToast((response.data && response.data.message) || aipsAdminL10n.errorOccurred, 'error');
                     }
                 },
                 error: function() {
