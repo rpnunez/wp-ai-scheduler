@@ -88,10 +88,10 @@ class AIPS_Generator {
         $this->history_service    = $history_service ?: new AIPS_History_Service();
         $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
-        $this->post_content_prompt_builder = new AIPS_Prompt_Builder_Post_Content( $this->template_processor, $this->structure_manager );
-        $this->post_title_prompt_builder = new AIPS_Prompt_Builder_Post_Title( $this->prompt_builder, $this->template_processor );
-        $this->post_excerpt_prompt_builder = new AIPS_Prompt_Builder_Post_Excerpt( $this->prompt_builder, $this->template_processor );
-        $this->post_featured_image_prompt_builder = new AIPS_Prompt_Builder_Post_Featured_Image( $this->template_processor );
+        $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
+        $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
+        $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
+        $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -312,9 +312,8 @@ class AIPS_Generator {
     /**
      * Generate a post title based on the generated content, template, and optional voice/topic.
      *
-     * Delegates title prompt construction to AIPS_Prompt_Builder for consistency
-     * and to follow the Single Responsibility Principle. The Prompt Builder handles
-     * all the logic for building prompts (title, excerpt, content).
+     * Delegates title prompt construction to AIPS_Prompt_Builder_Post_Title for consistency
+     * and to follow the Single Responsibility Principle.
      *
      * @param object      $template Template object containing prompts and settings.
      * @param object|null $voice    Optional voice object with overrides.
@@ -340,7 +339,7 @@ class AIPS_Generator {
      * @return string|WP_Error Generated title string or WP_Error on failure.
      */
     private function generate_title_from_context($context, $content = '', $ai_variables = array(), $options = array()) {
-        // Delegate prompt building to Prompt Builder
+        // Delegate prompt building to AIPS_Prompt_Builder_Post_Title
         $prompt = $this->post_title_prompt_builder->build($context, null, null, $content);
 
         // Set token limit for title generation
@@ -364,7 +363,7 @@ class AIPS_Generator {
     /**
      * Generate an excerpt (short summary) for a post.
      *
-     * Delegates excerpt prompt construction to AIPS_Prompt_Builder for consistency.
+     * Delegates excerpt prompt construction to AIPS_Prompt_Builder_Post_Excerpt.
      * Ensures the excerpt length is within a reasonable limit and removes
      * surrounding quotes from the AI output.
      *
@@ -376,7 +375,7 @@ class AIPS_Generator {
      * @return string Short excerpt string (max 160 chars). Empty string on failure.
      */
     public function generate_excerpt($title, $content, $voice = null, $topic = null, $options = array()) {
-        // Delegate prompt building to Prompt Builder
+        // Delegate prompt building to AIPS_Prompt_Builder_Post_Excerpt
         $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic);
 
         // Set token limit for excerpt generation

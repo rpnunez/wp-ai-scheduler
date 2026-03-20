@@ -55,15 +55,17 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 	/**
 	 * Build image prompt from a generation context.
 	 *
+	 * Returns the processed image prompt when featured image generation is enabled
+	 * and an image prompt is available. The source check is intentionally omitted
+	 * here so that callers such as AI Edit regeneration can request an AI-generated
+	 * image regardless of the template's original image source setting. Source-based
+	 * routing (Unsplash, media library, AI) is the responsibility of the caller.
+	 *
 	 * @param AIPS_Generation_Context $context Generation context.
 	 * @return string
 	 */
 	private function build_from_context($context) {
 		if (!$context->should_generate_featured_image()) {
-			return '';
-		}
-
-		if ($context->get_featured_image_source() !== 'ai_prompt') {
 			return '';
 		}
 
