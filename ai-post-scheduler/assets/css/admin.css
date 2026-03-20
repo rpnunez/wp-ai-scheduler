@@ -3279,3 +3279,52 @@ margin-right: 8px;
     font-size: 11px;
     color: var(--aips-text-muted, #94a3b8);
 }
+
+/* -----------------------------------------------------------------------
+   Author Suggestion Cards
+   Used by the Suggest Authors modal (#aips-tmpl-suggestion-card template)
+   ----------------------------------------------------------------------- */
+.aips-suggestion-card {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: #f9f9f9;
+}
+
+.aips-suggestion-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 8px;
+}
+
+.aips-suggestion-card-identity {
+    min-width: 0;
+}
+
+.aips-suggestion-card-name {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.aips-suggestion-card-description {
+    margin: 0 0 8px;
+    color: #555;
+    font-size: 13px;
+}
+
+.aips-suggestion-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: #666;
+}
+
+.aips-suggestion-meta-row {
+    display: block;
+}
+

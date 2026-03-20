@@ -153,9 +153,17 @@ class AIPS_Admin_Assets {
           );
 
           wp_enqueue_script(
+            'aips-templates-script',
+            AIPS_PLUGIN_URL . 'assets/js/templates.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+          );
+
+          wp_enqueue_script(
             'aips-authors-script',
             AIPS_PLUGIN_URL . 'assets/js/authors.js',
-            array('jquery', 'aips-utilities-script'),
+            array('jquery', 'aips-utilities-script', 'aips-templates-script'),
             AIPS_VERSION,
             true
           );
@@ -291,6 +299,21 @@ class AIPS_Admin_Assets {
             // Topic count display strings for the filter bar result count
             'topicCountSingular' => __('topic', 'ai-post-scheduler'),
             'topicCountPlural' => __('topics', 'ai-post-scheduler'),
+            // Author Suggestions
+            'suggestAuthors' => __('Suggest Authors', 'ai-post-scheduler'),
+            'suggestAuthorsTitle' => __('Suggest Authors with AI', 'ai-post-scheduler'),
+            'siteNicheRequired' => __('Site niche is required.', 'ai-post-scheduler'),
+            'generateSuggestions' => __('Generate Suggestions', 'ai-post-scheduler'),
+            'generatingSuggestions' => __('Generating suggestions...', 'ai-post-scheduler'),
+            'errorGeneratingSuggestions' => __('Error generating author suggestions.', 'ai-post-scheduler'),
+            'importAuthor' => __('Import Author', 'ai-post-scheduler'),
+            'importedAuthor' => __('Imported Author', 'ai-post-scheduler'),
+            'importingAuthor' => __('Importing...', 'ai-post-scheduler'),
+            'authorImported' => __('Author imported successfully.', 'ai-post-scheduler'),
+            'errorImportingAuthor' => __('Error importing author.', 'ai-post-scheduler'),
+            'voiceToneLabel' => __('Voice/Tone', 'ai-post-scheduler'),
+            'writingStyleLabel' => __('Writing Style', 'ai-post-scheduler'),
+            'topicPromptLabel' => __('Topic Generation Prompt', 'ai-post-scheduler'),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
