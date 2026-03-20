@@ -93,6 +93,18 @@ class AIPS_Admin_Assets {
             // Schedule strings
             'runScheduleConfirm' => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
             'scheduleRunning' => __('Running...', 'ai-post-scheduler'),
+            // Schedule Wizard strings
+            'scheduleTemplateRequired' => __('Please select a Template to continue.', 'ai-post-scheduler'),
+            'addNewSchedule'           => __('Add New Schedule', 'ai-post-scheduler'),
+            'editSchedule'             => __('Edit Schedule', 'ai-post-scheduler'),
+            'cloneSchedule'            => __('Clone Schedule', 'ai-post-scheduler'),
+            'saveSchedule'             => __('Save Schedule', 'ai-post-scheduler'),
+            'scheduleSavedSuccess'     => __('Schedule saved successfully.', 'ai-post-scheduler'),
+            'startNow'                 => __('Now', 'ai-post-scheduler'),
+            'useDefault'               => __('Use Default', 'ai-post-scheduler'),
+            'noTitle'                  => __('No title', 'ai-post-scheduler'),
+            'yes'                      => __('Yes', 'ai-post-scheduler'),
+            'no'                       => __('No', 'ai-post-scheduler'),
             // Status/button strings
             'saving'              => __('Saving...', 'ai-post-scheduler'),
             'generating'          => __('Generating...', 'ai-post-scheduler'),
