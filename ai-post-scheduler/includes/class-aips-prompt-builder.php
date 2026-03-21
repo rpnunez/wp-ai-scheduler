@@ -325,7 +325,7 @@ class AIPS_Prompt_Builder {
 	 */
 	public function get_post_title_builder() {
 		if (null === $this->post_title_builder) {
-			$this->post_title_builder = new AIPS_Prompt_Builder_Post_Title($this, $this->template_processor);
+			$this->post_title_builder = new AIPS_Prompt_Builder_Post_Title($this->template_processor);
 		}
 
 		return $this->post_title_builder;
@@ -338,7 +338,7 @@ class AIPS_Prompt_Builder {
 	 */
 	public function get_post_excerpt_builder() {
 		if (null === $this->post_excerpt_builder) {
-			$this->post_excerpt_builder = new AIPS_Prompt_Builder_Post_Excerpt($this, $this->template_processor);
+			$this->post_excerpt_builder = new AIPS_Prompt_Builder_Post_Excerpt($this->template_processor);
 		}
 
 		return $this->post_excerpt_builder;

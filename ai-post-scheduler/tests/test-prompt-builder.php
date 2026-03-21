@@ -94,9 +94,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 */
 	public function test_post_title_builder_build_template_only() {
 		$template_processor = new AIPS_Template_Processor();
-		$structure_manager = new AIPS_Article_Structure_Manager();
-		$base_builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
-		$builder = new AIPS_Prompt_Builder_Post_Title($base_builder, $template_processor);
+		$builder = new AIPS_Prompt_Builder_Post_Title($template_processor);
 
 		$template = (object) array(
 			'title_prompt' => 'Create an engaging title about {{topic}}',
@@ -179,9 +177,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	 */
 	public function test_post_excerpt_builder_build_basic() {
 		$template_processor = new AIPS_Template_Processor();
-		$structure_manager = new AIPS_Article_Structure_Manager();
-		$base_builder = new AIPS_Prompt_Builder($template_processor, $structure_manager);
-		$builder = new AIPS_Prompt_Builder_Post_Excerpt($base_builder, $template_processor);
+		$builder = new AIPS_Prompt_Builder_Post_Excerpt($template_processor);
 
 		$title = 'Understanding AI Technology';
 		$content = 'This article discusses various aspects of artificial intelligence...';
