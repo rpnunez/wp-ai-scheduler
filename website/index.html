@@ -1,0 +1,649 @@
+﻿<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>AI Post Scheduler — Schedule & generate WordPress content</title>
+		<meta name="description" content="AI Post Scheduler is a WordPress plugin that schedules and generates AI-written posts with reliable automation, review workflows, and author/topic planning." />
+		<meta name="theme-color" content="#2271b1" />
+		<link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+		<link rel="stylesheet" href="./assets/styles.css" />
+	</head>
+	<body>
+		<a class="skip-link" href="#about">Skip to content</a>
+		<div class="top-progress" aria-hidden="true"><span data-progress></span></div>
+
+		<header class="site-header">
+			<div class="container header-inner">
+				<a class="brand" href="#top" aria-label="AI Post Scheduler">
+					<span class="brand-mark" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none">
+							<path d="M12 3v6m0 6v6M3 12h6m6 0h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+						</svg>
+					</span>
+					<span>
+						AI Post Scheduler
+						<small>WordPress automation + AI generation</small>
+					</span>
+				</a>
+
+				<nav class="nav" data-nav aria-label="Primary">
+					<a href="#about">About</a>
+					<a href="#features">Features</a>
+					<a href="#pricing">Pricing</a>
+					<a href="#contact">Contact</a>
+				</nav>
+
+				<div class="header-actions">
+					<a class="btn btn-ghost" href="#pricing">Buy Now</a>
+					<a class="btn btn-primary" href="#contact">Contact Sales</a>
+					<button class="menu-toggle" type="button" data-menu-toggle aria-label="Open menu" aria-expanded="false">
+						<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+							<path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+						</svg>
+					</button>
+				</div>
+			</div>
+		</header>
+
+		<main id="top">
+			<section class="hero">
+				<div class="container hero-grid">
+					<div class="reveal">
+						<div class="hero-meta" aria-label="Highlights">
+							<span class="pill pill-success"><i aria-hidden="true"></i>Reliable cron automation</span>
+							<span class="pill"><i aria-hidden="true"></i>Admin-driven templates</span>
+							<span class="pill pill-warning"><i aria-hidden="true"></i>Review workflows</span>
+						</div>
+
+						<h1>From idea to publish—on schedule.</h1>
+						<p class="lede">
+							AI Post Scheduler helps you plan, generate, and ship WordPress content with confidence.
+							Set templates, schedule runs, route drafts to review, and keep your content calendar moving.
+						</p>
+
+						<div class="hero-actions">
+							<a class="btn btn-primary" href="#pricing">Buy Now</a>
+							<a class="btn btn-secondary" href="#contact">Request a Demo</a>
+							<a class="btn btn-ghost" href="#features">See Features</a>
+						</div>
+
+						<p class="fineprint">
+							Works with the Meow Apps AI Engine plugin as your AI backend. Built for WordPress teams who need repeatable, auditable automation.
+						</p>
+					</div>
+
+					<aside class="mock reveal" aria-label="Product preview">
+						<div class="panel">
+							<div class="panel-header">
+								<div class="mock-header-title">
+									<span aria-hidden="true">⚡</span>
+									<span>Automation Run</span>
+								</div>
+								<span class="pill"><i aria-hidden="true"></i>Live preview</span>
+							</div>
+
+							<div class="mock-kpis">
+								<div class="kpi">
+									<strong data-count="12">0</strong>
+									<span>Scheduled</span>
+								</div>
+								<div class="kpi">
+									<strong data-count="4">0</strong>
+									<span>In Review</span>
+								</div>
+								<div class="kpi">
+									<strong data-count="98" data-suffix="%">0%</strong>
+									<span>Success</span>
+								</div>
+							</div>
+
+							<div class="mock-body">
+								<div class="timeline" aria-label="Run timeline">
+									<div class="event success">
+										<i aria-hidden="true">✓</i>
+										<p><strong>Draft generated</strong><small>Topic variables resolved and prompt assembled</small></p>
+									</div>
+									<div class="event">
+										<i aria-hidden="true">↻</i>
+										<p><strong>Queued for review</strong><small>Assigned to editor, notifications delivered</small></p>
+									</div>
+									<div class="event warning">
+										<i aria-hidden="true">⏱</i>
+										<p><strong>Next run scheduled</strong><small>WordPress cron + recovery checks enabled</small></p>
+									</div>
+								</div>
+
+								<div class="sample-row" aria-label="Quick actions">
+									<button class="btn btn-primary btn-sm" type="button">Generate now</button>
+									<button class="btn btn-secondary btn-sm" type="button">View history</button>
+									<button class="btn btn-ghost btn-sm" type="button">Edit template</button>
+								</div>
+							</div>
+						</div>
+					</aside>
+				</div>
+			</section>
+
+			<section id="about" class="section">
+				<div class="container">
+					<h2 class="section-title reveal">About</h2>
+					<p class="section-subtitle reveal">
+						A WordPress plugin built for repeatability: schedule templates, generate structured drafts, route posts through review, and keep a clear audit trail of automation and AI activity.
+					</p>
+
+					<div class="split">
+						<div class="panel reveal">
+							<div class="panel-header">
+								<strong style="color: var(--aips-gray-900); letter-spacing: -0.01em;">What you get</strong>
+								<span class="badge info">Admin-first</span>
+							</div>
+							<div class="panel-body">
+								<ul class="list">
+									<li>
+										<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+										<div><strong>Template scheduling</strong> with variables, prompts, and cadence controls.</div>
+									</li>
+									<li>
+										<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+										<div><strong>Author/topic workflows</strong> for repeatable editorial operations.</div>
+									</li>
+									<li>
+										<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+										<div><strong>Research + review</strong> so your team stays in control of quality.</div>
+									</li>
+									<li>
+										<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+										<div><strong>Recovery safeguards</strong> for partial generations and cron interruptions.</div>
+									</li>
+								</ul>
+							</div>
+						</div>
+
+						<div class="panel reveal">
+							<div class="panel-header">
+								<strong style="color: var(--aips-gray-900); letter-spacing: -0.01em;">Why teams use it</strong>
+								<span class="badge neutral">Workflow-ready</span>
+							</div>
+							<div class="panel-body">
+								<p style="margin: 0 0 var(--aips-space-5); color: var(--aips-gray-600); line-height: var(--aips-lh-relaxed);">
+									Instead of one-off AI prompts, your editorial process becomes an asset: prompts, structures, and schedules are reusable, auditable, and easy to refine over time.
+								</p>
+								<div class="sample-row">
+									<span class="badge success">Automation</span>
+									<span class="badge info">History</span>
+									<span class="badge warning">Review</span>
+									<span class="badge neutral">Templates</span>
+								</div>
+								<p class="fineprint" style="margin-top: var(--aips-space-5);">
+									Subscription-based licensing makes it easy to scale across sites and teams.
+								</p>
+							</div>
+						</div>
+					</div>
+
+					<div class="stats reveal" aria-label="Key stats">
+						<div class="stat">
+							<strong data-count="60" data-suffix="s">0s</strong>
+							<span>Setup</span>
+						</div>
+						<div class="stat">
+							<strong data-count="3">0</strong>
+							<span>Workflows</span>
+						</div>
+						<div class="stat">
+							<strong data-count="24">0</strong>
+							<span>Automation logs</span>
+						</div>
+						<div class="stat">
+							<strong data-count="1500">0</strong>
+							<span>Max container</span>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section id="features" class="section">
+				<div class="container">
+					<h2 class="section-title reveal">Features</h2>
+					<p class="section-subtitle reveal">
+						Everything you need to generate content responsibly: scheduling, templating, review flows, and the operational guardrails that make automation dependable.
+					</p>
+
+					<div class="grid-3">
+						<article class="card reveal">
+							<div class="icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none">
+									<path d="M7 3h10a2 2 0 0 1 2 2v16l-4-2-4 2-4-2-4 2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+									<path d="M8 8h8M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+								</svg>
+							</div>
+							<h3>Template-driven generation</h3>
+							<p>Use reusable templates with built-in variables, AI variables, and structured prompt sections to keep output consistent.</p>
+						</article>
+
+						<article class="card reveal">
+							<div class="icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none">
+									<path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7Z" stroke="currentColor" stroke-width="2"/>
+									<path d="M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="currentColor" opacity="0.15"/>
+								</svg>
+							</div>
+							<h3>Author/topic workflows</h3>
+							<p>Organize topics per author, schedule generation runs, and keep topic coverage aligned with your strategy.</p>
+						</article>
+
+						<article class="card reveal">
+							<div class="icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none">
+									<path d="M7 7h10v14H7z" stroke="currentColor" stroke-width="2"/>
+									<path d="M9 3h6v4H9z" stroke="currentColor" stroke-width="2"/>
+									<path d="M9 11h6M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+								</svg>
+							</div>
+							<h3>Review-ready drafts</h3>
+							<p>Route generated posts to review, add feedback loops, and keep humans in the loop before anything publishes.</p>
+						</article>
+
+						<article class="card reveal">
+							<div class="icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none">
+									<path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+									<path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="2"/>
+								</svg>
+							</div>
+							<h3>Reliable scheduling</h3>
+							<p>WordPress cron automation with recovery safeguards that detect partial generations and reconcile state.</p>
+						</article>
+
+						<article class="card reveal">
+							<div class="icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none">
+									<path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+									<path d="M7 7h10v10H7z" stroke="currentColor" stroke-width="2" opacity="0.7"/>
+								</svg>
+							</div>
+							<h3>Composable structures</h3>
+							<p>Build reusable article structures and prompt sections, then plug them into templates for repeatable outputs.</p>
+						</article>
+
+						<article class="card reveal">
+							<div class="icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none">
+									<path d="M4 6h16v12H4z" stroke="currentColor" stroke-width="2"/>
+									<path d="M7 9h10M7 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+								</svg>
+							</div>
+							<h3>History & observability</h3>
+							<p>Track runs, retries, and outcomes with clear history logs—perfect for teams and regulated workflows.</p>
+						</article>
+					</div>
+
+					<div class="panel reveal" style="margin-top: var(--aips-space-6);">
+						<div class="panel-header">
+							<strong style="color: var(--aips-gray-900); letter-spacing: -0.01em;">Next step</strong>
+							<div class="sample-row">
+								<a class="btn btn-secondary btn-sm" href="#pricing">View plans</a>
+								<a class="btn btn-primary btn-sm" href="#contact">Talk to sales</a>
+							</div>
+						</div>
+						<div class="panel-body">
+							<p style="margin: 0; color: var(--aips-gray-600); line-height: var(--aips-lh-relaxed);">
+								Want help designing a content workflow for your team? We’ll help you map templates, structures, and review gates to your editorial process.
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section id="pricing" class="section">
+				<div class="container">
+					<h2 class="section-title reveal">Pricing</h2>
+					<p class="section-subtitle reveal">
+						Choose a plan that matches how you publish. Start simple, then scale to multi-author operations and higher automation volume.
+					</p>
+
+					<div class="pricing-toggle reveal" aria-label="Billing toggle">
+						<div class="toggle">
+							<span class="toggle-label">Monthly</span>
+							<input data-pricing-toggle type="checkbox" aria-label="Toggle annual billing" />
+							<span class="toggle-label">Annual</span>
+						</div>
+						<div class="toggle-hint" data-pricing-note>Billed monthly. Cancel anytime.</div>
+					</div>
+
+					<div class="grid-3">
+						<article class="card pricing-card reveal">
+							<h3>Starter</h3>
+							<p class="muted">For solo creators and small sites.</p>
+							<div class="price">
+								<strong>$<span data-price-monthly="19" data-price-annual="190">19</span></strong>
+								<span>/ mo</span>
+							</div>
+							<ul class="pricing-features" aria-label="Starter features">
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									Template scheduling
+								</li>
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									Basic history log
+								</li>
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									Standard support
+								</li>
+							</ul>
+							<div class="pricing-actions">
+								<a class="btn btn-primary" href="#contact">Buy Now</a>
+								<a class="btn btn-ghost" href="#contact">Ask a question</a>
+							</div>
+						</article>
+
+						<article class="card pricing-card featured reveal">
+							<h3>Pro</h3>
+							<p class="muted">For teams publishing consistently.</p>
+							<div class="price">
+								<strong>$<span data-price-monthly="49" data-price-annual="490">49</span></strong>
+								<span>/ mo</span>
+							</div>
+							<ul class="pricing-features" aria-label="Pro features">
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									Everything in Starter
+								</li>
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									Review workflow & notifications
+								</li>
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									Author/topic scheduling
+								</li>
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									Recovery safeguards
+								</li>
+							</ul>
+							<div class="pricing-actions">
+								<a class="btn btn-primary" href="#contact">Buy Now</a>
+								<a class="btn btn-secondary" href="#contact">Contact Sales</a>
+							</div>
+						</article>
+
+						<article class="card pricing-card reveal">
+							<h3>Agency</h3>
+							<p class="muted">For multiple sites and higher volume.</p>
+							<div class="price">
+								<strong>$<span data-price-monthly="129" data-price-annual="1290">129</span></strong>
+								<span>/ mo</span>
+							</div>
+							<ul class="pricing-features" aria-label="Agency features">
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									Multi-site licensing
+								</li>
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									Priority support
+								</li>
+								<li>
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+									Advanced workflows
+								</li>
+							</ul>
+							<div class="pricing-actions">
+								<a class="btn btn-secondary" href="#contact">Contact Sales</a>
+								<a class="btn btn-ghost" href="#contact">Get a quote</a>
+							</div>
+						</article>
+					</div>
+
+					<p class="fineprint reveal" style="margin-top: var(--aips-space-6);">
+						Prices shown are placeholders for the subscription launch. Taxes may apply. AI usage costs (via your AI backend) are separate.
+					</p>
+				</div>
+			</section>
+
+			<section id="contact" class="section">
+				<div class="container">
+					<h2 class="section-title reveal">Contact</h2>
+					<p class="section-subtitle reveal">
+						Tell us about your WordPress sites, publishing cadence, and review requirements. We’ll recommend a plan and help you configure a reliable workflow.
+					</p>
+
+					<div class="split">
+						<div class="panel reveal">
+							<div class="panel-header">
+								<strong style="color: var(--aips-gray-900); letter-spacing: -0.01em;">Contact Sales</strong>
+								<span class="badge info">Response in 1–2 days</span>
+							</div>
+							<div class="panel-body">
+								<form>
+									<div class="form-grid">
+										<div class="field">
+											<label for="name">Name</label>
+											<input id="name" name="name" type="text" placeholder="Jane Doe" autocomplete="name" />
+										</div>
+										<div class="field">
+											<label for="email">Email</label>
+											<input id="email" name="email" type="email" placeholder="jane@company.com" autocomplete="email" />
+										</div>
+										<div class="field">
+											<label for="company">Company</label>
+											<input id="company" name="company" type="text" placeholder="Acme Media" autocomplete="organization" />
+										</div>
+										<div class="field">
+											<label for="sites">Sites</label>
+											<select id="sites" name="sites">
+												<option>1 site</option>
+												<option>2–5 sites</option>
+												<option>6–20 sites</option>
+												<option>21+ sites</option>
+											</select>
+										</div>
+										<div class="field full">
+											<label for="message">What are you trying to automate?</label>
+											<textarea id="message" name="message" placeholder="Describe your workflow, review requirements, and cadence..."></textarea>
+										</div>
+									</div>
+									<div class="sample-row" style="margin-top: var(--aips-space-4);">
+										<button class="btn btn-primary" type="button">Send message</button>
+										<button class="btn btn-secondary" type="button">Book demo</button>
+										<span class="fineprint">This form is a design sample (not wired).</span>
+									</div>
+								</form>
+							</div>
+						</div>
+
+						<div class="panel reveal">
+							<div class="panel-header">
+								<strong style="color: var(--aips-gray-900); letter-spacing: -0.01em;">Quick links</strong>
+								<span class="badge neutral">Self-serve</span>
+							</div>
+							<div class="panel-body">
+								<ul class="list">
+									<li>
+										<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+										<div><strong>Buy Now</strong> and activate instantly with your subscription.</div>
+									</li>
+									<li>
+										<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+										<div><strong>Contact Sales</strong> for multi-site licensing, agencies, and custom workflows.</div>
+									</li>
+									<li>
+										<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+										<div><strong>Security & auditability</strong> designed for admin visibility and operational control.</div>
+									</li>
+								</ul>
+
+								<div class="panel" style="margin-top: var(--aips-space-6);">
+									<div class="panel-header">
+										<strong style="color: var(--aips-gray-900); letter-spacing: -0.01em;">FAQ</strong>
+										<span class="badge info">Sample</span>
+									</div>
+									<div class="panel-body">
+										<div class="faq" aria-label="Frequently asked questions">
+											<div class="item" data-faq-item aria-expanded="false">
+												<button type="button"><span>Does it auto-publish?</span><i aria-hidden="true">+</i></button>
+												<div class="answer">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer euismod, tellus at dapibus finibus, eros augue posuere massa.</div>
+											</div>
+											<div class="item" data-faq-item aria-expanded="false">
+												<button type="button"><span>Can I require review?</span><i aria-hidden="true">+</i></button>
+												<div class="answer">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin posuere tortor sed mi pulvinar, sed suscipit mauris porta.</div>
+											</div>
+											<div class="item" data-faq-item aria-expanded="false">
+												<button type="button"><span>Is it multi-site friendly?</span><i aria-hidden="true">+</i></button>
+												<div class="answer">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed a lacus vel erat ultricies volutpat sed sed sem.</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section id="components" class="section">
+				<div class="container">
+					<h2 class="section-title reveal">Component Samples</h2>
+					<p class="section-subtitle reveal">
+						Scratchpad UI elements (with Lorem ipsum) to reuse across the site: cards, tables, form patterns, empty states, badges, and more.
+					</p>
+
+					<div class="components-grid">
+						<div class="panel reveal">
+							<div class="panel-header">
+								<strong style="color: var(--aips-gray-900); letter-spacing: -0.01em;">Buttons & badges</strong>
+								<span class="badge neutral">Examples</span>
+							</div>
+							<div class="panel-body" style="display: grid; gap: var(--aips-space-6);">
+								<div class="sample-row" aria-label="Buttons">
+									<button class="btn btn-primary" type="button">Primary action</button>
+									<button class="btn btn-secondary" type="button">Secondary</button>
+									<button class="btn btn-ghost" type="button">Ghost</button>
+									<button class="btn btn-primary btn-sm" type="button">Small</button>
+								</div>
+								<div class="sample-row" aria-label="Badges">
+									<span class="badge success">Success</span>
+									<span class="badge warning">Warning</span>
+									<span class="badge error">Error</span>
+									<span class="badge info">Info</span>
+									<span class="badge neutral">Neutral</span>
+								</div>
+								<p class="fineprint" style="margin: 0;">
+									Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean euismod, neque sed tincidunt feugiat, nunc nulla luctus libero.
+								</p>
+							</div>
+						</div>
+
+						<div class="panel reveal">
+							<div class="panel-header">
+								<strong style="color: var(--aips-gray-900); letter-spacing: -0.01em;">Sample table</strong>
+								<span class="badge info">Preview</span>
+							</div>
+							<div class="panel-body">
+								<table class="table" aria-label="Sample table">
+									<thead>
+										<tr>
+											<th>Item</th>
+											<th>Status</th>
+											<th>Updated</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td><div class="cell-primary">Lorem ipsum</div><div class="cell-meta">Template schedule</div></td>
+											<td><span class="badge info">Queued</span></td>
+											<td class="cell-meta">2 minutes ago</td>
+										</tr>
+										<tr>
+											<td><div class="cell-primary">Dolor sit</div><div class="cell-meta">Author topic</div></td>
+											<td><span class="badge success">Success</span></td>
+											<td class="cell-meta">Yesterday</td>
+										</tr>
+										<tr>
+											<td><div class="cell-primary">Amet consectetur</div><div class="cell-meta">Review notification</div></td>
+											<td><span class="badge warning">Needs review</span></td>
+											<td class="cell-meta">3 days ago</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+
+						<div class="panel reveal">
+							<div class="panel-header">
+								<strong style="color: var(--aips-gray-900); letter-spacing: -0.01em;">Sample cards</strong>
+								<span class="badge neutral">Lorem</span>
+							</div>
+							<div class="panel-body">
+								<div class="grid-2" style="grid-template-columns: 1fr 1fr;">
+									<div class="card" style="box-shadow: var(--aips-shadow-xs);">
+										<h3 style="margin-top: 0;">Lorem ipsum</h3>
+										<p>Dolor sit amet, consectetur adipiscing elit. Integer in nisi vitae leo posuere pellentesque.</p>
+										<div class="sample-row" style="margin-top: var(--aips-space-4);">
+											<span class="badge info">Info</span>
+											<span class="badge neutral">Meta</span>
+										</div>
+									</div>
+									<div class="card" style="box-shadow: var(--aips-shadow-xs);">
+										<h3 style="margin-top: 0;">Consectetur</h3>
+										<p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.</p>
+										<div class="sample-row" style="margin-top: var(--aips-space-4);">
+											<button class="btn btn-secondary btn-sm" type="button">Action</button>
+											<button class="btn btn-ghost btn-sm" type="button">More</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="panel reveal">
+							<div class="panel-header">
+								<strong style="color: var(--aips-gray-900); letter-spacing: -0.01em;">Empty state</strong>
+								<span class="badge neutral">Pattern</span>
+							</div>
+							<div class="panel-body" style="text-align: center; padding: var(--aips-space-12) var(--aips-space-6);">
+								<div style="width: 64px; height: 64px; margin: 0 auto var(--aips-space-4); border-radius: 18px; border: 1px solid var(--aips-gray-200); background: rgba(240,240,241,0.6); display: grid; place-items: center; color: var(--aips-gray-300);">
+									<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width: 28px; height: 28px;">
+										<path d="M7 7h10v10H7z" stroke="currentColor" stroke-width="2"/>
+										<path d="M9 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+									</svg>
+								</div>
+								<div style="font-weight: 800; color: var(--aips-gray-700);">Nothing here yet</div>
+								<div class="fineprint" style="max-width: 54ch; margin: var(--aips-space-2) auto 0;">
+									Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla facilisi. Proin dignissim, nunc vel luctus hendrerit, arcu elit luctus risus.
+								</div>
+								<div class="sample-row" style="justify-content: center; margin-top: var(--aips-space-5);">
+									<button class="btn btn-primary" type="button">Create</button>
+									<button class="btn btn-secondary" type="button">Learn more</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<footer class="footer">
+			<div class="container footer-inner">
+				<div class="muted" style="font-size: var(--aips-text-sm);">
+					© <span id="year"></span> AI Post Scheduler. All rights reserved.
+				</div>
+				<div class="footer-links" aria-label="Footer links">
+					<a href="#about">About</a>
+					<a href="#features">Features</a>
+					<a href="#pricing">Pricing</a>
+					<a href="#contact">Contact</a>
+				</div>
+			</div>
+		</footer>
+
+		<script src="./assets/script.js"></script>
+		<script>
+			document.getElementById("year").textContent = String(new Date().getFullYear());
+		</script>
+	</body>
+</html>
