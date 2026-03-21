@@ -32,8 +32,9 @@ class AIPS_Admin_Menu_Helper {
 		'generated_posts' => 'aips-generated-posts',
 		'author_topics'   => 'aips-author-topics',
 		'post_review'     => 'aips-post-review',
-		'system_status'   => 'aips-system-status',
+		'system_status'   => 'aips-status',
 		'settings'        => 'aips-settings',
+		'onboarding'      => 'aips-onboarding',
 	);
 
 	/**

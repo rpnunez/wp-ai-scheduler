@@ -151,6 +151,15 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Sources', 'ai-post-scheduler'),
+            __('Sources', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-sources',
+            array($this, 'render_sources_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Settings', 'ai-post-scheduler'),
             __('Settings', 'ai-post-scheduler'),
             'manage_options',
@@ -249,10 +258,6 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_ai_model', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
-        register_setting('aips_settings', 'aips_chatbot_id', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default' => 'default'
-        ));
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
@@ -294,14 +299,6 @@ class AIPS_Settings {
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
             array($this, 'ai_model_field_callback'),
-            'aips-settings',
-            'aips_general_section'
-        );
-        
-        add_settings_field(
-            'aips_chatbot_id',
-            __('Chatbot ID', 'ai-post-scheduler'),
-            array($this, 'chatbot_id_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -560,21 +557,6 @@ class AIPS_Settings {
         <?php
     }
     
-    /**
-     * Render the Chatbot ID field.
-     *
-     * Allows users to specify which AI Engine chatbot to use for post generation.
-     *
-     * @return void
-     */
-    public function chatbot_id_field_callback() {
-        $value = get_option('aips_chatbot_id', 'default');
-        ?>
-        <input type="text" name="aips_chatbot_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="default">
-        <p class="description"><?php esc_html_e('AI Engine chatbot ID to use for post generation. This enables conversational context between title, content, and excerpt generation for better coherence.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
-
     /**
      * Render the Dev Tools page.
      *
@@ -1023,6 +1005,37 @@ class AIPS_Settings {
     public function render_history_page() {
         $history_handler = new AIPS_History();
         $history_handler->render_page();
+    }
+
+    /**
+     * Render the Sources page.
+     *
+     * Loads all sources from the repository and includes the sources template.
+     *
+     * @return void
+     */
+    public function render_sources_page() {
+        $repo    = new AIPS_Sources_Repository();
+        $sources = $repo->get_all(false);
+
+        // Build source group name map: term_id => name (avoid per-row get_term calls in the template).
+        $source_groups = get_terms(array(
+            'taxonomy'   => 'aips_source_group',
+            'hide_empty' => false,
+        ));
+        if (is_wp_error($source_groups)) {
+            $source_groups = array();
+        }
+        $source_group_name_map = array();
+        foreach ($source_groups as $group) {
+            $source_group_name_map[(int) $group->term_id] = $group->name;
+        }
+
+        // Build source → term IDs map: source_id => int[] (one query, not N queries).
+        $all_source_ids = array_map(function ($s) { return (int) $s->id; }, $sources);
+        $source_term_ids_map = $repo->get_term_ids_for_sources($all_source_ids);
+
+        include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
     }
     
     /**

@@ -52,6 +52,25 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test dedicated post content builder uses the same prompt rules.
+	 */
+	public function test_post_content_builder_build_basic() {
+		$template_processor = new AIPS_Template_Processor();
+		$structure_manager = new AIPS_Article_Structure_Manager();
+		$section_builder = new AIPS_Prompt_Builder_Article_Structure_Section($structure_manager, null, $template_processor);
+		$builder = new AIPS_Prompt_Builder_Post_Content($template_processor, $section_builder);
+
+		$template = (object) array(
+			'prompt_template' => 'Write about {{topic}}',
+			'article_structure_id' => null,
+		);
+
+		$result = $builder->build($template, 'AI Technology', null);
+
+		$this->assertStringContainsString('Write about AI Technology', $result);
+	}
+
+	/**
 	 * Test build_title_prompt with template only.
 	 */
 	public function test_build_title_prompt_template_only() {
@@ -65,6 +84,25 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 
 		$content = 'This is the article content about AI technology...';
 		$result = $builder->build_title_prompt($template, 'AI', null, $content);
+
+		$this->assertStringContainsString('Generate a title for a blog post', $result);
+		$this->assertStringContainsString('Create an engaging title about AI', $result);
+		$this->assertStringContainsString('This is the article content about AI technology', $result);
+	}
+
+	/**
+	 * Test dedicated post title builder uses the same template-only prompt rules.
+	 */
+	public function test_post_title_builder_build_template_only() {
+		$template_processor = new AIPS_Template_Processor();
+		$builder = new AIPS_Prompt_Builder_Post_Title($template_processor);
+
+		$template = (object) array(
+			'title_prompt' => 'Create an engaging title about {{topic}}',
+		);
+
+		$content = 'This is the article content about AI technology...';
+		$result = $builder->build($template, 'AI', null, $content);
 
 		$this->assertStringContainsString('Generate a title for a blog post', $result);
 		$this->assertStringContainsString('Create an engaging title about AI', $result);
@@ -133,6 +171,24 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$this->assertStringContainsString('Understanding AI Technology', $result);
 		$this->assertStringContainsString('ARTICLE BODY:', $result);
 		$this->assertStringContainsString('artificial intelligence', $result);
+	}
+
+	/**
+	 * Test dedicated post excerpt builder uses the same prompt rules.
+	 */
+	public function test_post_excerpt_builder_build_basic() {
+		$template_processor = new AIPS_Template_Processor();
+		$builder = new AIPS_Prompt_Builder_Post_Excerpt($template_processor);
+
+		$title = 'Understanding AI Technology';
+		$content = 'This article discusses various aspects of artificial intelligence...';
+
+		$result = $builder->build($title, $content, null, null);
+
+		$this->assertStringContainsString('Write an excerpt for an article', $result);
+		$this->assertStringContainsString('ARTICLE TITLE:', $result);
+		$this->assertStringContainsString('Understanding AI Technology', $result);
+		$this->assertStringContainsString('ARTICLE BODY:', $result);
 	}
 
 	/**
@@ -298,6 +354,33 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test base prompt builder delegates title prompt construction to the dedicated builder.
+	 */
+	public function test_get_post_title_builder_returns_specialized_builder() {
+		$builder = new AIPS_Prompt_Builder();
+
+		$this->assertInstanceOf('AIPS_Prompt_Builder_Post_Title', $builder->get_post_title_builder());
+	}
+
+	/**
+	 * Test base prompt builder exposes the dedicated content builder.
+	 */
+	public function test_get_post_content_builder_returns_specialized_builder() {
+		$builder = new AIPS_Prompt_Builder();
+
+		$this->assertInstanceOf('AIPS_Prompt_Builder_Post_Content', $builder->get_post_content_builder());
+	}
+
+	/**
+	 * Test base prompt builder exposes the dedicated excerpt builder.
+	 */
+	public function test_get_post_excerpt_builder_returns_specialized_builder() {
+		$builder = new AIPS_Prompt_Builder();
+
+		$this->assertInstanceOf('AIPS_Prompt_Builder_Post_Excerpt', $builder->get_post_excerpt_builder());
+	}
+
+	/**
 	 * Test excerpt prompt handles empty content gracefully.
 	 */
 	public function test_build_excerpt_prompt_empty_content() {
@@ -312,6 +395,24 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$this->assertStringContainsString('ARTICLE TITLE:', $result);
 		$this->assertStringContainsString('ARTICLE BODY:', $result);
 		$this->assertStringContainsString('Test Title', $result);
+	}
+
+	/**
+	 * Test dedicated featured image prompt builder processes prompt variables.
+	 */
+	public function test_post_featured_image_builder_build_basic() {
+		$template_processor = new AIPS_Template_Processor();
+		$builder = new AIPS_Prompt_Builder_Post_Featured_Image($template_processor);
+
+		$template = (object) array(
+			'image_prompt' => 'A photo of {{topic}}',
+			'generate_featured_image' => 1,
+			'featured_image_source' => 'ai_prompt',
+		);
+
+		$result = $builder->build($template, 'Example Topic');
+
+		$this->assertSame('A photo of Example Topic', $result);
 	}
 
 	/**
@@ -398,6 +499,15 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 
 		$this->assertNotEmpty($result['prompts']['image']);
 		$this->assertStringContainsString('Example Topic', $result['prompts']['image']);
+	}
+
+	/**
+	 * Test base prompt builder exposes the dedicated featured image builder.
+	 */
+	public function test_get_post_featured_image_builder_returns_specialized_builder() {
+		$builder = new AIPS_Prompt_Builder();
+
+		$this->assertInstanceOf('AIPS_Prompt_Builder_Post_Featured_Image', $builder->get_post_featured_image_builder());
 	}
 
 	/**
