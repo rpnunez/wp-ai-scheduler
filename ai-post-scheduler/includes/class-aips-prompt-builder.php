@@ -403,7 +403,7 @@ INSTRUCTIONS;
 	 */
 	public function get_post_content_builder() {
 		if (null === $this->post_content_builder) {
-            $article_structure_section_builder = new AIPS_Prompt_Builder_ArticleStructure_Section($this->structure_manager, null, $this->template_processor);
+            $article_structure_section_builder = new AIPS_Prompt_Builder_Article_Structure_Section($this->structure_manager, null, $this->template_processor);
             $this->post_content_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $article_structure_section_builder);
 		}
 

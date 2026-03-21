@@ -14,12 +14,12 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Class AIPS_Prompt_Builder_ArticleStructure_Section
+ * Class AIPS_Prompt_Builder_Article_Structure_Section
  *
  * Builds complete prompts for article structures by resolving section
  * placeholders and processing template variables.
  */
-class AIPS_Prompt_Builder_ArticleStructure_Section {
+class AIPS_Prompt_Builder_Article_Structure_Section {
 
 	/**
 	 * @var AIPS_Article_Structure_Manager

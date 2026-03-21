@@ -57,7 +57,7 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 	public function test_post_content_builder_build_basic() {
 		$template_processor = new AIPS_Template_Processor();
 		$structure_manager = new AIPS_Article_Structure_Manager();
-		$section_builder = new AIPS_Prompt_Builder_ArticleStructure_Section($structure_manager, null, $template_processor);
+		$section_builder = new AIPS_Prompt_Builder_Article_Structure_Section($structure_manager, null, $template_processor);
 		$builder = new AIPS_Prompt_Builder_Post_Content($template_processor, $section_builder);
 
 		$template = (object) array(

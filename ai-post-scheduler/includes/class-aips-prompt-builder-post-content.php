@@ -28,17 +28,17 @@ class AIPS_Prompt_Builder_Post_Content {
 	private $template_processor;
 
 	/**
-	 * @var AIPS_Prompt_Builder_ArticleStructure_Section Builder for structured section prompts.
+	 * @var AIPS_Prompt_Builder_Article_Structure_Section Builder for structured section prompts.
 	 */
 	private $article_structure_section_builder;
 
 	/**
 	 * @param AIPS_Template_Processor|null                 $template_processor             Optional template processor.
-	 * @param AIPS_Prompt_Builder_ArticleStructure_Section|null $article_structure_section_builder Optional section prompt builder.
+	 * @param AIPS_Prompt_Builder_Article_Structure_Section|null $article_structure_section_builder Optional section prompt builder.
 	 */
 	public function __construct($template_processor = null, $article_structure_section_builder = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_ArticleStructure_Section(null, null, $this->template_processor);
+		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_Article_Structure_Section(null, null, $this->template_processor);
 	}
 
 	/**
