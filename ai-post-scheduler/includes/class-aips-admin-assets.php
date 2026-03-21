@@ -63,6 +63,14 @@ class AIPS_Admin_Assets {
         ));
 
         wp_enqueue_script(
+            'aips-templates-script',
+            AIPS_PLUGIN_URL . 'assets/js/templates.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
             array('jquery', 'aips-utilities-script'),
@@ -359,7 +367,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-admin-research',
             AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
-            array('aips-admin-script'),
+            array('aips-admin-script', 'aips-templates-script'),
             AIPS_VERSION,
             true
         );
@@ -369,12 +377,17 @@ class AIPS_Admin_Assets {
             'topTopics' => __('Top 5 Topics:', 'ai-post-scheduler'),
             'noTopicsFound' => __('No topics match your search criteria.', 'ai-post-scheduler'),
             'noTopicsFoundTitle' => __('No Topics Found', 'ai-post-scheduler'),
+            'clearFilters' => __('Clear Filters', 'ai-post-scheduler'),
+            'libraryEmpty' => __('Your research library is empty.', 'ai-post-scheduler'),
+            'startResearch' => __('Start Research', 'ai-post-scheduler'),
             'clearSearch' => __('Clear Search', 'ai-post-scheduler'),
             'deleteTopicConfirm' => __('Delete this topic?', 'ai-post-scheduler'),
             'selectTopicSchedule' => __('Please select at least one topic to schedule.', 'ai-post-scheduler'),
             'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
             'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
             'delete' => __('Delete', 'ai-post-scheduler'),
+            'generateIdeas' => __('Generate Ideas', 'ai-post-scheduler'),
+            'generatingIdeas' => __('Generating...', 'ai-post-scheduler'),
         ));
 
         // Planner Page Scripts
