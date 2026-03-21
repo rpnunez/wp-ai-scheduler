@@ -44,6 +44,9 @@
 			// Submit Author Form
 			$('#aips-author-form').on('submit', this.saveAuthor.bind(this));
 
+			// Toggle Source Groups panel when Include Sources? checkbox changes.
+			$(document).on('change', '#author_include_sources', this.toggleAuthorSourceGroups.bind(this));
+
 			// Submit Feedback Form
 			$('#aips-feedback-form').on('submit', this.submitFeedback.bind(this));
 
@@ -227,7 +230,20 @@
 			$('#aips-author-modal-title').text(aipsAuthorsL10n.addNewAuthor);
 			$('#aips-author-form')[0].reset();
 			$('#author_id').val('');
+			// Reset source group fields.
+			$('#author_include_sources').prop('checked', false);
+			$('.aips-author-source-group-cb').prop('checked', false);
+			$('#author-source-groups-selector').hide();
 			$('#aips-author-modal').fadeIn();
+		},
+
+		/**
+		 * Show or hide the Author Source Groups selector.
+		 *
+		 * @param {Event} e - Change event from `#author_include_sources`.
+		 */
+		toggleAuthorSourceGroups: function (e) {
+			$('#author-source-groups-selector').toggle($(e.currentTarget).is(':checked'));
 		},
 
 		/**
@@ -284,6 +300,21 @@
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
 						$('#is_active').prop('checked', author.is_active == 1);
+
+						// Restore source group settings.
+						var includeSources = author.include_sources == 1;
+						$('#author_include_sources').prop('checked', includeSources);
+						$('#author-source-groups-selector').toggle(includeSources);
+						$('.aips-author-source-group-cb').prop('checked', false);
+						var authorSgIds = [];
+						try {
+							authorSgIds = JSON.parse(author.source_group_ids || '[]');
+						} catch (parseErr) {
+							authorSgIds = [];
+						}
+						authorSgIds.forEach(function(tid) {
+							$('.aips-author-source-group-cb[value="' + tid + '"]').prop('checked', true);
+						});
 					} else {
 						AIPS.Utilities.showToast(response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoading, 'error');
 
