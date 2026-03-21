@@ -52,3 +52,8 @@
 **Vulnerability:** Unescaped usage of `get_permalink()`, `get_edit_post_link()`, and `get_the_post_thumbnail_url()` in various backend classes and API responses.
 **Learning:** While WordPress core functions generally return safe URLs, generating URLs dynamically for JSON/API responses or within variables that will later be rendered without escaping violates Defense in Depth. Unescaped outputs could be an attack vector if internal filters are compromised or data states are poisoned (e.g., via malicious inputs impacting `post_link` filters).
 **Prevention:** Always wrap dynamically generated URLs with `esc_url_raw()` (for data structures/APIs) or `esc_url()` (for direct HTML output) to ensure they are properly sanitized immediately at the point of generation.
+
+## 2026-03-21 - [SQL Injection Prevention in AIPS_DB_Manager]
+**Vulnerability:** Potential SQL Injection in `AIPS_DB_Manager::drop_tables()`, `truncate_tables()`, and `backup_data()` due to unescaped string interpolation of table names.
+**Learning:** While the table names were retrieved internally from a static array, directly interpolating them into SQL queries (e.g. `$wpdb->query("DROP TABLE IF EXISTS $table")`) bypasses WordPress's recommended database preparation patterns and creates a latent risk if the table source ever becomes dynamic or user-influenced.
+**Prevention:** Use `$wpdb->prepare()` for parameters and use `esc_sql()` wrapped in backticks for table names/identifiers when constructing dynamic queries.

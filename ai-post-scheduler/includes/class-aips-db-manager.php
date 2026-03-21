@@ -326,7 +326,7 @@ class AIPS_DB_Manager {
         foreach ($schema as $sql) {
             dbDelta($sql);
         }
-        
+
         // Seed default data for new installations or upgrades
         self::seed_default_data();
 
@@ -339,7 +339,8 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
 
         foreach ($tables as $table) {
-            $wpdb->query("DROP TABLE IF EXISTS $table");
+            $table_escaped = '`' . esc_sql($table) . '`';
+            $wpdb->query("DROP TABLE IF EXISTS {$table_escaped}"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         }
     }
 
@@ -348,7 +349,8 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
 
         foreach ($tables as $table) {
-            $wpdb->query("TRUNCATE TABLE $table");
+            $table_escaped = '`' . esc_sql($table) . '`';
+            $wpdb->query("TRUNCATE TABLE {$table_escaped}"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         }
     }
 
@@ -358,8 +360,9 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
 
         foreach ($tables as $key => $table_name) {
-            if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name) {
-                $data[$key] = $wpdb->get_results("SELECT * FROM $table_name", ARRAY_A);
+            if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name) {
+                $table_escaped = '`' . esc_sql($table_name) . '`';
+                $data[$key] = $wpdb->get_results("SELECT * FROM {$table_escaped}", ARRAY_A); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             } else {
                 $data[$key] = array();
             }
@@ -431,50 +434,50 @@ class AIPS_DB_Manager {
 
     /**
      * Parse column names from CREATE TABLE SQL statement
-     * 
+     *
      * @param string $sql CREATE TABLE SQL statement
      * @return array Column names
      */
     public static function parse_columns_from_sql($sql) {
         $columns = array();
-        
+
         // Extract content between CREATE TABLE ... ( and the closing )
         if (preg_match('/CREATE TABLE[^(]+\((.+)\)/s', $sql, $matches)) {
             $table_def = $matches[1];
-            
+
             // Split by lines and process each
             $lines = explode("\n", $table_def);
             foreach ($lines as $line) {
                 $line = trim($line);
-                
+
                 // Skip empty lines, PRIMARY KEY, KEY, UNIQUE KEY lines
-                if (empty($line) || 
-                    stripos($line, 'PRIMARY KEY') !== false || 
+                if (empty($line) ||
+                    stripos($line, 'PRIMARY KEY') !== false ||
                     preg_match('/^KEY\s+/i', $line) ||
                     stripos($line, 'UNIQUE KEY') !== false) {
                     continue;
                 }
-                
+
                 // Extract column name (first word after trimming)
                 if (preg_match('/^`?(\w+)`?\s+/', $line, $col_matches)) {
                     $columns[] = $col_matches[1];
                 }
             }
         }
-        
+
         return $columns;
     }
 
     /**
      * Get expected columns for each table by parsing the schema
-     * 
+     *
      * @return array Associative array of table_name => array of column names
      */
     public static function get_expected_columns() {
         $instance = new self();
         $schema = $instance->get_schema();
         $expected = array();
-        
+
         foreach ($schema as $sql) {
             // Extract table name
             if (preg_match('/CREATE TABLE\s+(\S+)\s*\(/i', $sql, $matches)) {
@@ -482,11 +485,11 @@ class AIPS_DB_Manager {
                 // Remove $wpdb->prefix to get just the table name
                 global $wpdb;
                 $table_name = str_replace($wpdb->prefix, '', $full_table_name);
-                
+
                 $expected[$table_name] = self::parse_columns_from_sql($sql);
             }
         }
-        
+
         return $expected;
     }
 
@@ -499,7 +502,7 @@ class AIPS_DB_Manager {
         $tables = self::get_full_table_names();
         $table_sections = $tables['aips_prompt_sections'];
         $table_structures = $tables['aips_article_structures'];
-        
+
         // Seed default prompt sections
         $default_sections = array(
             array(
@@ -551,18 +554,18 @@ class AIPS_DB_Manager {
                 'content' => 'Provide links to documentation, further reading, or related resources.',
             ),
         );
-        
+
         foreach ($default_sections as $section) {
             $exists = $wpdb->get_var($wpdb->prepare(
                 "SELECT id FROM $table_sections WHERE section_key = %s",
                 $section['section_key']
             ));
-            
+
             if (!$exists) {
                 $wpdb->insert($table_sections, $section);
             }
         }
-        
+
         // Seed default article structures
         $default_structures = array(
             array(
@@ -615,13 +618,13 @@ class AIPS_DB_Manager {
                 )),
             ),
         );
-        
+
         foreach ($default_structures as $structure) {
             $exists = $wpdb->get_var($wpdb->prepare(
                 "SELECT id FROM $table_structures WHERE name = %s",
                 $structure['name']
             ));
-            
+
             if (!$exists) {
                 $wpdb->insert($table_structures, $structure);
             }
