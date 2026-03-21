@@ -817,11 +817,11 @@ $site_ctx = AIPS_Site_Context::get();
 
 <!-- Pagination Template -->
 <script type="text/html" id="aips-tmpl-queue-pagination">
-<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="{{prevPage}}" {{prevDisabled}}><span class="dashicons dashicons-arrow-left-alt2"></span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="{{prevPage}}" {{prevDisabled}} aria-label="<?php echo esc_attr__( 'Previous page', 'ai-post-scheduler' ); ?>"><span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span></button>
 <span class="aips-history-page-numbers">
     {{pages}}
 </span>
-<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="{{nextPage}}" {{nextDisabled}}><span class="dashicons dashicons-arrow-right-alt2"></span></button>
+<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="{{nextPage}}" {{nextDisabled}} aria-label="<?php echo esc_attr__( 'Next page', 'ai-post-scheduler' ); ?>"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>
 </script>
 <?php /* ------------------------------------------------------------------ */
 /* HTML template used by AIPS.Templates.renderRaw() in authors.js          */

@@ -550,7 +550,8 @@
 				let expandBtnHtml = '';
 				let detailSectionHtml = '';
 				if (detailContentHtml !== '') {
-					expandBtnHtml = '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '"><span class="dashicons dashicons-arrow-right-alt2"></span></button>';
+					const viewDetailsTitle = this.escapeHtml(aipsAuthorsL10n.viewDetails || 'View Details');
+					expandBtnHtml = '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + viewDetailsTitle + '" aria-label="' + viewDetailsTitle + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
 					detailSectionHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-detail-section', {
 						id: topic.id,
 						content: detailContentHtml
@@ -559,7 +560,8 @@
 
 				let postCountBadgeHtml = '';
 				if (topic.post_count && topic.post_count > 0) {
-					postCountBadgeHtml = ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + aipsAuthorsL10n.viewPosts + '"><span class="dashicons dashicons-admin-post"></span> ' + topic.post_count + '</span>';
+					const viewPostsTitle = this.escapeHtml(aipsAuthorsL10n.viewPosts || 'View Posts');
+					postCountBadgeHtml = ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + viewPostsTitle + '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' + topic.post_count + '</span>';
 				}
 
 				let duplicateBadgeHtml = '';
@@ -1090,7 +1092,7 @@
 		 */
 		renderFeedback: function (feedback) {
 			if (feedback.length === 0) {
-				$('#aips-topics-content').html('<p>No feedback yet.</p>');
+				$('#aips-topics-content').html('<p>' + (aipsAuthorsL10n.noFeedbackYet || 'No feedback yet.') + '</p>');
 				return;
 			}
 
