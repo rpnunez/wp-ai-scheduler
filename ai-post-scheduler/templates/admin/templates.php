@@ -192,7 +192,7 @@ if (!defined('ABSPATH')) {
 </div>
 
 <!-- Keep the original modal markup below (not redesigned yet) -->
-    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;">
+    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="5">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 id="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
@@ -350,6 +350,48 @@ if (!defined('ABSPATH')) {
                             <label for="post_quantity"><?php esc_html_e('Number of Posts to Generate', 'ai-post-scheduler'); ?></label>
                             <input type="number" id="post_quantity" name="post_quantity" min="1" max="20" value="1" class="small-text">
                             <p class="description"><?php esc_html_e('Generate 1-20 posts when running this template. Useful for batch generation.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
+                        <?php
+                        $template_source_groups = get_terms(array(
+                            'taxonomy'   => 'aips_source_group',
+                            'hide_empty' => false,
+                        ));
+                        if (is_wp_error($template_source_groups)) {
+                            $template_source_groups = array();
+                        }
+                        ?>
+                        <div class="aips-form-row">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="include_sources" name="include_sources" value="1">
+                                <?php esc_html_e('Include Sources?', 'ai-post-scheduler'); ?>
+                            </label>
+                            <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the content generation prompt.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
+                        <div id="template-source-groups-selector" style="display:none; margin-top:8px;">
+                            <div class="aips-form-row">
+                                <label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
+                                <?php if (!empty($template_source_groups)): ?>
+                                    <div class="aips-checkbox-group">
+                                        <?php foreach ($template_source_groups as $sg): ?>
+                                            <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+                                                <input type="checkbox"
+                                                    name="source_group_ids[]"
+                                                    class="aips-template-source-group-cb"
+                                                    value="<?php echo esc_attr($sg->term_id); ?>">
+                                                <?php echo esc_html($sg->name); ?>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <p class="description"><?php esc_html_e('Select one or more Source Groups whose active sources will be included in the prompt.', 'ai-post-scheduler'); ?></p>
+                                <?php else: ?>
+                                    <p class="description">
+                                        <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
+                                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
+                                    </p>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                     
@@ -545,7 +587,7 @@ if (!defined('ABSPATH')) {
                         <?php esc_html_e('Next', 'ai-post-scheduler'); ?>
                         <span class="dashicons dashicons-arrow-right-alt2"></span>
                     </button>
-                    <button type="button" class="button button-secondary aips-save-template">
+                    <button type="button" class="button button-secondary aips-save-template aips-wizard-save-btn">
                         <?php esc_html_e('Save Template', 'ai-post-scheduler'); ?>
                     </button>
                 </div>

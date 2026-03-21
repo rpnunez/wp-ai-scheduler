@@ -63,6 +63,14 @@ class AIPS_Admin_Assets {
         ));
 
         wp_enqueue_script(
+            'aips-templates-script',
+            AIPS_PLUGIN_URL . 'assets/js/templates.js',
+            array('jquery'),
+            AIPS_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'aips-admin-script',
             AIPS_PLUGIN_URL . 'assets/js/admin.js',
             array('jquery', 'aips-utilities-script'),
@@ -93,6 +101,18 @@ class AIPS_Admin_Assets {
             // Schedule strings
             'runScheduleConfirm' => __('Are you sure you want to run this schedule now? This will immediately generate posts.', 'ai-post-scheduler'),
             'scheduleRunning' => __('Running...', 'ai-post-scheduler'),
+            // Schedule Wizard strings
+            'scheduleTemplateRequired' => __('Please select a Template to continue.', 'ai-post-scheduler'),
+            'addNewSchedule'           => __('Add New Schedule', 'ai-post-scheduler'),
+            'editSchedule'             => __('Edit Schedule', 'ai-post-scheduler'),
+            'cloneSchedule'            => __('Clone Schedule', 'ai-post-scheduler'),
+            'saveSchedule'             => __('Save Schedule', 'ai-post-scheduler'),
+            'scheduleSavedSuccess'     => __('Schedule saved successfully.', 'ai-post-scheduler'),
+            'startNow'                 => __('Now', 'ai-post-scheduler'),
+            'useDefault'               => __('Use Default', 'ai-post-scheduler'),
+            'noTitle'                  => __('No title', 'ai-post-scheduler'),
+            'yes'                      => __('Yes', 'ai-post-scheduler'),
+            'no'                       => __('No', 'ai-post-scheduler'),
             // Status/button strings
             'saving'              => __('Saving...', 'ai-post-scheduler'),
             'generating'          => __('Generating...', 'ai-post-scheduler'),
@@ -314,6 +334,8 @@ class AIPS_Admin_Assets {
             'voiceToneLabel' => __('Voice/Tone', 'ai-post-scheduler'),
             'writingStyleLabel' => __('Writing Style', 'ai-post-scheduler'),
             'topicPromptLabel' => __('Topic Generation Prompt', 'ai-post-scheduler'),
+            'viewDetails' => __('View Details', 'ai-post-scheduler'),
+            'noFeedbackYet' => __('No feedback yet.', 'ai-post-scheduler'),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
@@ -345,7 +367,7 @@ class AIPS_Admin_Assets {
         wp_enqueue_script(
             'aips-admin-research',
             AIPS_PLUGIN_URL . 'assets/js/admin-research.js',
-            array('aips-admin-script'),
+            array('aips-admin-script', 'aips-templates-script'),
             AIPS_VERSION,
             true
         );
@@ -355,12 +377,17 @@ class AIPS_Admin_Assets {
             'topTopics' => __('Top 5 Topics:', 'ai-post-scheduler'),
             'noTopicsFound' => __('No topics match your search criteria.', 'ai-post-scheduler'),
             'noTopicsFoundTitle' => __('No Topics Found', 'ai-post-scheduler'),
+            'clearFilters' => __('Clear Filters', 'ai-post-scheduler'),
+            'libraryEmpty' => __('Your research library is empty.', 'ai-post-scheduler'),
+            'startResearch' => __('Start Research', 'ai-post-scheduler'),
             'clearSearch' => __('Clear Search', 'ai-post-scheduler'),
             'deleteTopicConfirm' => __('Delete this topic?', 'ai-post-scheduler'),
             'selectTopicSchedule' => __('Please select at least one topic to schedule.', 'ai-post-scheduler'),
             'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
             'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
             'delete' => __('Delete', 'ai-post-scheduler'),
+            'generateIdeas' => __('Generate Ideas', 'ai-post-scheduler'),
+            'generatingIdeas' => __('Generating...', 'ai-post-scheduler'),
         ));
 
         // Planner Page Scripts
@@ -567,6 +594,16 @@ class AIPS_Admin_Assets {
             ));
         }
 
+        if (strpos($hook, 'aips-onboarding') !== false) {
+            wp_enqueue_script(
+                'aips-admin-onboarding',
+                AIPS_PLUGIN_URL . 'assets/js/onboarding.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+        
         if (strpos($hook, 'aips-dev-tools') !== false) {
             wp_enqueue_script(
                 'aips-admin-dev-tools',
@@ -575,6 +612,30 @@ class AIPS_Admin_Assets {
                 AIPS_VERSION,
                 true
             );
+        }
+
+        if (strpos($hook, 'aips-sources') !== false) {
+            wp_enqueue_script(
+                'aips-admin-sources',
+                AIPS_PLUGIN_URL . 'assets/js/admin-sources.js',
+                array('jquery', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-sources', 'aipsSourcesL10n', array(
+                'addNewSource'      => __('Add New Source', 'ai-post-scheduler'),
+                'editSource'        => __('Edit Source', 'ai-post-scheduler'),
+                'saveSource'        => __('Save Source', 'ai-post-scheduler'),
+                'saving'            => __('Saving…', 'ai-post-scheduler'),
+                'deleteConfirm'     => __('Are you sure you want to delete this source?', 'ai-post-scheduler'),
+                'saveFailed'        => __('Failed to save source.', 'ai-post-scheduler'),
+                'deleteFailed'      => __('Failed to delete source.', 'ai-post-scheduler'),
+                'toggleFailed'      => __('Failed to update source status.', 'ai-post-scheduler'),
+                'urlRequired'       => __('A URL is required.', 'ai-post-scheduler'),
+                'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
+                'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
+            ));
         }
     }
 }

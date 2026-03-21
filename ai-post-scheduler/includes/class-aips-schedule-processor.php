@@ -215,8 +215,12 @@ class AIPS_Schedule_Processor {
             ));
         }
 
+        // Explicitly fetch the template to ensure we have the most up-to-date post_quantity
+        $actual_template_model = $this->template_repository->get_by_id($schedule->template_id);
+        $template_post_quantity = $actual_template_model ? $actual_template_model->post_quantity : 1;
+
         // Use caller-supplied override, or fall back to the template's post_quantity, defaulting to 1.
-        $raw_quantity = $quantity_override ?? ($schedule->post_quantity ?? 1);
+        $raw_quantity = $quantity_override ?? ($template_post_quantity ?? 1);
         $post_quantity = max(1, absint($raw_quantity));
 
         // Select article structure for this execution
@@ -293,11 +297,33 @@ class AIPS_Schedule_Processor {
         
         // Create context with creation_method
         $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
-        $result = $this->generator->generate_post($context);
+
+        $successful_post_ids = array();
+        $errors = array();
+
+        for ($i = 0; $i < $post_quantity; $i++) {
+            $result = $this->generator->generate_post($context);
+            if (is_wp_error($result)) {
+                $errors[] = $result;
+            } else {
+                $successful_post_ids[] = $result;
+            }
+        }
+
+        // Overall result for backward compatibility / logging
+        if (empty($successful_post_ids) && !empty($errors)) {
+            // If everything failed, return the first error
+            $overall_result = $errors[0];
+        } elseif (!empty($successful_post_ids)) {
+            // Return array of successful IDs
+            $overall_result = $successful_post_ids;
+        } else {
+            $overall_result = new WP_Error('no_posts_generated', __('No posts were generated.', 'ai-post-scheduler'));
+        }
 
         // Handle Post-Execution Logic (Cleanup/Updates)
         if (!$is_manual) {
-            $this->handle_post_execution_cleanup($schedule, $result);
+            $this->handle_post_execution_cleanup($schedule, $overall_result);
         } else {
              // For manual runs, we invalidate cache but don't delete one-time schedules automatically?
              // The original code for run_schedule_now didn't delete one-time schedules or update next_run.
@@ -306,24 +332,26 @@ class AIPS_Schedule_Processor {
         }
 
         // Handle Logging and Events based on Result
-        if (is_wp_error($result)) {
-            $this->handle_execution_failure($schedule, $result, $history, $is_manual);
+        if (is_wp_error($overall_result)) {
+            $this->handle_execution_failure($schedule, $overall_result, $history, $is_manual);
         } else {
-            $this->handle_execution_success($schedule, $result, $history, $is_manual);
+            $this->handle_execution_success($schedule, $overall_result, $history, $is_manual);
         }
 
-        return $result;
+        return $overall_result;
     }
 
     /**
      * Handle cleanup after automated execution (delete one-time, update recurring).
      *
      * @param object $schedule
-     * @param mixed  $result
+     * @param mixed  $result Array of post IDs on success, WP_Error on failure.
      */
     private function handle_post_execution_cleanup($schedule, $result) {
+        $is_success = !is_wp_error($result);
+
         if ($schedule->frequency === 'once') {
-            if (!is_wp_error($result)) {
+            if ($is_success) {
                 // If it's a one-time schedule and successful, delete it
                 $this->repository->delete($schedule->schedule_id);
                 $this->logger->log('One-time schedule completed and deleted', 'info', array('schedule_id' => $schedule->schedule_id));
@@ -353,7 +381,7 @@ class AIPS_Schedule_Processor {
                         array(
                             'schedule_id' => $schedule->schedule_id,
                             'template_id' => $schedule->template_id,
-                            'error' => is_wp_error($result) ? $result->get_error_message() : 'Unknown error',
+                            'error' => $result->get_error_message(),
                             'frequency' => $schedule->frequency,
                         )
                     );
@@ -407,13 +435,18 @@ class AIPS_Schedule_Processor {
      * Handle success logging.
      */
     private function handle_execution_success($schedule, $result, $history, $is_manual) {
+        // Handle $result as an array of post IDs (or a single ID for safety/legacy callers)
+        $post_ids = is_array($result) ? $result : array($result);
+
         $this->logger->log('Schedule completed successfully', 'info', array(
             'schedule_id' => $schedule->schedule_id,
-            'post_id' => $result
+            'post_ids' => $post_ids
         ));
 
-        // Get the post to check its status
-        $post = get_post($result);
+        // For logging, we'll base the status on the first post generated, or summarize
+        $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
+        $post = get_post($first_post_id);
+
         if ($post) {
             $event_status = ($post->post_status === 'draft') ? 'draft' : 'success';
             $event_type = ($post->post_status === 'draft') ? 'post_draft' : 'post_published';
@@ -423,14 +456,19 @@ class AIPS_Schedule_Processor {
                 $event_status = 'success';
             }
 
+            $post_title_summary = $post->post_title;
+            if (count($post_ids) > 1) {
+                $post_title_summary .= ' ' . sprintf(__('(and %d more)', 'ai-post-scheduler'), count($post_ids) - 1);
+            }
+
             // Update the history record
             $history->record(
                 'activity',
                 sprintf(
                     __('%s created by schedule "%s": %s', 'ai-post-scheduler'),
-                    ($post->post_status === 'draft') ? __('Draft', 'ai-post-scheduler') : __('Post', 'ai-post-scheduler'),
+                    (count($post_ids) > 1) ? __('Posts', 'ai-post-scheduler') : (($post->post_status === 'draft') ? __('Draft', 'ai-post-scheduler') : __('Post', 'ai-post-scheduler')),
                     $schedule->name,
-                    $post->post_title
+                    $post_title_summary
                 ),
                 array(
                     'event_type' => $event_type,

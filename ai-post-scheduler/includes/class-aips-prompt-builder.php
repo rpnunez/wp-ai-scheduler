@@ -5,13 +5,26 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Prompt_Builder {
 
-    private $template_processor;
-    private $structure_manager;
+	private $template_processor;
+	private $structure_manager;
+    private $sources_repo;
+	private $post_content_builder;
+	private $post_title_builder;
+	private $post_excerpt_builder;
+	private $post_featured_image_builder;
+    private static $sources_filter_registered = false;
 
-    public function __construct($template_processor = null, $structure_manager = null) {
-        $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-        $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
-    }
+	public function __construct($template_processor = null, $structure_manager = null, $sources_repo = null) {
+		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
+		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
+        $this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
+
+        // Register the content prompt sources filter once.
+        if (!self::$sources_filter_registered) {
+            add_filter('aips_content_prompt', array($this, 'inject_sources_into_content_prompt'), 10, 3);
+            self::$sources_filter_registered = true;
+        }
+	}
 
     /**
      * Builds the complete content prompt based on context.
@@ -24,79 +37,7 @@ class AIPS_Prompt_Builder {
      * @return string The constructed prompt.
      */
     public function build_content_prompt($template_or_context, $topic = null, $voice = null) {
-        // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
-            $context = $template_or_context;
-            
-            do_action('aips_before_build_content_prompt', $context, null);
-            
-            // Get the base content prompt from context
-            $processed_prompt = $context->get_content_prompt();
-            
-            // Check if article_structure_id is provided
-            $article_structure_id = $context->get_article_structure_id();
-            $topic_str = $context->get_topic();
-            
-            if ($article_structure_id && $topic_str) {
-                // Use article structure to build prompt
-                $structured_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic_str);
-                
-                if (!is_wp_error($structured_prompt)) {
-                    $processed_prompt = $structured_prompt;
-                } else {
-                    // Fall back to processing the base prompt with topic
-                    $processed_prompt = $this->template_processor->process($processed_prompt, $topic_str);
-                }
-            } elseif ($topic_str) {
-                // Process template variables in the prompt
-                $processed_prompt = $this->template_processor->process($processed_prompt, $topic_str);
-            }
-            
-            // For template contexts with voice, add voice instructions
-            if ($context->get_type() === 'template' && $context->get_voice_id()) {
-                $voice_obj = $context->get_voice();
-                if ($voice_obj && !empty($voice_obj->content_instructions)) {
-                    $voice_instructions = $this->template_processor->process($voice_obj->content_instructions, $topic_str);
-                    $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
-                }
-            }
-            
-            $content_prompt = apply_filters('aips_content_prompt', $processed_prompt, $context, $topic_str);
-            
-            return $content_prompt;
-        }
-        
-        // Legacy template-based approach
-        $template = $template_or_context;
-        
-        do_action('aips_before_build_content_prompt', $template, $topic);
-
-        // Check if article_structure_id is provided, build prompt with structure
-        $article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
-
-        if ($article_structure_id) {
-            // Use article structure to build prompt
-            $processed_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic);
-
-            if (is_wp_error($processed_prompt)) {
-                // Fall back to regular template processing
-                $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-            }
-        } else {
-            // Use traditional template processing
-            $processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-        }
-
-        if ($voice) {
-            $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
-            $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
-        }
-
-        $content_prompt = $processed_prompt;
-
-        $content_prompt = apply_filters('aips_content_prompt', $content_prompt, $template, $topic);
-
-        return $content_prompt;
+        return $this->get_post_content_builder()->build($template_or_context, $topic, $voice);
     }
 
     /**
@@ -195,91 +136,11 @@ class AIPS_Prompt_Builder {
      * @param string|null $topic    Optional topic to be injected into prompts (legacy).
      * @param object|null $voice    Optional voice object with overrides (legacy).
      * @param string      $content  Generated article content used as context.
-     * @param bool        $use_conversation_context Whether chatbot conversation context is available (chatId exists).
      * @return string The complete title generation prompt.
      */
-    public function build_title_prompt($template_or_context, $topic = null, $voice = null, $content = '', $use_conversation_context = false) {
-        // Build title instructions based on voice or template configuration.
-        // Voice title prompt takes precedence over template title prompt.
-        $title_instructions = '';
-        
-        // Check if we're using the new context-based approach
-        if ($template_or_context instanceof AIPS_Generation_Context) {
-            $context = $template_or_context;
-            $topic_str = $context->get_topic();
-            
-            // For template contexts with voice, check voice title prompt first
-            if ($context->get_type() === 'template' && $context->get_voice_id()) {
-                $voice_obj = $context->get_voice();
-                if ($voice_obj && !empty($voice_obj->title_prompt)) {
-                    $title_instructions = $this->template_processor->process($voice_obj->title_prompt, $topic_str);
-                }
-            }
-            
-            // If no voice title prompt, use context title prompt
-            if (empty($title_instructions)) {
-                $title_prompt = $context->get_title_prompt();
-                if (!empty($title_prompt)) {
-                    $title_instructions = $this->template_processor->process($title_prompt, $topic_str);
-                }
-            }
-            
-            // Build the title generation prompt
-            // If using conversation context (chatId), reference the article just generated
-            // Otherwise, include the full content in the prompt
-            if ($use_conversation_context) {
-                $prompt = "Based on the article content you just generated, please create a compelling title. Respond with ONLY the most relevant title, nothing else.";
-            } else {
-                $prompt = "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.";
-            }
-            
-            if (!empty($title_instructions)) {
-                $prompt .= " Here are your instructions:\n\n" . $title_instructions;
-            }
-            
-            // Only include content if not using conversation context
-            if (!$use_conversation_context && !empty($content)) {
-                $prompt .= "\n\nHere is the content:\n\n" . $content;
-            }
-
-            // Allow filtering of title prompt
-            $prompt = apply_filters('aips_title_prompt', $prompt, $context, $topic_str, null, $content);
-
-            return $prompt;
-        }
-        
-        // Legacy template-based approach
-        $template = $template_or_context;
-
-        if ($voice && !empty($voice->title_prompt)) {
-            $title_instructions = $this->template_processor->process($voice->title_prompt, $topic);
-        } elseif (!empty($template->title_prompt)) {
-            $title_instructions = $this->template_processor->process($template->title_prompt, $topic);
-        }
-
-        // Build the title generation prompt
-        // If using conversation context (chatId), reference the article just generated
-        // Otherwise, include the full content in the prompt
-        if ($use_conversation_context) {
-            $prompt = "Based on the article content you just generated, please create a compelling title. Respond with ONLY the most relevant title, nothing else.";
-        } else {
-            $prompt = "Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.";
-        }
-
-        if (!empty($title_instructions)) {
-            $prompt .= " Here are your instructions:\n\n" . $title_instructions;
-        }
-
-        // Only include content if not using conversation context
-        if (!$use_conversation_context && !empty($content)) {
-            $prompt .= "\n\nHere is the content:\n\n" . $content;
-        }
-
-        // Allow filtering of title prompt
-        $prompt = apply_filters('aips_title_prompt', $prompt, $template, $topic, $voice, $content);
-
-        return $prompt;
-    }
+	public function build_title_prompt($template_or_context, $topic = null, $voice = null, $content = '') {
+		return $this->get_post_title_builder()->build($template_or_context, $topic, $voice, $content);
+	}
 
     /**
      * Builds the complete prompt for excerpt generation.
@@ -293,36 +154,10 @@ class AIPS_Prompt_Builder {
      * @param string      $content The article content to summarize.
      * @param object|null $voice   Optional voice object with excerpt instructions (legacy).
      * @param string|null $topic   Optional topic to be injected into prompts (legacy).
-     * @param bool        $use_conversation_context Whether chatbot conversation context is available (chatId exists).
      * @return string The complete excerpt generation prompt.
      */
-    public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
-        // Build the excerpt prompt
-        // If using conversation context (chatId), reference the article just created
-        // Otherwise, include the full title and content in the prompt
-        if ($use_conversation_context) {
-            $excerpt_prompt = "Based on the article content and title you just created, please write a short excerpt between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
-        } else {
-            $excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
-        }
-        
-        // Add voice-specific excerpt instructions if provided
-        if ($voice && !empty($voice->excerpt_instructions)) {
-            $voice_instructions = $this->template_processor->process($voice->excerpt_instructions, $topic);
-            $excerpt_prompt .= $voice_instructions . "\n\n";
-        }
-        
-        // Only include title and body if not using conversation context
-        if (!$use_conversation_context) {
-            $excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
-            $excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
-            $excerpt_prompt .= "Create a compelling excerpt that captures the essence of the article while considering the context.";
-        }
-        
-        // Allow filtering of excerpt prompt
-        $excerpt_prompt = apply_filters('aips_excerpt_prompt', $excerpt_prompt, $title, $content, $voice, $topic);
-        
-        return $excerpt_prompt;
+    public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
+        return $this->get_post_excerpt_builder()->build($title, $content, $voice, $topic);
     }
 
     /**
@@ -337,11 +172,19 @@ class AIPS_Prompt_Builder {
      * @return string|null
      */
     public function build_excerpt_instructions($voice, $topic) {
-        if ($voice && !empty($voice->excerpt_instructions)) {
-            return $this->template_processor->process($voice->excerpt_instructions, $topic);
-        }
-        return null;
+        return $this->get_post_excerpt_builder()->build_instructions($voice, $topic);
     }
+
+	/**
+	 * Build the processed featured image prompt.
+	 *
+	 * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
+	 * @param string|null                    $topic Topic string for legacy flows.
+	 * @return string
+	 */
+	public function build_featured_image_prompt($template_or_context, $topic = null) {
+		return $this->get_post_featured_image_builder()->build($template_or_context, $topic);
+	}
 
     /**
      * Standard output instructions for article formatting.
@@ -349,7 +192,18 @@ class AIPS_Prompt_Builder {
      * @return string
      */
     private function get_output_instructions() {
-        return 'Return ONLY valid HTML suitable for WordPress post_content. Do not use Markdown syntax, Markdown headings, or fenced code blocks. Use semantic HTML tags (such as <h2>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, and <pre><code> for code samples). End the article with a concise summary in HTML.';
+        return <<<'INSTRUCTIONS'
+CRITICAL INSTRUCTIONS:
+- Output ONLY the article content, nothing else
+- Do NOT include any preamble, thinking text, or commentary like "Let's create..." or "Here's..."
+- Do NOT use markdown formatting (no ```, no **, no __)
+- Use proper HTML tags: <h2> for section titles, <p> for paragraphs
+- For code samples: wrap code in <pre><code> tags with HTML entities (use &lt; for <, &gt; for >, &amp; for &)
+- Example code format: <pre><code>&lt;div class="example"&gt;content&lt;/div&gt;</code></pre>
+- Do NOT include markdown code fences like ```html or ```
+- Start directly with the article content (typically an opening paragraph or <h2> heading)
+- End with a concise summary paragraph
+INSTRUCTIONS;
     }
 
     /**
@@ -358,6 +212,10 @@ class AIPS_Prompt_Builder {
      * Reads the site-wide content strategy settings via AIPS_Site_Context and
      * formats them into a structured text block. Only non-empty / non-default
      * values are included so the prompt is not padded with placeholder lines.
+     *
+     * This block intentionally does not include or reference trusted source URLs.
+     * Any source instructions are injected separately (for example via
+     * build_sources_block()) when that behavior is explicitly enabled.
      *
      * Returns an empty string when no site-wide settings have been configured,
      * allowing callers to safely append the result without extra whitespace.
@@ -404,6 +262,35 @@ class AIPS_Prompt_Builder {
     }
 
     /**
+     * Build a trusted sources block for inclusion in AI prompts.
+     *
+     * Fetches active source URLs from the given source group term IDs and
+     * formats them into a prompt instruction block. Returns an empty string
+     * when no matching sources are found.
+     *
+     * @param int[] $term_ids Source group term IDs to fetch sources from.
+     * @return string Formatted sources block, or empty string.
+     */
+    public function build_sources_block(array $term_ids) {
+        if (empty($term_ids)) {
+            return '';
+        }
+
+        $source_urls = $this->sources_repo->get_urls_by_group_term_ids($term_ids, true);
+
+        if (empty($source_urls)) {
+            return '';
+        }
+
+        $block  = "Trusted sources (reference and cite these URLs when relevant):\n";
+        foreach ($source_urls as $url) {
+            $block .= '  - ' . $url . "\n";
+        }
+
+        return $block . "\n";
+    }
+
+    /**
      * Build all prompts for a template configuration.
      *
      * Generates content, title, excerpt, and image prompts for a given template
@@ -421,23 +308,18 @@ class AIPS_Prompt_Builder {
         }
 
         // Build content prompt
-        $content_prompt = $this->build_content_prompt($template_data, $sample_topic, $voice);
+        $content_prompt = $this->get_post_content_builder()->build($template_data, $sample_topic, $voice);
 
         // Build title prompt
         $sample_content = '[Generated article content would appear here]';
-        $title_prompt = $this->build_title_prompt($template_data, $sample_topic, $voice, $sample_content, true);
+        $title_prompt = $this->get_post_title_builder()->build($template_data, $sample_topic, $voice, $sample_content, true);
 
         // Build excerpt prompt (requires title and content)
         $sample_title = '[Generated title would appear here]';
-        $excerpt_prompt = $this->build_excerpt_prompt($sample_title, $sample_content, $voice, $sample_topic, true);
+        $excerpt_prompt = $this->get_post_excerpt_builder()->build($sample_title, $sample_content, $voice, $sample_topic, true);
 
         // Build image prompt if enabled
-        $image_prompt_processed = '';
-        if (isset($template_data->generate_featured_image) && $template_data->generate_featured_image 
-            && isset($template_data->featured_image_source) && $template_data->featured_image_source === 'ai_prompt' 
-            && !empty($template_data->image_prompt)) {
-            $image_prompt_processed = $this->template_processor->process($template_data->image_prompt, $sample_topic);
-        }
+        $image_prompt_processed = $this->get_post_featured_image_builder()->build($template_data, $sample_topic);
 
         // Get voice name if applicable
         $voice_name = '';
@@ -465,6 +347,7 @@ class AIPS_Prompt_Builder {
                 'voice' => $voice_name,
                 'article_structure' => $structure_name,
                 'sample_topic' => $sample_topic,
+                'include_sources' => !empty($template_data->include_sources),
             ),
         );
     }
@@ -485,5 +368,106 @@ class AIPS_Prompt_Builder {
 
         $voice_service = new AIPS_Voices();
         return $voice_service->get($voice_id);
+    }
+
+	/**
+	 * Get the dedicated post title prompt builder.
+	 *
+	 * @return AIPS_Prompt_Builder_Post_Title
+	 */
+	public function get_post_title_builder() {
+		if (null === $this->post_title_builder) {
+			$this->post_title_builder = new AIPS_Prompt_Builder_Post_Title($this->template_processor);
+		}
+
+		return $this->post_title_builder;
+	}
+
+	/**
+	 * Get the dedicated post excerpt prompt builder.
+	 *
+	 * @return AIPS_Prompt_Builder_Post_Excerpt
+	 */
+	public function get_post_excerpt_builder() {
+		if (null === $this->post_excerpt_builder) {
+			$this->post_excerpt_builder = new AIPS_Prompt_Builder_Post_Excerpt($this->template_processor);
+		}
+
+		return $this->post_excerpt_builder;
+	}
+
+	/**
+	 * Get the dedicated post content prompt builder.
+	 *
+	 * @return AIPS_Prompt_Builder_Post_Content
+	 */
+	public function get_post_content_builder() {
+		if (null === $this->post_content_builder) {
+            $article_structure_section_builder = new AIPS_Prompt_Builder_Article_Structure_Section($this->structure_manager, null, $this->template_processor);
+            $this->post_content_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $article_structure_section_builder);
+		}
+
+		return $this->post_content_builder;
+	}
+
+	/**
+	 * Get the dedicated post featured image prompt builder.
+	 *
+	 * @return AIPS_Prompt_Builder_Post_Featured_Image
+	 */
+	public function get_post_featured_image_builder() {
+		if (null === $this->post_featured_image_builder) {
+			$this->post_featured_image_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor);
+		}
+
+		return $this->post_featured_image_builder;
+	}
+
+    /**
+     * Inject trusted sources into the content prompt via filter.
+     *
+     * This method centralizes the logic for prepending the "Trusted sources" block
+     * instead of handling it inside individual prompt builder classes.
+     *
+     * It supports both context-based generation (AIPS_Generation_Context) and the
+     * legacy template object flow used by AIPS_Prompt_Builder_Post_Content.
+     *
+     * @param string $prompt  The already-processed content prompt.
+     * @param mixed  $subject Generation context or legacy template object.
+     * @param string $topic   Topic string (may be null).
+     * @return string Prompt with sources block prepended when enabled.
+     */
+    public function inject_sources_into_content_prompt($prompt, $subject, $topic = null) {
+        $include_sources = false;
+        $group_ids       = array();
+
+        // Context-based flow implements the generation context interface.
+        if ($subject instanceof AIPS_Generation_Context) {
+            if ($subject->get_include_sources()) {
+                $include_sources = true;
+                $group_ids       = $subject->get_source_group_ids();
+            }
+        } else {
+            // Legacy template object flow.
+            if (!empty($subject) && !empty($subject->include_sources)) {
+                $include_sources = true;
+                if (!empty($subject->source_group_ids)) {
+                    $decoded   = json_decode($subject->source_group_ids, true);
+                    $group_ids = is_array($decoded) ? array_map('intval', $decoded) : array();
+                }
+            }
+        }
+
+        if (!$include_sources) {
+            return $prompt;
+        }
+
+        $sources_block = $this->build_sources_block($group_ids);
+
+        if (empty($sources_block)) {
+            return $prompt;
+        }
+
+        return $sources_block . $prompt;
     }
 }
