@@ -25,6 +25,15 @@ class Test_AIPS_Logger_Performance extends WP_UnitTestCase {
         file_put_contents($this->log_file, "");
     }
 
+    public function test_namespaced_class_exists() {
+        $this->assertTrue(class_exists('AIPS\\Support\\Logger'));
+    }
+
+    public function test_legacy_class_alias_maps_to_namespaced_class() {
+        $legacy_logger = new AIPS_Logger();
+        $this->assertInstanceOf('AIPS\\Support\\Logger', $legacy_logger);
+    }
+
     public function tearDown(): void {
         if (file_exists($this->log_file)) {
             unlink($this->log_file);

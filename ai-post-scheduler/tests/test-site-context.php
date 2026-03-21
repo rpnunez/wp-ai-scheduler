@@ -10,6 +10,17 @@
 
 class Test_AIPS_Site_Context extends WP_UnitTestCase {
 
+	/** @test */
+	public function test_namespaced_class_exists() {
+		$this->assertTrue(class_exists('AIPS\\Support\\SiteContext'));
+	}
+
+	/** @test */
+	public function test_legacy_alias_maps_to_namespaced_class() {
+		$legacy_context = new AIPS_Site_Context();
+		$this->assertInstanceOf('AIPS\\Support\\SiteContext', $legacy_context);
+	}
+
 	/**
 	 * Restore option state after each test.
 	 */
