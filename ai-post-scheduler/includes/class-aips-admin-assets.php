@@ -594,6 +594,16 @@ class AIPS_Admin_Assets {
             ));
         }
 
+        if (strpos($hook, 'aips-onboarding') !== false) {
+            wp_enqueue_script(
+                'aips-admin-onboarding',
+                AIPS_PLUGIN_URL . 'assets/js/onboarding.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+        
         if (strpos($hook, 'aips-dev-tools') !== false) {
             wp_enqueue_script(
                 'aips-admin-dev-tools',

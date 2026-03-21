@@ -12,6 +12,12 @@ if (!defined('ABSPATH')) {
                     <h1 class="aips-page-title"><?php esc_html_e('System Status', 'ai-post-scheduler'); ?></h1>
                     <p class="aips-page-description"><?php esc_html_e('Monitor system health, PHP configuration, WordPress environment, and plugin compatibility.', 'ai-post-scheduler'); ?></p>
                 </div>
+                <div class="aips-btn-group" style="gap: 8px;">
+                    <a class="aips-btn aips-btn-primary" href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('onboarding')); ?>">
+                        <span class="dashicons dashicons-welcome-learn-more"></span>
+                        <?php esc_html_e('Run Onboarding Wizard', 'ai-post-scheduler'); ?>
+                    </a>
+                </div>
             </div>
         </div>
 
