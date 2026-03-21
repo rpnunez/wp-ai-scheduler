@@ -326,6 +326,8 @@ class AIPS_Admin_Assets {
             'voiceToneLabel' => __('Voice/Tone', 'ai-post-scheduler'),
             'writingStyleLabel' => __('Writing Style', 'ai-post-scheduler'),
             'topicPromptLabel' => __('Topic Generation Prompt', 'ai-post-scheduler'),
+            'viewDetails' => __('View Details', 'ai-post-scheduler'),
+            'noFeedbackYet' => __('No feedback yet.', 'ai-post-scheduler'),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays

@@ -495,139 +495,136 @@
 				return;
 			}
 
-			let html = '<table class="aips-table aips-topics-table"><thead><tr>';
-			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>';
-			html += '<th class="column-topic">' + (aipsAuthorsL10n.topicDetails || 'Topic Details') + '</th>';
-			html += '<th class="column-generated">' + aipsAuthorsL10n.generatedAt + '</th>';
-			html += '<th class="column-actions">' + aipsAuthorsL10n.actions + '</th>';
-			html += '</tr></thead><tbody>';
+			let rowsHtml = '';
 
 			topics.forEach(topic => {
 				let detailContentHtml = '';
 				if (topic.topic_description) {
-					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.description || 'Description') + ':</strong> ' + this.escapeHtml(topic.topic_description) + '</div>';
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
+						label: aipsAuthorsL10n.description || 'Description',
+						value: topic.topic_description
+					});
 				}
 				if (topic.topic_rationale) {
-					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.rationale || 'Rationale') + ':</strong> ' + this.escapeHtml(topic.topic_rationale) + '</div>';
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
+						label: aipsAuthorsL10n.rationale || 'Rationale',
+						value: topic.topic_rationale
+					});
 				}
 				if (topic.reviewed_at && topic.reviewed_by) {
-					detailContentHtml += '<div class="aips-detail-section"><strong>' + (aipsAuthorsL10n.reviewed || 'Reviewed') + ':</strong> ' + this.escapeHtml(String(topic.reviewed_at)) + ' by User ID ' + this.escapeHtml(String(topic.reviewed_by)) + '</div>';
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-item', {
+						label: aipsAuthorsL10n.reviewed || 'Reviewed',
+						value: String(topic.reviewed_at) + ' by User ID ' + String(topic.reviewed_by)
+					});
 				}
 				if (topic.last_feedback) {
 					const feedbackAction = topic.last_feedback.action;
 					const feedbackLabel = feedbackAction === 'rejected'
 						? (aipsAuthorsL10n.reject || 'Rejected')
 						: (aipsAuthorsL10n.approve || 'Approved');
-					detailContentHtml += '<div class="aips-detail-section aips-detail-feedback">';
-					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.lastFeedback || 'Last Feedback') + ':</strong>';
-					detailContentHtml += ' <span class="aips-feedback-badge aips-feedback-badge-' + feedbackAction + '">' + this.escapeHtml(feedbackLabel) + '</span>';
+
+					let categoryBadgeHtml = '';
 					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
-						detailContentHtml += this.renderCategoryBadge(feedbackAction, topic.last_feedback.reason_category);
+						categoryBadgeHtml = this.renderCategoryBadge(feedbackAction, topic.last_feedback.reason_category);
 					}
-					if (topic.last_feedback.reason) {
-						detailContentHtml += ' — ' + this.escapeHtml(topic.last_feedback.reason);
-					}
-					if (topic.last_feedback.created_at) {
-						detailContentHtml += ' <span class="aips-feedback-date">' + this.escapeHtml(String(topic.last_feedback.created_at)) + '</span>';
-					}
-					detailContentHtml += '</div>';
+
+					let reasonHtml = topic.last_feedback.reason ? ' &mdash; ' + this.escapeHtml(topic.last_feedback.reason) : '';
+					let dateHtml = topic.last_feedback.created_at ? ' <span class="aips-feedback-date">' + this.escapeHtml(String(topic.last_feedback.created_at)) + '</span>' : '';
+
+					detailContentHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-detail-feedback', {
+						label: AIPS.Templates.escape(aipsAuthorsL10n.lastFeedback || 'Last Feedback'),
+						action: AIPS.Templates.escape(feedbackAction),
+						actionLabel: AIPS.Templates.escape(feedbackLabel),
+						categoryBadge: categoryBadgeHtml,
+						reason: reasonHtml,
+						date: dateHtml
+					});
 				}
 				if (topic.potential_duplicate && topic.duplicate_match) {
-					detailContentHtml += '<div class="aips-detail-section aips-detail-duplicate">';
-					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate') + ':</strong>';
-					detailContentHtml += ' <em>' + this.escapeHtml(topic.duplicate_match) + '</em>';
-					detailContentHtml += '</div>';
+					detailContentHtml += AIPS.Templates.render('aips-tmpl-topic-detail-duplicate', {
+						label: aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate',
+						match: topic.duplicate_match
+					});
 				}
 
-				const hasDetailContent = detailContentHtml !== '';
-
-				html += '<tr data-topic-id="' + topic.id + '">';
-				html += '<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="' + topic.id + '"></th>';
-				html += '<td class="topic-title-cell column-topic">';
-				html += '<div class="aips-topic-row">';
-
-				// Expand button is only shown when detail content exists.
-				if (hasDetailContent) {
-					html += '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + (aipsAuthorsL10n.viewDetails || 'View Details') + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '">';
-					html += '<span class="dashicons dashicons-arrow-right-alt2"></span>';
-					html += '</button>';
+				let expandBtnHtml = '';
+				let detailSectionHtml = '';
+				if (detailContentHtml !== '') {
+					const viewDetailsTitle = this.escapeHtml(aipsAuthorsL10n.viewDetails || 'View Details');
+					expandBtnHtml = '<button class="aips-topic-expand-btn" data-topic-id="' + topic.id + '" title="' + viewDetailsTitle + '" aria-label="' + viewDetailsTitle + '" aria-expanded="false" aria-controls="aips-topic-details-' + topic.id + '"><span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span></button>';
+					detailSectionHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-detail-section', {
+						id: topic.id,
+						content: detailContentHtml
+					});
 				}
 
-				html += '<span class="topic-title">' + this.escapeHtml(topic.topic_title) + '</span>';
-				html += '<span class="aips-topic-similarity-slot" data-topic-id="' + topic.id + '"></span>';
-				
-				// Add post count badge if there are any posts
+				let postCountBadgeHtml = '';
 				if (topic.post_count && topic.post_count > 0) {
-					html += ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + aipsAuthorsL10n.viewPosts + '">';
-					html += '<span class="dashicons dashicons-admin-post"></span> ' + topic.post_count;
-					html += '</span>';
+					const viewPostsTitle = this.escapeHtml(aipsAuthorsL10n.viewPosts || 'View Posts');
+					postCountBadgeHtml = ' <span class="aips-post-count-badge" data-topic-id="' + topic.id + '" title="' + viewPostsTitle + '"><span class="dashicons dashicons-admin-post" aria-hidden="true"></span> ' + topic.post_count + '</span>';
 				}
 
-				// Potential duplicate warning badge
+				let duplicateBadgeHtml = '';
 				if (topic.potential_duplicate) {
 					const dupLabel = aipsAuthorsL10n.potentialDuplicate || 'Potential Duplicate';
 					const safeDupLabel = this.escapeHtml(dupLabel);
-					const dupTitle = topic.duplicate_match
-						? safeDupLabel + ': ' + this.escapeHtml(topic.duplicate_match)
-						: safeDupLabel;
-					html += ' <span class="aips-duplicate-badge" title="' + dupTitle + '">';
-					html += '<span class="dashicons dashicons-warning"></span> ' + safeDupLabel + '</span>';
+					const dupTitle = topic.duplicate_match ? safeDupLabel + ': ' + this.escapeHtml(topic.duplicate_match) : safeDupLabel;
+					duplicateBadgeHtml = ' <span class="aips-duplicate-badge" title="' + dupTitle + '"><span class="dashicons dashicons-warning"></span> ' + safeDupLabel + '</span>';
 				}
 
-				// Last feedback badge — shows prior approval/rejection history for context
+				let feedbackBadgeHtml = '';
 				if (topic.last_feedback) {
 					const fbAction = topic.last_feedback.action;
-					const fbLabel = fbAction === 'rejected'
-						? (aipsAuthorsL10n.previouslyRejected || 'Previously Rejected')
-						: (aipsAuthorsL10n.previouslyApproved || 'Previously Approved');
-					const fbTitle = topic.last_feedback.reason
-						? this.escapeHtml(fbLabel) + ': ' + this.escapeHtml(topic.last_feedback.reason)
-						: this.escapeHtml(fbLabel);
-					html += ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '">';
-					html += '<span class="dashicons dashicons-admin-comments"></span> ' + this.escapeHtml(fbLabel) + '</span>';
-					// Render an inline reason category chip next to the feedback badge
+					const fbLabel = fbAction === 'rejected' ? (aipsAuthorsL10n.previouslyRejected || 'Previously Rejected') : (aipsAuthorsL10n.previouslyApproved || 'Previously Approved');
+					const fbTitle = topic.last_feedback.reason ? this.escapeHtml(fbLabel) + ': ' + this.escapeHtml(topic.last_feedback.reason) : this.escapeHtml(fbLabel);
+					feedbackBadgeHtml = ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '"><span class="dashicons dashicons-admin-comments"></span> ' + this.escapeHtml(fbLabel) + '</span>';
 					if (topic.last_feedback.reason_category) {
-						html += this.renderCategoryBadge(fbAction, topic.last_feedback.reason_category);
+						feedbackBadgeHtml += ' ' + this.renderCategoryBadge(fbAction, topic.last_feedback.reason_category);
 					}
 				}
-				
-				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
-				html += '</div>';
 
-				if (hasDetailContent) {
-					html += '<div class="aips-topic-detail-content" id="aips-topic-details-' + topic.id + '" style="display:none;">' + detailContentHtml + '</div>';
-				}
-
-				html += '</td>';
-				html += '<td class="column-generated">' + topic.generated_at + '</td>';
-				html += '<td class="topic-actions column-actions">';
-
-				// Actions based on status
+				let actionsHtml = '';
 				if (status === 'pending') {
-					// Pending actions: feedback actions and edit
-					html += '<div class="cell-actions">';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
-					html += '</div>';
-					html += '<div class="cell-actions" style="margin-top: 6px;">';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback') + '</button>';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback') + '</button>';
-					html += '</div>';
+					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-pending', {
+						id: topic.id,
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit'),
+						approveLabel: AIPS.Templates.escape(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback'),
+						rejectLabel: AIPS.Templates.escape(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback')
+					});
 				} else if (status === 'approved') {
-					html += '<div class="cell-actions">';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.generatePostNow || 'Generate Post Now') + '</button>';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
-					html += '</div>';
+					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-approved', {
+						id: topic.id,
+						generateLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatePostNow || 'Generate Post Now'),
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
+					});
 				} else {
-					html += '<div class="cell-actions">';
-					html += '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="' + topic.id + '">' + this.escapeHtml(aipsAuthorsL10n.edit || 'Edit') + '</button>';
-					html += '</div>';
+					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-rejected', {
+						id: topic.id,
+						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
+					});
 				}
 
-				html += '</td></tr>';
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row', {
+					id: topic.id,
+					topicTitle: AIPS.Templates.escape(topic.topic_title),
+					expandBtn: expandBtnHtml,
+					postCountBadge: postCountBadgeHtml,
+					duplicateBadge: duplicateBadgeHtml,
+					feedbackBadge: feedbackBadgeHtml,
+					detailContent: detailSectionHtml,
+					generatedAt: AIPS.Templates.escape(topic.generated_at),
+					actions: actionsHtml
+				});
 			});
 
-			html += '</tbody></table>';
-			$('#aips-topics-content').html(html);
+			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-topics-table', {
+				topicDetails: AIPS.Templates.escape(aipsAuthorsL10n.topicDetails || 'Topic Details'),
+				generatedAtLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatedAt),
+				actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
+				rows: rowsHtml
+			});
+
+			$('#aips-topics-content').html(tableHtml);
 
 			// Update the filter bar result count
 			var total = topics.length;
@@ -635,7 +632,7 @@
 				? total + ' ' + (aipsAuthorsL10n.topicCountSingular || 'topic')
 				: total + ' ' + (aipsAuthorsL10n.topicCountPlural || 'topics');
 			$('#aips-topics-result-count').text(countStr);
-		},
+		}
 
 		/**
 		 * Fetch semantic similarity suggestions and render them inline in topic rows.
@@ -1095,33 +1092,34 @@
 		 */
 		renderFeedback: function (feedback) {
 			if (feedback.length === 0) {
-				$('#aips-topics-content').html('<p>No feedback yet.</p>');
+				$('#aips-topics-content').html('<p>' + (aipsAuthorsL10n.noFeedbackYet || 'No feedback yet.') + '</p>');
 				return;
 			}
 
-			let html = '<table class="aips-table aips-feedback-table"><thead><tr>';
-			html += '<th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>';
-			html += '<th class="column-topic">' + aipsAuthorsL10n.topic + '</th>';
-			html += '<th class="column-action">' + aipsAuthorsL10n.action + '</th>';
-			html += '<th class="column-reason">' + aipsAuthorsL10n.reason + '</th>';
-			html += '<th class="column-user">' + aipsAuthorsL10n.user + '</th>';
-			html += '<th class="column-date">' + aipsAuthorsL10n.date + '</th>';
-			html += '</tr></thead><tbody>';
+			let rowsHtml = '';
 
 			feedback.forEach(item => {
-				html += '<tr>';
-				html += '<th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="' + item.id + '"></th>';
-				html += '<td>' + this.escapeHtml(item.topic_title || 'N/A') + '</td>';
-				html += '<td><span class="aips-status aips-status-' + item.action + '">' + item.action + '</span></td>';
-				html += '<td>' + this.escapeHtml(item.reason || '-') + '</td>';
-				html += '<td>' + this.escapeHtml(item.user_name || 'Unknown') + '</td>';
-				html += '<td>' + item.created_at + '</td>';
-				html += '</tr>';
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-feedback-row', {
+					id: item.id,
+					topicTitle: AIPS.Templates.escape(item.topic_title || 'N/A'),
+					action: AIPS.Templates.escape(item.action),
+					reason: AIPS.Templates.escape(item.reason || '-'),
+					userName: AIPS.Templates.escape(item.user_name || 'Unknown'),
+					date: AIPS.Templates.escape(item.created_at)
+				});
 			});
 
-			html += '</tbody></table>';
-			$('#aips-topics-content').html(html);
-		},
+			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-feedback-table', {
+				topicLabel: AIPS.Templates.escape(aipsAuthorsL10n.topic),
+				actionLabel: AIPS.Templates.escape(aipsAuthorsL10n.action),
+				reasonLabel: AIPS.Templates.escape(aipsAuthorsL10n.reason),
+				userLabel: AIPS.Templates.escape(aipsAuthorsL10n.user),
+				dateLabel: AIPS.Templates.escape(aipsAuthorsL10n.date),
+				rows: rowsHtml
+			});
+
+			$('#aips-topics-content').html(tableHtml);
+		}
 
 		/**
 		 * Confirm and permanently delete a single topic via `aips_delete_topic`.
@@ -1378,25 +1376,27 @@
 				return;
 			}
 
-			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
-			html += '<th>' + aipsAuthorsL10n.logAction + '</th>';
-			html += '<th>' + aipsAuthorsL10n.logUser + '</th>';
-			html += '<th>' + aipsAuthorsL10n.logDate + '</th>';
-			html += '<th>' + aipsAuthorsL10n.logDetails + '</th>';
-			html += '</tr></thead><tbody>';
+			let rowsHtml = '';
 
 			logs.forEach(log => {
-				html += '<tr>';
-				html += '<td><span class="aips-status aips-status-' + log.action + '">' + log.action + '</span></td>';
-				html += '<td>' + this.escapeHtml(log.user_name || 'System') + '</td>';
-				html += '<td>' + log.created_at + '</td>';
-				html += '<td>' + this.escapeHtml(log.notes || '-') + '</td>';
-				html += '</tr>';
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-log-row', {
+					action: AIPS.Templates.escape(log.action),
+					userName: AIPS.Templates.escape(log.user_name || 'System'),
+					date: AIPS.Templates.escape(log.created_at),
+					notes: AIPS.Templates.escape(log.notes || '-')
+				});
 			});
 
-			html += '</tbody></table>';
-			$('#aips-topic-logs-content').html(html);
-		},
+			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-logs-table', {
+				actionLabel: AIPS.Templates.escape(aipsAuthorsL10n.logAction),
+				userLabel: AIPS.Templates.escape(aipsAuthorsL10n.logUser),
+				dateLabel: AIPS.Templates.escape(aipsAuthorsL10n.logDate),
+				detailsLabel: AIPS.Templates.escape(aipsAuthorsL10n.logDetails),
+				rows: rowsHtml
+			});
+
+			$('#aips-topic-logs-content').html(tableHtml);
+		}
 		
 		/**
 		 * Open the topic-posts modal and start loading posts for the given topic.
@@ -1472,35 +1472,38 @@
 				$('#aips-topic-posts-content').html('<p>' + aipsAuthorsL10n.noPostsFound + '</p>');
 				return;
 			}
-			
-			let html = '<table class="wp-list-table widefat fixed striped"><thead><tr>';
-			html += '<th>' + aipsAuthorsL10n.postId + '</th>';
-			html += '<th>' + aipsAuthorsL10n.postTitle + '</th>';
-			html += '<th>' + aipsAuthorsL10n.dateGenerated + '</th>';
-			html += '<th>' + aipsAuthorsL10n.datePublished + '</th>';
-			html += '<th>' + aipsAuthorsL10n.actions + '</th>';
-			html += '</tr></thead><tbody>';
-			
+
+			let rowsHtml = '';
+
 			posts.forEach(post => {
-				html += '<tr>';
-				html += '<td>' + this.escapeHtml(post.post_id) + '</td>';
-				html += '<td>' + this.escapeHtml(post.post_title) + '</td>';
-				html += '<td>' + this.escapeHtml(post.date_generated || '') + '</td>';
-				html += '<td>' + this.escapeHtml(post.date_published || aipsAuthorsL10n.notPublished) + '</td>';
-				html += '<td>';
+				let actionsHtml = '';
 				if (post.edit_url) {
-					html += '<a href="' + this.sanitizeUrl(post.edit_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.editPost + '</a> ';
+					actionsHtml += '<a href="' + this.sanitizeUrl(post.edit_url) + '" class="button" target="_blank">' + AIPS.Templates.escape(aipsAuthorsL10n.editPost) + '</a> ';
 				}
 				if (post.post_url && post.post_status === 'publish') {
-					html += '<a href="' + this.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + aipsAuthorsL10n.viewPost + '</a>';
+					actionsHtml += '<a href="' + this.sanitizeUrl(post.post_url) + '" class="button" target="_blank">' + AIPS.Templates.escape(aipsAuthorsL10n.viewPost) + '</a>';
 				}
-				html += '</td>';
-				html += '</tr>';
+
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-post-row', {
+					postId: AIPS.Templates.escape(post.post_id),
+					postTitle: AIPS.Templates.escape(post.post_title),
+					dateGenerated: AIPS.Templates.escape(post.date_generated || ''),
+					datePublished: AIPS.Templates.escape(post.date_published || aipsAuthorsL10n.notPublished),
+					actions: actionsHtml
+				});
 			});
-			
-			html += '</tbody></table>';
-			$('#aips-topic-posts-content').html(html);
-		},
+
+			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-posts-table', {
+				idLabel: AIPS.Templates.escape(aipsAuthorsL10n.postId),
+				titleLabel: AIPS.Templates.escape(aipsAuthorsL10n.postTitle),
+				generatedLabel: AIPS.Templates.escape(aipsAuthorsL10n.dateGenerated),
+				publishedLabel: AIPS.Templates.escape(aipsAuthorsL10n.datePublished),
+				actionsLabel: AIPS.Templates.escape(aipsAuthorsL10n.actions),
+				rows: rowsHtml
+			});
+
+			$('#aips-topic-posts-content').html(tableHtml);
+		}
 
 		/**
 		 * Sync all `.aips-topic-checkbox` elements with the "select all" checkbox.
@@ -2317,27 +2320,27 @@
 			const start = (this.queueCurrentPage - 1) * this.queuePerPage;
 			const pageItems = topics.slice(start, start + this.queuePerPage);
 
-			let html = '<table class="aips-table aips-queue-table">';
-			html += '<thead><tr>';
-			html += '<th scope="col" style="width: 30px;"><input type="checkbox" class="aips-queue-select-all"></th>';
-			html += '<th scope="col">' + (aipsAuthorsL10n.topicTitle || 'Topic Title') + '</th>';
-			html += '<th scope="col">' + (aipsAuthorsL10n.author || 'Author') + '</th>';
-			html += '<th scope="col">' + (aipsAuthorsL10n.fieldNiche || 'Field/Niche') + '</th>';
-			html += '<th scope="col">' + (aipsAuthorsL10n.approvedDate || 'Approved Date') + '</th>';
-			html += '</tr></thead><tbody>';
+			let rowsHtml = '';
 
 			pageItems.forEach(topic => {
-				html += '<tr>';
-				html += '<td><input type="checkbox" class="aips-queue-topic-checkbox" value="' + topic.id + '"></td>';
-				html += '<td><span class="cell-primary">' + AuthorsModule.escapeHtml(topic.topic_title) + '</span></td>';
-				html += '<td>' + AuthorsModule.escapeHtml(topic.author_name) + '</td>';
-				html += '<td>' + AuthorsModule.escapeHtml(topic.field_niche) + '</td>';
-				html += '<td><div class="cell-meta">' + (topic.reviewed_at || aipsAuthorsL10n.notAvailable || 'N/A') + '</div></td>';
-				html += '</tr>';
+				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-queue-row', {
+					id: topic.id,
+					title: AIPS.Templates.escape(topic.topic_title),
+					author: AIPS.Templates.escape(topic.author_name),
+					field: AIPS.Templates.escape(topic.field_niche),
+					date: AIPS.Templates.escape(topic.reviewed_at || aipsAuthorsL10n.notAvailable || 'N/A')
+				});
 			});
 
-			html += '</tbody></table>';
-			$('#aips-queue-topics-list').html(html);
+			const tableHtml = AIPS.Templates.renderRaw('aips-tmpl-queue-table', {
+				titleLabel: AIPS.Templates.escape(aipsAuthorsL10n.topicTitle || 'Topic Title'),
+				authorLabel: AIPS.Templates.escape(aipsAuthorsL10n.author || 'Author'),
+				fieldLabel: AIPS.Templates.escape(aipsAuthorsL10n.fieldNiche || 'Field/Niche'),
+				dateLabel: AIPS.Templates.escape(aipsAuthorsL10n.approvedDate || 'Approved Date'),
+				rows: rowsHtml
+			});
+
+			$('#aips-queue-topics-list').html(tableHtml);
 
 			const topicLabel = totalItems === 1 ? (aipsAuthorsL10n.topic || 'topic') : (aipsAuthorsL10n.topics || 'topics');
 			$('#aips-queue-table-footer-count').text(totalItems + ' ' + topicLabel);
@@ -2352,46 +2355,48 @@
 		 */
 		renderQueuePagination: function (totalPages) {
 			const current = this.queueCurrentPage;
-			let html = '';
 
 			if (totalPages <= 1) {
 				$('#aips-queue-pagination-links').html('');
 				return;
 			}
 
-			html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + (current - 1) + '" ' + (current <= 1 ? 'disabled' : '') + '><span class="dashicons dashicons-arrow-left-alt2"></span></button>';
-			html += '<span class="aips-history-page-numbers">';
-
+			let pagesHtml = '';
 			const start = Math.max(1, current - 3);
 			const end = Math.min(totalPages, current + 3);
 
 			if (start > 1) {
-				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="1">1</button>';
+				pagesHtml += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="1">1</button>';
 				if (start > 2) {
-					html += '<span class="aips-history-page-ellipsis">…</span>';
+					pagesHtml += '<span class="aips-history-page-ellipsis">…</span>';
 				}
 			}
 
 			for (let p = start; p <= end; p++) {
 				if (p === current) {
-					html += '<span class="aips-btn aips-btn-sm aips-btn-primary" aria-current="page">' + p + '</span>';
+					pagesHtml += '<span class="aips-btn aips-btn-sm aips-btn-primary" aria-current="page">' + p + '</span>';
 				} else {
-					html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + p + '">' + p + '</button>';
+					pagesHtml += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + p + '">' + p + '</button>';
 				}
 			}
 
 			if (end < totalPages) {
 				if (end < totalPages - 1) {
-					html += '<span class="aips-history-page-ellipsis">…</span>';
+					pagesHtml += '<span class="aips-history-page-ellipsis">…</span>';
 				}
-				html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + totalPages + '">' + totalPages + '</button>';
+				pagesHtml += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + totalPages + '">' + totalPages + '</button>';
 			}
 
-			html += '</span>';
-			html += '<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-queue-page-link" data-page="' + (current + 1) + '" ' + (current >= totalPages ? 'disabled' : '') + '><span class="dashicons dashicons-arrow-right-alt2"></span></button>';
+			const paginationHtml = AIPS.Templates.renderRaw('aips-tmpl-queue-pagination', {
+				prevPage: current - 1,
+				prevDisabled: current <= 1 ? 'disabled' : '',
+				nextPage: current + 1,
+				nextDisabled: current >= totalPages ? 'disabled' : '',
+				pages: pagesHtml
+			});
 
-			$('#aips-queue-pagination-links').html(html);
-		},
+			$('#aips-queue-pagination-links').html(paginationHtml);
+		}
 
 		/**
 		 * Navigate queue pagination.
