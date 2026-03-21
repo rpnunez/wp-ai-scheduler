@@ -121,18 +121,17 @@
          */
         renderResearchResults: function(data) {
             var $container = $('#research-results-content');
-            var templates = AIPS.Templates;
             var topTopicsBlockHtml = '';
-            var esc = templates ? templates.escape : function(str) { return String(str || ''); };
+            var esc = AIPS.Templates ? AIPS.Templates.escape : function(str) { return String(str || ''); };
 
-            if (templates && data.top_topics && data.top_topics.length > 0) {
+            if (AIPS.Templates && data.top_topics && data.top_topics.length > 0) {
                 var itemsHtml = data.top_topics.map(function(topic) {
                     var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
                     var reasonHtml = topic.reason
-                        ? templates.render('aips-tmpl-research-top-topic-reason', { reason: topic.reason })
+                        ? AIPS.Templates.render('aips-tmpl-research-top-topic-reason', { reason: topic.reason })
                         : '';
 
-                    return templates.renderRaw('aips-tmpl-research-top-topic-item', {
+                    return AIPS.Templates.renderRaw('aips-tmpl-research-top-topic-item', {
                         topic: esc(topic.topic),
                         score_class: esc(scoreClass),
                         score: esc(topic.score),
@@ -140,14 +139,14 @@
                     });
                 }).join('');
 
-                topTopicsBlockHtml = templates.renderRaw('aips-tmpl-research-top-topics-block', {
+                topTopicsBlockHtml = AIPS.Templates.renderRaw('aips-tmpl-research-top-topics-block', {
                     top_topics_label: esc(aipsResearchL10n.topTopics),
                     items_html: itemsHtml
                 });
             }
 
-            var html = templates
-                ? templates.renderRaw('aips-tmpl-research-results-summary', {
+            var html = AIPS.Templates
+                ? AIPS.Templates.renderRaw('aips-tmpl-research-results-summary', {
                     saved_count: esc(data.saved_count),
                     topics_saved: esc(aipsResearchL10n.topicsSaved),
                     niche: esc(data.niche),
@@ -205,15 +204,14 @@
             var minScore = $('#filter-score').val();
             var freshOnly = $('#filter-fresh').is(':checked');
             var isFiltered = niche || minScore !== '0' || freshOnly;
-            var templates = AIPS.Templates;
-            var esc = templates ? templates.escape : function(str) { return String(str || ''); };
+            var esc = AIPS.Templates ? AIPS.Templates.escape : function(str) { return String(str || ''); };
 
             this.researchSelectedTopics = [];
             this.updateSelectedTopics();
 
             if (!topics || topics.length === 0) {
-                if (templates) {
-                    html = templates.render('aips-tmpl-research-empty-state', {
+                if (AIPS.Templates) {
+                    html = AIPS.Templates.render('aips-tmpl-research-empty-state', {
                         title: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
                         description: isFiltered ? aipsResearchL10n.noTopicsFound : (aipsResearchL10n.libraryEmpty || aipsResearchL10n.noTopicsFound),
                         button_id: isFiltered ? 'aips-clear-filters' : 'aips-start-research',
@@ -230,19 +228,19 @@
                 return;
             }
 
-            if (templates) {
+            if (AIPS.Templates) {
                 var rowsHtml = topics.map(function(topic) {
                     var scoreClass = topic.score >= 90 ? 'high' : (topic.score >= 70 ? 'medium' : 'low');
                     var keywords = Array.isArray(topic.keywords) ? topic.keywords : [];
                     var keywordsHtml = keywords.map(function(kw) {
-                        return templates.render('aips-tmpl-research-keyword-tag', { keyword: kw });
+                        return AIPS.Templates.render('aips-tmpl-research-keyword-tag', { keyword: kw });
                     }).join('');
 
                     var reasonHtml = topic.reason
-                        ? templates.render('aips-tmpl-research-topic-reason', { reason: topic.reason })
+                        ? AIPS.Templates.render('aips-tmpl-research-topic-reason', { reason: topic.reason })
                         : '';
 
-                    return templates.renderRaw('aips-tmpl-research-topics-row', {
+                    return AIPS.Templates.renderRaw('aips-tmpl-research-topics-row', {
                         id: esc(topic.id),
                         topic: esc(topic.topic),
                         reason_html: reasonHtml,
@@ -255,13 +253,13 @@
                     });
                 }).join('');
 
-                var searchEmptyHtml = templates.render('aips-tmpl-research-topics-search-empty', {
+                var searchEmptyHtml = AIPS.Templates.render('aips-tmpl-research-topics-search-empty', {
                     title: aipsResearchL10n.noTopicsFoundTitle,
                     description: aipsResearchL10n.noTopicsFound,
                     clear_label: aipsResearchL10n.clearSearch
                 });
 
-                html = templates.renderRaw('aips-tmpl-research-topics-table', {
+                html = AIPS.Templates.renderRaw('aips-tmpl-research-topics-table', {
                     rows_html: rowsHtml,
                     search_empty_html: searchEmptyHtml
                 });
@@ -541,11 +539,10 @@
             var $container = $('#gap-results-container');
             var $grid = $container.find('.aips-gap-grid');
             $grid.empty();
-            var templates = AIPS.Templates;
 
             if (!gaps || gaps.length === 0) {
-                if (templates) {
-                    $grid.html(templates.renderRaw('aips-tmpl-research-gap-empty', {}));
+                if (AIPS.Templates) {
+                    $grid.html(AIPS.Templates.renderRaw('aips-tmpl-research-gap-empty', {}));
                 } else {
                     $grid.html('<p>No gaps found.</p>');
                 }
@@ -556,8 +553,8 @@
             gaps.forEach(function(gap) {
                 var priorityClass = (gap.priority || 'Medium').toLowerCase();
 
-                if (templates) {
-                    $grid.append(templates.render('aips-tmpl-research-gap-card', {
+                if (AIPS.Templates) {
+                    $grid.append(AIPS.Templates.render('aips-tmpl-research-gap-card', {
                         priority_class: priorityClass,
                         priority: gap.priority || 'Medium',
                         missing_topic: gap.missing_topic,
