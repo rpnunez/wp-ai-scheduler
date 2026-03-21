@@ -125,7 +125,7 @@ if (!isset($sections) || !is_array($sections)) {
 				</span>
 			</div>
 
-			<div id="aips-structure-search-no-results" class="aips-empty-state" style="display: none; padding: 60px 20px;">
+			<div id="aips-structure-search-no-results" class="aips-empty-state" style="display: none;">
 				<span class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></span>
 				<h3 class="aips-empty-state-title"><?php esc_html_e('No Structures Found', 'ai-post-scheduler'); ?></h3>
 				<p class="aips-empty-state-description"><?php esc_html_e('No article structures match your search criteria.', 'ai-post-scheduler'); ?></p>
