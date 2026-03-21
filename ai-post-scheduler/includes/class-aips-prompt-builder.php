@@ -349,7 +349,8 @@ class AIPS_Prompt_Builder {
 	 */
 	public function get_post_content_builder() {
 		if (null === $this->post_content_builder) {
-			$this->post_content_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $this->structure_manager);
+            $article_structure_section_builder = new AIPS_Prompt_Builder_ArticleStructure_Section($this->structure_manager, null, $this->template_processor);
+            $this->post_content_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $article_structure_section_builder);
 		}
 
 		return $this->post_content_builder;

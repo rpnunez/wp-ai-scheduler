@@ -31,17 +31,11 @@ class AIPS_Article_Structure_Manager {
 	private $section_repository;
 	
 	/**
-	 * @var AIPS_Template_Processor
-	 */
-	private $template_processor;
-	
-	/**
 	 * Initialize the manager.
 	 */
 	public function __construct() {
 		$this->structure_repository = new AIPS_Article_Structure_Repository();
 		$this->section_repository = new AIPS_Prompt_Section_Repository();
-		$this->template_processor = new AIPS_Template_Processor();
 	}
 	
 	/**
@@ -102,71 +96,6 @@ class AIPS_Article_Structure_Manager {
 		}
 		
 		return $this->get_structure($structure->id);
-	}
-	
-	/**
-	 * Build a complete prompt from structure and topic.
-	 *
-	 * @param int         $structure_id Structure ID to use.
-	 * @param string|null $topic        Topic for template variables.
-	 * @return string|WP_Error Complete prompt or error.
-	 */
-	public function build_prompt($structure_id, $topic = null) {
-		$structure = $this->get_structure($structure_id);
-		
-		if (is_wp_error($structure)) {
-			return $structure;
-		}
-		
-		// Get section contents
-		$section_contents = $this->get_section_contents($structure['sections']);
-		
-		// Start with the structure's prompt template
-		$prompt = $structure['prompt_template'];
-		
-		// Replace section placeholders with actual content using array-based str_replace for performance
-		$search = array();
-		$replace = array();
-
-		foreach ($section_contents as $section_key => $content) {
-			$search[] = "{{section:$section_key}}";
-			$replace[] = $content;
-		}
-
-		if (!empty($search)) {
-			$prompt = str_replace($search, $replace, $prompt);
-		}
-		
-		// Process remaining template variables (date, topic, site_name, etc.)
-		$prompt = $this->template_processor->process($prompt, $topic);
-		
-		return $prompt;
-	}
-	
-	/**
-	 * Get section contents by keys.
-	 *
-	 * @param array $section_keys Array of section keys.
-	 * @return array Array of section_key => content.
-	 */
-	private function get_section_contents($section_keys) {
-		if (empty($section_keys)) {
-			return array();
-		}
-		
-		$sections = $this->section_repository->get_by_keys($section_keys);
-		
-		$contents = array();
-		foreach ($section_keys as $key) {
-			if (isset($sections[$key])) {
-				$contents[$key] = $sections[$key]->content;
-			} else {
-				// Fallback for missing sections
-				$contents[$key] = '';
-			}
-		}
-		
-		return $contents;
 	}
 	
 	/**

@@ -28,17 +28,17 @@ class AIPS_Prompt_Builder_Post_Content {
 	private $template_processor;
 
 	/**
-	 * @var AIPS_Article_Structure_Manager Structure manager for structured prompts.
+	 * @var AIPS_Prompt_Builder_ArticleStructure_Section Builder for structured section prompts.
 	 */
-	private $structure_manager;
+	private $article_structure_section_builder;
 
 	/**
-	 * @param AIPS_Template_Processor|null         $template_processor Optional template processor.
-	 * @param AIPS_Article_Structure_Manager|null  $structure_manager  Optional structure manager.
+	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
+	 * @param AIPS_Prompt_Builder_ArticleStructure_Section|null $article_structure_section_builder Optional section prompt builder.
 	 */
-	public function __construct($template_processor = null, $structure_manager = null) {
+	public function __construct($template_processor = null, $article_structure_section_builder = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
+		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_ArticleStructure_Section(null, null, $this->template_processor);
 	}
 
 	/**
@@ -73,7 +73,7 @@ class AIPS_Prompt_Builder_Post_Content {
 		$topic = $context->get_topic();
 
 		if ($article_structure_id && $topic) {
-			$structured_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic);
+			$structured_prompt = $this->article_structure_section_builder->build($article_structure_id, $topic);
 
 			if (!is_wp_error($structured_prompt)) {
 				$processed_prompt = $structured_prompt;
@@ -105,18 +105,7 @@ class AIPS_Prompt_Builder_Post_Content {
 	 */
 	private function build_from_template($template, $topic = null, $voice = null) {
 		do_action('aips_before_build_content_prompt', $template, $topic);
-
-		$article_structure_id = isset($template->article_structure_id) ? $template->article_structure_id : null;
-
-		if ($article_structure_id) {
-			$processed_prompt = $this->structure_manager->build_prompt($article_structure_id, $topic);
-
-			if (is_wp_error($processed_prompt)) {
-				$processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-			}
-		} else {
-			$processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
-		}
+		$processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
 
 		if ($voice) {
 			$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
