@@ -245,7 +245,16 @@
 
             if (term && visibleCount === 0) {
                 if ($emptyState.length === 0) {
-                    $topicsList.append('<div class="topics-empty-state" style="padding: 20px; text-align: center; color: #666;">No topics match your search.</div>');
+                    $topicsList.append(
+                        '<div class="aips-empty-state topics-empty-state" style="padding: 40px 20px;">' +
+                            '<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>' +
+                            '<h3 class="aips-empty-state-title">No Topics Found</h3>' +
+                            '<p class="aips-empty-state-description">No topics match your search criteria.</p>' +
+                            '<div class="aips-empty-state-actions">' +
+                                '<button type="button" class="aips-btn aips-btn-secondary" onclick="jQuery(\'#planner-topic-search-clear\').click()">Clear Search</button>' +
+                            '</div>' +
+                        '</div>'
+                    );
                 }
             } else {
                 if ($emptyState.length) {

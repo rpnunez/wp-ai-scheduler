@@ -854,15 +854,28 @@
 				$clearBtn.hide();
 			}
 
+			var visibleCount = 0;
 			$rows.each(function() {
 				var $row = $(this);
 				var title = $row.find('.topic-title').text().toLowerCase();
 				if (title.indexOf(term) > -1) {
 					$row.show();
+					visibleCount++;
 				} else {
 					$row.hide();
 				}
 			});
+
+			var $topicsContent = $('#aips-topics-content');
+			var $emptyState = $('#aips-topic-search-no-results');
+
+			if (term.length > 0 && visibleCount === 0 && $rows.length > 0) {
+				$topicsContent.hide();
+				$emptyState.show();
+			} else {
+				$emptyState.hide();
+				$topicsContent.show();
+			}
 		},
 
 		/**

@@ -43,3 +43,7 @@
 
 **Learning:** Empty states for searches across different admin pages had inconsistent classes (`dashicons` vs `aips-empty-state-icon`, missing `aips-empty-state-actions`), and PHP-driven clear buttons lacked the standardized `.aips-btn-secondary` class.
 **Action:** Ensured `generated-posts.php` and `post-review.php` have the correct classes on their search clear links, and applied the exact `.aips-empty-state*` class hierarchy to all `*-no-results` empty states.
+## 2024-03-21 - [Topics Search Empty State]
+
+Learning: When searching topics in the Planner and Author Topics UI, there was no empty state when the search query yielded zero results, leaving the user with a blank table and no clear feedback.
+Action: Added standard \`.aips-empty-state\` UI components that show a "No Topics Found" message and a "Clear Search" button to easily reset the filter. This improves UX by making the system status clear. Next time, always check if search filters provide feedback when returning no results.
