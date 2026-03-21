@@ -332,6 +332,9 @@ class AIPS_Generator {
     /**
      * Generate a post title from a generation context.
      *
+     * Delegates title prompt construction to AIPS_Prompt_Builder_Post_Title.
+     * Strips surrounding quotes from the AI output before returning.
+     *
      * @param AIPS_Generation_Context $context      Generation context.
      * @param string                  $content      Generated article content used as context.
      * @param array                   $ai_variables Optional resolved AI variables.
