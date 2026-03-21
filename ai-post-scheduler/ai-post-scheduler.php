@@ -181,6 +181,7 @@ final class AI_Post_Scheduler {
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Settings();
+            new AIPS_Admin_Menu();
             new AIPS_Onboarding_Wizard();
             new AIPS_Admin_Assets();
             new AIPS_Voices();
@@ -198,8 +199,10 @@ final class AI_Post_Scheduler {
             new AIPS_Research_Controller();
             new AIPS_Seeder_Admin();
             new AIPS_Data_Management();
+          
             // Structures admin controller (CRUD endpoints for Article Structures UI)
             new AIPS_Structures_Controller();
+          
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
             new AIPS_Prompt_Sections_Controller();
             
@@ -210,8 +213,10 @@ final class AI_Post_Scheduler {
             // AI Edit + Calendar controllers (AJAX endpoints)
             new AIPS_AI_Edit_Controller();
             new AIPS_Calendar_Controller();
+          
             // Sources controller (AJAX endpoints for trusted sources management)
             new AIPS_Sources_Controller();
+          
             // Dev Tools
             if (get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();
@@ -223,8 +228,8 @@ final class AI_Post_Scheduler {
         new AIPS_Author_Topics_Scheduler();
         new AIPS_Author_Post_Generator();
         new AIPS_Post_Review_Notifications();
-		new AIPS_Partial_Generation_Notifications();
-		new AIPS_Partial_Generation_State_Reconciler();
+		    new AIPS_Partial_Generation_Notifications();
+		    new AIPS_Partial_Generation_State_Reconciler();
 
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();

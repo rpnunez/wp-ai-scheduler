@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 /**
  * Class AIPS_Settings
  *
- * Handles the registration of admin menu pages, settings, and rendering of admin interfaces
+ * Handles the registration of plugin settings and related AJAX handlers
  * for the AI Post Scheduler plugin.
  *
  * @package AI_Post_Scheduler
@@ -19,7 +19,6 @@ class AIPS_Settings {
      * Hooks into admin_menu, admin_init, and admin_enqueue_scripts.
      */
     public function __construct() {
-        add_action('admin_menu', array($this, 'add_menu_pages'));
         add_action('admin_init', array($this, 'register_settings'));
         add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
         add_filter('parent_file', array($this, 'fix_author_topics_parent_file'));
