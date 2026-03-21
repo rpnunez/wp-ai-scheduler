@@ -145,8 +145,3 @@
 **Improvement:** Enabled clickable progress indicator steps in the Template Wizard to allow non-linear navigation.
 **Files Modified:** `ai-post-scheduler/assets/js/admin.js`, `ai-post-scheduler/assets/css/admin.css`
 **Outcome:** Reduces friction for users, allowing them to jump directly to previous steps or skip ahead (if intermediate steps are valid) without needing to click "Next" or "Back" multiple times, significantly improving the edit flow.
-## 2024-03-24 - Dashboard Optimization
-**Target Feature:** Dashboard
-**Improvement:** Replaced hardcoded admin URLs with `AIPS_Admin_Menu_Helper::get_page_url()` in dashboard templates and related notification classes.
-**Files Modified:** `ai-post-scheduler/templates/admin/dashboard.php`, `ai-post-scheduler/includes/class-aips-partial-generation-notifications.php`, `ai-post-scheduler/tests/test-partial-generation-notifications.php`, `ai-post-scheduler/tests/test-post-review-notifications.php`
-**Outcome:** Improved routing maintainability and eliminated hardcoded URLs.

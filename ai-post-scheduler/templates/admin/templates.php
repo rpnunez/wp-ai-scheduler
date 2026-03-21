@@ -192,7 +192,7 @@ if (!defined('ABSPATH')) {
 </div>
 
 <!-- Keep the original modal markup below (not redesigned yet) -->
-    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;" data-wizard-steps="5">
+    <div id="aips-template-modal" class="aips-modal aips-wizard-modal" style="display: none;">
         <div class="aips-modal-content aips-modal-large">
             <div class="aips-modal-header">
                 <h2 id="aips-modal-title"><?php esc_html_e('Add New Template', 'ai-post-scheduler'); ?></h2>
@@ -545,7 +545,7 @@ if (!defined('ABSPATH')) {
                         <?php esc_html_e('Next', 'ai-post-scheduler'); ?>
                         <span class="dashicons dashicons-arrow-right-alt2"></span>
                     </button>
-                    <button type="button" class="button button-secondary aips-save-template aips-wizard-save-btn">
+                    <button type="button" class="button button-secondary aips-save-template">
                         <?php esc_html_e('Save Template', 'ai-post-scheduler'); ?>
                     </button>
                 </div>

@@ -14,11 +14,6 @@
         { step: 3, selector: '#prompt_template', messageKey: 'contentPromptRequired' }
     ];
 
-    // Required-field rules for the schedule wizard.
-    var SCHEDULE_WIZARD_REQUIRED_FIELDS = [
-        { step: 1, selector: '#sw_schedule_template', messageKey: 'scheduleTemplateRequired' }
-    ];
-
     Object.assign(AIPS, {
         /**
          * Bootstrap the AIPS admin interface.
@@ -107,7 +102,6 @@
             $(document).on('click', '.aips-clone-schedule', this.cloneSchedule);
             $(document).on('click', '.aips-run-now-schedule', this.runNowSchedule);
             $(document).on('click', '.aips-save-schedule', this.saveSchedule);
-            $(document).on('click', '.aips-save-schedule-wizard', this.saveScheduleWizard);
             $(document).on('click', '.aips-delete-schedule', this.deleteSchedule);
             $(document).on('change', '.aips-toggle-schedule', this.toggleSchedule);
             $(document).on('click', '.aips-view-schedule-history', this.viewScheduleHistory);
@@ -118,19 +112,6 @@
             $(document).on('click', '#aips-schedule-select-all', this.selectAllSchedules);
             $(document).on('click', '#aips-schedule-unselect-all', this.unselectAllSchedules);
             $(document).on('click', '#aips-schedule-bulk-apply', this.applyScheduleBulkAction);
-
-            // Unified Schedule Page handlers
-            $(document).on('change', '#cb-select-all-unified', this.toggleAllUnified);
-            $(document).on('change', '.aips-unified-checkbox', this.toggleUnifiedSelection);
-            $(document).on('click', '#aips-unified-select-all', this.selectAllUnified);
-            $(document).on('click', '#aips-unified-unselect-all', this.unselectAllUnified);
-            $(document).on('click', '#aips-unified-bulk-apply', this.applyUnifiedBulkAction);
-            $(document).on('change', '.aips-unified-toggle-schedule', this.toggleUnifiedSchedule);
-            $(document).on('click', '.aips-unified-run-now', this.runNowUnified);
-            $(document).on('click', '.aips-view-unified-history', this.viewUnifiedScheduleHistory);
-            $(document).on('change', '#aips-unified-type-filter', this.filterUnifiedByType);
-            $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
-            $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
 
 
 
@@ -443,7 +424,7 @@
             // Reset AI Variables panel
             AIPS.updateAIVariablesPanel([]);
             // Initialize wizard to step 1
-            AIPS.wizardGoToStep(1, $('#aips-template-modal'));
+            AIPS.wizardGoToStep(1);
             $('#aips-template-modal').show();
         },
 
@@ -496,7 +477,7 @@
                         AIPS.initAIVariablesScanner();
                         $('#aips-modal-title').text('Edit Template');
                         // Initialize wizard to step 1
-                        AIPS.wizardGoToStep(1, $('#aips-template-modal'));
+                        AIPS.wizardGoToStep(1);
                         $('#aips-template-modal').show();
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
@@ -637,10 +618,10 @@
             var $form = $('#aips-template-form');
 
             // Cross-step validation: navigate to the first step with an unfilled required field.
-            var invalid = AIPS.getFirstInvalidStep($('#aips-template-modal'));
+            var invalid = AIPS.getFirstInvalidStep();
             if (invalid) {
                 AIPS.Utilities.showToast(invalid.message, 'warning');
-                AIPS.wizardGoToStep(invalid.step, $('#aips-template-modal'));
+                AIPS.wizardGoToStep(invalid.step);
                 $(invalid.selector).focus();
                 return;
             }
@@ -712,7 +693,7 @@
             if (nameRule && !$(nameRule.selector).val().trim()) {
                 AIPS.Utilities.showToast(aipsAdminL10n[nameRule.messageKey], 'warning');
                 $(nameRule.selector).focus();
-                AIPS.wizardGoToStep(1, $('#aips-template-modal'));
+                AIPS.wizardGoToStep(1);
                 return;
             }
 
@@ -1086,34 +1067,23 @@
         },
 
         /**
-         * Open the schedule wizard in "Add New" mode.
+         * Reset and open the schedule modal in "Add New" mode.
          *
-         * Resets the wizard form, initialises the wizard to step 1, and shows
-         * the schedule wizard modal. Falls back to the legacy modal if the
-         * wizard modal is not present on the page.
+         * Clears the schedule form, empties the hidden ID field, sets the
+         * modal title to "Add New Schedule", and displays the modal.
          *
          * @param {Event} e - Click event from an `.aips-add-schedule-btn` element.
          */
         openScheduleModal: function(e) {
             e.preventDefault();
-            var $wizardModal = $('#aips-schedule-wizard-modal');
-            if (!$wizardModal.length) {
-                // Fallback to legacy modal if wizard not present
-                $('#aips-schedule-form')[0].reset();
-                $('#schedule_id').val('');
-                $('#aips-schedule-modal-title').text('Add New Schedule');
-                $('#aips-schedule-modal').show();
-                return;
-            }
-            $('#aips-schedule-wizard-form')[0].reset();
-            $('#sw_schedule_id').val('');
-            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsAdminL10n.addNewSchedule || 'Add New Schedule');
-            AIPS.wizardGoToStep(1, $wizardModal);
-            $wizardModal.show();
+            $('#aips-schedule-form')[0].reset();
+            $('#schedule_id').val('');
+            $('#aips-schedule-modal-title').text('Add New Schedule');
+            $('#aips-schedule-modal').show();
         },
 
         /**
-         * Opens the schedule wizard pre-filled with the existing schedule's data
+         * Opens the schedule modal pre-filled with the existing schedule's data
          * so the user can modify it in-place without deleting and recreating.
          *
          * @param {Event} e - Click event from the edit button.
@@ -1132,40 +1102,15 @@
             var nextRun = $row.data('next-run');
             var isActive = $row.data('is-active');
 
-            var $wizardModal = $('#aips-schedule-wizard-modal');
-            if (!$wizardModal.length) {
-                // Fallback to legacy modal
-                $('#aips-schedule-form')[0].reset();
-                $('#schedule_id').val(scheduleId);
-                $('#schedule_title').val(scheduleTitle || '');
-                $('#schedule_template').val(templateId);
-                $('#schedule_frequency').val(frequency);
-                $('#schedule_topic').val(topic || '');
-                $('#article_structure_id').val(articleStructureId || '');
-                $('#rotation_pattern').val(rotationPattern || '');
-                $('#schedule_is_active').prop('checked', isActive == 1);
-                if (nextRun) {
-                    var dt0 = new Date(nextRun);
-                    if (!isNaN(dt0.getTime())) {
-                        var pad0 = function(n) { return n < 10 ? '0' + n : n; };
-                        $('#schedule_start_time').val(dt0.getFullYear() + '-' + pad0(dt0.getMonth() + 1) + '-' + pad0(dt0.getDate()) +
-                            'T' + pad0(dt0.getHours()) + ':' + pad0(dt0.getMinutes()));
-                    }
-                }
-                $('#aips-schedule-modal-title').text('Edit Schedule');
-                $('#aips-schedule-modal').show();
-                return;
-            }
-
-            $('#aips-schedule-wizard-form')[0].reset();
-            $('#sw_schedule_id').val(scheduleId);
-            $('#sw_schedule_title').val(scheduleTitle || '');
-            $('#sw_schedule_template').val(templateId);
-            $('#sw_schedule_frequency').val(frequency);
-            $('#sw_schedule_topic').val(topic || '');
-            $('#sw_article_structure_id').val(articleStructureId || '');
-            $('#sw_rotation_pattern').val(rotationPattern || '');
-            $('#sw_schedule_is_active').prop('checked', isActive == 1);
+            $('#aips-schedule-form')[0].reset();
+            $('#schedule_id').val(scheduleId);
+            $('#schedule_title').val(scheduleTitle || '');
+            $('#schedule_template').val(templateId);
+            $('#schedule_frequency').val(frequency);
+            $('#schedule_topic').val(topic || '');
+            $('#article_structure_id').val(articleStructureId || '');
+            $('#rotation_pattern').val(rotationPattern || '');
+            $('#schedule_is_active').prop('checked', isActive == 1);
 
             if (nextRun) {
                 var dt = new Date(nextRun);
@@ -1173,26 +1118,29 @@
                     var pad = function(n) { return n < 10 ? '0' + n : n; };
                     var localValue = dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) +
                         'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
-                    $('#sw_schedule_start_time').val(localValue);
+                    $('#schedule_start_time').val(localValue);
                 }
             }
 
-            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsAdminL10n.editSchedule || 'Edit Schedule');
-            AIPS.wizardGoToStep(1, $wizardModal);
-            $wizardModal.show();
+            $('#aips-schedule-modal-title').text('Edit Schedule');
+            $('#aips-schedule-modal').show();
         },
 
         /**
-         * Copy an existing schedule's settings into the wizard in "Add New" mode.
+         * Copy an existing schedule's settings into the "Add New" modal.
          *
          * Reads all schedule data from the row's `data-*` attributes, populates
-         * the wizard form fields (leaving `schedule_id` and `start_time` blank
-         * so a new schedule is created), and shows the wizard titled "Clone Schedule".
+         * the form fields (leaving `schedule_id` and `start_time` blank so a
+         * new schedule is created), and shows the modal titled "Clone Schedule".
          *
          * @param {Event} e - Click event from an `.aips-clone-schedule` element.
          */
         cloneSchedule: function(e) {
             e.preventDefault();
+
+            // Reset form first
+            $('#aips-schedule-form')[0].reset();
+            $('#schedule_id').val('');
 
             // Get data from the row
             var $row = $(this).closest('tr');
@@ -1203,39 +1151,20 @@
             var articleStructureId = $row.data('article-structure-id');
             var rotationPattern = $row.data('rotation-pattern');
 
-            var $wizardModal = $('#aips-schedule-wizard-modal');
-            if (!$wizardModal.length) {
-                // Fallback to legacy modal
-                $('#aips-schedule-form')[0].reset();
-                $('#schedule_id').val('');
-                $('#schedule_title').val(scheduleTitle || '');
-                $('#schedule_template').val(templateId);
-                $('#schedule_frequency').val(frequency);
-                $('#schedule_topic').val(topic);
-                $('#article_structure_id').val(articleStructureId);
-                $('#rotation_pattern').val(rotationPattern);
-                $('#schedule_start_time').val('');
-                $('#aips-schedule-modal-title').text('Clone Schedule');
-                $('#aips-schedule-modal').show();
-                return;
-            }
+            // Populate form
+            $('#schedule_title').val(scheduleTitle || '');
+            $('#schedule_template').val(templateId);
+            $('#schedule_frequency').val(frequency);
+            $('#schedule_topic').val(topic);
+            $('#article_structure_id').val(articleStructureId);
+            $('#rotation_pattern').val(rotationPattern);
 
-            // Reset wizard form and clear ID (new schedule)
-            $('#aips-schedule-wizard-form')[0].reset();
-            $('#sw_schedule_id').val('');
+            // Clear start time to enforce "now" or user choice for new schedule
+            $('#schedule_start_time').val('');
 
-            // Populate wizard form
-            $('#sw_schedule_title').val(scheduleTitle || '');
-            $('#sw_schedule_template').val(templateId);
-            $('#sw_schedule_frequency').val(frequency);
-            $('#sw_schedule_topic').val(topic);
-            $('#sw_article_structure_id').val(articleStructureId);
-            $('#sw_rotation_pattern').val(rotationPattern);
-            $('#sw_schedule_start_time').val('');
-
-            $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsAdminL10n.cloneSchedule || 'Clone Schedule');
-            AIPS.wizardGoToStep(1, $wizardModal);
-            $wizardModal.show();
+            // Update title and show
+            $('#aips-schedule-modal-title').text('Clone Schedule');
+            $('#aips-schedule-modal').show();
         },
 
         /**
@@ -1318,88 +1247,6 @@
                 },
                 complete: function() {
                     $btn.prop('disabled', false).text('Save Schedule');
-                }
-            });
-        },
-
-        /**
-         * Validate and save the schedule wizard form via AJAX.
-         *
-         * Reads values from the schedule wizard form fields (`sw_*` prefixed IDs),
-         * runs cross-step validation, then sends the `aips_save_schedule` AJAX
-         * action and refreshes the schedules table on success.
-         *
-         * @param {Event} e - Click event from an `.aips-save-schedule-wizard` element.
-         */
-        saveScheduleWizard: function(e) {
-            e.preventDefault();
-
-            var $btn = $(this);
-            var $wizardModal = $('#aips-schedule-wizard-modal');
-
-            // Cross-step validation
-            var invalid = AIPS.getFirstInvalidStep($wizardModal);
-            if (invalid) {
-                AIPS.Utilities.showToast(invalid.message, 'warning');
-                AIPS.wizardGoToStep(invalid.step, $wizardModal);
-                $(invalid.selector).focus();
-                return;
-            }
-
-            $btn.prop('disabled', true).text(aipsAdminL10n.saving);
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_save_schedule',
-                    nonce: aipsAjax.nonce,
-                    schedule_id: $('#sw_schedule_id').val(),
-                    schedule_title: $('#sw_schedule_title').val(),
-                    template_id: $('#sw_schedule_template').val(),
-                    frequency: $('#sw_schedule_frequency').val(),
-                    start_time: $('#sw_schedule_start_time').val(),
-                    topic: $('#sw_schedule_topic').val(),
-                    article_structure_id: $('#sw_article_structure_id').val(),
-                    rotation_pattern: $('#sw_rotation_pattern').val(),
-                    is_active: $('#sw_schedule_is_active').is(':checked') ? 1 : 0
-                },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.scheduleSavedSuccess || 'Schedule saved successfully', 'success');
-                        $wizardModal.hide();
-
-                        // Dynamically update the schedules table
-                        $.get(location.href, function(html) {
-                            var $newDoc = $(html);
-                            var $newContent = $newDoc.find('.aips-schedule-table').closest('.aips-content-panel');
-                            var $existingPanel = $('.aips-schedule-table').closest('.aips-content-panel');
-
-                            if ($newContent.length) {
-                                if ($existingPanel.length) {
-                                    $existingPanel.replaceWith($newContent);
-                                } else {
-                                    var $emptyStatePanel = $('.aips-content-panel').has('.aips-empty-state').last();
-                                    if ($emptyStatePanel.length) {
-                                        $emptyStatePanel.replaceWith($newContent);
-                                    } else {
-                                        location.reload();
-                                    }
-                                }
-                                AIPS.updateScheduleBulkActions();
-                            } else {
-                                location.reload();
-                            }
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false).text(aipsAdminL10n.saveSchedule || 'Save Schedule');
                 }
             });
         },
@@ -1957,511 +1804,6 @@
                 complete: function() {
                     $applyBtn.text('Apply');
                     AIPS.updateScheduleBulkActions();
-                }
-            });
-        },
-
-        // =====================================================================
-        // Unified Schedule Page handlers
-        // =====================================================================
-
-        /**
-         * Navigate to the schedules page filtered by type when the type
-         * dropdown changes.
-         *
-         * @param {Event} e - Change event from `#aips-unified-type-filter`.
-         */
-        filterUnifiedByType: function(e) {
-            var type = $(this).val();
-            var url  = window.location.href.split('?')[0];
-            var params = new URLSearchParams(window.location.search);
-            params.delete('schedule_type');
-            if (type) {
-                params.set('schedule_type', type);
-            }
-            var qs = params.toString();
-            window.location.href = url + (qs ? '?' + qs : '');
-        },
-
-        /**
-         * Live-filter the unified schedule table rows by the search term.
-         *
-         * @param {Event} e - Keyup / search event from `#aips-unified-search`.
-         */
-        filterUnifiedSchedules: function(e) {
-            var term = $(this).val().toLowerCase().trim();
-            var $clear = $('#aips-unified-search-clear');
-            $clear.toggle(term.length > 0);
-
-            var $rows = $('.aips-unified-row');
-            var found = 0;
-
-            $rows.each(function() {
-                var text = $(this).text().toLowerCase();
-                var match = !term || text.indexOf(term) !== -1;
-                $(this).toggle(match);
-                if (match) { found++; }
-            });
-
-            $('#aips-unified-search-no-results').toggle(found === 0 && $rows.length > 0);
-        },
-
-        /**
-         * Clear the unified schedule search field and restore all rows.
-         *
-         * @param {Event} e - Click event.
-         */
-        clearUnifiedSearch: function(e) {
-            e.preventDefault();
-            $('#aips-unified-search').val('');
-            $('.aips-unified-row').show();
-            $('#aips-unified-search-clear').hide();
-            $('#aips-unified-search-no-results').hide();
-        },
-
-        /**
-         * Sync all unified-schedule checkboxes with the "select all" header.
-         */
-        toggleAllUnified: function() {
-            var isChecked = $(this).prop('checked');
-            $('.aips-unified-checkbox:visible').prop('checked', isChecked);
-            AIPS.updateUnifiedBulkActions();
-        },
-
-        /**
-         * Keep the "select all" in sync when individual rows are toggled.
-         */
-        toggleUnifiedSelection: function() {
-            var total   = $('.aips-unified-checkbox:visible').length;
-            var checked = $('.aips-unified-checkbox:visible:checked').length;
-            $('#cb-select-all-unified').prop('checked', total > 0 && checked === total);
-            AIPS.updateUnifiedBulkActions();
-        },
-
-        /** Check all visible rows. */
-        selectAllUnified: function() {
-            $('.aips-unified-checkbox:visible').prop('checked', true);
-            $('#cb-select-all-unified').prop('checked', true);
-            AIPS.updateUnifiedBulkActions();
-        },
-
-        /** Uncheck all rows. */
-        unselectAllUnified: function() {
-            $('.aips-unified-checkbox').prop('checked', false);
-            $('#cb-select-all-unified').prop('checked', false);
-            AIPS.updateUnifiedBulkActions();
-        },
-
-        /**
-         * Enable or disable the unified bulk-action Apply button and show the
-         * selection count.
-         */
-        updateUnifiedBulkActions: function() {
-            var count      = $('.aips-unified-checkbox:checked').length;
-            var $apply     = $('#aips-unified-bulk-apply');
-            var $unselect  = $('#aips-unified-unselect-all');
-            var $countLbl  = $('#aips-unified-selected-count');
-
-            $apply.prop('disabled', count === 0);
-            $unselect.prop('disabled', count === 0);
-
-            if (count > 0) {
-                $countLbl.text(count + ' selected').show();
-            } else {
-                $countLbl.hide();
-            }
-        },
-
-        /**
-         * Parse selected unified-schedule checkboxes and dispatch the chosen
-         * bulk action.
-         *
-         * Supported actions: `run_now`, `pause`, `resume`.
-         *
-         * @param {Event} e - Click event from `#aips-unified-bulk-apply`.
-         */
-        applyUnifiedBulkAction: function(e) {
-            e.preventDefault();
-
-            var action = $('#aips-unified-bulk-action').val();
-            if (!action) {
-                AIPS.Utilities.showToast(aipsAdminL10n.selectBulkAction || 'Please select a bulk action.', 'warning');
-                return;
-            }
-
-            var items = [];
-            $('.aips-unified-checkbox:checked').each(function() {
-                var parts = $(this).val().split(':');
-                if (parts.length === 2) {
-                    items.push({ type: parts[0], id: parseInt(parts[1], 10) });
-                }
-            });
-
-            if (items.length === 0) {
-                AIPS.Utilities.showToast(aipsAdminL10n.selectAtLeastOne || 'Please select at least one schedule.', 'warning');
-                return;
-            }
-
-            if (action === 'run_now') {
-                AIPS.Utilities.confirm(
-                    aipsAdminL10n.runSchedulesNow
-                        ? aipsAdminL10n.runSchedulesNow
-                        : 'Run ' + items.length + ' schedule(s) now?',
-                    'Run Now',
-                    [
-                        { label: aipsAdminL10n.cancel || 'Cancel', className: 'aips-btn aips-btn-secondary' },
-                        { label: aipsAdminL10n.yesRunNow || 'Yes, Run Now', className: 'aips-btn aips-btn-primary', action: function() {
-                            AIPS.unifiedBulkRunNow(items);
-                        }}
-                    ]
-                );
-            } else if (action === 'pause') {
-                AIPS.unifiedBulkToggle(items, 0);
-            } else if (action === 'resume') {
-                AIPS.unifiedBulkToggle(items, 1);
-            }
-        },
-
-        /**
-         * Bulk run-now for mixed-type schedules via `aips_unified_bulk_run_now`.
-         *
-         * @param {Array<{type: string, id: number}>} items
-         */
-        unifiedBulkRunNow: function(items) {
-            var $applyBtn = $('#aips-unified-bulk-apply');
-            $applyBtn.prop('disabled', true).text('Running…');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_unified_bulk_run_now',
-                    nonce: aipsAjax.nonce,
-                    items: items
-                },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success', { duration: 8000 });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.errorOccurred, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    $applyBtn.prop('disabled', false).text('Apply');
-                    AIPS.updateUnifiedBulkActions();
-                }
-            });
-        },
-
-        /**
-         * Bulk pause/resume mixed-type schedules via `aips_unified_bulk_toggle`.
-         *
-         * @param {Array<{type: string, id: number}>} items
-         * @param {number} isActive 1 to resume, 0 to pause.
-         */
-        unifiedBulkToggle: function(items, isActive) {
-            var $applyBtn = $('#aips-unified-bulk-apply');
-            $applyBtn.prop('disabled', true).text(isActive ? 'Resuming…' : 'Pausing…');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_unified_bulk_toggle',
-                    nonce: aipsAjax.nonce,
-                    items: items,
-                    is_active: isActive
-                },
-                success: function(response) {
-                    if (response.success) {
-                        var data = response.data || {};
-                        var updatedItems = Array.isArray(data.updated_items) ? data.updated_items : null;
-                        var failedItems  = Array.isArray(data.failed_items) ? data.failed_items : null;
-                        var errorItems   = (!updatedItems && Array.isArray(data.errors)) ? data.errors : null;
-
-                        var failedKeysMap = {};
-                        var successfulItems;
-
-                        // Normalize failed items from either failed_items or errors.
-                        if (failedItems) {
-                            failedItems.forEach(function(item) {
-                                if (item && item.type && typeof item.id !== 'undefined') {
-                                    failedKeysMap[item.type + ':' + item.id] = true;
-                                }
-                            });
-                        } else if (errorItems) {
-                            errorItems.forEach(function(item) {
-                                if (item && item.type && typeof item.id !== 'undefined') {
-                                    failedKeysMap[item.type + ':' + item.id] = true;
-                                }
-                            });
-                            failedItems = errorItems;
-                        }
-
-                        if (updatedItems) {
-                            // Backend explicitly told us which items were updated.
-                            successfulItems = updatedItems;
-                        } else if (Object.keys(failedKeysMap).length > 0) {
-                            // Infer successes as "requested items minus failed".
-                            successfulItems = items.filter(function(item) {
-                                var key = item.type + ':' + item.id;
-                                return !failedKeysMap[key];
-                            });
-                        } else {
-                            // No per-item info available; fall back to previous behavior.
-                            successfulItems = items;
-                        }
-
-                        AIPS.Utilities.showToast(data.message, 'success');
-
-                        // Update each successful row's badge and toggle to reflect new state.
-                        successfulItems.forEach(function(item) {
-                            if (!item || !item.type || typeof item.id === 'undefined') {
-                                return;
-                            }
-                            var key  = item.type + ':' + item.id;
-                            var $row = $('tr[data-row-key="' + key + '"]');
-                            if ($row.length) {
-                                AIPS.updateUnifiedRowStatus($row, isActive);
-                                // In partial success, unselect only successful rows to keep failures visible.
-                                if (Object.keys(failedKeysMap).length > 0) {
-                                    $row.find('.aips-unified-select').prop('checked', false);
-                                }
-                            }
-                        });
-
-                        // If there were no known failures, keep existing behavior (unselect all).
-                        if (Object.keys(failedKeysMap).length === 0) {
-                            AIPS.unselectAllUnified();
-                        }
-                    } else {
-                        AIPS.Utilities.showToast((response.data && response.data.message) || aipsAdminL10n.errorOccurred, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    $applyBtn.prop('disabled', false).text('Apply');
-                    AIPS.updateUnifiedBulkActions();
-                }
-            });
-        },
-
-        /**
-         * Toggle a single unified schedule's active status.
-         *
-         * Bound to the `change` event on `.aips-unified-toggle-schedule`.
-         */
-        toggleUnifiedSchedule: function() {
-            var $toggle  = $(this);
-            var id       = $toggle.data('id');
-            var type     = $toggle.data('type');
-            var isActive = $toggle.is(':checked') ? 1 : 0;
-            var $row     = $toggle.closest('tr');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_unified_toggle',
-                    nonce: aipsAjax.nonce,
-                    id: id,
-                    type: type,
-                    is_active: isActive
-                },
-                success: function(response) {
-                    if (response.success) {
-                        AIPS.updateUnifiedRowStatus($row, isActive);
-                    } else {
-                        // Revert the toggle
-                        $toggle.prop('checked', !isActive);
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.errorOccurred, 'error');
-                    }
-                },
-                error: function() {
-                    $toggle.prop('checked', !isActive);
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                }
-            });
-        },
-
-        /**
-         * Update the status badge and toggle for a unified schedule row.
-         *
-         * @param {jQuery} $row     The `<tr>` element to update.
-         * @param {number} isActive 1 = active/resumed, 0 = paused.
-         */
-        updateUnifiedRowStatus: function($row, isActive) {
-            var $toggle  = $row.find('.aips-unified-toggle-schedule');
-            var $wrapper = $row.find('.aips-schedule-status-wrapper');
-            var $badge   = $wrapper.find('.aips-badge');
-            var $icon    = $badge.find('.dashicons');
-
-            $toggle.prop('checked', isActive === 1);
-            $badge.removeClass('aips-badge-success aips-badge-neutral aips-badge-error');
-            $icon.removeClass('dashicons-yes-alt dashicons-minus dashicons-warning');
-            $badge.contents().filter(function() { return this.nodeType === 3; }).remove();
-
-            if (isActive) {
-                $badge.addClass('aips-badge-success');
-                $icon.addClass('dashicons-yes-alt');
-                $icon.after(' Active');
-            } else {
-                $badge.addClass('aips-badge-neutral');
-                $icon.addClass('dashicons-minus');
-                $icon.after(' Paused');
-            }
-            $row.data('is-active', isActive);
-        },
-
-        /**
-         * Run a single unified schedule immediately.
-         *
-         * Bound to click on `.aips-unified-run-now`.
-         *
-         * @param {Event} e - Click event.
-         */
-        runNowUnified: function(e) {
-            e.preventDefault();
-
-            var $btn  = $(this);
-            var id    = $btn.data('id');
-            var type  = $btn.data('type');
-
-            if (!id || !type) { return; }
-
-            $btn.prop('disabled', true);
-            $btn.find('.dashicons').removeClass('dashicons-controls-play').addClass('dashicons-update aips-spin');
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_unified_run_now',
-                    nonce: aipsAjax.nonce,
-                    id: id,
-                    type: type
-                },
-                success: function(response) {
-                    if (response.success) {
-                        var msg = AIPS.escapeHtml(response.data.message || 'Executed successfully!');
-                        if (response.data.edit_url) {
-                            msg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
-                        }
-                        AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.generationFailed, 'error');
-                    }
-                },
-                error: function() {
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                },
-                complete: function() {
-                    $btn.prop('disabled', false);
-                    $btn.find('.dashicons').removeClass('dashicons-update aips-spin').addClass('dashicons-controls-play');
-                }
-            });
-        },
-
-        /**
-         * Open the Schedule History modal and load entries for any schedule type.
-         *
-         * @param {Event} e - Click event from `.aips-view-unified-history`.
-         */
-        viewUnifiedScheduleHistory: function(e) {
-            e.preventDefault();
-
-            var $btn  = $(this);
-            var id    = $btn.data('id');
-            var type  = $btn.data('type');
-            var name  = $btn.data('name') || id;
-
-            if (!id || !type) { return; }
-
-            var $modal   = $('#aips-schedule-history-modal');
-            var $title   = $modal.find('#aips-schedule-history-modal-title');
-            var $loading = $modal.find('#aips-schedule-history-loading');
-            var $empty   = $modal.find('#aips-schedule-history-empty');
-            var $list    = $modal.find('#aips-schedule-history-list');
-
-            $title.text('Previous Runs: ' + name);
-            $loading.show();
-            $empty.hide();
-            $list.hide().empty();
-            $modal.show();
-
-            $.ajax({
-                url: aipsAjax.ajaxUrl,
-                type: 'POST',
-                data: {
-                    action: 'aips_get_unified_schedule_history',
-                    nonce: aipsAjax.nonce,
-                    id: id,
-                    type: type
-                },
-                success: function(response) {
-                    $loading.hide();
-
-                    if (!response.success) {
-                        AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.errorOccurred, 'error');
-                        $modal.hide();
-                        return;
-                    }
-
-                    var entries = response.data.entries;
-                    if (!entries || entries.length === 0) {
-                        $empty.show();
-                        return;
-                    }
-
-                    var iconMap = {
-                        'schedule_created':          { icon: 'dashicons-plus-alt',      cls: 'aips-timeline-created'  },
-                        'schedule_updated':          { icon: 'dashicons-edit',           cls: 'aips-timeline-updated'  },
-                        'schedule_enabled':          { icon: 'dashicons-yes-alt',        cls: 'aips-timeline-enabled'  },
-                        'schedule_disabled':         { icon: 'dashicons-minus',          cls: 'aips-timeline-disabled' },
-                        'schedule_executed':         { icon: 'dashicons-controls-play',  cls: 'aips-timeline-executed' },
-                        'manual_schedule_started':   { icon: 'dashicons-controls-play',  cls: 'aips-timeline-executed' },
-                        'manual_schedule_completed': { icon: 'dashicons-yes',            cls: 'aips-timeline-success'  },
-                        'manual_schedule_failed':    { icon: 'dashicons-warning',        cls: 'aips-timeline-error'    },
-                        'schedule_failed':           { icon: 'dashicons-warning',        cls: 'aips-timeline-error'    },
-                        'post_published':            { icon: 'dashicons-media-document', cls: 'aips-timeline-success'  },
-                        'post_draft':                { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
-                        'post_generated':            { icon: 'dashicons-media-document', cls: 'aips-timeline-draft'    },
-                        'author_topic_generation':   { icon: 'dashicons-tag',            cls: 'aips-timeline-executed' },
-                        'topic_post_generation':     { icon: 'dashicons-admin-users',    cls: 'aips-timeline-executed' },
-                    };
-                    var defaultIcon = { icon: 'dashicons-info', cls: '' };
-
-                    entries.forEach(function(entry) {
-                        var info    = iconMap[entry.event_type] || defaultIcon;
-                        var isError = (entry.history_type_id === 2 || entry.event_status === 'failed');
-                        if (isError && !info.cls) {
-                            info = { icon: 'dashicons-warning', cls: 'aips-timeline-error' };
-                        }
-
-                        var $item    = $('<li>', { 'class': 'aips-timeline-item ' + info.cls });
-                        var $icon    = $('<span>', { 'class': 'aips-timeline-icon', 'aria-hidden': 'true' })
-                                           .append($('<span>', { 'class': 'dashicons ' + info.icon }));
-                        var $content = $('<div>', { 'class': 'aips-timeline-content' });
-                        var $msg     = $('<p>', { 'class': 'aips-timeline-message' }).text(entry.message || entry.log_type);
-                        var $time    = $('<time>', { 'class': 'aips-timeline-timestamp', 'datetime': entry.timestamp })
-                                           .text(entry.timestamp);
-
-                        $content.append($msg).append($time);
-                        $item.append($icon).append($content);
-                        $list.append($item);
-                    });
-
-                    $list.show();
-                },
-                error: function() {
-                    $loading.hide();
-                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                    $modal.hide();
                 }
             });
         },
@@ -3236,12 +2578,11 @@
          * @param {number} templateId - The ID of the just-saved template.
          */
         showPostSaveActions: function(templateId) {
-            var $modal = $('#aips-template-modal');
-            $modal.find('.aips-wizard-step-content').hide();
-            $modal.find('.aips-post-save-step').show();
+            $('.aips-wizard-step-content').hide();
+            $('.aips-post-save-step').show();
 
-            $modal.find('.aips-wizard-progress').hide();
-            $modal.find('.aips-wizard-footer').hide();
+            $('.aips-wizard-progress').hide();
+            $('.aips-wizard-footer').hide();
 
             var scheduleUrl = (typeof aipsAjax !== 'undefined' && aipsAjax.schedulePageUrl)
                 ? aipsAjax.schedulePageUrl + '&schedule_template=' + templateId
@@ -3324,15 +2665,11 @@
         },
 
         /**
-         * Auto-opens the schedule wizard with a pre-selected template when
+         * Auto-opens the schedule modal with a pre-selected template when
          * the schedule page is loaded with a ?schedule_template= query parameter.
          */
         initScheduleAutoOpen: function() {
-            var $wizardModal = $('#aips-schedule-wizard-modal');
-            var $legacyModal = $('#aips-schedule-modal');
-
-            // Use wizard modal if available, fall back to legacy modal.
-            var $modal = $wizardModal.length ? $wizardModal : $legacyModal;
+            var $modal = $('#aips-schedule-modal');
             if (!$modal.length) return;
 
             // Prefer preselect from data attribute, then fall back to URL query param.
@@ -3371,42 +2708,21 @@
                 return;
             }
 
-            if ($wizardModal.length) {
-                // Use wizard modal
-                var $wizardForm = $('#aips-schedule-wizard-form');
-                if (!$wizardForm.length) return;
+            var $form = $('#aips-schedule-form');
+            if (!$form.length) return;
 
-                $wizardForm[0].reset();
-                $('#sw_schedule_id').val('');
+            $form[0].reset();
+            $('#schedule_id').val('');
 
-                if (preselectIdNum > 0) {
-                    $('#sw_schedule_template').val(preselectIdNum);
-                }
-                if (preselectStructureIdNum > 0) {
-                    $('#sw_article_structure_id').val(preselectStructureIdNum);
-                }
-
-                $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsAdminL10n.addNewSchedule || 'Add New Schedule');
-                AIPS.wizardGoToStep(1, $wizardModal);
-                $wizardModal.show();
-            } else {
-                // Fall back to legacy modal
-                var $legacyForm = $('#aips-schedule-form');
-                if (!$legacyForm.length) return;
-
-                $legacyForm[0].reset();
-                $('#schedule_id').val('');
-
-                if (preselectIdNum > 0) {
-                    $('#schedule_template').val(preselectIdNum);
-                }
-                if (preselectStructureIdNum > 0) {
-                    $('#article_structure_id').val(preselectStructureIdNum);
-                }
-
-                $('#aips-schedule-modal-title').text('Add New Schedule');
-                $legacyModal.show();
+            if (preselectIdNum > 0) {
+                $('#schedule_template').val(preselectIdNum);
             }
+            if (preselectStructureIdNum > 0) {
+                $('#article_structure_id').val(preselectStructureIdNum);
+            }
+
+            $('#aips-schedule-modal-title').text('Add New Schedule');
+            $modal.show();
 
             // Clean the URL to prevent re-triggering on refresh
             if (window.history && window.history.replaceState) {
@@ -3431,33 +2747,30 @@
         // Wizard Navigation Functions
 
         /**
-         * Navigate a wizard modal to a specific step.
+         * Navigate the template-creation wizard to a specific step.
          *
-         * Scopes all DOM queries to `$modal` so multiple wizard modals on the
-         * same page (e.g. Template Wizard and Schedule Wizard) do not interfere
-         * with each other. Reads the total number of steps from the modal's
-         * `data-wizard-steps` attribute, or counts `.aips-wizard-step-content`
-         * elements (excluding the post-save panel). Updates progress indicators,
-         * toggles Back/Next buttons, and calls `updateWizardSummary` when
-         * advancing to the last step.
+         * Hides all `.aips-wizard-step-content` panels and shows the one
+         * matching `step`. Updates the progress indicator (marking earlier steps
+         * as completed), toggles Back/Next button visibility, and updates the
+         * Save button style (primary on the final step, secondary on all
+         * others). Stores the current step in `AIPS.currentWizardStep`. Calls
+         * `updateWizardSummary` when advancing to the final step.
          *
-         * @param {number}  step   - 1-based step index to navigate to.
-         * @param {jQuery}  $modal - The wizard modal element to operate on.
+         * @param {number} step - 1-based step index to navigate to (1–5).
          */
-        wizardGoToStep: function(step, $modal) {
-            $modal = $modal || AIPS.currentWizardModal;
-            if (!$modal || !$modal.length) return;
+        wizardGoToStep: function(step) {
+            var totalSteps = 5;
 
-            var totalSteps = parseInt($modal.data('wizard-steps'), 10) ||
-                $modal.find('.aips-wizard-step-content').not('.aips-post-save-step').length;
+            // Hide all steps
+            $('.aips-wizard-step-content').hide();
 
-            // Hide all steps, then show the target step
-            $modal.find('.aips-wizard-step-content').hide();
-            $modal.find('.aips-wizard-step-content[data-step="' + step + '"]').show();
+            // Show current step
+            $('.aips-wizard-step-content[data-step="' + step + '"]').show();
 
             // Update progress indicator
-            $modal.find('.aips-wizard-step').removeClass('active completed').each(function() {
-                var stepNum = parseInt($(this).data('step'), 10);
+            $('.aips-wizard-step').removeClass('active completed');
+            $('.aips-wizard-step').each(function() {
+                var stepNum = parseInt($(this).data('step'));
                 if (stepNum < step) {
                     $(this).addClass('completed');
                 } else if (stepNum === step) {
@@ -3465,72 +2778,62 @@
                 }
             });
 
-            // Toggle Back / Next button visibility
+            // Update button visibility
             if (step === 1) {
-                $modal.find('.aips-wizard-back').hide();
+                $('.aips-wizard-back').hide();
             } else {
-                $modal.find('.aips-wizard-back').show();
+                $('.aips-wizard-back').show();
             }
 
             if (step === totalSteps) {
-                $modal.find('.aips-wizard-next').hide();
-                $modal.find('.aips-wizard-save-btn').removeClass('button-secondary').addClass('button-primary');
-                // Populate the summary step
-                AIPS.updateWizardSummary($modal);
+                $('.aips-wizard-next').hide();
+                $('.aips-save-template').removeClass('button-secondary').addClass('button-primary');
+                // Update summary
+                AIPS.updateWizardSummary();
             } else {
-                $modal.find('.aips-wizard-next').show();
-                $modal.find('.aips-wizard-save-btn').removeClass('button-primary').addClass('button-secondary');
+                $('.aips-wizard-next').show();
+                $('.aips-save-template').removeClass('button-primary').addClass('button-secondary');
             }
 
-            // Store the current step on the modal element so each wizard tracks
-            // its own state independently.
-            $modal.data('current-step', step);
-            AIPS.currentWizardModal = $modal;
-            AIPS.currentWizardStep = step; // backward-compat alias
+            // Store current step
+            AIPS.currentWizardStep = step;
         },
 
         /**
          * Advance the wizard to the next step after validating the current one.
          *
-         * Derives the modal context from the clicked element. Calls
-         * `validateWizardStep` for the current step and only proceeds if
-         * validation passes.
+         * Calls `validateWizardStep` for the current step and only proceeds if
+         * validation passes. Does nothing when already on the last step.
          *
          * @param {Event} e - Click event from an `.aips-wizard-next` element.
          */
         wizardNext: function(e) {
             e.preventDefault();
-            var $modal = $(this).closest('.aips-wizard-modal');
-            if (!$modal.length) return;
-            var currentStep = parseInt($modal.data('current-step'), 10) || 1;
-            var totalSteps = parseInt($modal.data('wizard-steps'), 10) ||
-                $modal.find('.aips-wizard-step-content').not('.aips-post-save-step').length;
+            var currentStep = AIPS.currentWizardStep || 1;
 
             // Validate current step before proceeding
-            if (!AIPS.validateWizardStep(currentStep, $modal)) {
+            if (!AIPS.validateWizardStep(currentStep)) {
                 return;
             }
 
-            if (currentStep < totalSteps) {
-                AIPS.wizardGoToStep(currentStep + 1, $modal);
+            if (currentStep < 5) {
+                AIPS.wizardGoToStep(currentStep + 1);
             }
         },
 
         /**
          * Go back to the previous wizard step.
          *
-         * Derives the modal context from the clicked element.
+         * Does nothing when already on step 1.
          *
          * @param {Event} e - Click event from an `.aips-wizard-back` element.
          */
         wizardBack: function(e) {
             e.preventDefault();
-            var $modal = $(this).closest('.aips-wizard-modal');
-            if (!$modal.length) return;
-            var currentStep = parseInt($modal.data('current-step'), 10) || 1;
+            var currentStep = AIPS.currentWizardStep || 1;
 
             if (currentStep > 1) {
-                AIPS.wizardGoToStep(currentStep - 1, $modal);
+                AIPS.wizardGoToStep(currentStep - 1);
             }
         },
 
@@ -3544,10 +2847,8 @@
          */
         wizardStepClick: function(e) {
             e.preventDefault();
-            var $modal = $(this).closest('.aips-wizard-modal');
-            if (!$modal.length) return;
-            var currentStep = parseInt($modal.data('current-step'), 10) || 1;
-            var targetStep = parseInt($(this).data('step'), 10);
+            var currentStep = AIPS.currentWizardStep || 1;
+            var targetStep = parseInt($(this).data('step'));
 
             if (!targetStep || targetStep === currentStep) {
                 return;
@@ -3555,46 +2856,39 @@
 
             // If going backwards, just go there directly
             if (targetStep < currentStep) {
-                AIPS.wizardGoToStep(targetStep, $modal);
+                AIPS.wizardGoToStep(targetStep);
                 return;
             }
 
             // If going forwards, validate all intermediate steps
             for (var i = currentStep; i < targetStep; i++) {
-                if (!AIPS.validateWizardStep(i, $modal)) {
+                if (!AIPS.validateWizardStep(i)) {
                     // Validation failed on step 'i', so we can't proceed past it.
                     // If we are not already on the step that failed, go to it.
                     if (currentStep !== i) {
-                        AIPS.wizardGoToStep(i, $modal);
+                        AIPS.wizardGoToStep(i);
                     }
                     return;
                 }
             }
 
             // If all validation passed, go to the target step
-            AIPS.wizardGoToStep(targetStep, $modal);
+            AIPS.wizardGoToStep(targetStep);
         },
 
         /**
          * Return the first wizard step that contains an unfilled required field,
          * or `null` if all required fields are valid.
          *
-         * Selects the appropriate rule set based on the modal's `id`. Used by
-         * both `validateWizardStep` (per-step Next-click validation) and the
-         * save functions (full pre-save validation across all steps).
+         * Iterates `WIZARD_REQUIRED_FIELDS` in declaration order. Used by both
+         * `validateWizardStep` (per-step Next-click validation) and
+         * `saveTemplate` (full pre-save validation across all steps).
          *
-         * @param  {jQuery} $modal - The wizard modal element.
          * @return {{ step: number, selector: string, message: string }|null}
          */
-        getFirstInvalidStep: function($modal) {
-            $modal = $modal || AIPS.currentWizardModal;
-            var modalId = $modal ? $modal.attr('id') : '';
-            var rules = (modalId === 'aips-schedule-wizard-modal')
-                ? SCHEDULE_WIZARD_REQUIRED_FIELDS
-                : WIZARD_REQUIRED_FIELDS;
-
-            for (var i = 0; i < rules.length; i++) {
-                var rule = rules[i];
+        getFirstInvalidStep: function() {
+            for (var i = 0; i < WIZARD_REQUIRED_FIELDS.length; i++) {
+                var rule = WIZARD_REQUIRED_FIELDS[i];
                 if (!$(rule.selector).val().trim()) {
                     return { step: rule.step, selector: rule.selector, message: aipsAdminL10n[rule.messageKey] };
                 }
@@ -3605,23 +2899,16 @@
         /**
          * Validate the required fields for a given wizard step.
          *
-         * Selects the appropriate rule set based on the modal's `id`. Steps
-         * with no required fields always pass. Shows an error toast and focuses
-         * the invalid field when validation fails.
+         * Required fields are defined centrally in `WIZARD_REQUIRED_FIELDS`.
+         * Steps with no required fields always pass. Shows an error toast and
+         * focuses the invalid field when validation fails.
          *
-         * @param  {number}  step   - The 1-based wizard step number to validate.
-         * @param  {jQuery}  $modal - The wizard modal element.
+         * @param  {number}  step - The 1-based wizard step number to validate.
          * @return {boolean} `true` if validation passes, `false` otherwise.
          */
-        validateWizardStep: function(step, $modal) {
-            $modal = $modal || AIPS.currentWizardModal;
-            var modalId = $modal ? $modal.attr('id') : '';
-            var rules = (modalId === 'aips-schedule-wizard-modal')
-                ? SCHEDULE_WIZARD_REQUIRED_FIELDS
-                : WIZARD_REQUIRED_FIELDS;
-
-            for (var i = 0; i < rules.length; i++) {
-                var rule = rules[i];
+        validateWizardStep: function(step) {
+            for (var i = 0; i < WIZARD_REQUIRED_FIELDS.length; i++) {
+                var rule = WIZARD_REQUIRED_FIELDS[i];
                 if (rule.step === step && !$(rule.selector).val().trim()) {
                     AIPS.Utilities.showToast(aipsAdminL10n[rule.messageKey], 'error');
                     $(rule.selector).focus();
@@ -3632,90 +2919,38 @@
         },
 
         /**
-         * Populate the final summary step of the active wizard.
-         *
-         * Dispatches to the appropriate summary renderer based on the modal's
-         * `id`; the template wizard and schedule wizard have different fields.
-         *
-         * @param {jQuery} $modal - The wizard modal element.
-         */
-        updateWizardSummary: function($modal) {
-            $modal = $modal || AIPS.currentWizardModal;
-            if (!$modal || !$modal.length) return;
-
-            if ($modal.attr('id') === 'aips-schedule-wizard-modal') {
-                AIPS.updateScheduleWizardSummary($modal);
-            } else {
-                AIPS.updateTemplateWizardSummary($modal);
-            }
-        },
-
-        /**
-         * Populate the template wizard's final summary step with form values.
+         * Populate the wizard's final summary step with the current form values.
          *
          * Reads template name, description, title prompt, content prompt, voice,
          * post quantity, and featured-image settings, then updates the
          * corresponding `#summary_*` elements.
-         *
-         * @param {jQuery} $modal - The template wizard modal element.
          */
-        updateTemplateWizardSummary: function($modal) {
-            $modal = $modal || AIPS.currentWizardModal;
-
-            $modal.find('#summary_name').text($('#template_name').val() || '-');
-            $modal.find('#summary_description').text($('#template_description').val() || '-');
+        updateWizardSummary: function() {
+            // Update summary display with current form values
+            $('#summary_name').text($('#template_name').val() || '-');
+            $('#summary_description').text($('#template_description').val() || '-');
 
             var titlePrompt = $('#title_prompt').val();
-            $modal.find('#summary_title_prompt').text(titlePrompt || aipsAdminL10n.autoGenerateFromContent);
+            $('#summary_title_prompt').text(titlePrompt || aipsAdminL10n.autoGenerateFromContent);
 
             var contentPrompt = $('#prompt_template').val();
             if (contentPrompt.length > 100) {
                 contentPrompt = contentPrompt.substring(0, 100) + '...';
             }
-            $modal.find('#summary_content_prompt').text(contentPrompt || '-');
+            $('#summary_content_prompt').text(contentPrompt || '-');
 
             var voiceText = $('#voice_id option:selected').text();
-            $modal.find('#summary_voice').text(voiceText || aipsAdminL10n.noneOption);
+            $('#summary_voice').text(voiceText || aipsAdminL10n.noneOption);
 
-            $modal.find('#summary_quantity').text($('#post_quantity').val() || '1');
+            $('#summary_quantity').text($('#post_quantity').val() || '1');
 
             var featuredImage = $('#generate_featured_image').is(':checked');
             if (featuredImage) {
                 var source = $('#featured_image_source option:selected').text();
-                $modal.find('#summary_featured_image').text(aipsAdminL10n.featuredImageYes.replace('%s', source));
+                $('#summary_featured_image').text(aipsAdminL10n.featuredImageYes.replace('%s', source));
             } else {
-                $modal.find('#summary_featured_image').text(aipsAdminL10n.featuredImageNo);
+                $('#summary_featured_image').text(aipsAdminL10n.featuredImageNo);
             }
-        },
-
-        /**
-         * Populate the schedule wizard's Review step with the current form values.
-         *
-         * Reads all schedule wizard fields and updates the corresponding
-         * `#sw_summary_*` elements in the Review step.
-         *
-         * @param {jQuery} $modal - The schedule wizard modal element.
-         */
-        updateScheduleWizardSummary: function($modal) {
-            $modal = $modal || AIPS.currentWizardModal;
-
-            var title = $('#sw_schedule_title').val();
-            var templateText = $('#sw_schedule_template option:selected').text();
-            var topic = $('#sw_schedule_topic').val();
-            var frequencyText = $('#sw_schedule_frequency option:selected').text();
-            var startTime = $('#sw_schedule_start_time').val();
-            var structureText = $('#sw_article_structure_id option:selected').text();
-            var rotationText = $('#sw_rotation_pattern option:selected').text();
-            var isActive = $('#sw_schedule_is_active').is(':checked');
-
-            $modal.find('#sw_summary_title').text(title || '(' + (aipsAdminL10n.noTitle || 'No title') + ')');
-            $modal.find('#sw_summary_template').text(templateText || '-');
-            $modal.find('#sw_summary_topic').text(topic || aipsAdminL10n.noneOption || '-');
-            $modal.find('#sw_summary_frequency').text(frequencyText || '-');
-            $modal.find('#sw_summary_start_time').text(startTime || aipsAdminL10n.startNow || 'Now');
-            $modal.find('#sw_summary_structure').text(structureText || aipsAdminL10n.useDefault || 'Use Default');
-            $modal.find('#sw_summary_rotation').text(rotationText || aipsAdminL10n.noneOption || '-');
-            $modal.find('#sw_summary_active').text(isActive ? (aipsAdminL10n.yes || 'Yes') : (aipsAdminL10n.no || 'No'));
         },
 
         // AI Variables feature methods

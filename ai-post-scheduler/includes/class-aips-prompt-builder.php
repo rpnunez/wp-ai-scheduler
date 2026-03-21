@@ -353,57 +353,6 @@ class AIPS_Prompt_Builder {
     }
 
     /**
-     * Build a compact site-wide context block for inclusion at the top of AI prompts.
-     *
-     * Reads the site-wide content strategy settings via AIPS_Site_Context and
-     * formats them into a structured text block. Only non-empty / non-default
-     * values are included so the prompt is not padded with placeholder lines.
-     *
-     * Returns an empty string when no site-wide settings have been configured,
-     * allowing callers to safely append the result without extra whitespace.
-     *
-     * @return string Formatted context block ending with two newlines, or empty string.
-     */
-    public function build_site_context_block() {
-        $ctx   = AIPS_Site_Context::get();
-        $lines = array();
-
-        if (!empty($ctx['niche'])) {
-            $lines[] = 'Site niche: ' . $ctx['niche'];
-        }
-
-        if (!empty($ctx['target_audience'])) {
-            $lines[] = 'Target audience: ' . $ctx['target_audience'];
-        }
-
-        if (!empty($ctx['content_goals'])) {
-            $lines[] = 'Content goals: ' . $ctx['content_goals'];
-        }
-
-        if (!empty($ctx['brand_voice'])) {
-            $lines[] = 'Brand voice/tone: ' . $ctx['brand_voice'];
-        }
-
-        if (!empty($ctx['content_language']) && $ctx['content_language'] !== 'en') {
-            $lines[] = 'Language: ' . $ctx['content_language'];
-        }
-
-        if (!empty($ctx['content_guidelines'])) {
-            $lines[] = 'Content guidelines: ' . $ctx['content_guidelines'];
-        }
-
-        if (!empty($ctx['excluded_topics'])) {
-            $lines[] = 'Topics to avoid globally: ' . $ctx['excluded_topics'];
-        }
-
-        if (empty($lines)) {
-            return '';
-        }
-
-        return "Site-wide content context:\n" . implode("\n", $lines) . "\n\n";
-    }
-
-    /**
      * Build all prompts for a template configuration.
      *
      * Generates content, title, excerpt, and image prompts for a given template

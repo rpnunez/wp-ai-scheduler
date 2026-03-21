@@ -83,27 +83,6 @@ class AIPS_System_Status {
 
     private function check_plugin() {
         $ai_engine_active = class_exists('Meow_MWAI_Core');
-        $db_version_raw = get_option('aips_db_version', 'Unknown');
-        $db_version = is_scalar($db_version_raw) ? trim((string) $db_version_raw) : 'Unknown';
-        $db_version_is_valid = (bool) preg_match('/^\d+(?:\.\d+)*(?:[-+~._][0-9A-Za-z.-]+)?$/', $db_version);
-        $db_version_matches = $db_version_is_valid && version_compare($db_version, AIPS_VERSION, '==');
-
-        $db_version_details = array();
-        if (!$db_version_matches) {
-            $db_version_details[] = sprintf(
-                /* translators: %s: stored database version */
-                __('Stored database version: %s', 'ai-post-scheduler'),
-                empty($db_version) ? __('Unknown', 'ai-post-scheduler') : $db_version
-            );
-            $db_version_details[] = sprintf(
-                /* translators: %s: expected plugin database version */
-                __('Expected database version for this plugin build: %s', 'ai-post-scheduler'),
-                AIPS_VERSION
-            );
-            $db_version_details[] = __('This usually means the database schema is from a different plugin build or an upgrade did not complete.', 'ai-post-scheduler');
-            $db_version_details[] = __('Try "Repair DB Tables" first. If this persists, run "Reinstall DB Tables" with backup enabled.', 'ai-post-scheduler');
-        }
-
         return array(
             'version' => array(
                 'label' => 'Plugin Version',
@@ -112,9 +91,8 @@ class AIPS_System_Status {
             ),
             'db_version' => array(
                 'label' => 'Database Version',
-                'value' => empty($db_version) ? 'Unknown' : $db_version,
-                'status' => $db_version_matches ? 'ok' : 'warning',
-                'details' => $db_version_details,
+                'value' => get_option('aips_db_version', 'Unknown'),
+                'status' => version_compare(get_option('aips_db_version'), AIPS_VERSION, '==') ? 'ok' : 'warning',
             ),
             'ai_engine' => array(
                 'label' => 'AI Engine Plugin',

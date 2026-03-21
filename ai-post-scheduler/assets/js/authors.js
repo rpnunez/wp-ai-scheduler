@@ -11,7 +11,6 @@
 	// Authors Module
 	const AuthorsModule = {
 		currentAuthorId: null,
-		hasImportedSuggestedAuthor: false,
 
 		/**
 		 * Initialise the Authors module by binding all event listeners.
@@ -78,11 +77,6 @@
 			// Authors list bulk actions
 			$(document).on('change', '#aips-authors-select-all', this.toggleSelectAllAuthors.bind(this));
 			$(document).on('click', '#aips-authors-bulk-apply', this.executeAuthorsBulkAction.bind(this));
-
-			// Author Suggestions
-			$(document).on('click', '#aips-suggest-authors-btn', this.openSuggestModal.bind(this));
-			$(document).on('submit', '#aips-suggest-authors-form', this.suggestAuthors.bind(this));
-			$(document).on('click', '.aips-import-suggested-author', this.importSuggestedAuthor.bind(this));
 		},
 
 		/**
@@ -272,14 +266,6 @@
 						$('#article_structure_id').val(author.article_structure_id || '');
 						$('#voice_tone').val(author.voice_tone || '');
 						$('#writing_style').val(author.writing_style || '');
-						// Extended profile fields
-						$('#author_target_audience').val(author.target_audience || '');
-						$('#author_expertise_level').val(author.expertise_level || '');
-						$('#author_content_goals').val(author.content_goals || '');
-						$('#author_excluded_topics').val(author.excluded_topics || '');
-						$('#author_preferred_content_length').val(author.preferred_content_length || '');
-						$('#author_language').val(author.language || 'en');
-						$('#author_max_posts_per_topic').val(author.max_posts_per_topic || 1);
 						$('#topic_generation_quantity').val(author.topic_generation_quantity);
 						$('#topic_generation_frequency').val(author.topic_generation_frequency);
 						$('#post_generation_frequency').val(author.post_generation_frequency);
@@ -522,7 +508,7 @@
 					detailContentHtml += '<strong>' + this.escapeHtml(aipsAuthorsL10n.lastFeedback || 'Last Feedback') + ':</strong>';
 					detailContentHtml += ' <span class="aips-feedback-badge aips-feedback-badge-' + feedbackAction + '">' + this.escapeHtml(feedbackLabel) + '</span>';
 					if (topic.last_feedback.reason_category && topic.last_feedback.reason_category !== 'other') {
-						detailContentHtml += this.renderCategoryBadge(feedbackAction, topic.last_feedback.reason_category);
+						detailContentHtml += ' <em>(' + this.escapeHtml(topic.last_feedback.reason_category) + ')</em>';
 					}
 					if (topic.last_feedback.reason) {
 						detailContentHtml += ' — ' + this.escapeHtml(topic.last_feedback.reason);
@@ -585,10 +571,6 @@
 						: this.escapeHtml(fbLabel);
 					html += ' <span class="aips-feedback-badge aips-feedback-badge-' + fbAction + '" title="' + fbTitle + '">';
 					html += '<span class="dashicons dashicons-admin-comments"></span> ' + this.escapeHtml(fbLabel) + '</span>';
-					// Render an inline reason category chip next to the feedback badge
-					if (topic.last_feedback.reason_category) {
-						html += this.renderCategoryBadge(fbAction, topic.last_feedback.reason_category);
-					}
 				}
 				
 				html += '<input type="text" class="topic-title-edit" style="display:none;" value="' + this.escapeHtml(topic.topic_title) + '">';
@@ -702,55 +684,6 @@
 			}
 
 			return 'aips-topic-similarity-low';
-		},
-
-		/**
-		 * Return the human-readable label for a feedback reason category.
-		 *
-		 * Looks up the category value in `aipsAuthorsL10n.approvalCategories` or
-		 * `aipsAuthorsL10n.rejectionCategories` depending on the feedback action.
-		 * Falls back to the raw category slug when no match is found or the action
-		 * is not one of the known values (`'approved'` / `'rejected'`).
-		 *
-		 * @param {string} action   - `'approved'` or `'rejected'`.
-		 * @param {string} category - The `reason_category` value.
-		 * @returns {string} Translated/human-readable label.
-		 */
-		getCategoryLabel: function (action, category) {
-			var list;
-			if (action === 'approved') {
-				list = aipsAuthorsL10n.approvalCategories || [];
-			} else if (action === 'rejected') {
-				list = aipsAuthorsL10n.rejectionCategories || [];
-			} else {
-				// Unknown action — return the raw slug so the badge still renders meaningfully.
-				return category;
-			}
-			const match = list.find(function (c) { return c.value === category; });
-			return match ? match.label : category;
-		},
-
-		/**
-		 * Build the HTML for a reason category chip/badge.
-		 *
-		 * Returns an empty string when category is falsy or `'other'`.
-		 *
-		 * @param {string} action   - `'approved'` or `'rejected'`.
-		 * @param {string} category - The `reason_category` value.
-		 * @returns {string} Badge HTML string.
-		 */
-		renderCategoryBadge: function (action, category) {
-			if (!category || category === 'other') {
-				return '';
-			}
-
-			const label = this.getCategoryLabel(action, category);
-			const isPositive = action === 'approved';
-			const groupClass = isPositive ? 'aips-reason-category-badge-positive' : 'aips-reason-category-badge-negative';
-			const specificClass = 'aips-reason-category-badge-' + category.replace(/_/g, '-');
-			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + this.escapeHtml(label) + '">'
-				+ this.escapeHtml(label)
-				+ '</span>';
 		},
 
 		/**
@@ -919,47 +852,11 @@
 		},
 
 		/**
-		 * Populate the feedback category dropdown with options appropriate for the given action.
-		 *
-		 * Replaces all `<option>` elements in `#feedback_reason_category` with the
-		 * action-specific set supplied via `aipsAuthorsL10n.approvalCategories` or
-		 * `aipsAuthorsL10n.rejectionCategories`, then resets the selection to the
-		 * first option ("other").  Also updates the visible label and description
-		 * text next to the dropdown.
-		 *
-		 * @param {string} action - Either `'approve'` or `'reject'`.
-		 */
-		populateCategoryOptions: function (action) {
-			const isApprove = action === 'approve';
-			const categories = isApprove
-				? (aipsAuthorsL10n.approvalCategories || [])
-				: (aipsAuthorsL10n.rejectionCategories || []);
-
-			const $select = $('#feedback_reason_category');
-			$select.empty();
-			$.each(categories, function (i, cat) {
-				$select.append($('<option>').val(cat.value).text(cat.label));
-			});
-
-			// Update the label and helper description to match the action.
-			$('#feedback_reason_category_label').text(
-				isApprove
-					? (aipsAuthorsL10n.approvalCategoryLabel || 'Approval Reason')
-					: (aipsAuthorsL10n.rejectionCategoryLabel || 'Rejection Reason')
-			);
-			$('#feedback_reason_category_description').text(
-				isApprove
-					? (aipsAuthorsL10n.approvalCategoryDescription || 'Select a positive reason to help train future topic generation.')
-					: (aipsAuthorsL10n.rejectionCategoryDescription || 'Select a structured reason to improve future topic quality.')
-			);
-		},
-
-		/**
 		 * Open the feedback modal pre-configured for approving a topic.
 		 *
 		 * Sets the hidden `#feedback_topic_id` and `#feedback_action` fields,
-		 * updates the modal title, category dropdown, and input placeholder, and
-		 * fades the feedback modal in.
+		 * updates the modal title and input placeholder, and fades the feedback
+		 * modal in.
 		 *
 		 * @param {Event} e - Click event from an `.aips-approve-topic` element.
 		 */
@@ -973,7 +870,6 @@
 			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.approveTopicTitle || 'Approve Topic');
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.approveReasonPlaceholder || 'Why are you approving this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.approve);
-			this.populateCategoryOptions('approve');
 			$('#aips-feedback-modal').fadeIn();
 		},
 
@@ -981,8 +877,8 @@
 		 * Open the feedback modal pre-configured for rejecting a topic.
 		 *
 		 * Sets the hidden `#feedback_topic_id` and `#feedback_action` fields,
-		 * updates the modal title, category dropdown, and input placeholder, and
-		 * fades the feedback modal in.
+		 * updates the modal title and input placeholder, and fades the feedback
+		 * modal in.
 		 *
 		 * @param {Event} e - Click event from an `.aips-reject-topic` element.
 		 */
@@ -996,7 +892,6 @@
 			$('#aips-feedback-modal-title').text(aipsAuthorsL10n.rejectTopicTitle || 'Reject Topic');
 			$('#feedback_reason').attr('placeholder', aipsAuthorsL10n.rejectReasonPlaceholder || 'Why are you rejecting this topic?');
 			$('#feedback-submit-btn').text(aipsAuthorsL10n.reject);
-			this.populateCategoryOptions('reject');
 			$('#aips-feedback-modal').fadeIn();
 		},
 
@@ -1808,16 +1703,7 @@
 		 */
 		closeModals: function (e) {
 			e.preventDefault();
-			const shouldReloadAfterClose = $('#aips-suggest-authors-modal').is(':visible') && this.hasImportedSuggestedAuthor;
-			const $visibleModals = $('.aips-modal:visible');
-
-			$visibleModals.fadeOut();
-
-			if (shouldReloadAfterClose) {
-				$visibleModals.promise().done(function () {
-					window.location.reload();
-				});
-			}
+			$('.aips-modal').fadeOut();
 		},
 
 		/**
@@ -1911,211 +1797,6 @@
 				console.error('Error in sanitizeUrl:', error);
 				return '';
 			}
-		},
-
-		/**
-		 * Open the Author Suggestions modal.
-		 *
-		 * @param {Event} e - Click event from `#aips-suggest-authors-btn`.
-		 */
-		openSuggestModal: function (e) {
-			e.preventDefault();
-			this.hasImportedSuggestedAuthor = false;
-			$('#aips-suggest-authors-results').hide();
-			$('#aips-suggest-authors-cards').html('');
-			$('#aips-suggest-authors-modal').fadeIn();
-		},
-
-		/**
-		 * Submit the Author Suggestions form and display results.
-		 *
-		 * Sends `aips_suggest_authors` with the form inputs and renders suggestion
-		 * cards in `#aips-suggest-authors-cards` on success.
-		 *
-		 * @param {Event} e - Submit event from `#aips-suggest-authors-form`.
-		 */
-		suggestAuthors: function (e) {
-			e.preventDefault();
-
-			const siteNiche = $('#aips-suggest-site-niche').val().trim();
-			if (!siteNiche) {
-				AIPS.Utilities.showToast(aipsAuthorsL10n.siteNicheRequired || 'Site niche is required.', 'warning');
-				return;
-			}
-
-			const $btn = $('#aips-suggest-authors-submit');
-			$btn.prop('disabled', true).html(
-				'<span class="dashicons dashicons-update aips-spin"></span> ' +
-				(aipsAuthorsL10n.generatingSuggestions || 'Generating suggestions...')
-			);
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_suggest_authors',
-					nonce: aipsAuthorsL10n.nonce,
-					site_niche: siteNiche,
-					target_audience: $('#aips-suggest-target-audience').val().trim(),
-					content_goals: $('#aips-suggest-content-goals').val().trim(),
-					count: $('#aips-suggest-count').val()
-				},
-				success: (response) => {
-					if (response.success && response.data.suggestions && response.data.suggestions.length > 0) {
-						this.renderSuggestedAuthors(response.data.suggestions);
-						$('#aips-suggest-authors-results').show();
-					} else {
-						const msg = (response.data && response.data.message)
-							? response.data.message
-							: (aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.');
-						AIPS.Utilities.showToast(msg, 'error');
-					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorGeneratingSuggestions || 'Error generating author suggestions.', 'error');
-				},
-				complete: () => {
-					$btn.prop('disabled', false).html(
-						'<span class="dashicons dashicons-lightbulb"></span> ' +
-						(aipsAuthorsL10n.generateSuggestions || 'Generate Suggestions')
-					);
-				}
-			});
-		},
-
-		/**
-		 * Render the suggested author cards into `#aips-suggest-authors-cards`.
-		 *
-		 * Uses the `#aips-tmpl-suggestion-card` and `#aips-tmpl-suggestion-meta-row`
-		 * HTML templates (defined in authors.php) so the markup lives in one place
-		 * and is not duplicated in JavaScript.
-		 *
-		 * @param {Array<Object>} suggestions - Array of suggestion objects from the server.
-		 */
-		renderSuggestedAuthors: function (suggestions) {
-			var html = '';
-
-			suggestions.forEach(function (suggestion, index) {
-				// Build the meta rows from optional fields using the meta-row template.
-				// render() auto-escapes tokens so values are safe to insert.
-				var metaRows = '';
-				var metaFields = [
-					{ key: 'keywords',                label: aipsAuthorsL10n.keywordsLabel        || 'Keywords' },
-					{ key: 'voice_tone',               label: aipsAuthorsL10n.voiceToneLabel       || 'Voice/Tone' },
-					{ key: 'writing_style',            label: aipsAuthorsL10n.writingStyleLabel    || 'Writing Style' },
-					{ key: 'topic_generation_prompt',  label: aipsAuthorsL10n.topicPromptLabel     || 'Topic Generation Prompt' },
-				];
-				metaFields.forEach(function (field) {
-					if (suggestion[field.key]) {
-						metaRows += AIPS.Templates.render('aips-tmpl-suggestion-meta-row', {
-							label: field.label,
-							value: suggestion[field.key],
-						});
-					}
-				});
-
-				var importLabel = aipsAuthorsL10n.importAuthor || 'Import Author';
-				var ariaLabel  = importLabel + ': ' + (suggestion.name || '');
-
-				// render() handles escaping of all string tokens; only `meta` and `index`
-				// are safe to insert as-is (meta is already rendered HTML, index is a number).
-				html += AIPS.Templates.renderRaw('aips-tmpl-suggestion-card', {
-					index:           index,
-					name:            AIPS.Templates.escape(suggestion.name || ''),
-					field_niche:     AIPS.Templates.escape(suggestion.field_niche || ''),
-					description:     AIPS.Templates.escape(suggestion.description || ''),
-					meta:            metaRows,
-					importLabel:     AIPS.Templates.escape(importLabel),
-					importAriaLabel: AIPS.Templates.escape(ariaLabel),
-				});
-			});
-
-			// Store suggestions data on the container for later retrieval on import
-			var $cards = $('#aips-suggest-authors-cards');
-			$cards.html(html);
-			$cards.data('suggestions', suggestions);
-		},
-
-		/**
-		 * Import a suggested author profile by saving it via `aips_save_author`.
-		 *
-		 * Reads the suggestion data stored on `#aips-suggest-authors-cards` by
-		 * index, sends the AJAX request, and shows a success toast on completion.
-		 * Disables the import button while the request is in flight.
-		 *
-		 * @param {Event} e - Click event from an `.aips-import-suggested-author` element.
-		 */
-		importSuggestedAuthor: function (e) {
-			e.preventDefault();
-
-			const $btn = $(e.currentTarget);
-			const index = parseInt($btn.data('index'), 10);
-			const suggestions = $('#aips-suggest-authors-cards').data('suggestions');
-
-			if (!suggestions || !suggestions[index]) {
-				return;
-			}
-
-			const suggestion = suggestions[index];
-			$btn.prop('disabled', true).html(
-				'<span class="dashicons dashicons-update aips-spin"></span> ' +
-				(aipsAuthorsL10n.importingAuthor || 'Importing...')
-			);
-
-			$.ajax({
-				url: ajaxurl,
-				type: 'POST',
-				data: {
-					action: 'aips_save_author',
-					nonce: aipsAuthorsL10n.nonce,
-					name: suggestion.name,
-					field_niche: suggestion.field_niche,
-					description: suggestion.description || '',
-					details: suggestion.details || '',
-					keywords: suggestion.keywords || '',
-					voice_tone: suggestion.voice_tone || '',
-					writing_style: suggestion.writing_style || '',
-					topic_generation_prompt: suggestion.topic_generation_prompt || '',
-					target_audience: suggestion.target_audience || '',
-					expertise_level: suggestion.expertise_level || '',
-					content_goals: suggestion.content_goals || '',
-					excluded_topics: suggestion.excluded_topics || '',
-					preferred_content_length: suggestion.preferred_content_length || '',
-					language: suggestion.language || 'en',
-					max_posts_per_topic: suggestion.max_posts_per_topic || 1,
-					topic_generation_frequency: 'weekly',
-					topic_generation_quantity: 5,
-					post_generation_frequency: 'daily',
-					post_status: 'draft',
-					is_active: 1
-				},
-				success: (response) => {
-					if (response.success) {
-						this.hasImportedSuggestedAuthor = true;
-						AIPS.Utilities.showToast(aipsAuthorsL10n.authorImported || 'Author imported successfully.', 'success');
-						$btn.prop('disabled', true).html(
-							'<span class="dashicons dashicons-yes"></span> ' +
-							(aipsAuthorsL10n.importedAuthor || 'Imported Author')
-						);
-					} else {
-						const msg = (response.data && response.data.message)
-							? response.data.message
-							: (aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.');
-						AIPS.Utilities.showToast(msg, 'error');
-						$btn.prop('disabled', false).html(
-							'<span class="dashicons dashicons-download"></span> ' +
-							(aipsAuthorsL10n.importAuthor || 'Import Author')
-						);
-					}
-				},
-				error: () => {
-					AIPS.Utilities.showToast(aipsAuthorsL10n.errorImportingAuthor || 'Error importing author.', 'error');
-					$btn.prop('disabled', false).html(
-						'<span class="dashicons dashicons-download"></span> ' +
-						(aipsAuthorsL10n.importAuthor || 'Import Author')
-					);
-				}
-			});
 		}
 	};
 	

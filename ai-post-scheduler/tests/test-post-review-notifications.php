@@ -141,7 +141,7 @@ class Test_AIPS_Post_Review_Notifications extends WP_UnitTestCase {
 			$this->assertStringContainsString('Posts Awaiting Review', $message);
 		}
 		$this->assertStringContainsString('Review Posts', $message);
-		$this->assertStringContainsString(AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-pending-review', $message);
+		$this->assertStringContainsString(admin_url('admin.php?page=aips-generated-posts#aips-pending-review'), $message);
 	}
 	
 	/**

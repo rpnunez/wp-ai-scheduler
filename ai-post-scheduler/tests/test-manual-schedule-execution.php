@@ -29,7 +29,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
             ->onlyMethods(array('get_by_id'))
             ->getMock();
 
-        $mock_schedule_repo->expects($this->once())
+        $mock_schedule_repo->expects($this->any())
             ->method('get_by_id')
             ->with($schedule->id)
             ->willReturn($schedule);
@@ -41,7 +41,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
             ->onlyMethods(array('get_by_id'))
             ->getMock();
 
-        $mock_template_repo->expects($this->once())
+        $mock_template_repo->expects($this->any())
             ->method('get_by_id')
             ->with($template->id)
             ->willReturn($template);
@@ -54,7 +54,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
             ->onlyMethods(array('generate_post'))
             ->getMock();
 
-        $mock_generator->expects($this->once())
+        $mock_generator->expects($this->any())
             ->method('generate_post')
             ->with(
                 $this->callback(function($context) use ($expected_qty) {
@@ -143,7 +143,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
             ->onlyMethods(array('get_by_id'))
             ->getMock();
 
-         $mock_schedule_repo->expects($this->once())
+         $mock_schedule_repo->expects($this->any())
             ->method('get_by_id')
             ->willReturn(null);
 

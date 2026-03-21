@@ -93,8 +93,8 @@ class AIPS_Post_Review {
 			'title' => get_the_title($post),
 			'content' => apply_filters('the_content', $post->post_content),
 			'excerpt' => get_the_excerpt($post),
-			'featured_image' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'full')),
-			'edit_url' => esc_url_raw(get_edit_post_link($post_id)),
+			'featured_image' => get_the_post_thumbnail_url($post_id, 'full'),
+			'edit_url' => get_edit_post_link($post_id),
 		);
 
 		wp_send_json_success($data);

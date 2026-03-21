@@ -388,59 +388,6 @@ class AIPS_History_Repository {
      *     @type float $success_rate Success rate percentage.
      * }
      */
-
-    /**
-     * Get the estimated generation time based on recent successful generations.
-     *
-     * Retrieves the average of the most recent recorded generation times
-     * from post metadata to provide an estimate for bulk generation tasks.
-     *
-     * @param int $limit Number of recent samples to use for calculation (default: 20).
-     * @return array {
-     *     @type int $per_post_seconds Estimated seconds per post.
-     *     @type int $sample_size      Number of valid samples used for the estimate.
-     * }
-     */
-    public function get_estimated_generation_time($limit = 20) {
-        $default_seconds = 30;
-        $limit           = absint($limit);
-
-        // Retrieve the most recent recorded generation times.
-        $times = $this->wpdb->get_col(
-            $this->wpdb->prepare(
-                "SELECT meta_value FROM {$this->wpdb->postmeta}
-                 WHERE meta_key = %s
-                 ORDER BY meta_id DESC
-                 LIMIT %d",
-                '_aips_post_generation_total_time',
-                $limit
-            )
-        );
-
-        if (!empty($times)) {
-            $numeric_times = array_filter(array_map('floatval', $times), function($v) {
-                return $v > 0;
-            });
-
-            if (!empty($numeric_times)) {
-                $avg              = array_sum($numeric_times) / count($numeric_times);
-                $per_post_seconds = (int) ceil($avg);
-            } else {
-                $per_post_seconds = $default_seconds;
-            }
-
-            $sample_size = count($numeric_times);
-        } else {
-            $per_post_seconds = $default_seconds;
-            $sample_size      = 0;
-        }
-
-        return array(
-            'per_post_seconds' => $per_post_seconds,
-            'sample_size'      => $sample_size,
-        );
-    }
-
     public function get_stats() {
         $cached_stats = get_transient('aips_history_stats');
 
@@ -507,100 +454,6 @@ class AIPS_History_Repository {
         }
 
         return $stats;
-    }
-
-    /**
-     * Get generated-post counts for schedule history containers.
-     *
-     * Counts activity/error logs that represent a generated post event.
-     * The key is history_id (schedule_history_id on schedules table).
-     *
-     * @param array $history_ids History container IDs.
-     * @return array Associative array of history_id => generated count.
-     */
-    public function get_schedule_generated_post_counts($history_ids) {
-        $history_ids = array_map('absint', (array) $history_ids);
-        $history_ids = array_filter($history_ids);
-
-        if (empty($history_ids)) {
-            return array();
-        }
-
-        $placeholders = implode(',', array_fill(0, count($history_ids), '%d'));
-
-        $sql = "
-            SELECT history_id, COUNT(*) AS count
-            FROM {$this->table_name_log}
-            WHERE history_id IN ({$placeholders})
-                AND history_type_id IN (%d, %d)
-                AND (
-                    details LIKE %s
-                    OR details LIKE %s
-                    OR details LIKE %s
-                )
-            GROUP BY history_id
-        ";
-
-        $args = $history_ids;
-        $args[] = AIPS_History_Type::ACTIVITY;
-        $args[] = AIPS_History_Type::ERROR;
-        $args[] = '%"event_type":"post_published"%';
-        $args[] = '%"event_type":"post_draft"%';
-        $args[] = '%"event_type":"manual_schedule_completed"%';
-
-        $results = $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
-
-        $counts = array();
-        foreach ($results as $row) {
-            $counts[(int) $row->history_id] = (int) $row->count;
-        }
-
-        return $counts;
-    }
-
-    /**
-     * Get author schedule logs filtered by event types.
-     *
-     * @param int   $author_id Author ID.
-     * @param array $event_types Event types to include.
-     * @param int   $limit Max rows to return.
-     * @return array Raw log rows from aips_history_log.
-     */
-    public function get_author_schedule_logs_by_event_types($author_id, $event_types = array(), $limit = 100) {
-        $author_id = absint($author_id);
-        $limit = absint($limit);
-        $event_types = array_filter(array_map('sanitize_key', (array) $event_types));
-
-        if (!$author_id || $limit < 1 || empty($event_types)) {
-            return array();
-        }
-
-        $where_events = array();
-        $args = array(
-            $author_id,
-            AIPS_History_Type::ACTIVITY,
-            AIPS_History_Type::ERROR,
-        );
-
-        foreach ($event_types as $event_type) {
-            $where_events[] = 'hl.details LIKE %s';
-            $args[] = '%"event_type":"' . $this->wpdb->esc_like($event_type) . '"%';
-        }
-
-        $args[] = $limit;
-
-        $sql = "
-            SELECT hl.*
-            FROM {$this->table_name_log} hl
-            INNER JOIN {$this->table_name} h ON hl.history_id = h.id
-            WHERE h.author_id = %d
-                AND hl.history_type_id IN (%d, %d)
-                AND (" . implode(' OR ', $where_events) . ")
-            ORDER BY hl.timestamp DESC
-            LIMIT %d
-        ";
-
-        return $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
     }
     
     /**
@@ -1013,5 +866,25 @@ class AIPS_History_Repository {
         }
 
         return $revisions;
+    }
+
+
+    /**
+     * Retrieve the most recent recorded generation times for bulk-generate estimate.
+     *
+     * @param int $limit Maximum number of samples to retrieve. Default 20.
+     * @return array Array of generation times.
+     */
+    public function get_recent_post_generation_times($limit = 20) {
+        return $this->wpdb->get_col(
+            $this->wpdb->prepare(
+                "SELECT meta_value FROM {$this->wpdb->postmeta}
+                 WHERE meta_key = %s
+                 ORDER BY meta_id DESC
+                 LIMIT %d",
+                '_aips_post_generation_total_time',
+                absint($limit)
+            )
+        );
     }
 }

@@ -219,11 +219,9 @@ class AIPS_DB_Manager {
             topic_generation_quantity int DEFAULT 5,
             topic_generation_next_run datetime DEFAULT NULL,
             topic_generation_last_run datetime DEFAULT NULL,
-            topic_generation_is_active tinyint(1) DEFAULT 1,
             post_generation_frequency varchar(50) DEFAULT 'daily',
             post_generation_next_run datetime DEFAULT NULL,
             post_generation_last_run datetime DEFAULT NULL,
-            post_generation_is_active tinyint(1) DEFAULT 1,
             post_status varchar(50) DEFAULT 'draft',
             post_category bigint(20) DEFAULT NULL,
             post_tags text,
@@ -232,13 +230,6 @@ class AIPS_DB_Manager {
             featured_image_source varchar(50) DEFAULT 'ai_prompt',
             voice_tone varchar(100) DEFAULT NULL,
             writing_style varchar(100) DEFAULT NULL,
-            target_audience varchar(500) DEFAULT NULL,
-            expertise_level varchar(50) DEFAULT NULL,
-            content_goals text DEFAULT NULL,
-            excluded_topics text DEFAULT NULL,
-            preferred_content_length varchar(50) DEFAULT NULL,
-            language varchar(10) DEFAULT 'en',
-            max_posts_per_topic int DEFAULT 1,
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -329,9 +320,6 @@ class AIPS_DB_Manager {
         
         // Seed default data for new installations or upgrades
         self::seed_default_data();
-
-        // Record that the DB schema is now at the current plugin version
-        update_option('aips_db_version', AIPS_VERSION);
     }
 
     public function drop_tables() {

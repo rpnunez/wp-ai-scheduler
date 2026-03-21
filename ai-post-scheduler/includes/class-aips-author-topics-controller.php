@@ -48,6 +48,11 @@ class AIPS_Author_Topics_Controller {
 	 * @var AIPS_History_Service Service for history logging
 	 */
 	private $history_service;
+
+	/**
+	 * @var AIPS_History_Repository Repository for history data
+	 */
+	private $history_repository;
 	
 	/**
 	 * Initialize the controller.
@@ -59,6 +64,7 @@ class AIPS_Author_Topics_Controller {
 		$this->post_generator = new AIPS_Author_Post_Generator();
 		$this->penalty_service = new AIPS_Topic_Penalty_Service();
 		$this->history_service = new AIPS_History_Service();
+		$this->history_repository = new AIPS_History_Repository();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -919,12 +925,28 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		// Use the history repository to get the estimate based on historical performance
-		$history_repository = new AIPS_History_Repository();
-		$estimate           = $history_repository->get_estimated_generation_time(20);
+		// Retrieve the most recent recorded generation times via injected History Repository
+		$times = $this->history_repository->get_recent_post_generation_times(20);
 
-		$per_post_seconds   = $estimate['per_post_seconds'];
-		$sample_size        = $estimate['sample_size'];
+		$default_seconds = 30;
+
+		if (!empty($times)) {
+			$numeric_times = array_filter(array_map('floatval', $times), function($v) {
+				return $v > 0;
+			});
+
+			if (!empty($numeric_times)) {
+				$avg = array_sum($numeric_times) / count($numeric_times);
+				$per_post_seconds = (int) ceil($avg);
+			} else {
+				$per_post_seconds = $default_seconds;
+			}
+
+			$sample_size = count($numeric_times);
+		} else {
+			$per_post_seconds = $default_seconds;
+			$sample_size      = 0;
+		}
 
 		wp_send_json_success(array(
 			'per_post_seconds' => $per_post_seconds,

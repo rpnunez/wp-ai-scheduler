@@ -35,7 +35,19 @@ class Test_N_Plus_One extends WP_UnitTestCase {
             'is_active' => 1
         ));
 
+        $mock_schedule_repo = $this->getMockBuilder("AIPS_Schedule_Repository")->onlyMethods(array("get_active_schedules"))->getMock();
+        $mock_schedule_repo->expects($this->any())->method("get_active_schedules")->willReturn(array(
+            (object) array("template_id" => $t1, "frequency" => "daily", "next_run" => current_time("mysql")),
+            (object) array("template_id" => $t2, "frequency" => "daily", "next_run" => current_time("mysql")),
+        ));
         $templates = new AIPS_Templates();
+        // Access private property via reflection
+        $reflection = new ReflectionClass($templates);
+        $property = $reflection->getProperty("schedule_repository");
+        $property->setAccessible(true);
+        $property->setValue($templates, $mock_schedule_repo);
+        delete_transient("aips_pending_schedule_stats");
+        $GLOBALS["aips_test_options"] = array();
         $stats = $templates->get_all_pending_stats();
 
         $this->assertArrayHasKey($t1, $stats);

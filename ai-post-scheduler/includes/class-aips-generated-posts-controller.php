@@ -117,7 +117,7 @@ class AIPS_Generated_Posts_Controller {
 				'date_generated' => $item->created_at,
 				'date_published' => $post->post_date,
 				'date_scheduled' => $schedule ? $schedule->next_run : null,
-				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
+				'edit_link' => get_edit_post_link($item->post_id),
 				'source' => $source,
 			);
 		}
@@ -154,7 +154,7 @@ class AIPS_Generated_Posts_Controller {
 				'title' => $post->post_title,
 				'date_generated' => $item->created_at,
 				'date_updated' => $item->post_modified,
-				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
+				'edit_link' => get_edit_post_link($item->post_id),
 				'post_status' => $item->post_status,
 				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),
 				'source' => $this->format_source($item),

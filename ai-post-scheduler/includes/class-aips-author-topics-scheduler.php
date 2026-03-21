@@ -174,8 +174,8 @@ class AIPS_Author_Topics_Scheduler {
 	 * @param object $author Author object from database.
 	 */
 	private function update_author_schedule($author) {
-		// Calculate next run time based on frequency, preserving original phase
-		$next_run = $this->interval_calculator->calculate_next_run($author->topic_generation_frequency, $author->topic_generation_next_run);
+		// Calculate next run time based on frequency
+		$next_run = $this->interval_calculator->calculate_next_run($author->topic_generation_frequency);
 		
 		$this->authors_repository->update_topic_generation_schedule($author->id, $next_run);
 		
@@ -195,13 +195,6 @@ class AIPS_Author_Topics_Scheduler {
 			return new WP_Error('invalid_author', 'Author not found');
 		}
 
-		$result = $this->topics_generator->generate_topics($author);
-
-		// Keep manual "Run Now" behavior aligned with cron runs by advancing
-		// schedule timestamps regardless of success/failure to avoid re-running
-		// immediately on the next cron tick.
-		$this->update_author_schedule($author);
-
-		return $result;
+		return $this->topics_generator->generate_topics($author);
 	}
 }

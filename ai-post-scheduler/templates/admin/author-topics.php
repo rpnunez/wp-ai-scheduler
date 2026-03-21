@@ -221,11 +221,15 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 			<input type="hidden" id="feedback_action" name="action_type" value="">
 
 			<div class="form-group">
-				<label id="feedback_reason_category_label" for="feedback_reason_category"><?php esc_html_e('Feedback Category', 'ai-post-scheduler'); ?></label>
+				<label for="feedback_reason_category"><?php esc_html_e('Feedback Category', 'ai-post-scheduler'); ?></label>
 				<select id="feedback_reason_category" name="reason_category">
 					<option value="other"><?php esc_html_e('Other', 'ai-post-scheduler'); ?></option>
+					<option value="duplicate"><?php esc_html_e('Duplicate', 'ai-post-scheduler'); ?></option>
+					<option value="tone"><?php esc_html_e('Tone', 'ai-post-scheduler'); ?></option>
+					<option value="irrelevant"><?php esc_html_e('Irrelevant', 'ai-post-scheduler'); ?></option>
+					<option value="policy"><?php esc_html_e('Policy', 'ai-post-scheduler'); ?></option>
 				</select>
-				<p id="feedback_reason_category_description" class="description"><?php esc_html_e('Select a structured reason to improve future topic quality.', 'ai-post-scheduler'); ?></p>
+				<p class="description"><?php esc_html_e('Select a structured reason to improve future topic quality.', 'ai-post-scheduler'); ?></p>
 			</div>
 
 			<div class="form-group">

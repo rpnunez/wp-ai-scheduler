@@ -124,7 +124,7 @@ class AIPS_Feedback_Repository {
 	 * @param int    $user_id         User ID.
 	 * @param string $reason          Approval reason.
 	 * @param string $notes           Additional notes.
-	 * @param string $reason_category Reason category (timely/relevant/well_researched/engaging/original/other).
+	 * @param string $reason_category Reason category (duplicate/tone/irrelevant/policy/other).
 	 * @param string $source          Source of feedback (UI/automation).
 	 * @return int|false The ID of the created feedback or false on failure.
 	 */

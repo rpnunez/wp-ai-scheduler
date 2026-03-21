@@ -47,18 +47,6 @@ class AIPS_Topic_Penalty_Service {
 	);
 	
 	/**
-	 * Reward weights for different approval reason categories.
-	 */
-	private $reward_weights = array(
-		'timely'          => 15,  // High-value: on-trend content
-		'original'        => 15,  // High-value: unique perspective
-		'relevant'        => 12,  // Good fit for the author's niche
-		'well_researched' => 12,  // Strong content potential
-		'engaging'        => 12,  // Compelling hook
-		'other'           => 10   // Standard approval reward
-	);
-
-	/**
 	 * Initialize the penalty service.
 	 */
 	public function __construct($topics_repository = null, $authors_repository = null, $logger = null) {
@@ -115,7 +103,7 @@ class AIPS_Topic_Penalty_Service {
 	 * Apply reward based on approval reason.
 	 *
 	 * @param int    $topic_id        Topic ID.
-	 * @param string $reason_category Reason category (timely/relevant/well_researched/engaging/original/other).
+	 * @param string $reason_category Reason category.
 	 * @return bool|WP_Error True on success, WP_Error on failure.
 	 */
 	public function apply_reward($topic_id, $reason_category) {
@@ -125,8 +113,8 @@ class AIPS_Topic_Penalty_Service {
 			return new WP_Error('topic_not_found', __('Topic not found.', 'ai-post-scheduler'));
 		}
 		
-		// Use category-specific reward weight, falling back to the default.
-		$reward = isset($this->reward_weights[$reason_category]) ? $this->reward_weights[$reason_category] : $this->reward_weights['other'];
+		// Apply positive reward (opposite of penalty)
+		$reward = 10; // Fixed reward for approval
 		
 		$new_score = max(0, min(100, $topic->score + $reward));
 		
@@ -134,8 +122,7 @@ class AIPS_Topic_Penalty_Service {
 		
 		if ($result !== false) {
 			$this->logger->log(
-				sprintf('Applied %s reward (+%d points) to topic %d. New score: %d', 
-					$reason_category,
+				sprintf('Applied reward (+%d points) to topic %d. New score: %d',
 					$reward, 
 					$topic_id, 
 					$new_score
