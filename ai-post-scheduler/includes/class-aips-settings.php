@@ -249,10 +249,6 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_ai_model', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
-        register_setting('aips_settings', 'aips_chatbot_id', array(
-            'sanitize_callback' => 'sanitize_text_field',
-            'default' => 'default'
-        ));
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
@@ -294,14 +290,6 @@ class AIPS_Settings {
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
             array($this, 'ai_model_field_callback'),
-            'aips-settings',
-            'aips_general_section'
-        );
-        
-        add_settings_field(
-            'aips_chatbot_id',
-            __('Chatbot ID', 'ai-post-scheduler'),
-            array($this, 'chatbot_id_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -560,21 +548,6 @@ class AIPS_Settings {
         <?php
     }
     
-    /**
-     * Render the Chatbot ID field.
-     *
-     * Allows users to specify which AI Engine chatbot to use for post generation.
-     *
-     * @return void
-     */
-    public function chatbot_id_field_callback() {
-        $value = get_option('aips_chatbot_id', 'default');
-        ?>
-        <input type="text" name="aips_chatbot_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="default">
-        <p class="description"><?php esc_html_e('AI Engine chatbot ID to use for post generation. This enables conversational context between title, content, and excerpt generation for better coherence.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
-
     /**
      * Render the Dev Tools page.
      *
