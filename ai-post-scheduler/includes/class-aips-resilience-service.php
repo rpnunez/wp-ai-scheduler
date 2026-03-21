@@ -58,20 +58,32 @@ class AIPS_Resilience_Service {
      * Execute a function with retry logic.
      *
      * Implements exponential backoff with jitter for retry attempts.
+     * Callbacks provided to this method must NOT call record_success() or
+     * record_failure() themselves — circuit-breaker accounting is handled by
+     * execute_safely() based on the final outcome of the entire retry sequence.
      *
-     * @param callable $function Function to execute.
-     * @param string   $type     Request type for logging.
-     * @param string   $prompt   Prompt for logging.
-     * @param array    $options  Options for logging.
+     * @param callable $function    Function to execute. Must return a non-WP_Error
+     *                              value on success or WP_Error on failure (to trigger
+     *                              a retry). The callback captures its inputs via closure
+     *                              variables and must not accept WP_Error arguments —
+     *                              all closure-captured values should be resolved before
+     *                              the closure is created.
+     * @param string   $type        Request type for logging.
+     * @param string   $prompt      Prompt for logging.
+     * @param array    $options     Options for logging.
+     * @param array    $retry_opts  Optional. Additional retry options:
+     *                              - 'non_retryable_codes' (string[]) WP_Error codes
+     *                                that should abort the retry loop immediately.
      * @return mixed Function result or WP_Error.
      */
-    public function execute_with_retry($function, $type, $prompt, $options) {
+    public function execute_with_retry($function, $type, $prompt, $options, $retry_opts = array()) {
         $retry_config = $this->config->get_retry_config();
 
         if (!$retry_config['enabled']) {
             return $function();
         }
 
+        $non_retryable_codes = isset($retry_opts['non_retryable_codes']) ? (array) $retry_opts['non_retryable_codes'] : array();
         $max_attempts = $retry_config['max_attempts'];
         $initial_delay = $retry_config['initial_delay'];
         $attempt = 0;
@@ -94,6 +106,16 @@ class AIPS_Resilience_Service {
             }
 
             $last_error = $result;
+
+            // Non-retryable errors should fail immediately without sleeping.
+            if (!empty($non_retryable_codes) && in_array($result->get_error_code(), $non_retryable_codes, true)) {
+                $this->logger->log("Non-retryable error encountered, aborting retry loop", 'error', array(
+                    'type'       => $type,
+                    'error_code' => $result->get_error_code(),
+                    'error'      => $result->get_error_message(),
+                ));
+                break;
+            }
 
             // If we've reached max attempts, return the error
             if ($attempt >= $max_attempts) {
@@ -121,13 +143,26 @@ class AIPS_Resilience_Service {
     /**
      * Execute a function with full resilience (Circuit Breaker, Rate Limiter, Retry).
      *
-     * @param callable $function Function to execute.
-     * @param string   $type     Request type for logging.
-     * @param string   $prompt   Prompt for logging.
-     * @param array    $options  Options for logging.
+     * This is the preferred entry point for resilient AI calls. It:
+     *   1. Checks the circuit breaker (blocks if open).
+     *   2. Checks the rate limiter (blocks if exceeded).
+     *   3. Runs the function with exponential-backoff retry.
+     *   4. Records a single success or failure against the circuit breaker
+     *      based on the *final* outcome of all retry attempts combined —
+     *      transient per-attempt failures do not inflate the failure counter.
+     *
+     * Callbacks must NOT call record_success() or record_failure() themselves.
+     *
+     * @param callable $function   Function to execute. Must return a non-WP_Error
+     *                             value on success or WP_Error on failure.
+     * @param string   $type       Request type for logging.
+     * @param string   $prompt     Prompt for logging.
+     * @param array    $options    Options for logging.
+     * @param array    $retry_opts Optional. Forwarded to execute_with_retry.
+     *                             Supports 'non_retryable_codes' (string[]).
      * @return mixed Function result or WP_Error.
      */
-    public function execute_safely($function, $type, $prompt, $options) {
+    public function execute_safely($function, $type, $prompt, $options, $retry_opts = array()) {
         // Check circuit breaker
         if (!$this->check_circuit_breaker()) {
             return new WP_Error('circuit_breaker_open', __('Circuit breaker is open. Too many recent failures.', 'ai-post-scheduler'));
@@ -139,7 +174,17 @@ class AIPS_Resilience_Service {
         }
 
         // Execute with retry logic
-        return $this->execute_with_retry($function, $type, $prompt, $options);
+        $result = $this->execute_with_retry($function, $type, $prompt, $options, $retry_opts);
+
+        // Record outcome against the circuit breaker once, based on the final result
+        // of the entire retry sequence (not per-attempt).
+        if (is_wp_error($result)) {
+            $this->record_failure();
+        } else {
+            $this->record_success();
+        }
+
+        return $result;
     }
 
     /**
