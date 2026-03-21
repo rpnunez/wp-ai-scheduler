@@ -12,6 +12,14 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
     
     public function setUp(): void {
         parent::setUp();
+        if (!class_exists('WP_Error')) {
+            $this->markTestSkipped('Database tests cannot run in limited mode without WP Test Lib.');
+        }
+        global $wpdb;
+        if (property_exists($wpdb, 'get_col_return_val')) {
+            $this->markTestSkipped('Database tests cannot run with mocked wpdb.');
+        }
+
         $this->repository = new AIPS_Trending_Topics_Repository();
         
         // Ensure table exists
