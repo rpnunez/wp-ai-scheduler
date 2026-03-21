@@ -233,6 +233,30 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Check whether sources should be injected into the content prompt.
+	 *
+	 * @return bool True if the template has include_sources enabled.
+	 */
+	public function get_include_sources() {
+		return !empty($this->template->include_sources);
+	}
+
+	/**
+	 * Get the source group term IDs configured for this template.
+	 *
+	 * @return int[] Array of term IDs.
+	 */
+	public function get_source_group_ids() {
+		if (empty($this->template->source_group_ids)) {
+			return array();
+		}
+
+		$decoded = json_decode($this->template->source_group_ids, true);
+
+		return is_array($decoded) ? array_map('intval', $decoded) : array();
+	}
+
+	/**
 	 * Get all context data as an array.
 	 *
 	 * @return array Context data.

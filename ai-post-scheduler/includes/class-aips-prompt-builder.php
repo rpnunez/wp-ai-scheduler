@@ -7,14 +7,16 @@ class AIPS_Prompt_Builder {
 
 	private $template_processor;
 	private $structure_manager;
+    private $sources_repo;
 	private $post_content_builder;
 	private $post_title_builder;
 	private $post_excerpt_builder;
 	private $post_featured_image_builder;
 
-	public function __construct($template_processor = null, $structure_manager = null) {
+	public function __construct($template_processor = null, $structure_manager = null, $sources_repo = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
+        $this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
 	}
 
     /**
@@ -183,7 +185,18 @@ class AIPS_Prompt_Builder {
      * @return string
      */
     private function get_output_instructions() {
-        return 'Return ONLY valid HTML suitable for WordPress post_content. Do not use Markdown syntax, Markdown headings, or fenced code blocks. Use semantic HTML tags (such as <h2>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>, and <pre><code> for code samples). End the article with a concise summary in HTML.';
+        return <<<'INSTRUCTIONS'
+CRITICAL INSTRUCTIONS:
+- Output ONLY the article content, nothing else
+- Do NOT include any preamble, thinking text, or commentary like "Let's create..." or "Here's..."
+- Do NOT use markdown formatting (no ```, no **, no __)
+- Use proper HTML tags: <h2> for section titles, <p> for paragraphs
+- For code samples: wrap code in <pre><code> tags with HTML entities (use &lt; for <, &gt; for >, &amp; for &)
+- Example code format: <pre><code>&lt;div class="example"&gt;content&lt;/div&gt;</code></pre>
+- Do NOT include markdown code fences like ```html or ```
+- Start directly with the article content (typically an opening paragraph or <h2> heading)
+- End with a concise summary paragraph
+INSTRUCTIONS;
     }
 
     /**
@@ -192,6 +205,10 @@ class AIPS_Prompt_Builder {
      * Reads the site-wide content strategy settings via AIPS_Site_Context and
      * formats them into a structured text block. Only non-empty / non-default
      * values are included so the prompt is not padded with placeholder lines.
+     *
+     * This block intentionally does not include or reference trusted source URLs.
+     * Any source instructions are injected separately (for example via
+     * build_sources_block()) when that behavior is explicitly enabled.
      *
      * Returns an empty string when no site-wide settings have been configured,
      * allowing callers to safely append the result without extra whitespace.
@@ -235,6 +252,35 @@ class AIPS_Prompt_Builder {
         }
 
         return "Site-wide content context:\n" . implode("\n", $lines) . "\n\n";
+    }
+
+    /**
+     * Build a trusted sources block for inclusion in AI prompts.
+     *
+     * Fetches active source URLs from the given source group term IDs and
+     * formats them into a prompt instruction block. Returns an empty string
+     * when no matching sources are found.
+     *
+     * @param int[] $term_ids Source group term IDs to fetch sources from.
+     * @return string Formatted sources block, or empty string.
+     */
+    public function build_sources_block(array $term_ids) {
+        if (empty($term_ids)) {
+            return '';
+        }
+
+        $source_urls = $this->sources_repo->get_urls_by_group_term_ids($term_ids, true);
+
+        if (empty($source_urls)) {
+            return '';
+        }
+
+        $block  = "Trusted sources (reference and cite these URLs when relevant):\n";
+        foreach ($source_urls as $url) {
+            $block .= '  - ' . $url . "\n";
+        }
+
+        return $block . "\n";
     }
 
     /**
@@ -294,6 +340,7 @@ class AIPS_Prompt_Builder {
                 'voice' => $voice_name,
                 'article_structure' => $structure_name,
                 'sample_topic' => $sample_topic,
+                'include_sources' => !empty($template_data->include_sources),
             ),
         );
     }

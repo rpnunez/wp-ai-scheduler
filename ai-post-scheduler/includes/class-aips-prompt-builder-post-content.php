@@ -33,12 +33,19 @@ class AIPS_Prompt_Builder_Post_Content {
 	private $article_structure_section_builder;
 
 	/**
+	 * @var AIPS_Sources_Repository Repository for fetching source URLs.
+	 */
+	private $sources_repo;
+
+	/**
 	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
 	 * @param AIPS_Prompt_Builder_ArticleStructure_Section|null $article_structure_section_builder Optional section prompt builder.
+	 * @param AIPS_Sources_Repository|null $sources_repo Optional sources repository.
 	 */
 	public function __construct($template_processor = null, $article_structure_section_builder = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_ArticleStructure_Section(null, null, $this->template_processor);
+		$this->sources_repo = new AIPS_Sources_Repository();
 	}
 
 	/**
@@ -92,6 +99,14 @@ class AIPS_Prompt_Builder_Post_Content {
 			}
 		}
 
+		// Inject sources when the context has include_sources enabled.
+		if ($context->get_include_sources()) {
+			$sources_block = $this->build_sources_block($context->get_source_group_ids());
+			if (!empty($sources_block)) {
+				$processed_prompt = $sources_block . $processed_prompt;
+			}
+		}
+
 		return apply_filters('aips_content_prompt', $processed_prompt, $context, $topic);
 	}
 
@@ -112,6 +127,48 @@ class AIPS_Prompt_Builder_Post_Content {
 			$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
 		}
 
+		// Inject sources when the template has include_sources enabled.
+        if (!empty($template->include_sources)) {
+            $group_ids = array();
+            if (!empty($template->source_group_ids)) {
+                $decoded = json_decode($template->source_group_ids, true);
+                $group_ids = is_array($decoded) ? array_map('intval', $decoded) : array();
+            }
+            $sources_block = $this->build_sources_block($group_ids);
+            if (!empty($sources_block)) {
+                $processed_prompt = $sources_block . $processed_prompt;
+            }
+        }
+
 		return apply_filters('aips_content_prompt', $processed_prompt, $template, $topic);
 	}
+
+	/**
+     * Build a trusted sources block for inclusion in AI prompts.
+     *
+     * Fetches active source URLs from the given source group term IDs and
+     * formats them into a prompt instruction block. Returns an empty string
+     * when no matching sources are found.
+     *
+     * @param int[] $term_ids Source group term IDs to fetch sources from.
+     * @return string Formatted sources block, or empty string.
+     */
+    public function build_sources_block(array $term_ids) {
+        if (empty($term_ids)) {
+            return '';
+        }
+
+        $source_urls = $this->sources_repo->get_urls_by_group_term_ids($term_ids, true);
+
+        if (empty($source_urls)) {
+            return '';
+        }
+
+        $block  = "Trusted sources (reference and cite these URLs when relevant):\n";
+        foreach ($source_urls as $url) {
+            $block .= '  - ' . $url . "\n";
+        }
+
+        return $block . "\n";
+    }
 }
