@@ -76,6 +76,8 @@ final class AI_Post_Scheduler {
         $logger->log('Running plugin activation.');
 
         $this->set_default_options();
+        // Redirect admins to onboarding wizard once after activation.
+        set_transient('aips_onboarding_redirect', 1, MINUTE_IN_SECONDS * 10);
         $this->check_upgrades();
 
         // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
@@ -152,10 +154,34 @@ final class AI_Post_Scheduler {
     
     public function init() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
+
+        // Register the Source Group taxonomy (not attached to any post type).
+        register_taxonomy(
+            'aips_source_group',
+            array(),
+            array(
+                'labels'            => array(
+                    'name'              => __('Source Groups', 'ai-post-scheduler'),
+                    'singular_name'     => __('Source Group', 'ai-post-scheduler'),
+                    'add_new_item'      => __('Add New Source Group', 'ai-post-scheduler'),
+                    'edit_item'         => __('Edit Source Group', 'ai-post-scheduler'),
+                    'new_item'          => __('New Source Group', 'ai-post-scheduler'),
+                    'not_found'         => __('No source groups found.', 'ai-post-scheduler'),
+                ),
+                'hierarchical'      => false,
+                'show_ui'           => false,
+                'show_in_nav_menus' => false,
+                'show_in_rest'      => false,
+                'public'            => false,
+                'rewrite'           => false,
+                'query_var'         => false,
+            )
+        );
         
         if (is_admin()) {
             new AIPS_DB_Manager();
             new AIPS_Settings();
+            new AIPS_Onboarding_Wizard();
             new AIPS_Admin_Assets();
             new AIPS_Voices();
             new AIPS_Templates();
@@ -184,6 +210,8 @@ final class AI_Post_Scheduler {
             // AI Edit + Calendar controllers (AJAX endpoints)
             new AIPS_AI_Edit_Controller();
             new AIPS_Calendar_Controller();
+            // Sources controller (AJAX endpoints for trusted sources management)
+            new AIPS_Sources_Controller();
             // Dev Tools
             if (get_option('aips_developer_mode')) {
                 new AIPS_Dev_Tools();

@@ -150,3 +150,11 @@
 **Improvement:** Replaced hardcoded admin URLs with `AIPS_Admin_Menu_Helper::get_page_url()` in dashboard templates and related notification classes.
 **Files Modified:** `ai-post-scheduler/templates/admin/dashboard.php`, `ai-post-scheduler/includes/class-aips-partial-generation-notifications.php`, `ai-post-scheduler/tests/test-partial-generation-notifications.php`, `ai-post-scheduler/tests/test-post-review-notifications.php`
 **Outcome:** Improved routing maintainability and eliminated hardcoded URLs.
+## 2026-03-24 - Multiple Posts Per Run Optimization
+**Target Feature:** Scheduler
+**Improvement:** Implemented "Multiple Posts Per Run" allowing a single schedule execution to generate a configurable number of posts. Previously, schedules would only generate a single post, ignoring the `post_quantity` configuration on the parent Template. The `AIPS_Schedule_Processor::execute_schedule_logic` was updated to explicitly retrieve the template, respect its `post_quantity`, and loop the `generate_post` call. The resulting array of IDs was then gracefully propagated back through cleanup functions, logging utilities, and the controller's AJAX responses, maintaining backward compatibility while drastically improving throughput for high-volume publishing workflows.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-schedule-processor.php`
+- `ai-post-scheduler/includes/class-aips-schedule-controller.php`
+- `ai-post-scheduler/tests/test-manual-schedule-execution.php`
+**Outcome:** Enhances scheduling efficiency for users managing high-volume blogs by allowing batch generation through a single scheduled task rather than forcing them to configure multiple identical schedules.

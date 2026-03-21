@@ -260,6 +260,26 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Topic context does not support source group filtering.
+	 *
+	 * Source injection for topics is handled in AIPS_Prompt_Builder_Topic::build().
+	 *
+	 * @return bool Always false.
+	 */
+	public function get_include_sources() {
+		return false;
+	}
+
+	/**
+	 * Topic context does not support source group filtering.
+	 *
+	 * @return int[] Always empty array.
+	 */
+	public function get_source_group_ids() {
+		return array();
+	}
+
+	/**
 	 * Get all context data as an array.
 	 *
 	 * @return array Context data.
