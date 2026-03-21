@@ -125,10 +125,19 @@ class AIPS_Schedule_Controller {
             if (is_wp_error($result)) {
                 wp_send_json_error(array('message' => $result->get_error_message()));
             } else {
+                $post_ids = is_array($result) ? $result : array($result);
+                $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
+                $edit_url = $first_post_id ? esc_url_raw(get_edit_post_link($first_post_id, 'raw')) : '';
+
+                $msg = sprintf(
+                    _n('%d post generated successfully!', '%d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
+                    count($post_ids)
+                );
+
                  wp_send_json_success(array(
-                    'message' => __('Schedule executed successfully!', 'ai-post-scheduler'),
-                    'post_ids' => array($result),
-                    'edit_url' => esc_url_raw(get_edit_post_link($result, 'raw'))
+                    'message' => $msg,
+                    'post_ids' => $post_ids,
+                    'edit_url' => $edit_url
                 ));
             }
             return;
@@ -320,7 +329,8 @@ class AIPS_Schedule_Controller {
                     $result->get_error_message()
                 );
             } else {
-                $post_ids[] = $result;
+                $schedule_post_ids = is_array($result) ? $result : array($result);
+                $post_ids = array_merge($post_ids, $schedule_post_ids);
             }
         }
 
@@ -464,11 +474,19 @@ class AIPS_Schedule_Controller {
 
         // Format the success message based on type.
         if ($type === AIPS_Unified_Schedule_Service::TYPE_TEMPLATE) {
-            $post_id  = is_int($result) ? $result : 0;
-            $edit_url = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : '';
+            $post_ids = is_array($result) ? $result : array($result);
+            $first_post_id = !empty($post_ids) ? $post_ids[0] : 0;
+            $edit_url = $first_post_id ? esc_url_raw(get_edit_post_link($first_post_id, 'raw')) : '';
+
+            $msg = sprintf(
+                _n('Schedule executed — %d post generated successfully!', 'Schedule executed — %d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
+                count($post_ids)
+            );
+
             wp_send_json_success(array(
-                'message'  => __('Schedule executed — post generated successfully!', 'ai-post-scheduler'),
-                'post_id'  => $post_id,
+                'message'  => $msg,
+                'post_ids' => $post_ids,
+                'post_id'  => $first_post_id, // keep post_id for backward compatibility
                 'edit_url' => $edit_url,
             ));
         } elseif ($type === AIPS_Unified_Schedule_Service::TYPE_AUTHOR_TOPIC) {
