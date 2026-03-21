@@ -36,6 +36,15 @@ class AIPS_Topic_Penalty_Service_Test extends WP_UnitTestCase {
 		);
 		$this->test_topic_id = $this->topics_repository->create($topic_data);
 	}
+
+	public function test_namespaced_class_exists() {
+		$this->assertTrue(class_exists('AIPS\\Services\\TopicPenaltyService'));
+	}
+
+	public function test_legacy_class_alias_maps_to_namespaced_class() {
+		$legacy_service = new AIPS_Topic_Penalty_Service();
+		$this->assertInstanceOf('AIPS\\Services\\TopicPenaltyService', $legacy_service);
+	}
 	
 	public function tearDown(): void {
 		// Clean up

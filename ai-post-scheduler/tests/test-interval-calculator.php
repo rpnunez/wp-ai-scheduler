@@ -17,6 +17,15 @@ class Test_AIPS_Interval_Calculator extends WP_UnitTestCase {
         $this->calculator = new AIPS_Interval_Calculator();
     }
 
+    public function test_namespaced_class_exists() {
+        $this->assertTrue(class_exists('AIPS\\Services\\IntervalCalculator'));
+    }
+
+    public function test_legacy_class_alias_maps_to_namespaced_class() {
+        $legacy_calculator = new AIPS_Interval_Calculator();
+        $this->assertInstanceOf('AIPS\\Services\\IntervalCalculator', $legacy_calculator);
+    }
+
     /**
      * Test get_intervals returns expected structure
      */
