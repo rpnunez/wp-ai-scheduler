@@ -4,6 +4,9 @@
  * Handles add / edit / delete / toggle-active interactions for the Sources UI,
  * as well as Source Group management (create / delete taxonomy terms).
  *
+ * NOTE: This file must NOT define AIPS.init or AIPS.bindEvents because admin.js
+ * already owns those names. Source-page bootstrap is exposed as AIPS.initSources.
+ *
  * @package AI_Post_Scheduler
  * @since 1.8.0
  */
@@ -13,18 +16,13 @@
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
 
-	Object.assign(AIPS, {
-
-		// -----------------------------------------------------------------
-		// State
-		// -----------------------------------------------------------------
+	// -----------------------------------------------------------------
+	// Sources-page module (namespaced to avoid clobbering AIPS.init)
+	// -----------------------------------------------------------------
+	AIPS.Sources = {
 
 		/** @type {number} ID of the source currently being edited (0 = new). */
 		currentSourceId: 0,
-
-		// -----------------------------------------------------------------
-		// Init
-		// -----------------------------------------------------------------
 
 		/**
 		 * Bootstrap the Sources page.
@@ -350,6 +348,7 @@
 			var $btn = $('#aips-add-group-btn');
 			$btn.prop('disabled', true);
 
+			var self = this;
 			$.post(aipsAjax.ajaxUrl, {
 				action: 'aips_save_source_group',
 				nonce:  aipsAjax.nonce,
@@ -361,8 +360,7 @@
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
-				// Reload so the new group shows up in all checklists.
-				window.location.reload();
+				self.refreshPage();
 			}).fail(function () {
 				$btn.prop('disabled', false);
 				AIPS.Utilities.showToast('Failed to create group.', 'error');
@@ -383,6 +381,7 @@
 				return;
 			}
 
+			var self = this;
 			$.post(aipsAjax.ajaxUrl, {
 				action:  'aips_delete_source_group',
 				nonce:   aipsAjax.nonce,
@@ -393,7 +392,7 @@
 					return;
 				}
 				AIPS.Utilities.showToast(response.data.message, 'success');
-				window.location.reload();
+				self.refreshPage();
 			}).fail(function () {
 				AIPS.Utilities.showToast('Failed to delete group.', 'error');
 			});
@@ -451,10 +450,19 @@
 		refreshPage: function () {
 			window.location.reload();
 		},
-	});
+	};
+
+	/**
+	 * Expose a page-scoped init so the global AIPS.init (owned by admin.js) is not overwritten.
+	 *
+	 * @return {void}
+	 */
+	AIPS.initSources = function () {
+		AIPS.Sources.init();
+	};
 
 	$(document).ready(function () {
-		AIPS.init();
+		AIPS.initSources();
 	});
 
 })(jQuery);

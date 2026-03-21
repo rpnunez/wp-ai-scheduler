@@ -223,6 +223,12 @@ class AIPS_Sources_Repository {
 	 * @param int $source_id Source ID.
 	 * @return int[] Array of term IDs.
 	 */
+	/**
+	 * Get the source group term IDs for a single source.
+	 *
+	 * @param int $source_id Source ID.
+	 * @return int[] Array of term IDs.
+	 */
 	public function get_source_term_ids($source_id) {
 		$rows = $this->wpdb->get_results(
 			$this->wpdb->prepare(
@@ -234,6 +240,41 @@ class AIPS_Sources_Repository {
 		return array_map(function ($row) {
 			return (int) $row->term_id;
 		}, $rows);
+	}
+
+	/**
+	 * Get source group term IDs for multiple sources in a single query.
+	 *
+	 * @param int[] $source_ids Array of source IDs.
+	 * @return array<int,int[]> Map of source_id => array of term_ids.
+	 */
+	public function get_term_ids_for_sources(array $source_ids) {
+		if (empty($source_ids)) {
+			return array();
+		}
+
+		$source_ids   = array_map('intval', $source_ids);
+		$placeholders = implode(',', array_fill(0, count($source_ids), '%d'));
+
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$rows = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT source_id, term_id FROM {$this->groups_table} WHERE source_id IN ($placeholders)",
+				...$source_ids
+			)
+		);
+		// phpcs:enable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+		$map = array();
+		foreach ($rows as $row) {
+			$sid = (int) $row->source_id;
+			if (!isset($map[$sid])) {
+				$map[$sid] = array();
+			}
+			$map[$sid][] = (int) $row->term_id;
+		}
+		return $map;
 	}
 
 	/**

@@ -19,13 +19,22 @@ if (!isset($sources) || !is_array($sources)) {
 	$sources = array();
 }
 
-// Load existing source groups (taxonomy terms).
-$source_groups = get_terms(array(
-	'taxonomy'   => 'aips_source_group',
-	'hide_empty' => false,
-));
-if (is_wp_error($source_groups)) {
-	$source_groups = array();
+// $source_groups, $source_group_name_map, and $source_term_ids_map are passed from render_sources_page().
+// Provide safe defaults so the template works if included standalone.
+if (!isset($source_groups) || !is_array($source_groups)) {
+	$source_groups = get_terms(array('taxonomy' => 'aips_source_group', 'hide_empty' => false));
+	if (is_wp_error($source_groups)) {
+		$source_groups = array();
+	}
+}
+if (!isset($source_group_name_map) || !is_array($source_group_name_map)) {
+	$source_group_name_map = array();
+	foreach ($source_groups as $group) {
+		$source_group_name_map[(int) $group->term_id] = $group->name;
+	}
+}
+if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
+	$source_term_ids_map = array();
 }
 ?>
 <div class="wrap aips-wrap">
@@ -75,13 +84,13 @@ if (is_wp_error($source_groups)) {
 					</thead>
 					<tbody>
 						<?php foreach ($sources as $source):
-							$repo       = new AIPS_Sources_Repository();
-							$term_ids   = $repo->get_source_term_ids((int) $source->id);
+							$src_id     = (int) $source->id;
+							$term_ids   = isset($source_term_ids_map[$src_id]) ? $source_term_ids_map[$src_id] : array();
 							$group_names = array();
 							foreach ($term_ids as $tid) {
-								$term = get_term($tid, 'aips_source_group');
-								if ($term && !is_wp_error($term)) {
-									$group_names[] = $term->name;
+								$tid = (int) $tid;
+								if (isset($source_group_name_map[$tid])) {
+									$group_names[] = $source_group_name_map[$tid];
 								}
 							}
 						?>
