@@ -127,11 +127,10 @@ class AIPS_Prompt_Builder {
      * @param string|null $topic    Optional topic to be injected into prompts (legacy).
      * @param object|null $voice    Optional voice object with overrides (legacy).
      * @param string      $content  Generated article content used as context.
-     * @param bool        $use_conversation_context Whether chatbot conversation context is available (chatId exists).
      * @return string The complete title generation prompt.
      */
-	public function build_title_prompt($template_or_context, $topic = null, $voice = null, $content = '', $use_conversation_context = false) {
-		return $this->get_post_title_builder()->build($template_or_context, $topic, $voice, $content, $use_conversation_context);
+	public function build_title_prompt($template_or_context, $topic = null, $voice = null, $content = '') {
+		return $this->get_post_title_builder()->build($template_or_context, $topic, $voice, $content);
 	}
 
     /**
@@ -146,11 +145,10 @@ class AIPS_Prompt_Builder {
      * @param string      $content The article content to summarize.
      * @param object|null $voice   Optional voice object with excerpt instructions (legacy).
      * @param string|null $topic   Optional topic to be injected into prompts (legacy).
-     * @param bool        $use_conversation_context Whether chatbot conversation context is available (chatId exists).
      * @return string The complete excerpt generation prompt.
      */
-    public function build_excerpt_prompt($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
-        return $this->get_post_excerpt_builder()->build($title, $content, $voice, $topic, $use_conversation_context);
+    public function build_excerpt_prompt($title, $content, $voice = null, $topic = null) {
+        return $this->get_post_excerpt_builder()->build($title, $content, $voice, $topic);
     }
 
     /**

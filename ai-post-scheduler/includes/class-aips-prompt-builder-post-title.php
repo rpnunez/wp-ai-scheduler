@@ -47,10 +47,9 @@ class AIPS_Prompt_Builder_Post_Title {
 	 * @param string|null                    $topic Optional topic to inject into prompts for legacy calls.
 	 * @param object|null                    $voice Optional voice object with overrides for legacy calls.
 	 * @param string                         $content Generated article content used as context.
-	 * @param bool                           $use_conversation_context Whether chatbot conversation context is available.
 	 * @return string
 	 */
-	public function build($template_or_context, $topic = null, $voice = null, $content = '', $use_conversation_context = false) {
+	public function build($template_or_context, $topic = null, $voice = null, $content = '') {
 		$title_instructions = '';
 
 		if ($template_or_context instanceof AIPS_Generation_Context) {
@@ -71,7 +70,7 @@ class AIPS_Prompt_Builder_Post_Title {
 				}
 			}
 
-			$prompt = $this->build_base_prompt($title_instructions, $content, $use_conversation_context);
+			$prompt = $this->build_base_prompt($title_instructions, $content);
 
 			return apply_filters('aips_title_prompt', $prompt, $context, $topic_str, null, $content);
 		}
@@ -84,7 +83,7 @@ class AIPS_Prompt_Builder_Post_Title {
 			$title_instructions = $this->template_processor->process($template->title_prompt, $topic);
 		}
 
-		$prompt = $this->build_base_prompt($title_instructions, $content, $use_conversation_context);
+		$prompt = $this->build_base_prompt($title_instructions, $content);
 
 		return apply_filters('aips_title_prompt', $prompt, $template, $topic, $voice, $content);
 	}
@@ -94,23 +93,16 @@ class AIPS_Prompt_Builder_Post_Title {
 	 *
 	 * @param string $title_instructions Processed title instructions.
 	 * @param string $content Generated article content.
-	 * @param bool   $use_conversation_context Whether prior conversation context should be referenced.
 	 * @return string
 	 */
-	private function build_base_prompt($title_instructions, $content, $use_conversation_context) {
-		if ($use_conversation_context) {
-			$prompt = 'Based on the article content you just generated, please create a compelling title. Respond with ONLY the most relevant title, nothing else.';
-		} else {
-			$prompt = 'Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.';
-		}
+	private function build_base_prompt($title_instructions, $content) {
+		$prompt = 'Generate a title for a blog post, based on the content below. Respond with ONLY the most relevant title, nothing else.';
 
 		if (!empty($title_instructions)) {
 			$prompt .= " Here are your instructions:\n\n" . $title_instructions;
 		}
 
-		if (!$use_conversation_context) {
-			$prompt .= "\n\nHere is the content:\n\n" . $content;
-		}
+		$prompt .= "\n\nHere is the content:\n\n" . $content;
 
 		return $prompt;
 	}

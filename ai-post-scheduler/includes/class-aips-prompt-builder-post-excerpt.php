@@ -41,26 +41,19 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	 * @param string      $content The article content to summarize.
 	 * @param object|null $voice Optional voice object with excerpt instructions.
 	 * @param string|null $topic Optional topic to inject into voice instructions.
-	 * @param bool        $use_conversation_context Whether chatbot conversation context is available.
 	 * @return string
 	 */
-	public function build($title, $content, $voice = null, $topic = null, $use_conversation_context = false) {
-		if ($use_conversation_context) {
-			$excerpt_prompt = "Based on the article content and title you just created, please write a short excerpt between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
-		} else {
-			$excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
-		}
+	public function build($title, $content, $voice = null, $topic = null) {
+		$excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
 
 		$voice_instructions = $this->build_instructions($voice, $topic);
 		if (!empty($voice_instructions)) {
 			$excerpt_prompt .= $voice_instructions . "\n\n";
 		}
 
-		if (!$use_conversation_context) {
-			$excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
-			$excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
-			$excerpt_prompt .= 'Create a compelling excerpt that captures the essence of the article while considering the context.';
-		}
+		$excerpt_prompt .= "ARTICLE TITLE:\n" . $title . "\n\n";
+		$excerpt_prompt .= "ARTICLE BODY:\n" . $content . "\n\n";
+		$excerpt_prompt .= 'Create a compelling excerpt that captures the essence of the article while considering the context.';
 
 		return apply_filters('aips_excerpt_prompt', $excerpt_prompt, $title, $content, $voice, $topic);
 	}
