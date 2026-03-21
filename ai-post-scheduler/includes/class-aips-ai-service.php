@@ -152,29 +152,30 @@ class AIPS_AI_Service {
                 
                 if ($result && !empty($result)) {
                     $this->log_call('text', $prompt, $result, $options);
-                    $this->resilience_service->record_success();
                     return $result;
                 }
                 
                 $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
                 $this->log_call('text', $prompt, null, $options, $error->get_error_message());
-                $this->resilience_service->record_failure();
                 return $error;
                 
             } catch (Exception $e) {
                 $error = new WP_Error('generation_failed', $e->getMessage());
                 $this->log_call('text', $prompt, null, $options, $e->getMessage());
-                $this->resilience_service->record_failure();
                 return $error;
             }
         }, 'text', $prompt, $options);
 
-        // Log resilience failures (circuit breaker, rate limit)
+        // Record success/failure once per operation (not per retry attempt).
         if (is_wp_error($result)) {
             $code = $result->get_error_code();
             if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
                 $this->log_call('text', $prompt, null, $options, $result->get_error_message());
+            } else {
+                $this->resilience_service->record_failure();
             }
+        } else {
+            $this->resilience_service->record_success();
         }
 
         return $result;
@@ -245,7 +246,6 @@ class AIPS_AI_Service {
                 if (empty($result)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
                     $this->log_call('json', $prompt, null, $options, $error->get_error_message());
-                    $this->resilience_service->record_failure();
                     return $error;
                 }
                 
@@ -253,24 +253,21 @@ class AIPS_AI_Service {
                 if (!is_array($result)) {
                     $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
                     $this->log_call('json', $prompt, null, $options, $error->get_error_message());
-                    $this->resilience_service->record_failure();
                     return $error;
                 }
                 
                 $this->log_call('json', $prompt, wp_json_encode($result), $options);
-                $this->resilience_service->record_success();
                 return $result;
                 
             } catch (Exception $e) {
                 // Let the retry logic handle the failure; do not fall back here
                 $error = new WP_Error('generation_failed', $e->getMessage());
                 $this->log_call('json', $prompt, null, $options, $e->getMessage());
-                $this->resilience_service->record_failure();
                 return $error;
             }
         }, 'json', $prompt, $options);
 
-        // Log resilience failures (circuit breaker, rate limit)
+        // Record success/failure once per operation (not per retry attempt).
         if (is_wp_error($result)) {
             $code = $result->get_error_code();
             if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
@@ -278,11 +275,13 @@ class AIPS_AI_Service {
                 return $result;
             }
 
-            // All native attempts failed — use fallback as absolute last resort
+            // All native attempts failed — record failure once and use fallback as absolute last resort
+            $this->resilience_service->record_failure();
             $this->logger->log('Native JSON generation failed after all retries, attempting fallback: ' . $result->get_error_message(), 'warning');
             return $this->fallback_json_generation($prompt, $options);
         }
 
+        $this->resilience_service->record_success();
         return $result;
     }
     

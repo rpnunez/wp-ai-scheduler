@@ -240,11 +240,9 @@ class Test_Research_Service extends WP_UnitTestCase {
     }
     
     /**
-     * Test that validate_and_normalize_topics handles non-array gracefully.
-     *
-     * When generate_json returns a WP_Error, research_trending_topics propagates it.
+     * Test that a WP_Error from generate_json is propagated directly by research_trending_topics.
      */
-    public function test_fallback_parsing() {
+    public function test_generate_json_wp_error_is_propagated() {
         $this->mock_ai_service->method('is_available')->willReturn(true);
         
         // Simulate generate_json returning a WP_Error (native method failed)
