@@ -77,6 +77,9 @@
             $(document).on('click', '#featured_image_media_clear', this.clearMediaSelection);
             $(document).on('keyup', '#voice_search', this.searchVoices);
 
+            // Toggle source groups panel when Include Sources? checkbox changes.
+            $(document).on('change', '#include_sources', this.toggleSourceGroupsSelector);
+
             // Wizard navigation
             $(document).on('click', '.aips-wizard-next', this.wizardNext);
             $(document).on('click', '.aips-wizard-back', this.wizardBack);
@@ -425,6 +428,16 @@
         },
 
         /**
+         * Show or hide the Source Groups selector based on the Include Sources checkbox.
+         *
+         * @return {void}
+         */
+        toggleSourceGroupsSelector: function() {
+            var checked = $('#include_sources').is(':checked');
+            $('#template-source-groups-selector').toggle(checked);
+        },
+
+        /**
          * Reset and open the template modal in "Add New" mode.
          *
          * Clears the form, resets the media selection and AI variables panel,
@@ -443,6 +456,9 @@
             AIPS.toggleImagePrompt();
             // Reset AI Variables panel
             AIPS.updateAIVariablesPanel([]);
+            // Reset source groups
+            $('.aips-template-source-group-cb').prop('checked', false);
+            $('#template-source-groups-selector').hide();
             // Initialize wizard to step 1
             AIPS.wizardGoToStep(1, $('#aips-template-modal'));
             $('#aips-template-modal').show();
@@ -493,6 +509,22 @@
                         $('#is_active').prop('checked', t.is_active == 1);
                         AIPS.toggleImagePrompt();
                         AIPS.toggleFeaturedImageSourceFields();
+
+                        // Restore source group settings.
+                        var includeSources = t.include_sources == 1;
+                        $('#include_sources').prop('checked', includeSources);
+                        $('#template-source-groups-selector').toggle(includeSources);
+                        $('.aips-template-source-group-cb').prop('checked', false);
+                        var sgIds = [];
+                        try {
+                            sgIds = JSON.parse(t.source_group_ids || '[]');
+                        } catch (parseErr) {
+                            sgIds = [];
+                        }
+                        sgIds.forEach(function(tid) {
+                            $('.aips-template-source-group-cb[value="' + tid + '"]').prop('checked', true);
+                        });
+
                         // Scan for AI Variables after loading template data
                         AIPS.initAIVariablesScanner();
                         $('#aips-modal-title').text('Edit Template');
@@ -675,6 +707,12 @@
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
                     post_author: $('#post_author').val(),
+                    include_sources: $('#include_sources').is(':checked') ? 1 : 0,
+                    source_group_ids: (function() {
+                        var ids = [];
+                        $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
+                        return ids;
+                    }()),
                     is_active: $('#is_active').is(':checked') ? 1 : 0
                 },
                 success: function(response) {
@@ -742,6 +780,12 @@
                     post_category: $('#post_category').val(),
                     post_tags: $('#post_tags').val(),
                     post_author: $('#post_author').val(),
+                    include_sources: $('#include_sources').is(':checked') ? 1 : 0,
+                    source_group_ids: (function() {
+                        var ids = [];
+                        $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
+                        return ids;
+                    }()),
                     is_active: 0 // Save as inactive draft
                 },
                 success: function(response) {
@@ -3855,7 +3899,13 @@
                 article_structure_id: parseInt($('#article_structure_id').val()) || 0,
                 image_prompt: $('#image_prompt').val(),
                 generate_featured_image: $('#generate_featured_image').is(':checked') ? 1 : 0,
-                featured_image_source: $('#featured_image_source').val()
+                featured_image_source: $('#featured_image_source').val(),
+                include_sources: $('#include_sources').is(':checked') ? 1 : 0,
+                source_group_ids: (function() {
+                    var ids = [];
+                    $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
+                    return ids;
+                }())
             };
             
             $.ajax({

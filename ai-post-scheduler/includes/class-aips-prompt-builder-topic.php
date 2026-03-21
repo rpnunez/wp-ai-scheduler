@@ -62,6 +62,19 @@ class AIPS_Prompt_Builder_Topic {
 		// ---- Site-wide context (injected first so author-level settings override if needed) ----
 		$prompt .= $this->base_builder->build_site_context_block();
 
+		// ---- Trusted sources (injected when the author opts in) ----
+		if (!empty($author->include_sources)) {
+			$group_ids = array();
+			if (!empty($author->source_group_ids)) {
+				$decoded   = json_decode($author->source_group_ids, true);
+				$group_ids = is_array($decoded) ? array_map('intval', $decoded) : array();
+			}
+			$sources_block = $this->base_builder->build_sources_block($group_ids);
+			if (!empty($sources_block)) {
+				$prompt .= $sources_block;
+			}
+		}
+
 		// ---- Extended author profile fields ----
 		if (!empty($author->target_audience)) {
 			$prompt .= "Target audience for this author: {$author->target_audience}\n\n";

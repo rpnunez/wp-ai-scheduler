@@ -351,6 +351,48 @@ if (!defined('ABSPATH')) {
                             <input type="number" id="post_quantity" name="post_quantity" min="1" max="20" value="1" class="small-text">
                             <p class="description"><?php esc_html_e('Generate 1-20 posts when running this template. Useful for batch generation.', 'ai-post-scheduler'); ?></p>
                         </div>
+
+                        <?php
+                        $template_source_groups = get_terms(array(
+                            'taxonomy'   => 'aips_source_group',
+                            'hide_empty' => false,
+                        ));
+                        if (is_wp_error($template_source_groups)) {
+                            $template_source_groups = array();
+                        }
+                        ?>
+                        <div class="aips-form-row">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="include_sources" name="include_sources" value="1">
+                                <?php esc_html_e('Include Sources?', 'ai-post-scheduler'); ?>
+                            </label>
+                            <p class="description"><?php esc_html_e('When enabled, active sources from the selected Source Groups will be injected into the content generation prompt.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
+                        <div id="template-source-groups-selector" style="display:none; margin-top:8px;">
+                            <div class="aips-form-row">
+                                <label><?php esc_html_e('Source Groups', 'ai-post-scheduler'); ?></label>
+                                <?php if (!empty($template_source_groups)): ?>
+                                    <div class="aips-checkbox-group">
+                                        <?php foreach ($template_source_groups as $sg): ?>
+                                            <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+                                                <input type="checkbox"
+                                                    name="source_group_ids[]"
+                                                    class="aips-template-source-group-cb"
+                                                    value="<?php echo esc_attr($sg->term_id); ?>">
+                                                <?php echo esc_html($sg->name); ?>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <p class="description"><?php esc_html_e('Select one or more Source Groups whose active sources will be included in the prompt.', 'ai-post-scheduler'); ?></p>
+                                <?php else: ?>
+                                    <p class="description">
+                                        <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
+                                        <a href="<?php echo esc_url(admin_url('admin.php?page=aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
+                                    </p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Step 4: Featured Image -->
