@@ -29,8 +29,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
             ->onlyMethods(array('get_by_id'))
             ->getMock();
 
-        $mock_schedule_repo->expects($this->once())
-            ->method('get_by_id')
+        $mock_schedule_repo->method('get_by_id')
             ->with($schedule->id)
             ->willReturn($schedule);
 
@@ -41,8 +40,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
             ->onlyMethods(array('get_by_id'))
             ->getMock();
 
-        $mock_template_repo->expects($this->once())
-            ->method('get_by_id')
+        $mock_template_repo->method('get_by_id')
             ->with($template->id)
             ->willReturn($template);
 
@@ -54,7 +52,8 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
             ->onlyMethods(array('generate_post'))
             ->getMock();
 
-        $mock_generator->expects($this->once())
+        $expected_call_count = $expected_qty ? $expected_qty : 1;
+        $mock_generator->expects($this->exactly($expected_call_count))
             ->method('generate_post')
             ->with(
                 $this->callback(function($context) use ($expected_qty) {
@@ -101,7 +100,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
         if (is_wp_error($result)) {
             $this->fail('Unexpected WP_Error: ' . $result->get_error_message());
         }
-        $this->assertEquals(123, $result);
+        $this->assertEquals(array(123, 123, 123, 123, 123), $result);
     }
 
     /**
@@ -132,7 +131,7 @@ class Test_AIPS_Manual_Schedule_Execution extends WP_UnitTestCase {
         if (is_wp_error($result)) {
             $this->fail('Unexpected WP_Error: ' . $result->get_error_message());
         }
-        $this->assertEquals(123, $result);
+        $this->assertEquals(array(123, 123, 123), $result);
     }
 
     /**
