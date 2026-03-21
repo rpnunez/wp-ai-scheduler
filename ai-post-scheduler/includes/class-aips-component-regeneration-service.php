@@ -30,6 +30,21 @@ class AIPS_Component_Regeneration_Service {
 	 * @var AIPS_Prompt_Builder Prompt builder instance
 	 */
 	private $prompt_builder;
+
+	/**
+	 * @var AIPS_Prompt_Builder_Post_Content Post content prompt builder instance
+	 */
+	private $post_content_prompt_builder;
+
+	/**
+	 * @var AIPS_Prompt_Builder_Post_Title Post title prompt builder instance
+	 */
+	private $post_title_prompt_builder;
+
+	/**
+	 * @var AIPS_Prompt_Builder_Post_Featured_Image Post featured image prompt builder instance
+	 */
+	private $post_featured_image_prompt_builder;
 	
 	/**
 	 * @var AIPS_Image_Service Image service instance
@@ -70,6 +85,12 @@ class AIPS_Component_Regeneration_Service {
 		$this->generator = new AIPS_Generator(null, $ai_service);
 		$this->image_service = new AIPS_Image_Service($ai_service);
 		$this->prompt_builder = new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
+		$this->post_content_prompt_builder = new AIPS_Prompt_Builder_Post_Content(
+			$this->template_processor,
+			new AIPS_Prompt_Builder_Article_Structure_Section($this->structure_manager, null, $this->template_processor)
+		);
+		$this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
+		$this->post_featured_image_prompt_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor);
 	}
 	
 	/**
@@ -122,7 +143,7 @@ class AIPS_Component_Regeneration_Service {
 			$result = $this->generator->generate_title($template, $voice, $topic);
 		} else {
 			// For topic context, build the prompt and generate using generic method
-			$prompt = $this->prompt_builder->build_title_prompt($generation_context, null, null, '');
+			$prompt = $this->post_title_prompt_builder->build($generation_context, null, null, '');
 			// Use generate_content with log_type 'title' for proper logging
 			$result = $this->generator->generate_content($prompt, array(), 'title');
 		}
@@ -202,7 +223,7 @@ class AIPS_Component_Regeneration_Service {
 		$this->generator->set_history_container($history_container);
 		
 		// Build the content prompt using the generation context
-		$prompt = $this->prompt_builder->build_content_prompt($generation_context);
+		$prompt = $this->post_content_prompt_builder->build($generation_context);
 		
 		// Generate content using the prompt
 		$result = $this->generator->generate_content($prompt);
@@ -234,15 +255,10 @@ class AIPS_Component_Regeneration_Service {
 		$post_id = absint($context['post_id']);
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
 		
-		// Get the image prompt from the generation context
-		$image_prompt = $generation_context->get_image_prompt();
-		if (empty($image_prompt)) {
+		$processed_image_prompt = $this->post_featured_image_prompt_builder->build($generation_context);
+		if (empty($processed_image_prompt)) {
 			return new WP_Error('no_image_prompt', __('No image prompt available for this context.', 'ai-post-scheduler'));
 		}
-		
-		// Process the image prompt with topic if available
-		$topic_str = $generation_context->get_topic();
-		$processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
 		
 		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
 		if (is_wp_error($history_container)) {
