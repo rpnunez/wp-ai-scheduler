@@ -134,6 +134,7 @@
             $(document).on('change', '#aips-unified-type-filter', this.filterUnifiedByType);
             $(document).on('keyup search', '#aips-unified-search', this.filterUnifiedSchedules);
             $(document).on('click', '#aips-unified-search-clear', this.clearUnifiedSearch);
+            $(document).on('click', '.aips-clear-unified-search-btn', this.clearUnifiedSearch);
 
 
 
@@ -2052,6 +2053,8 @@
 
         /**
          * Clear the unified schedule search field and restore all rows.
+         *
+         * Bound to `#aips-unified-search-clear` and `.aips-clear-unified-search-btn`.
          *
          * @param {Event} e - Click event.
          */
