@@ -66,7 +66,7 @@ class AIPS_Config {
 			'generated_posts_log_threshold_client' => 20,
 			'history_export_max_records' => 10000,
             'aips_ai_model' => '',
-            'aips_max_tokens' => 2000,
+            'aips_max_tokens' => 0,
             'aips_temperature' => 0.7,
             'aips_default_post_status' => 'draft',
             'aips_default_post_author' => 1,

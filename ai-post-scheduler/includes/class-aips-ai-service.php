@@ -550,18 +550,32 @@ class AIPS_AI_Service {
      *
      * Merges user-provided options with defaults from plugin settings.
      *
+     * max_tokens is only injected as a default when:
+     *   - the caller explicitly supplies it (e.g. title → 100 tokens), OR
+     *   - the site-wide `aips_max_tokens` option is configured to a value > 0.
+     *
+     * Leaving max_tokens unset lets the AI Engine and the selected model decide
+     * the appropriate output length, which avoids unintentional truncation of
+     * long-form content (blog posts, articles, etc.).
+     *
      * @param array $options User-provided options.
      * @return array Normalized options array.
      */
     private function prepare_options($options) {
         $model = get_option('aips_ai_model', '');
-        
+
         $default_options = array(
-            'model' => $model,
-            'max_tokens' => 2000,
+            'model'       => $model,
             'temperature' => 0.7,
         );
-        
+
+        // Only apply a site-wide token cap when the admin has explicitly
+        // configured one (non-zero). 0 means "no cap – use model default".
+        $configured_max_tokens = absint(get_option('aips_max_tokens', 0));
+        if ($configured_max_tokens > 0) {
+            $default_options['max_tokens'] = $configured_max_tokens;
+        }
+
         return wp_parse_args($options, $default_options);
     }
 
