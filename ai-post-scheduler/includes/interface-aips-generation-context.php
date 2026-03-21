@@ -161,7 +161,7 @@ interface AIPS_Generation_Context {
 	/**
 	 * Get the source group term IDs whose sources should be injected.
 	 *
-	 * @return int[] Array of term IDs. Empty array means all or none depending on include_sources.
+	 * @return int[] Array of term IDs. Empty array means no source groups are selected and no sources will be injected, even if include_sources is true.
 	 */
 	public function get_source_group_ids();
 
