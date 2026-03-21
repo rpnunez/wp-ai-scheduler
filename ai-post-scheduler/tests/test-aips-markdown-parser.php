@@ -14,6 +14,15 @@ class Test_AIPS_Markdown_Parser extends WP_UnitTestCase {
         $this->parser = new AIPS_Markdown_Parser();
     }
 
+    public function test_namespaced_class_exists() {
+        $this->assertTrue(class_exists('AIPS\\Services\\MarkdownParser'));
+    }
+
+    public function test_legacy_class_alias_maps_to_namespaced_class() {
+        $legacy_parser = new AIPS_Markdown_Parser();
+        $this->assertInstanceOf('AIPS\\Services\\MarkdownParser', $legacy_parser);
+    }
+
     public function test_is_markdown_detects_markdown() {
         $markdown = "## Heading\n\n- List item 1\n- List item 2\n\n```php\necho 'hello';\n```";
         $this->assertTrue($this->parser->is_markdown($markdown));

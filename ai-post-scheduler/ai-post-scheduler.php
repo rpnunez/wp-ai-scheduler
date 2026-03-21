@@ -53,6 +53,11 @@ final class AI_Post_Scheduler {
     }
     
     private function includes() {
+        $composer_autoload = AIPS_PLUGIN_DIR . 'vendor/autoload.php';
+        if (file_exists($composer_autoload)) {
+            require_once $composer_autoload;
+        }
+
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
 
