@@ -58,11 +58,37 @@ class AIPS_Sources_Controller {
 
 		$sources = $this->repo->get_all(false);
 
-		// Attach term IDs to each source.
+		// Collect source IDs for bulk term lookup.
+		$source_ids = array();
 		foreach ($sources as $source) {
-			$source->term_ids = $this->repo->get_source_term_ids((int) $source->id);
+			if (isset($source->id)) {
+				$source_id = (int) $source->id;
+				if ($source_id > 0) {
+					$source_ids[] = $source_id;
+				}
+			}
 		}
 
+		$source_ids = array_values(array_unique($source_ids));
+
+		// Fetch all term mappings in one repository call to avoid N+1 queries.
+		$term_ids_map = array();
+		if (!empty($source_ids)) {
+			$term_ids_map = $this->repo->get_term_ids_for_sources($source_ids);
+			if (!is_array($term_ids_map)) {
+				$term_ids_map = array();
+			}
+		}
+
+		// Attach term IDs to each source from the bulk mapping.
+		foreach ($sources as $source) {
+			$source_id = isset($source->id) ? (int) $source->id : 0;
+			if ($source_id > 0 && isset($term_ids_map[$source_id]) && is_array($term_ids_map[$source_id])) {
+				$source->term_ids = $term_ids_map[$source_id];
+			} else {
+				$source->term_ids = array();
+			}
+		}
 		wp_send_json_success(array('sources' => $sources));
 	}
 
