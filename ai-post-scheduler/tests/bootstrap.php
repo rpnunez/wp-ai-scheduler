@@ -926,6 +926,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-template-repository.php',
         'class-aips-article-structure-repository.php',
         'class-aips-prompt-section-repository.php',
+        'class-aips-sources-repository.php',
         'class-aips-template-processor.php',
         'class-aips-prompt-builder.php',
         'class-aips-prompt-builder-topic.php',
@@ -973,6 +974,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
+        'class-aips-sources-controller.php',
         // Author-related classes
         'class-aips-authors-repository.php',
         'class-aips-author-topics-repository.php',

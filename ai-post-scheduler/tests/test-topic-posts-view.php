@@ -123,6 +123,13 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 	 * Test that get_by_topic returns correct logs
 	 */
 	public function test_get_topic_posts_returns_correct_data() {
+		if (!class_exists('WP_Error')) {
+			$this->markTestSkipped('Requires WP environment.');
+		}
+		global $wpdb;
+		if (property_exists($wpdb, 'get_col_return_val')) {
+			$this->markTestSkipped('Database tests cannot run with mocked wpdb.');
+		}
 		// Create a test author
 		$authors_repo = new AIPS_Authors_Repository();
 		$author_id = $authors_repo->create(array(

@@ -291,5 +291,117 @@ if (!in_array($active_tab, $valid_tabs, true)) {
     <div id="planner-tab" class="aips-tab-content<?php echo $active_tab === 'planner' ? ' active' : ''; ?>" style="<?php echo $active_tab === 'planner' ? '' : 'display:none;'; ?>">
         <?php include AIPS_PLUGIN_DIR . 'templates/admin/planner.php'; ?>
     </div>
+
+    <!-- Client-side HTML templates (used by assets/js/admin-research.js) -->
+    <script type="text/html" id="aips-tmpl-research-results-summary">
+        <p><strong>{{saved_count}} {{topics_saved}} "{{niche}}"</strong></p>
+        {{top_topics_block_html}}
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-top-topics-block">
+        <h4>{{top_topics_label}}</h4>
+        <ol>
+            {{items_html}}
+        </ol>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-top-topic-item">
+        <li>
+            <strong>{{topic}}</strong>
+            <span class="aips-score-badge aips-score-{{score_class}}">{{score}}</span>
+            {{reason_html}}
+        </li>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-top-topic-reason">
+        <br><small><em>{{reason}}</em></small>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-empty-state">
+        <div class="aips-panel-body">
+            <div class="aips-empty-state">
+                <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+                <h3 class="aips-empty-state-title">{{title}}</h3>
+                <p class="aips-empty-state-description">{{description}}</p>
+                <button type="button" class="aips-btn aips-btn-sm {{button_class}}" id="{{button_id}}">{{button_label}}</button>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-topics-table">
+        <table class="aips-table aips-research-table">
+            <thead>
+                <tr>
+                    <th scope="col" style="width:30px;"><input type="checkbox" id="select-all-topics"></th>
+                    <th scope="col"><?php esc_html_e('Topic', 'ai-post-scheduler'); ?></th>
+                    <th scope="col"><?php esc_html_e('Score', 'ai-post-scheduler'); ?></th>
+                    <th scope="col"><?php esc_html_e('Niche', 'ai-post-scheduler'); ?></th>
+                    <th scope="col"><?php esc_html_e('Keywords', 'ai-post-scheduler'); ?></th>
+                    <th scope="col"><?php esc_html_e('Researched', 'ai-post-scheduler'); ?></th>
+                    <th scope="col"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+                </tr>
+            </thead>
+            <tbody>{{rows_html}}</tbody>
+        </table>
+        {{search_empty_html}}
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-topics-row">
+        <tr>
+            <td><input type="checkbox" class="topic-checkbox" value="{{id}}"></td>
+            <td>
+                <strong>{{topic}}</strong>
+                {{reason_html}}
+            </td>
+            <td><span class="aips-score-badge aips-score-{{score_class}}">{{score}}</span></td>
+            <td>{{niche}}</td>
+            <td>
+                <div class="aips-keywords-list">
+                    {{keywords_html}}
+                </div>
+            </td>
+            <td>{{researched_at}}</td>
+            <td>
+                <div class="aips-topic-actions">
+                    <button class="aips-btn aips-btn-sm aips-btn-danger delete-topic" data-id="{{id}}">
+                        <span class="dashicons dashicons-trash"></span> {{delete_label}}
+                    </button>
+                </div>
+            </td>
+        </tr>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-topic-reason">
+        <br><small>{{reason}}</small>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-keyword-tag">
+        <span class="aips-keyword-tag">{{keyword}}</span>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-topics-search-empty">
+        <div id="topics-search-empty" class="aips-empty-state" style="display:none; padding: 40px 20px;">
+            <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+            <h3 class="aips-empty-state-title">{{title}}</h3>
+            <p class="aips-empty-state-description">{{description}}</p>
+            <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary" id="clear-topics-search">{{clear_label}}</button>
+        </div>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-gap-empty">
+        <p><?php esc_html_e('No gaps found.', 'ai-post-scheduler'); ?></p>
+    </script>
+
+    <script type="text/html" id="aips-tmpl-research-gap-card">
+        <div class="aips-gap-card priority-{{priority_class}}">
+            <span class="aips-gap-badge {{priority_class}}">{{priority}} <?php esc_html_e('Priority', 'ai-post-scheduler'); ?></span>
+            <h4>{{missing_topic}}</h4>
+            <p class="aips-gap-reason">{{reason}}</p>
+            <p class="aips-gap-intent"><?php esc_html_e('Intent:', 'ai-post-scheduler'); ?> {{search_intent}}</p>
+            <div class="aips-gap-actions">
+                <button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="{{missing_topic}}">{{generate_ideas_label}}</button>
+            </div>
+        </div>
+    </script>
     </div><!-- .aips-page-container -->
 </div><!-- .wrap -->
