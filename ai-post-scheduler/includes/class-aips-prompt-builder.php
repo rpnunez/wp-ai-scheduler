@@ -382,8 +382,9 @@ class AIPS_Prompt_Builder {
      * formats them into a structured text block. Only non-empty / non-default
      * values are included so the prompt is not padded with placeholder lines.
      *
-     * When trusted sources are configured, the block also instructs the AI to
-     * reference those URLs when generating content.
+     * This block intentionally does not include or reference trusted source URLs.
+     * Any source instructions are injected separately (for example via
+     * build_sources_block()) when that behavior is explicitly enabled.
      *
      * Returns an empty string when no site-wide settings have been configured,
      * allowing callers to safely append the result without extra whitespace.
