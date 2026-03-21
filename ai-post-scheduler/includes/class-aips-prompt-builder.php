@@ -12,11 +12,18 @@ class AIPS_Prompt_Builder {
 	private $post_title_builder;
 	private $post_excerpt_builder;
 	private $post_featured_image_builder;
+    private static $sources_filter_registered = false;
 
 	public function __construct($template_processor = null, $structure_manager = null, $sources_repo = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
         $this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
+
+        // Register the content prompt sources filter once.
+        if (!self::$sources_filter_registered) {
+            add_filter('aips_content_prompt', array($this, 'inject_sources_into_content_prompt'), 10, 3);
+            self::$sources_filter_registered = true;
+        }
 	}
 
     /**
@@ -415,4 +422,52 @@ INSTRUCTIONS;
 
 		return $this->post_featured_image_builder;
 	}
+
+    /**
+     * Inject trusted sources into the content prompt via filter.
+     *
+     * This method centralizes the logic for prepending the "Trusted sources" block
+     * instead of handling it inside individual prompt builder classes.
+     *
+     * It supports both context-based generation (AIPS_Generation_Context) and the
+     * legacy template object flow used by AIPS_Prompt_Builder_Post_Content.
+     *
+     * @param string $prompt  The already-processed content prompt.
+     * @param mixed  $subject Generation context or legacy template object.
+     * @param string $topic   Topic string (may be null).
+     * @return string Prompt with sources block prepended when enabled.
+     */
+    public function inject_sources_into_content_prompt($prompt, $subject, $topic = null) {
+        $include_sources = false;
+        $group_ids       = array();
+
+        // Context-based flow implements the generation context interface.
+        if ($subject instanceof AIPS_Generation_Context) {
+            if ($subject->get_include_sources()) {
+                $include_sources = true;
+                $group_ids       = $subject->get_source_group_ids();
+            }
+        } else {
+            // Legacy template object flow.
+            if (!empty($subject) && !empty($subject->include_sources)) {
+                $include_sources = true;
+                if (!empty($subject->source_group_ids)) {
+                    $decoded   = json_decode($subject->source_group_ids, true);
+                    $group_ids = is_array($decoded) ? array_map('intval', $decoded) : array();
+                }
+            }
+        }
+
+        if (!$include_sources) {
+            return $prompt;
+        }
+
+        $sources_block = $this->build_sources_block($group_ids);
+
+        if (empty($sources_block)) {
+            return $prompt;
+        }
+
+        return $sources_block . $prompt;
+    }
 }
