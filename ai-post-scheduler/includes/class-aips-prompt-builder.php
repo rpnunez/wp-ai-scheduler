@@ -7,10 +7,12 @@ class AIPS_Prompt_Builder {
 
     private $template_processor;
     private $structure_manager;
+    private $sources_repo;
 
-    public function __construct($template_processor = null, $structure_manager = null) {
+    public function __construct($template_processor = null, $structure_manager = null, $sources_repo = null) {
         $this->template_processor = $template_processor ?: new AIPS_Template_Processor();
         $this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
+        $this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
     }
 
     /**
@@ -60,7 +62,15 @@ class AIPS_Prompt_Builder {
                     $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
                 }
             }
-            
+
+            // Inject sources when the context has include_sources enabled.
+            if ($context->get_include_sources()) {
+                $sources_block = $this->build_sources_block($context->get_source_group_ids());
+                if (!empty($sources_block)) {
+                    $processed_prompt = $sources_block . $processed_prompt;
+                }
+            }
+
             $content_prompt = apply_filters('aips_content_prompt', $processed_prompt, $context, $topic_str);
             
             return $content_prompt;
@@ -90,6 +100,19 @@ class AIPS_Prompt_Builder {
         if ($voice) {
             $voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
             $processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
+        }
+
+        // Inject sources when the template has include_sources enabled.
+        if (!empty($template->include_sources)) {
+            $group_ids = array();
+            if (!empty($template->source_group_ids)) {
+                $decoded = json_decode($template->source_group_ids, true);
+                $group_ids = is_array($decoded) ? array_map('intval', $decoded) : array();
+            }
+            $sources_block = $this->build_sources_block($group_ids);
+            if (!empty($sources_block)) {
+                $processed_prompt = $sources_block . $processed_prompt;
+            }
         }
 
         $content_prompt = $processed_prompt;
@@ -359,6 +382,10 @@ class AIPS_Prompt_Builder {
      * formats them into a structured text block. Only non-empty / non-default
      * values are included so the prompt is not padded with placeholder lines.
      *
+     * This block intentionally does not include or reference trusted source URLs.
+     * Any source instructions are injected separately (for example via
+     * build_sources_block()) when that behavior is explicitly enabled.
+     *
      * Returns an empty string when no site-wide settings have been configured,
      * allowing callers to safely append the result without extra whitespace.
      *
@@ -401,6 +428,35 @@ class AIPS_Prompt_Builder {
         }
 
         return "Site-wide content context:\n" . implode("\n", $lines) . "\n\n";
+    }
+
+    /**
+     * Build a trusted sources block for inclusion in AI prompts.
+     *
+     * Fetches active source URLs from the given source group term IDs and
+     * formats them into a prompt instruction block. Returns an empty string
+     * when no matching sources are found.
+     *
+     * @param int[] $term_ids Source group term IDs to fetch sources from.
+     * @return string Formatted sources block, or empty string.
+     */
+    public function build_sources_block(array $term_ids) {
+        if (empty($term_ids)) {
+            return '';
+        }
+
+        $source_urls = $this->sources_repo->get_urls_by_group_term_ids($term_ids, true);
+
+        if (empty($source_urls)) {
+            return '';
+        }
+
+        $block  = "Trusted sources (reference and cite these URLs when relevant):\n";
+        foreach ($source_urls as $url) {
+            $block .= '  - ' . $url . "\n";
+        }
+
+        return $block . "\n";
     }
 
     /**
@@ -465,6 +521,7 @@ class AIPS_Prompt_Builder {
                 'voice' => $voice_name,
                 'article_structure' => $structure_name,
                 'sample_topic' => $sample_topic,
+                'include_sources' => !empty($template_data->include_sources),
             ),
         );
     }
