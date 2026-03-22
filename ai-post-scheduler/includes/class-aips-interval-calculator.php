@@ -255,6 +255,114 @@ class AIPS_Interval_Calculator {
         return $next;
     }
     
+
+    /**
+     * Get supported event timing types.
+     *
+     * @return array
+     */
+    public function get_event_types() {
+        return array(
+            'recurring' => __('Recurring interval', 'ai-post-scheduler'),
+            'fixed_event' => __('Fixed event time', 'ai-post-scheduler'),
+            'publish_window' => __('Publish window', 'ai-post-scheduler'),
+            'embargo_release' => __('Embargo release', 'ai-post-scheduler'),
+            'editorial_approval' => __('Draft before event, publish after approval', 'ai-post-scheduler'),
+        );
+    }
+
+    /**
+     * Get human-readable event timing label.
+     *
+     * @param string $event_type Event timing key.
+     * @return string
+     */
+    public function get_event_type_label($event_type) {
+        $event_types = $this->get_event_types();
+
+        return isset($event_types[$event_type]) ? $event_types[$event_type] : $event_types['recurring'];
+    }
+
+    /**
+     * Build a normalized event timing summary for a schedule.
+     *
+     * @param array|object $schedule Schedule row.
+     * @return array
+     */
+    public function get_schedule_timing_context($schedule) {
+        $schedule = is_object($schedule) ? get_object_vars($schedule) : (array) $schedule;
+        $event_type = !empty($schedule['event_type']) ? $schedule['event_type'] : 'recurring';
+        $next_run = !empty($schedule['next_run']) ? $schedule['next_run'] : null;
+        $embargo_until = !empty($schedule['embargo_until']) ? $schedule['embargo_until'] : null;
+        $publish_deadline = !empty($schedule['publish_deadline']) ? $schedule['publish_deadline'] : null;
+        $event_name = !empty($schedule['event_name']) ? $schedule['event_name'] : '';
+        $prewrite_enabled = !empty($schedule['prewrite_enabled']);
+        $ready_to_release = !empty($schedule['ready_to_release']);
+        $now = current_time('timestamp');
+
+        $release_window = '';
+        $milestone = '';
+        $deadline_overdue = false;
+        $embargo_active = false;
+
+        if ($next_run && $publish_deadline) {
+            $release_window = sprintf(
+                /* translators: 1: release window start, 2: release window end */
+                __('%1$s → %2$s', 'ai-post-scheduler'),
+                $next_run,
+                $publish_deadline
+            );
+        } elseif ($publish_deadline) {
+            $release_window = $publish_deadline;
+        }
+
+        if ($publish_deadline) {
+            $deadline_overdue = strtotime($publish_deadline) < $now && !$ready_to_release;
+        }
+
+        if ($embargo_until) {
+            $embargo_active = strtotime($embargo_until) > $now;
+        }
+
+        switch ($event_type) {
+            case 'fixed_event':
+                $milestone = $next_run;
+                break;
+            case 'publish_window':
+                $milestone = $release_window;
+                break;
+            case 'embargo_release':
+                $milestone = $embargo_until;
+                break;
+            case 'editorial_approval':
+                if ($ready_to_release && $embargo_until) {
+                    $milestone = $embargo_until;
+                } elseif ($publish_deadline) {
+                    $milestone = $publish_deadline;
+                } else {
+                    $milestone = $next_run;
+                }
+                break;
+            default:
+                $milestone = $next_run;
+                break;
+        }
+
+        return array(
+            'event_type' => $event_type,
+            'event_type_label' => $this->get_event_type_label($event_type),
+            'event_name' => $event_name,
+            'prewrite_enabled' => $prewrite_enabled,
+            'ready_to_release' => $ready_to_release,
+            'embargo_until' => $embargo_until,
+            'embargo_active' => $embargo_active,
+            'publish_deadline' => $publish_deadline,
+            'deadline_overdue' => $deadline_overdue,
+            'release_window' => $release_window,
+            'primary_milestone' => $milestone,
+        );
+    }
+
     /**
      * Get interval duration in seconds for a given frequency.
      *

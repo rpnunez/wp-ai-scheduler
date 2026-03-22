@@ -42,12 +42,18 @@ class AIPS_Unified_Schedule_Service {
 	private $history_repository;
 
 	/**
+	 * @var AIPS_Interval_Calculator
+	 */
+	private $interval_calculator;
+
+	/**
 	 * Initialise the service and its dependencies.
 	 */
 	public function __construct() {
 		$this->schedule_repository = new AIPS_Schedule_Repository();
 		$this->authors_repository  = new AIPS_Authors_Repository();
 		$this->history_repository  = new AIPS_History_Repository();
+		$this->interval_calculator = new AIPS_Interval_Calculator();
 	}
 
 	/**
@@ -222,10 +228,17 @@ class AIPS_Unified_Schedule_Service {
 				$status = 'failed';
 			}
 
+			$timing_context = $this->interval_calculator->get_schedule_timing_context($schedule);
+			if (!empty($timing_context['deadline_overdue']) && !empty($schedule->is_active)) {
+				$status = 'deadline_missed';
+			} elseif (!empty($timing_context['ready_to_release']) && !empty($schedule->is_active)) {
+				$status = 'ready_to_release';
+			}
+
 			$title = !empty($schedule->title) ? $schedule->title
 				: ($schedule->template_name ?: sprintf(__('Schedule #%d', 'ai-post-scheduler'), $schedule->id));
 
-			$result[] = array(
+			$result[] = array_merge($timing_context, array(
 				'id'          => absint($schedule->id),
 				'type'        => self::TYPE_TEMPLATE,
 				'title'       => $title,
@@ -241,7 +254,10 @@ class AIPS_Unified_Schedule_Service {
 				'can_delete'  => true,
 				'history_id'  => $schedule_history_id ? $schedule_history_id : null,
 				'template_id' => (int) $schedule->template_id,
-			);
+				'article_structure_id' => !empty($schedule->article_structure_id) ? (int) $schedule->article_structure_id : 0,
+				'rotation_pattern' => !empty($schedule->rotation_pattern) ? $schedule->rotation_pattern : '',
+				'topic' => !empty($schedule->topic) ? $schedule->topic : '',
+			));
 		}
 
 		return $result;
@@ -288,7 +304,7 @@ class AIPS_Unified_Schedule_Service {
 
 			$stats = isset($topic_counts[$author->id]) ? $topic_counts[$author->id] : 0;
 
-			$result[] = array(
+			$result[] = array_merge($this->interval_calculator->get_schedule_timing_context(array()), array(
 				'id'          => absint($author->id),
 				'type'        => self::TYPE_AUTHOR_TOPIC,
 				'title'       => sprintf(
@@ -309,7 +325,7 @@ class AIPS_Unified_Schedule_Service {
 				'history_id'  => null,
 				'author_id'   => (int) $author->id,
 				'author_name' => $author->name,
-			);
+			));
 		}
 
 		return $result;
@@ -360,7 +376,7 @@ class AIPS_Unified_Schedule_Service {
 
 			$stats = isset($post_counts[$author->id]) ? $post_counts[$author->id] : 0;
 
-			$result[] = array(
+			$result[] = array_merge($this->interval_calculator->get_schedule_timing_context(array()), array(
 				'id'          => absint($author->id),
 				'type'        => self::TYPE_AUTHOR_POST,
 				'title'       => sprintf(
@@ -381,7 +397,7 @@ class AIPS_Unified_Schedule_Service {
 				'history_id'  => null,
 				'author_id'   => (int) $author->id,
 				'author_name' => $author->name,
-			);
+			));
 		}
 
 		return $result;

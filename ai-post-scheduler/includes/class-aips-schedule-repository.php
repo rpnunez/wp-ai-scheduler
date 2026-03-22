@@ -10,7 +10,7 @@
  */
 
 if (!defined('ABSPATH')) {
-    exit;
+	exit;
 }
 
 /**
@@ -20,22 +20,22 @@ if (!defined('ABSPATH')) {
  * Encapsulates all database operations related to scheduling.
  */
 class AIPS_Schedule_Repository {
-    
+
     /**
      * @var string The schedule table name (with prefix)
      */
     private $schedule_table;
-    
+
     /**
      * @var string The templates table name (with prefix)
      */
     private $templates_table;
-    
+
     /**
      * @var wpdb WordPress database abstraction object
      */
     private $wpdb;
-    
+
     /**
      * Initialize the repository.
      */
@@ -45,7 +45,7 @@ class AIPS_Schedule_Repository {
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
         $this->templates_table = $wpdb->prefix . 'aips_templates';
     }
-    
+
     /**
      * Get all schedules with optional template details.
      *
@@ -54,16 +54,16 @@ class AIPS_Schedule_Repository {
      */
     public function get_all($active_only = false) {
         $where = $active_only ? "WHERE s.is_active = 1" : "";
-        
+
         return $this->wpdb->get_results("
-            SELECT s.*, t.name as template_name 
-            FROM {$this->schedule_table} s 
-            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id 
+            SELECT s.*, t.name as template_name
+            FROM {$this->schedule_table} s
+            LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
             $where
             ORDER BY s.next_run ASC
         ");
     }
-    
+
     /**
      * Get a single schedule by ID.
      *
@@ -76,7 +76,7 @@ class AIPS_Schedule_Repository {
             $id
         ));
     }
-    
+
     /**
      * Get schedules that are due to run.
      *
@@ -88,15 +88,15 @@ class AIPS_Schedule_Repository {
         if ($current_time === null) {
             $current_time = current_time('mysql');
         }
-        
+
         // Use INNER JOIN to ensure we only get schedules with valid active templates.
         // Select t.* first, then s.* to let schedule fields override template fields where they overlap,
         // but alias s.id as schedule_id to avoid confusion with template id.
         return $this->wpdb->get_results($this->wpdb->prepare("
             SELECT t.*, s.*, s.id AS schedule_id
-            FROM {$this->schedule_table} s 
+            FROM {$this->schedule_table} s
             INNER JOIN {$this->templates_table} t ON s.template_id = t.id
-            WHERE s.is_active = 1 
+            WHERE s.is_active = 1
             AND s.next_run <= %s
             AND t.is_active = 1
             ORDER BY s.next_run ASC
@@ -120,7 +120,7 @@ class AIPS_Schedule_Repository {
             LIMIT %d
         ", $limit));
     }
-    
+
     /**
      * Get schedules by template ID.
      *
@@ -132,7 +132,49 @@ class AIPS_Schedule_Repository {
             SELECT * FROM {$this->schedule_table} WHERE template_id = %d ORDER BY next_run ASC
         ", $template_id));
     }
-    
+
+
+	/**
+	 * Sanitise event-driven schedule metadata.
+	 *
+	 * @param array $data Raw schedule payload.
+	 * @return array{embargo_until:?string,publish_deadline:?string,event_name:string,event_type:string,prewrite_enabled:int,ready_to_release:int}
+	 */
+	private function prepare_event_fields($data) {
+		return array(
+			'embargo_until'    => !empty($data['embargo_until']) ? sanitize_text_field($data['embargo_until']) : null,
+			'publish_deadline' => !empty($data['publish_deadline']) ? sanitize_text_field($data['publish_deadline']) : null,
+			'event_name'       => isset($data['event_name']) ? sanitize_text_field($data['event_name']) : '',
+			'event_type'       => !empty($data['event_type']) ? sanitize_text_field($data['event_type']) : 'recurring',
+			'prewrite_enabled' => !empty($data['prewrite_enabled']) ? 1 : 0,
+			'ready_to_release' => !empty($data['ready_to_release']) ? 1 : 0,
+		);
+	}
+
+	/**
+	 * Return rows matching an event-driven condition.
+	 *
+	 * @param string $where_sql SQL fragment used after WHERE.
+	 * @param array  $args      Optional prepared statement arguments.
+	 * @param int    $limit     Maximum number of rows to return.
+	 * @param string $order_by  ORDER BY clause.
+	 * @return array
+	 */
+	private function get_event_rows($where_sql, $args = array(), $limit = 5, $order_by = 's.next_run ASC') {
+		$sql = "
+			SELECT s.*, t.name as template_name
+			FROM {$this->schedule_table} s
+			LEFT JOIN {$this->templates_table} t ON s.template_id = t.id
+			WHERE {$where_sql}
+			ORDER BY {$order_by}
+			LIMIT %d
+		";
+
+		$args[] = absint($limit);
+
+		return $this->wpdb->get_results($this->wpdb->prepare($sql, $args));
+	}
+
     /**
      * Create a new schedule.
      *
@@ -149,38 +191,46 @@ class AIPS_Schedule_Repository {
      * }
      * @return int|false The inserted ID on success, false on failure.
      */
-    public function create($data) {
-        $insert_data = array(
-            'template_id' => absint($data['template_id']),
-            'title' => isset($data['title']) ? sanitize_text_field($data['title']) : '',
-            'frequency' => sanitize_text_field($data['frequency']),
-            'next_run' => sanitize_text_field($data['next_run']),
-            'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
-            'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
-            'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
-        );
-        
-        $format = array('%d', '%s', '%s', '%s', '%d', '%s', '%s');
-        
-        if (isset($data['article_structure_id'])) {
-            $insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
-            $format[] = '%d';
-        }
-        
-        if (isset($data['rotation_pattern'])) {
-            $insert_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
-            $format[] = '%s';
-        }
-        
-        $result = $this->wpdb->insert($this->schedule_table, $insert_data, $format);
-        
-        if ($result) {
-            delete_transient('aips_pending_schedule_stats');
-        }
+	public function create($data) {
+		$event_fields = $this->prepare_event_fields($data);
 
-        return $result ? $this->wpdb->insert_id : false;
-    }
-    
+		$insert_data = array(
+			'template_id' => absint($data['template_id']),
+			'title' => isset($data['title']) ? sanitize_text_field($data['title']) : '',
+			'frequency' => sanitize_text_field($data['frequency']),
+			'next_run' => sanitize_text_field($data['next_run']),
+			'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
+			'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
+			'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+			'embargo_until' => $event_fields['embargo_until'],
+			'publish_deadline' => $event_fields['publish_deadline'],
+			'event_name' => $event_fields['event_name'],
+			'event_type' => $event_fields['event_type'],
+			'prewrite_enabled' => $event_fields['prewrite_enabled'],
+			'ready_to_release' => $event_fields['ready_to_release'],
+		);
+
+		$format = array('%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d');
+
+		if (isset($data['article_structure_id'])) {
+			$insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
+			$format[] = '%d';
+		}
+
+		if (isset($data['rotation_pattern'])) {
+			$insert_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
+			$format[] = '%s';
+		}
+
+		$result = $this->wpdb->insert($this->schedule_table, $insert_data, $format);
+
+		if ($result) {
+			delete_transient('aips_pending_schedule_stats');
+		}
+
+		return $result ? $this->wpdb->insert_id : false;
+	}
+
     /**
      * Update an existing schedule.
      *
@@ -188,84 +238,114 @@ class AIPS_Schedule_Repository {
      * @param array $data Data to update (same structure as create).
      * @return bool True on success, false on failure.
      */
-    public function update($id, $data) {
-        $update_data = array();
-        $format = array();
-        
-        if (isset($data['template_id'])) {
-            $update_data['template_id'] = absint($data['template_id']);
-            $format[] = '%d';
-        }
-        
-        if (isset($data['title'])) {
-            $update_data['title'] = sanitize_text_field($data['title']);
-            $format[] = '%s';
-        }
-        
-        if (isset($data['frequency'])) {
-            $update_data['frequency'] = sanitize_text_field($data['frequency']);
-            $format[] = '%s';
-        }
-        
-        if (isset($data['next_run'])) {
-            $update_data['next_run'] = sanitize_text_field($data['next_run']);
-            $format[] = '%s';
-        }
-        
-        if (isset($data['last_run'])) {
-            $update_data['last_run'] = sanitize_text_field($data['last_run']);
-            $format[] = '%s';
-        }
-        
-        if (isset($data['is_active'])) {
-            $update_data['is_active'] = $data['is_active'] ? 1 : 0;
-            $format[] = '%d';
-        }
-        
-        if (isset($data['topic'])) {
-            $update_data['topic'] = sanitize_text_field($data['topic']);
-            $format[] = '%s';
-        }
-        
-        if (isset($data['article_structure_id'])) {
-            $update_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
-            $format[] = '%d';
-        }
-        
-        if (isset($data['rotation_pattern'])) {
-            $update_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
-            $format[] = '%s';
-        }
-        
-        if (isset($data['status'])) {
-            $update_data['status'] = sanitize_text_field($data['status']);
-            $format[] = '%s';
-        }
+	public function update($id, $data) {
+		$update_data = array();
+		$format = array();
 
-        if (isset($data['schedule_history_id'])) {
-            $update_data['schedule_history_id'] = !empty($data['schedule_history_id']) ? absint($data['schedule_history_id']) : null;
-            $format[] = '%d';
-        }
-        
-        if (empty($update_data)) {
-            return false;
-        }
-        
-        $result = $this->wpdb->update(
-            $this->schedule_table,
-            $update_data,
-            array('id' => $id),
-            $format,
-            array('%d')
-        );
+		if (isset($data['template_id'])) {
+			$update_data['template_id'] = absint($data['template_id']);
+			$format[] = '%d';
+		}
 
-        if ($result !== false) {
-            delete_transient('aips_pending_schedule_stats');
-        }
+		if (isset($data['title'])) {
+			$update_data['title'] = sanitize_text_field($data['title']);
+			$format[] = '%s';
+		}
 
-        return $result !== false;
-    }
-    
+		if (isset($data['frequency'])) {
+			$update_data['frequency'] = sanitize_text_field($data['frequency']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['next_run'])) {
+			$update_data['next_run'] = sanitize_text_field($data['next_run']);
+			$format[] = '%s';
+		}
+
+		if (array_key_exists('embargo_until', $data)) {
+			$update_data['embargo_until'] = !empty($data['embargo_until']) ? sanitize_text_field($data['embargo_until']) : null;
+			$format[] = '%s';
+		}
+
+		if (array_key_exists('publish_deadline', $data)) {
+			$update_data['publish_deadline'] = !empty($data['publish_deadline']) ? sanitize_text_field($data['publish_deadline']) : null;
+			$format[] = '%s';
+		}
+
+		if (isset($data['event_name'])) {
+			$update_data['event_name'] = sanitize_text_field($data['event_name']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['event_type'])) {
+			$update_data['event_type'] = sanitize_text_field($data['event_type']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['prewrite_enabled'])) {
+			$update_data['prewrite_enabled'] = $data['prewrite_enabled'] ? 1 : 0;
+			$format[] = '%d';
+		}
+
+		if (isset($data['ready_to_release'])) {
+			$update_data['ready_to_release'] = $data['ready_to_release'] ? 1 : 0;
+			$format[] = '%d';
+		}
+
+		if (isset($data['last_run'])) {
+			$update_data['last_run'] = sanitize_text_field($data['last_run']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['is_active'])) {
+			$update_data['is_active'] = $data['is_active'] ? 1 : 0;
+			$format[] = '%d';
+		}
+
+		if (isset($data['topic'])) {
+			$update_data['topic'] = sanitize_text_field($data['topic']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['article_structure_id'])) {
+			$update_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
+			$format[] = '%d';
+		}
+
+		if (isset($data['rotation_pattern'])) {
+			$update_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
+			$format[] = '%s';
+		}
+
+		if (isset($data['status'])) {
+			$update_data['status'] = sanitize_text_field($data['status']);
+			$format[] = '%s';
+		}
+
+		if (isset($data['schedule_history_id'])) {
+			$update_data['schedule_history_id'] = !empty($data['schedule_history_id']) ? absint($data['schedule_history_id']) : null;
+			$format[] = '%d';
+		}
+
+		if (empty($update_data)) {
+			return false;
+		}
+
+		$result = $this->wpdb->update(
+			$this->schedule_table,
+			$update_data,
+			array('id' => $id),
+			$format,
+			array('%d')
+		);
+
+		if ($result !== false) {
+			delete_transient('aips_pending_schedule_stats');
+		}
+
+		return $result !== false;
+	}
+
     /**
      * Delete a schedule by ID.
      *
@@ -281,7 +361,7 @@ class AIPS_Schedule_Repository {
 
         return $result !== false;
     }
-    
+
     /**
      * Delete all schedules for a template.
      *
@@ -297,7 +377,7 @@ class AIPS_Schedule_Repository {
 
         return $result;
     }
-    
+
     /**
      * Update the last_run timestamp for a schedule.
      *
@@ -309,10 +389,10 @@ class AIPS_Schedule_Repository {
         if ($timestamp === null) {
             $timestamp = current_time('mysql');
         }
-        
+
         return $this->update($id, array('last_run' => $timestamp));
     }
-    
+
     /**
      * Update the next_run timestamp for a schedule.
      *
@@ -323,7 +403,7 @@ class AIPS_Schedule_Repository {
     public function update_next_run($id, $timestamp) {
         return $this->update($id, array('next_run' => $timestamp));
     }
-    
+
     /**
      * Toggle schedule active status.
      *
@@ -341,39 +421,22 @@ class AIPS_Schedule_Repository {
      * @param array $schedules Array of schedule data arrays.
      * @return int Number of rows inserted.
      */
-    public function create_bulk($schedules) {
-        if (empty($schedules)) {
-            return 0;
-        }
+	public function create_bulk($schedules) {
+		if (empty($schedules)) {
+			return 0;
+		}
 
-        $values = array();
-        $placeholders = array();
-        $query = "INSERT INTO {$this->schedule_table} (template_id, frequency, next_run, is_active, topic, article_structure_id, rotation_pattern) VALUES ";
+		$inserted = 0;
+		foreach ($schedules as $schedule) {
+			$result = $this->create($schedule);
+			if ($result) {
+				$inserted++;
+			}
+		}
 
-        foreach ($schedules as $data) {
-            array_push($values,
-                absint($data['template_id']),
-                sanitize_text_field($data['frequency']),
-                sanitize_text_field($data['next_run']),
-                isset($data['is_active']) ? (int) $data['is_active'] : 0,
-                isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
-                isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
-                isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null
-            );
-            $placeholders[] = "(%d, %s, %s, %d, %s, %d, %s)";
-        }
+		return $inserted;
+	}
 
-        $query .= implode(', ', $placeholders);
-
-        $result = $this->wpdb->query($this->wpdb->prepare($query, $values));
-
-        if ($result) {
-            delete_transient('aips_pending_schedule_stats');
-        }
-
-        return $result;
-    }
-    
     /**
      * Delete multiple schedules by ID.
      *
@@ -505,6 +568,51 @@ class AIPS_Schedule_Repository {
         ));
     }
 
+
+	/**
+	 * Get schedules with embargoes releasing soon.
+	 *
+	 * @param int $limit Maximum number of schedules.
+	 * @return array
+	 */
+	public function get_upcoming_embargoes($limit = 5) {
+		return $this->get_event_rows(
+			"s.is_active = 1 AND s.embargo_until IS NOT NULL AND s.embargo_until >= %s",
+			array(current_time('mysql')),
+			$limit,
+			's.embargo_until ASC'
+		);
+	}
+
+	/**
+	 * Get schedules whose publish deadlines have passed.
+	 *
+	 * @param int $limit Maximum number of schedules.
+	 * @return array
+	 */
+	public function get_missed_publish_deadlines($limit = 5) {
+		return $this->get_event_rows(
+			"s.is_active = 1 AND s.publish_deadline IS NOT NULL AND s.publish_deadline < %s AND s.ready_to_release = 0",
+			array(current_time('mysql')),
+			$limit,
+			's.publish_deadline ASC'
+		);
+	}
+
+	/**
+	 * Get schedules that have been prewritten and are ready for editor release.
+	 *
+	 * @param int $limit Maximum number of schedules.
+	 * @return array
+	 */
+	public function get_ready_to_release($limit = 5) {
+		return $this->get_event_rows(
+			"s.is_active = 1 AND s.ready_to_release = 1",
+			array(),
+			$limit
+		);
+	}
+
     /**
      * Count schedules by status.
      *
@@ -520,7 +628,7 @@ class AIPS_Schedule_Repository {
                 SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
             FROM {$this->schedule_table}
         ");
-        
+
         return array(
             'total' => (int) $results->total,
             'active' => (int) $results->active,

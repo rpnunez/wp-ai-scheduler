@@ -69,6 +69,7 @@ class AIPS_Calendar_Controller {
 		foreach ($schedules as $schedule) {
 			// Calculate all occurrences of this schedule within the month
 			$occurrences = $this->calculate_schedule_occurrences($schedule, $start_date, $end_date);
+			$timing_context = $this->interval_calculator->get_schedule_timing_context($schedule);
 			
 			foreach ($occurrences as $occurrence) {
 				$events[] = array(
@@ -81,6 +82,14 @@ class AIPS_Calendar_Controller {
 					'topic' => $schedule->topic,
 					'category' => $this->get_schedule_category($schedule),
 					'author' => $this->get_schedule_author($schedule),
+					'event_name' => isset($timing_context['event_name']) ? $timing_context['event_name'] : '',
+					'event_type' => isset($timing_context['event_type_label']) ? $timing_context['event_type_label'] : '',
+					'embargo_until' => isset($timing_context['embargo_until']) ? $timing_context['embargo_until'] : '',
+					'publish_deadline' => isset($timing_context['publish_deadline']) ? $timing_context['publish_deadline'] : '',
+					'release_window' => isset($timing_context['release_window']) ? $timing_context['release_window'] : '',
+					'ready_to_release' => !empty($timing_context['ready_to_release']),
+					'deadline_overdue' => !empty($timing_context['deadline_overdue']),
+					'embargo_active' => !empty($timing_context['embargo_active']),
 				);
 			}
 		}

@@ -173,14 +173,31 @@ class AIPS_Scheduler {
             }
         }
 
+        $event_type = isset($data['event_type']) ? sanitize_text_field($data['event_type']) : 'recurring';
+        $embargo_until = !empty($data['embargo_until']) ? sanitize_text_field($data['embargo_until']) : null;
+        $publish_deadline = !empty($data['publish_deadline']) ? sanitize_text_field($data['publish_deadline']) : null;
+
+        if ('embargo_release' === $event_type && empty($data['start_time']) && $embargo_until) {
+            $next_run = $embargo_until;
+        } elseif ('publish_window' === $event_type && empty($data['start_time']) && $publish_deadline) {
+            $next_run = $publish_deadline;
+        }
+
         $schedule_data = array(
             'template_id' => absint($data['template_id']),
+            'title' => isset($data['title']) ? sanitize_text_field($data['title']) : '',
             'frequency' => $frequency,
             'next_run' => $next_run,
             'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
             'article_structure_id' => isset($data['article_structure_id']) ? absint($data['article_structure_id']) : null,
             'rotation_pattern' => isset($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null,
+            'embargo_until' => $embargo_until,
+            'publish_deadline' => $publish_deadline,
+            'event_name' => isset($data['event_name']) ? sanitize_text_field($data['event_name']) : '',
+            'event_type' => $event_type,
+            'prewrite_enabled' => !empty($data['prewrite_enabled']) ? 1 : 0,
+            'ready_to_release' => !empty($data['ready_to_release']) ? 1 : 0,
         );
 
         if (!empty($data['id'])) {
