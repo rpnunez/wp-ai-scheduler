@@ -377,7 +377,7 @@ INSTRUCTIONS;
 	 */
 	public function get_post_title_builder() {
 		if (null === $this->post_title_builder) {
-			$this->post_title_builder = new AIPS_Prompt_Builder_Post_Title($this->template_processor);
+			$this->post_title_builder = new AIPS_Prompt_Builder_Post_Title($this->template_processor, $this, $this->structure_manager, null);
 		}
 
 		return $this->post_title_builder;
@@ -390,7 +390,7 @@ INSTRUCTIONS;
 	 */
 	public function get_post_excerpt_builder() {
 		if (null === $this->post_excerpt_builder) {
-			$this->post_excerpt_builder = new AIPS_Prompt_Builder_Post_Excerpt($this->template_processor);
+			$this->post_excerpt_builder = new AIPS_Prompt_Builder_Post_Excerpt($this->template_processor, $this, $this->structure_manager, null);
 		}
 
 		return $this->post_excerpt_builder;
@@ -403,8 +403,8 @@ INSTRUCTIONS;
 	 */
 	public function get_post_content_builder() {
 		if (null === $this->post_content_builder) {
-            $article_structure_section_builder = new AIPS_Prompt_Builder_Article_Structure_Section($this->structure_manager, null, $this->template_processor);
-            $this->post_content_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $article_structure_section_builder);
+            $article_structure_section_builder = new AIPS_Prompt_Builder_Article_Structure_Section($this->template_processor, $this, $this->structure_manager, null);
+            $this->post_content_builder = new AIPS_Prompt_Builder_Post_Content($this->template_processor, $this, $this->structure_manager, null, $article_structure_section_builder);
 		}
 
 		return $this->post_content_builder;
@@ -417,7 +417,7 @@ INSTRUCTIONS;
 	 */
 	public function get_post_featured_image_builder() {
 		if (null === $this->post_featured_image_builder) {
-			$this->post_featured_image_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor);
+			$this->post_featured_image_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor, $this, $this->structure_manager, null);
 		}
 
 		return $this->post_featured_image_builder;

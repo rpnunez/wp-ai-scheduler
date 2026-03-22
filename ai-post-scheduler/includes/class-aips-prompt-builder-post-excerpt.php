@@ -20,30 +20,20 @@ if (!defined('ABSPATH')) {
  *
  * Builds the AI prompt for post excerpt generation.
  */
-class AIPS_Prompt_Builder_Post_Excerpt {
-
-	/**
-	 * @var AIPS_Template_Processor Template processor for prompt variables.
-	 */
-	private $template_processor;
-
-	/**
-	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
-	 */
-	public function __construct($template_processor = null) {
-		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-	}
+class AIPS_Prompt_Builder_Post_Excerpt extends AIPS_Prompt_Builder_Base {
 
 	/**
 	 * Build the complete prompt for excerpt generation.
 	 *
-	 * @param string      $title Title of the generated article.
-	 * @param string      $content The article content to summarize.
-	 * @param object|null $voice Optional voice object with excerpt instructions.
-	 * @param string|null $topic Optional topic to inject into voice instructions.
+	 * @param string $primary_input Article title.
+	 * @param mixed  ...$args Optional content, voice, and topic values.
 	 * @return string
 	 */
-	public function build($title, $content, $voice = null, $topic = null) {
+	public function build($primary_input, ...$args) {
+		$title = $primary_input;
+		$content = isset($args[0]) ? $args[0] : '';
+		$voice = isset($args[1]) ? $args[1] : null;
+		$topic = isset($args[2]) ? $args[2] : null;
 		$excerpt_prompt = "Write an excerpt for an article. Must be between 40 and 60 words. Write naturally as a human would. Output only the excerpt, no formatting.\n\n";
 
 		$voice_instructions = $this->build_instructions($voice, $topic);
@@ -67,7 +57,7 @@ class AIPS_Prompt_Builder_Post_Excerpt {
 	 */
 	public function build_instructions($voice, $topic) {
 		if ($voice && !empty($voice->excerpt_instructions)) {
-			return $this->template_processor->process($voice->excerpt_instructions, $topic);
+			return $this->get_template_processor()->process($voice->excerpt_instructions, $topic);
 		}
 
 		return null;

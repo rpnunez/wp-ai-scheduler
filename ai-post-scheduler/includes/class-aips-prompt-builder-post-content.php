@@ -20,38 +20,22 @@ if (!defined('ABSPATH')) {
  *
  * Builds the AI prompt for post content generation.
  */
-class AIPS_Prompt_Builder_Post_Content {
-
-	/**
-	 * @var AIPS_Template_Processor Template processor for prompt variables.
-	 */
-	private $template_processor;
-
-	/**
-	 * @var AIPS_Prompt_Builder_Article_Structure_Section Builder for structured section prompts.
-	 */
-	private $article_structure_section_builder;
-
-	/**
-	 * @param AIPS_Template_Processor|null                 $template_processor             Optional template processor.
-	 * @param AIPS_Prompt_Builder_Article_Structure_Section|null $article_structure_section_builder Optional section prompt builder.
-	 */
-	public function __construct($template_processor = null, $article_structure_section_builder = null) {
-		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-		$this->article_structure_section_builder = $article_structure_section_builder ?: new AIPS_Prompt_Builder_Article_Structure_Section(null, null, $this->template_processor);
-	}
+class AIPS_Prompt_Builder_Post_Content extends AIPS_Prompt_Builder_Base {
 
 	/**
 	 * Build the complete content prompt based on context.
 	 *
 	 * Supports both legacy template-based and generation-context-based flows.
 	 *
-	 * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
-	 * @param string|null                    $topic The topic for the post in legacy flows.
-	 * @param object|null                    $voice Optional voice object in legacy flows.
+	 * @param object|AIPS_Generation_Context $primary_input Template object (legacy) or Generation Context.
+	 * @param mixed                          ...$args Optional topic and voice values for legacy flows.
 	 * @return string
 	 */
-	public function build($template_or_context, $topic = null, $voice = null) {
+	public function build($primary_input, ...$args) {
+		$template_or_context = $primary_input;
+		$topic = isset($args[0]) ? $args[0] : null;
+		$voice = isset($args[1]) ? $args[1] : null;
+
 		if ($template_or_context instanceof AIPS_Generation_Context) {
 			return $this->build_from_context($template_or_context);
 		}
@@ -73,21 +57,21 @@ class AIPS_Prompt_Builder_Post_Content {
 		$topic = $context->get_topic();
 
 		if ($article_structure_id && $topic) {
-			$structured_prompt = $this->article_structure_section_builder->build($article_structure_id, $topic);
+			$structured_prompt = $this->get_article_structure_section_builder()->build($article_structure_id, $topic);
 
 			if (!is_wp_error($structured_prompt)) {
 				$processed_prompt = $structured_prompt;
 			} else {
-				$processed_prompt = $this->template_processor->process($processed_prompt, $topic);
+				$processed_prompt = $this->get_template_processor()->process($processed_prompt, $topic);
 			}
 		} elseif ($topic) {
-			$processed_prompt = $this->template_processor->process($processed_prompt, $topic);
+			$processed_prompt = $this->get_template_processor()->process($processed_prompt, $topic);
 		}
 
 		if ($context->get_type() === 'template' && $context->get_voice_id()) {
 			$voice = $context->get_voice();
 			if ($voice && !empty($voice->content_instructions)) {
-				$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
+				$voice_instructions = $this->get_template_processor()->process($voice->content_instructions, $topic);
 				$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
 			}
 		}
@@ -105,10 +89,10 @@ class AIPS_Prompt_Builder_Post_Content {
 	 */
 	private function build_from_template($template, $topic = null, $voice = null) {
 		do_action('aips_before_build_content_prompt', $template, $topic);
-		$processed_prompt = $this->template_processor->process($template->prompt_template, $topic);
+		$processed_prompt = $this->get_template_processor()->process($template->prompt_template, $topic);
 
 		if ($voice) {
-			$voice_instructions = $this->template_processor->process($voice->content_instructions, $topic);
+			$voice_instructions = $this->get_template_processor()->process($voice->content_instructions, $topic);
 			$processed_prompt = $voice_instructions . "\n\n" . $processed_prompt;
 		}
 

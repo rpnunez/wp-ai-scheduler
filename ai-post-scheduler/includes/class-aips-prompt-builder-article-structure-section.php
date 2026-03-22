@@ -19,43 +19,19 @@ if (!defined('ABSPATH')) {
  * Builds complete prompts for article structures by resolving section
  * placeholders and processing template variables.
  */
-class AIPS_Prompt_Builder_Article_Structure_Section {
-
-	/**
-	 * @var AIPS_Article_Structure_Manager
-	 */
-	private $structure_manager;
-
-	/**
-	 * @var AIPS_Prompt_Section_Repository
-	 */
-	private $section_repository;
-
-	/**
-	 * @var AIPS_Template_Processor
-	 */
-	private $template_processor;
-
-	/**
-	 * @param AIPS_Article_Structure_Manager|null $structure_manager Optional structure manager.
-	 * @param AIPS_Prompt_Section_Repository|null $section_repository Optional section repository.
-	 * @param AIPS_Template_Processor|null        $template_processor Optional template processor.
-	 */
-	public function __construct($structure_manager = null, $section_repository = null, $template_processor = null) {
-		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
-		$this->section_repository = $section_repository ?: new AIPS_Prompt_Section_Repository();
-		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-	}
+class AIPS_Prompt_Builder_Article_Structure_Section extends AIPS_Prompt_Builder_Base {
 
 	/**
 	 * Build a complete prompt from structure and topic.
 	 *
-	 * @param int         $structure_id Structure ID to use.
-	 * @param string|null $topic Topic for template variables.
+	 * @param int   $primary_input Structure ID to use.
+	 * @param mixed ...$args Optional topic value.
 	 * @return string|WP_Error Complete prompt or error.
 	 */
-	public function build($structure_id, $topic = null) {
-		$structure = $this->structure_manager->get_structure($structure_id);
+	public function build($primary_input, ...$args) {
+		$structure_id = $primary_input;
+		$topic = isset($args[0]) ? $args[0] : null;
+		$structure = $this->get_structure_manager()->get_structure($structure_id);
 
 		if (is_wp_error($structure)) {
 			return $structure;
@@ -75,7 +51,7 @@ class AIPS_Prompt_Builder_Article_Structure_Section {
 			$prompt = str_replace($search, $replace, $prompt);
 		}
 
-		return $this->template_processor->process($prompt, $topic);
+		return $this->get_template_processor()->process($prompt, $topic);
 	}
 
 	/**
@@ -89,7 +65,7 @@ class AIPS_Prompt_Builder_Article_Structure_Section {
 			return array();
 		}
 
-		$sections = $this->section_repository->get_by_keys($section_keys);
+		$sections = $this->get_section_repository()->get_by_keys($section_keys);
 		$contents = array();
 
 		foreach ($section_keys as $key) {
