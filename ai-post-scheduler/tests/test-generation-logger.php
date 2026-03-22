@@ -40,6 +40,14 @@ class Test_AIPS_Generation_Logger extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test the namespaced class exists and legacy alias resolves correctly.
+	 */
+	public function test_namespaced_class_exists() {
+		$this->assertTrue(class_exists('AIPS\\Logging\\GenerationLogger'));
+		$this->assertInstanceOf('AIPS\\Logging\\GenerationLogger', $this->generation_logger);
+	}
+
+	/**
 	 * Test log_ai_call updates both session and history repository.
 	 */
 	public function test_log_ai_call_updates_session_and_history() {
