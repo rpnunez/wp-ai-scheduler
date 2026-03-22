@@ -39,6 +39,11 @@ class AIPS_Research_Controller {
      * @var AIPS_Content_Auditor Content Auditor instance
      */
     private $content_auditor;
+
+    /**
+     * @var AIPS_Live_Coverage_Service Live coverage service
+     */
+    private $live_coverage_service;
     
     /**
      * Initialize the controller.
@@ -48,6 +53,7 @@ class AIPS_Research_Controller {
         $this->repository = new AIPS_Trending_Topics_Repository();
         $this->logger = new AIPS_Logger();
         $this->content_auditor = new AIPS_Content_Auditor();
+        $this->live_coverage_service = new AIPS_Live_Coverage_Service();
         
         $this->init_hooks();
     }
@@ -143,10 +149,19 @@ class AIPS_Research_Controller {
         
         $topics = $this->repository->get_all($args);
         
-        // Parse keywords from JSON
+        // Parse keywords from JSON and flag matching live-story threads.
         foreach ($topics as &$topic) {
             if (!empty($topic['keywords'])) {
                 $topic['keywords'] = json_decode($topic['keywords'], true);
+            }
+
+            $live_metadata = $this->live_coverage_service->decorate_intake_metadata(array(), isset($topic['topic']) ? $topic['topic'] : '');
+            if (!empty($live_metadata['thread_identifier'])) {
+                $topic['thread_identifier'] = $live_metadata['thread_identifier'];
+            }
+            if (!empty($live_metadata['live_reopen_candidate'])) {
+                $topic['live_reopen_candidate'] = true;
+                $topic['matched_story'] = $live_metadata['matched_story'];
             }
         }
         

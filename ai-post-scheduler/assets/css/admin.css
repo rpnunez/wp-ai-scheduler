@@ -3380,3 +3380,82 @@ margin-right: 8px;
     display: block;
 }
 
+
+.aips-live-story-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 6px;
+}
+
+.aips-live-story-meta {
+	margin-top: 6px;
+	font-size: 12px;
+	color: #50575e;
+}
+
+.aips-live-story-panel {
+	margin-top: 10px;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	background: #fff;
+}
+
+.aips-live-story-panel summary {
+	padding: 10px 14px;
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.aips-live-story-panel-body {
+	padding: 14px;
+	border-top: 1px solid #f0f0f1;
+	display: grid;
+	gap: 12px;
+}
+
+.aips-live-story-form-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 12px;
+}
+
+.aips-live-story-form-grid label,
+.aips-live-story-panel-body > label {
+	display: grid;
+	gap: 6px;
+	font-weight: 600;
+}
+
+.aips-live-story-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.aips-live-story-history {
+	margin: 0;
+	padding-left: 18px;
+	display: grid;
+	gap: 10px;
+}
+
+.aips-live-story-history li {
+	margin: 0;
+}
+
+.aips-live-story-history-meta {
+	font-size: 12px;
+	color: #50575e;
+	margin-top: 4px;
+}
+
+.aips-live-story-status-live {
+	background: #fbeaea;
+	color: #8a2424;
+}
+
+.aips-live-story-status-developing {
+	background: #fff3cd;
+	color: #8a5800;
+}

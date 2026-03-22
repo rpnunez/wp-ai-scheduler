@@ -56,6 +56,11 @@ class AIPS_Author_Topics_Generator {
 	private $prompt_builder;
 
 	/**
+	 * @var AIPS_Live_Coverage_Service Live coverage service.
+	 */
+	private $live_coverage_service;
+
+	/**
 	 * Initialize the generator.
 	 *
 	 * @param object|null $ai_service AI service instance (optional for testing).
@@ -74,6 +79,7 @@ class AIPS_Author_Topics_Generator {
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service($this->ai_service, $this->logger);
 		$this->feedback_repository = $feedback_repository ?: new AIPS_Feedback_Repository();
 		$this->prompt_builder = $prompt_builder ?: new AIPS_Prompt_Builder_Topic();
+		$this->live_coverage_service = new AIPS_Live_Coverage_Service();
 	}
 	
 	/**
@@ -270,6 +276,12 @@ class AIPS_Author_Topics_Generator {
 				continue;
 			}
 			
+			$metadata = $this->live_coverage_service->decorate_intake_metadata(array(
+				'generated_via' => 'ai_json',
+				'generation_date' => current_time('mysql'),
+				'keywords' => $keywords,
+			), $title);
+
 			// Create topic data
 			$topics[] = array(
 				'author_id' => $author->id,
@@ -277,11 +289,7 @@ class AIPS_Author_Topics_Generator {
 				'topic_prompt' => '', // Will be built when generating post
 				'status' => 'pending',
 				'score' => $score,
-				'metadata' => wp_json_encode(array(
-					'generated_via' => 'ai_json',
-					'generation_date' => current_time('mysql'),
-					'keywords' => $keywords
-				))
+				'metadata' => wp_json_encode($metadata)
 			);
 			
 			// Stop if we have enough topics
@@ -328,6 +336,11 @@ class AIPS_Author_Topics_Generator {
 			// Remove any quotes
 			$line = trim($line, '"\'');
 			
+			$metadata = $this->live_coverage_service->decorate_intake_metadata(array(
+				'generated_via' => 'ai',
+				'generation_date' => current_time('mysql'),
+			), $line);
+
 			// Create topic data
 			$topics[] = array(
 				'author_id' => $author->id,
@@ -335,10 +348,7 @@ class AIPS_Author_Topics_Generator {
 				'topic_prompt' => '', // Will be built when generating post
 				'status' => 'pending',
 				'score' => 50,
-				'metadata' => wp_json_encode(array(
-					'generated_via' => 'ai',
-					'generation_date' => current_time('mysql')
-				))
+				'metadata' => wp_json_encode($metadata)
 			);
 			
 			// Stop if we have enough topics

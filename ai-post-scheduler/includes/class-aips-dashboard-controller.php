@@ -26,6 +26,7 @@ class AIPS_Dashboard_Controller {
         $template_repo = new AIPS_Template_Repository();
         $post_review_repo = new AIPS_Post_Review_Repository();
         $author_topics_repo = new AIPS_Author_Topics_Repository();
+        $live_coverage_service = new AIPS_Live_Coverage_Service();
 
         // Get stats
         $history_stats = $history_repo->get_stats();
@@ -40,6 +41,8 @@ class AIPS_Dashboard_Controller {
         $partial_generations = $history_repo->get_partial_generations(array('per_page' => -1))['total'] ?? 0;
         $pending_reviews = $post_review_repo->get_draft_count();
         $topics_in_queue = isset($topic_counts['approved']) ? $topic_counts['approved'] : 0;
+        $live_story_counts = $live_coverage_service->get_live_story_counts();
+        $recent_live_stories = $live_coverage_service->get_recent_live_stories(5);
 
         // Get recent history
         $recent_posts_data = $history_repo->get_history(array('per_page' => 5));

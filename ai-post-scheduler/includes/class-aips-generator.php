@@ -674,6 +674,28 @@ class AIPS_Generator {
 
         $generation_incomplete = in_array(false, $component_statuses, true);
 
+        $live_story_args = array(
+            'is_live_story' => false,
+            'thread_identifier' => '',
+            'parent_story_id' => 0,
+            'story_status' => '',
+        );
+
+        if ($context instanceof AIPS_Topic_Context) {
+            $topic_object = $context->get_topic_object();
+            $topic_metadata = !empty($topic_object->metadata) ? json_decode($topic_object->metadata, true) : array();
+            if (is_array($topic_metadata)) {
+                $live_story_args['is_live_story'] = !empty($topic_metadata['live_reopen_candidate']) || !empty($topic_metadata['is_live_story']);
+                $live_story_args['thread_identifier'] = isset($topic_metadata['thread_identifier']) ? $topic_metadata['thread_identifier'] : $context->get_topic();
+                if (!empty($topic_metadata['matched_story']['post_id'])) {
+                    $live_story_args['parent_story_id'] = absint($topic_metadata['matched_story']['post_id']);
+                    $live_story_args['story_status'] = 'developing';
+                } elseif (!empty($live_story_args['is_live_story'])) {
+                    $live_story_args['story_status'] = 'live';
+                }
+            }
+        }
+
         // Use Post Manager Service to save the generated post in WP
         $post_creation_data = array(
             'title' => $title,
@@ -686,6 +708,10 @@ class AIPS_Generator {
             'seo_title' => $title,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
+            'is_live_story' => $live_story_args['is_live_story'],
+            'thread_identifier' => $live_story_args['thread_identifier'],
+            'parent_story_id' => $live_story_args['parent_story_id'],
+            'story_status' => $live_story_args['story_status'],
         );
 
         // Allow integrations to hook before the post is created.

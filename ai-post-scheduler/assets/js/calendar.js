@@ -516,7 +516,9 @@
 			// Determine color based on template ID
 			// Only assign specific colors to the first 3 templates; others get default color
 			var colorClass = 'color-default';
-			if (event.template_id) {
+			if (event.event_kind === 'live_story') {
+				colorClass = event.story_status === 'developing' ? 'color-live-developing' : 'color-live';
+			} else if (event.template_id) {
 				var templateId = parseInt(event.template_id, 10);
 				if (!isNaN(templateId) && templateId >= 1 && templateId <= templateColors.length) {
 					colorClass = templateColors[templateId - 1];
@@ -576,6 +578,7 @@
 			$('.aips-event-topic').text(event.topic || 'N/A');
 			$('.aips-event-category').text(event.category || 'N/A');
 			$('.aips-event-author').text(event.author || 'N/A');
+			$('.aips-event-story-status').text(event.story_status || 'N/A');
 			
 			// Show modal
 			$('#aips-calendar-event-modal').fadeIn(200);

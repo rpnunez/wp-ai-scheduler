@@ -103,11 +103,30 @@ if (!defined('ABSPATH')) {
 						</thead>
 						<tbody>
 							<?php foreach ($posts_data as $post_data): ?>
+							<?php $story_meta = $post_data['story_metadata']; ?>
 							<tr>
 								<td>
 									<a href="<?php echo esc_url($post_data['edit_link']); ?>" class="cell-primary">
 										<?php echo esc_html($post_data['title']); ?>
 									</a>
+									<?php if (!empty($story_meta['is_live_story']) || !empty($story_meta['story_status'])): ?>
+									<div class="aips-live-story-badges">
+										<?php if (!empty($story_meta['is_live_story'])): ?>
+										<span class="aips-badge aips-badge-info"><?php esc_html_e('Live Story', 'ai-post-scheduler'); ?></span>
+										<?php endif; ?>
+										<?php if (!empty($story_meta['story_status'])): ?>
+										<span class="aips-badge aips-live-story-status-<?php echo esc_attr($story_meta['story_status']); ?>"><?php echo esc_html(ucfirst($story_meta['story_status'])); ?></span>
+										<?php endif; ?>
+									</div>
+									<div class="aips-live-story-meta">
+										<?php if (!empty($story_meta['thread_identifier'])): ?>
+										<span><?php echo esc_html(sprintf(__('Thread: %s', 'ai-post-scheduler'), $story_meta['thread_identifier'])); ?></span><br>
+										<?php endif; ?>
+										<?php if (!empty($story_meta['last_update_at'])): ?>
+										<span><?php echo esc_html(sprintf(__('Last update: %s', 'ai-post-scheduler'), date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($story_meta['last_update_at'])))); ?></span>
+										<?php endif; ?>
+									</div>
+									<?php endif; ?>
 								</td>
 								<td>
 									<span class="aips-badge aips-badge-neutral">
@@ -116,7 +135,7 @@ if (!defined('ABSPATH')) {
 								</td>
 								<td>
 									<div class="cell-meta">
-										<?php 
+										<?php
 										if ($post_data['date_scheduled']) {
 											echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($post_data['date_scheduled'])));
 										} else {
@@ -141,20 +160,88 @@ if (!defined('ABSPATH')) {
 											<span class="dashicons dashicons-edit"></span>
 											<?php esc_html_e('Edit', 'ai-post-scheduler'); ?>
 										</a>
-										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn" 
+										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-ai-edit-btn"
 										        data-post-id="<?php echo esc_attr($post_data['post_id']); ?>"
 										        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
 										        title="<?php esc_attr_e('AI Edit', 'ai-post-scheduler'); ?>">
 											<span class="dashicons dashicons-admin-customizer"></span>
 											<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
 										</button>
-								<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" 
-								        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-								        title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-visibility"></span>
-									<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
+										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session"
+										        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+										        title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-visibility"></span>
+											<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
 										</button>
 									</div>
+									<details class="aips-live-story-panel">
+										<summary><?php esc_html_e('Live Coverage', 'ai-post-scheduler'); ?></summary>
+										<div class="aips-live-story-panel-body" data-post-id="<?php echo esc_attr($post_data['post_id']); ?>" data-history-id="<?php echo esc_attr($post_data['history_id']); ?>">
+											<div class="aips-live-story-form-grid">
+												<label><?php esc_html_e('Story state', 'ai-post-scheduler'); ?>
+													<select class="aips-form-select aips-live-story-status">
+														<option value=""><?php esc_html_e('Not marked', 'ai-post-scheduler'); ?></option>
+														<option value="live" <?php selected($story_meta['story_status'], 'live'); ?>><?php esc_html_e('Live', 'ai-post-scheduler'); ?></option>
+														<option value="developing" <?php selected($story_meta['story_status'], 'developing'); ?>><?php esc_html_e('Developing', 'ai-post-scheduler'); ?></option>
+													</select>
+												</label>
+												<label><?php esc_html_e('Thread identifier', 'ai-post-scheduler'); ?>
+													<input type="text" class="aips-form-input aips-live-story-thread" value="<?php echo esc_attr($story_meta['thread_identifier']); ?>" placeholder="<?php esc_attr_e('e.g. election-night-2026', 'ai-post-scheduler'); ?>">
+												</label>
+												<label><?php esc_html_e('Parent story ID', 'ai-post-scheduler'); ?>
+													<input type="number" class="aips-form-input aips-live-story-parent" value="<?php echo esc_attr($story_meta['parent_story_id']); ?>" min="0">
+												</label>
+											</div>
+											<label>
+												<input type="checkbox" class="aips-live-story-flag" value="1" <?php checked(!empty($story_meta['is_live_story'])); ?>>
+												<?php esc_html_e('Treat this article as a continuously updated story', 'ai-post-scheduler'); ?>
+											</label>
+											<label><?php esc_html_e('Update brief', 'ai-post-scheduler'); ?>
+												<textarea class="aips-form-input aips-live-story-brief" rows="3" placeholder="<?php esc_attr_e('Explain what changed and why this update matters.', 'ai-post-scheduler'); ?>"></textarea>
+											</label>
+											<div class="aips-live-story-form-grid">
+												<label><?php esc_html_e('Update reason', 'ai-post-scheduler'); ?>
+													<input type="text" class="aips-form-input aips-live-story-reason" placeholder="<?php esc_attr_e('Breaking update, official statement, correction…', 'ai-post-scheduler'); ?>">
+												</label>
+												<label><?php esc_html_e('Publish/update time', 'ai-post-scheduler'); ?>
+													<input type="datetime-local" class="aips-form-input aips-live-story-published-at">
+												</label>
+												<label>
+													<input type="checkbox" class="aips-live-story-major" value="1">
+													<?php esc_html_e('Major update', 'ai-post-scheduler'); ?>
+												</label>
+											</div>
+											<div class="aips-live-story-actions">
+												<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-live-story-append"><?php esc_html_e('Append Update Block', 'ai-post-scheduler'); ?></button>
+												<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-live-story-regenerate" data-sections="headline"><?php esc_html_e('Regenerate Headline', 'ai-post-scheduler'); ?></button>
+												<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-live-story-regenerate" data-sections="top_summary"><?php esc_html_e('Regenerate Top Summary', 'ai-post-scheduler'); ?></button>
+												<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-live-story-refresh-history"><?php esc_html_e('Refresh History', 'ai-post-scheduler'); ?></button>
+											</div>
+											<div class="aips-live-story-current-summary">
+												<strong><?php esc_html_e('Current top summary:', 'ai-post-scheduler'); ?></strong>
+												<p class="aips-live-story-current-excerpt"><?php echo esc_html($post_data['excerpt'] ? $post_data['excerpt'] : __('No summary available.', 'ai-post-scheduler')); ?></p>
+											</div>
+											<div>
+												<strong><?php esc_html_e('Change history', 'ai-post-scheduler'); ?></strong>
+												<ol class="aips-live-story-history">
+													<?php if (!empty($post_data['change_history'])): ?>
+														<?php foreach ($post_data['change_history'] as $change_item): ?>
+														<li>
+															<div><?php echo esc_html($change_item['message']); ?></div>
+															<div class="aips-live-story-history-meta">
+																<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($change_item['published_at']))); ?>
+																<?php if (!empty($change_item['update_reason'])): ?> · <?php echo esc_html($change_item['update_reason']); ?><?php endif; ?>
+																<?php if (!empty($change_item['changed_sections'])): ?> · <?php echo esc_html(implode(', ', $change_item['changed_sections'])); ?><?php endif; ?>
+															</div>
+														</li>
+														<?php endforeach; ?>
+													<?php else: ?>
+														<li><?php esc_html_e('No live-story updates recorded yet.', 'ai-post-scheduler'); ?></li>
+													<?php endif; ?>
+												</ol>
+											</div>
+										</div>
+									</details>
 								</td>
 							</tr>
 							<?php endforeach; ?>

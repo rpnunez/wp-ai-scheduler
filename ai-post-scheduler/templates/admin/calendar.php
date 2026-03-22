@@ -83,6 +83,14 @@ if (!defined('ABSPATH')) {
 							<span class="aips-calendar-legend-color" style="background-color: #dba617;"></span>
 							<span><?php esc_html_e('Other Templates', 'ai-post-scheduler'); ?></span>
 						</div>
+						<div class="aips-calendar-legend-item">
+							<span class="aips-calendar-legend-color" style="background-color: #8e44ad;"></span>
+							<span><?php esc_html_e('Live Stories', 'ai-post-scheduler'); ?></span>
+						</div>
+						<div class="aips-calendar-legend-item">
+							<span class="aips-calendar-legend-color" style="background-color: #ff8c00;"></span>
+							<span><?php esc_html_e('Developing Stories', 'ai-post-scheduler'); ?></span>
+						</div>
 					</div>
 				</div>
 		
@@ -141,6 +149,7 @@ if (!defined('ABSPATH')) {
 					<p><strong><?php esc_html_e('Topic:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-topic"></span></p>
 					<p><strong><?php esc_html_e('Category:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-category"></span></p>
 					<p><strong><?php esc_html_e('Author:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-author"></span></p>
+					<p><strong><?php esc_html_e('Story Status:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-story-status"></span></p>
 				</div>
 			</div>
 			<div class="aips-calendar-modal-footer">
