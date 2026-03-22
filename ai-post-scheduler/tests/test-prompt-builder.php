@@ -530,11 +530,13 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$builder = new AIPS_Prompt_Builder();
 
 		// Create a test voice
-		$voice_service = new AIPS_Voices();
-		$voice_id = $voice_service->save(array(
+		$voices_repository = new AIPS_Voices_Repository();
+		$voice_id = $voices_repository->create(array(
 			'name' => 'Test Voice',
 			'title_prompt' => 'Test title prompt',
 			'content_instructions' => 'Test instructions',
+			'excerpt_instructions' => '',
+			'is_active' => 0,
 		));
 
 		$voice = $builder->get_voice($voice_id);
@@ -542,6 +544,6 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		$this->assertEquals('Test Voice', $voice->name);
 
 		// Clean up
-		$voice_service->delete($voice_id);
+		$voices_repository->delete($voice_id);
 	}
 }

@@ -6,13 +6,13 @@ if (!defined('ABSPATH')) {
 class AIPS_Seeder_Service {
 
     private $generator;
-    private $voices;
+    private $voices_repository;
     private $templates;
     private $scheduler;
 
     public function __construct() {
         $this->generator = new AIPS_Generator();
-        $this->voices = new AIPS_Voices();
+        $this->voices_repository = new AIPS_Voices_Repository();
         $this->templates = new AIPS_Templates();
         $this->scheduler = new AIPS_Scheduler();
     }
@@ -66,7 +66,7 @@ class AIPS_Seeder_Service {
         $failed = 0;
         foreach ($data as $item) {
             if (isset($item->name)) {
-                $result = $this->voices->save(array(
+                $result = $this->voices_repository->create(array(
                     'name' => sanitize_text_field($item->name),
                     'title_prompt' => isset($item->title_prompt) ? wp_kses_post($item->title_prompt) : 'Generate a catchy title.',
                     'content_instructions' => isset($item->content_instructions) ? wp_kses_post($item->content_instructions) : 'Write in a professional tone.',

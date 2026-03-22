@@ -92,11 +92,13 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 	 */
 	public function test_preview_with_voice() {
 		// Create a test voice
-		$voice_service = new AIPS_Voices();
-		$voice_id = $voice_service->save(array(
+		$voices_repository = new AIPS_Voices_Repository();
+		$voice_id = $voices_repository->create(array(
 			'name' => 'Test Voice',
 			'title_prompt' => 'Use a professional tone',
 			'content_instructions' => 'Write in a formal style',
+			'excerpt_instructions' => '',
+			'is_active' => 0,
 		));
 
 		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
@@ -119,7 +121,7 @@ class Test_AIPS_Templates_Controller_Preview extends WP_UnitTestCase {
 		$this->assertStringContainsString('formal style', $response['data']['prompts']['content']);
 		
 		// Clean up
-		$voice_service->delete($voice_id);
+		$voices_repository->delete($voice_id);
 	}
 
 	/**

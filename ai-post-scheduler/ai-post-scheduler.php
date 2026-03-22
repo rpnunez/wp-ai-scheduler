@@ -183,7 +183,7 @@ final class AI_Post_Scheduler {
             new AIPS_Settings();
             new AIPS_Onboarding_Wizard();
             new AIPS_Admin_Assets();
-            new AIPS_Voices();
+            new AIPS_Voices_Controller();
             new AIPS_Templates();
             new AIPS_Templates_Controller();
             new AIPS_History();
