@@ -35,6 +35,11 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	private $creation_method;
 
 	/**
+	 * @var array Dossier records attached to the author topic.
+	 */
+	private $dossier_records;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param object $author            Author object.
@@ -42,11 +47,12 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	 * @param string $expanded_context  Optional expanded context from similar topics.
 	 * @param string|null $creation_method Optional creation method.
 	 */
-	public function __construct($author, $topic, $expanded_context = '', $creation_method = null) {
-		$this->author = $author;
-		$this->topic = $topic;
+	public function __construct($author, $topic, $expanded_context = '', $creation_method = null, $dossier_records = null) {
+		$this->author           = $author;
+		$this->topic            = $topic;
 		$this->expanded_context = $expanded_context;
-		$this->creation_method = $creation_method;
+		$this->creation_method  = $creation_method;
+		$this->dossier_records  = is_array($dossier_records) ? $dossier_records : $this->load_topic_dossiers();
 	}
 
 	/**
@@ -280,6 +286,28 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get dossier records attached to this topic.
+	 *
+	 * @return array
+	 */
+	public function get_dossier_records() {
+		return $this->dossier_records;
+	}
+
+	/**
+	 * Get dossier-aware prompt preferences for topic generation.
+	 *
+	 * @return array<string,bool>
+	 */
+	public function get_dossier_prompt_preferences() {
+		return array(
+			'only_use_dossier_facts'        => false,
+			'mark_uncertain_claims'         => !empty($this->dossier_records),
+			'produce_knowledge_gap_section' => !empty($this->dossier_records),
+		);
+	}
+
+	/**
 	 * Get all context data as an array.
 	 *
 	 * @return array Context data.
@@ -302,6 +330,28 @@ class AIPS_Topic_Context implements AIPS_Generation_Context {
 			'article_structure_id' => $this->get_article_structure_id(),
 			'voice_tone' => isset($this->author->voice_tone) ? $this->author->voice_tone : '',
 			'writing_style' => isset($this->author->writing_style) ? $this->author->writing_style : '',
+			'dossier_records' => $this->get_dossier_records(),
+			'dossier_prompt_preferences' => $this->get_dossier_prompt_preferences(),
 		);
+	}
+
+	/**
+	 * Load dossier records attached to the current author topic.
+	 *
+	 * @return array
+	 */
+	private function load_topic_dossiers() {
+		if (empty($this->topic->id)) {
+			return array();
+		}
+
+		global $wpdb;
+		if (!is_object($wpdb) || !method_exists($wpdb, 'get_results')) {
+			return array();
+		}
+
+		$repo = new AIPS_Sources_Repository();
+
+		return $repo->get_dossiers_for_relation('author_topic', (int) $this->topic->id);
 	}
 }

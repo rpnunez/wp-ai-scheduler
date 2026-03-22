@@ -47,6 +47,11 @@ class AIPS_Generation_Context_Factory {
 	private $voices_repository;
 
 	/**
+	 * @var AIPS_Sources_Repository
+	 */
+	private $sources_repository;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -55,6 +60,7 @@ class AIPS_Generation_Context_Factory {
 		$this->author_topics_repository = new AIPS_Author_Topics_Repository();
 		$this->authors_repository = new AIPS_Authors_Repository();
 		$this->voices_repository = new AIPS_Voices_Repository();
+		$this->sources_repository = new AIPS_Sources_Repository();
 	}
 
 	/**
@@ -98,15 +104,17 @@ class AIPS_Generation_Context_Factory {
 
 			// Get topic string if available from topic_id
 			$topic_string = null;
+			$dossier_records = array();
 			if ($history->topic_id) {
 				$topic_data = $this->author_topics_repository->get_by_id($history->topic_id);
 				if ($topic_data) {
 					$topic_string = $topic_data->topic_title;
+					$dossier_records = $this->sources_repository->get_dossiers_for_relation('author_topic', (int) $history->topic_id);
 				}
 			}
 
 			// Create Template Context
-			$context['generation_context'] = new AIPS_Template_Context($template, $voice, $topic_string);
+			$context['generation_context'] = new AIPS_Template_Context($template, $voice, $topic_string, null, $dossier_records);
 			$context['context_type'] = 'template';
 			$context['context_name'] = $template->name;
 
@@ -123,7 +131,8 @@ class AIPS_Generation_Context_Factory {
 			}
 
 			// Create Topic Context
-			$context['generation_context'] = new AIPS_Topic_Context($author, $topic);
+			$dossier_records = $this->sources_repository->get_dossiers_for_relation('author_topic', (int) $topic->id);
+			$context['generation_context'] = new AIPS_Topic_Context($author, $topic, '', null, $dossier_records);
 			$context['context_type'] = 'topic';
 			$context['context_name'] = $author->name . ': ' . $topic->topic_title;
 

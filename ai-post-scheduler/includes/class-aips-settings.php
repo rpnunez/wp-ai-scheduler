@@ -1222,8 +1222,9 @@ class AIPS_Settings {
      * @return void
      */
     public function render_sources_page() {
-        $repo    = new AIPS_Sources_Repository();
-        $sources = $repo->get_all(false);
+        $repo     = new AIPS_Sources_Repository();
+        $sources  = $repo->get_all(false);
+        $dossiers = $repo->get_dossiers(array('limit' => 250));
 
         // Build source group name map: term_id => name (avoid per-row get_term calls in the template).
         $source_groups = get_terms(array(
@@ -1241,6 +1242,8 @@ class AIPS_Settings {
         // Build source → term IDs map: source_id => int[] (one query, not N queries).
         $all_source_ids = array_map(function ($s) { return (int) $s->id; }, $sources);
         $source_term_ids_map = $repo->get_term_ids_for_sources($all_source_ids);
+        $dossier_relation_types = $repo->get_dossier_relation_types();
+        $dossier_statuses       = $repo->get_dossier_verification_statuses();
 
         include AIPS_PLUGIN_DIR . 'templates/admin/sources.php';
     }

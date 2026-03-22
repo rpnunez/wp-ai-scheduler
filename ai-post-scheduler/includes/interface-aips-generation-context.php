@@ -166,6 +166,20 @@ interface AIPS_Generation_Context {
 	public function get_source_group_ids();
 
 	/**
+	 * Get dossier records attached to the editorial item that is being generated.
+	 *
+	 * @return array Array of dossier record objects.
+	 */
+	public function get_dossier_records();
+
+	/**
+	 * Get dossier-aware prompt preferences for this context.
+	 *
+	 * @return array<string,bool> Prompt preferences keyed by feature flag.
+	 */
+	public function get_dossier_prompt_preferences();
+
+	/**
 	 * Get all context data as an array for serialization/storage.
 	 *
 	 * @return array Context data array.

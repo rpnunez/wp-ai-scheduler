@@ -633,6 +633,12 @@ class AIPS_Admin_Assets {
                 'deleteFailed'      => __('Failed to delete source.', 'ai-post-scheduler'),
                 'toggleFailed'      => __('Failed to update source status.', 'ai-post-scheduler'),
                 'urlRequired'       => __('A URL is required.', 'ai-post-scheduler'),
+                'addDossier'        => __('Add Dossier Record', 'ai-post-scheduler'),
+                'editDossier'       => __('Edit Dossier Record', 'ai-post-scheduler'),
+                'saveDossier'       => __('Save Dossier Record', 'ai-post-scheduler'),
+                'relationIdRequired' => __('A related editorial record ID is required.', 'ai-post-scheduler'),
+                'deleteDossierConfirm' => __('Are you sure you want to delete this dossier record?', 'ai-post-scheduler'),
+                'deleteDossierFailed' => __('Failed to delete dossier record.', 'ai-post-scheduler'),
                 'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
                 'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
             ));

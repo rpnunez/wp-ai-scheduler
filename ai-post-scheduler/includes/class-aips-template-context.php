@@ -35,6 +35,16 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	private $creation_method;
 
 	/**
+	 * @var array Dossier records attached to this generation context.
+	 */
+	private $dossier_records;
+
+	/**
+	 * @var array Dossier-aware prompt preferences for this template.
+	 */
+	private $dossier_prompt_preferences;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param object      $template Template object.
@@ -42,11 +52,20 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	 * @param string|null $topic    Optional topic string.
 	 * @param string|null $creation_method Optional creation method.
 	 */
-	public function __construct($template, $voice = null, $topic = null, $creation_method = null) {
-		$this->template = $template;
-		$this->voice = $voice;
-		$this->topic = $topic;
-		$this->creation_method = $creation_method;
+	public function __construct($template, $voice = null, $topic = null, $creation_method = null, $dossier_records = array(), $dossier_prompt_preferences = array()) {
+		$this->template                  = $template;
+		$this->voice                     = $voice;
+		$this->topic                     = $topic;
+		$this->creation_method           = $creation_method;
+		$this->dossier_records           = is_array($dossier_records) ? $dossier_records : array();
+		$this->dossier_prompt_preferences = wp_parse_args(
+			$dossier_prompt_preferences,
+			array(
+				'only_use_dossier_facts'      => !empty($template->dossier_only_facts),
+				'mark_uncertain_claims'       => !empty($template->dossier_mark_uncertain_claims),
+				'produce_knowledge_gap_section' => !empty($template->dossier_include_knowledge_gaps),
+			)
+		);
 	}
 
 	/**
@@ -257,6 +276,24 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 	}
 
 	/**
+	 * Get dossier records attached to this context.
+	 *
+	 * @return array
+	 */
+	public function get_dossier_records() {
+		return $this->dossier_records;
+	}
+
+	/**
+	 * Get dossier-aware prompt preferences.
+	 *
+	 * @return array<string,bool>
+	 */
+	public function get_dossier_prompt_preferences() {
+		return $this->dossier_prompt_preferences;
+	}
+
+	/**
 	 * Get all context data as an array.
 	 *
 	 * @return array Context data.
@@ -285,6 +322,12 @@ class AIPS_Template_Context implements AIPS_Generation_Context {
 		if ($this->get_article_structure_id()) {
 			$data['article_structure_id'] = $this->get_article_structure_id();
 		}
+
+		if (!empty($this->dossier_records)) {
+			$data['dossier_records'] = $this->dossier_records;
+		}
+
+		$data['dossier_prompt_preferences'] = $this->get_dossier_prompt_preferences();
 
 		return $data;
 	}

@@ -135,10 +135,13 @@ class AIPS_Template_Repository {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'dossier_only_facts' => isset($data['dossier_only_facts']) ? (int) $data['dossier_only_facts'] : 0,
+            'dossier_mark_uncertain_claims' => isset($data['dossier_mark_uncertain_claims']) ? (int) $data['dossier_mark_uncertain_claims'] : 0,
+            'dossier_include_knowledge_gaps' => isset($data['dossier_include_knowledge_gaps']) ? (int) $data['dossier_include_knowledge_gaps'] : 0,
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d');
+        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%d', '%d', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -236,6 +239,21 @@ class AIPS_Template_Repository {
         if (isset($data['source_group_ids'])) {
             $update_data['source_group_ids'] = sanitize_text_field($data['source_group_ids']);
             $format[] = '%s';
+        }
+
+        if (isset($data['dossier_only_facts'])) {
+            $update_data['dossier_only_facts'] = (int) $data['dossier_only_facts'];
+            $format[] = '%d';
+        }
+
+        if (isset($data['dossier_mark_uncertain_claims'])) {
+            $update_data['dossier_mark_uncertain_claims'] = (int) $data['dossier_mark_uncertain_claims'];
+            $format[] = '%d';
+        }
+
+        if (isset($data['dossier_include_knowledge_gaps'])) {
+            $update_data['dossier_include_knowledge_gaps'] = (int) $data['dossier_include_knowledge_gaps'];
+            $format[] = '%d';
         }
         
         if (isset($data['is_active'])) {

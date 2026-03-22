@@ -29,6 +29,11 @@ class AIPS_Post_Review_Repository {
 	 * @var wpdb WordPress database abstraction object
 	 */
 	private $wpdb;
+
+	/**
+	 * @var AIPS_Sources_Repository
+	 */
+	private $sources_repository;
 	
 	/**
 	 * Initialize the repository.
@@ -37,6 +42,7 @@ class AIPS_Post_Review_Repository {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_name = $wpdb->prefix . 'aips_history';
+		$this->sources_repository = new AIPS_Sources_Repository();
 	}
 	
 	/**
@@ -148,6 +154,29 @@ class AIPS_Post_Review_Repository {
 			);
 		}
 		
+		$topic_ids = array();
+		foreach ($results as $result) {
+			if (!empty($result->topic_id)) {
+				$topic_ids[] = (int) $result->topic_id;
+			}
+		}
+
+		$checklist_map = $this->sources_repository->get_dossier_checklist_by_author_topic_ids($topic_ids);
+
+		foreach ($results as $result) {
+			$result->dossier_checklist = array(
+				'dossier_count' => 0,
+				'citation_required_count' => 0,
+				'unverified_count' => 0,
+				'needs_attention' => false,
+				'summary' => __('No dossier items linked to this draft.', 'ai-post-scheduler'),
+			);
+
+			if (!empty($result->topic_id) && isset($checklist_map[(int) $result->topic_id])) {
+				$result->dossier_checklist = $checklist_map[(int) $result->topic_id];
+			}
+		}
+
 		return array(
 			'items' => $results,
 			'total' => (int) $total,

@@ -48,6 +48,9 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'dossier_only_facts' => isset($_POST['dossier_only_facts']) ? 1 : 0,
+            'dossier_mark_uncertain_claims' => isset($_POST['dossier_mark_uncertain_claims']) ? 1 : 0,
+            'dossier_include_knowledge_gaps' => isset($_POST['dossier_include_knowledge_gaps']) ? 1 : 0,
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
@@ -150,6 +153,9 @@ class AIPS_Templates_Controller {
             'post_author' => $template->post_author,
             'include_sources' => isset($template->include_sources) ? $template->include_sources : 0,
             'source_group_ids' => isset($template->source_group_ids) ? $template->source_group_ids : wp_json_encode(array()),
+            'dossier_only_facts' => isset($template->dossier_only_facts) ? $template->dossier_only_facts : 0,
+            'dossier_mark_uncertain_claims' => isset($template->dossier_mark_uncertain_claims) ? $template->dossier_mark_uncertain_claims : 0,
+            'dossier_include_knowledge_gaps' => isset($template->dossier_include_knowledge_gaps) ? $template->dossier_include_knowledge_gaps : 0,
             'is_active' => $template->is_active,
         );
 
@@ -193,6 +199,13 @@ class AIPS_Templates_Controller {
             'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
+            'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+            'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
+                ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
+                : wp_json_encode(array()),
+            'dossier_only_facts' => isset($_POST['dossier_only_facts']) ? 1 : 0,
+            'dossier_mark_uncertain_claims' => isset($_POST['dossier_mark_uncertain_claims']) ? 1 : 0,
+            'dossier_include_knowledge_gaps' => isset($_POST['dossier_include_knowledge_gaps']) ? 1 : 0,
         );
 
         if (empty($data['prompt_template'])) {
@@ -257,6 +270,9 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'dossier_only_facts' => isset($_POST['dossier_only_facts']) ? 1 : 0,
+            'dossier_mark_uncertain_claims' => isset($_POST['dossier_mark_uncertain_claims']) ? 1 : 0,
+            'dossier_include_knowledge_gaps' => isset($_POST['dossier_include_knowledge_gaps']) ? 1 : 0,
         );
 
         if (empty($template_data->prompt_template)) {

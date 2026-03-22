@@ -291,6 +291,62 @@ INSTRUCTIONS;
     }
 
     /**
+     * Build an editorial dossier block for inclusion in AI prompts.
+     *
+     * @param array $dossier_records Dossier records associated with the generation context.
+     * @param array $preferences     Dossier prompt preferences.
+     * @return string Formatted dossier block or empty string.
+     */
+    public function build_dossier_block(array $dossier_records, array $preferences = array()) {
+        if (empty($dossier_records)) {
+            return '';
+        }
+
+        $preferences = wp_parse_args(
+            $preferences,
+            array(
+                'only_use_dossier_facts'        => false,
+                'mark_uncertain_claims'         => false,
+                'produce_knowledge_gap_section' => false,
+            )
+        );
+
+        $block = "Editorial dossier (formal research and sourcing record):\n";
+
+        if (!empty($preferences['only_use_dossier_facts'])) {
+            $block .= "- Use only the factual claims grounded in the dossier entries below.\n";
+            $block .= "- Do not introduce new factual assertions that are not supported by this dossier.\n";
+        }
+
+        if (!empty($preferences['mark_uncertain_claims'])) {
+            $block .= "- Clearly label any claim that depends on pending, disputed, or low-confidence dossier material as uncertain.\n";
+        }
+
+        if (!empty($preferences['produce_knowledge_gap_section'])) {
+            $block .= "- Include a short \"What we know / What we don't know\" section based on the dossier.\n";
+        }
+
+        foreach ($dossier_records as $record) {
+            $summary = !empty($record->quote_summary) ? trim($record->quote_summary) : __('No summary provided.', 'ai-post-scheduler');
+            $notes   = !empty($record->editor_notes) ? trim($record->editor_notes) : '';
+
+            $block .= "\n";
+            $block .= '- Source URL: ' . $record->source_url . "\n";
+            $block .= '- Source type: ' . (!empty($record->source_type) ? $record->source_type : __('General', 'ai-post-scheduler')) . "\n";
+            $block .= '- Verification status: ' . $record->verification_status . "\n";
+            $block .= '- Trust/confidence rating: ' . intval($record->trust_rating) . "/5\n";
+            $block .= '- Citation required: ' . (!empty($record->citation_required) ? 'yes' : 'no') . "\n";
+            $block .= '- Summary / quote: ' . $summary . "\n";
+
+            if (!empty($notes)) {
+                $block .= '- Editor notes: ' . $notes . "\n";
+            }
+        }
+
+        return $block . "\n";
+    }
+
+    /**
      * Build all prompts for a template configuration.
      *
      * Generates content, title, excerpt, and image prompts for a given template
@@ -348,6 +404,11 @@ INSTRUCTIONS;
                 'article_structure' => $structure_name,
                 'sample_topic' => $sample_topic,
                 'include_sources' => !empty($template_data->include_sources),
+                'dossier_prompt_preferences' => array(
+                    'only_use_dossier_facts' => !empty($template_data->dossier_only_facts),
+                    'mark_uncertain_claims' => !empty($template_data->dossier_mark_uncertain_claims),
+                    'produce_knowledge_gap_section' => !empty($template_data->dossier_include_knowledge_gaps),
+                ),
             ),
         );
     }
@@ -440,6 +501,8 @@ INSTRUCTIONS;
     public function inject_sources_into_content_prompt($prompt, $subject, $topic = null) {
         $include_sources = false;
         $group_ids       = array();
+        $dossier_records = array();
+        $dossier_preferences = array();
 
         // Context-based flow implements the generation context interface.
         if ($subject instanceof AIPS_Generation_Context) {
@@ -447,6 +510,9 @@ INSTRUCTIONS;
                 $include_sources = true;
                 $group_ids       = $subject->get_source_group_ids();
             }
+
+            $dossier_records     = $subject->get_dossier_records();
+            $dossier_preferences = $subject->get_dossier_prompt_preferences();
         } else {
             // Legacy template object flow.
             if (!empty($subject) && !empty($subject->include_sources)) {
@@ -458,16 +524,26 @@ INSTRUCTIONS;
             }
         }
 
-        if (!$include_sources) {
+        $prefix = '';
+
+        if ($include_sources) {
+            $sources_block = $this->build_sources_block($group_ids);
+            if (!empty($sources_block)) {
+                $prefix .= $sources_block;
+            }
+        }
+
+        if (!empty($dossier_records)) {
+            $dossier_block = $this->build_dossier_block($dossier_records, $dossier_preferences);
+            if (!empty($dossier_block)) {
+                $prefix .= $dossier_block;
+            }
+        }
+
+        if (empty($prefix)) {
             return $prompt;
         }
 
-        $sources_block = $this->build_sources_block($group_ids);
-
-        if (empty($sources_block)) {
-            return $prompt;
-        }
-
-        return $sources_block . $prompt;
+        return $prefix . $prompt;
     }
 }

@@ -42,6 +42,9 @@ class AIPS_Sources_Controller {
 		add_action('wp_ajax_aips_get_source_groups', array($this, 'ajax_get_source_groups'));
 		add_action('wp_ajax_aips_save_source_group', array($this, 'ajax_save_source_group'));
 		add_action('wp_ajax_aips_delete_source_group', array($this, 'ajax_delete_source_group'));
+		add_action('wp_ajax_aips_get_source_dossiers', array($this, 'ajax_get_source_dossiers'));
+		add_action('wp_ajax_aips_save_source_dossier', array($this, 'ajax_save_source_dossier'));
+		add_action('wp_ajax_aips_delete_source_dossier', array($this, 'ajax_delete_source_dossier'));
 	}
 
 	/**
@@ -331,5 +334,118 @@ class AIPS_Sources_Controller {
 		}
 
 		wp_send_json_success(array('message' => __('Source group deleted.', 'ai-post-scheduler')));
+	}
+
+	/**
+	 * Return dossier records for the editorial workflow UI.
+	 *
+	 * @return void Sends JSON response.
+	 */
+	public function ajax_get_source_dossiers() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$dossiers = $this->repo->get_dossiers(array('limit' => 250));
+
+		wp_send_json_success(array('dossiers' => $dossiers));
+	}
+
+	/**
+	 * Create or update an editorial dossier record.
+	 *
+	 * @return void Sends JSON response.
+	 */
+	public function ajax_save_source_dossier() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$dossier_id          = isset($_POST['dossier_id']) ? absint($_POST['dossier_id']) : 0;
+		$source_id           = isset($_POST['source_id']) ? absint($_POST['source_id']) : 0;
+		$relation_type       = isset($_POST['relation_type']) ? sanitize_key(wp_unslash($_POST['relation_type'])) : 'author_topic';
+		$relation_id         = isset($_POST['relation_id']) ? absint($_POST['relation_id']) : 0;
+		$source_url          = isset($_POST['source_url']) ? esc_url_raw(wp_unslash($_POST['source_url'])) : '';
+		$source_type         = isset($_POST['source_type']) ? sanitize_text_field(wp_unslash($_POST['source_type'])) : '';
+		$quote_summary       = isset($_POST['quote_summary']) ? sanitize_textarea_field(wp_unslash($_POST['quote_summary'])) : '';
+		$trust_rating        = isset($_POST['trust_rating']) ? absint($_POST['trust_rating']) : 3;
+		$citation_required   = isset($_POST['citation_required']) ? 1 : 0;
+		$verification_status = isset($_POST['verification_status']) ? sanitize_key(wp_unslash($_POST['verification_status'])) : 'pending';
+		$editor_notes        = isset($_POST['editor_notes']) ? sanitize_textarea_field(wp_unslash($_POST['editor_notes'])) : '';
+
+		if (empty($relation_id)) {
+			wp_send_json_error(array('message' => __('A related editorial record ID is required.', 'ai-post-scheduler')));
+		}
+
+		if (empty($source_url) || !filter_var($source_url, FILTER_VALIDATE_URL)) {
+			wp_send_json_error(array('message' => __('Please enter a valid source URL.', 'ai-post-scheduler')));
+		}
+
+		$data = array(
+			'source_id'           => $source_id,
+			'relation_type'       => $relation_type,
+			'relation_id'         => $relation_id,
+			'source_url'          => $source_url,
+			'source_type'         => $source_type,
+			'quote_summary'       => $quote_summary,
+			'trust_rating'        => $trust_rating,
+			'citation_required'   => $citation_required,
+			'verification_status' => $verification_status,
+			'editor_notes'        => $editor_notes,
+		);
+
+		if ($dossier_id > 0) {
+			$result = $this->repo->update_dossier($dossier_id, $data);
+			if (!$result) {
+				wp_send_json_error(array('message' => __('Failed to update dossier record.', 'ai-post-scheduler')));
+			}
+
+			wp_send_json_success(
+				array(
+					'message' => __('Dossier record updated.', 'ai-post-scheduler'),
+					'dossier' => $this->repo->get_dossier_by_id($dossier_id),
+				)
+			);
+		}
+
+		$new_id = $this->repo->create_dossier($data);
+		if (!$new_id) {
+			wp_send_json_error(array('message' => __('Failed to create dossier record.', 'ai-post-scheduler')));
+		}
+
+		wp_send_json_success(
+			array(
+				'message' => __('Dossier record created.', 'ai-post-scheduler'),
+				'dossier' => $this->repo->get_dossier_by_id($new_id),
+			)
+		);
+	}
+
+	/**
+	 * Delete an editorial dossier record.
+	 *
+	 * @return void Sends JSON response.
+	 */
+	public function ajax_delete_source_dossier() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$dossier_id = isset($_POST['dossier_id']) ? absint($_POST['dossier_id']) : 0;
+		if (!$dossier_id) {
+			wp_send_json_error(array('message' => __('Invalid dossier ID.', 'ai-post-scheduler')));
+		}
+
+		if (!$this->repo->delete_dossier($dossier_id)) {
+			wp_send_json_error(array('message' => __('Failed to delete dossier record.', 'ai-post-scheduler')));
+		}
+
+		wp_send_json_success(array('message' => __('Dossier record deleted.', 'ai-post-scheduler')));
 	}
 }

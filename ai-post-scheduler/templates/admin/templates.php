@@ -393,6 +393,25 @@ if (!defined('ABSPATH')) {
                                 <?php endif; ?>
                             </div>
                         </div>
+
+                        <div class="aips-form-row">
+                            <label><?php esc_html_e('Dossier-Aware Editorial Rules', 'ai-post-scheduler'); ?></label>
+                            <div class="aips-checkbox-group">
+                                <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+                                    <input type="checkbox" id="dossier_only_facts" name="dossier_only_facts" value="1">
+                                    <?php esc_html_e('Only use dossier facts', 'ai-post-scheduler'); ?>
+                                </label>
+                                <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+                                    <input type="checkbox" id="dossier_mark_uncertain_claims" name="dossier_mark_uncertain_claims" value="1">
+                                    <?php esc_html_e('Mark uncertain claims', 'ai-post-scheduler'); ?>
+                                </label>
+                                <label class="aips-checkbox-label" style="display:block; margin-bottom:4px;">
+                                    <input type="checkbox" id="dossier_include_knowledge_gaps" name="dossier_include_knowledge_gaps" value="1">
+                                    <?php esc_html_e('Include “What we know / What we don’t know” section', 'ai-post-scheduler'); ?>
+                                </label>
+                            </div>
+                            <p class="description"><?php esc_html_e('These instructions are applied whenever dossier records are attached to the generation context, making research and sourcing a formal step before content generation.', 'ai-post-scheduler'); ?></p>
+                        </div>
                     </div>
                     
                     <!-- Step 4: Featured Image -->
