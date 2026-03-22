@@ -43,3 +43,9 @@
 
 **Learning:** Empty states for searches across different admin pages had inconsistent classes (`dashicons` vs `aips-empty-state-icon`, missing `aips-empty-state-actions`), and PHP-driven clear buttons lacked the standardized `.aips-btn-secondary` class.
 **Action:** Ensured `generated-posts.php` and `post-review.php` have the correct classes on their search clear links, and applied the exact `.aips-empty-state*` class hierarchy to all `*-no-results` empty states.
+
+## 2024-03-22 - Wrap search bar in standard `.aips-filter-right` container on the Planner page
+
+Learning: Search bars on admin interface pages without the proper `.aips-filter-right` container suffer from poor layout alignment and visual inconsistency with other pages.
+
+Action: When implementing search bars in admin interfaces, always wrap them in an `<div class="aips-filter-right">` to ensure standardized layout and spacing.
