@@ -57,3 +57,8 @@
 **Vulnerability:** Potential SQL Injection in `AIPS_DB_Manager::drop_tables()`, `truncate_tables()`, and `backup_data()` due to unescaped string interpolation of table names.
 **Learning:** While the table names were retrieved internally from a static array, directly interpolating them into SQL queries (e.g. `$wpdb->query("DROP TABLE IF EXISTS $table")`) bypasses WordPress's recommended database preparation patterns and creates a latent risk if the table source ever becomes dynamic or user-influenced.
 **Prevention:** Use `$wpdb->prepare()` for parameters and use `esc_sql()` wrapped in backticks for table names/identifiers when constructing dynamic queries.
+
+## 2024-05-24 - [Output Escaping on Generated Links in Onboarding Wizard]
+**Vulnerability:** Unescaped usage of `get_permalink()` and `get_edit_post_link()` in JSON success response within `AIPS_Onboarding_Wizard::ajax_generate_post()`.
+**Learning:** Returning unescaped URLs within JSON payloads, even if they originate from core WordPress functions, violates Defense in Depth and can be a potential risk if they contain malicious characters or javascript: URIs that an unsuspecting frontend might evaluate.
+**Prevention:** Always use `esc_url_raw()` to escape dynamically generated URLs being returned as data within API or JSON/AJAX responses. Use `esc_url()` for direct HTML output.
