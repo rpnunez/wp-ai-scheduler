@@ -26,6 +26,7 @@ class AIPS_Dashboard_Controller {
         $template_repo = new AIPS_Template_Repository();
         $post_review_repo = new AIPS_Post_Review_Repository();
         $author_topics_repo = new AIPS_Author_Topics_Repository();
+        $story_budget_repo = new AIPS_Story_Budget_Repository();
 
         // Get stats
         $history_stats = $history_repo->get_stats();
@@ -47,6 +48,7 @@ class AIPS_Dashboard_Controller {
 
         // Get upcoming schedules
         $upcoming = $schedule_repo->get_upcoming(5);
+        $upcoming_story_budget = $story_budget_repo->get_dashboard_window(72, 6);
 
         include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
     }

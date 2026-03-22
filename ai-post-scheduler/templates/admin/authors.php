@@ -735,6 +735,7 @@ $site_ctx = AIPS_Site_Context::get();
 <script type="text/html" id="aips-tmpl-topic-actions-approved">
 <div class="cell-actions">
     <button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="{{id}}">{{generateLabel}}</button>
+    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{budgetUrl}}">{{budgetLabel}}</a>
     <button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
 </div>
 </script>

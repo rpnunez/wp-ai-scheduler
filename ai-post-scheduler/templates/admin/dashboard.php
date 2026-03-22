@@ -19,9 +19,9 @@ if (!defined('ABSPATH')) {
                     <p class="aips-page-description"><?php esc_html_e('Overview of your AI content generation activity and quick actions.', 'ai-post-scheduler'); ?></p>
                 </div>
                 <div class="aips-page-actions">
-                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('templates')); ?>" class="aips-btn aips-btn-primary">
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('story_budget')); ?>" class="aips-btn aips-btn-primary">
                         <span class="dashicons dashicons-plus-alt"></span>
-                        <?php esc_html_e('Create Template', 'ai-post-scheduler'); ?>
+                        <?php esc_html_e('Create Budget Item', 'ai-post-scheduler'); ?>
                     </a>
                 </div>
             </div>
@@ -66,6 +66,14 @@ if (!defined('ABSPATH')) {
                 <div class="aips-summary-content">
                     <span class="aips-summary-number"><?php echo esc_html($topics_in_queue); ?></span>
                     <span class="aips-summary-label"><?php esc_html_e('Topics in Queue', 'ai-post-scheduler'); ?></span>
+                </div>
+            </a>
+
+            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('story_budget')); ?>" class="aips-summary-card" style="text-decoration: none; color: inherit;">
+                <div class="dashicons dashicons-feedback aips-summary-icon" aria-hidden="true"></div>
+                <div class="aips-summary-content">
+                    <span class="aips-summary-number"><?php echo esc_html(count($upcoming_story_budget)); ?></span>
+                    <span class="aips-summary-label"><?php esc_html_e('Budget Next 72h', 'ai-post-scheduler'); ?></span>
                 </div>
             </a>
             
@@ -199,6 +207,51 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
         </div>
+
+        <div class="aips-content-panel">
+            <div class="aips-panel-header">
+                <h2 class="aips-panel-title"><?php esc_html_e('Editorial Budget: Next 24–72 Hours', 'ai-post-scheduler'); ?></h2>
+                <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('story_budget')); ?>" class="aips-btn aips-btn-ghost aips-btn-sm">
+                    <?php esc_html_e('Open Story Budget', 'ai-post-scheduler'); ?> &rarr;
+                </a>
+            </div>
+            <div class="aips-panel-body <?php echo empty($upcoming_story_budget) ? '' : 'no-padding'; ?>">
+                <?php if (!empty($upcoming_story_budget)): ?>
+                <table class="aips-table">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Window', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Assignments', 'ai-post-scheduler'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($upcoming_story_budget as $budget_item): ?>
+                        <tr>
+                            <td>
+                                <div class="cell-primary"><?php echo esc_html($budget_item->title); ?></div>
+                                <div class="cell-meta"><?php echo esc_html($budget_item->beat ?: __('No beat', 'ai-post-scheduler')); ?></div>
+                            </td>
+                            <td><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($budget_item->planning_date))); ?></td>
+                            <td><span class="aips-badge aips-badge-info"><?php echo esc_html(ucwords(str_replace('_', ' ', $budget_item->status))); ?></span></td>
+                            <td>
+                                <div><?php echo esc_html($budget_item->assigned_writer_name ?: __('No writer', 'ai-post-scheduler')); ?></div>
+                                <div class="cell-meta"><?php echo esc_html($budget_item->assigned_editor_name ?: __('No editor', 'ai-post-scheduler')); ?></div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php else: ?>
+                <div class="aips-empty-state">
+                    <div class="dashicons dashicons-feedback aips-empty-state-icon" aria-hidden="true"></div>
+                    <h3 class="aips-empty-state-title"><?php esc_html_e('No Budget Items in the Next 72 Hours', 'ai-post-scheduler'); ?></h3>
+                    <p class="aips-empty-state-description"><?php esc_html_e('Seed the editorial plan from research, approved topics, or manual entries to keep the next publishing window visible.', 'ai-post-scheduler'); ?></p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
         
         <!-- Quick Actions Card -->
         <div class="aips-content-panel">
@@ -222,6 +275,10 @@ if (!defined('ABSPATH')) {
                     <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('authors')); ?>" class="aips-btn aips-btn-secondary">
                         <span class="dashicons dashicons-admin-users"></span>
                         <?php esc_html_e('Manage Authors', 'ai-post-scheduler'); ?>
+                    </a>
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('story_budget')); ?>" class="aips-btn aips-btn-secondary">
+                        <span class="dashicons dashicons-feedback"></span>
+                        <?php esc_html_e('Manage Story Budget', 'ai-post-scheduler'); ?>
                     </a>
                     <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('settings')); ?>" class="aips-btn aips-btn-secondary">
                         <span class="dashicons dashicons-admin-generic"></span>

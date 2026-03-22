@@ -207,6 +207,8 @@ class AIPS_Admin_Assets {
             'authorDeleted' => __('Author deleted successfully.', 'ai-post-scheduler'),
             'topicsGenerated' => __('Topics generated successfully.', 'ai-post-scheduler'),
             'postGenerated' => __('Post generated successfully.', 'ai-post-scheduler'),
+            'createBudgetItem' => __('Create Budget Item', 'ai-post-scheduler'),
+            'storyBudgetBaseUrl' => AIPS_Admin_Menu_Helper::get_page_url('story_budget'),
             'generateTopicsNow' => __('Generate Topics Now', 'ai-post-scheduler'),
             'generatePostNow' => __('Generate Post Now', 'ai-post-scheduler'),
             'errorLoading' => __('Error loading author data.', 'ai-post-scheduler'),
@@ -386,6 +388,8 @@ class AIPS_Admin_Assets {
             'researchError' => __('An error occurred during research.', 'ai-post-scheduler'),
             'schedulingError' => __('An error occurred during scheduling.', 'ai-post-scheduler'),
             'delete' => __('Delete', 'ai-post-scheduler'),
+            'createBudgetItem' => __('Create Budget Item', 'ai-post-scheduler'),
+            'storyBudgetBaseUrl' => AIPS_Admin_Menu_Helper::get_page_url('story_budget'),
             'generateIdeas' => __('Generate Ideas', 'ai-post-scheduler'),
             'generatingIdeas' => __('Generating...', 'ai-post-scheduler'),
         ));
