@@ -104,6 +104,7 @@
                 html += '<div class="topic-item">';
                 html += '<input type="checkbox" class="topic-checkbox" checked>';
                 html += '<input type="text" class="topic-text-input" value="' + safeTopic + '" aria-label="Edit topic title">';
+                html += '<button type="button" class="aips-remove-topic-btn" aria-label="Remove Topic" title="Remove Topic"><span class="dashicons dashicons-dismiss"></span></button>';
                 html += '</div>';
             });
 
@@ -114,6 +115,31 @@
             }
 
             window.AIPS.updateSelectionCount();
+        },
+
+        /**
+         * Remove a single topic row from the list.
+         *
+         * Bound to the `click` event on `.aips-remove-topic-btn`.
+         * Removes the row, updates the selection count, and hides the panel if no topics remain.
+         *
+         * @param {Event} e - Click event from `.aips-remove-topic-btn`.
+         */
+        removeTopic: function(e) {
+            e.preventDefault();
+            var $item = $(this).closest('.topic-item');
+
+            $item.fadeOut(200, function() {
+                $(this).remove();
+                window.AIPS.updateSelectionCount();
+
+                // Hide panel if list is completely empty
+                if ($('#topics-list .topic-item').length === 0) {
+                    $('#planner-results').slideUp();
+                    $('#planner-niche').val('');
+                    $('#planner-topic-search').val('');
+                }
+            });
         },
 
         /**
@@ -424,6 +450,7 @@
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('click', '#planner-topic-search-clear', window.AIPS.clearTopicSearch);
+        $(document).on('click', '.aips-remove-topic-btn', window.AIPS.removeTopic);
     });
 
 })(jQuery);

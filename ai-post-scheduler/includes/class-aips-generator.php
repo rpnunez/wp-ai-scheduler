@@ -42,6 +42,10 @@ class AIPS_Generator {
     private $structure_manager;
     private $post_manager;
     private $prompt_builder;
+    private $post_content_prompt_builder;
+    private $post_title_prompt_builder;
+    private $post_excerpt_prompt_builder;
+    private $post_featured_image_prompt_builder;
 
     /**
      * @var AIPS_Markdown_Parser Markdown parser
@@ -84,6 +88,10 @@ class AIPS_Generator {
         $this->history_service    = $history_service ?: new AIPS_History_Service();
         $this->history_repository = new AIPS_History_Repository();
         $this->prompt_builder     = $prompt_builder ?: new AIPS_Prompt_Builder( $this->template_processor, $this->structure_manager );
+        $this->post_content_prompt_builder = $this->prompt_builder->get_post_content_builder();
+        $this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
+        $this->post_excerpt_prompt_builder = $this->prompt_builder->get_post_excerpt_builder();
+        $this->post_featured_image_prompt_builder = $this->prompt_builder->get_post_featured_image_builder();
 
         if ( $markdown_parser ) {
             $this->markdown_parser = $markdown_parser;
@@ -304,9 +312,8 @@ class AIPS_Generator {
     /**
      * Generate a post title based on the generated content, template, and optional voice/topic.
      *
-     * Delegates title prompt construction to AIPS_Prompt_Builder for consistency
-     * and to follow the Single Responsibility Principle. The Prompt Builder handles
-     * all the logic for building prompts (title, excerpt, content).
+     * Delegates title prompt construction to AIPS_Prompt_Builder_Post_Title for consistency
+     * and to follow the Single Responsibility Principle.
      *
      * @param object      $template Template object containing prompts and settings.
      * @param object|null $voice    Optional voice object with overrides.
@@ -325,6 +332,9 @@ class AIPS_Generator {
     /**
      * Generate a post title from a generation context.
      *
+     * Delegates title prompt construction to AIPS_Prompt_Builder_Post_Title.
+     * Strips surrounding quotes from the AI output before returning.
+     *
      * @param AIPS_Generation_Context $context      Generation context.
      * @param string                  $content      Generated article content used as context.
      * @param array                   $ai_variables Optional resolved AI variables.
@@ -332,8 +342,8 @@ class AIPS_Generator {
      * @return string|WP_Error Generated title string or WP_Error on failure.
      */
     private function generate_title_from_context($context, $content = '', $ai_variables = array(), $options = array()) {
-        // Delegate prompt building to Prompt Builder
-        $prompt = $this->prompt_builder->build_title_prompt($context, null, null, $content);
+        // Delegate prompt building to AIPS_Prompt_Builder_Post_Title
+        $prompt = $this->post_title_prompt_builder->build($context, null, null, $content);
 
         // Set token limit for title generation
         $options['max_tokens'] = 100;
@@ -356,7 +366,7 @@ class AIPS_Generator {
     /**
      * Generate an excerpt (short summary) for a post.
      *
-     * Delegates excerpt prompt construction to AIPS_Prompt_Builder for consistency.
+     * Delegates excerpt prompt construction to AIPS_Prompt_Builder_Post_Excerpt.
      * Ensures the excerpt length is within a reasonable limit and removes
      * surrounding quotes from the AI output.
      *
@@ -368,8 +378,8 @@ class AIPS_Generator {
      * @return string Short excerpt string (max 160 chars). Empty string on failure.
      */
     public function generate_excerpt($title, $content, $voice = null, $topic = null, $options = array()) {
-        // Delegate prompt building to Prompt Builder
-        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice, $topic);
+        // Delegate prompt building to AIPS_Prompt_Builder_Post_Excerpt
+        $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic);
 
         // Set token limit for excerpt generation
         //$options['max_tokens'] = 150;
@@ -409,7 +419,7 @@ class AIPS_Generator {
         $topic_str = $context->get_topic();
 
         // Delegate prompt building to Prompt Builder
-        $excerpt_prompt = $this->prompt_builder->build_excerpt_prompt($title, $content, $voice_obj, $topic_str);
+        $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str);
 
         // Set token limit for excerpt generation
         $options['max_tokens'] = 150;
@@ -438,7 +448,7 @@ class AIPS_Generator {
      */
     public function generate_preview($context) {
         // Build the full content prompt from context
-        $content_prompt = $this->prompt_builder->build_content_prompt($context);
+        $content_prompt = $this->post_content_prompt_builder->build($context);
 
         // Build contextual instructions
         $content_context = $this->prompt_builder->build_content_context($context);
@@ -483,10 +493,7 @@ class AIPS_Generator {
         // Handle image preview data (not generation)
         if ($context->should_generate_featured_image()) {
             if ($context->get_featured_image_source() === 'ai_prompt') {
-                $image_prompt = $context->get_image_prompt();
-                $topic_str = $context->get_topic();
-                $processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
-                $result['image_prompt'] = $processed_image_prompt;
+                $result['image_prompt'] = $this->post_featured_image_prompt_builder->build($context);
             } elseif ($context->get_featured_image_source() === 'unsplash') {
                 $keywords = $context->get_unsplash_keywords();
                 $topic_str = $context->get_topic();
@@ -573,7 +580,7 @@ class AIPS_Generator {
         }
 
         // Build the full content prompt from context
-        $content_prompt = $this->prompt_builder->build_content_prompt($context);
+        $content_prompt = $this->post_content_prompt_builder->build($context);
 
         if ($this->current_history) {
             $this->current_history->record(
@@ -828,9 +835,7 @@ class AIPS_Generator {
                 $component_success = true;
             }
         } elseif ($context->get_image_prompt()) {
-            $image_prompt = $context->get_image_prompt();
-            $topic_str = $context->get_topic();
-            $processed_image_prompt = $this->template_processor->process($image_prompt, $topic_str);
+            $processed_image_prompt = $this->post_featured_image_prompt_builder->build($context);
 
             // Log AI request for featured image
             if ($this->current_history) {
