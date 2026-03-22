@@ -249,6 +249,8 @@
                         niche: esc(topic.niche),
                         keywords_html: keywordsHtml,
                         researched_at: esc(new Date(topic.researched_at).toLocaleDateString()),
+                        budget_url: esc(aipsResearchL10n.storyBudgetBaseUrl + '&source_research_id=' + encodeURIComponent(topic.id)),
+                        budget_label: esc(aipsResearchL10n.createBudgetItem || 'Create Budget Item'),
                         delete_label: esc(aipsResearchL10n.delete)
                     });
                 }).join('');

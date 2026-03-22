@@ -115,6 +115,15 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Story Budget', 'ai-post-scheduler'),
+            __('Story Budget', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-story-budget',
+            array($this, 'render_story_budget_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Schedule', 'ai-post-scheduler'),
             __('Schedule', 'ai-post-scheduler'),
             'manage_options',
@@ -1117,6 +1126,16 @@ class AIPS_Settings {
      */
     public function render_research_page() {
         include AIPS_PLUGIN_DIR . 'templates/admin/research.php';
+    }
+
+    /**
+     * Render the Story Budget page.
+     *
+     * @return void
+     */
+    public function render_story_budget_page() {
+        $controller = new AIPS_Story_Budget_Controller();
+        $controller->render_page();
     }
     
     /**

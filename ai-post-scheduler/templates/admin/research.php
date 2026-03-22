@@ -363,6 +363,9 @@ if (!in_array($active_tab, $valid_tabs, true)) {
             <td>{{researched_at}}</td>
             <td>
                 <div class="aips-topic-actions">
+                    <a class="aips-btn aips-btn-sm aips-btn-secondary" href="{{budget_url}}">
+                        <span class="dashicons dashicons-feedback"></span> {{budget_label}}
+                    </a>
                     <button class="aips-btn aips-btn-sm aips-btn-danger delete-topic" data-id="{{id}}">
                         <span class="dashicons dashicons-trash"></span> {{delete_label}}
                     </button>

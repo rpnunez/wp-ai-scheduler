@@ -626,6 +626,8 @@
 					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-approved', {
 						id: topic.id,
 						generateLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatePostNow || 'Generate Post Now'),
+						budgetLabel: AIPS.Templates.escape(aipsAuthorsL10n.createBudgetItem || 'Create Budget Item'),
+						budgetUrl: AIPS.Templates.escape((aipsAuthorsL10n.storyBudgetBaseUrl || '') + '&source_topic_id=' + encodeURIComponent(topic.id)),
 						editLabel: AIPS.Templates.escape(aipsAuthorsL10n.edit || 'Edit')
 					});
 				} else {

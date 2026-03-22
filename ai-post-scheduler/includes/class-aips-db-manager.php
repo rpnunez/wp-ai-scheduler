@@ -21,6 +21,7 @@ class AIPS_DB_Manager {
         'aips_notifications',
         'aips_sources',
         'aips_source_group_terms',
+        'aips_story_budget',
     );
 
     public function __construct() {
@@ -68,6 +69,7 @@ class AIPS_DB_Manager {
         $table_notifications        = $tables['aips_notifications'];
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_story_budget         = $tables['aips_story_budget'];
 
         $sql = array();
 
@@ -345,6 +347,40 @@ class AIPS_DB_Manager {
             UNIQUE KEY source_term (source_id, term_id),
             KEY source_id (source_id),
             KEY term_id (term_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_story_budget (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            title varchar(255) NOT NULL,
+            beat varchar(100) DEFAULT NULL,
+            desk varchar(100) DEFAULT NULL,
+            story_type varchar(100) DEFAULT NULL,
+            priority varchar(20) NOT NULL DEFAULT 'medium',
+            assigned_editor_user_id bigint(20) DEFAULT NULL,
+            assigned_writer_user_id bigint(20) DEFAULT NULL,
+            due_at datetime DEFAULT NULL,
+            publish_window_start datetime DEFAULT NULL,
+            publish_window_end datetime DEFAULT NULL,
+            source_topic_id bigint(20) DEFAULT NULL,
+            source_research_id bigint(20) DEFAULT NULL,
+            source_type varchar(50) NOT NULL DEFAULT 'manual',
+            status varchar(30) NOT NULL DEFAULT 'pitched',
+            notes text,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY beat (beat),
+            KEY desk (desk),
+            KEY priority (priority),
+            KEY status (status),
+            KEY due_at (due_at),
+            KEY publish_window_start (publish_window_start),
+            KEY publish_window_end (publish_window_end),
+            KEY assigned_editor_user_id (assigned_editor_user_id),
+            KEY assigned_writer_user_id (assigned_writer_user_id),
+            KEY source_topic_id (source_topic_id),
+            KEY source_research_id (source_research_id),
+            KEY source_type (source_type)
         ) $charset_collate;";
 
         return $sql;
