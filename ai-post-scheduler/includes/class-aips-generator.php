@@ -549,6 +549,8 @@ class AIPS_Generator {
             'featured_image' => !$context->should_generate_featured_image(),
             'post_content'   => false,
         );
+        $story_package_config = $this->get_story_package_config($context);
+        $story_package_artifacts = array();
 
         // Dispatch post generation started event
         do_action('aips_post_generation_started', $context->get_id(), $context->get_topic() ? $context->get_topic() : '');
@@ -672,9 +674,21 @@ class AIPS_Generator {
         $excerpt = $this->generate_excerpt_from_context($title, $excerpt_content, $context, array(), $excerpt_success);
         $component_statuses['post_excerpt'] = (bool) $excerpt_success;
 
+        if (!empty($story_package_config['enabled'])) {
+            $story_package_artifacts = $this->generate_story_package_artifacts($context, $story_package_config['outputs'], array(
+                'title' => $title,
+                'excerpt' => $excerpt,
+                'content' => $content,
+                'featured_image_prompt' => $context->get_image_prompt(),
+            ));
+        }
+
         $generation_incomplete = in_array(false, $component_statuses, true);
 
         // Use Post Manager Service to save the generated post in WP
+        $package_seo_title = $this->extract_story_package_seo_title($story_package_artifacts, $title);
+        $package_meta_description = $this->extract_story_package_meta_description($story_package_artifacts, $excerpt);
+
         $post_creation_data = array(
             'title' => $title,
             'content' => $content,
@@ -682,8 +696,8 @@ class AIPS_Generator {
             'context' => $context,
             // Provide SEO context for downstream plugins.
             'focus_keyword' => $context->get_topic() ? $context->get_topic() : $title,
-            'meta_description' => $excerpt,
-            'seo_title' => $title,
+            'meta_description' => $package_meta_description,
+            'seo_title' => $package_seo_title,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
         );
@@ -712,6 +726,11 @@ class AIPS_Generator {
         $generation_incomplete = in_array(false, $component_statuses, true);
         $this->post_manager->update_generation_status_meta($post_id, $component_statuses, $generation_incomplete);
 
+        if (!empty($story_package_config['enabled'])) {
+            $story_package_artifacts = $this->finalize_story_package_payload($story_package_config['outputs'], $story_package_artifacts, $title, $excerpt, $content);
+            AIPS_Story_Package::save_post_package($post_id, $story_package_artifacts);
+        }
+
         if ($generation_incomplete) {
             do_action('aips_post_generation_incomplete', $post_id, $component_statuses, $context, $this->current_history ? $this->current_history->get_id() : 0);
         }
@@ -723,6 +742,7 @@ class AIPS_Generator {
             'generated_content' => $content,
             'generation_incomplete' => $generation_incomplete,
             'component_statuses' => $component_statuses,
+            'story_package' => $story_package_artifacts,
         ));
 
         // Log activity
@@ -915,6 +935,127 @@ class AIPS_Generator {
         }
 
         return wp_kses_post($normalized_content);
+    }
+
+    /**
+     * Get story package configuration for a generation context.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @return array
+     */
+    private function get_story_package_config($context) {
+        if ($context instanceof AIPS_Template_Context && method_exists($context, 'get_template')) {
+            return AIPS_Story_Package::normalize_template_config($context->get_template());
+        }
+
+        return array(
+            'enabled' => false,
+            'outputs' => array('full_article'),
+        );
+    }
+
+    /**
+     * Generate the configured story package artifacts.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @param array                   $outputs Selected outputs.
+     * @param array                   $seed Shared content seed.
+     * @return array
+     */
+    private function generate_story_package_artifacts($context, $outputs, $seed) {
+        $outputs = AIPS_Story_Package::normalize_outputs($outputs);
+        $artifacts = array();
+        $shared_context = $this->prompt_builder->build_story_package_shared_context($context, $seed);
+        $definitions = AIPS_Story_Package::get_output_definitions();
+
+        foreach ($outputs as $output_key) {
+            if ('full_article' === $output_key || !isset($definitions[$output_key])) {
+                continue;
+            }
+
+            $prompt = $this->prompt_builder->build_story_package_prompt($output_key, $context, $shared_context);
+            if ('' === trim($prompt)) {
+                continue;
+            }
+
+            $options = array('max_tokens' => 'meta_description' === $output_key ? 120 : 500);
+            $result = $this->generate_content($prompt, $options, $definitions[$output_key]['component']);
+
+            if (is_wp_error($result)) {
+                if ($this->current_history) {
+                    $this->current_history->record_error($result->get_error_message(), array(
+                        'component' => $definitions[$output_key]['component'],
+                        'story_package_output' => $output_key,
+                    ), $result);
+                }
+                continue;
+            }
+
+            $artifacts[$output_key] = array(
+                'content' => is_string($result) ? trim($result) : $result,
+                'generated_at' => current_time('mysql'),
+                'label' => $definitions[$output_key]['label'],
+                'component' => $definitions[$output_key]['component'],
+                'format' => $definitions[$output_key]['format'],
+            );
+        }
+
+        return $artifacts;
+    }
+
+    /**
+     * Finalize the full story package payload before persistence.
+     *
+     * @param array  $outputs Selected outputs.
+     * @param array  $artifacts Generated artifacts.
+     * @param string $title Generated title.
+     * @param string $excerpt Generated excerpt.
+     * @param string $content Generated content.
+     * @return array
+     */
+    private function finalize_story_package_payload($outputs, $artifacts, $title, $excerpt, $content) {
+        $artifacts['full_article'] = array(
+            'content' => array(
+                'title' => $title,
+                'excerpt' => $excerpt,
+                'content' => $content,
+            ),
+            'generated_at' => current_time('mysql'),
+        );
+
+        return AIPS_Story_Package::build_package_payload($outputs, $artifacts);
+    }
+
+    /**
+     * Extract an SEO title from story package artifacts when available.
+     *
+     * @param array  $story_package Story package payload.
+     * @param string $fallback Default title.
+     * @return string
+     */
+    private function extract_story_package_seo_title($story_package, $fallback) {
+        if (!empty($story_package['seo_title_dek']['content']) && is_string($story_package['seo_title_dek']['content'])) {
+            if (preg_match('/SEO Title:\s*(.+)/i', $story_package['seo_title_dek']['content'], $matches)) {
+                return sanitize_text_field(trim($matches[1]));
+            }
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * Extract a meta description from story package artifacts when available.
+     *
+     * @param array  $story_package Story package payload.
+     * @param string $fallback Default description.
+     * @return string
+     */
+    private function extract_story_package_meta_description($story_package, $fallback) {
+        if (!empty($story_package['meta_description']['content']) && is_string($story_package['meta_description']['content'])) {
+            return sanitize_text_field(trim($story_package['meta_description']['content']));
+        }
+
+        return $fallback;
     }
 
     /**

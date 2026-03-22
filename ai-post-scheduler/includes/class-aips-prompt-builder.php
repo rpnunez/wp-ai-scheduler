@@ -336,20 +336,200 @@ INSTRUCTIONS;
             }
         }
 
+        $story_package_config = AIPS_Story_Package::normalize_template_config($template_data);
+        $story_package_prompts = array();
+
+        if (!empty($story_package_config['enabled'])) {
+            $shared_context = $this->build_story_package_shared_context($template_data, array(
+                'topic' => $sample_topic,
+                'title' => $sample_title,
+                'excerpt' => '[Generated excerpt would appear here]',
+                'content' => $sample_content,
+                'featured_image_prompt' => $image_prompt_processed,
+            ));
+
+            foreach ($story_package_config['outputs'] as $output_key) {
+                if ('full_article' === $output_key) {
+                    continue;
+                }
+
+                $story_package_prompts[$output_key] = $this->build_story_package_prompt($output_key, $template_data, $shared_context);
+            }
+        }
+
         return array(
             'prompts' => array(
                 'content' => $content_prompt,
                 'title' => $title_prompt,
                 'excerpt' => $excerpt_prompt,
                 'image' => $image_prompt_processed,
+                'story_package' => $story_package_prompts,
             ),
             'metadata' => array(
                 'voice' => $voice_name,
                 'article_structure' => $structure_name,
                 'sample_topic' => $sample_topic,
                 'include_sources' => !empty($template_data->include_sources),
+                'story_package_enabled' => !empty($story_package_config['enabled']),
+                'story_package_outputs' => $story_package_config['outputs'],
             ),
         );
+    }
+
+    /**
+     * Build a shared story package context block.
+     *
+     * @param object|AIPS_Generation_Context $template_or_context Template object or generation context.
+     * @param array                          $seed Seed values gathered during generation.
+     * @return array
+     */
+    public function build_story_package_shared_context($template_or_context, $seed = array()) {
+        $topic = '';
+        $content_prompt = '';
+        $template_name = '';
+        $title_prompt = '';
+        $article_structure_id = null;
+        $voice_name = '';
+
+        if ($template_or_context instanceof AIPS_Generation_Context) {
+            $topic = (string) $template_or_context->get_topic();
+            $content_prompt = (string) $template_or_context->get_content_prompt();
+            $template_name = (string) $template_or_context->get_name();
+            $title_prompt = (string) $template_or_context->get_title_prompt();
+            $article_structure_id = $template_or_context->get_article_structure_id();
+            $voice = $template_or_context->get_voice();
+            if ($voice && isset($voice->name)) {
+                $voice_name = $voice->name;
+            }
+        } else {
+            $topic = isset($seed['topic']) ? (string) $seed['topic'] : '';
+            $content_prompt = isset($template_or_context->prompt_template) ? (string) $template_or_context->prompt_template : '';
+            $template_name = isset($template_or_context->name) ? (string) $template_or_context->name : '';
+            $title_prompt = isset($template_or_context->title_prompt) ? (string) $template_or_context->title_prompt : '';
+            $article_structure_id = isset($template_or_context->article_structure_id) ? $template_or_context->article_structure_id : null;
+            if (!empty($template_or_context->voice_id)) {
+                $voice = $this->get_voice((int) $template_or_context->voice_id);
+                if ($voice && isset($voice->name)) {
+                    $voice_name = $voice->name;
+                }
+            }
+        }
+
+        $structure_summary = '';
+        if (!empty($article_structure_id)) {
+            $structure = $this->structure_manager->get_structure($article_structure_id);
+            if (is_array($structure) && !empty($structure['name'])) {
+                $structure_summary = $structure['name'];
+                if (!empty($structure['prompt_template'])) {
+                    $structure_summary .= "\n" . $structure['prompt_template'];
+                }
+            }
+        }
+
+        return array_merge(
+            array(
+                'template_name' => $template_name,
+                'topic' => $topic,
+                'content_prompt' => $content_prompt,
+                'title_prompt' => $title_prompt,
+                'voice_name' => $voice_name,
+                'site_context' => $this->build_site_context_block(),
+                'article_structure' => $structure_summary,
+                'title' => '',
+                'excerpt' => '',
+                'content' => '',
+                'featured_image_prompt' => '',
+            ),
+            is_array($seed) ? $seed : array()
+        );
+    }
+
+    /**
+     * Build a story package prompt for a specific artifact.
+     *
+     * @param string                         $output_key Story package output key.
+     * @param object|AIPS_Generation_Context $template_or_context Template object or generation context.
+     * @param array                          $shared_context Shared generation context.
+     * @return string
+     */
+    public function build_story_package_prompt($output_key, $template_or_context, $shared_context = array()) {
+        $definitions = AIPS_Story_Package::get_output_definitions();
+        if (!isset($definitions[$output_key])) {
+            return '';
+        }
+
+        $shared_context = is_array($shared_context) ? $shared_context : array();
+        $parts = array();
+
+        if (!empty($shared_context['site_context'])) {
+            $parts[] = trim((string) $shared_context['site_context']);
+        }
+
+        if (!empty($shared_context['template_name'])) {
+            $parts[] = 'Template: ' . $shared_context['template_name'];
+        }
+
+        if (!empty($shared_context['topic'])) {
+            $parts[] = 'Topic: ' . $shared_context['topic'];
+        }
+
+        if (!empty($shared_context['voice_name'])) {
+            $parts[] = 'Voice: ' . $shared_context['voice_name'];
+        }
+
+        if (!empty($shared_context['article_structure'])) {
+            $parts[] = "Article structure guidance:
+" . $shared_context['article_structure'];
+        }
+
+        if (!empty($shared_context['content_prompt'])) {
+            $parts[] = "Original content prompt:
+" . $shared_context['content_prompt'];
+        }
+
+        if (!empty($shared_context['title_prompt'])) {
+            $parts[] = "Title prompt guidance:
+" . $shared_context['title_prompt'];
+        }
+
+        if (!empty($shared_context['title'])) {
+            $parts[] = 'Current article title: ' . $shared_context['title'];
+        }
+
+        if (!empty($shared_context['excerpt'])) {
+            $parts[] = "Current excerpt/dek context:
+" . $shared_context['excerpt'];
+        }
+
+        if (!empty($shared_context['content'])) {
+            $parts[] = "Current article body:
+" . $shared_context['content'];
+        }
+
+        if (!empty($shared_context['featured_image_prompt'])) {
+            $parts[] = "Featured image prompt or visual direction:
+" . $shared_context['featured_image_prompt'];
+        }
+
+        $instructions = array(
+            'seo_title_dek' => "Generate an SEO package for this story. Provide: 1) an SEO title under 65 characters, and 2) a dek/subheading of 1-2 sentences. Use labels 'SEO Title:' and 'Dek:'.",
+            'social_posts' => "Generate 3 coordinated social posts for different channels. Label them 'Post 1', 'Post 2', and 'Post 3'. Keep each distinct, concise, and ready for editors to adapt.",
+            'newsletter_summary' => "Write a newsletter-ready summary for this story in 2 short paragraphs plus a single CTA line.",
+            'faq_box' => "Write an FAQ box with 3-5 question-and-answer pairs grounded in this story. Format as plain text with 'Q:' and 'A:' labels.",
+            'pull_quotes' => "Write 3 strong pull quotes sourced from the story's main ideas. Format as bullet points.",
+            'meta_description' => "Write one meta description under 155 characters. Return only the meta description text.",
+            'featured_image_brief' => "Write a featured image brief for design or AI image production. Include subject, scene, mood, composition, and any text-overlay guidance.",
+        );
+
+        if (!isset($instructions[$output_key])) {
+            return '';
+        }
+
+        $parts[] = $instructions[$output_key];
+
+        return implode("
+
+", array_filter(array_map('trim', $parts)));
     }
 
     /**

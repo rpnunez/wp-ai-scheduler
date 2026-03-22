@@ -48,6 +48,8 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'story_package_enabled' => isset($_POST['story_package_enabled']) ? 1 : 0,
+            'story_package_outputs' => $this->get_story_package_outputs_from_request(),
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
@@ -150,6 +152,8 @@ class AIPS_Templates_Controller {
             'post_author' => $template->post_author,
             'include_sources' => isset($template->include_sources) ? $template->include_sources : 0,
             'source_group_ids' => isset($template->source_group_ids) ? $template->source_group_ids : wp_json_encode(array()),
+            'story_package_enabled' => isset($template->story_package_enabled) ? (int) $template->story_package_enabled : 0,
+            'story_package_outputs' => isset($template->story_package_outputs) ? $template->story_package_outputs : wp_json_encode(array('full_article')),
             'is_active' => $template->is_active,
         );
 
@@ -193,6 +197,8 @@ class AIPS_Templates_Controller {
             'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : 0,
             'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
+            'story_package_enabled' => isset($_POST['story_package_enabled']) ? 1 : 0,
+            'story_package_outputs' => $this->get_story_package_outputs_from_request(),
         );
 
         if (empty($data['prompt_template'])) {
@@ -257,6 +263,8 @@ class AIPS_Templates_Controller {
             'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
                 ? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
                 : wp_json_encode(array()),
+            'story_package_enabled' => isset($_POST['story_package_enabled']) ? 1 : 0,
+            'story_package_outputs' => $this->get_story_package_outputs_from_request(),
         );
 
         if (empty($template_data->prompt_template)) {
@@ -273,6 +281,21 @@ class AIPS_Templates_Controller {
         $result = $prompt_builder->build_prompts($template_data, null, $voice);
 
         wp_send_json_success($result);
+    }
+
+    /**
+     * Read and normalize story package output selections from the current request.
+     *
+     * @return string JSON-encoded list of output slugs.
+     */
+    private function get_story_package_outputs_from_request() {
+        $raw_outputs = isset($_POST['story_package_outputs']) ? wp_unslash($_POST['story_package_outputs']) : array();
+
+        if (!is_array($raw_outputs)) {
+            $raw_outputs = array($raw_outputs);
+        }
+
+        return wp_json_encode(AIPS_Story_Package::normalize_outputs($raw_outputs));
     }
 
     /**

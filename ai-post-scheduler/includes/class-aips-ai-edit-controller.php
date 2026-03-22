@@ -159,8 +159,13 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		// Validate component type
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
-		if (!in_array($component, $valid_components)) {
+		$story_package_map = array();
+		foreach (AIPS_Story_Package::get_output_definitions() as $artifact_key => $definition) {
+			$story_package_map[$definition['component']] = $artifact_key;
+		}
+
+		$valid_components = array_merge(array('title', 'excerpt', 'content', 'featured_image'), array_keys($story_package_map));
+		if (!in_array($component, $valid_components, true)) {
 			wp_send_json_error(array('message' => __('Invalid component type.', 'ai-post-scheduler')));
 		}
 		
@@ -222,6 +227,11 @@ class AIPS_AI_Edit_Controller {
 				break;
 			case 'featured_image':
 				$result = $this->service->regenerate_featured_image($context);
+				break;
+			default:
+				if (isset($story_package_map[$component])) {
+					$result = $this->service->regenerate_story_package_artifact($context, $story_package_map[$component]);
+				}
 				break;
 		}
 		
@@ -489,7 +499,11 @@ class AIPS_AI_Edit_Controller {
 				);
 
 			default:
-				return '';
+				if (is_array($value)) {
+					return $value;
+				}
+
+				return sanitize_textarea_field((string) $value);
 		}
 	}
 }

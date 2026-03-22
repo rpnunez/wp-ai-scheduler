@@ -21,6 +21,7 @@
 	// Session state
 	var currentHistoryId = null;
 	var currentLogCount = 0;
+	var preferredSessionTab = 'logs';
 	
 	/**
 	 * Initialize View Session functionality
@@ -51,6 +52,8 @@
 		
 		// Toggle AI component details
 		$(document).on('click', '.aips-ai-component:not(.expanded)', handleAIComponentClick);
+		$(document).on('click', '.aips-package-item-toggle', handlePackageToggle);
+		$(document).on('click', '.aips-regenerate-package-artifact', handlePackageRegeneration);
 		
 		// ESC key to close modal
 		$(document).on('keydown', function(e) {
@@ -66,6 +69,7 @@
 	function handleViewSession(e) {
 		e.preventDefault();
 		var historyId = $(e.currentTarget).data('history-id');
+		preferredSessionTab = $(e.currentTarget).data('session-tab') || 'logs';
 		
 		if (!historyId) {
 			console.error('No history ID provided');
@@ -128,6 +132,7 @@
 		$('#aips-session-completed').text('');
 		$('#aips-logs-list').html('<p>Loading logs...</p>');
 		$('#aips-ai-list').html('<p>Loading AI calls...</p>');
+		$('#aips-package-list').html('<p>Loading package artifacts...</p>');
 	}
 	
 	/**
@@ -139,6 +144,7 @@
 		currentLogCount = Array.isArray(data.logs) ? data.logs.length : 0;
 
 		// Update session info
+		$('#aips-session-modal').data('post-id', data.history.post_id || 0);
 		$('#aips-session-title').text(data.history.generated_title || 'N/A');
 		$('#aips-session-created').text(data.history.created_at || 'N/A');
 		$('#aips-session-completed').text(data.history.completed_at || 'N/A');
@@ -148,11 +154,32 @@
 		
 		// Display AI calls (including regenerations)
 		renderAICalls(data.ai_calls, data.component_revisions || {});
+		renderStoryPackage(data.story_package || {}, data.story_package_revisions || {});
 		
 		// Show modal
 		$('#aips-session-modal').show();
+		activateTab(preferredSessionTab);
 	}
 	
+	/**
+	 * Activate a modal tab by name.
+	 *
+	 * @param {string} tabName Tab slug.
+	 */
+	function activateTab(tabName) {
+		var selectorMap = {
+			logs: '#aips-tab-logs',
+			ai: '#aips-tab-ai',
+			package: '#aips-tab-package'
+		};
+		var target = selectorMap[tabName] || selectorMap.logs;
+		var $tabs = $('#aips-session-modal .aips-tabs');
+		$tabs.find('.aips-tab-nav a').removeClass('active');
+		$tabs.find('.aips-tab-nav a[href="' + target + '"]').addClass('active');
+		$tabs.find('.aips-tab-content').hide();
+		$tabs.find(target).show();
+	}
+
 	/**
 	 * Render logs tab content
 	 */
@@ -285,6 +312,126 @@
 		$('#aips-ai-list').html(aiHtml);
 	}
 	
+	/**
+	 * Render story package tab content.
+	 *
+	 * @param {Object} storyPackage Story package payload.
+	 * @param {Object} storyPackageRevisions Revisions keyed by artifact slug.
+	 */
+	function renderStoryPackage(storyPackage, storyPackageRevisions) {
+		var outputs = Array.isArray(storyPackage.outputs) ? storyPackage.outputs : [];
+		var artifacts = storyPackage.artifacts || {};
+		var $container = $('#aips-package-list');
+		$container.empty();
+
+		if (!outputs.length) {
+			$container.html('<p class="aips-no-data">No story package artifacts were stored for this session.</p>');
+			return;
+		}
+
+		outputs.forEach(function(outputKey) {
+			var artifact = artifacts[outputKey] || {};
+			var label = artifact.label || outputKey;
+			var revisions = (storyPackageRevisions && storyPackageRevisions[outputKey]) ? storyPackageRevisions[outputKey] : [];
+			var content = artifact.content || '';
+			var displayContent = '';
+
+			if (outputKey === 'full_article' && content && typeof content === 'object') {
+				displayContent = 'Title: ' + (content.title || '') + '\n\nExcerpt: ' + (content.excerpt || '') + '\n\nContent:\n' + (content.content || '');
+			} else if (typeof content === 'object') {
+				displayContent = JSON.stringify(content, null, 2);
+			} else {
+				displayContent = String(content || '');
+			}
+
+			var $item = $('<div class="aips-ai-component aips-package-item expanded"></div>').attr('data-artifact', outputKey);
+			var $header = $('<div class="aips-package-item-toggle"></div>');
+			$header.append($('<h4></h4>').text(label));
+			$header.append($('<p class="aips-ai-hint"></p>').text('Review the current artifact and regenerate it if needed.'));
+			$item.append($header);
+
+			var $details = $('<div class="aips-ai-details"></div>');
+			var $contentSection = $('<div class="aips-ai-section"></div>');
+			$contentSection.append($('<h5></h5>').text('Current artifact'));
+			$contentSection.append($('<div class="aips-json-viewer"><pre></pre></div>').find('pre').text(displayContent || '(empty)').end());
+			if (outputKey !== 'full_article') {
+				$contentSection.append($('<button type="button" class="button button-secondary aips-regenerate-package-artifact"></button>').attr('data-artifact', outputKey).text('Regenerate artifact'));
+			}
+			$details.append($contentSection);
+
+			var $revisionsSection = $('<div class="aips-ai-section"></div>');
+			$revisionsSection.append($('<h5></h5>').text('Artifact revisions'));
+			if (Array.isArray(revisions) && revisions.length) {
+				var $list = $('<div class="aips-ai-revisions"></div>');
+				revisions.forEach(function(revision) {
+					var value = revision.value;
+					if (typeof value !== 'string') {
+						value = JSON.stringify(value || '', null, 2);
+					}
+					$list.append(
+						$('<div class="aips-ai-revision-item"></div>')
+							.append($('<div class="aips-ai-revision-meta"></div>').text(revision.timestamp || ''))
+							.append($('<div class="aips-ai-revision-value"></div>').text(value || '(empty)'))
+					);
+				});
+				$revisionsSection.append($list);
+			} else {
+				$revisionsSection.append($('<p class="aips-no-data"></p>').text('No regenerations found.'));
+			}
+			$details.append($revisionsSection);
+			$item.append($details);
+			$container.append($item);
+		});
+	}
+
+	function handlePackageToggle(e) {
+		$(e.currentTarget).closest('.aips-package-item').toggleClass('expanded');
+	}
+
+	function handlePackageRegeneration(e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		var artifact = $(e.currentTarget).data('artifact');
+		if (!artifact) {
+			return;
+		}
+
+		var component = 'story_package_' + artifact;
+		var postId = currentHistoryId ? ($('#aips-session-modal').data('post-id') || 0) : 0;
+		if (!postId) {
+			return;
+		}
+
+		var ajaxUrl = window.ajaxurl;
+		var nonce = window.aipsAjaxNonce;
+		var $button = $(e.currentTarget);
+		$button.prop('disabled', true).text('Regenerating...');
+
+		preferredSessionTab = 'package';
+
+		$.post(ajaxUrl, {
+			action: 'aips_regenerate_component',
+			nonce: nonce,
+			history_id: currentHistoryId,
+			post_id: postId,
+			component: component,
+			current_value: '',
+			current_source: 'session_review',
+			current_reason: 'story_package_regeneration'
+		}).done(function(response) {
+			if (response && response.success) {
+				loadSessionData(currentHistoryId);
+			} else {
+				showModalNotification((response && response.data && response.data.message) ? response.data.message : 'Failed to regenerate package artifact.', 'error');
+			}
+		}).fail(function() {
+			showModalNotification('Failed to regenerate package artifact.', 'error');
+		}).always(function() {
+			$button.prop('disabled', false).text('Regenerate artifact');
+		});
+	}
+
 	/**
 	 * Handle tab switching
 	 */

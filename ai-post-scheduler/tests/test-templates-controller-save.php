@@ -124,4 +124,30 @@ class Test_AIPS_Templates_Controller_Save extends WP_UnitTestCase {
 		$this->assertNotNull($this->templates_stub->saved_data);
 		$this->assertSame(0, $this->templates_stub->saved_data['generate_featured_image']);
 	}
+
+	public function test_ajax_save_template_normalizes_story_package_outputs() {
+		$_POST['nonce'] = wp_create_nonce('aips_ajax_nonce');
+		$_POST['name'] = 'Template with story package';
+		$_POST['prompt_template'] = 'Write about {{topic}}';
+		$_POST['story_package_enabled'] = '1';
+		$_POST['story_package_outputs'] = array('social_posts', 'meta_description');
+		$_REQUEST = $_POST;
+
+		ob_start();
+		try {
+			$this->controller->ajax_save_template();
+		} catch (WPAjaxDieStopException $e) {
+			// Expected for wp_send_json_* in tests.
+		} catch (WPAjaxDieContinueException $e) {
+			// Some environments throw continue exceptions for AJAX responses.
+		}
+		ob_end_clean();
+
+		$this->assertNotNull($this->templates_stub->saved_data);
+		$this->assertSame(1, $this->templates_stub->saved_data['story_package_enabled']);
+		$this->assertSame(
+			wp_json_encode(array('full_article', 'social_posts', 'meta_description')),
+			$this->templates_stub->saved_data['story_package_outputs']
+		);
+	}
 }
