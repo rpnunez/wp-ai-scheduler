@@ -62,6 +62,11 @@ if (!defined('ABSPATH')) {
                         <tr data-template-id="<?php echo esc_attr($template->id); ?>">
                             <td class="column-name">
                                 <div class="cell-primary"><?php echo esc_html($template->name); ?></div>
+                                <?php if (!empty($template->story_package_enabled)): ?>
+                                <div style="margin-top: 4px;">
+                                    <span class="aips-badge aips-badge-neutral"><?php esc_html_e('Story Package', 'ai-post-scheduler'); ?></span>
+                                </div>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="aips-badge aips-badge-neutral">
@@ -393,6 +398,36 @@ if (!defined('ABSPATH')) {
                                 <?php endif; ?>
                             </div>
                         </div>
+
+                        <?php $story_package_outputs = AIPS_Story_Package::get_output_definitions(); ?>
+                        <div class="aips-form-row" style="margin-top: 20px;">
+                            <label class="aips-checkbox-label">
+                                <input type="checkbox" id="story_package_enabled" name="story_package_enabled" value="1">
+                                <?php esc_html_e('Generate a coordinated story package', 'ai-post-scheduler'); ?>
+                            </label>
+                            <p class="description"><?php esc_html_e('Create additional editorial artifacts from the same approved topic or budget item so reviewers can inspect the full package together.', 'ai-post-scheduler'); ?></p>
+                        </div>
+
+                        <div id="aips-story-package-options" style="display:none; margin-top: 8px;">
+                            <div class="aips-form-row">
+                                <label><?php esc_html_e('Package Outputs', 'ai-post-scheduler'); ?></label>
+                                <div class="aips-checkbox-group">
+                                    <?php foreach ($story_package_outputs as $story_output_key => $story_output): ?>
+                                        <label class="aips-checkbox-label" style="display:block; margin-bottom:6px;">
+                                            <input type="checkbox"
+                                                name="story_package_outputs[]"
+                                                class="aips-story-package-output"
+                                                value="<?php echo esc_attr($story_output_key); ?>"
+                                                <?php checked('full_article', $story_output_key); ?>
+                                                <?php disabled('full_article', $story_output_key); ?>>
+                                            <strong><?php echo esc_html($story_output['label']); ?></strong>
+                                            <span class="description" style="display:block; margin-left: 24px;"><?php echo esc_html($story_output['description']); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <p class="description"><?php esc_html_e('The full article remains the anchor asset. Add any supporting outputs your editors want to review or regenerate individually.', 'ai-post-scheduler'); ?></p>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Step 4: Featured Image -->
@@ -480,6 +515,10 @@ if (!defined('ABSPATH')) {
                                 <div class="aips-summary-item">
                                     <strong><?php esc_html_e('Featured Image:', 'ai-post-scheduler'); ?></strong>
                                     <span id="summary_featured_image"><?php esc_html_e('No', 'ai-post-scheduler'); ?></span>
+                                </div>
+                                <div class="aips-summary-item">
+                                    <strong><?php esc_html_e('Story Package:', 'ai-post-scheduler'); ?></strong>
+                                    <span id="summary_story_package"><?php esc_html_e('Article only', 'ai-post-scheduler'); ?></span>
                                 </div>
                             </div>
                         </div>

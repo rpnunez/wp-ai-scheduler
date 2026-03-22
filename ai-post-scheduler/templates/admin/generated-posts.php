@@ -148,12 +148,21 @@ if (!defined('ABSPATH')) {
 											<span class="dashicons dashicons-admin-customizer"></span>
 											<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
 										</button>
-								<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" 
-								        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-								        title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-visibility"></span>
-									<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
+										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session" 
+										        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+										        title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-visibility"></span>
+											<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
 										</button>
+										<?php if (!empty($post_data['has_story_package'])): ?>
+										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session"
+										        data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+										        data-session-tab="package"
+										        title="<?php esc_attr_e('Review Story Package', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-screenoptions"></span>
+											<?php esc_html_e('Review Package', 'ai-post-scheduler'); ?>
+										</button>
+										<?php endif; ?>
 									</div>
 								</td>
 							</tr>
@@ -352,12 +361,21 @@ if (!defined('ABSPATH')) {
 											<span class="dashicons dashicons-admin-customizer"></span>
 											<?php esc_html_e('AI Edit', 'ai-post-scheduler'); ?>
 										</button>
-								<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session"
-									data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
-									title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
-									<span class="dashicons dashicons-visibility"></span>
-									<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
+										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session"
+											data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+											title="<?php esc_attr_e('View Session', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-visibility"></span>
+											<?php esc_html_e('View Session', 'ai-post-scheduler'); ?>
 										</button>
+										<?php if (!empty($post_data['has_story_package'])): ?>
+										<button class="aips-btn aips-btn-sm aips-btn-secondary aips-view-session"
+											data-history-id="<?php echo esc_attr($post_data['history_id']); ?>"
+											data-session-tab="package"
+											title="<?php esc_attr_e('Review Story Package', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-screenoptions"></span>
+											<?php esc_html_e('Review Package', 'ai-post-scheduler'); ?>
+										</button>
+										<?php endif; ?>
 									</div>
 								</td>
 							</tr>

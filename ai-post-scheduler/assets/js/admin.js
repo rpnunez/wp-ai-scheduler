@@ -79,6 +79,7 @@
 
             // Toggle source groups panel when Include Sources? checkbox changes.
             $(document).on('change', '#include_sources', this.toggleSourceGroupsSelector);
+            $(document).on('change', '#story_package_enabled', this.toggleStoryPackageOptions);
 
             // Wizard navigation
             $(document).on('click', '.aips-wizard-next', this.wizardNext);
@@ -438,6 +439,38 @@
         },
 
         /**
+         * Get the selected story package outputs.
+         *
+         * @return {Array<string>}
+         */
+        getSelectedStoryPackageOutputs: function() {
+            var outputs = [];
+
+            $('.aips-story-package-output:checked').each(function() {
+                outputs.push($(this).val());
+            });
+
+            if (outputs.indexOf('full_article') === -1) {
+                outputs.unshift('full_article');
+            }
+
+            return outputs;
+        },
+
+        /**
+         * Toggle the story package configuration panel.
+         *
+         * @return {void}
+         */
+        toggleStoryPackageOptions: function() {
+            var enabled = $('#story_package_enabled').is(':checked');
+
+            $('#aips-story-package-options').toggle(enabled);
+            $('.aips-story-package-output').not('[value="full_article"]').prop('disabled', !enabled);
+            $('.aips-story-package-output[value="full_article"]').prop('checked', true);
+        },
+
+        /**
          * Reset and open the template modal in "Add New" mode.
          *
          * Clears the form, resets the media selection and AI variables panel,
@@ -459,6 +492,10 @@
             // Reset source groups
             $('.aips-template-source-group-cb').prop('checked', false);
             $('#template-source-groups-selector').hide();
+            $('#story_package_enabled').prop('checked', false);
+            $('.aips-story-package-output').prop('checked', false);
+            $('.aips-story-package-output[value="full_article"]').prop('checked', true);
+            AIPS.toggleStoryPackageOptions();
             // Initialize wizard to step 1
             AIPS.wizardGoToStep(1, $('#aips-template-modal'));
             $('#aips-template-modal').show();
@@ -524,6 +561,21 @@
                         sgIds.forEach(function(tid) {
                             $('.aips-template-source-group-cb[value="' + tid + '"]').prop('checked', true);
                         });
+
+                        var storyPackageEnabled = t.story_package_enabled == 1;
+                        $('#story_package_enabled').prop('checked', storyPackageEnabled);
+                        $('.aips-story-package-output').prop('checked', false);
+                        var storyPackageOutputs = [];
+                        try {
+                            storyPackageOutputs = JSON.parse(t.story_package_outputs || '["full_article"]');
+                        } catch (storyPackageParseErr) {
+                            storyPackageOutputs = ['full_article'];
+                        }
+                        storyPackageOutputs.forEach(function(outputKey) {
+                            $('.aips-story-package-output[value="' + outputKey + '"]').prop('checked', true);
+                        });
+                        $('.aips-story-package-output[value="full_article"]').prop('checked', true);
+                        AIPS.toggleStoryPackageOptions();
 
                         // Scan for AI Variables after loading template data
                         AIPS.initAIVariablesScanner();
@@ -713,6 +765,8 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
+                    story_package_enabled: $('#story_package_enabled').is(':checked') ? 1 : 0,
+                    story_package_outputs: AIPS.getSelectedStoryPackageOutputs(),
                     is_active: $('#is_active').is(':checked') ? 1 : 0
                 },
                 success: function(response) {
@@ -786,6 +840,8 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
+                    story_package_enabled: $('#story_package_enabled').is(':checked') ? 1 : 0,
+                    story_package_outputs: AIPS.getSelectedStoryPackageOutputs(),
                     is_active: 0 // Save as inactive draft
                 },
                 success: function(response) {
@@ -855,6 +911,8 @@
                 post_category: $('#post_category').val(),
                 post_tags: $('#post_tags').val(),
                 post_author: $('#post_author').val(),
+                story_package_enabled: $('#story_package_enabled').is(':checked') ? 1 : 0,
+                story_package_outputs: AIPS.getSelectedStoryPackageOutputs()
             };
 
             $.ajax({
@@ -3733,6 +3791,16 @@
             } else {
                 $modal.find('#summary_featured_image').text(aipsAdminL10n.featuredImageNo);
             }
+
+            if ($('#story_package_enabled').is(':checked')) {
+                var selectedOutputs = AIPS.getSelectedStoryPackageOutputs().map(function(output) {
+                    var $label = $('.aips-story-package-output[value="' + output + '"]').closest('label').find('strong').first();
+                    return $label.length ? $label.text() : output;
+                });
+                $modal.find('#summary_story_package').text(selectedOutputs.join(', '));
+            } else {
+                $modal.find('#summary_story_package').text('Article only');
+            }
         },
 
         /**
@@ -3905,7 +3973,9 @@
                     var ids = [];
                     $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                     return ids;
-                }())
+                }()),
+                story_package_enabled: $('#story_package_enabled').is(':checked') ? 1 : 0,
+                story_package_outputs: AIPS.getSelectedStoryPackageOutputs()
             };
             
             $.ajax({

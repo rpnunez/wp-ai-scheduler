@@ -113,6 +113,7 @@ class AIPS_Generated_Posts_Controller {
 			$posts_data[] = array(
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
+				'has_story_package' => AIPS_Story_Package::post_has_package($item->post_id),
 				'title' => $post->post_title,
 				'date_generated' => $item->created_at,
 				'date_published' => $post->post_date,
@@ -151,6 +152,7 @@ class AIPS_Generated_Posts_Controller {
 			$partial_posts_data[] = array(
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
+				'has_story_package' => AIPS_Story_Package::post_has_package($item->post_id),
 				'title' => $post->post_title,
 				'date_generated' => $item->created_at,
 				'date_updated' => $item->post_modified,
@@ -309,12 +311,27 @@ class AIPS_Generated_Posts_Controller {
 		
 		// Collect regenerations / revisions per component
 		$component_revisions = array();
+		$story_package = array();
+		$story_package_revisions = array();
 		if ($history_item->post_id) {
 			$components = array('title', 'excerpt', 'content', 'featured_image');
 			foreach ($components as $component) {
 				$component_revisions[$component] = $this->history_repository->get_component_revisions(
 					absint($history_item->post_id),
 					$component,
+					20
+				);
+			}
+
+			$story_package = AIPS_Story_Package::get_post_package($history_item->post_id);
+			foreach (AIPS_Story_Package::get_output_definitions() as $artifact_key => $definition) {
+				if ('full_article' === $artifact_key) {
+					continue;
+				}
+
+				$story_package_revisions[$artifact_key] = $this->history_repository->get_component_revisions(
+					absint($history_item->post_id),
+					$definition['component'],
 					20
 				);
 			}
@@ -332,6 +349,8 @@ class AIPS_Generated_Posts_Controller {
 			'logs' => $logs,
 			'ai_calls' => $ai_calls,
 			'component_revisions' => $component_revisions,
+			'story_package' => $story_package,
+			'story_package_revisions' => $story_package_revisions,
 		));
 	}
 	

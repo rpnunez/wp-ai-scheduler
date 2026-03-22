@@ -43,6 +43,7 @@ if (!defined('ABSPATH')) {
 				<ul class="aips-tab-nav">
 					<li><a href="#aips-tab-logs" class="active"><?php esc_html_e('Logs', 'ai-post-scheduler'); ?></a></li>
 					<li><a href="#aips-tab-ai"><?php esc_html_e('AI', 'ai-post-scheduler'); ?></a></li>
+					<li><a href="#aips-tab-package"><?php esc_html_e('Package', 'ai-post-scheduler'); ?></a></li>
 				</ul>
 				
 				<div id="aips-tab-logs" class="aips-tab-content active">
@@ -51,6 +52,10 @@ if (!defined('ABSPATH')) {
 				
 				<div id="aips-tab-ai" class="aips-tab-content" style="display: none;">
 					<div id="aips-ai-list"></div>
+				</div>
+
+				<div id="aips-tab-package" class="aips-tab-content" style="display: none;">
+					<div id="aips-package-list"></div>
 				</div>
 			</div>
 		</div>

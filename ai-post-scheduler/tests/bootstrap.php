@@ -928,6 +928,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-prompt-section-repository.php',
         'class-aips-sources-repository.php',
         'class-aips-template-processor.php',
+        'class-aips-story-package.php',
         'class-aips-prompt-builder.php',
         'class-aips-prompt-builder-post-content.php',
         'class-aips-prompt-builder-post-title.php',

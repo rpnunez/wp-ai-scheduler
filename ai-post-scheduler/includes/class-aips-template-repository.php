@@ -120,6 +120,7 @@ class AIPS_Template_Repository {
 
         $insert_data = array(
             'name' => sanitize_text_field($data['name']),
+            'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
             'prompt_template' => wp_kses_post($data['prompt_template']),
             'title_prompt' => isset($data['title_prompt']) ? sanitize_text_field($data['title_prompt']) : '',
             'voice_id' => isset($data['voice_id']) ? absint($data['voice_id']) : null,
@@ -135,10 +136,12 @@ class AIPS_Template_Repository {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'story_package_enabled' => !empty($data['story_package_enabled']) ? 1 : 0,
+            'story_package_outputs' => isset($data['story_package_outputs']) ? sanitize_text_field($data['story_package_outputs']) : wp_json_encode(array('full_article')),
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         
-        $format = array('%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d');
+        $format = array('%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%d', '%s', '%d', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         
@@ -162,6 +165,11 @@ class AIPS_Template_Repository {
             $format[] = '%s';
         }
         
+        if (isset($data['description'])) {
+            $update_data['description'] = sanitize_textarea_field($data['description']);
+            $format[] = '%s';
+        }
+
         if (isset($data['prompt_template'])) {
             $update_data['prompt_template'] = wp_kses_post($data['prompt_template']);
             $format[] = '%s';
@@ -238,6 +246,16 @@ class AIPS_Template_Repository {
             $format[] = '%s';
         }
         
+        if (isset($data['story_package_enabled'])) {
+            $update_data['story_package_enabled'] = $data['story_package_enabled'] ? 1 : 0;
+            $format[] = '%d';
+        }
+
+        if (isset($data['story_package_outputs'])) {
+            $update_data['story_package_outputs'] = sanitize_text_field($data['story_package_outputs']);
+            $format[] = '%s';
+        }
+
         if (isset($data['is_active'])) {
             $update_data['is_active'] = $data['is_active'] ? 1 : 0;
             $format[] = '%d';

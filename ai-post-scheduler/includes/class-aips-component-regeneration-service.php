@@ -309,6 +309,66 @@ class AIPS_Component_Regeneration_Service {
 	}
 
 	/**
+	 * Regenerate a story package artifact.
+	 *
+	 * @param array  $context Generation context with post and history IDs.
+	 * @param string $artifact_key Story package artifact key.
+	 * @return array|WP_Error
+	 */
+	public function regenerate_story_package_artifact($context, $artifact_key) {
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
+			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
+		}
+
+		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
+		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
+		if (!$post_id || !$history_id) {
+			return new WP_Error('missing_history_context', __('Post and history IDs are required.', 'ai-post-scheduler'));
+		}
+
+		$definitions = AIPS_Story_Package::get_output_definitions();
+		$artifact_key = sanitize_key($artifact_key);
+		if (!isset($definitions[$artifact_key])) {
+			return new WP_Error('invalid_story_package_artifact', __('Invalid story package artifact.', 'ai-post-scheduler'));
+		}
+
+		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
+		if (is_wp_error($history_container)) {
+			return $history_container;
+		}
+
+		$this->generator->set_history_container($history_container);
+		$shared_context = $this->prompt_builder->build_story_package_shared_context($context['generation_context'], array(
+			'title' => isset($context['current_title']) ? $context['current_title'] : '',
+			'excerpt' => isset($context['current_excerpt']) ? $context['current_excerpt'] : '',
+			'content' => isset($context['current_content']) ? $context['current_content'] : '',
+			'featured_image_prompt' => $context['generation_context']->get_image_prompt(),
+		));
+
+		$prompt = $this->prompt_builder->build_story_package_prompt($artifact_key, $context['generation_context'], $shared_context);
+		if ('' === trim($prompt)) {
+			return new WP_Error('missing_story_package_prompt', __('No story package prompt is available for this artifact.', 'ai-post-scheduler'));
+		}
+
+		$result = $this->generator->generate_content($prompt, array(), $definitions[$artifact_key]['component']);
+		if (is_wp_error($result)) {
+			return $result;
+		}
+
+		$artifact = array(
+			'content' => is_string($result) ? trim($result) : $result,
+			'generated_at' => current_time('mysql'),
+			'label' => $definitions[$artifact_key]['label'],
+			'component' => $definitions[$artifact_key]['component'],
+			'format' => $definitions[$artifact_key]['format'],
+		);
+
+		AIPS_Story_Package::update_post_artifact($post_id, $artifact_key, $artifact);
+
+		return $artifact;
+	}
+
+	/**
 	 * Capture the current component value as a revision snapshot.
 	 *
 	 * This enables immediate restore of the value that existed before a new
@@ -327,7 +387,7 @@ class AIPS_Component_Regeneration_Service {
 		$source = sanitize_key($source);
 		$reason = sanitize_key($reason);
 
-		$valid_components = array('title', 'excerpt', 'content', 'featured_image');
+		$valid_components = array_merge(array('title', 'excerpt', 'content', 'featured_image'), array_values(wp_list_pluck(AIPS_Story_Package::get_output_definitions(), 'component')));
 		if (!in_array($component, $valid_components, true)) {
 			return new WP_Error('invalid_component', __('Invalid component type.', 'ai-post-scheduler'));
 		}

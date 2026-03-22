@@ -69,6 +69,8 @@ class AIPS_Templates {
             'post_author' => isset($data['post_author']) ? absint($data['post_author']) : get_current_user_id(),
             'include_sources' => isset($data['include_sources']) ? (int) $data['include_sources'] : 0,
             'source_group_ids' => isset($data['source_group_ids']) ? sanitize_text_field($data['source_group_ids']) : wp_json_encode(array()),
+            'story_package_enabled' => !empty($data['story_package_enabled']) ? 1 : 0,
+            'story_package_outputs' => isset($data['story_package_outputs']) ? sanitize_text_field($data['story_package_outputs']) : wp_json_encode(array('full_article')),
             'is_active' => isset($data['is_active']) ? 1 : 0,
         );
         

@@ -53,6 +53,7 @@ class AIPS_Session_To_JSON {
 			'post_id' => $history_item->post_id,
 			'wp_post' => $this->get_wp_post_data($history_item->post_id),
 			'history' => $this->format_history_item($history_item),
+			'story_package' => $history_item->post_id ? AIPS_Story_Package::get_post_package($history_item->post_id) : array(),
 			'history_containers' => $this->get_history_containers($history_item),
 		);
 		
@@ -171,6 +172,7 @@ class AIPS_Session_To_JSON {
 			'error_message' => $history_item->error_message,
 			'created_at' => $history_item->created_at,
 			'completed_at' => $history_item->completed_at,
+			'story_package_enabled' => !empty($history_item->post_id) && AIPS_Story_Package::post_has_package($history_item->post_id),
 		);
 	}
 	
