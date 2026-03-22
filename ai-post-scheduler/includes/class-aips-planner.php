@@ -8,6 +8,7 @@ class AIPS_Planner {
     public function __construct() {
         add_action('wp_ajax_aips_generate_topics', array($this, 'ajax_generate_topics'));
         add_action('wp_ajax_aips_bulk_schedule', array($this, 'ajax_bulk_schedule'));
+        add_action('wp_ajax_aips_bulk_generate_now', array($this, 'ajax_bulk_generate_now'));
     }
 
     public function ajax_generate_topics() {
@@ -134,6 +135,82 @@ class AIPS_Planner {
             'message' => sprintf(__('%d topics scheduled successfully.', 'ai-post-scheduler'), $count),
             'count' => $count
         ));
+    }
+
+    public function ajax_bulk_generate_now() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $topics = isset($_POST['topics']) ? (array) $_POST['topics'] : array();
+        $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
+
+        if (empty($topics) || empty($template_id)) {
+            wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));
+        }
+
+        // Enforce a bulk limit for synchronous generation to avoid PHP timeouts
+        $max_bulk = apply_filters('aips_bulk_run_now_limit', 5);
+        if (count($topics) > $max_bulk) {
+            wp_send_json_error(array(
+                'message' => sprintf(
+                    /* translators: 1: selected count, 2: max allowed */
+                    __('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation, or use "Schedule Selected Topics" instead.', 'ai-post-scheduler'),
+                    count($topics),
+                    $max_bulk
+                ),
+            ));
+        }
+
+        $templates = new AIPS_Templates();
+        $template = $templates->get($template_id);
+
+        if (!$template) {
+            wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
+        }
+
+        // Sanitize topics
+        $topics = array_map('sanitize_text_field', $topics);
+
+        $generator = new AIPS_Generator();
+        $generated_count = 0;
+        $errors = array();
+
+        foreach ($topics as $topic) {
+            // Using legacy signature which generates a context inside AIPS_Generator
+            $result = $generator->generate_post($template, null, $topic);
+
+            if (is_wp_error($result)) {
+                $errors[] = sprintf(__('Topic "%1$s": %2$s', 'ai-post-scheduler'), $topic, $result->get_error_message());
+            } else {
+                $generated_count++;
+            }
+        }
+
+        if ($generated_count > 0) {
+            $msg = sprintf(
+                /* translators: %d: number of posts */
+                _n('%d post generated successfully!', '%d posts generated successfully!', $generated_count, 'ai-post-scheduler'),
+                $generated_count
+            );
+
+            if (!empty($errors)) {
+                $msg .= ' ' . __('However, some errors occurred:', 'ai-post-scheduler') . ' ' . implode(', ', $errors);
+            }
+
+            wp_send_json_success(array(
+                'message' => $msg,
+                'count' => $generated_count
+            ));
+        } else {
+            $error_msg = __('Failed to generate posts.', 'ai-post-scheduler');
+            if (!empty($errors)) {
+                $error_msg .= ' ' . implode(', ', $errors);
+            }
+            wp_send_json_error(array('message' => $error_msg));
+        }
     }
 
     public function render_page() {
