@@ -28,6 +28,11 @@ class AIPS_Calendar_Controller {
 	 * @var AIPS_Template_Repository Template repository instance
 	 */
 	private $template_repo;
+
+	/**
+	 * @var AIPS_Live_Coverage_Service Live coverage service
+	 */
+	private $live_coverage_service;
 	
 	/**
 	 * Initialize the controller.
@@ -36,6 +41,7 @@ class AIPS_Calendar_Controller {
 		$this->schedule_repo = new AIPS_Schedule_Repository();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->template_repo = new AIPS_Template_Repository();
+		$this->live_coverage_service = new AIPS_Live_Coverage_Service();
 		add_action('wp_ajax_aips_get_calendar_events', array($this, 'ajax_get_calendar_events'));
 	}
 	
@@ -85,6 +91,8 @@ class AIPS_Calendar_Controller {
 			}
 		}
 		
+		$events = array_merge($events, $this->live_coverage_service->get_live_story_calendar_events($year, $month));
+
 		return $events;
 	}
 	

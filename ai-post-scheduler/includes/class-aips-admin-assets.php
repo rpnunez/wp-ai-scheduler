@@ -442,8 +442,13 @@ class AIPS_Admin_Assets {
             $config = AIPS_Config::get_instance();
             $client_threshold = (int) $config->get_option('generated_posts_log_threshold_client', 20);
             wp_localize_script('aips-admin-generated-posts', 'aipsGeneratedPostsConfig', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('aips_ajax_nonce'),
                 'clientLogThreshold' => $client_threshold,
                 'siteUrl' => home_url(),
+                'liveStorySaved' => __('Live story updated successfully.', 'ai-post-scheduler'),
+                'liveStoryError' => __('Failed to update the live story.', 'ai-post-scheduler'),
+                'noLiveHistory' => __('No live-story updates recorded yet.', 'ai-post-scheduler'),
             ));
             
             // Localize Post Review script for Pending Review tab

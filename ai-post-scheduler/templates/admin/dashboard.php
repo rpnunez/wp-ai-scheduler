@@ -68,6 +68,16 @@ if (!defined('ABSPATH')) {
                     <span class="aips-summary-label"><?php esc_html_e('Topics in Queue', 'ai-post-scheduler'); ?></span>
                 </div>
             </a>
+
+            <?php if (!empty($live_story_counts['total'])): ?>
+            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts')); ?>" class="aips-summary-card highlight" style="text-decoration: none; color: inherit;">
+                <div class="dashicons dashicons-megaphone aips-summary-icon" aria-hidden="true"></div>
+                <div class="aips-summary-content">
+                    <span class="aips-summary-number"><?php echo esc_html($live_story_counts['total']); ?></span>
+                    <span class="aips-summary-label"><?php esc_html_e('Live / Developing Stories', 'ai-post-scheduler'); ?></span>
+                </div>
+            </a>
+            <?php endif; ?>
             
             <?php if ($partial_generations > 0): ?>
             <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts', array('s' => 'partial'))); ?>" class="aips-summary-card warning" style="text-decoration: none; color: inherit;">
@@ -197,6 +207,42 @@ if (!defined('ABSPATH')) {
                     </div>
                     <?php endif; ?>
                 </div>
+            </div>
+        </div>
+
+        <div class="aips-content-panel">
+            <div class="aips-panel-header">
+                <h2 class="aips-panel-title"><?php esc_html_e('Live Coverage Watch', 'ai-post-scheduler'); ?></h2>
+            </div>
+            <div class="aips-panel-body <?php echo empty($recent_live_stories) ? '' : 'no-padding'; ?>">
+                <?php if (!empty($recent_live_stories)): ?>
+                <table class="aips-table">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e('Story', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Thread', 'ai-post-scheduler'); ?></th>
+                            <th><?php esc_html_e('Last Update', 'ai-post-scheduler'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($recent_live_stories as $story): ?>
+                        <tr>
+                            <td><a href="<?php echo esc_url($story['edit_link']); ?>" class="cell-primary"><?php echo esc_html($story['post_title']); ?></a></td>
+                            <td><span class="aips-badge aips-badge-<?php echo esc_attr('live' === $story['metadata']['story_status'] ? 'error' : 'warning'); ?>"><?php echo esc_html(ucfirst($story['metadata']['story_status'] ? $story['metadata']['story_status'] : 'live')); ?></span></td>
+                            <td class="cell-meta"><?php echo esc_html($story['metadata']['thread_identifier']); ?></td>
+                            <td class="cell-meta"><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($story['metadata']['last_update_at'] ? $story['metadata']['last_update_at'] : $story['post_modified']))); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php else: ?>
+                <div class="aips-empty-state">
+                    <div class="dashicons dashicons-megaphone aips-empty-state-icon" aria-hidden="true"></div>
+                    <h3 class="aips-empty-state-title"><?php esc_html_e('No Live Stories Yet', 'ai-post-scheduler'); ?></h3>
+                    <p class="aips-empty-state-description"><?php esc_html_e('Mark a generated post as live or developing to track rolling updates here.', 'ai-post-scheduler'); ?></p>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
         

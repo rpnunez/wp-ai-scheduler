@@ -417,3 +417,13 @@
 .aips-calendar-more-events:hover {
 	background: #e5f0fa;
 }
+
+.aips-calendar-event.color-live {
+	background: #8e44ad;
+	color: #fff;
+}
+
+.aips-calendar-event.color-live-developing {
+	background: #ff8c00;
+	color: #fff;
+}

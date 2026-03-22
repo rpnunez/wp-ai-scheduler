@@ -34,6 +34,11 @@ class AIPS_Generated_Posts_Controller {
 	 * @var AIPS_Post_Review_Repository Repository for post review data
 	 */
 	private $post_review_repository;
+
+	/**
+	 * @var AIPS_Live_Coverage_Service Live coverage service
+	 */
+	private $live_coverage_service;
 	
 	/**
 	 * @var array Cache for template names to avoid N+1 queries
@@ -57,10 +62,14 @@ class AIPS_Generated_Posts_Controller {
 		$this->history_repository = new AIPS_History_Repository();
 		$this->schedule_repository = new AIPS_Schedule_Repository();
 		$this->post_review_repository = new AIPS_Post_Review_Repository();
+		$this->live_coverage_service = new AIPS_Live_Coverage_Service();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
 		add_action('wp_ajax_aips_get_session_json', array($this, 'ajax_get_session_json'));
+		add_action('wp_ajax_aips_live_story_append_update', array($this, 'ajax_live_story_append_update'));
+		add_action('wp_ajax_aips_live_story_regenerate_sections', array($this, 'ajax_live_story_regenerate_sections'));
+		add_action('wp_ajax_aips_live_story_get_history', array($this, 'ajax_live_story_get_history'));
 		// AJAX endpoint to download the session JSON as a file
 		add_action('wp_ajax_aips_download_session_json', array($this, 'ajax_download_session_json'));
 	}
@@ -110,15 +119,21 @@ class AIPS_Generated_Posts_Controller {
 			// Format source information
 			$source = $this->format_source($item);
 			
+			$story_metadata = $this->live_coverage_service->get_story_metadata($item->post_id);
+			$change_history = $this->live_coverage_service->get_change_history($item->post_id, $item->id, 25);
+
 			$posts_data[] = array(
 				'history_id' => $item->id,
 				'post_id' => $item->post_id,
 				'title' => $post->post_title,
+				'excerpt' => $post->post_excerpt,
 				'date_generated' => $item->created_at,
 				'date_published' => $post->post_date,
 				'date_scheduled' => $schedule ? $schedule->next_run : null,
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
+				'story_metadata' => $story_metadata,
+				'change_history' => $change_history,
 			);
 		}
 		
@@ -462,6 +477,101 @@ class AIPS_Generated_Posts_Controller {
 		));
 	}
 	
+	public function ajax_live_story_append_update() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+		if (!$post_id || !$history_id) {
+			wp_send_json_error(array('message' => __('Invalid live story request.', 'ai-post-scheduler')));
+		}
+
+		if (!current_user_can('edit_post', $post_id)) {
+			wp_send_json_error(array('message' => __('You do not have permission to update this story.', 'ai-post-scheduler')));
+		}
+
+		$result = $this->live_coverage_service->append_update_block($post_id, $history_id, array(
+			'update_brief' => isset($_POST['update_brief']) ? wp_unslash($_POST['update_brief']) : '',
+			'update_reason' => isset($_POST['update_reason']) ? wp_unslash($_POST['update_reason']) : '',
+			'sections' => array('update_block'),
+			'changed_sections' => array('update_block'),
+			'is_major_update' => !empty($_POST['is_major_update']),
+			'published_at' => isset($_POST['published_at']) ? wp_unslash($_POST['published_at']) : '',
+			'editor_user_id' => get_current_user_id(),
+			'is_live_story' => !empty($_POST['is_live_story']),
+			'thread_identifier' => isset($_POST['thread_identifier']) ? wp_unslash($_POST['thread_identifier']) : '',
+			'parent_story_id' => isset($_POST['parent_story_id']) ? absint($_POST['parent_story_id']) : 0,
+			'story_status' => isset($_POST['story_status']) ? wp_unslash($_POST['story_status']) : '',
+		));
+
+		if (is_wp_error($result)) {
+			wp_send_json_error(array('message' => $result->get_error_message()));
+		}
+
+		wp_send_json_success(array(
+			'message' => __('Update block appended successfully.', 'ai-post-scheduler'),
+			'metadata' => $result['metadata'],
+			'change_history' => $this->live_coverage_service->get_change_history($post_id, $history_id, 25),
+		));
+	}
+
+	public function ajax_live_story_regenerate_sections() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+		if (!$post_id || !$history_id) {
+			wp_send_json_error(array('message' => __('Invalid live story request.', 'ai-post-scheduler')));
+		}
+
+		if (!current_user_can('edit_post', $post_id)) {
+			wp_send_json_error(array('message' => __('You do not have permission to update this story.', 'ai-post-scheduler')));
+		}
+
+		$sections = isset($_POST['sections']) ? array_map('sanitize_key', (array) $_POST['sections']) : array();
+		$result = $this->live_coverage_service->regenerate_selected_sections($post_id, $history_id, array(
+			'sections' => $sections,
+			'update_reason' => isset($_POST['update_reason']) ? wp_unslash($_POST['update_reason']) : '',
+			'is_major_update' => !empty($_POST['is_major_update']),
+			'editor_user_id' => get_current_user_id(),
+			'is_live_story' => !empty($_POST['is_live_story']),
+			'thread_identifier' => isset($_POST['thread_identifier']) ? wp_unslash($_POST['thread_identifier']) : '',
+			'parent_story_id' => isset($_POST['parent_story_id']) ? absint($_POST['parent_story_id']) : 0,
+			'story_status' => isset($_POST['story_status']) ? wp_unslash($_POST['story_status']) : '',
+		));
+
+		if (is_wp_error($result)) {
+			wp_send_json_error(array('message' => $result->get_error_message()));
+		}
+
+		wp_send_json_success(array(
+			'message' => __('Selected sections regenerated successfully.', 'ai-post-scheduler'),
+			'headline' => isset($result['headline']) ? $result['headline'] : '',
+			'top_summary' => isset($result['top_summary']) ? $result['top_summary'] : '',
+			'metadata' => $result['metadata'],
+			'change_history' => $this->live_coverage_service->get_change_history($post_id, $history_id, 25),
+		));
+	}
+
+	public function ajax_live_story_get_history() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
+		if (!$post_id) {
+			wp_send_json_error(array('message' => __('Invalid live story request.', 'ai-post-scheduler')));
+		}
+
+		if (!current_user_can('edit_post', $post_id)) {
+			wp_send_json_error(array('message' => __('You do not have permission to view this story history.', 'ai-post-scheduler')));
+		}
+
+		wp_send_json_success(array(
+			'message' => __('Live story history refreshed.', 'ai-post-scheduler'),
+			'change_history' => $this->live_coverage_service->get_change_history($post_id, $history_id, 50),
+		));
+	}
+
 	/**
 	 * Format source information for display
 	 *

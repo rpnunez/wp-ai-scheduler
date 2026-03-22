@@ -97,6 +97,22 @@ class AIPS_Post_Manager {
             );
         }
 
+        if (
+            isset($data['is_live_story'])
+            || isset($data['thread_identifier'])
+            || isset($data['parent_story_id'])
+            || isset($data['story_status'])
+        ) {
+            $live_coverage_service = new AIPS_Live_Coverage_Service();
+            $live_coverage_service->update_generated_content_metadata($post_id, array(
+                'is_live_story' => isset($data['is_live_story']) ? (bool) $data['is_live_story'] : false,
+                'thread_identifier' => isset($data['thread_identifier']) ? $data['thread_identifier'] : '',
+                'parent_story_id' => isset($data['parent_story_id']) ? absint($data['parent_story_id']) : 0,
+                'story_status' => isset($data['story_status']) ? $data['story_status'] : '',
+                'thread_source' => isset($data['topic']) ? $data['topic'] : $title,
+            ));
+        }
+
         // Handle Tags
         if (!empty($post_tags)) {
             $tags = array_map('trim', explode(',', $post_tags));
