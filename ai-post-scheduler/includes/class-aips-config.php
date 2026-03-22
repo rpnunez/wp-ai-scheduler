@@ -72,7 +72,7 @@ class AIPS_Config {
             'aips_default_post_author' => 1,
             'aips_enable_logging' => true,
             'aips_log_retention_days' => 30,
-            'aips_enable_retry' => true,
+            'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
             'aips_retry_initial_delay' => 1,
             'aips_enable_rate_limiting' => false,
@@ -173,7 +173,7 @@ class AIPS_Config {
      */
     public function get_retry_config() {
         return array(
-            'enabled' => (bool) $this->get_option('aips_enable_retry', true),
+            'enabled' => (bool) $this->get_option('aips_enable_retry', false),
             'max_attempts' => (int) $this->get_option('aips_retry_max_attempts', 3),
             'initial_delay' => (int) $this->get_option('aips_retry_initial_delay', 1),
             'exponential' => true,
