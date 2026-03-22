@@ -40,7 +40,7 @@ class AIPS_Site_Context {
 			if (!isset($meta['key'])) {
 				continue;
 			}
-			$default            = isset($meta['default']) ? $meta['default'] : '';
+			$default               = isset($meta['default']) ? $meta['default'] : '';
 			$result[ $meta['key'] ] = get_option($option_name, $default);
 		}
 
@@ -64,6 +64,63 @@ class AIPS_Site_Context {
 		}
 
 		return $default;
+	}
+
+	/**
+	 * Return the configured target mix by format.
+	 *
+	 * @return array<string, int>
+	 */
+	public static function get_editorial_format_targets() {
+		$defaults = array(
+			'news'     => 30,
+			'analysis' => 20,
+			'guide'    => 20,
+			'roundup'  => 15,
+			'opinion'  => 15,
+		);
+		$targets = array();
+
+		foreach ($defaults as $format => $default) {
+			$targets[ $format ] = max(0, min(100, absint(self::get_setting('format_' . $format . '_target', $default))));
+		}
+
+		$total = array_sum($targets);
+		if ($total <= 0) {
+			return $defaults;
+		}
+		if (100 === $total) {
+			return $targets;
+		}
+
+		$normalised = array();
+		$running_total = 0;
+		$formats = array_keys($targets);
+		$last_format = end($formats);
+		foreach ($targets as $format => $value) {
+			if ($format === $last_format) {
+				$normalised[ $format ] = max(0, 100 - $running_total);
+				continue;
+			}
+			$normalised[ $format ] = (int) round(($value / $total) * 100);
+			$running_total += $normalised[ $format ];
+		}
+
+		return $normalised;
+	}
+
+	/**
+	 * Return the editorial mix rules used by planners and schedule analytics.
+	 *
+	 * @return array
+	 */
+	public static function get_editorial_mix_rules() {
+		return array(
+			'max_beat_share'        => max(5, min(100, absint(self::get_setting('max_beat_share', 40)))),
+			'min_evergreen_quota'   => max(0, min(100, absint(self::get_setting('min_evergreen_quota', 30)))),
+			'max_same_topic_repeats'=> max(1, min(10, absint(self::get_setting('max_same_topic_repeats', 2)))),
+			'target_format_mix'     => self::get_editorial_format_targets(),
+		);
 	}
 
 	/**

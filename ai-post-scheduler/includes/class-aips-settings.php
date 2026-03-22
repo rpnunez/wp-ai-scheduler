@@ -542,6 +542,70 @@ class AIPS_Settings {
             'aips-settings',
             'aips_content_strategy_section'
         );
+
+        add_settings_field(
+            'aips_site_max_beat_share',
+            __('Maximum Beat Share Per Week', 'ai-post-scheduler'),
+            array($this, 'site_max_beat_share_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_min_evergreen_quota',
+            __('Minimum Evergreen Quota', 'ai-post-scheduler'),
+            array($this, 'site_min_evergreen_quota_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_max_same_topic_repeats',
+            __('Maximum Same-topic Repeats', 'ai-post-scheduler'),
+            array($this, 'site_max_same_topic_repeats_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_target_format_news',
+            __('Target Mix: News', 'ai-post-scheduler'),
+            array($this, 'site_target_format_news_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_target_format_analysis',
+            __('Target Mix: Analysis', 'ai-post-scheduler'),
+            array($this, 'site_target_format_analysis_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_target_format_guide',
+            __('Target Mix: Guide', 'ai-post-scheduler'),
+            array($this, 'site_target_format_guide_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_target_format_roundup',
+            __('Target Mix: Roundup', 'ai-post-scheduler'),
+            array($this, 'site_target_format_roundup_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
+
+        add_settings_field(
+            'aips_site_target_format_opinion',
+            __('Target Mix: Opinion', 'ai-post-scheduler'),
+            array($this, 'site_target_format_opinion_field_callback'),
+            'aips-settings',
+            'aips_content_strategy_section'
+        );
     }
 
     /**
@@ -597,6 +661,46 @@ class AIPS_Settings {
                 'key'               => 'excluded_topics',
                 'sanitize_callback' => 'sanitize_textarea_field',
                 'default'           => '',
+            ),
+            'aips_site_max_beat_share' => array(
+                'key'               => 'max_beat_share',
+                'sanitize_callback' => array(__CLASS__, 'sanitize_percentage_setting'),
+                'default'           => 40,
+            ),
+            'aips_site_min_evergreen_quota' => array(
+                'key'               => 'min_evergreen_quota',
+                'sanitize_callback' => array(__CLASS__, 'sanitize_percentage_setting'),
+                'default'           => 30,
+            ),
+            'aips_site_max_same_topic_repeats' => array(
+                'key'               => 'max_same_topic_repeats',
+                'sanitize_callback' => 'absint',
+                'default'           => 2,
+            ),
+            'aips_site_target_format_news' => array(
+                'key'               => 'format_news_target',
+                'sanitize_callback' => array(__CLASS__, 'sanitize_percentage_setting'),
+                'default'           => 30,
+            ),
+            'aips_site_target_format_analysis' => array(
+                'key'               => 'format_analysis_target',
+                'sanitize_callback' => array(__CLASS__, 'sanitize_percentage_setting'),
+                'default'           => 20,
+            ),
+            'aips_site_target_format_guide' => array(
+                'key'               => 'format_guide_target',
+                'sanitize_callback' => array(__CLASS__, 'sanitize_percentage_setting'),
+                'default'           => 20,
+            ),
+            'aips_site_target_format_roundup' => array(
+                'key'               => 'format_roundup_target',
+                'sanitize_callback' => array(__CLASS__, 'sanitize_percentage_setting'),
+                'default'           => 15,
+            ),
+            'aips_site_target_format_opinion' => array(
+                'key'               => 'format_opinion_target',
+                'sanitize_callback' => array(__CLASS__, 'sanitize_percentage_setting'),
+                'default'           => 15,
             ),
         );
     }
@@ -933,6 +1037,51 @@ class AIPS_Settings {
         echo '<p>' . esc_html__('Define the overall content identity of your website. These settings are shared across Author Suggestions, topic generation, and post generation to ensure consistent, on-brand output.', 'ai-post-scheduler') . '</p>';
     }
 
+
+    /**
+     * Sanitize a percentage setting.
+     *
+     * @param mixed $value Raw value.
+     * @return int
+     */
+    public static function sanitize_percentage_setting($value) {
+        return max(0, min(100, absint($value)));
+    }
+
+    /**
+     * Render a percentage field used by editorial mix settings.
+     *
+     * @param string $option_name  Option key.
+     * @param int    $default      Default value.
+     * @param string $description  Helper text.
+     * @return void
+     */
+    private function render_editorial_mix_percentage_field($option_name, $default, $description) {
+        $value = get_option($option_name, $default);
+        ?>
+        <input type="number" name="<?php echo esc_attr($option_name); ?>" value="<?php echo esc_attr($value); ?>" min="0" max="100" class="small-text"> <span>%</span>
+        <p class="description"><?php echo esc_html($description); ?></p>
+        <?php
+    }
+
+    /**
+     * Render a small numeric field for editorial mix settings.
+     *
+     * @param string $option_name Option key.
+     * @param int    $default     Default value.
+     * @param int    $min         Minimum allowed value.
+     * @param int    $max         Maximum allowed value.
+     * @param string $description Helper text.
+     * @return void
+     */
+    private function render_editorial_mix_number_field($option_name, $default, $min, $max, $description) {
+        $value = get_option($option_name, $default);
+        ?>
+        <input type="number" name="<?php echo esc_attr($option_name); ?>" value="<?php echo esc_attr($value); ?>" min="<?php echo esc_attr($min); ?>" max="<?php echo esc_attr($max); ?>" class="small-text">
+        <p class="description"><?php echo esc_html($description); ?></p>
+        <?php
+    }
+
     /**
      * Render the Site Niche / Primary Topic field.
      *
@@ -1047,6 +1196,78 @@ class AIPS_Settings {
         <textarea name="aips_site_excluded_topics" class="large-text" rows="3" placeholder="<?php esc_attr_e('e.g., competitor brand names, controversial political topics, adult content', 'ai-post-scheduler'); ?>"><?php echo esc_textarea($value); ?></textarea>
         <p class="description"><?php esc_html_e('Topics or subjects that should never appear in any generated post or topic suggestion. Applied globally.', 'ai-post-scheduler'); ?></p>
         <?php
+    }
+
+    /**
+     * Render the maximum beat share field.
+     *
+     * @return void
+     */
+    public function site_max_beat_share_field_callback() {
+        $this->render_editorial_mix_percentage_field('aips_site_max_beat_share', 40, __('Maximum share of the next seven days that can belong to a single beat before the planner warns editors.', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Render the minimum evergreen quota field.
+     *
+     * @return void
+     */
+    public function site_min_evergreen_quota_field_callback() {
+        $this->render_editorial_mix_percentage_field('aips_site_min_evergreen_quota', 30, __('Minimum share of the upcoming week that should remain evergreen or utility-driven.', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Render the max same-topic repeats field.
+     *
+     * @return void
+     */
+    public function site_max_same_topic_repeats_field_callback() {
+        $this->render_editorial_mix_number_field('aips_site_max_same_topic_repeats', 2, 1, 10, __('How many times a near-identical story angle can appear in the weekly plan before it is flagged.', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Render the target format fields.
+     *
+     * @return void
+     */
+    public function site_target_format_news_field_callback() {
+        $this->render_editorial_mix_percentage_field('aips_site_target_format_news', 30, __('Target share for news coverage. The planner normalises all format targets to 100%.', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Render the target analysis format field.
+     *
+     * @return void
+     */
+    public function site_target_format_analysis_field_callback() {
+        $this->render_editorial_mix_percentage_field('aips_site_target_format_analysis', 20, __('Target share for analysis and explainer coverage.', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Render the target guide format field.
+     *
+     * @return void
+     */
+    public function site_target_format_guide_field_callback() {
+        $this->render_editorial_mix_percentage_field('aips_site_target_format_guide', 20, __('Target share for evergreen guides, tutorials, and service pieces.', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Render the target roundup format field.
+     *
+     * @return void
+     */
+    public function site_target_format_roundup_field_callback() {
+        $this->render_editorial_mix_percentage_field('aips_site_target_format_roundup', 15, __('Target share for roundups, lists, and recap-driven stories.', 'ai-post-scheduler'));
+    }
+
+    /**
+     * Render the target opinion format field.
+     *
+     * @return void
+     */
+    public function site_target_format_opinion_field_callback() {
+        $this->render_editorial_mix_percentage_field('aips_site_target_format_opinion', 15, __('Target share for columns, takes, and opinionated voice pieces.', 'ai-post-scheduler'));
     }
 
     /**
