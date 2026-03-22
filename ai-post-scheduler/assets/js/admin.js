@@ -459,6 +459,9 @@
             // Reset source groups
             $('.aips-template-source-group-cb').prop('checked', false);
             $('#template-source-groups-selector').hide();
+            $('#dossier_only_facts').prop('checked', false);
+            $('#dossier_mark_uncertain_claims').prop('checked', false);
+            $('#dossier_include_knowledge_gaps').prop('checked', false);
             // Initialize wizard to step 1
             AIPS.wizardGoToStep(1, $('#aips-template-modal'));
             $('#aips-template-modal').show();
@@ -524,6 +527,9 @@
                         sgIds.forEach(function(tid) {
                             $('.aips-template-source-group-cb[value="' + tid + '"]').prop('checked', true);
                         });
+                        $('#dossier_only_facts').prop('checked', t.dossier_only_facts == 1);
+                        $('#dossier_mark_uncertain_claims').prop('checked', t.dossier_mark_uncertain_claims == 1);
+                        $('#dossier_include_knowledge_gaps').prop('checked', t.dossier_include_knowledge_gaps == 1);
 
                         // Scan for AI Variables after loading template data
                         AIPS.initAIVariablesScanner();
@@ -713,6 +719,9 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
+                    dossier_only_facts: $('#dossier_only_facts').is(':checked') ? 1 : 0,
+                    dossier_mark_uncertain_claims: $('#dossier_mark_uncertain_claims').is(':checked') ? 1 : 0,
+                    dossier_include_knowledge_gaps: $('#dossier_include_knowledge_gaps').is(':checked') ? 1 : 0,
                     is_active: $('#is_active').is(':checked') ? 1 : 0
                 },
                 success: function(response) {
@@ -786,6 +795,9 @@
                         $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                         return ids;
                     }()),
+                    dossier_only_facts: $('#dossier_only_facts').is(':checked') ? 1 : 0,
+                    dossier_mark_uncertain_claims: $('#dossier_mark_uncertain_claims').is(':checked') ? 1 : 0,
+                    dossier_include_knowledge_gaps: $('#dossier_include_knowledge_gaps').is(':checked') ? 1 : 0,
                     is_active: 0 // Save as inactive draft
                 },
                 success: function(response) {
@@ -3905,7 +3917,10 @@
                     var ids = [];
                     $('.aips-template-source-group-cb:checked').each(function() { ids.push($(this).val()); });
                     return ids;
-                }())
+                }()),
+                dossier_only_facts: $('#dossier_only_facts').is(':checked') ? 1 : 0,
+                dossier_mark_uncertain_claims: $('#dossier_mark_uncertain_claims').is(':checked') ? 1 : 0,
+                dossier_include_knowledge_gaps: $('#dossier_include_knowledge_gaps').is(':checked') ? 1 : 0
             };
             
             $.ajax({

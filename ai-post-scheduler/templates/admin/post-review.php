@@ -151,6 +151,14 @@ $templates = $template_repository->get_all();
 											esc_html(date_i18n(get_option('date_format'), strtotime($item->post_modified)))
 										); ?>
 									</div>
+									<?php if (!empty($item->dossier_checklist) && is_array($item->dossier_checklist)): ?>
+										<div class="aips-table-meta" style="margin-top:6px;">
+											<strong><?php esc_html_e('Pre-publish checklist:', 'ai-post-scheduler'); ?></strong>
+											<span class="aips-badge <?php echo !empty($item->dossier_checklist['needs_attention']) ? 'aips-badge-warning' : 'aips-badge-success'; ?>">
+												<?php echo esc_html($item->dossier_checklist['summary']); ?>
+											</span>
+										</div>
+									<?php endif; ?>
 								</td>
 								<td class="column-template">
 									<?php if ($item->template_name): ?>

@@ -21,6 +21,7 @@ class AIPS_DB_Manager {
         'aips_notifications',
         'aips_sources',
         'aips_source_group_terms',
+        'aips_source_dossiers',
     );
 
     public function __construct() {
@@ -68,6 +69,7 @@ class AIPS_DB_Manager {
         $table_notifications        = $tables['aips_notifications'];
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_source_dossiers      = $tables['aips_source_dossiers'];
 
         $sql = array();
 
@@ -130,6 +132,9 @@ class AIPS_DB_Manager {
             post_author bigint(20) DEFAULT NULL,
             include_sources tinyint(1) DEFAULT 0,
             source_group_ids text DEFAULT NULL,
+            dossier_only_facts tinyint(1) DEFAULT 0,
+            dossier_mark_uncertain_claims tinyint(1) DEFAULT 0,
+            dossier_include_knowledge_gaps tinyint(1) DEFAULT 0,
             is_active tinyint(1) DEFAULT 1,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -345,6 +350,29 @@ class AIPS_DB_Manager {
             UNIQUE KEY source_term (source_id, term_id),
             KEY source_id (source_id),
             KEY term_id (term_id)
+        ) $charset_collate;";
+
+        $sql[] = "CREATE TABLE $table_source_dossiers (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            source_id bigint(20) DEFAULT NULL,
+            relation_type varchar(50) NOT NULL DEFAULT 'author_topic',
+            relation_id bigint(20) NOT NULL,
+            source_url varchar(2083) NOT NULL,
+            source_type varchar(100) DEFAULT NULL,
+            quote_summary text DEFAULT NULL,
+            trust_rating tinyint(1) NOT NULL DEFAULT 3,
+            citation_required tinyint(1) NOT NULL DEFAULT 0,
+            verification_status varchar(50) NOT NULL DEFAULT 'pending',
+            editor_notes text DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY source_id (source_id),
+            KEY relation_type (relation_type),
+            KEY relation_id (relation_id),
+            KEY relation_lookup (relation_type, relation_id),
+            KEY verification_status (verification_status),
+            KEY citation_required (citation_required)
         ) $charset_collate;";
 
         return $sql;

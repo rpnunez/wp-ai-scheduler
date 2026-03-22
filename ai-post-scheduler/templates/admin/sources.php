@@ -36,6 +36,24 @@ if (!isset($source_group_name_map) || !is_array($source_group_name_map)) {
 if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 	$source_term_ids_map = array();
 }
+if (!isset($dossiers) || !is_array($dossiers)) {
+	$dossiers = array();
+}
+if (!isset($dossier_relation_types) || !is_array($dossier_relation_types)) {
+	$dossier_relation_types = array(
+		'author_topic'      => __('Author Topic', 'ai-post-scheduler'),
+		'research_item'     => __('Research Item', 'ai-post-scheduler'),
+		'story_budget_item' => __('Story Budget Item', 'ai-post-scheduler'),
+	);
+}
+if (!isset($dossier_statuses) || !is_array($dossier_statuses)) {
+	$dossier_statuses = array(
+		'pending'      => __('Pending Verification', 'ai-post-scheduler'),
+		'verified'     => __('Verified', 'ai-post-scheduler'),
+		'needs_review' => __('Needs Review', 'ai-post-scheduler'),
+		'disputed'     => __('Disputed', 'ai-post-scheduler'),
+	);
+}
 ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
@@ -195,6 +213,101 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 			<?php endif; ?>
 		</div>
 
+		<div class="aips-content-panel" style="margin-top:24px;">
+			<div class="aips-panel-header" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+				<div>
+					<h2 style="margin:0;"><?php esc_html_e('Editorial Dossiers', 'ai-post-scheduler'); ?></h2>
+					<p class="description" style="margin:4px 0 0;"><?php esc_html_e('Capture formal research notes, supporting quotes, and verification status before generation. Dossiers can be attached to research items, author topics, or story-budget items.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<button type="button" class="aips-btn aips-btn-primary" id="aips-add-dossier-btn">
+					<span class="dashicons dashicons-media-document"></span>
+					<?php esc_html_e('Add Dossier Record', 'ai-post-scheduler'); ?>
+				</button>
+			</div>
+
+			<?php if (!empty($dossiers)): ?>
+				<div class="aips-panel-body no-padding">
+					<table class="aips-table aips-sources-table" id="aips-dossiers-table">
+						<thead>
+							<tr>
+								<th><?php esc_html_e('Editorial Item', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Type', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Verification', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Citation', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Trust', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Summary', 'ai-post-scheduler'); ?></th>
+								<th><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ($dossiers as $dossier): ?>
+								<tr
+									data-dossier-id="<?php echo esc_attr($dossier->id); ?>"
+									data-source-id="<?php echo esc_attr($dossier->source_id); ?>"
+									data-relation-type="<?php echo esc_attr($dossier->relation_type); ?>"
+									data-relation-id="<?php echo esc_attr($dossier->relation_id); ?>"
+									data-source-url="<?php echo esc_attr($dossier->source_url); ?>"
+									data-source-type="<?php echo esc_attr($dossier->source_type); ?>"
+									data-quote-summary="<?php echo esc_attr($dossier->quote_summary); ?>"
+									data-trust-rating="<?php echo esc_attr($dossier->trust_rating); ?>"
+									data-citation-required="<?php echo esc_attr($dossier->citation_required); ?>"
+									data-verification-status="<?php echo esc_attr($dossier->verification_status); ?>"
+									data-editor-notes="<?php echo esc_attr($dossier->editor_notes); ?>">
+									<td>
+										<strong><?php echo esc_html(isset($dossier_relation_types[$dossier->relation_type]) ? $dossier_relation_types[$dossier->relation_type] : $dossier->relation_type); ?></strong>
+										<div class="cell-meta"><?php printf(esc_html__('ID #%d', 'ai-post-scheduler'), (int) $dossier->relation_id); ?></div>
+									</td>
+									<td>
+										<a href="<?php echo esc_url($dossier->source_url); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($dossier->source_url); ?></a>
+										<?php if (!empty($dossier->source_label)): ?>
+											<div class="cell-meta"><?php echo esc_html($dossier->source_label); ?></div>
+										<?php endif; ?>
+									</td>
+									<td><?php echo esc_html(!empty($dossier->source_type) ? $dossier->source_type : '—'); ?></td>
+									<td>
+										<span class="aips-badge <?php echo $dossier->verification_status === 'verified' ? 'aips-badge-success' : 'aips-badge-neutral'; ?>">
+											<?php echo esc_html(isset($dossier_statuses[$dossier->verification_status]) ? $dossier_statuses[$dossier->verification_status] : $dossier->verification_status); ?>
+										</span>
+									</td>
+									<td>
+										<?php if (!empty($dossier->citation_required)): ?>
+											<span class="aips-badge aips-badge-warning"><?php esc_html_e('Required', 'ai-post-scheduler'); ?></span>
+										<?php else: ?>
+											<span class="cell-meta"><?php esc_html_e('Optional', 'ai-post-scheduler'); ?></span>
+										<?php endif; ?>
+									</td>
+									<td><?php echo esc_html(sprintf(__('%d/5', 'ai-post-scheduler'), (int) $dossier->trust_rating)); ?></td>
+									<td>
+										<?php echo esc_html(!empty($dossier->quote_summary) ? wp_trim_words($dossier->quote_summary, 16, '…') : '—'); ?>
+										<?php if (!empty($dossier->editor_notes)): ?>
+											<div class="cell-meta"><?php echo esc_html(wp_trim_words($dossier->editor_notes, 12, '…')); ?></div>
+										<?php endif; ?>
+									</td>
+									<td>
+										<div class="aips-action-buttons">
+											<button type="button" class="aips-btn aips-btn-sm aips-edit-dossier" data-id="<?php echo esc_attr($dossier->id); ?>">
+												<span class="dashicons dashicons-edit"></span>
+											</button>
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-danger aips-delete-dossier" data-id="<?php echo esc_attr($dossier->id); ?>">
+												<span class="dashicons dashicons-trash"></span>
+											</button>
+										</div>
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				</div>
+			<?php else: ?>
+				<div class="aips-empty-state">
+					<span class="dashicons dashicons-media-document" aria-hidden="true"></span>
+					<h3><?php esc_html_e('No Dossier Records Yet', 'ai-post-scheduler'); ?></h3>
+					<p><?php esc_html_e('Add research-backed dossier records so editors can track what is verified, what must be cited, and what still needs review before generation.', 'ai-post-scheduler'); ?></p>
+				</div>
+			<?php endif; ?>
+		</div>
+
 	</div><!-- .aips-page-container -->
 </div><!-- .wrap -->
 
@@ -268,6 +381,101 @@ if (!isset($source_term_ids_map) || !is_array($source_term_ids_map)) {
 			<button type="button" class="button button-primary" id="aips-save-source-btn">
 				<?php esc_html_e('Save Source', 'ai-post-scheduler'); ?>
 			</button>
+		</div>
+	</div>
+</div>
+
+<!-- Add / Edit Dossier Modal -->
+<div id="aips-dossier-modal" class="aips-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="aips-dossier-modal-title">
+	<div class="aips-modal-content">
+		<div class="aips-modal-header">
+			<h2 id="aips-dossier-modal-title"><?php esc_html_e('Add Dossier Record', 'ai-post-scheduler'); ?></h2>
+			<button class="aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>">&times;</button>
+		</div>
+		<div class="aips-modal-body">
+			<form id="aips-dossier-form" novalidate>
+				<input type="hidden" name="dossier_id" id="aips-dossier-id" value="0">
+
+				<div class="aips-form-row">
+					<label for="aips-dossier-relation-type"><?php esc_html_e('Editorial Item Type', 'ai-post-scheduler'); ?></label>
+					<select id="aips-dossier-relation-type" name="relation_type" class="regular-text">
+						<?php foreach ($dossier_relation_types as $relation_key => $relation_label): ?>
+							<option value="<?php echo esc_attr($relation_key); ?>"><?php echo esc_html($relation_label); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+
+				<div class="aips-form-row">
+					<label for="aips-dossier-relation-id">
+						<?php esc_html_e('Editorial Item ID', 'ai-post-scheduler'); ?>
+						<span class="required" aria-hidden="true">*</span>
+					</label>
+					<input type="number" id="aips-dossier-relation-id" name="relation_id" min="1" class="small-text" required>
+					<p class="description"><?php esc_html_e('Enter the related research item, author topic, or story-budget item ID.', 'ai-post-scheduler'); ?></p>
+				</div>
+
+				<div class="aips-form-row">
+					<label for="aips-dossier-source-id"><?php esc_html_e('Trusted Source (Optional)', 'ai-post-scheduler'); ?></label>
+					<select id="aips-dossier-source-id" name="source_id" class="regular-text">
+						<option value="0"><?php esc_html_e('None', 'ai-post-scheduler'); ?></option>
+						<?php foreach ($sources as $source): ?>
+							<option value="<?php echo esc_attr($source->id); ?>"><?php echo esc_html(!empty($source->label) ? $source->label : $source->url); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+
+				<div class="aips-form-row">
+					<label for="aips-dossier-source-url">
+						<?php esc_html_e('Source URL', 'ai-post-scheduler'); ?>
+						<span class="required" aria-hidden="true">*</span>
+					</label>
+					<input type="url" id="aips-dossier-source-url" name="source_url" required class="regular-text" placeholder="<?php esc_attr_e('https://example.com/article', 'ai-post-scheduler'); ?>">
+				</div>
+
+				<div class="aips-form-row">
+					<label for="aips-dossier-source-type"><?php esc_html_e('Source Type', 'ai-post-scheduler'); ?></label>
+					<input type="text" id="aips-dossier-source-type" name="source_type" class="regular-text" placeholder="<?php esc_attr_e('Primary research, press release, analyst note…', 'ai-post-scheduler'); ?>">
+				</div>
+
+				<div class="aips-form-row">
+					<label for="aips-dossier-quote-summary"><?php esc_html_e('Quote / Snippet Summary', 'ai-post-scheduler'); ?></label>
+					<textarea id="aips-dossier-quote-summary" name="quote_summary" rows="4" class="large-text" placeholder="<?php esc_attr_e('Capture the key claim, quote, or evidence that will inform generation.', 'ai-post-scheduler'); ?>"></textarea>
+				</div>
+
+				<div class="aips-form-row">
+					<label for="aips-dossier-trust-rating"><?php esc_html_e('Trust / Confidence Rating', 'ai-post-scheduler'); ?></label>
+					<select id="aips-dossier-trust-rating" name="trust_rating" class="small-text">
+						<?php for ($rating = 1; $rating <= 5; $rating++): ?>
+							<option value="<?php echo esc_attr($rating); ?>"><?php echo esc_html(sprintf(__('%d / 5', 'ai-post-scheduler'), $rating)); ?></option>
+						<?php endfor; ?>
+					</select>
+				</div>
+
+				<div class="aips-form-row">
+					<label for="aips-dossier-verification-status"><?php esc_html_e('Verification Status', 'ai-post-scheduler'); ?></label>
+					<select id="aips-dossier-verification-status" name="verification_status" class="regular-text">
+						<?php foreach ($dossier_statuses as $status_key => $status_label): ?>
+							<option value="<?php echo esc_attr($status_key); ?>"><?php echo esc_html($status_label); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+
+				<div class="aips-form-row">
+					<label class="aips-checkbox-label">
+						<input type="checkbox" id="aips-dossier-citation-required" name="citation_required" value="1">
+						<?php esc_html_e('Citation required in final draft', 'ai-post-scheduler'); ?>
+					</label>
+				</div>
+
+				<div class="aips-form-row">
+					<label for="aips-dossier-editor-notes"><?php esc_html_e('Editor Notes', 'ai-post-scheduler'); ?></label>
+					<textarea id="aips-dossier-editor-notes" name="editor_notes" rows="3" class="large-text" placeholder="<?php esc_attr_e('Anything the editor needs to remember before approval or publication.', 'ai-post-scheduler'); ?>"></textarea>
+				</div>
+			</form>
+		</div>
+		<div class="aips-modal-footer">
+			<button type="button" class="button aips-modal-close"><?php esc_html_e('Cancel', 'ai-post-scheduler'); ?></button>
+			<button type="button" class="button button-primary" id="aips-save-dossier-btn"><?php esc_html_e('Save Dossier Record', 'ai-post-scheduler'); ?></button>
 		</div>
 	</div>
 </div>
