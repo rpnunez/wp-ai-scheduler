@@ -39,6 +39,11 @@ class AIPS_Prompt_Sections_Controller {
 		add_action('wp_ajax_aips_toggle_prompt_section_active', array($this, 'ajax_toggle_section_active'));
 	}
 
+	/**
+	 * Return all prompt sections for the admin UI.
+	 *
+	 * @return void
+	 */
 	public function ajax_get_sections() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -50,6 +55,11 @@ class AIPS_Prompt_Sections_Controller {
 		wp_send_json_success(array('sections' => $sections));
 	}
 
+	/**
+	 * Return a single prompt section by ID.
+	 *
+	 * @return void
+	 */
 	public function ajax_get_section() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -70,6 +80,11 @@ class AIPS_Prompt_Sections_Controller {
 		wp_send_json_success(array('section' => $section));
 	}
 
+	/**
+	 * Create or update a prompt section.
+	 *
+	 * @return void
+	 */
 	public function ajax_save_section() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -117,6 +132,11 @@ class AIPS_Prompt_Sections_Controller {
 		wp_send_json_success(array('message' => __('Section created.', 'ai-post-scheduler'), 'section_id' => $new_id));
 	}
 
+	/**
+	 * Delete a prompt section.
+	 *
+	 * @return void
+	 */
 	public function ajax_delete_section() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -137,6 +157,11 @@ class AIPS_Prompt_Sections_Controller {
 		wp_send_json_success(array('message' => __('Section deleted.', 'ai-post-scheduler')));
 	}
 
+	/**
+	 * Toggle whether a prompt section is active.
+	 *
+	 * @return void
+	 */
 	public function ajax_toggle_section_active() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -159,4 +184,3 @@ class AIPS_Prompt_Sections_Controller {
 		wp_send_json_success(array('message' => __('Section status updated.', 'ai-post-scheduler')));
 	}
 }
-

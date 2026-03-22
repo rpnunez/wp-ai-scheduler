@@ -22,6 +22,11 @@ class AIPS_Templates {
      */
     private $interval_calculator;
     
+    /**
+     * Initialize template service dependencies.
+     *
+     * @return void
+     */
     public function __construct() {
         global $wpdb;
         $this->table_name          = $wpdb->prefix . 'aips_templates';
@@ -30,14 +35,32 @@ class AIPS_Templates {
         $this->interval_calculator = new AIPS_Interval_Calculator();
     }
     
+    /**
+     * Return all templates.
+     *
+     * @param bool $active_only Whether to limit results to active templates.
+     * @return array Template records.
+     */
     public function get_all($active_only = false) {
         return $this->repository->get_all($active_only);
     }
     
+    /**
+     * Return a template by ID.
+     *
+     * @param int $id Template ID.
+     * @return object|null Template record if found.
+     */
     public function get($id) {
         return $this->repository->get_by_id($id);
     }
     
+    /**
+     * Create or update a template.
+     *
+     * @param array $data Template form data.
+     * @return int Template ID.
+     */
     public function save($data) {
         $allowed_sources = array('ai_prompt', 'unsplash', 'media_library');
         $selected_source = isset($data['featured_image_source']) ? sanitize_text_field($data['featured_image_source']) : 'ai_prompt';
@@ -80,10 +103,22 @@ class AIPS_Templates {
         }
     }
     
+    /**
+     * Delete a template by ID.
+     *
+     * @param int $id Template ID.
+     * @return bool|int Result from the repository delete operation.
+     */
     public function delete($id) {
         return $this->repository->delete($id);
     }
     
+    /**
+     * Calculate pending schedule counts for one template.
+     *
+     * @param int $template_id Template ID.
+     * @return array Pending counts grouped by time window.
+     */
     public function get_pending_stats($template_id) {
         $schedules = $this->schedule_repository->get_active_schedules_by_template($template_id);
 
@@ -144,6 +179,11 @@ class AIPS_Templates {
         return $stats;
     }
 
+    /**
+     * Calculate pending schedule counts for all templates.
+     *
+     * @return array Pending counts keyed by template ID.
+     */
     public function get_all_pending_stats() {
         $cached_stats = get_transient('aips_pending_schedule_stats');
         if ($cached_stats !== false) {
@@ -208,11 +248,23 @@ class AIPS_Templates {
         return $stats;
     }
 
+    /**
+     * Calculate the next run timestamp for a schedule frequency.
+     *
+     * @param string $frequency Schedule frequency slug.
+     * @param int    $base_time Base timestamp.
+     * @return int Unix timestamp for the next run.
+     */
     private function calculate_next_run($frequency, $base_time) {
         $next_run = $this->interval_calculator->calculate_next_run($frequency, date('Y-m-d H:i:s', $base_time));
         return strtotime($next_run);
     }
     
+    /**
+     * Render the templates admin page.
+     *
+     * @return void
+     */
     public function render_page() {
         $templates = $this->get_all();
         $categories = get_categories(array('hide_empty' => false));

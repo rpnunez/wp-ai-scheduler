@@ -10,6 +10,11 @@ class AIPS_Seeder_Service {
     private $templates;
     private $scheduler;
 
+    /**
+     * Initialize seeder dependencies.
+     *
+     * @return void
+     */
     public function __construct() {
         $this->generator = new AIPS_Generator();
         $this->voices = new AIPS_Voices();
@@ -44,6 +49,13 @@ class AIPS_Seeder_Service {
         }
     }
 
+    /**
+     * Generate and save seed voice records.
+     *
+     * @param int    $count    Number of voices to create.
+     * @param string $keywords Optional keywords to guide the AI prompt.
+     * @return array Result payload.
+     */
     private function seed_voices($count, $keywords = '') {
         if (!$this->generator->is_available()) {
             return array('success' => false, 'message' => 'AI Engine not available.');
@@ -90,6 +102,13 @@ class AIPS_Seeder_Service {
         return array('success' => true, 'count' => $created, 'message' => $message);
     }
 
+    /**
+     * Generate and save seed template records.
+     *
+     * @param int    $count    Number of templates to create.
+     * @param string $keywords Optional keywords to guide the AI prompt.
+     * @return array Result payload.
+     */
     private function seed_templates($count, $keywords = '') {
         if (!$this->generator->is_available()) {
             return array('success' => false, 'message' => 'AI Engine not available.');
@@ -131,6 +150,13 @@ class AIPS_Seeder_Service {
         return array('success' => true, 'count' => $created, 'message' => "Created {$created} templates.");
     }
 
+    /**
+     * Create recurring schedules from active templates.
+     *
+     * @param int    $count    Number of schedules to create.
+     * @param string $keywords Unused keyword parameter kept for API consistency.
+     * @return array Result payload.
+     */
     private function seed_scheduled_templates($count, $keywords = '') {
         $all_templates = $this->templates->get_all(true); // Active only
 
@@ -165,6 +191,13 @@ class AIPS_Seeder_Service {
         return array('success' => true, 'count' => $saved_count, 'message' => "Scheduled {$saved_count} recurring templates.");
     }
 
+    /**
+     * Generate and schedule planner entries.
+     *
+     * @param int    $count    Number of planner entries to create.
+     * @param string $keywords Optional keywords to guide the AI prompt.
+     * @return array Result payload.
+     */
     private function seed_planner_entries($count, $keywords = '') {
         if (!$this->generator->is_available()) {
             return array('success' => false, 'message' => 'AI Engine not available.');
@@ -216,6 +249,12 @@ class AIPS_Seeder_Service {
         return array('success' => true, 'count' => $saved_count, 'message' => "Created {$saved_count} planner entries (scheduled once).");
     }
 
+    /**
+     * Generate JSON output from the AI provider and decode it.
+     *
+     * @param string $prompt Prompt sent to the AI provider.
+     * @return array|object|null Decoded JSON payload or null on failure.
+     */
     private function generate_json($prompt) {
         $result = $this->generator->generate_content($prompt, array('temperature' => 0.7, 'max_tokens' => 2000), 'seeder_json');
 

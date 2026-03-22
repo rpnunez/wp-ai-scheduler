@@ -9,6 +9,11 @@ class AIPS_Logger {
     private $enabled;
     private $dir_checked = false;
     
+    /**
+     * Initialize the logger and resolve the current log file path.
+     *
+     * @return void
+     */
     public function __construct() {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
@@ -41,6 +46,11 @@ class AIPS_Logger {
         return $secret;
     }
 
+    /**
+     * Ensure the plugin log directory and protection files exist.
+     *
+     * @return void
+     */
     private function ensure_directory_exists() {
         if ($this->dir_checked) {
             return;
@@ -58,6 +68,14 @@ class AIPS_Logger {
         $this->dir_checked = true;
     }
     
+    /**
+     * Write a log entry when logging is enabled.
+     *
+     * @param string $message Log message.
+     * @param string $level   Log level label.
+     * @param array  $context Optional structured context.
+     * @return void
+     */
     public function log($message, $level = 'info', $context = array()) {
         if (!$this->enabled) {
             return;
@@ -88,14 +106,34 @@ class AIPS_Logger {
         }
     }
 
+    /**
+     * Write a warning-level log entry.
+     *
+     * @param string $message Warning message.
+     * @param array  $context Optional structured context.
+     * @return void
+     */
     public function warning($message, $context = array()) {
         $this->log($message, 'warning', $context);
     }
 
+    /**
+     * Write an error-level log entry.
+     *
+     * @param string $message Error message.
+     * @param array  $context Optional structured context.
+     * @return void
+     */
     public function error($message, $context = array()) {
         $this->log($message, 'error', $context);
     }
     
+    /**
+     * Read recent log lines from the active log file.
+     *
+     * @param int $lines Maximum number of lines to return.
+     * @return array Recent log lines.
+     */
     public function get_logs($lines = 100) {
         if (!file_exists($this->log_file)) {
             return array();
@@ -159,6 +197,11 @@ class AIPS_Logger {
         return array_values($file_lines);
     }
     
+    /**
+     * Delete the active log file.
+     *
+     * @return bool True after the delete attempt completes.
+     */
     public function clear_logs() {
         if (file_exists($this->log_file)) {
             unlink($this->log_file);
@@ -166,6 +209,11 @@ class AIPS_Logger {
         return true;
     }
     
+    /**
+     * List available plugin log files.
+     *
+     * @return array Log file metadata.
+     */
     public function get_log_files() {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';

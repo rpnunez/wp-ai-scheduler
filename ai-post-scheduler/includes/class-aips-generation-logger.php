@@ -15,15 +15,22 @@ if (!defined('ABSPATH')) {
 class AIPS_Generation_Logger {
 
     private $logger;
-    private $history_repository;
-    private $session;
-    private $history_id;
+	private $history_repository;
+	private $session;
+	private $history_id;
 
-    public function __construct($logger, $history_repository, $session) {
-        $this->logger = $logger;
-        $this->history_repository = $history_repository;
-        $this->session = $session;
-    }
+	/**
+	 * Create a generation logger instance.
+	 *
+	 * @param AIPS_Logger|object             $logger             Logger implementation used for message output.
+	 * @param AIPS_History_Repository|object $history_repository History repository used for structured log entries.
+	 * @param AIPS_Generation_Session|object $session            Generation session tracker instance.
+	 */
+	public function __construct($logger, $history_repository, $session) {
+		$this->logger = $logger;
+		$this->history_repository = $history_repository;
+		$this->session = $session;
+	}
 
     /**
      * Set the current history ID context.

@@ -7,6 +7,12 @@ class AIPS_Templates_Controller {
 
     private $templates;
 
+    /**
+     * Register template AJAX handlers.
+     *
+     * @param AIPS_Templates|null $templates Optional templates service dependency.
+     * @return void
+     */
     public function __construct($templates = null) {
         $this->templates = $templates ?: new AIPS_Templates();
 
@@ -18,6 +24,11 @@ class AIPS_Templates_Controller {
         add_action('wp_ajax_aips_preview_template_prompts', array($this, 'ajax_preview_template_prompts'));
     }
 
+    /**
+     * Create or update a template from admin form data.
+     *
+     * @return void
+     */
     public function ajax_save_template() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -71,6 +82,11 @@ class AIPS_Templates_Controller {
         }
     }
 
+    /**
+     * Delete a template by ID.
+     *
+     * @return void
+     */
     public function ajax_delete_template() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -91,6 +107,11 @@ class AIPS_Templates_Controller {
         }
     }
 
+    /**
+     * Return a template record for editing.
+     *
+     * @return void
+     */
     public function ajax_get_template() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -113,6 +134,11 @@ class AIPS_Templates_Controller {
         }
     }
 
+    /**
+     * Clone an existing template into a new record.
+     *
+     * @return void
+     */
     public function ajax_clone_template() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -165,6 +191,11 @@ class AIPS_Templates_Controller {
         }
     }
 
+    /**
+     * Run a preview generation for the submitted template configuration.
+     *
+     * @return void
+     */
     public function ajax_test_template() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 

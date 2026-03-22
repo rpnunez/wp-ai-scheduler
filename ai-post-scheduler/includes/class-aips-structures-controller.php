@@ -7,6 +7,12 @@ class AIPS_Structures_Controller {
 
     private $repo;
 
+    /**
+     * Register structure AJAX handlers.
+     *
+     * @param AIPS_Article_Structure_Repository|null $repo Optional repository dependency.
+     * @return void
+     */
     public function __construct($repo = null) {
         $this->repo = $repo ?: new AIPS_Article_Structure_Repository();
 
@@ -18,6 +24,11 @@ class AIPS_Structures_Controller {
         add_action('wp_ajax_aips_toggle_structure_active', array($this, 'ajax_toggle_structure_active'));
     }
 
+    /**
+     * Return all article structures for the admin UI.
+     *
+     * @return void
+     */
     public function ajax_get_structures() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -29,6 +40,11 @@ class AIPS_Structures_Controller {
         wp_send_json_success(array('structures' => $structures));
     }
 
+    /**
+     * Return one article structure by ID.
+     *
+     * @return void
+     */
     public function ajax_get_structure() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -49,6 +65,11 @@ class AIPS_Structures_Controller {
         wp_send_json_success(array('structure' => $structure));
     }
 
+    /**
+     * Create or update an article structure.
+     *
+     * @return void
+     */
     public function ajax_save_structure() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -85,6 +106,11 @@ class AIPS_Structures_Controller {
         }
     }
 
+    /**
+     * Delete an article structure.
+     *
+     * @return void
+     */
     public function ajax_delete_structure() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -106,6 +132,11 @@ class AIPS_Structures_Controller {
         wp_send_json_success(array('message' => __('Structure deleted.', 'ai-post-scheduler')));
     }
 
+    /**
+     * Mark an article structure as the default.
+     *
+     * @return void
+     */
     public function ajax_set_structure_default() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -126,6 +157,11 @@ class AIPS_Structures_Controller {
         wp_send_json_success(array('message' => __('Default structure updated.', 'ai-post-scheduler')));
     }
 
+    /**
+     * Toggle whether an article structure is active.
+     *
+     * @return void
+     */
     public function ajax_toggle_structure_active() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
