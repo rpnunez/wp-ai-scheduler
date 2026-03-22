@@ -28,42 +28,40 @@ class AIPS_Planner {
             $count = 10;
         }
 
-        $generator = new AIPS_Generator();
-        if (!$generator->is_available()) {
+        $ai_service = new AIPS_AI_Service();
+        if (!$ai_service->is_available()) {
             wp_send_json_error(array('message' => __('AI Engine is not available.', 'ai-post-scheduler')));
         }
 
-        $prompt = "Generate a list of {$count} unique, engaging blog post titles/topics about '{$niche}'. \n";
-        $prompt .= "Return ONLY a valid JSON array of strings. Do not include any other text, markdown formatting, or numbering. \n";
-        $prompt .= "Example: [\"Topic 1\", \"Topic 2\", \"Topic 3\"]";
+        $prompt = "Generate a list of {$count} unique, engaging blog post titles/topics about '{$niche}'.";
 
-        $result = $generator->generate_content($prompt, array('temperature' => 0.7, 'max_tokens' => 1000), 'planner_topics');
+        $result = $ai_service->generate_json($prompt, array('temperature' => 0.7, 'max_tokens' => 1000));
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));
         }
 
-        // Clean up the result to ensure it's valid JSON
-        $json_str = trim($result);
-        // Remove potential markdown code blocks
-        $json_str = preg_replace('/^```json/', '', $json_str);
-        $json_str = preg_replace('/^```/', '', $json_str);
-        $json_str = preg_replace('/```$/', '', $json_str);
-        $json_str = trim($json_str);
-
-        $topics = json_decode($json_str);
-
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
-            // Fallback: try to parse line by line if JSON fails
-            $topics = array_filter(array_map('trim', explode("\n", $json_str)));
-            // Remove empty lines and lines that look like list markers if strictly splitting by newline
-            // But if the AI followed instructions, it should be JSON.
-            // If it failed JSON, let's just log it and return error or try best effort.
-            if (empty($topics)) {
-                wp_send_json_error(array(
-                    'message' => __('Failed to parse AI response. Raw response: ', 'ai-post-scheduler') . substr($json_str, 0, 100) . '...'
-                ));
+        // generate_json returns a parsed array; normalise to a flat list of strings
+        $topics = array();
+        if (is_array($result)) {
+            foreach ($result as $item) {
+                if (is_string($item) && !empty(trim($item))) {
+                    $topics[] = sanitize_text_field(trim($item));
+                } elseif (is_array($item)) {
+                    // Handle objects with a title/topic key
+                    if (!empty($item['title'])) {
+                        $topics[] = sanitize_text_field($item['title']);
+                    } elseif (!empty($item['topic'])) {
+                        $topics[] = sanitize_text_field($item['topic']);
+                    }
+                }
             }
+        }
+
+        if (empty($topics)) {
+            wp_send_json_error(array(
+                'message' => __('Failed to parse AI response into topics.', 'ai-post-scheduler'),
+            ));
         }
 
         do_action('aips_planner_topics_generated', $topics, $niche);
