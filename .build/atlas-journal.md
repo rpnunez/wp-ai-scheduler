@@ -1336,8 +1336,7 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Consequence:** The controller is strictly limited to handling the request payload and responding with JSON. The `AIPS_History_Repository` now manages this historical post metadata lookup, resulting in better testability, compliance with domain architecture boundaries, and no raw `$wpdb` querying in the controller space.
 **Tests:** Existing tests for generation timings function unchanged, and the `get_estimated_generation_time` abstraction handles database fetching robustly.
 
-## 2025-12-21 - Extract Admin Menu Logic
-
+## 2025-12-21 - [Extract Admin Menu Logic]
 **Context:** The `AIPS_Settings` class had grown large and was functioning as a "God Object," handling both WordPress Settings API registration and the rendering/registration of the extensive plugin admin menu system. This violated the Single Responsibility Principle, creating tight coupling and making the class difficult to navigate and maintain.
 **Decision:** Applied "Separation of Concerns" and "Single Responsibility Principle" by extracting all admin menu registration logic (`add_menu_page`, `add_submenu_page`) and UI rendering callback methods into a dedicated `AIPS_Admin_Menu` class (`includes/class-aips-admin-menu.php`). The `AIPS_Settings` class was trimmed down to focus strictly on defining settings, fields, sections, and site-wide content strategy configurations.
 **Consequence:**
@@ -1346,3 +1345,11 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * Maintained 100% backward compatibility as the menu slugs, layout, and rendering operations remain unchanged.
 * The plugin initialization inside `ai-post-scheduler.php` now correctly initializes both classes separately.
 **Tests:** Validated autoloader handles the new `AIPS_Admin_Menu` correctly and tested via PHP syntax checking. No functional regressions discovered.
+
+## 2024-05-28 - [Expose Resilience Options to UI]
+**Context:** `AIPS_Config` defined resilience options (Retry, Rate Limiting, Circuit Breaker) and used hard-coded default overrides instead of allowing user configuration via the UI, violating the separation of concern between configuration declaration and user options.
+**Decision:** Updated `AIPS_Settings` to register new `aips_resilience_section` and corresponding option fields via the WordPress Settings API. Reverted hardcoded fallbacks in `AIPS_Config`.
+**Consequence:**
+- **Positive:** Improved user control over AI service interaction limits and error handling. Adheres to plugin standard of dynamic option retrieval.
+- **Negative:** Added slightly more UI complexity to the settings page.
+**Tests:** Confirmed fields appear in the Settings page and `AIPS_Config` retrieves them correctly.

@@ -4040,7 +4040,6 @@
         if ($('#voice_search').length) {
             AIPS.searchVoices.call($('#voice_search'));
         }
-        console.log('AIPS: hello from admin.js')
     });
 
 })(jQuery);
