@@ -1335,3 +1335,11 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 **Decision:** Extracted the data retrieval and time estimate calculation logic into `AIPS_History_Repository::get_estimated_generation_time()`. The controller now instantiates this repository and delegates the query to it, maintaining encapsulation.
 **Consequence:** The controller is strictly limited to handling the request payload and responding with JSON. The `AIPS_History_Repository` now manages this historical post metadata lookup, resulting in better testability, compliance with domain architecture boundaries, and no raw `$wpdb` querying in the controller space.
 **Tests:** Existing tests for generation timings function unchanged, and the `get_estimated_generation_time` abstraction handles database fetching robustly.
+
+## 2024-05-28 - [Expose Resilience Options to UI]
+**Context:** `AIPS_Config` defined resilience options (Retry, Rate Limiting, Circuit Breaker) and used hard-coded default overrides instead of allowing user configuration via the UI, violating the separation of concern between configuration declaration and user options.
+**Decision:** Updated `AIPS_Settings` to register new `aips_resilience_section` and corresponding option fields via the WordPress Settings API. Reverted hardcoded fallbacks in `AIPS_Config`.
+**Consequence:**
+- **Positive:** Improved user control over AI service interaction limits and error handling. Adheres to plugin standard of dynamic option retrieval.
+- **Negative:** Added slightly more UI complexity to the settings page.
+**Tests:** Confirmed fields appear in the Settings page and `AIPS_Config` retrieves them correctly.
