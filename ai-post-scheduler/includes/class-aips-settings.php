@@ -1065,12 +1065,12 @@ class AIPS_Settings {
     /**
      * Render the Voices management page.
      *
-     * Delegates rendering to the AIPS_Voices class.
+     * Delegates rendering to the AIPS_Voices_Controller class.
      *
      * @return void
      */
     public function render_voices_page() {
-        $voices_handler = new AIPS_Voices();
+        $voices_handler = new AIPS_Voices_Controller();
         $voices_handler->render_page();
     }
     

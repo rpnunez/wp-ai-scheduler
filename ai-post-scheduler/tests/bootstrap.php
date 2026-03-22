@@ -975,7 +975,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-post-review-notifications.php',
         'class-aips-partial-generation-notifications.php',
         'class-aips-voices-repository.php',
-        'class-aips-voices.php',
+        'class-aips-voices-controller.php',
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
