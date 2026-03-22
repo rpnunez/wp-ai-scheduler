@@ -272,4 +272,32 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		// Clean up
 		$wpdb->query($wpdb->prepare("DELETE FROM {$table_name} WHERE id = %d", $template->id));
 	}
+
+	/**
+	 * Test that edition tables exist with core columns.
+	 */
+	public function test_edition_tables_exist() {
+		global $wpdb;
+		$editions_table = $wpdb->prefix . 'aips_editions';
+		$slots_table = $wpdb->prefix . 'aips_edition_slots';
+
+		$this->assertEquals($editions_table, $wpdb->get_var("SHOW TABLES LIKE '{$editions_table}'"));
+		$this->assertEquals($slots_table, $wpdb->get_var("SHOW TABLES LIKE '{$slots_table}'"));
+
+		$edition_columns = array_map(function($col) {
+			return $col->Field;
+		}, $wpdb->get_results("SHOW COLUMNS FROM {$editions_table}"));
+
+		$slot_columns = array_map(function($col) {
+			return $col->Field;
+		}, $wpdb->get_results("SHOW COLUMNS FROM {$slots_table}"));
+
+		foreach (array('name', 'cadence', 'target_publish_date', 'required_slots', 'owner', 'channel_type') as $column) {
+			$this->assertContains($column, $edition_columns, "Edition column '{$column}' should exist");
+		}
+
+		foreach (array('edition_id', 'slot_key', 'slot_label', 'schedule_id', 'post_id', 'sourcing_status') as $column) {
+			$this->assertContains($column, $slot_columns, "Edition slot column '{$column}' should exist");
+		}
+	}
 }

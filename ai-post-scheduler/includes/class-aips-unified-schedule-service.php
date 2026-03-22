@@ -22,9 +22,10 @@ if (!defined('ABSPATH')) {
 class AIPS_Unified_Schedule_Service {
 
 	/** Schedule type constants */
-	const TYPE_TEMPLATE    = 'template_schedule';
+	const TYPE_TEMPLATE     = 'template_schedule';
 	const TYPE_AUTHOR_TOPIC = 'author_topic_gen';
 	const TYPE_AUTHOR_POST  = 'author_post_gen';
+	const TYPE_EDITION      = 'edition_package';
 
 	/**
 	 * @var AIPS_Schedule_Repository
@@ -42,12 +43,18 @@ class AIPS_Unified_Schedule_Service {
 	private $history_repository;
 
 	/**
+	 * @var AIPS_Editions_Repository
+	 */
+	private $editions_repository;
+
+	/**
 	 * Initialise the service and its dependencies.
 	 */
 	public function __construct() {
 		$this->schedule_repository = new AIPS_Schedule_Repository();
 		$this->authors_repository  = new AIPS_Authors_Repository();
 		$this->history_repository  = new AIPS_History_Repository();
+		$this->editions_repository = new AIPS_Editions_Repository();
 	}
 
 	/**
@@ -70,6 +77,9 @@ class AIPS_Unified_Schedule_Service {
 		}
 		if (empty($type_filter) || $type_filter === self::TYPE_AUTHOR_POST) {
 			$schedules = array_merge($schedules, $this->get_author_post_schedules());
+		}
+		if (empty($type_filter) || $type_filter === self::TYPE_EDITION) {
+			$schedules = array_merge($schedules, $this->get_edition_schedules());
 		}
 
 		// Sort by next_run ascending, nulls last.
@@ -111,6 +121,9 @@ class AIPS_Unified_Schedule_Service {
 			case self::TYPE_AUTHOR_POST:
 				return $this->authors_repository->update_post_generation_active($id, $is_active);
 
+			case self::TYPE_EDITION:
+				return $this->editions_repository->set_active($id, $is_active);
+
 			default:
 				return false;
 		}
@@ -145,6 +158,9 @@ class AIPS_Unified_Schedule_Service {
 					return new WP_Error('not_found', __('Author not found.', 'ai-post-scheduler'));
 				}
 				return $generator->generate_post_for_author($author);
+
+			case self::TYPE_EDITION:
+				return new WP_Error('edition_package', __('Edition packages are coordinated through Planner slot assignments rather than Run Now.', 'ai-post-scheduler'));
 
 			default:
 				return new WP_Error('invalid_type', __('Invalid schedule type.', 'ai-post-scheduler'));
@@ -186,6 +202,9 @@ class AIPS_Unified_Schedule_Service {
 					100
 				);
 				return $this->format_history_logs($logs);
+
+			case self::TYPE_EDITION:
+				return array();
 
 			default:
 				return array();
@@ -381,6 +400,51 @@ class AIPS_Unified_Schedule_Service {
 				'history_id'  => null,
 				'author_id'   => (int) $author->id,
 				'author_name' => $author->name,
+			);
+		}
+
+		return $result;
+	}
+
+
+
+	/**
+	 * Normalise edition package rows.
+	 *
+	 * @return array
+	 */
+	private function get_edition_schedules() {
+		$editions = $this->editions_repository->get_all();
+		$result = array();
+
+		foreach ($editions as $edition) {
+			$result[] = array(
+				'id' => absint($edition->id),
+				'type' => self::TYPE_EDITION,
+				'title' => $edition->name,
+				'subtitle' => sprintf(
+					/* translators: 1: owner, 2: channel type */
+					__('Owner: %1$s · Channel: %2$s', 'ai-post-scheduler'),
+					$edition->owner,
+					$edition->channel_type
+				),
+				'cron_hook' => __('edition package', 'ai-post-scheduler'),
+				'frequency' => $edition->cadence,
+				'last_run' => null,
+				'next_run' => $edition->target_publish_date,
+				'is_active' => (int) $edition->is_active,
+				'status' => !empty($edition->is_active) ? 'active' : 'inactive',
+				'stats_count' => (int) $edition->completeness['slots_filled'],
+				'stats_label' => sprintf(
+					/* translators: 1: filled count, 2: required slots */
+					__('slots filled (%1$d/%2$d)', 'ai-post-scheduler'),
+					(int) $edition->completeness['slots_filled'],
+					(int) $edition->required_slots
+				),
+				'can_delete' => false,
+				'history_id' => null,
+				'edition_id' => (int) $edition->id,
+				'edition' => $edition,
 			);
 		}
 

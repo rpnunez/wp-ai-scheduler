@@ -115,6 +115,15 @@ class AIPS_Settings {
 
         add_submenu_page(
             'ai-post-scheduler',
+            __('Editions', 'ai-post-scheduler'),
+            __('Editions', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-editions',
+            array($this, 'render_editions_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
             __('Schedule', 'ai-post-scheduler'),
             __('Schedule', 'ai-post-scheduler'),
             'manage_options',
@@ -1086,6 +1095,17 @@ class AIPS_Settings {
         $templates_handler->render_page();
     }
     
+    /**
+     * Render the Editions management page.
+     *
+     * Includes the editions template file.
+     *
+     * @return void
+     */
+    public function render_editions_page() {
+        include AIPS_PLUGIN_DIR . 'templates/admin/editions.php';
+    }
+
     /**
      * Render the Schedule management page.
      *

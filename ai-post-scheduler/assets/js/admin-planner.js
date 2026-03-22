@@ -414,7 +414,8 @@
                     topics: topics,
                     template_id: templateId,
                     start_date: startDate,
-                    frequency: $('#bulk-frequency').val()
+                    frequency: $('#bulk-frequency').val(),
+                    edition_id: $('#bulk-edition').val()
                 },
                 success: function(response) {
                     if (response.success) {
