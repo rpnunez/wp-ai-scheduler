@@ -28,6 +28,104 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
     }
 
+
+    /**
+     * Normalise a local datetime input into MySQL format.
+     *
+     * @param string $value Raw datetime string.
+     * @return string|null
+     */
+    private function normalize_datetime_field($value) {
+        $value = is_string($value) ? trim($value) : '';
+        if ('' === $value) {
+            return null;
+        }
+
+        $timestamp = strtotime($value);
+        if (false === $timestamp) {
+            return null;
+        }
+
+        return gmdate('Y-m-d H:i:s', $timestamp + (int) (get_option('gmt_offset') * HOUR_IN_SECONDS));
+    }
+
+    /**
+     * Validate event-driven timing rules before saving.
+     *
+     * @param array $data Normalized schedule payload.
+     * @return true|WP_Error
+     */
+    private function validate_schedule_timing($data) {
+        $valid_event_types = array_keys((new AIPS_Interval_Calculator())->get_event_types());
+        if (!in_array($data['event_type'], $valid_event_types, true)) {
+            return new WP_Error('invalid_event_type', __('Invalid editorial timing selected.', 'ai-post-scheduler'));
+        }
+
+        $start_ts = !empty($data['start_time']) ? strtotime($data['start_time']) : null;
+        $embargo_ts = !empty($data['embargo_until']) ? strtotime($data['embargo_until']) : null;
+        $deadline_ts = !empty($data['publish_deadline']) ? strtotime($data['publish_deadline']) : null;
+
+        if (!empty($data['embargo_until']) && false === $embargo_ts) {
+            return new WP_Error('invalid_embargo', __('Embargo release must be a valid date and time.', 'ai-post-scheduler'));
+        }
+
+        if (!empty($data['publish_deadline']) && false === $deadline_ts) {
+            return new WP_Error('invalid_deadline', __('Publish deadline must be a valid date and time.', 'ai-post-scheduler'));
+        }
+
+        if ('fixed_event' === $data['event_type'] && empty($start_ts)) {
+            return new WP_Error('missing_event_time', __('Fixed event schedules need an event time.', 'ai-post-scheduler'));
+        }
+
+        if ('publish_window' === $data['event_type']) {
+            if (empty($start_ts) || empty($deadline_ts)) {
+                return new WP_Error('missing_publish_window', __('Publish window schedules need both a release window start time and a publish deadline.', 'ai-post-scheduler'));
+            }
+
+            if ($deadline_ts <= $start_ts) {
+                return new WP_Error('invalid_publish_window', __('Publish deadline must be after the release window start.', 'ai-post-scheduler'));
+            }
+        }
+
+        if ('embargo_release' === $data['event_type']) {
+            if (empty($embargo_ts)) {
+                return new WP_Error('missing_embargo', __('Embargo release schedules need an embargo release time.', 'ai-post-scheduler'));
+            }
+
+            if (!empty($start_ts) && $embargo_ts < $start_ts) {
+                return new WP_Error('invalid_embargo_window', __('Embargo release cannot happen before the draft generation time.', 'ai-post-scheduler'));
+            }
+        }
+
+        if ('editorial_approval' === $data['event_type']) {
+            if (empty($data['prewrite_enabled'])) {
+                return new WP_Error('missing_prewrite', __('Approval-based releases require “generate draft before event” to be enabled.', 'ai-post-scheduler'));
+            }
+
+            if (empty($start_ts)) {
+                return new WP_Error('missing_prewrite_time', __('Approval-based releases need a draft generation time.', 'ai-post-scheduler'));
+            }
+
+            if (empty($deadline_ts) && empty($embargo_ts)) {
+                return new WP_Error('missing_release_gate', __('Approval-based releases need either a publish deadline or an embargo release time.', 'ai-post-scheduler'));
+            }
+        }
+
+        if (!empty($embargo_ts) && !empty($deadline_ts) && $deadline_ts < $embargo_ts) {
+            return new WP_Error('conflicting_windows', __('Publish deadline cannot be earlier than the embargo release time.', 'ai-post-scheduler'));
+        }
+
+        if (!empty($deadline_ts) && !empty($start_ts) && $deadline_ts < $start_ts) {
+            return new WP_Error('impossible_deadline', __('Publish deadline cannot be earlier than the scheduled generation time.', 'ai-post-scheduler'));
+        }
+
+        if (!empty($data['ready_to_release']) && empty($data['prewrite_enabled'])) {
+            return new WP_Error('invalid_ready_state', __('Only prewritten schedules can be marked ready to release.', 'ai-post-scheduler'));
+        }
+
+        return true;
+    }
+
     public function ajax_save_schedule() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -40,7 +138,13 @@ class AIPS_Schedule_Controller {
             'template_id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
             'title' => isset($_POST['schedule_title']) ? sanitize_text_field($_POST['schedule_title']) : '',
             'frequency' => isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily',
-            'start_time' => isset($_POST['start_time']) ? sanitize_text_field($_POST['start_time']) : null,
+            'start_time' => isset($_POST['start_time']) ? $this->normalize_datetime_field(wp_unslash($_POST['start_time'])) : null,
+            'embargo_until' => isset($_POST['embargo_until']) ? $this->normalize_datetime_field(wp_unslash($_POST['embargo_until'])) : null,
+            'publish_deadline' => isset($_POST['publish_deadline']) ? $this->normalize_datetime_field(wp_unslash($_POST['publish_deadline'])) : null,
+            'event_name' => isset($_POST['event_name']) ? sanitize_text_field($_POST['event_name']) : '',
+            'event_type' => isset($_POST['event_type']) ? sanitize_text_field($_POST['event_type']) : 'recurring',
+            'prewrite_enabled' => isset($_POST['prewrite_enabled']) && 1 === absint($_POST['prewrite_enabled']) ? 1 : 0,
+            'ready_to_release' => isset($_POST['ready_to_release']) && 1 === absint($_POST['ready_to_release']) ? 1 : 0,
             'is_active' => isset($_POST['is_active']) && 1 === absint($_POST['is_active']) ? 1 : 0,
             'topic' => isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '',
             'article_structure_id' => isset($_POST['article_structure_id']) && $_POST['article_structure_id'] !== '' ? absint($_POST['article_structure_id']) : null,
@@ -54,6 +158,11 @@ class AIPS_Schedule_Controller {
         $interval_calculator = new AIPS_Interval_Calculator();
         if (!$interval_calculator->is_valid_frequency($data['frequency'])) {
             wp_send_json_error(array('message' => __('Invalid frequency selected.', 'ai-post-scheduler')));
+        }
+
+        $validation = $this->validate_schedule_timing($data);
+        if (is_wp_error($validation)) {
+            wp_send_json_error(array('message' => $validation->get_error_message()));
         }
 
         $id = $this->scheduler->save_schedule($data);

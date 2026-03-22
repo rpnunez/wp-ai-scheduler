@@ -533,9 +533,18 @@
 				.addClass('aips-calendar-event-time')
 				.text(shortTime);
 			
+			var eventTitle = event.title;
+			if (event.deadline_overdue) {
+				eventTitle = '[Overdue] ' + eventTitle;
+			} else if (event.ready_to_release) {
+				eventTitle = '[Ready] ' + eventTitle;
+			} else if (event.embargo_active) {
+				eventTitle = '[Embargo] ' + eventTitle;
+			}
+
 			var $title = $('<span>')
 				.addClass('aips-calendar-event-title')
-				.text(event.title);
+				.text(eventTitle);
 			
 			$event.append($time, $title);
 			
@@ -573,6 +582,12 @@
 			$('.aips-event-template').text(event.template_name || 'N/A');
 			$('.aips-event-time').text(formattedDateTime);
 			$('.aips-event-frequency').text(event.frequency ? event.frequency.replace('_', ' ') : 'N/A');
+			$('.aips-event-event-type').text(event.event_type || 'N/A');
+			$('.aips-event-name').text(event.event_name || 'N/A');
+			$('.aips-event-release-window').text(event.release_window || 'N/A');
+			$('.aips-event-embargo').text(event.embargo_until || 'N/A');
+			$('.aips-event-deadline').text(event.publish_deadline || 'N/A');
+			$('.aips-event-ready').text(event.ready_to_release ? 'Yes' : 'No');
 			$('.aips-event-topic').text(event.topic || 'N/A');
 			$('.aips-event-category').text(event.category || 'N/A');
 			$('.aips-event-author').text(event.author || 'N/A');

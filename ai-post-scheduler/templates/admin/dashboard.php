@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
         <p><?php esc_html_e('AI Engine plugin is not installed or activated. This plugin requires AI Engine to function.', 'ai-post-scheduler'); ?></p>
     </div>
     <?php endif; ?>
+    <?php $dashboard_date_format = get_option('date_format') . ' ' . get_option('time_format'); ?>
     
     <div class="aips-page-container">
         <!-- Page Header -->
@@ -112,8 +113,14 @@ if (!defined('ABSPATH')) {
                             <tr>
                                 <td>
                                     <div class="cell-primary"><?php echo esc_html($item->template_name ?: __('Unknown Template', 'ai-post-scheduler')); ?></div>
+                                    <?php if (!empty($item->event_name)): ?>
+                                    <div class="cell-meta"><?php echo esc_html($item->event_name); ?></div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($item->embargo_until)): ?>
+                                    <div class="cell-meta"><span class="aips-badge aips-badge-warning"><?php esc_html_e('Embargo', 'ai-post-scheduler'); ?></span></div>
+                                    <?php endif; ?>
                                 </td>
-                                <td><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->next_run))); ?></td>
+                                <td><?php echo esc_html(date_i18n($dashboard_date_format, strtotime($item->next_run))); ?></td>
                                 <td>
                                     <span class="aips-badge aips-badge-info"><?php echo esc_html(ucfirst($item->frequency)); ?></span>
                                 </td>
@@ -200,6 +207,96 @@ if (!defined('ABSPATH')) {
             </div>
         </div>
         
+
+        <div class="aips-grid aips-grid-cols-3" style="margin-top: 24px;">
+            <div class="aips-content-panel">
+                <div class="aips-panel-header">
+                    <h2 class="aips-panel-title"><?php esc_html_e('Upcoming Embargoes', 'ai-post-scheduler'); ?></h2>
+                </div>
+                <div class="aips-panel-body <?php echo empty($upcoming_embargoes) ? '' : 'no-padding'; ?>">
+                    <?php if (!empty($upcoming_embargoes)): ?>
+                    <table class="aips-table">
+                        <tbody>
+                            <?php foreach ($upcoming_embargoes as $item): ?>
+                            <tr>
+                                <td>
+                                    <div class="cell-primary"><?php echo esc_html($item->title ?: ($item->template_name ?: __('Unknown Template', 'ai-post-scheduler'))); ?></div>
+                                    <div class="cell-meta"><?php echo esc_html($item->event_name ?: __('Editorial embargo', 'ai-post-scheduler')); ?></div>
+                                </td>
+                                <td>
+                                    <span class="aips-badge aips-badge-warning"><?php echo esc_html(date_i18n($dashboard_date_format, strtotime($item->embargo_until))); ?></span>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php else: ?>
+                    <div class="aips-empty-state">
+                        <p class="aips-empty-state-description"><?php esc_html_e('No embargoed stories are scheduled right now.', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="aips-content-panel">
+                <div class="aips-panel-header">
+                    <h2 class="aips-panel-title"><?php esc_html_e('Missed Publish Deadlines', 'ai-post-scheduler'); ?></h2>
+                </div>
+                <div class="aips-panel-body <?php echo empty($missed_publish_deadlines) ? '' : 'no-padding'; ?>">
+                    <?php if (!empty($missed_publish_deadlines)): ?>
+                    <table class="aips-table">
+                        <tbody>
+                            <?php foreach ($missed_publish_deadlines as $item): ?>
+                            <tr>
+                                <td>
+                                    <div class="cell-primary"><?php echo esc_html($item->title ?: ($item->template_name ?: __('Unknown Template', 'ai-post-scheduler'))); ?></div>
+                                    <div class="cell-meta"><?php echo esc_html($item->event_name ?: __('Missed release deadline', 'ai-post-scheduler')); ?></div>
+                                </td>
+                                <td>
+                                    <span class="aips-badge aips-badge-error"><?php echo esc_html(date_i18n($dashboard_date_format, strtotime($item->publish_deadline))); ?></span>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php else: ?>
+                    <div class="aips-empty-state">
+                        <p class="aips-empty-state-description"><?php esc_html_e('All tracked publish deadlines are currently on time.', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="aips-content-panel">
+                <div class="aips-panel-header">
+                    <h2 class="aips-panel-title"><?php esc_html_e('Stories Ready for Release', 'ai-post-scheduler'); ?></h2>
+                </div>
+                <div class="aips-panel-body <?php echo empty($ready_to_release) ? '' : 'no-padding'; ?>">
+                    <?php if (!empty($ready_to_release)): ?>
+                    <table class="aips-table">
+                        <tbody>
+                            <?php foreach ($ready_to_release as $item): ?>
+                            <tr>
+                                <td>
+                                    <div class="cell-primary"><?php echo esc_html($item->title ?: ($item->template_name ?: __('Unknown Template', 'ai-post-scheduler'))); ?></div>
+                                    <div class="cell-meta"><?php echo esc_html($item->event_name ?: __('Awaiting editor release', 'ai-post-scheduler')); ?></div>
+                                </td>
+                                <td>
+                                    <span class="aips-badge aips-badge-success"><?php esc_html_e('Ready', 'ai-post-scheduler'); ?></span>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <?php else: ?>
+                    <div class="aips-empty-state">
+                        <p class="aips-empty-state-description"><?php esc_html_e('No prewritten stories are currently waiting for release.', 'ai-post-scheduler'); ?></p>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
         <!-- Quick Actions Card -->
         <div class="aips-content-panel">
             <div class="aips-panel-header">

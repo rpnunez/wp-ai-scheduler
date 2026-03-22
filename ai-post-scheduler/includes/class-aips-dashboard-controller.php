@@ -45,8 +45,11 @@ class AIPS_Dashboard_Controller {
         $recent_posts_data = $history_repo->get_history(array('per_page' => 5));
         $recent_posts = $recent_posts_data['items'];
 
-        // Get upcoming schedules
+        // Get upcoming schedules and editorial release widgets
         $upcoming = $schedule_repo->get_upcoming(5);
+        $upcoming_embargoes = $schedule_repo->get_upcoming_embargoes(5);
+        $missed_publish_deadlines = $schedule_repo->get_missed_publish_deadlines(5);
+        $ready_to_release = $schedule_repo->get_ready_to_release(5);
 
         include AIPS_PLUGIN_DIR . 'templates/admin/dashboard.php';
     }

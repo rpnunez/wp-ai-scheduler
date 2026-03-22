@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 						<?php esc_html_e('Schedule Calendar', 'ai-post-scheduler'); ?>
 					</h1>
 					<p class="aips-page-description">
-						<?php esc_html_e('View all scheduled posts in a calendar format. Switch between month, week, and day views to see your content schedule.', 'ai-post-scheduler'); ?>
+						<?php esc_html_e('View recurring and event-driven schedules in a calendar format, including embargoes, release windows, and overdue editorial deadlines.', 'ai-post-scheduler'); ?>
 					</p>
 				</div>
 				<div class="aips-page-actions">
@@ -65,23 +65,23 @@ if (!defined('ABSPATH')) {
 		
 				<!-- Legend -->
 				<div class="aips-calendar-legend">
-					<h3><?php esc_html_e('Color Coding', 'ai-post-scheduler'); ?></h3>
+					<h3><?php esc_html_e('Editorial Signals', 'ai-post-scheduler'); ?></h3>
 					<div class="aips-calendar-legend-items">
 						<div class="aips-calendar-legend-item">
 							<span class="aips-calendar-legend-color" style="background-color: #2271b1;"></span>
-							<span><?php esc_html_e('Template 1', 'ai-post-scheduler'); ?></span>
+							<span><?php esc_html_e('Scheduled generation', 'ai-post-scheduler'); ?></span>
 						</div>
 						<div class="aips-calendar-legend-item">
-							<span class="aips-calendar-legend-color" style="background-color: #d63638;"></span>
-							<span><?php esc_html_e('Template 2', 'ai-post-scheduler'); ?></span>
+							<span class="aips-badge aips-badge-warning"><?php esc_html_e('Embargo', 'ai-post-scheduler'); ?></span>
+							<span><?php esc_html_e('Embargo still active', 'ai-post-scheduler'); ?></span>
 						</div>
 						<div class="aips-calendar-legend-item">
-							<span class="aips-calendar-legend-color" style="background-color: #00a32a;"></span>
-							<span><?php esc_html_e('Template 3', 'ai-post-scheduler'); ?></span>
+							<span class="aips-badge aips-badge-success"><?php esc_html_e('Ready', 'ai-post-scheduler'); ?></span>
+							<span><?php esc_html_e('Ready for release', 'ai-post-scheduler'); ?></span>
 						</div>
 						<div class="aips-calendar-legend-item">
-							<span class="aips-calendar-legend-color" style="background-color: #dba617;"></span>
-							<span><?php esc_html_e('Other Templates', 'ai-post-scheduler'); ?></span>
+							<span class="aips-badge aips-badge-error"><?php esc_html_e('Overdue', 'ai-post-scheduler'); ?></span>
+							<span><?php esc_html_e('Publish deadline missed', 'ai-post-scheduler'); ?></span>
 						</div>
 					</div>
 				</div>
@@ -138,6 +138,12 @@ if (!defined('ABSPATH')) {
 					<p><strong><?php esc_html_e('Template:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-template"></span></p>
 					<p><strong><?php esc_html_e('Scheduled Time:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-time"></span></p>
 					<p><strong><?php esc_html_e('Frequency:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-frequency"></span></p>
+					<p><strong><?php esc_html_e('Event Type:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-event-type"></span></p>
+					<p><strong><?php esc_html_e('Event Name:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-name"></span></p>
+					<p><strong><?php esc_html_e('Release Window:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-release-window"></span></p>
+					<p><strong><?php esc_html_e('Embargo Until:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-embargo"></span></p>
+					<p><strong><?php esc_html_e('Publish Deadline:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-deadline"></span></p>
+					<p><strong><?php esc_html_e('Ready for Release:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-ready"></span></p>
 					<p><strong><?php esc_html_e('Topic:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-topic"></span></p>
 					<p><strong><?php esc_html_e('Category:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-category"></span></p>
 					<p><strong><?php esc_html_e('Author:', 'ai-post-scheduler'); ?></strong> <span class="aips-event-author"></span></p>

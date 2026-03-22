@@ -1146,6 +1146,9 @@
                 // Fallback to legacy modal if wizard not present
                 $('#aips-schedule-form')[0].reset();
                 $('#schedule_id').val('');
+                $('#schedule_event_type').val('recurring');
+                $('#schedule_prewrite_enabled').prop('checked', false);
+                $('#schedule_ready_to_release').prop('checked', false);
                 $('#aips-schedule-modal-title').text('Add New Schedule');
                 $('#aips-schedule-modal').show();
                 return;
@@ -1155,6 +1158,22 @@
             $wizardModal.find('#aips-schedule-wizard-modal-title').text(aipsAdminL10n.addNewSchedule || 'Add New Schedule');
             AIPS.wizardGoToStep(1, $wizardModal);
             $wizardModal.show();
+        },
+
+
+        formatScheduleDateTime: function(value) {
+            if (!value) {
+                return '';
+            }
+
+            var dt = new Date(value.replace(' ', 'T'));
+            if (isNaN(dt.getTime())) {
+                return '';
+            }
+
+            var pad = function(n) { return n < 10 ? '0' + n : n; };
+            return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) +
+                'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
         },
 
         /**
@@ -1174,6 +1193,12 @@
             var topic = $row.data('topic');
             var articleStructureId = $row.data('article-structure-id');
             var rotationPattern = $row.data('rotation-pattern');
+            var eventName = $row.data('event-name');
+            var eventType = $row.data('event-type');
+            var embargoUntil = $row.data('embargo-until');
+            var publishDeadline = $row.data('publish-deadline');
+            var prewriteEnabled = $row.data('prewrite-enabled');
+            var readyToRelease = $row.data('ready-to-release');
             var nextRun = $row.data('next-run');
             var isActive = $row.data('is-active');
 
@@ -1188,15 +1213,14 @@
                 $('#schedule_topic').val(topic || '');
                 $('#article_structure_id').val(articleStructureId || '');
                 $('#rotation_pattern').val(rotationPattern || '');
+                $('#schedule_event_name').val(eventName || '');
+                $('#schedule_event_type').val(eventType || 'recurring');
+                $('#schedule_embargo_until').val(AIPS.formatScheduleDateTime(embargoUntil));
+                $('#schedule_publish_deadline').val(AIPS.formatScheduleDateTime(publishDeadline));
+                $('#schedule_prewrite_enabled').prop('checked', prewriteEnabled == 1);
+                $('#schedule_ready_to_release').prop('checked', readyToRelease == 1);
                 $('#schedule_is_active').prop('checked', isActive == 1);
-                if (nextRun) {
-                    var dt0 = new Date(nextRun);
-                    if (!isNaN(dt0.getTime())) {
-                        var pad0 = function(n) { return n < 10 ? '0' + n : n; };
-                        $('#schedule_start_time').val(dt0.getFullYear() + '-' + pad0(dt0.getMonth() + 1) + '-' + pad0(dt0.getDate()) +
-                            'T' + pad0(dt0.getHours()) + ':' + pad0(dt0.getMinutes()));
-                    }
-                }
+                $('#schedule_start_time').val(AIPS.formatScheduleDateTime(nextRun));
                 $('#aips-schedule-modal-title').text('Edit Schedule');
                 $('#aips-schedule-modal').show();
                 return;
@@ -1247,6 +1271,12 @@
             var topic = $row.data('topic');
             var articleStructureId = $row.data('article-structure-id');
             var rotationPattern = $row.data('rotation-pattern');
+            var eventName = $row.data('event-name');
+            var eventType = $row.data('event-type');
+            var embargoUntil = $row.data('embargo-until');
+            var publishDeadline = $row.data('publish-deadline');
+            var prewriteEnabled = $row.data('prewrite-enabled');
+            var readyToRelease = $row.data('ready-to-release');
 
             var $wizardModal = $('#aips-schedule-wizard-modal');
             if (!$wizardModal.length) {
@@ -1259,6 +1289,12 @@
                 $('#schedule_topic').val(topic);
                 $('#article_structure_id').val(articleStructureId);
                 $('#rotation_pattern').val(rotationPattern);
+                $('#schedule_event_name').val(eventName || '');
+                $('#schedule_event_type').val(eventType || 'recurring');
+                $('#schedule_embargo_until').val(AIPS.formatScheduleDateTime(embargoUntil));
+                $('#schedule_publish_deadline').val(AIPS.formatScheduleDateTime(publishDeadline));
+                $('#schedule_prewrite_enabled').prop('checked', prewriteEnabled == 1);
+                $('#schedule_ready_to_release').prop('checked', readyToRelease == 1);
                 $('#schedule_start_time').val('');
                 $('#aips-schedule-modal-title').text('Clone Schedule');
                 $('#aips-schedule-modal').show();
@@ -1316,6 +1352,12 @@
                     template_id: $('#schedule_template').val(),
                     frequency: $('#schedule_frequency').val(),
                     start_time: $('#schedule_start_time').val(),
+                    embargo_until: $('#schedule_embargo_until').val(),
+                    publish_deadline: $('#schedule_publish_deadline').val(),
+                    event_name: $('#schedule_event_name').val(),
+                    event_type: $('#schedule_event_type').val(),
+                    prewrite_enabled: $('#schedule_prewrite_enabled').is(':checked') ? 1 : 0,
+                    ready_to_release: $('#schedule_ready_to_release').is(':checked') ? 1 : 0,
                     topic: $('#schedule_topic').val(),
                     article_structure_id: $('#article_structure_id').val(),
                     rotation_pattern: $('#rotation_pattern').val(),

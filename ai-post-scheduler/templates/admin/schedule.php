@@ -76,6 +76,53 @@ if (!function_exists('aips_run_output_label')) {
 			: __('Expected output: generated post', 'ai-post-scheduler');
 	}
 }
+
+
+if (!function_exists('aips_format_schedule_datetime')) {
+	function aips_format_schedule_datetime($value, $date_format) {
+		if (empty($value)) {
+			return __('—', 'ai-post-scheduler');
+		}
+
+		if (false !== strpos($value, '→')) {
+			$parts = array_map('trim', explode('→', $value));
+			if (2 === count($parts)) {
+				return aips_format_schedule_datetime($parts[0], $date_format) . ' → ' . aips_format_schedule_datetime($parts[1], $date_format);
+			}
+		}
+
+		$timestamp = strtotime($value);
+		if (!$timestamp) {
+			return esc_html($value);
+		}
+
+		return date_i18n($date_format, $timestamp);
+	}
+}
+
+if (!function_exists('aips_render_editorial_badges')) {
+	function aips_render_editorial_badges($schedule) {
+		$badges = array();
+
+		if (!empty($schedule['event_type_label']) && !empty($schedule['event_type']) && 'recurring' !== $schedule['event_type']) {
+			$badges[] = '<span class="aips-badge aips-badge-info">' . esc_html($schedule['event_type_label']) . '</span>';
+		}
+
+		if (!empty($schedule['embargo_active'])) {
+			$badges[] = '<span class="aips-badge aips-badge-warning">' . esc_html__('Embargo', 'ai-post-scheduler') . '</span>';
+		}
+
+		if (!empty($schedule['ready_to_release'])) {
+			$badges[] = '<span class="aips-badge aips-badge-success">' . esc_html__('Ready to Release', 'ai-post-scheduler') . '</span>';
+		}
+
+		if (!empty($schedule['deadline_overdue'])) {
+			$badges[] = '<span class="aips-badge aips-badge-error">' . esc_html__('Deadline Missed', 'ai-post-scheduler') . '</span>';
+		}
+
+		return implode(' ', $badges);
+	}
+}
 ?>
 <div class="wrap aips-wrap">
 	<div class="aips-page-container">
@@ -184,6 +231,16 @@ if (!function_exists('aips_run_output_label')) {
 								$icon_cls  = 'dashicons-warning';
 								$status_lbl = __('Failed', 'ai-post-scheduler');
 								break;
+							case 'deadline_missed':
+								$badge_cls = 'aips-badge-error';
+								$icon_cls  = 'dashicons-clock';
+								$status_lbl = __('Overdue', 'ai-post-scheduler');
+								break;
+							case 'ready_to_release':
+								$badge_cls = 'aips-badge-success';
+								$icon_cls  = 'dashicons-megaphone';
+								$status_lbl = __('Ready', 'ai-post-scheduler');
+								break;
 							case 'inactive':
 								$badge_cls = 'aips-badge-neutral';
 								$icon_cls  = 'dashicons-minus';
@@ -203,7 +260,19 @@ if (!function_exists('aips_run_output_label')) {
 						data-type="<?php echo esc_attr($sched['type']); ?>"
 						data-row-key="<?php echo $row_key; ?>"
 						data-is-active="<?php echo esc_attr($is_active); ?>"
+						data-template-id="<?php echo esc_attr($sched['template_id'] ?? ''); ?>"
+						data-frequency="<?php echo esc_attr($sched['frequency'] ?? ''); ?>"
+						data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>"
 						data-title="<?php echo esc_attr($sched['title']); ?>"
+						data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
+						data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
+						data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
+						data-event-name="<?php echo esc_attr($sched['event_name'] ?? ''); ?>"
+						data-event-type="<?php echo esc_attr($sched['event_type'] ?? 'recurring'); ?>"
+						data-embargo-until="<?php echo esc_attr($sched['embargo_until'] ?? ''); ?>"
+						data-publish-deadline="<?php echo esc_attr($sched['publish_deadline'] ?? ''); ?>"
+						data-prewrite-enabled="<?php echo esc_attr(!empty($sched['prewrite_enabled']) ? 1 : 0); ?>"
+						data-ready-to-release="<?php echo esc_attr(!empty($sched['ready_to_release']) ? 1 : 0); ?>"
 						data-schedule-id="<?php echo esc_attr($sched['id']); ?>">
 						<th scope="row" class="check-column">
 							<input type="checkbox"
@@ -215,6 +284,10 @@ if (!function_exists('aips_run_output_label')) {
 							<div class="cell-primary">
 								<strong><?php echo esc_html($sched['title']); ?></strong>
 							</div>
+							<?php $editorial_badges = aips_render_editorial_badges($sched); ?>
+							<?php if (!empty($editorial_badges)): ?>
+							<div class="cell-meta" style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;"><?php echo wp_kses_post($editorial_badges); ?></div>
+							<?php endif; ?>
 							<?php if (!empty($sched['subtitle'])): ?>
 							<div class="cell-meta"><?php echo esc_html($sched['subtitle']); ?></div>
 							<?php endif; ?>
@@ -240,6 +313,9 @@ if (!function_exists('aips_run_output_label')) {
 							<span class="aips-badge aips-badge-info">
 								<?php echo esc_html(aips_frequency_label($sched['frequency'])); ?>
 							</span>
+							<?php if (!empty($sched['event_type_label']) && !empty($sched['event_type']) && 'recurring' !== $sched['event_type']): ?>
+							<div class="cell-meta" style="margin-top:4px;"><?php echo esc_html($sched['event_type_label']); ?></div>
+							<?php endif; ?>
 						</td>
 						<td class="column-last-run">
 							<?php if ($last_run_ts): ?>
@@ -258,6 +334,15 @@ if (!function_exists('aips_run_output_label')) {
 							<?php endif; ?>
 							<?php else: ?>
 							<div class="cell-meta aips-muted"><?php esc_html_e('—', 'ai-post-scheduler'); ?></div>
+							<?php endif; ?>
+							<?php if (!empty($sched['release_window'])): ?>
+							<div class="cell-meta" style="font-size:11px;"><?php printf(esc_html__('Release window: %s', 'ai-post-scheduler'), esc_html(aips_format_schedule_datetime($sched['release_window'], $date_format))); ?></div>
+							<?php endif; ?>
+							<?php if (!empty($sched['embargo_until'])): ?>
+							<div class="cell-meta" style="font-size:11px;"><?php printf(esc_html__('Embargo lifts: %s', 'ai-post-scheduler'), esc_html(aips_format_schedule_datetime($sched['embargo_until'], $date_format))); ?></div>
+							<?php endif; ?>
+							<?php if (!empty($sched['publish_deadline'])): ?>
+							<div class="cell-meta <?php echo !empty($sched['deadline_overdue']) ? '' : 'aips-muted'; ?>" style="font-size:11px;<?php echo !empty($sched['deadline_overdue']) ? 'color:var(--aips-danger,#d63638);' : ''; ?>"><?php printf(esc_html__('Publish deadline: %s', 'ai-post-scheduler'), esc_html(aips_format_schedule_datetime($sched['publish_deadline'], $date_format))); ?></div>
 							<?php endif; ?>
 						</td>
 						<td class="column-stats">
@@ -297,6 +382,15 @@ if (!function_exists('aips_run_output_label')) {
 									data-title="<?php echo esc_attr($sched['title']); ?>"
 									data-frequency="<?php echo esc_attr($sched['frequency']); ?>"
 									data-next-run="<?php echo esc_attr($sched['next_run'] ?? ''); ?>"
+									data-topic="<?php echo esc_attr($sched['topic'] ?? ''); ?>"
+									data-article-structure-id="<?php echo esc_attr($sched['article_structure_id'] ?? ''); ?>"
+									data-rotation-pattern="<?php echo esc_attr($sched['rotation_pattern'] ?? ''); ?>"
+									data-event-name="<?php echo esc_attr($sched['event_name'] ?? ''); ?>"
+									data-event-type="<?php echo esc_attr($sched['event_type'] ?? 'recurring'); ?>"
+									data-embargo-until="<?php echo esc_attr($sched['embargo_until'] ?? ''); ?>"
+									data-publish-deadline="<?php echo esc_attr($sched['publish_deadline'] ?? ''); ?>"
+									data-prewrite-enabled="<?php echo esc_attr(!empty($sched['prewrite_enabled']) ? 1 : 0); ?>"
+									data-ready-to-release="<?php echo esc_attr(!empty($sched['ready_to_release']) ? 1 : 0); ?>"
 									data-is-active="<?php echo esc_attr($is_active); ?>">
 									<span class="dashicons dashicons-edit"></span>
 								</button>
@@ -446,6 +540,40 @@ if (!function_exists('aips_run_output_label')) {
 						</option>
 						<?php endforeach; ?>
 					</select>
+				</div>
+				<div class="aips-form-row">
+					<label for="schedule_event_name"><?php esc_html_e('Event Name (Optional)', 'ai-post-scheduler'); ?></label>
+					<input type="text" id="schedule_event_name" name="event_name" class="regular-text">
+					<p class="description"><?php esc_html_e('Use this for launches, conferences, announcements, or other editorial milestones.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="aips-form-row">
+					<label for="schedule_event_type"><?php esc_html_e('Editorial Timing', 'ai-post-scheduler'); ?></label>
+					<select id="schedule_event_type" name="event_type">
+						<?php foreach ((new AIPS_Interval_Calculator())->get_event_types() as $event_key => $event_label): ?>
+						<option value="<?php echo esc_attr($event_key); ?>" <?php selected('recurring', $event_key); ?>><?php echo esc_html($event_label); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+				<div class="aips-form-row">
+					<label for="schedule_embargo_until"><?php esc_html_e('Embargo Until', 'ai-post-scheduler'); ?></label>
+					<input type="datetime-local" id="schedule_embargo_until" name="embargo_until">
+				</div>
+				<div class="aips-form-row">
+					<label for="schedule_publish_deadline"><?php esc_html_e('Publish Deadline', 'ai-post-scheduler'); ?></label>
+					<input type="datetime-local" id="schedule_publish_deadline" name="publish_deadline">
+					<p class="description"><?php esc_html_e('Used for release windows, deadline warnings, and overdue editorial states.', 'ai-post-scheduler'); ?></p>
+				</div>
+				<div class="aips-form-row">
+					<label class="aips-checkbox-label">
+						<input type="checkbox" id="schedule_prewrite_enabled" name="prewrite_enabled" value="1">
+						<?php esc_html_e('Generate draft before event', 'ai-post-scheduler'); ?>
+					</label>
+				</div>
+				<div class="aips-form-row">
+					<label class="aips-checkbox-label">
+						<input type="checkbox" id="schedule_ready_to_release" name="ready_to_release" value="1">
+						<?php esc_html_e('Ready to release after editor approval', 'ai-post-scheduler'); ?>
+					</label>
 				</div>
 				<div class="aips-form-row">
 					<label for="rotation_pattern"><?php esc_html_e('Rotation Pattern (Optional)', 'ai-post-scheduler'); ?></label>
