@@ -32,11 +32,6 @@ class AIPS_Research_Service {
     private $logger;
 
     /**
-     * @var AIPS_Config Configuration manager
-     */
-    private $config;
-
-    /**
      * Initialize the Research Service.
      *
      * @param AIPS_AI_Service|null $ai_service Optional AI service instance for dependency injection.
@@ -44,7 +39,6 @@ class AIPS_Research_Service {
     public function __construct($ai_service = null) {
         $this->ai_service = $ai_service ?: new AIPS_AI_Service();
         $this->logger = new AIPS_Logger();
-        $this->config = AIPS_Config::get_instance();
     }
 
     /**
@@ -73,8 +67,6 @@ class AIPS_Research_Service {
         // Build research prompt
         $prompt = $this->build_research_prompt($niche, $count, $keywords);
 
-        $this->logger->log("Research [research_trending_topics] prompt: " . $prompt, 'error');
-
         // Execute AI research
         $this->logger->log("Starting trending topics research for niche: {$niche}", 'info', array(
             'niche' => $niche,
@@ -91,8 +83,6 @@ class AIPS_Research_Service {
             'temperature' => 0.7,
             'max_tokens' => 2000,
         ));
-
-        $this->logger->log("Research response: " . print_r($result, true), 'info');
 
         if (is_wp_error($result)) {
             $this->logger->log("Research failed: " . $result->get_error_message(), 'error');
@@ -216,9 +206,7 @@ class AIPS_Research_Service {
         });
 
         // Limit to requested count
-        $validated_topics = array_slice($validated_topics, 0, $count);
-
-        return $validated_topics;
+        return array_slice($validated_topics, 0, $count);
     }
 
     /**
