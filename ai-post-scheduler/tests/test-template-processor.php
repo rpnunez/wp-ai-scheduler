@@ -17,6 +17,15 @@ class Test_AIPS_Template_Processor extends WP_UnitTestCase {
         $this->processor = new AIPS_Template_Processor();
     }
 
+    public function test_namespaced_class_exists() {
+        $this->assertTrue(class_exists('AIPS\\Services\\TemplateProcessor'));
+    }
+
+    public function test_legacy_class_alias_maps_to_namespaced_class() {
+        $legacy_processor = new AIPS_Template_Processor();
+        $this->assertInstanceOf('AIPS\\Services\\TemplateProcessor', $legacy_processor);
+    }
+
     /**
      * Test basic variable replacement
      */

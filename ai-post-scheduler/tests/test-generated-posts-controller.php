@@ -26,6 +26,15 @@ class Test_Generated_Posts_Controller extends WP_UnitTestCase {
 	public function test_controller_instantiation() {
 		$this->assertInstanceOf('AIPS_Generated_Posts_Controller', $this->controller);
 	}
+
+	/**
+	 * Test history type compatibility alias resolves to the namespaced class.
+	 */
+	public function test_history_type_alias_maps_to_namespaced_class() {
+		$this->assertTrue(class_exists('AIPS\\History\\HistoryType'));
+		$this->assertSame(5, \AIPS\History\HistoryType::AI_REQUEST);
+		$this->assertSame(AIPS_History_Type::AI_REQUEST, \AIPS\History\HistoryType::AI_REQUEST);
+	}
 	
 	/**
 	 * Test that history type constants are defined correctly
@@ -74,6 +83,11 @@ class Test_Generated_Posts_Controller extends WP_UnitTestCase {
 	 * Test that log entries can be added with history types
 	 */
 	public function test_add_log_entry_with_history_type() {
+		global $wpdb;
+		if (property_exists($wpdb, 'get_col_return_val')) {
+			$this->markTestSkipped('History log persistence assertions require the real WordPress test DB.');
+		}
+
 		// Create a history entry first
 		$history_id = $this->history_repository->create(array(
 			'template_id' => 1,

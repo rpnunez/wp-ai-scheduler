@@ -1,0 +1,23 @@
+{
+  "name": "My PHP Project",
+  "build": {
+    "dockerfile": "../Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "xdebug.php-debug",
+        "bmewburn.vscode-intelephense-client",
+        "neilbrayfield.php-docblocker",
+        "persidskiy.vscode-php-checkstyle"
+      ]
+    },
+    "jetbrains": {
+      "plugins": [
+        "com.jetbrains.php.blade"
+      ]
+    }
+  },
+  "forwardPorts": [8080],
+  "remoteUser": "root"
+}
