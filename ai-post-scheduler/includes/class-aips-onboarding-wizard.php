@@ -36,6 +36,11 @@ class AIPS_Onboarding_Wizard {
 	 */
 	private $activation_redirect_transient = 'aips_onboarding_redirect';
 
+	/**
+	 * Register onboarding admin hooks and AJAX endpoints.
+	 *
+	 * @return void
+	 */
 	public function __construct() {
 		add_action('admin_menu', array($this, 'register_page'));
 		add_action('admin_init', array($this, 'maybe_redirect_after_activation'));
@@ -53,6 +58,11 @@ class AIPS_Onboarding_Wizard {
 		add_action('wp_ajax_aips_onboarding_complete', array($this, 'ajax_complete'));
 	}
 
+	/**
+	 * Register the hidden onboarding admin page.
+	 *
+	 * @return void
+	 */
 	public function register_page() {
 		add_submenu_page(
 			null,
@@ -102,6 +112,12 @@ class AIPS_Onboarding_Wizard {
 		exit;
 	}
 
+	/**
+	 * Set the active parent menu while viewing onboarding.
+	 *
+	 * @param string $parent_file Current parent menu slug.
+	 * @return string Filtered parent menu slug.
+	 */
 	public function fix_parent_file($parent_file) {
 		$page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
 		if ($page === self::PAGE_SLUG) {
@@ -110,6 +126,12 @@ class AIPS_Onboarding_Wizard {
 		return $parent_file;
 	}
 
+	/**
+	 * Set the active submenu item while viewing onboarding.
+	 *
+	 * @param string $submenu_file Current submenu slug.
+	 * @return string Filtered submenu slug.
+	 */
 	public function fix_submenu_file($submenu_file) {
 		$page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
 		if ($page === self::PAGE_SLUG) {
@@ -118,6 +140,11 @@ class AIPS_Onboarding_Wizard {
 		return $submenu_file;
 	}
 
+	/**
+	 * Render the onboarding wizard page.
+	 *
+	 * @return void
+	 */
 	public function render_page() {
 		if (!current_user_can('manage_options')) {
 			wp_die(esc_html__('You do not have permission to access this page.', 'ai-post-scheduler'));
@@ -143,6 +170,11 @@ class AIPS_Onboarding_Wizard {
 	// State helpers
 	// ---------------------------------------------------------------------
 
+	/**
+	 * Return the default onboarding state structure.
+	 *
+	 * @return array Default state values.
+	 */
 	private function get_default_state() {
 		return array(
 			'author_id'        => 0,
@@ -154,6 +186,11 @@ class AIPS_Onboarding_Wizard {
 		);
 	}
 
+	/**
+	 * Return the current onboarding state merged with defaults.
+	 *
+	 * @return array Current onboarding state.
+	 */
 	private function get_state() {
 		$state = get_option($this->state_option, array());
 		if (!is_array($state)) {
@@ -162,6 +199,12 @@ class AIPS_Onboarding_Wizard {
 		return array_merge($this->get_default_state(), $state);
 	}
 
+	/**
+	 * Persist onboarding state updates.
+	 *
+	 * @param array $patch Partial state update.
+	 * @return array Updated state.
+	 */
 	private function update_state($patch) {
 		$state = $this->get_state();
 		foreach ((array) $patch as $key => $value) {
@@ -172,11 +215,21 @@ class AIPS_Onboarding_Wizard {
 		return $state;
 	}
 
+	/**
+	 * Reset onboarding state and completion tracking.
+	 *
+	 * @return void
+	 */
 	private function reset_state() {
 		delete_option($this->state_option);
 		delete_option($this->completed_option);
 	}
 
+	/**
+	 * Determine whether onboarding has been completed.
+	 *
+	 * @return bool True when onboarding is completed.
+	 */
 	private function is_completed() {
 		return (bool) get_option($this->completed_option, false);
 	}
@@ -185,6 +238,11 @@ class AIPS_Onboarding_Wizard {
 	// AJAX helpers
 	// ---------------------------------------------------------------------
 
+	/**
+	 * Enforce onboarding AJAX security checks.
+	 *
+	 * @return void
+	 */
 	private function ajax_guard() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		if (!current_user_can('manage_options')) {
@@ -192,6 +250,11 @@ class AIPS_Onboarding_Wizard {
 		}
 	}
 
+	/**
+	 * Return the registered content strategy fields.
+	 *
+	 * @return array Content strategy field definitions.
+	 */
 	private function get_content_strategy_fields() {
 		if (class_exists('AIPS_Settings') && method_exists('AIPS_Settings', 'get_content_strategy_options')) {
 			return AIPS_Settings::get_content_strategy_options();
@@ -199,6 +262,12 @@ class AIPS_Onboarding_Wizard {
 		return array();
 	}
 
+	/**
+	 * Sanitize submitted content strategy values.
+	 *
+	 * @param array $input Raw strategy input.
+	 * @return array Sanitized strategy values.
+	 */
 	private function sanitize_content_strategy_input($input) {
 		$input = is_array($input) ? $input : array();
 		$options = $this->get_content_strategy_fields();
@@ -221,6 +290,11 @@ class AIPS_Onboarding_Wizard {
 	// AJAX: steps
 	// ---------------------------------------------------------------------
 
+	/**
+	 * Save onboarding content strategy settings through AJAX.
+	 *
+	 * @return void
+	 */
 	public function ajax_save_strategy() {
 		$this->ajax_guard();
 
@@ -239,6 +313,11 @@ class AIPS_Onboarding_Wizard {
 		));
 	}
 
+	/**
+	 * Create the onboarding author through AJAX.
+	 *
+	 * @return void
+	 */
 	public function ajax_create_author() {
 		$this->ajax_guard();
 
@@ -296,6 +375,11 @@ class AIPS_Onboarding_Wizard {
 		));
 	}
 
+	/**
+	 * Create the onboarding template through AJAX.
+	 *
+	 * @return void
+	 */
 	public function ajax_create_template() {
 		$this->ajax_guard();
 
@@ -344,6 +428,11 @@ class AIPS_Onboarding_Wizard {
 		));
 	}
 
+	/**
+	 * Generate onboarding topics through AJAX.
+	 *
+	 * @return void
+	 */
 	public function ajax_generate_topics() {
 		$this->ajax_guard();
 
@@ -403,6 +492,11 @@ class AIPS_Onboarding_Wizard {
 		));
 	}
 
+	/**
+	 * Generate the onboarding post through AJAX.
+	 *
+	 * @return void
+	 */
 	public function ajax_generate_post() {
 		$this->ajax_guard();
 
@@ -451,6 +545,11 @@ class AIPS_Onboarding_Wizard {
 		));
 	}
 
+	/**
+	 * Reset onboarding progress through AJAX.
+	 *
+	 * @return void
+	 */
 	public function ajax_reset() {
 		$this->ajax_guard();
 		$this->reset_state();
@@ -458,6 +557,11 @@ class AIPS_Onboarding_Wizard {
 		wp_send_json_success(array('message' => __('Onboarding wizard reset.', 'ai-post-scheduler')));
 	}
 
+	/**
+	 * Mark onboarding as completed through AJAX.
+	 *
+	 * @return void
+	 */
 	public function ajax_complete() {
 		$this->ajax_guard();
 		update_option($this->completed_option, 1, false);
@@ -468,4 +572,3 @@ class AIPS_Onboarding_Wizard {
 		));
 	}
 }
-

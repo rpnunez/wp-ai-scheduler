@@ -7,6 +7,12 @@ class AIPS_Schedule_Controller {
 
     private $scheduler;
 
+    /**
+     * Register schedule AJAX handlers.
+     *
+     * @param AIPS_Scheduler|null $scheduler Optional scheduler dependency.
+     * @return void
+     */
     public function __construct($scheduler = null) {
         $this->scheduler = $scheduler ?: new AIPS_Scheduler();
 
@@ -28,6 +34,11 @@ class AIPS_Schedule_Controller {
         add_action('wp_ajax_aips_get_unified_schedule_history', array($this, 'ajax_get_unified_schedule_history'));
     }
 
+    /**
+     * Save a schedule from AJAX request data.
+     *
+     * @return void
+     */
     public function ajax_save_schedule() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -68,6 +79,11 @@ class AIPS_Schedule_Controller {
         }
     }
 
+    /**
+     * Delete a schedule through AJAX.
+     *
+     * @return void
+     */
     public function ajax_delete_schedule() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -88,6 +104,11 @@ class AIPS_Schedule_Controller {
         }
     }
 
+    /**
+     * Toggle schedule active status through AJAX.
+     *
+     * @return void
+     */
     public function ajax_toggle_schedule() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -111,6 +132,11 @@ class AIPS_Schedule_Controller {
         }
     }
 
+    /**
+     * Run a schedule or template immediately through AJAX.
+     *
+     * @return void
+     */
     public function ajax_run_now() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -224,6 +250,11 @@ class AIPS_Schedule_Controller {
         ));
     }
 
+    /**
+     * Delete multiple schedules through AJAX.
+     *
+     * @return void
+     */
     public function ajax_bulk_delete_schedules() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -254,6 +285,11 @@ class AIPS_Schedule_Controller {
         }
     }
 
+    /**
+     * Toggle multiple schedules through AJAX.
+     *
+     * @return void
+     */
     public function ajax_bulk_toggle_schedules() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -290,6 +326,11 @@ class AIPS_Schedule_Controller {
         }
     }
 
+    /**
+     * Run multiple schedules immediately through AJAX.
+     *
+     * @return void
+     */
     public function ajax_bulk_run_now_schedules() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -360,6 +401,11 @@ class AIPS_Schedule_Controller {
         ));
     }
 
+    /**
+     * Return generated post counts for selected schedules.
+     *
+     * @return void
+     */
     public function ajax_get_schedules_post_count() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
