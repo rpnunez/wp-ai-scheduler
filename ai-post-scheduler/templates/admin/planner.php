@@ -1,5 +1,7 @@
 <?php
 $default_planner_frequency = 'daily';
+$editions_repository = new AIPS_Editions_Repository();
+$planner_editions = $editions_repository->get_active();
 ?>
 <div class="aips-planner-container">
     <!-- Topic Brainstorming Card -->
@@ -102,7 +104,43 @@ $default_planner_frequency = 'daily';
                         <label for="bulk-frequency" class="aips-form-label"><?php echo esc_html__('Frequency', 'ai-post-scheduler'); ?></label>
                         <?php AIPS_Template_Helper::render_frequency_dropdown( 'bulk-frequency', 'bulk-frequency', $default_planner_frequency, __( 'Frequency', 'ai-post-scheduler' ) ); ?>
                     </div>
+
+                    <div class="aips-form-field">
+                        <label for="bulk-edition" class="aips-form-label"><?php echo esc_html__('Edition Package', 'ai-post-scheduler'); ?></label>
+                        <select id="bulk-edition" class="aips-form-input">
+                            <option value=""><?php echo esc_html__('None — schedule as standalone posts', 'ai-post-scheduler'); ?></option>
+                            <?php foreach ($planner_editions as $edition): ?>
+                                <option value="<?php echo esc_attr($edition->id); ?>">
+                                    <?php echo esc_html(sprintf('%1$s (%2$d/%3$d filled)', $edition->name, $edition->completeness['slots_filled'], $edition->required_slots)); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="aips-field-description"><?php echo esc_html__('Choose an edition to map selected planner topics into the next open package slots in order.', 'ai-post-scheduler'); ?></p>
+                    </div>
                 </div>
+
+                <?php if (!empty($planner_editions)): ?>
+                <div class="aips-content-panel" style="margin-top:16px; box-shadow:none; border:1px solid #dcdcde;">
+                    <div class="aips-panel-body">
+                        <h4 style="margin-top:0;"><?php esc_html_e('Edition Readiness Snapshot', 'ai-post-scheduler'); ?></h4>
+                        <div style="display:grid; gap:12px;">
+                            <?php foreach ($planner_editions as $edition): ?>
+                            <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; border-bottom:1px solid #f0f0f1; padding-bottom:12px;">
+                                <div>
+                                    <strong><?php echo esc_html($edition->name); ?></strong>
+                                    <div class="aips-muted" style="margin-top:4px;"><?php echo esc_html(sprintf(__('Target: %1$s · Owner: %2$s · Channel: %3$s', 'ai-post-scheduler'), date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($edition->target_publish_date)), $edition->owner, $edition->channel_type)); ?></div>
+                                </div>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                    <span class="aips-badge aips-badge-neutral"><?php echo esc_html(sprintf(__('Filled %1$d/%2$d', 'ai-post-scheduler'), $edition->completeness['slots_filled'], $edition->required_slots)); ?></span>
+                                    <span class="aips-badge aips-badge-info"><?php echo esc_html(sprintf(__('Review %d', 'ai-post-scheduler'), $edition->completeness['ready_for_review'])); ?></span>
+                                    <span class="aips-badge <?php echo $edition->completeness['blocked_by_missing_sourcing'] ? 'aips-badge-warning' : 'aips-badge-success'; ?>"><?php echo esc_html(sprintf(__('Missing sourcing %d', 'ai-post-scheduler'), $edition->completeness['blocked_by_missing_sourcing'])); ?></span>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <div class="aips-planner-actions">
                     <button type="button" id="btn-bulk-schedule" class="aips-btn aips-btn-primary aips-btn-lg">

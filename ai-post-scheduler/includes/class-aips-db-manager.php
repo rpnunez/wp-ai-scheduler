@@ -21,6 +21,8 @@ class AIPS_DB_Manager {
         'aips_notifications',
         'aips_sources',
         'aips_source_group_terms',
+        'aips_editions',
+        'aips_edition_slots',
     );
 
     public function __construct() {
@@ -68,6 +70,8 @@ class AIPS_DB_Manager {
         $table_notifications        = $tables['aips_notifications'];
         $table_sources              = $tables['aips_sources'];
         $table_source_group_terms   = $tables['aips_source_group_terms'];
+        $table_editions             = $tables['aips_editions'];
+        $table_edition_slots        = $tables['aips_edition_slots'];
 
         $sql = array();
 
@@ -337,18 +341,59 @@ class AIPS_DB_Manager {
             KEY created_at (created_at)
         ) $charset_collate;";
 
-        $sql[] = "CREATE TABLE $table_source_group_terms (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            source_id bigint(20) NOT NULL,
-            term_id bigint(20) NOT NULL,
-            PRIMARY KEY  (id),
-            UNIQUE KEY source_term (source_id, term_id),
-            KEY source_id (source_id),
-            KEY term_id (term_id)
-        ) $charset_collate;";
+	        $sql[] = "CREATE TABLE $table_source_group_terms (
+	            id bigint(20) NOT NULL AUTO_INCREMENT,
+	            source_id bigint(20) NOT NULL,
+	            term_id bigint(20) NOT NULL,
+	            PRIMARY KEY  (id),
+	            UNIQUE KEY source_term (source_id, term_id),
+	            KEY source_id (source_id),
+	            KEY term_id (term_id)
+	        ) $charset_collate;";
 
-        return $sql;
-    }
+	        $sql[] = "CREATE TABLE $table_editions (
+	            id bigint(20) NOT NULL AUTO_INCREMENT,
+	            name varchar(255) NOT NULL,
+	            theme varchar(255) DEFAULT NULL,
+	            cadence varchar(50) NOT NULL DEFAULT 'weekly',
+	            target_publish_date datetime NOT NULL,
+	            required_slots int NOT NULL DEFAULT 1,
+	            owner varchar(255) NOT NULL,
+	            channel_type varchar(100) NOT NULL,
+	            is_active tinyint(1) DEFAULT 1,
+	            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+	            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	            PRIMARY KEY  (id),
+	            KEY target_publish_date (target_publish_date),
+	            KEY owner (owner),
+	            KEY channel_type (channel_type),
+	            KEY is_active (is_active)
+	        ) $charset_collate;";
+
+	        $sql[] = "CREATE TABLE $table_edition_slots (
+	            id bigint(20) NOT NULL AUTO_INCREMENT,
+	            edition_id bigint(20) NOT NULL,
+	            slot_key varchar(100) NOT NULL,
+	            slot_label varchar(255) NOT NULL,
+	            assigned_topic text DEFAULT NULL,
+	            template_id bigint(20) DEFAULT NULL,
+	            schedule_id bigint(20) DEFAULT NULL,
+	            post_id bigint(20) DEFAULT NULL,
+	            sourcing_status varchar(20) NOT NULL DEFAULT 'ready',
+	            notes text DEFAULT NULL,
+	            sort_order int NOT NULL DEFAULT 0,
+	            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+	            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	            PRIMARY KEY  (id),
+	            KEY edition_id (edition_id),
+	            KEY schedule_id (schedule_id),
+	            KEY post_id (post_id),
+	            KEY template_id (template_id),
+	            KEY sourcing_status (sourcing_status)
+	        ) $charset_collate;";
+
+	        return $sql;
+	    }
 
     public static function install_tables() {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');

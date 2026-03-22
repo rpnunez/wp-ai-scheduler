@@ -294,6 +294,8 @@ class AIPS_Schedule_Processor {
 
         $topic = isset($schedule->topic) ? $schedule->topic : null;
         $creation_method = $is_manual ? 'manual' : 'scheduled';
+        $editions_repository = new AIPS_Editions_Repository();
+        $edition_context = $editions_repository->get_generation_context_by_schedule_id($schedule->schedule_id);
         
         // Create context with creation_method
         $context = new AIPS_Template_Context($template, null, $topic, $creation_method);
@@ -302,10 +304,19 @@ class AIPS_Schedule_Processor {
         $errors = array();
 
         for ($i = 0; $i < $post_quantity; $i++) {
+            if (!empty($edition_context)) {
+                AIPS_Edition_Prompt_Helper::set_current_context($edition_context);
+            }
+
             $result = $this->generator->generate_post($context);
+            AIPS_Edition_Prompt_Helper::clear_current_context();
+
             if (is_wp_error($result)) {
                 $errors[] = $result;
             } else {
+                if (!empty($edition_context)) {
+                    $editions_repository->mark_slot_post_generated($schedule->schedule_id, $result);
+                }
                 $successful_post_ids[] = $result;
             }
         }

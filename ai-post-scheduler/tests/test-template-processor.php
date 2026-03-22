@@ -136,6 +136,35 @@ class Test_AIPS_Template_Processor extends WP_UnitTestCase {
         }
     }
 
+
+    /**
+     * Test edition prompt helper variables.
+     */
+    public function test_edition_prompt_helper_variables() {
+        new AIPS_Edition_Prompt_Helper();
+        AIPS_Edition_Prompt_Helper::set_current_context(array(
+            'edition_name' => 'Election Night Package',
+            'edition_theme' => 'Election Night Package',
+            'edition_cadence' => 'weekly',
+            'edition_target_publish_date' => '2026-11-03 18:00:00',
+            'edition_required_slots' => 5,
+            'edition_owner' => 'Politics Desk',
+            'edition_channel_type' => 'newsletter',
+            'edition_slot_name' => 'Lead Story',
+            'edition_related_items' => array('Lead Story: Results', 'FAQ / Sidebar: How to read the map'),
+        ));
+
+        $template = 'Edition {{edition_name}} / {{edition_slot_name}} / {{edition_related_items}}';
+        $result = $this->processor->process($template, 'Election Results');
+
+        $this->assertStringContainsString('Election Night Package', $result);
+        $this->assertStringContainsString('Lead Story', $result);
+        $this->assertStringContainsString('FAQ / Sidebar', $result);
+
+        AIPS_Edition_Prompt_Helper::clear_current_context();
+        remove_all_filters('aips_template_variables');
+    }
+
     /**
      * Test validate_template with valid template
      */

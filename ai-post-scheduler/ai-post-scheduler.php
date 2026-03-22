@@ -187,6 +187,7 @@ final class AI_Post_Scheduler {
             new AIPS_Templates();
             new AIPS_Templates_Controller();
             new AIPS_History();
+            new AIPS_Editions_Controller();
             
             // Initialize Post Review handler globally to avoid duplicate AJAX registration
             global $aips_post_review_handler;
@@ -225,6 +226,7 @@ final class AI_Post_Scheduler {
         new AIPS_Post_Review_Notifications();
 		new AIPS_Partial_Generation_Notifications();
 		new AIPS_Partial_Generation_State_Reconciler();
+        new AIPS_Edition_Prompt_Helper();
 
         // Admin toolbar (visible on both admin and frontend for users with manage_options)
         new AIPS_Admin_Bar();

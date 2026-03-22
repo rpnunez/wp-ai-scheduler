@@ -95,6 +95,7 @@ if (!defined('ABSPATH')) {
 							<tr>
 								<th scope="col"><?php esc_html_e('Title', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
+								<th scope="col"><?php esc_html_e('Edition', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Scheduled', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Published', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Generated', 'ai-post-scheduler'); ?></th>
@@ -112,6 +113,11 @@ if (!defined('ABSPATH')) {
 								<td>
 									<span class="aips-badge aips-badge-neutral">
 										<?php echo esc_html($post_data['source']); ?>
+									</span>
+								</td>
+								<td>
+									<span class="aips-badge <?php echo !empty($post_data['edition']) ? 'aips-badge-info' : 'aips-badge-neutral'; ?>">
+										<?php echo esc_html($controller->format_edition_label($post_data['edition'])); ?>
 									</span>
 								</td>
 								<td>
@@ -295,6 +301,7 @@ if (!defined('ABSPATH')) {
 								<th scope="col"><?php esc_html_e('Missing Components', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('State', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
+								<th scope="col"><?php esc_html_e('Edition', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Status', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Updated', 'ai-post-scheduler'); ?></th>
 								<th scope="col"><?php esc_html_e('Generated', 'ai-post-scheduler'); ?></th>
@@ -328,6 +335,11 @@ if (!defined('ABSPATH')) {
 								<td>
 									<span class="aips-badge aips-badge-neutral">
 										<?php echo esc_html($post_data['source']); ?>
+									</span>
+								</td>
+								<td>
+									<span class="aips-badge <?php echo !empty($post_data['edition']) ? 'aips-badge-info' : 'aips-badge-neutral'; ?>">
+										<?php echo esc_html($controller->format_edition_label($post_data['edition'])); ?>
 									</span>
 								</td>
 								<td>
@@ -473,6 +485,7 @@ if (!defined('ABSPATH')) {
 									</th>
 									<th scope="col"><?php esc_html_e('Post', 'ai-post-scheduler'); ?></th>
 									<th scope="col"><?php esc_html_e('Source', 'ai-post-scheduler'); ?></th>
+									<th scope="col"><?php esc_html_e('Edition', 'ai-post-scheduler'); ?></th>
 									<th scope="col"><?php esc_html_e('Created', 'ai-post-scheduler'); ?></th>
 									<th scope="col"><?php esc_html_e('Modified', 'ai-post-scheduler'); ?></th>
 									<th scope="col"><?php esc_html_e('Actions', 'ai-post-scheduler'); ?></th>
@@ -496,6 +509,11 @@ if (!defined('ABSPATH')) {
 									<td>
 										<span class="aips-badge aips-badge-neutral">
 											<?php echo esc_html($controller->format_source($item)); ?>
+										</span>
+									</td>
+									<td>
+										<span class="aips-badge <?php echo !empty($draft_post_edition_map[$item->post_id]) ? 'aips-badge-info' : 'aips-badge-neutral'; ?>">
+											<?php echo esc_html($controller->format_edition_label(isset($draft_post_edition_map[$item->post_id]) ? $draft_post_edition_map[$item->post_id] : null)); ?>
 										</span>
 									</td>
 									<td>

@@ -82,6 +82,7 @@ class AIPS_Planner {
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
         $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : '';
         $frequency = isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily';
+        $edition_id = isset($_POST['edition_id']) ? absint($_POST['edition_id']) : 0;
 
         if (empty($topics) || empty($template_id) || empty($start_date)) {
             wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));
@@ -102,36 +103,72 @@ class AIPS_Planner {
             $interval = $intervals[$frequency]['interval'];
         }
 
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'aips_schedule';
+        if ($edition_id) {
+            $editions_repository = new AIPS_Editions_Repository();
+            $edition = $editions_repository->get_by_id($edition_id);
+            if (!$edition) {
+                wp_send_json_error(array('message' => __('Selected edition not found.', 'ai-post-scheduler')));
+            }
 
-        // Optimization: Use single bulk INSERT query instead of loop
-        // This reduces N database calls to 1, significantly improving performance for large batches
-        $schedules = array();
+            $available_slots = $editions_repository->get_next_unfilled_slots($edition_id, count($topics));
+            if (count($available_slots) < count($topics)) {
+                wp_send_json_error(array(
+                    'message' => sprintf(
+                        __('Edition has only %1$d open slots for %2$d selected topics.', 'ai-post-scheduler'),
+                        count($available_slots),
+                        count($topics)
+                    )
+                ));
+            }
 
-        foreach ($topics as $index => $topic) {
-            $next_run_timestamp = $base_time + ($index * $interval);
-            $next_run = date('Y-m-d H:i:s', $next_run_timestamp);
+            foreach ($topics as $index => $topic) {
+                $next_run_timestamp = $base_time + ($index * $interval);
+                $next_run = date('Y-m-d H:i:s', $next_run_timestamp);
+                $schedule_id = $scheduler->save_schedule(array(
+                    'template_id' => $template_id,
+                    'frequency' => 'once',
+                    'next_run' => $next_run,
+                    'is_active' => 1,
+                    'topic' => $topic,
+                ));
 
-            $schedules[] = array(
-                'template_id' => $template_id,
-                'frequency' => 'once',
-                'next_run' => $next_run,
-                'is_active' => 1,
-                'topic' => $topic
-            );
+                if (!$schedule_id) {
+                    wp_send_json_error(array('message' => __('Failed to schedule one or more edition slots.', 'ai-post-scheduler')));
+                }
+
+                $slot = $available_slots[$index];
+                $editions_repository->assign_slot_schedule($slot->id, $schedule_id, $topic, $template_id);
+                $count++;
+            }
+        } else {
+            $schedules = array();
+
+            foreach ($topics as $index => $topic) {
+                $next_run_timestamp = $base_time + ($index * $interval);
+                $next_run = date('Y-m-d H:i:s', $next_run_timestamp);
+
+                $schedules[] = array(
+                    'template_id' => $template_id,
+                    'frequency' => 'once',
+                    'next_run' => $next_run,
+                    'is_active' => 1,
+                    'topic' => $topic
+                );
+            }
+
+            $count = $scheduler->save_schedule_bulk($schedules);
+
+            if ($count === false || $count === 0) {
+                wp_send_json_error(array('message' => __('Failed to schedule topics.', 'ai-post-scheduler')));
+            }
         }
 
-        $count = $scheduler->save_schedule_bulk($schedules);
-
-        if ($count === false || $count === 0) {
-            wp_send_json_error(array('message' => __('Failed to schedule topics.', 'ai-post-scheduler')));
-        }
-
-        do_action('aips_planner_bulk_scheduled', $count, $template_id);
+        do_action('aips_planner_bulk_scheduled', $count, $template_id, $edition_id);
 
         wp_send_json_success(array(
-            'message' => sprintf(__('%d topics scheduled successfully.', 'ai-post-scheduler'), $count),
+            'message' => $edition_id
+                ? sprintf(__('%1$d topics scheduled into edition "%2$s".', 'ai-post-scheduler'), $count, $edition->name)
+                : sprintf(__('%d topics scheduled successfully.', 'ai-post-scheduler'), $count),
             'count' => $count
         ));
     }

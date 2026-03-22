@@ -34,6 +34,11 @@ class AIPS_Generated_Posts_Controller {
 	 * @var AIPS_Post_Review_Repository Repository for post review data
 	 */
 	private $post_review_repository;
+
+	/**
+	 * @var AIPS_Editions_Repository
+	 */
+	private $editions_repository;
 	
 	/**
 	 * @var array Cache for template names to avoid N+1 queries
@@ -57,6 +62,7 @@ class AIPS_Generated_Posts_Controller {
 		$this->history_repository = new AIPS_History_Repository();
 		$this->schedule_repository = new AIPS_Schedule_Repository();
 		$this->post_review_repository = new AIPS_Post_Review_Repository();
+		$this->editions_repository = new AIPS_Editions_Repository();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
@@ -87,6 +93,8 @@ class AIPS_Generated_Posts_Controller {
 			'template_id' => $template_id,
 		));
 		
+		$post_edition_map = $this->editions_repository->get_post_edition_details_map(wp_list_pluck($history['items'], 'post_id'));
+
 		// Get schedule data for each post
 		$posts_data = array();
 		foreach ($history['items'] as $item) {
@@ -119,6 +127,7 @@ class AIPS_Generated_Posts_Controller {
 				'date_scheduled' => $schedule ? $schedule->next_run : null,
 				'edit_link' => esc_url_raw(get_edit_post_link($item->post_id)),
 				'source' => $source,
+				'edition' => isset($post_edition_map[$item->post_id]) ? $post_edition_map[$item->post_id] : null,
 			);
 		}
 		
@@ -129,6 +138,8 @@ class AIPS_Generated_Posts_Controller {
 			'template_id' => $template_id,
 		));
 
+		$draft_post_edition_map = $this->editions_repository->get_post_edition_details_map(wp_list_pluck($draft_posts['items'], 'post_id'));
+
 		$partial_generations = $this->history_repository->get_partial_generations(array(
 			'page' => $partial_page,
 			'per_page' => 20,
@@ -136,6 +147,8 @@ class AIPS_Generated_Posts_Controller {
 			'author_id' => $author_id,
 			'template_id' => $template_id,
 		));
+
+		$partial_post_edition_map = $this->editions_repository->get_post_edition_details_map(wp_list_pluck($partial_generations['items'], 'post_id'));
 
 		$partial_posts_data = array();
 		foreach ($partial_generations['items'] as $item) {
@@ -159,6 +172,7 @@ class AIPS_Generated_Posts_Controller {
 				'is_currently_incomplete' => ('true' === (string) $item->is_currently_incomplete),
 				'source' => $this->format_source($item),
 				'missing_components' => $this->get_missing_components($item->component_statuses),
+				'edition' => isset($partial_post_edition_map[$item->post_id]) ? $partial_post_edition_map[$item->post_id] : null,
 			);
 		}
 		
@@ -229,6 +243,31 @@ class AIPS_Generated_Posts_Controller {
 		return ucfirst(str_replace('_', ' ', (string) $post_status));
 	}
 	
+
+
+	/**
+	 * Format edition package meta for tables.
+	 *
+	 * @param array|null $edition Edition metadata.
+	 * @return string
+	 */
+	public function format_edition_label($edition) {
+		if (empty($edition) || empty($edition['edition_name'])) {
+			return __('Standalone', 'ai-post-scheduler');
+		}
+
+		if (!empty($edition['slot_label'])) {
+			return sprintf(
+				/* translators: 1: edition name, 2: slot label */
+				__('%1$s — %2$s', 'ai-post-scheduler'),
+				$edition['edition_name'],
+				$edition['slot_label']
+			);
+		}
+
+		return $edition['edition_name'];
+	}
+
 	/**
 	 * AJAX handler to get detailed session data for a post
 	 */
