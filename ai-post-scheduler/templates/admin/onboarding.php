@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-$wizard_url = admin_url('admin.php?page=' . AIPS_Onboarding_Wizard::PAGE_SLUG);
+$wizard_url = AIPS_Admin_Menu_Helper::get_page_url(AIPS_Onboarding_Wizard::PAGE_SLUG);
 $completed = (bool) get_option('aips_onboarding_completed', false);
 
 $strategy_complete = !empty(get_option('aips_site_niche', ''));
