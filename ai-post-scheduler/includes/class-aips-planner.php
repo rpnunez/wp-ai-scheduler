@@ -44,15 +44,41 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => $result->get_error_message()));
         }
 
+        // Normalize the raw AI response and guard against empty output. Coerce to
+        // string to avoid deprecated warnings when AI responses are null.
+        $raw_result = (string) $result;
+
+        if ('' === trim($raw_result)) {
+            wp_send_json_error(array(
+                'message' => __('AI did not return any topics. Please try again.', 'ai-post-scheduler'),
+            ));
+        }
+
         // Clean up the result to ensure it's valid JSON
-        $json_str = trim($result);
+        $json_str = trim($raw_result);
         // Remove potential markdown code blocks
         $json_str = preg_replace('/^```json/', '', $json_str);
         $json_str = preg_replace('/^```/', '', $json_str);
         $json_str = preg_replace('/```$/', '', $json_str);
         $json_str = trim($json_str);
 
+        // First, try to parse the whole string as JSON.
         $topics = json_decode($json_str);
+
+        // If that fails, try to extract the first JSON array substring.
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
+            $first_bracket = strpos($json_str, '[');
+            $last_bracket  = strrpos($json_str, ']');
+
+            if ($first_bracket !== false && $last_bracket !== false && $last_bracket > $first_bracket) {
+                $json_candidate = substr($json_str, $first_bracket, $last_bracket - $first_bracket + 1);
+                $topics_candidate = json_decode($json_candidate);
+
+                if (json_last_error() === JSON_ERROR_NONE && is_array($topics_candidate)) {
+                    $topics = $topics_candidate;
+                }
+            }
+        }
 
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($topics)) {
             // Fallback: try to parse line by line if JSON fails

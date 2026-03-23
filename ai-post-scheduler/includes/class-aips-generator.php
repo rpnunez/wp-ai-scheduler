@@ -142,6 +142,10 @@ class AIPS_Generator {
 
         $result = $this->ai_service->generate_text($prompt, $options);
 
+        // Normalize values for logging to avoid deprecation warnings when null.
+        $prompt_for_length  = (string) $prompt;
+        $result_for_length  = is_string($result) ? $result : '';
+
         if (is_wp_error($result)) {
             // Log the error
             if ($this->current_history) {
@@ -158,8 +162,8 @@ class AIPS_Generator {
             }
 
             $this->logger->log($result->get_error_message(), 'error', array(
-                'component' => $log_type,
-                'prompt_length' => strlen($prompt)
+                'component'      => $log_type,
+                'prompt_length'  => strlen($prompt_for_length),
             ));
         } else {
             // Log successful AI response
@@ -174,9 +178,9 @@ class AIPS_Generator {
             }
 
             $this->logger->log('Content generated successfully', 'info', array(
-                'component' => $log_type,
-                'prompt_length' => strlen($prompt),
-                'response_length' => strlen($result)
+                'component'       => $log_type,
+                'prompt_length'   => strlen($prompt_for_length),
+                'response_length' => strlen($result_for_length),
             ));
         }
 
