@@ -1171,7 +1171,7 @@ class AIPS_Settings {
         include AIPS_PLUGIN_DIR . 'templates/admin/post-review.php';
     }
 
-    /*
+    /**
      * Render the Article Structures page.
      *
      * Fetches structures and sections from repositories and passes them to the template.

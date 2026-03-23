@@ -7,10 +7,18 @@ class AIPS_Upgrades {
     
     private $logger;
     
+    /**
+     * Create an upgrades runner instance.
+     */
     public function __construct() {
         $this->logger = new AIPS_Logger();
     }
     
+    /**
+     * Run pending database upgrades when the stored version is outdated.
+     *
+     * @return void
+     */
     public static function check_and_run() {
         $current_version = get_option('aips_db_version', '0');
         
@@ -20,6 +28,12 @@ class AIPS_Upgrades {
         }
     }
     
+    /**
+     * Apply schema upgrades from a previous plugin database version.
+     *
+     * @param string $from_version Previously stored database version.
+     * @return void
+     */
     private function run_upgrade($from_version) {
         // Use dbDelta to update schema - it handles adding new tables and columns automatically
         // This is the WordPress standard approach for database schema updates

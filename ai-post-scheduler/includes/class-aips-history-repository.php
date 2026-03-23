@@ -435,14 +435,19 @@ class AIPS_History_Repository {
             $sample_size      = 0;
         }
 
-        return array(
-            'per_post_seconds' => $per_post_seconds,
-            'sample_size'      => $sample_size,
-        );
-    }
+		return array(
+			'per_post_seconds' => $per_post_seconds,
+			'sample_size'      => $sample_size,
+		);
+	}
 
-    public function get_stats() {
-        $cached_stats = get_transient('aips_history_stats');
+	/**
+	 * Get cached aggregate history statistics.
+	 *
+	 * @return array<string, int|float> Summary counts and success rate.
+	 */
+	public function get_stats() {
+		$cached_stats = get_transient('aips_history_stats');
 
         if ($cached_stats !== false) {
             return $cached_stats;

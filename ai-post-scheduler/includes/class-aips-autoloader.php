@@ -5,6 +5,11 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Autoloader {
 
+    /**
+     * Register the plugin autoloader.
+     *
+     * @return void
+     */
     public static function register() {
         spl_autoload_register(array(__CLASS__, 'load'));
     }
@@ -30,6 +35,12 @@ class AIPS_Autoloader {
         return 'class-' . $base_name . '.php';
     }
 
+    /**
+     * Load plugin classes and interfaces that use the AIPS prefix.
+     *
+     * @param string $class_name Fully qualified class name being requested.
+     * @return void
+     */
     public static function load($class_name) {
         // Check if class starts with AIPS_
         if (strpos($class_name, 'AIPS_') !== 0) {

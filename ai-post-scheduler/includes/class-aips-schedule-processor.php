@@ -90,10 +90,22 @@ class AIPS_Schedule_Processor {
         $this->generator = $generator;
     }
 
+    /**
+     * Set the schedule repository dependency.
+     *
+     * @param AIPS_Schedule_Repository $repository Repository instance.
+     * @return void
+     */
     public function set_repository($repository) {
         $this->repository = $repository;
     }
 
+    /**
+     * Set the template repository dependency.
+     *
+     * @param AIPS_Template_Repository $repository Repository instance.
+     * @return void
+     */
     public function set_template_repository($repository) {
         $this->template_repository = $repository;
     }

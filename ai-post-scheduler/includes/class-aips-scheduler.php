@@ -40,6 +40,11 @@ class AIPS_Scheduler {
      */
     private $processor;
     
+    /**
+     * Register scheduler dependencies and cron hooks.
+     *
+     * @return void
+     */
     public function __construct() {
         global $wpdb;
         $this->schedule_table = $wpdb->prefix . 'aips_schedule';
@@ -132,14 +137,31 @@ class AIPS_Scheduler {
         return $this->interval_calculator->merge_with_wp_schedules($schedules);
     }
     
+    /**
+     * Get all saved schedules.
+     *
+     * @return array Schedule records.
+     */
     public function get_all_schedules() {
         return $this->repository->get_all();
     }
     
+    /**
+     * Get a single schedule by ID.
+     *
+     * @param int $id Schedule ID.
+     * @return object|null Schedule record if found.
+     */
     public function get_schedule($id) {
         return $this->repository->get_by_id($id);
     }
     
+    /**
+     * Create or update a schedule.
+     *
+     * @param array $data Schedule form data.
+     * @return int Schedule ID.
+     */
     public function save_schedule($data) {
         $frequency = sanitize_text_field($data['frequency']);
 
@@ -316,14 +338,33 @@ class AIPS_Scheduler {
         return $container;
     }
 
+    /**
+     * Create multiple schedules in one operation.
+     *
+     * @param array $schedules Schedule payloads.
+     * @return int|false Number of saved schedules or false on failure.
+     */
     public function save_schedule_bulk($schedules) {
         return $this->repository->create_bulk($schedules);
     }
     
+    /**
+     * Delete a schedule by ID.
+     *
+     * @param int $id Schedule ID.
+     * @return bool|int Result from the repository delete operation.
+     */
     public function delete_schedule($id) {
         return $this->repository->delete($id);
     }
 
+    /**
+     * Toggle whether a schedule is active.
+     *
+     * @param int $id        Schedule ID.
+     * @param int $is_active Active flag.
+     * @return bool|int Result from the repository update operation.
+     */
     public function toggle_active($id, $is_active) {
         $existing = $this->repository->get_by_id($id);
         $result = $this->repository->set_active($id, $is_active);

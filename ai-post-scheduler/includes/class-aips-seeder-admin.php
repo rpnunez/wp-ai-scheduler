@@ -7,6 +7,9 @@ class AIPS_Seeder_Admin {
 
     private $service;
 
+    /**
+     * Register the seeder admin hooks and service dependency.
+     */
     public function __construct() {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
         add_action('wp_ajax_aips_process_seeder', array($this, 'ajax_process_seeder'));
@@ -14,6 +17,12 @@ class AIPS_Seeder_Admin {
         $this->service = new AIPS_Seeder_Service();
     }
 
+    /**
+     * Enqueue assets for the seeder admin screen.
+     *
+     * @param string $hook Current admin page hook suffix.
+     * @return void
+     */
     public function enqueue_assets($hook) {
         if (strpos($hook, 'aips-seeder') === false) {
             return;
@@ -28,6 +37,11 @@ class AIPS_Seeder_Admin {
         );
     }
 
+    /**
+     * Process seeder requests from the admin AJAX endpoint.
+     *
+     * @return void
+     */
     public function ajax_process_seeder() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 

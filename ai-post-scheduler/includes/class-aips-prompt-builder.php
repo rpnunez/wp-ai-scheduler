@@ -12,18 +12,25 @@ class AIPS_Prompt_Builder {
 	private $post_title_builder;
 	private $post_excerpt_builder;
 	private $post_featured_image_builder;
-    private static $sources_filter_registered = false;
+	private static $sources_filter_registered = false;
 
+	/**
+	 * Create a prompt builder instance.
+	 *
+	 * @param AIPS_Template_Processor|null       $template_processor Template processor dependency.
+	 * @param AIPS_Article_Structure_Manager|null $structure_manager Structure manager dependency.
+	 * @param AIPS_Sources_Repository|null       $sources_repo       Sources repository dependency.
+	 */
 	public function __construct($template_processor = null, $structure_manager = null, $sources_repo = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
 		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
-        $this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
+		$this->sources_repo = $sources_repo ?: new AIPS_Sources_Repository();
 
-        // Register the content prompt sources filter once.
-        if (!self::$sources_filter_registered) {
-            add_filter('aips_content_prompt', array($this, 'inject_sources_into_content_prompt'), 10, 3);
-            self::$sources_filter_registered = true;
-        }
+		// Register the content prompt sources filter once.
+		if (!self::$sources_filter_registered) {
+			add_filter('aips_content_prompt', array($this, 'inject_sources_into_content_prompt'), 10, 3);
+			self::$sources_filter_registered = true;
+		}
 	}
 
     /**

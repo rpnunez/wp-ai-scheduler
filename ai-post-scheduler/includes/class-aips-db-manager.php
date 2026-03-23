@@ -23,6 +23,11 @@ class AIPS_DB_Manager {
         'aips_source_group_terms',
     );
 
+    /**
+     * Register AJAX handlers for database maintenance actions.
+     *
+     * @return void
+     */
     public function __construct() {
         add_action('wp_ajax_aips_repair_db', array($this, 'ajax_repair_db'));
         add_action('wp_ajax_aips_reinstall_db', array($this, 'ajax_reinstall_db'));
@@ -48,6 +53,11 @@ class AIPS_DB_Manager {
         return $full_names;
     }
 
+    /**
+     * Build the plugin database schema SQL statements.
+     *
+     * @return array CREATE TABLE statements for plugin tables.
+     */
     public function get_schema() {
         global $wpdb;
         $charset_collate = $wpdb->get_charset_collate();
@@ -350,6 +360,11 @@ class AIPS_DB_Manager {
         return $sql;
     }
 
+    /**
+     * Install or update plugin database tables.
+     *
+     * @return void
+     */
     public static function install_tables() {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         $instance = new self();
@@ -365,6 +380,11 @@ class AIPS_DB_Manager {
         update_option('aips_db_version', AIPS_VERSION);
     }
 
+    /**
+     * Drop all plugin tables.
+     *
+     * @return void
+     */
     public function drop_tables() {
         global $wpdb;
         $tables = self::get_full_table_names();
@@ -375,6 +395,11 @@ class AIPS_DB_Manager {
         }
     }
 
+    /**
+     * Truncate all plugin tables.
+     *
+     * @return void
+     */
     public function truncate_tables() {
         global $wpdb;
         $tables = self::get_full_table_names();
@@ -385,6 +410,11 @@ class AIPS_DB_Manager {
         }
     }
 
+    /**
+     * Back up plugin table contents to an array.
+     *
+     * @return array Backed up table rows keyed by table slug.
+     */
     public function backup_data() {
         global $wpdb;
         $data = array();
@@ -402,6 +432,12 @@ class AIPS_DB_Manager {
         return $data;
     }
 
+    /**
+     * Restore backed-up plugin data into the database.
+     *
+     * @param array $data Backup payload keyed by table slug.
+     * @return void
+     */
     public function restore_data($data) {
         global $wpdb;
         if (empty($data)) return;
@@ -420,6 +456,11 @@ class AIPS_DB_Manager {
         }
     }
 
+    /**
+     * Repair plugin database tables via AJAX.
+     *
+     * @return void
+     */
     public function ajax_repair_db() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         if (!current_user_can('manage_options')) {
@@ -430,6 +471,11 @@ class AIPS_DB_Manager {
         wp_send_json_success(array('message' => 'Database tables repaired successfully.'));
     }
 
+    /**
+     * Reinstall plugin database tables via AJAX.
+     *
+     * @return void
+     */
     public function ajax_reinstall_db() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         if (!current_user_can('manage_options')) {
@@ -453,6 +499,11 @@ class AIPS_DB_Manager {
         wp_send_json_success(array('message' => 'Database tables reinstalled successfully.'));
     }
 
+    /**
+     * Wipe plugin table data via AJAX.
+     *
+     * @return void
+     */
     public function ajax_wipe_db() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         if (!current_user_can('manage_options')) {

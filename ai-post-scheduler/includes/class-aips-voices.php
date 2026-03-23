@@ -10,6 +10,11 @@ class AIPS_Voices {
      */
     private $repository;
     
+    /**
+     * Register voice AJAX handlers.
+     *
+     * @return void
+     */
     public function __construct() {
         $this->repository = new AIPS_Voices_Repository();
         
@@ -19,14 +24,32 @@ class AIPS_Voices {
         add_action('wp_ajax_aips_search_voices', array($this, 'ajax_search_voices'));
     }
     
+    /**
+     * Return all voices.
+     *
+     * @param bool $active_only Whether to limit results to active voices.
+     * @return array Voice records.
+     */
     public function get_all($active_only = false) {
         return $this->repository->get_all($active_only);
     }
     
+    /**
+     * Return a voice by ID.
+     *
+     * @param int $id Voice ID.
+     * @return object|null Voice record if found.
+     */
     public function get($id) {
         return $this->repository->get_by_id($id);
     }
     
+    /**
+     * Create or update a voice.
+     *
+     * @param array $data Voice form data.
+     * @return int Voice ID.
+     */
     public function save($data) {
         // Enforce defaults for backward compatibility with legacy save behavior
         if (!isset($data['is_active'])) {
@@ -44,10 +67,21 @@ class AIPS_Voices {
         }
     }
     
+    /**
+     * Delete a voice by ID.
+     *
+     * @param int $id Voice ID.
+     * @return bool|int Result from the repository delete operation.
+     */
     public function delete($id) {
         return $this->repository->delete($id);
     }
     
+    /**
+     * Save a voice from AJAX request data.
+     *
+     * @return void
+     */
     public function ajax_save_voice() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
@@ -80,6 +114,11 @@ class AIPS_Voices {
         }
     }
     
+    /**
+     * Delete a voice through AJAX.
+     *
+     * @return void
+     */
     public function ajax_delete_voice() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
@@ -100,6 +139,11 @@ class AIPS_Voices {
         }
     }
     
+    /**
+     * Return a voice through AJAX.
+     *
+     * @return void
+     */
     public function ajax_get_voice() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
@@ -122,6 +166,11 @@ class AIPS_Voices {
         }
     }
     
+    /**
+     * Search voices through AJAX.
+     *
+     * @return void
+     */
     public function ajax_search_voices() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
@@ -135,6 +184,11 @@ class AIPS_Voices {
         wp_send_json_success(array('voices' => $voices));
     }
     
+    /**
+     * Render the voices admin page.
+     *
+     * @return void
+     */
     public function render_page() {
         $voices = $this->get_all();
         

@@ -5,6 +5,11 @@ if (!defined('ABSPATH')) {
 
 class AIPS_System_Status {
 
+    /**
+     * Render the system status admin page.
+     *
+     * @return void
+     */
     public function render_page() {
         $system_info = $this->get_system_info();
         $data_management = $this->get_data_management();
@@ -44,6 +49,12 @@ class AIPS_System_Status {
         // As a last resort, create a new instance.
         return new AIPS_Data_Management();
     }
+
+    /**
+     * Collect all system status sections.
+     *
+     * @return array Status data grouped by section.
+     */
     public function get_system_info() {
         return array(
             'environment' => $this->check_environment(),
@@ -55,6 +66,11 @@ class AIPS_System_Status {
         );
     }
 
+    /**
+     * Collect environment status information.
+     *
+     * @return array Environment checks.
+     */
     private function check_environment() {
         global $wp_version, $wpdb;
         return array(
@@ -81,6 +97,11 @@ class AIPS_System_Status {
         );
     }
 
+    /**
+     * Collect plugin-specific status information.
+     *
+     * @return array Plugin checks.
+     */
     private function check_plugin() {
         $ai_engine_active = class_exists('Meow_MWAI_Core');
         $db_version_raw = get_option('aips_db_version', 'Unknown');
@@ -124,6 +145,11 @@ class AIPS_System_Status {
         );
     }
 
+    /**
+     * Validate required plugin database tables and columns.
+     *
+     * @return array Database checks.
+     */
     private function check_database() {
         global $wpdb;
         
@@ -173,6 +199,11 @@ class AIPS_System_Status {
         return $results;
     }
 
+    /**
+     * Collect filesystem status information.
+     *
+     * @return array Filesystem checks.
+     */
     private function check_filesystem() {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
@@ -189,6 +220,11 @@ class AIPS_System_Status {
         );
     }
 
+    /**
+     * Collect cron scheduling status information.
+     *
+     * @return array Cron checks.
+     */
     private function check_cron() {
         $cron_events = array(
             'aips_generate_scheduled_posts' => 'Post Generation',
@@ -211,6 +247,11 @@ class AIPS_System_Status {
         return $status;
     }
 
+    /**
+     * Collect plugin and WordPress log status information.
+     *
+     * @return array Log checks.
+     */
     private function check_logs() {
         $logs_data = array();
 
@@ -264,6 +305,14 @@ class AIPS_System_Status {
         return $logs_data;
     }
 
+    /**
+     * Scan the tail of a log file for warning/error lines.
+     *
+     * @param string $file_path     Absolute log file path.
+     * @param int    $lines         Number of lines to inspect.
+     * @param bool   $filter_plugin Whether to filter to plugin-specific entries.
+     * @return array Matching log lines.
+     */
     private function scan_file_for_errors($file_path, $lines = 100, $filter_plugin = false) {
         if (!file_exists($file_path)) {
             return array();

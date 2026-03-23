@@ -5,11 +5,19 @@ if (!defined('ABSPATH')) {
 
 class AIPS_Planner {
 
+    /**
+     * Register planner AJAX hooks.
+     */
     public function __construct() {
         add_action('wp_ajax_aips_generate_topics', array($this, 'ajax_generate_topics'));
         add_action('wp_ajax_aips_bulk_schedule', array($this, 'ajax_bulk_schedule'));
     }
 
+    /**
+     * Generate planner topics with the AI provider.
+     *
+     * @return void
+     */
     public function ajax_generate_topics() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -71,6 +79,11 @@ class AIPS_Planner {
         wp_send_json_success(array('topics' => $topics));
     }
 
+    /**
+     * Schedule multiple planner topics against a selected template.
+     *
+     * @return void
+     */
     public function ajax_bulk_schedule() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
 
@@ -136,6 +149,11 @@ class AIPS_Planner {
         ));
     }
 
+    /**
+     * Render the planner admin page template.
+     *
+     * @return void
+     */
     public function render_page() {
         // Just for consistency if we want to render the planner page separately,
         // but currently we might include it in the main admin view.
