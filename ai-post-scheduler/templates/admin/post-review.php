@@ -258,11 +258,24 @@ $templates = $template_repository->get_all();
 			<?php else: ?>
 			<!-- Empty State -->
 			<div class="aips-empty-state">
-				<div class="aips-empty-icon">
-					<span class="dashicons dashicons-yes-alt"></span>
-				</div>
-				<h3 class="aips-empty-title"><?php esc_html_e('No Draft Posts', 'ai-post-scheduler'); ?></h3>
-				<p class="aips-empty-description"><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
+				<?php if (!empty($search_query) || !empty($template_id)): ?>
+					<div class="aips-empty-icon">
+						<span class="dashicons dashicons-search"></span>
+					</div>
+					<h3 class="aips-empty-title"><?php esc_html_e('No Results Found', 'ai-post-scheduler'); ?></h3>
+					<p class="aips-empty-description"><?php esc_html_e('No draft posts match your current search or filter criteria.', 'ai-post-scheduler'); ?></p>
+					<div class="aips-empty-actions">
+						<a href="<?php echo esc_url(admin_url('admin.php?page=aips-post-review')); ?>" class="aips-btn aips-btn-primary">
+							<?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?>
+						</a>
+					</div>
+				<?php else: ?>
+					<div class="aips-empty-icon">
+						<span class="dashicons dashicons-yes-alt"></span>
+					</div>
+					<h3 class="aips-empty-title"><?php esc_html_e('No Draft Posts', 'ai-post-scheduler'); ?></h3>
+					<p class="aips-empty-description"><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
+				<?php endif; ?>
 			</div>
 			<?php endif; ?>
 		</div>
