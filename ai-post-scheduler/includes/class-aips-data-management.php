@@ -94,7 +94,8 @@ class AIPS_Data_Management {
 			$exporter->do_export();
 			// Script will exit after sending download
 		} catch (Exception $e) {
-			wp_send_json_error(array('message' => $e->getMessage()));
+			error_log('AIPS Export Error: ' . $e->getMessage());
+			wp_send_json_error(array('message' => __('An error occurred during export. Please check server logs.', 'ai-post-scheduler')));
 		}
 	}
 	

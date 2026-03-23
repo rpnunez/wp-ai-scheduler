@@ -57,3 +57,7 @@
 **Vulnerability:** Potential SQL Injection in `AIPS_DB_Manager::drop_tables()`, `truncate_tables()`, and `backup_data()` due to unescaped string interpolation of table names.
 **Learning:** While the table names were retrieved internally from a static array, directly interpolating them into SQL queries (e.g. `$wpdb->query("DROP TABLE IF EXISTS $table")`) bypasses WordPress's recommended database preparation patterns and creates a latent risk if the table source ever becomes dynamic or user-influenced.
 **Prevention:** Use `$wpdb->prepare()` for parameters and use `esc_sql()` wrapped in backticks for table names/identifiers when constructing dynamic queries.
+## 2024-05-24 - Fix error message leakage in export data
+**Vulnerability:** Raw `Exception` messages were being returned directly to the client via `wp_send_json_error()` in `class-aips-data-management.php` during export operations. This could potentially expose sensitive internal paths, logic, or stack traces.
+**Learning:** Developers sometimes pass raw exception objects or their messages directly to API error responses for easier debugging, but this violates secure error handling principles by leaking internal details.
+**Prevention:** Always log detailed error messages internally (e.g., using `error_log()`) and return generic error messages to the client indicating that an error occurred.
