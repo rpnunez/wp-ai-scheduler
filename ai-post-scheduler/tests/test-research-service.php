@@ -58,7 +58,7 @@ class Test_Research_Service extends WP_UnitTestCase {
     public function test_research_with_valid_parameters() {
         $this->mock_ai_service->method('is_available')->willReturn(true);
         
-        $mock_response = json_encode(array(
+        $mock_response = array(
             array(
                 'topic' => 'How AI is Transforming Content Marketing in 2025',
                 'score' => 95,
@@ -71,9 +71,9 @@ class Test_Research_Service extends WP_UnitTestCase {
                 'reason' => 'Evergreen topic with seasonal interest',
                 'keywords' => array('SEO', 'e-commerce', 'optimization', 'traffic'),
             ),
-        ));
+        );
         
-        $this->mock_ai_service->method('generate_text')->willReturn($mock_response);
+        $this->mock_ai_service->method('generate_json')->willReturn($mock_response);
         
         $result = $this->research_service->research_trending_topics('Digital Marketing', 10, array('SEO', 'content'));
         
@@ -88,7 +88,7 @@ class Test_Research_Service extends WP_UnitTestCase {
      */
     public function test_research_with_ai_error() {
         $this->mock_ai_service->method('is_available')->willReturn(true);
-        $this->mock_ai_service->method('generate_text')->willReturn(
+        $this->mock_ai_service->method('generate_json')->willReturn(
             new WP_Error('generation_failed', 'AI generation failed')
         );
         
@@ -104,11 +104,11 @@ class Test_Research_Service extends WP_UnitTestCase {
     public function test_count_validation() {
         $this->mock_ai_service->method('is_available')->willReturn(true);
         
-        $mock_response = json_encode(array(
+        $mock_response = array(
             array('topic' => 'Topic 1', 'score' => 90, 'reason' => 'Test', 'keywords' => array()),
-        ));
+        );
         
-        $this->mock_ai_service->method('generate_text')->willReturn($mock_response);
+        $this->mock_ai_service->method('generate_json')->willReturn($mock_response);
         
         // Test count too high
         $result = $this->research_service->research_trending_topics('Test', 100);
@@ -240,33 +240,37 @@ class Test_Research_Service extends WP_UnitTestCase {
     }
     
     /**
-     * Test fallback parsing when JSON fails.
+     * Test that a WP_Error from generate_json is propagated directly by research_trending_topics.
      */
-    public function test_fallback_parsing() {
+    public function test_generate_json_wp_error_is_propagated() {
         $this->mock_ai_service->method('is_available')->willReturn(true);
         
-        // Mock response that's not valid JSON
-        $mock_response = "1. Topic One\n2. Topic Two\n3. Topic Three";
-        
-        $this->mock_ai_service->method('generate_text')->willReturn($mock_response);
+        // Simulate generate_json returning a WP_Error (native method failed)
+        $this->mock_ai_service->method('generate_json')->willReturn(
+            new WP_Error('generation_failed', 'AI generation failed')
+        );
         
         $result = $this->research_service->research_trending_topics('Test', 5);
         
-        $this->assertIsArray($result);
-        $this->assertNotEmpty($result);
+        // Should propagate the error since both native and fallback failed
+        $this->assertInstanceOf(WP_Error::class, $result);
     }
     
     /**
-     * Test JSON parsing with markdown code blocks.
+     * Test that generate_json returning a valid array bypasses text-based parsing.
+     *
+     * With the native simpleJsonQuery method, structured data arrives as an array
+     * without any markdown wrapping.
      */
-    public function test_json_parsing_with_markdown() {
+    public function test_research_trending_topics_uses_native_json_array_when_available() {
         $this->mock_ai_service->method('is_available')->willReturn(true);
         
-        $mock_response = "```json\n" . json_encode(array(
+        // generate_json returns a clean array — no markdown to strip
+        $mock_response = array(
             array('topic' => 'Test Topic', 'score' => 90, 'reason' => 'Test', 'keywords' => array()),
-        )) . "\n```";
+        );
         
-        $this->mock_ai_service->method('generate_text')->willReturn($mock_response);
+        $this->mock_ai_service->method('generate_json')->willReturn($mock_response);
         
         $result = $this->research_service->research_trending_topics('Test', 5);
         

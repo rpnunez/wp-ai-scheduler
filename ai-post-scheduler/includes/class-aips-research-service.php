@@ -75,11 +75,7 @@ class AIPS_Research_Service {
         ));
 
         // Use generate_json for structured data response
-        // $result = $this->ai_service->generate_json($prompt, array(
-        //     'temperature' => 0.7,
-        //     'max_tokens' => 2000,
-        // ));
-        $result = $this->ai_service->generate_text($prompt, array(
+        $result = $this->ai_service->generate_json($prompt, array(
             'temperature' => 0.7,
             'max_tokens' => 2000,
         ));
@@ -152,23 +148,11 @@ class AIPS_Research_Service {
         $prompt .= "4. Evergreen value combined with timeliness\n";
         $prompt .= "5. Content gap opportunities\n\n";
 
-        $prompt .= "Return ONLY a valid JSON array of objects. Each object must have:\n";
+        $prompt .= "Required fields for each topic:\n";
         $prompt .= "- \"topic\": The topic/title (string)\n";
         $prompt .= "- \"score\": Relevance score 1-100 (integer)\n";
         $prompt .= "- \"reason\": Why it's trending (max 100 chars, string)\n";
         $prompt .= "- \"keywords\": Related keywords (array of 3-5 strings)\n\n";
-
-        $prompt .= "Example format:\n";
-        $prompt .= "[\n";
-        $prompt .= "  {\n";
-        $prompt .= "    \"topic\": \"How AI is Transforming Content Creation in 2025\",\n";
-        $prompt .= "    \"score\": 95,\n";
-        $prompt .= "    \"reason\": \"High search volume, current AI adoption surge\",\n";
-        $prompt .= "    \"keywords\": [\"AI content\", \"automation\", \"GPT-4\", \"content marketing\", \"2025 trends\"]\n";
-        $prompt .= "  }\n";
-        $prompt .= "]\n\n";
-
-        $prompt .= "Return ONLY the JSON array. No markdown, no explanations, no code blocks.";
 
         return $prompt;
     }
