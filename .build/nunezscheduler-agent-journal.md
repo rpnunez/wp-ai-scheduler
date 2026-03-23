@@ -168,3 +168,11 @@
 - `ai-post-scheduler/assets/js/admin-planner.js`
 - `ai-post-scheduler/assets/css/planner.css`
 **Outcome:** Greatly enhances the speed and fluidity of curating brainstormed topic lists by allowing one-click removal of unwanted suggestions.
+## 2026-03-30 - Voices List View Optimization
+**Target Feature:** Voices
+**Improvement:** Optimized the Voices admin UI by adding an inline "Toggle Status" button directly in the list view. Previously, to enable or disable a voice, users were forced to click "Edit" to open a modal, manually toggle the checkbox, and click "Save Voice". The new logic enables a single click on the status badge to instantly toggle the active state of the voice via an AJAX request (`aips_toggle_voice`), providing immediate visual feedback with a toast notification and zero page reloads. Additionally, the "Delete Voice" action was enhanced to automatically update the total voice count in the table footer and gracefully refresh to show the empty state if the last voice is deleted.
+**Files Modified:**
+- `ai-post-scheduler/includes/class-aips-voices.php`
+- `ai-post-scheduler/templates/admin/voices.php`
+- `ai-post-scheduler/assets/js/admin.js`
+**Outcome:** Eliminates a multi-step editing bottleneck for users managing content templates and quickly toggling brand voices, creating a much more fluid and efficient admin experience.

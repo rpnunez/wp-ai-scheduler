@@ -49,7 +49,7 @@ if (!defined('ABSPATH')) {
                         </thead>
                         <tbody>
                             <?php foreach ($voices as $voice): ?>
-                            <tr data-voice-id="<?php echo esc_attr($voice->id); ?>">
+                            <tr data-voice-id="<?php echo esc_attr($voice->id); ?>" data-is-active="<?php echo esc_attr($voice->is_active); ?>">
                                 <td class="column-name">
                                     <div class="aips-table-primary">
                                         <strong><?php echo esc_html($voice->name); ?></strong>
@@ -61,17 +61,19 @@ if (!defined('ABSPATH')) {
                                     </div>
                                 </td>
                                 <td class="column-status">
-                                    <?php if ($voice->is_active): ?>
-                                        <span class="aips-badge aips-badge-success">
-                                            <span class="dashicons dashicons-yes-alt"></span>
-                                            <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="aips-badge aips-badge-neutral">
-                                            <span class="dashicons dashicons-minus"></span>
-                                            <?php esc_html_e('Inactive', 'ai-post-scheduler'); ?>
-                                        </span>
-                                    <?php endif; ?>
+                                    <button type="button" class="aips-btn aips-btn-sm aips-toggle-voice" data-id="<?php echo esc_attr($voice->id); ?>" title="<?php esc_attr_e('Toggle Status', 'ai-post-scheduler'); ?>" aria-label="<?php esc_attr_e('Toggle Status', 'ai-post-scheduler'); ?>">
+                                        <?php if ($voice->is_active): ?>
+                                            <span class="aips-badge aips-badge-success">
+                                                <span class="dashicons dashicons-yes-alt"></span>
+                                                <span class="aips-badge-text"><?php esc_html_e('Active', 'ai-post-scheduler'); ?></span>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="aips-badge aips-badge-neutral">
+                                                <span class="dashicons dashicons-minus"></span>
+                                                <span class="aips-badge-text"><?php esc_html_e('Inactive', 'ai-post-scheduler'); ?></span>
+                                            </span>
+                                        <?php endif; ?>
+                                    </button>
                                 </td>
                                 <td class="column-actions">
                                     <div class="aips-action-buttons">

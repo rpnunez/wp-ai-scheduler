@@ -17,6 +17,7 @@ class AIPS_Voices {
         add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
         add_action('wp_ajax_aips_get_voice', array($this, 'ajax_get_voice'));
         add_action('wp_ajax_aips_search_voices', array($this, 'ajax_search_voices'));
+        add_action('wp_ajax_aips_toggle_voice', array($this, 'ajax_toggle_voice'));
     }
     
     public function get_all($active_only = false) {
@@ -80,6 +81,28 @@ class AIPS_Voices {
         }
     }
     
+    public function ajax_toggle_voice() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $id = isset($_POST['voice_id']) ? absint($_POST['voice_id']) : 0;
+        $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
+
+        if (!$id) {
+            wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
+        }
+
+        // We use repository->update directly to update just the is_active field
+        if ($this->repository->update($id, array('is_active' => $is_active))) {
+            wp_send_json_success(array('message' => __('Voice status updated successfully.', 'ai-post-scheduler')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to update voice status.', 'ai-post-scheduler')));
+        }
+    }
+
     public function ajax_delete_voice() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
         
