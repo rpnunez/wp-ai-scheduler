@@ -170,7 +170,7 @@
 **Outcome:** Greatly enhances the speed and fluidity of curating brainstormed topic lists by allowing one-click removal of unwanted suggestions.
 ## 2026-03-22 - Planner "Generate Now" Optimization
 **Target Feature:** Planner
-**Improvement:** Optimized the workflow for generating content from brainstormed topics by adding a "Generate Now" button next to "Schedule Selected Topics". Previously, users who wanted to immediately generate a post for a brainstormed topic had to navigate away to another tool, or manually schedule it for "now". Now, clicking "Generate Now" bypasses the schedule and immediately generates the selected topics asynchronously in the background.
+**Improvement:** Optimized the workflow for generating content from brainstormed topics by adding a "Generate Now" button next to "Schedule Selected Topics". Previously, users who wanted to immediately generate a post for a brainstormed topic had to navigate away to another tool, or manually schedule it for "now". Now, clicking "Generate Now" bypasses the schedule and immediately generates posts for the selected topics within the same request flow.
 **Files Modified:**
 - `ai-post-scheduler/templates/admin/planner.php`
 - `ai-post-scheduler/assets/js/admin-planner.js`
