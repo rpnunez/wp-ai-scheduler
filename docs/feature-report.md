@@ -25,7 +25,7 @@
 
 This document provides comprehensive documentation for the AI Post Scheduler WordPress plugin. The plugin consists of **98 core classes** organized into **9 functional categories**.
 
-- **Total Lines of Code**: 30,395
+- **Total Lines of Code**: 30,603
 - **Total Features**: 98
 - **Categories**: Core Generation, Scheduling & Automation, Content Management, Data Management, User Interface, AI Integration, Database, Configuration, Utilities
 
@@ -118,8 +118,8 @@ flowchart TD
     Author_Post_Generator --> Generator
     Component_Regeneration_Service --> Generator
     Component_Regeneration_Service --> Generation_Context_Factory
-    Generator --> Generation_Session
     Generator --> Generation_Logger
+    Generator --> Generation_Session
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
@@ -224,21 +224,21 @@ flowchart TD
     Templates["Templates"]
 
     Article_Structure_Manager --> Article_Structure_Repository
-    Generated_Posts_Controller --> Post_Review_Repository
     Generated_Posts_Controller --> Template_Repository
+    Generated_Posts_Controller --> Post_Review_Repository
     Post_Review_Notifications --> Post_Review_Repository
-    Post_Review --> Post_Review_Repository
     Post_Review --> Template_Repository
+    Post_Review --> Post_Review_Repository
     Prompt_Builder_Article_Structure_Section --> Article_Structure_Manager
     Prompt_Builder_Article_Structure_Section --> Template_Processor
-    Prompt_Builder_Post_Content --> Template_Processor
     Prompt_Builder_Post_Content --> Prompt_Builder_Article_Structure_Section
+    Prompt_Builder_Post_Content --> Template_Processor
     Prompt_Builder_Post_Excerpt --> Template_Processor
     Prompt_Builder_Post_Featured_Image --> Template_Processor
     Prompt_Builder_Post_Title --> Template_Processor
     Template_Type_Selector --> Article_Structure_Repository
-    Templates_Controller --> Templates
     Templates_Controller --> Template_Context
+    Templates_Controller --> Templates
     Templates --> Template_Repository
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
@@ -329,8 +329,8 @@ flowchart TD
     Authors_Controller --> Admin_Bar
     Prompt_Builder_Authors --> Prompt_Builder
     Prompt_Builder_Topic --> Prompt_Builder
-    Settings --> Prompt_Builder
     Settings --> Dashboard_Controller
+    Settings --> Prompt_Builder
 
     classDef repository fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef service fill:#fff3e0,stroke:#e65100,stroke-width:2px
@@ -485,8 +485,8 @@ flowchart TD
     Upgrades["Upgrades"]
     Voices["Voices"]
 
-    Author_Suggestions_Service --> Logger
     Author_Suggestions_Service --> History_Service
+    Author_Suggestions_Service --> Logger
     Author_Suggestions_Service --> Site_Context
     Dev_Tools --> Voices
     History_Container --> History_Type
@@ -498,8 +498,8 @@ flowchart TD
     Resilience_Service --> Logger
     Seeder_Service --> Voices
     Session_To_JSON --> History_Type
-    System_Status --> Data_Management
     System_Status --> Logger
+    System_Status --> Data_Management
     Topic_Expansion_Service --> Logger
     Topic_Penalty_Service --> Logger
     Upgrades --> Logger
@@ -580,7 +580,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Admin_Assets`
 
-**Lines of Code**: 642
+**Lines of Code**: 644
 
 **Technical Details**:
 
@@ -593,7 +593,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 642 lines (may violate SRP)
+1. Consider refactoring - class has 644 lines (may violate SRP)
 2. Document all custom hooks in HOOKS.md for third-party developers
 3. Ensure unit tests cover all public methods and edge cases
 
@@ -1041,7 +1041,7 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Config`
 
-**Lines of Code**: 362
+**Lines of Code**: 361
 
 **Technical Details**:
 
@@ -1786,15 +1786,15 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Onboarding_Wizard`
 
-**Lines of Code**: 472
+**Lines of Code**: 484
 
 **Technical Details**:
 
-- **Public Methods** (13): `__construct()`, `register_page()`, `maybe_redirect_after_activation()`, `fix_parent_file()`, `fix_submenu_file()`, `render_page()`, `ajax_save_strategy()`, `ajax_create_author()`, `ajax_create_template()`, `ajax_generate_topics()`, ... and 3 more
+- **Public Methods** (14): `__construct()`, `register_page()`, `maybe_redirect_after_activation()`, `fix_parent_file()`, `fix_submenu_file()`, `render_page()`, `ajax_save_strategy()`, `ajax_create_author()`, `ajax_create_template()`, `ajax_generate_topics()`, ... and 4 more
 - **Dependencies** (7): `AIPS_Admin_Menu_Helper`, `AIPS_Author_Topics_Generator`, `AIPS_Authors_Repository`, `AIPS_Generator`, `AIPS_Settings`, `AIPS_Site_Context`, `AIPS_Template_Repository`
-- **Action Hooks** (16): `aips_onboarding_author_created`, `aips_onboarding_post_generated`, `aips_onboarding_strategy_saved`, `aips_onboarding_template_created`, `aips_onboarding_topics_generated`, ... and 11 more
+- **Action Hooks** (18): `aips_onboarding_author_created`, `aips_onboarding_post_generated`, `aips_onboarding_strategy_saved`, `aips_onboarding_template_created`, `aips_onboarding_topics_generated`, ... and 13 more
 - **Filter Hooks** (2): `parent_file`, `submenu_file`
-- **AJAX Handlers**: `wp_ajax_aips_onboarding_save_strategy`, `wp_ajax_aips_onboarding_create_author`, `wp_ajax_aips_onboarding_create_template`, `wp_ajax_aips_onboarding_generate_topics`, `wp_ajax_aips_onboarding_generate_post`, `wp_ajax_aips_onboarding_reset`, `wp_ajax_aips_onboarding_complete`
+- **AJAX Handlers**: `wp_ajax_aips_onboarding_save_strategy`, `wp_ajax_aips_onboarding_create_author`, `wp_ajax_aips_onboarding_create_template`, `wp_ajax_aips_onboarding_generate_topics`, `wp_ajax_aips_onboarding_generate_post`, `wp_ajax_aips_onboarding_reset`, `wp_ajax_aips_onboarding_complete`, `wp_ajax_aips_onboarding_skip`
 - **Database Operations**: Has Repository
 - **WordPress APIs Used**: Transients, Options
 
@@ -2306,12 +2306,12 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Research_Service`
 
-**Lines of Code**: 485
+**Lines of Code**: 473
 
 **Technical Details**:
 
 - **Public Methods** (5): `__construct()`, `research_trending_topics()`, `get_top_topics()`, `analyze_topic_freshness()`, `compare_topics()`
-- **Dependencies** (3): `AIPS_AI_Service`, `AIPS_Config`, `AIPS_Logger`
+- **Dependencies** (2): `AIPS_AI_Service`, `AIPS_Logger`
 
 **Missing Functionality**:
 
@@ -2560,11 +2560,11 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Class**: `AIPS_Settings`
 
-**Lines of Code**: 1099
+**Lines of Code**: 1306
 
 **Technical Details**:
 
-- **Public Methods** (45): `__construct()`, `add_menu_pages()`, `fix_author_topics_parent_file()`, `fix_author_topics_submenu_file()`, `register_settings()`, `get_content_strategy_options()`, `general_section_callback()`, `post_status_field_callback()`, `category_field_callback()`, `ai_model_field_callback()`, ... and 35 more
+- **Public Methods** (54): `__construct()`, `add_menu_pages()`, `fix_author_topics_parent_file()`, `fix_author_topics_submenu_file()`, `register_settings()`, `get_content_strategy_options()`, `general_section_callback()`, `post_status_field_callback()`, `category_field_callback()`, `ai_model_field_callback()`, ... and 44 more
 - **Dependencies** (13): `AIPS_AI_Service`, `AIPS_Article_Structure_Repository`, `AIPS_Dashboard_Controller`, `AIPS_Dev_Tools`, `AIPS_Generated_Posts_Controller`, `AIPS_History`, `AIPS_Prompt_Builder`, `AIPS_Prompt_Section_Repository`, `AIPS_Site_Context`, `AIPS_Sources_Repository`, `AIPS_System_Status`, `AIPS_Templates`, `AIPS_Voices`
 - **Action Hooks** (3): `admin_init`, `admin_menu`, `wp_ajax_aips_test_connection`
 - **Filter Hooks** (2): `parent_file`, `submenu_file`
@@ -2576,8 +2576,8 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 **Recommended Improvements**:
 
-1. Consider refactoring - class has 1099 lines (may violate SRP)
-2. High method count (45+ methods) - consider splitting responsibilities
+1. Consider refactoring - class has 1306 lines (may violate SRP)
+2. High method count (54+ methods) - consider splitting responsibilities
 3. High coupling - depends on 13 classes
 4. Document all custom hooks in HOOKS.md for third-party developers
 5. Ensure unit tests cover all public methods and edge cases
@@ -3125,14 +3125,14 @@ Detailed analysis of each feature including files, functionality, and recommenda
 
 | Class | Lines | File |
 |-------|-------|------|
-| Settings | 1099 | `class-aips-settings.php` |
+| Settings | 1306 | `class-aips-settings.php` |
 | History Repository | 1018 | `class-aips-history-repository.php` |
 | Author Topics Controller | 935 | `class-aips-author-topics-controller.php` |
 | Generator | 932 | `class-aips-generator.php` |
 | Schedule Controller | 705 | `class-aips-schedule-controller.php` |
 | Post Review | 693 | `class-aips-post-review.php` |
 | Db Manager | 665 | `class-aips-db-manager.php` |
-| Admin Assets | 642 | `class-aips-admin-assets.php` |
+| Admin Assets | 644 | `class-aips-admin-assets.php` |
 | Ai Service | 623 | `class-aips-ai-service.php` |
 | Trending Topics Repository | 617 | `class-aips-trending-topics-repository.php` |
 
