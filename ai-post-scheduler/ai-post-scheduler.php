@@ -75,9 +75,22 @@ final class AI_Post_Scheduler {
 
         $logger->log('Running plugin activation.');
 
+        // Detect a prior installation before set_default_options() writes defaults.
+        $previously_installed = get_option('aips_db_version') !== false;
+        $wizard_completed     = (bool) get_option('aips_onboarding_completed', false);
+
         $this->set_default_options();
-        // Redirect admins to onboarding wizard once after activation.
-        set_transient('aips_onboarding_redirect', 1, MINUTE_IN_SECONDS * 10);
+
+        if ($previously_installed || $wizard_completed) {
+            // Plugin already had data or the wizard was already run — mark it
+            // complete so the wizard never resurfaces on future reactivations.
+            if (!$wizard_completed) {
+                update_option('aips_onboarding_completed', 1, false);
+            }
+        } else {
+            // Fresh install: redirect admins to the onboarding wizard once.
+            set_transient('aips_onboarding_redirect', 1, MINUTE_IN_SECONDS * 10);
+        }
         $this->check_upgrades();
 
         // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
