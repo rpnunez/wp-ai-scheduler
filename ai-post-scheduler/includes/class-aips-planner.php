@@ -153,6 +153,10 @@ class AIPS_Planner {
 
         // Enforce a bulk limit for synchronous generation to avoid PHP timeouts
         $max_bulk = apply_filters('aips_bulk_run_now_limit', 5);
+        $max_bulk = absint($max_bulk);
+        if (0 === $max_bulk) {
+            $max_bulk = 5;
+        }
         if (count($topics) > $max_bulk) {
             wp_send_json_error(array(
                 'message' => sprintf(
