@@ -411,13 +411,13 @@
                 success: function(response) {
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message, 'success');
-                        // Clear list after successful scheduling
-                         $('#topics-list').html('');
-                         $('#planner-results').slideUp();
-                         $('#planner-niche').val('');
-                         $('#planner-manual-topics').val('');
-                         $('#planner-topic-search').val('');
-                         window.AIPS.updateSelectionCount();
+                        // Clear topic list and planner inputs after successful immediate generation
+                        $('#topics-list').html('');
+                        $('#planner-results').slideUp();
+                        $('#planner-niche').val('');
+                        $('#planner-manual-topics').val('');
+                        $('#planner-topic-search').val('');
+                        window.AIPS.updateSelectionCount();
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
