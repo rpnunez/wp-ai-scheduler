@@ -366,8 +366,8 @@ INSTRUCTIONS;
             return null;
         }
 
-        $voice_service = new AIPS_Voices();
-        return $voice_service->get($voice_id);
+        $voices_repository = new AIPS_Voices_Repository();
+        return $voices_repository->get_by_id($voice_id);
     }
 
 	/**

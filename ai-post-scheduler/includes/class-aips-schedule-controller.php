@@ -158,8 +158,8 @@ class AIPS_Schedule_Controller {
 
         $voice = null;
         if (!empty($template->voice_id)) {
-            $voices = new AIPS_Voices();
-            $voice = $voices->get($template->voice_id);
+            $voices_repository = new AIPS_Voices_Repository();
+            $voice = $voices_repository->get_by_id($template->voice_id);
         }
 
         $quantity = $template->post_quantity ?: 1;

@@ -104,10 +104,10 @@ class AIPS_Dev_Tools {
 
         $created_items = array();
         $voice_id = null;
+        $voices_repository = new AIPS_Voices_Repository();
 
         // 1. Create Voice
         if ($include_voice && isset($data['voice'])) {
-            $voices_handler = new AIPS_Voices();
             $voice_data = array(
                 'name' => sanitize_text_field($data['voice']['name']),
                 'title_prompt' => wp_kses_post($data['voice']['title_prompt']),
@@ -115,7 +115,7 @@ class AIPS_Dev_Tools {
                 'excerpt_instructions' => isset($data['voice']['excerpt_instructions']) ? wp_kses_post($data['voice']['excerpt_instructions']) : '',
                 'is_active' => 1
             );
-            $voice_id = $voices_handler->save($voice_data);
+            $voice_id = $voices_repository->create($voice_data);
             if ($voice_id) {
                 $created_items[] = sprintf(__('Voice created: %s', 'ai-post-scheduler'), $data['voice']['name']);
             }

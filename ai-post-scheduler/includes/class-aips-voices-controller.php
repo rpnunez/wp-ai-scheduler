@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class AIPS_Voices {
+class AIPS_Voices_Controller {
     
     /**
      * @var AIPS_Voices_Repository Repository for database operations
@@ -17,35 +17,6 @@ class AIPS_Voices {
         add_action('wp_ajax_aips_delete_voice', array($this, 'ajax_delete_voice'));
         add_action('wp_ajax_aips_get_voice', array($this, 'ajax_get_voice'));
         add_action('wp_ajax_aips_search_voices', array($this, 'ajax_search_voices'));
-    }
-    
-    public function get_all($active_only = false) {
-        return $this->repository->get_all($active_only);
-    }
-    
-    public function get($id) {
-        return $this->repository->get_by_id($id);
-    }
-    
-    public function save($data) {
-        // Enforce defaults for backward compatibility with legacy save behavior
-        if (!isset($data['is_active'])) {
-            $data['is_active'] = 0;
-        }
-        if (!isset($data['excerpt_instructions'])) {
-            $data['excerpt_instructions'] = '';
-        }
-        
-        if (!empty($data['id'])) {
-            $this->repository->update(absint($data['id']), $data);
-            return absint($data['id']);
-        } else {
-            return $this->repository->create($data);
-        }
-    }
-    
-    public function delete($id) {
-        return $this->repository->delete($id);
     }
     
     public function ajax_save_voice() {
@@ -68,7 +39,20 @@ class AIPS_Voices {
             wp_send_json_error(array('message' => __('Name, Title Prompt, and Content Instructions are required.', 'ai-post-scheduler')));
         }
         
-        $id = $this->save($data);
+        // Preserve legacy defaults from the removed save() wrapper.
+        if (!isset($data['is_active'])) {
+            $data['is_active'] = 0;
+        }
+        if (!isset($data['excerpt_instructions'])) {
+            $data['excerpt_instructions'] = '';
+        }
+
+        if (!empty($data['id'])) {
+            $this->repository->update(absint($data['id']), $data);
+            $id = absint($data['id']);
+        } else {
+            $id = $this->repository->create($data);
+        }
         
         if ($id) {
             wp_send_json_success(array(
@@ -93,7 +77,7 @@ class AIPS_Voices {
             wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
         }
         
-        if ($this->delete($id)) {
+        if ($this->repository->delete($id)) {
             wp_send_json_success(array('message' => __('Voice deleted successfully.', 'ai-post-scheduler')));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete voice.', 'ai-post-scheduler')));
@@ -113,7 +97,7 @@ class AIPS_Voices {
             wp_send_json_error(array('message' => __('Invalid voice ID.', 'ai-post-scheduler')));
         }
         
-        $voice = $this->get($id);
+        $voice = $this->repository->get_by_id($id);
         
         if ($voice) {
             wp_send_json_success(array('voice' => $voice));
@@ -136,8 +120,9 @@ class AIPS_Voices {
     }
     
     public function render_page() {
-        $voices = $this->get_all();
+        $voices = $this->repository->get_all();
         
         include AIPS_PLUGIN_DIR . 'templates/admin/voices.php';
     }
 }
+
