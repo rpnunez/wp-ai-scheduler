@@ -409,17 +409,30 @@
                     template_id: templateId
                 },
                 success: function(response) {
-                    if (response.success) {
-                        AIPS.Utilities.showToast(response.data.message, 'success');
-                        // Clear topic list and planner inputs after successful immediate generation
-                        $('#topics-list').html('');
-                        $('#planner-results').slideUp();
-                        $('#planner-niche').val('');
-                        $('#planner-manual-topics').val('');
-                        $('#planner-topic-search').val('');
-                        window.AIPS.updateSelectionCount();
+                    if (response && response.success) {
+                        var data = response.data || {};
+                        var failedTopics = data.failed_topics || data.errors || [];
+                        var hasFailedTopics = $.isArray(failedTopics) ? failedTopics.length > 0 : false;
+
+                        if (hasFailedTopics) {
+                            // Partial success: keep topics so user can review/retry failed ones.
+                            var partialMsg = data.message || 'Some topics could not be generated. Please review and try again.';
+                            AIPS.Utilities.showToast(partialMsg, 'warning');
+                        } else {
+                            // Full success: clear list and reset planner inputs as before.
+                            var successMsg = data.message || 'Posts generated successfully.';
+                            AIPS.Utilities.showToast(successMsg, 'success');
+                            // Clear list after successful scheduling
+                            $('#topics-list').html('');
+                            $('#planner-results').slideUp();
+                            $('#planner-niche').val('');
+                            $('#planner-manual-topics').val('');
+                            $('#planner-topic-search').val('');
+                            window.AIPS.updateSelectionCount();
+                        }
                     } else {
-                        AIPS.Utilities.showToast(response.data.message, 'error');
+                        var errorMsg = (response && response.data && response.data.message) ? response.data.message : 'An error occurred. Please try again.';
+                        AIPS.Utilities.showToast(errorMsg, 'error');
                     }
                 },
                 error: function() {
