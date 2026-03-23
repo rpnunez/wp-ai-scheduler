@@ -103,6 +103,7 @@
             $(document).on('click', '.aips-add-voice-btn', this.openVoiceModal);
             $(document).on('click', '.aips-edit-voice', this.editVoice);
             $(document).on('click', '.aips-delete-voice', this.deleteVoice);
+            $(document).on('click', '.aips-toggle-voice', this.toggleVoice);
             $(document).on('click', '.aips-save-voice', this.saveVoice);
 
             $(document).on('click', '.aips-add-schedule-btn', this.openScheduleModal);
@@ -1024,6 +1025,82 @@
         },
 
         /**
+         * Toggle the active status of a voice via AJAX.
+         *
+         * Replaces the badge icon, class, and text immediately, and reverts on error.
+         *
+         * @param {Event} e - Click event from an `.aips-toggle-voice` element.
+         */
+        toggleVoice: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var id = $btn.data('id');
+            var $row = $btn.closest('tr');
+            var currentState = parseInt($row.attr('data-is-active'), 10) || 0;
+            var newState = currentState ? 0 : 1;
+
+            // Visual Update immediately for UX
+            var $badge = $btn.find('.aips-badge');
+            var $icon = $badge.find('.dashicons');
+            var $text = $badge.find('.aips-badge-text');
+
+            if (newState) {
+                $badge.removeClass('aips-badge-neutral').addClass('aips-badge-success');
+                $icon.removeClass('dashicons-minus').addClass('dashicons-yes-alt');
+                $text.text(aipsAdminL10n.active || 'Active');
+            } else {
+                $badge.removeClass('aips-badge-success').addClass('aips-badge-neutral');
+                $icon.removeClass('dashicons-yes-alt').addClass('dashicons-minus');
+                $text.text(aipsAdminL10n.inactive || 'Inactive');
+            }
+
+            $row.attr('data-is-active', newState);
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_toggle_voice',
+                    nonce: aipsAjax.nonce,
+                    voice_id: id,
+                    is_active: newState
+                },
+                success: function(response) {
+                    if (!response.success) {
+                        // Revert on failure
+                        AIPS.Utilities.showToast(response.data.message || 'Error', 'error');
+                        $row.attr('data-is-active', currentState);
+                        if (currentState) {
+                            $badge.removeClass('aips-badge-neutral').addClass('aips-badge-success');
+                            $icon.removeClass('dashicons-minus').addClass('dashicons-yes-alt');
+                            $text.text(aipsAdminL10n.active || 'Active');
+                        } else {
+                            $badge.removeClass('aips-badge-success').addClass('aips-badge-neutral');
+                            $icon.removeClass('dashicons-yes-alt').addClass('dashicons-minus');
+                            $text.text(aipsAdminL10n.inactive || 'Inactive');
+                        }
+                    } else {
+                        AIPS.Utilities.showToast(response.data.message || 'Status updated', 'success');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast('Server error', 'error');
+                    // Revert on failure
+                    $row.attr('data-is-active', currentState);
+                    if (currentState) {
+                        $badge.removeClass('aips-badge-neutral').addClass('aips-badge-success');
+                        $icon.removeClass('dashicons-minus').addClass('dashicons-yes-alt');
+                        $text.text(aipsAdminL10n.active || 'Active');
+                    } else {
+                        $badge.removeClass('aips-badge-success').addClass('aips-badge-neutral');
+                        $icon.removeClass('dashicons-yes-alt').addClass('dashicons-minus');
+                        $text.text(aipsAdminL10n.inactive || 'Inactive');
+                    }
+                }
+            });
+        },
+
+        /**
          * Confirm and permanently delete a voice via AJAX.
          *
          * Shows a confirmation dialog. On confirmation, sends the
@@ -1049,7 +1126,23 @@
                         },
                         success: function(response) {
                             if (response.success) {
-                                $row.fadeOut(function() { $(this).remove(); });
+                                $row.fadeOut(function() {
+                                    $(this).remove();
+                                    AIPS.Utilities.showToast(response.data.message || 'Deleted successfully', 'success');
+
+                                    var $table = $('.aips-voices-list');
+                                    var rowCount = $table.find('tbody tr').length;
+                                    var $footerCount = $('.aips-table-footer-count');
+
+                                    if ($footerCount.length) {
+                                        var text = rowCount === 1 ? '1 voice' : rowCount + ' voices';
+                                        $footerCount.text(text);
+                                    }
+
+                                    if (rowCount === 0) {
+                                        location.reload(); // Quick way to show the empty state correctly if zero items left
+                                    }
+                                });
                             } else {
                                 AIPS.Utilities.showToast(response.data.message, 'error');
                             }
