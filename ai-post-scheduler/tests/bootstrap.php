@@ -400,6 +400,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('wp_unslash')) {
+        function wp_unslash($value) {
+            return is_array($value) ? array_map('wp_unslash', $value) : stripslashes($value);
+        }
+    }
+
     if (!function_exists('absint')) {
         function absint($maybeint) {
             return abs(intval($maybeint));
@@ -695,6 +701,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('__')) {
         function __($text, $domain = 'default') {
             return $text;
+        }
+    }
+
+    if (!function_exists('_n')) {
+        function _n($single, $plural, $number, $domain = 'default') {
+            return $number === 1 ? $single : $plural;
         }
     }
 

@@ -144,7 +144,8 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $topics = isset($_POST['topics']) ? (array) $_POST['topics'] : array();
+        $raw_topics  = isset($_POST['topics']) ? wp_unslash((array) $_POST['topics']) : array();
+        $topics      = array_values(array_filter(array_map('sanitize_text_field', $raw_topics)));
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
         if (empty($topics) || empty($template_id)) {
@@ -168,18 +169,19 @@ class AIPS_Planner {
             ));
         }
 
-        $templates = new AIPS_Templates();
-        $template = $templates->get($template_id);
+        $template = $this->get_template_by_id($template_id);
 
         if (!$template) {
             wp_send_json_error(array('message' => __('Template not found.', 'ai-post-scheduler')));
         }
 
-        // Sanitize topics
-        $topics = array_map('sanitize_text_field', $topics);
+        $generator = $this->make_generator();
 
-        $generator = new AIPS_Generator();
-        $generated_count = 0;
+        if (!$generator->is_available()) {
+            wp_send_json_error(array('message' => __('AI Engine is not available.', 'ai-post-scheduler')));
+        }
+
+        $post_ids = array();
         $errors = array();
 
         foreach ($topics as $topic) {
@@ -189,32 +191,56 @@ class AIPS_Planner {
             if (is_wp_error($result)) {
                 $errors[] = sprintf(__('Topic "%1$s": %2$s', 'ai-post-scheduler'), $topic, $result->get_error_message());
             } else {
-                $generated_count++;
+                $post_ids[] = is_array($result) ? $result : (int) $result;
             }
         }
 
-        if ($generated_count > 0) {
-            $msg = sprintf(
-                /* translators: %d: number of posts */
-                _n('%d post generated successfully!', '%d posts generated successfully!', $generated_count, 'ai-post-scheduler'),
-                $generated_count
-            );
-
-            if (!empty($errors)) {
-                $msg .= ' ' . __('However, some errors occurred:', 'ai-post-scheduler') . ' ' . implode(', ', $errors);
-            }
-
-            wp_send_json_success(array(
-                'message' => $msg,
-                'count' => $generated_count
+        if (empty($post_ids) && !empty($errors)) {
+            wp_send_json_error(array(
+                'message' => __('All topic generations failed.', 'ai-post-scheduler'),
+                'errors'  => $errors,
             ));
-        } else {
-            $error_msg = __('Failed to generate posts.', 'ai-post-scheduler');
-            if (!empty($errors)) {
-                $error_msg .= ' ' . implode(', ', $errors);
-            }
-            wp_send_json_error(array('message' => $error_msg));
         }
+
+        $message = sprintf(
+            /* translators: %d: number of posts */
+            _n('%d post generated successfully!', '%d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
+            count($post_ids)
+        );
+
+        if (!empty($errors)) {
+            $message .= ' ' . sprintf(
+                /* translators: %d: number of failed topics */
+                _n('(%d failed)', '(%d failed)', count($errors), 'ai-post-scheduler'),
+                count($errors)
+            );
+        }
+
+        wp_send_json_success(array(
+            'message'  => $message,
+            'post_ids' => $post_ids,
+            'errors'   => $errors,
+        ));
+    }
+
+    /**
+     * Factory method for AIPS_Generator. Overrideable in tests.
+     *
+     * @return AIPS_Generator
+     */
+    protected function make_generator() {
+        return new AIPS_Generator();
+    }
+
+    /**
+     * Retrieve a template by ID. Overrideable in tests.
+     *
+     * @param int $template_id
+     * @return object|null
+     */
+    protected function get_template_by_id( $template_id ) {
+        $templates = new AIPS_Templates();
+        return $templates->get($template_id);
     }
 
     public function render_page() {
