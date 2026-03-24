@@ -526,7 +526,7 @@ class AIPS_Schedule_Processor {
 
         if (!$is_manual) {
             // Dispatch schedule execution completed event
-            do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
+            do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result, $schedule);
 
             // Invalidate the schedule execution count cache (Bolt)
             $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);

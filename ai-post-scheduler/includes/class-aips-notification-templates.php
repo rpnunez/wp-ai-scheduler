@@ -111,6 +111,11 @@ class AIPS_Notification_Templates {
 		$this->register($this->build_standard_alert_template('integration_error', __('Integration Error', 'ai-post-scheduler'), '#b32d2e'));
 		$this->register($this->build_standard_alert_template('scheduler_error', __('Scheduler Error', 'ai-post-scheduler'), '#b32d2e'));
 		$this->register($this->build_standard_alert_template('system_error', __('System Error', 'ai-post-scheduler'), '#b32d2e'));
+		$this->register($this->build_standard_event_template('template_generated', __('Template Generation Completed', 'ai-post-scheduler'), '#2271b1'));
+		$this->register($this->build_standard_event_template('manual_generation_completed', __('Manual Generation Completed', 'ai-post-scheduler'), '#2271b1'));
+		$this->register($this->build_standard_event_template('post_ready_for_review', __('Post Ready For Review', 'ai-post-scheduler'), '#2271b1'));
+		$this->register($this->build_standard_event_template('post_rejected', __('Post Rejected', 'ai-post-scheduler'), '#dba617'));
+		$this->register($this->build_standard_event_template('partial_generation_completed', __('Partial Generation Completed', 'ai-post-scheduler'), '#dba617'));
 	}
 
 	/**
@@ -211,6 +216,39 @@ class AIPS_Notification_Templates {
 			'<p>' . esc_html__('A high-priority notification was triggered by AI Post Scheduler.', 'ai-post-scheduler') . '</p>'
 			. '<div class="alert-box">'
 			. '<strong>' . esc_html__('Alert:', 'ai-post-scheduler') . '</strong> {{notification_title}}<br>'
+			. '<strong>' . esc_html__('Summary:', 'ai-post-scheduler') . '</strong> {{notification_message}}'
+			. '</div>'
+			. '{{details_html}}'
+			. '<p class="button-center">'
+			. '<a href="{{action_url}}" class="button">{{action_label}}</a>'
+			. '</p>';
+
+		$body = $this->render_layout($header_title, $header_color, $body_content);
+
+		return new AIPS_Notification_Template(
+			$type,
+			$subject,
+			$body,
+			$header_title,
+			$header_color
+		);
+	}
+
+	/**
+	 * Build a standard non-error event email template.
+	 *
+	 * @param string $type         Notification type.
+	 * @param string $header_title Email header title.
+	 * @param string $header_color Email header color.
+	 * @return AIPS_Notification_Template
+	 */
+	private function build_standard_event_template($type, $header_title, $header_color) {
+		$subject = '[{{site_name}}] {{notification_title}}';
+
+		$body_content =
+			'<p>' . esc_html__('AI Post Scheduler has a new notification for your review.', 'ai-post-scheduler') . '</p>'
+			. '<div class="alert-box">'
+			. '<strong>' . esc_html__('Update:', 'ai-post-scheduler') . '</strong> {{notification_title}}<br>'
 			. '<strong>' . esc_html__('Summary:', 'ai-post-scheduler') . '</strong> {{notification_message}}'
 			. '</div>'
 			. '{{details_html}}'

@@ -934,7 +934,7 @@ class AIPS_Settings {
      * @return void
      */
     public function notifications_section_callback() {
-        echo '<p>' . esc_html__('Configure the delivery channel for the highest-priority plugin notifications. Email is always sent to the notification email addresses above.', 'ai-post-scheduler') . '</p>';
+        echo '<p>' . esc_html__('Configure delivery channels for critical and high-priority plugin notifications. Email is always sent to the notification email addresses above.', 'ai-post-scheduler') . '</p>';
     }
 
     /**
@@ -995,10 +995,11 @@ class AIPS_Settings {
         $allowed_modes = array_keys(AIPS_Notifications::get_channel_mode_options());
 
         foreach (AIPS_Notifications::get_high_priority_notification_types() as $type => $meta) {
-            $mode = isset($preferences[$type]) ? sanitize_key($preferences[$type]) : (isset($defaults[$type]) ? $defaults[$type] : 'both');
+            $fallback_mode = isset($defaults[$type]) ? $defaults[$type] : (isset($meta['default_mode']) ? $meta['default_mode'] : 'both');
+            $mode = isset($preferences[$type]) ? sanitize_key($preferences[$type]) : $fallback_mode;
 
             if (!in_array($mode, $allowed_modes, true)) {
-                $mode = isset($defaults[$type]) ? $defaults[$type] : 'both';
+                $mode = $fallback_mode;
             }
 
             $preferences[$type] = $mode;

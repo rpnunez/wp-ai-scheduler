@@ -193,6 +193,41 @@ class AIPS_Notifications {
 				'level'         => 'error',
 				'dedupe_window' => 1800,
 			),
+			'template_generated' => array(
+				'label'         => __('Template Generated', 'ai-post-scheduler'),
+				'description'   => __('A scheduled template run generated one or more posts.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 60,
+			),
+			'manual_generation_completed' => array(
+				'label'         => __('Manual Generation Completed', 'ai-post-scheduler'),
+				'description'   => __('A manually triggered generation request completed successfully.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 60,
+			),
+			'post_ready_for_review' => array(
+				'label'         => __('Post Ready For Review', 'ai-post-scheduler'),
+				'description'   => __('A generated post is waiting for editorial review.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 60,
+			),
+			'post_rejected' => array(
+				'label'         => __('Post Rejected', 'ai-post-scheduler'),
+				'description'   => __('A generated draft was removed from the review queue.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'warning',
+				'dedupe_window' => 120,
+			),
+			'partial_generation_completed' => array(
+				'label'         => __('Partial Generation Completed', 'ai-post-scheduler'),
+				'description'   => __('A post was saved with missing generated components and needs follow-up.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'warning',
+				'dedupe_window' => 60,
+			),
 		);
 	}
 
@@ -212,6 +247,11 @@ class AIPS_Notifications {
 				'integration_error',
 				'scheduler_error',
 				'system_error',
+				'template_generated',
+				'manual_generation_completed',
+				'post_ready_for_review',
+				'post_rejected',
+				'partial_generation_completed',
 			))
 		);
 	}
@@ -278,6 +318,30 @@ class AIPS_Notifications {
 				'method'        => 'handle_system_error_notification',
 				'priority'      => 10,
 				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_schedule_execution_completed',
+				'method'        => 'handle_template_generated_notification',
+				'priority'      => 10,
+				'accepted_args' => 3,
+			),
+			array(
+				'hook'          => 'aips_post_generated',
+				'method'        => 'handle_post_generated_notification',
+				'priority'      => 10,
+				'accepted_args' => 4,
+			),
+			array(
+				'hook'          => 'aips_post_review_deleted',
+				'method'        => 'handle_post_rejected_notification',
+				'priority'      => 10,
+				'accepted_args' => 2,
+			),
+			array(
+				'hook'          => 'aips_post_generation_incomplete',
+				'method'        => 'handle_partial_generation_completed_notification',
+				'priority'      => 11,
+				'accepted_args' => 4,
 			),
 		);
 
@@ -661,6 +725,150 @@ class AIPS_Notifications {
 		));
 	}
 
+	/**
+	 * Send a template-generated notification.
+	 *
+	 * @param array $payload Notification payload.
+	 * @return void
+	 */
+	public function template_generated(array $payload) {
+		$post_ids = isset($payload['post_ids']) && is_array($payload['post_ids']) ? array_values(array_filter(array_map('absint', $payload['post_ids']))) : array();
+		$post_count = count($post_ids);
+		$template_name = !empty($payload['template_name']) ? $payload['template_name'] : __('Template', 'ai-post-scheduler');
+
+		$title = sprintf(
+			_n('%1$d post generated from "%2$s"', '%1$d posts generated from "%2$s"', $post_count, 'ai-post-scheduler'),
+			$post_count,
+			$template_name
+		);
+
+		$message = sprintf(
+			_n('Scheduled run generated %1$d post for template "%2$s".', 'Scheduled run generated %1$d posts for template "%2$s".', $post_count, 'ai-post-scheduler'),
+			$post_count,
+			$template_name
+		);
+
+		$url = !empty($payload['url']) ? $payload['url'] : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+
+		$this->dispatch_notification('template_generated', array(
+			'title'         => $title,
+			'message'       => $message,
+			'url'           => $url,
+			'level'         => 'info',
+			'meta'          => $payload,
+			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 60,
+			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Review generated posts', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a manual generation completed notification.
+	 *
+	 * @param array $payload Notification payload.
+	 * @return void
+	 */
+	public function manual_generation_completed(array $payload) {
+		$post_id = !empty($payload['post_id']) ? absint($payload['post_id']) : 0;
+		$post = $post_id ? get_post($post_id) : null;
+		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
+
+		$title = sprintf(__('Manual generation completed: %s', 'ai-post-scheduler'), $post_title);
+		$message = sprintf(__('Manual generation created post "%s".', 'ai-post-scheduler'), $post_title);
+		$url = $post_id ? get_edit_post_link($post_id) : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+
+		$this->dispatch_notification('manual_generation_completed', array(
+			'title'         => $title,
+			'message'       => $message,
+			'url'           => $url,
+			'level'         => 'info',
+			'meta'          => $payload,
+			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 60,
+			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Edit generated post', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a post-ready-for-review notification.
+	 *
+	 * @param array $payload Notification payload.
+	 * @return void
+	 */
+	public function post_ready_for_review(array $payload) {
+		$post_id = !empty($payload['post_id']) ? absint($payload['post_id']) : 0;
+		$post = $post_id ? get_post($post_id) : null;
+		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
+
+		$title = sprintf(__('Post ready for review: %s', 'ai-post-scheduler'), $post_title);
+		$message = sprintf(__('Generated post "%s" is awaiting review.', 'ai-post-scheduler'), $post_title);
+		$url = $post_id ? get_edit_post_link($post_id) : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+
+		$this->dispatch_notification('post_ready_for_review', array(
+			'title'         => $title,
+			'message'       => $message,
+			'url'           => $url,
+			'level'         => 'info',
+			'meta'          => $payload,
+			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 60,
+			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Open review queue', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a post-rejected notification.
+	 *
+	 * @param array $payload Notification payload.
+	 * @return void
+	 */
+	public function post_rejected(array $payload) {
+		$post_id = !empty($payload['post_id']) ? absint($payload['post_id']) : 0;
+		$post_label = !empty($payload['post_title']) ? $payload['post_title'] : sprintf(__('Post #%d', 'ai-post-scheduler'), $post_id);
+
+		$title = sprintf(__('Post rejected: %s', 'ai-post-scheduler'), $post_label);
+		$message = sprintf(__('Generated draft "%s" was removed from the review queue.', 'ai-post-scheduler'), $post_label);
+		$url = !empty($payload['url']) ? $payload['url'] : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+
+		$this->dispatch_notification('post_rejected', array(
+			'title'         => $title,
+			'message'       => $message,
+			'url'           => $url,
+			'level'         => 'warning',
+			'meta'          => $payload,
+			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 120,
+			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Open generated posts', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a partial-generation-completed notification.
+	 *
+	 * @param array $payload Notification payload.
+	 * @return void
+	 */
+	public function partial_generation_completed(array $payload) {
+		$post_id = !empty($payload['post_id']) ? absint($payload['post_id']) : 0;
+		$post = $post_id ? get_post($post_id) : null;
+		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
+
+		$title = sprintf(__('Partial generation completed: %s', 'ai-post-scheduler'), $post_title);
+		$message = sprintf(__('Post "%s" was saved with missing components and requires review.', 'ai-post-scheduler'), $post_title);
+		$url = !empty($payload['url']) ? $payload['url'] : admin_url('admin.php?page=aips-generated-posts#aips-partial-generations');
+
+		$this->dispatch_notification('partial_generation_completed', array(
+			'title'         => $title,
+			'message'       => $message,
+			'url'           => $url,
+			'level'         => 'warning',
+			'meta'          => $payload,
+			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 60,
+			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Open partial generations', 'ai-post-scheduler')),
+		));
+	}
+
 	// -----------------------------------------------------------------------
 	// Cron / action hook handlers
 	// -----------------------------------------------------------------------
@@ -764,6 +972,157 @@ class AIPS_Notifications {
 		if (is_array($payload)) {
 			$this->system_error($payload);
 		}
+	}
+
+	/**
+	 * Hook handler for template-generated notifications.
+	 *
+	 * @param int         $schedule_id Schedule ID.
+	 * @param int|int[]   $result      Post ID(s).
+	 * @param object|null $schedule    Optional schedule model.
+	 * @return void
+	 */
+	public function handle_template_generated_notification($schedule_id, $result, $schedule = null) {
+		$schedule_id = absint($schedule_id);
+		if (!$schedule_id) {
+			return;
+		}
+
+		$post_ids = is_array($result) ? array_values(array_filter(array_map('absint', $result))) : array(absint($result));
+		$post_ids = array_values(array_filter($post_ids));
+
+		if (empty($post_ids)) {
+			return;
+		}
+
+		if (!is_object($schedule)) {
+			$schedule_repository = new AIPS_Schedule_Repository();
+			$schedule = $schedule_repository->get_by_id($schedule_id);
+		}
+
+		$template_name = '';
+		$template_id = 0;
+
+		if (is_object($schedule)) {
+			$template_name = !empty($schedule->name) ? $schedule->name : '';
+			$template_id = !empty($schedule->template_id) ? absint($schedule->template_id) : 0;
+		}
+
+		if ('' === $template_name && $template_id) {
+			$template_repository = new AIPS_Template_Repository();
+			$template = $template_repository->get_by_id($template_id);
+			$template_name = ($template && !empty($template->name)) ? $template->name : '';
+		}
+
+		$this->template_generated(array(
+			'schedule_id'    => $schedule_id,
+			'template_id'    => $template_id,
+			'template_name'  => $template_name ? $template_name : __('Template', 'ai-post-scheduler'),
+			'post_ids'       => $post_ids,
+			'url'            => AIPS_Admin_Menu_Helper::get_page_url('generated_posts'),
+			'dedupe_key'     => 'template_generated_' . $schedule_id . '_' . md5(implode('-', $post_ids)),
+			'dedupe_window'  => 60,
+		));
+	}
+
+	/**
+	 * Hook handler for generated-post notifications.
+	 *
+	 * @param int         $post_id             Post ID.
+	 * @param mixed       $template_or_context Legacy payload (template or context).
+	 * @param int         $history_id          History/session ID.
+	 * @param mixed|null  $context             Optional generation context.
+	 * @return void
+	 */
+	public function handle_post_generated_notification($post_id, $template_or_context, $history_id = 0, $context = null) {
+		$post_id = absint($post_id);
+		if (!$post_id) {
+			return;
+		}
+
+		if (null === $context) {
+			$context = $template_or_context;
+		}
+
+		$creation_method = $this->extract_creation_method($context);
+		$post = get_post($post_id);
+		$post_status = ($post && !empty($post->post_status)) ? $post->post_status : '';
+
+		if ('manual' === $creation_method) {
+			$this->manual_generation_completed(array(
+				'post_id'       => $post_id,
+				'history_id'    => absint($history_id),
+				'creation_method'=> 'manual',
+				'post_status'   => $post_status,
+				'dedupe_key'    => 'manual_generation_completed_' . $post_id,
+				'dedupe_window' => 60,
+			));
+		}
+
+		if (in_array($post_status, array('draft', 'pending'), true)) {
+			$this->post_ready_for_review(array(
+				'post_id'        => $post_id,
+				'history_id'     => absint($history_id),
+				'creation_method'=> $creation_method,
+				'post_status'    => $post_status,
+				'dedupe_key'     => 'post_ready_for_review_' . $post_id,
+				'dedupe_window'  => 60,
+			));
+		}
+	}
+
+	/**
+	 * Hook handler for post rejection notifications.
+	 *
+	 * @param int   $post_id Post ID.
+	 * @param array $meta    Optional metadata.
+	 * @return void
+	 */
+	public function handle_post_rejected_notification($post_id, $meta = array()) {
+		$post_id = absint($post_id);
+		if (!$post_id) {
+			return;
+		}
+
+		$post_title = '';
+		if (is_array($meta) && !empty($meta['post_title'])) {
+			$post_title = sanitize_text_field($meta['post_title']);
+		}
+
+		$this->post_rejected(array(
+			'post_id'       => $post_id,
+			'post_title'    => $post_title,
+			'url'           => AIPS_Admin_Menu_Helper::get_page_url('generated_posts'),
+			'dedupe_key'    => 'post_rejected_' . $post_id,
+			'dedupe_window' => 120,
+		));
+	}
+
+	/**
+	 * Hook handler for partial-generation-completed notifications.
+	 *
+	 * @param int                     $post_id            Post ID.
+	 * @param array                   $component_statuses Component status map.
+	 * @param AIPS_Generation_Context $context            Generation context.
+	 * @param int                     $history_id         History/session ID.
+	 * @return void
+	 */
+	public function handle_partial_generation_completed_notification($post_id, $component_statuses, $context, $history_id = 0) {
+		$post_id = absint($post_id);
+		if (!$post_id) {
+			return;
+		}
+
+		$missing_components = $this->get_missing_components(is_array($component_statuses) ? $component_statuses : array());
+		$this->partial_generation_completed(array(
+			'post_id'            => $post_id,
+			'history_id'         => absint($history_id),
+			'source'             => $this->get_source_label($context),
+			'missing_components' => $missing_components,
+			'url'                => admin_url('admin.php?page=aips-generated-posts#aips-partial-generations'),
+			'dedupe_key'         => 'partial_generation_completed_' . $post_id,
+			'dedupe_window'      => 60,
+		));
 	}
 
 	// -----------------------------------------------------------------------
@@ -1046,6 +1405,23 @@ class AIPS_Notifications {
 		}
 
 		return '<ul class="notification-details">' . implode('', $items) . '</ul>';
+	}
+
+	/**
+	 * Extract creation method from a generation context-like object.
+	 *
+	 * @param mixed $context Context object.
+	 * @return string 'manual', 'scheduled', or empty string when unknown.
+	 */
+	private function extract_creation_method($context) {
+		if (is_object($context) && method_exists($context, 'get_creation_method')) {
+			$method = sanitize_key((string) $context->get_creation_method());
+			if (in_array($method, array('manual', 'scheduled'), true)) {
+				return $method;
+			}
+		}
+
+		return '';
 	}
 
 	/**

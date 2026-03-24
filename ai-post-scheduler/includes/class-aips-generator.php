@@ -788,9 +788,9 @@ class AIPS_Generator {
         // For backward compatibility, extract template if it's a template context
         if ($context instanceof AIPS_Template_Context) {
             $template_obj = $context->get_template();
-            do_action('aips_post_generated', $post_id, $template_obj, $this->current_history->get_id());
+            do_action('aips_post_generated', $post_id, $template_obj, $this->current_history->get_id(), $context);
         } else {
-            do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id());
+            do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
         }
 
         $this->generation_logger->set_history_id(null);
