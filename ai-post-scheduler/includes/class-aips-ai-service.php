@@ -440,7 +440,7 @@ class AIPS_AI_Service {
             $default_options['envId'] = $options['envId'];
         }
 
-        $options = wp_parse_args($default_options, $options);
+        $options = wp_parse_args($options, $default_options);
         $params  = array();
 
         if (!empty($options['model'])) {
