@@ -462,6 +462,21 @@ class AIPS_AI_Service {
             $params['temperature'] = $options['temperature'];
         }
 
+        // Forward optional advanced options to maintain backwards compatibility
+        // with callers that rely on passing these through to simpleTextQuery().
+        if (defined('self::OPTIONAL_QUERY_OPTION_KEYS') || true) {
+            foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
+                // env_id is already normalized to envId above, so we avoid
+                // passing it through again here to prevent ambiguity.
+                if ('env_id' === $key) {
+                    continue;
+                }
+
+                if (isset($options[$key])) {
+                    $params[$key] = $options[$key];
+                }
+            }
+        }
         return $params;
     }
 
