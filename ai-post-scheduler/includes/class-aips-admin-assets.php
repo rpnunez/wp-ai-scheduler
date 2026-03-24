@@ -161,6 +161,8 @@ class AIPS_Admin_Assets {
             'exampleTopic'                     => __('Example Topic', 'ai-post-scheduler'),
             'failedToGeneratePreview'          => __('Failed to generate preview. Please check that all required fields are filled.', 'ai-post-scheduler'),
             'previewNetworkError'              => __('An error occurred while generating the preview. Please check your network connection and try again.', 'ai-post-scheduler'),
+            // Onboarding wizard
+            'confirmSkipOnboarding'            => __('Skip the Onboarding Wizard? You can restart it later from System Status.', 'ai-post-scheduler'),
         ));
 
         // Enqueue Authors-specific assets
@@ -546,7 +548,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-history',
                 AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
-                array('jquery', 'aips-admin-script'),
+                array('jquery', 'aips-admin-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );

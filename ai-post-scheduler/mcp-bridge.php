@@ -1598,7 +1598,7 @@ class AIPS_MCP_Bridge {
 		
 		try {
 			$result = $ai_service->generate_text($test_prompt, array(
-				'max_tokens' => 50,
+				'maxTokens' => 50,
 				'temperature' => 0.7
 			));
 			
@@ -1649,7 +1649,7 @@ class AIPS_MCP_Bridge {
 		if ($category === 'all' || $category === 'ai') {
 			$settings['ai'] = array(
 				'model' => get_option('aips_ai_model', ''),
-				'max_tokens' => (int) get_option('aips_max_tokens', 2000),
+				'maxTokens' => (int) get_option('aips_max_tokens', 2000),
 				'temperature' => (float) get_option('aips_temperature', 0.7),
 				'default_post_status' => get_option('aips_default_post_status', 'draft'),
 				'default_post_author' => (int) get_option('aips_default_post_author', 1)

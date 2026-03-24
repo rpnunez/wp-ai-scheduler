@@ -663,7 +663,7 @@
 				? total + ' ' + (aipsAuthorsL10n.topicCountSingular || 'topic')
 				: total + ' ' + (aipsAuthorsL10n.topicCountPlural || 'topics');
 			$('#aips-topics-result-count').text(countStr);
-		}
+		},
 
 		/**
 		 * Fetch semantic similarity suggestions and render them inline in topic rows.
@@ -1150,7 +1150,7 @@
 			});
 
 			$('#aips-topics-content').html(tableHtml);
-		}
+		},
 
 		/**
 		 * Confirm and permanently delete a single topic via `aips_delete_topic`.
@@ -1427,7 +1427,7 @@
 			});
 
 			$('#aips-topic-logs-content').html(tableHtml);
-		}
+		},
 		
 		/**
 		 * Open the topic-posts modal and start loading posts for the given topic.
@@ -1534,7 +1534,7 @@
 			});
 
 			$('#aips-topic-posts-content').html(tableHtml);
-		}
+		},
 
 		/**
 		 * Sync all `.aips-topic-checkbox` elements with the "select all" checkbox.
@@ -2427,7 +2427,7 @@
 			});
 
 			$('#aips-queue-pagination-links').html(paginationHtml);
-		}
+		},
 
 		/**
 		 * Navigate queue pagination.
