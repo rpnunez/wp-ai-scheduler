@@ -243,8 +243,8 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 </div>
 
 <?php /* ------------------------------------------------------------------ */
-/* HTML templates used by AIPS.Templates.render() in authors.js             */
-/* ------------------------------------------------------------------ */ ?>
+/* HTML templates used by AIPS.Templates.renderRaw() in authors.js          */
+/* (unescaped HTML; required for tokens like {{rows}} and {{actions}}).     */ ?>
 
 <!-- Topics List Templates -->
 <script type="text/html" id="aips-tmpl-topics-table">
