@@ -301,7 +301,11 @@ class AIPS_Settings {
             'sanitize_callback' => 'absint'
         ));
         register_setting('aips_settings', 'aips_review_notifications_email', array(
-            'sanitize_callback' => 'sanitize_email'
+            'sanitize_callback' => array($this, 'sanitize_notification_emails')
+        ));
+        register_setting('aips_settings', 'aips_notification_preferences', array(
+            'sanitize_callback' => array($this, 'sanitize_notification_preferences'),
+            'default' => AIPS_Config::get_instance()->get_option('aips_notification_preferences', array())
         ));
         register_setting('aips_settings', 'aips_topic_similarity_threshold', array(
             'sanitize_callback' => array($this, 'sanitize_similarity_threshold'),
@@ -388,6 +392,27 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
+
+        add_settings_section(
+            'aips_notifications_section',
+            __('System Notifications', 'ai-post-scheduler'),
+            array($this, 'notifications_section_callback'),
+            'aips-settings'
+        );
+
+        foreach (AIPS_Notifications::get_high_priority_notification_types() as $type => $meta) {
+            add_settings_field(
+                'aips_notification_preferences_' . $type,
+                $meta['label'],
+                array($this, 'notification_preference_field_callback'),
+                'aips-settings',
+                'aips_notifications_section',
+                array(
+                    'type'        => $type,
+                    'description' => $meta['description'],
+                )
+            );
+        }
 
         add_settings_field(
             'aips_topic_similarity_threshold',
@@ -898,9 +923,88 @@ class AIPS_Settings {
     public function review_notifications_email_field_callback() {
         $value = get_option('aips_review_notifications_email', get_option('admin_email'));
         ?>
-        <input type="email" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
-        <p class="description"><?php esc_html_e('Email address to receive notifications about posts awaiting review.', 'ai-post-scheduler'); ?></p>
+        <input type="text" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
+        <p class="description"><?php esc_html_e('Comma-separated email addresses used for posts awaiting review and all system notification emails.', 'ai-post-scheduler'); ?></p>
         <?php
+    }
+
+    /**
+     * Render the notifications section description.
+     *
+     * @return void
+     */
+    public function notifications_section_callback() {
+        echo '<p>' . esc_html__('Configure the delivery channel for the highest-priority plugin notifications. Email is always sent to the notification email addresses above.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render a notification channel preference select field.
+     *
+     * @param array $args Field configuration.
+     * @return void
+     */
+    public function notification_preference_field_callback($args) {
+        $type = isset($args['type']) ? sanitize_key($args['type']) : '';
+        $preferences = get_option('aips_notification_preferences', array());
+        $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
+        $value = isset($preferences[$type]) ? $preferences[$type] : (isset($defaults[$type]) ? $defaults[$type] : 'both');
+        ?>
+        <select name="aips_notification_preferences[<?php echo esc_attr($type); ?>]">
+            <?php foreach (AIPS_Notifications::get_channel_mode_options() as $mode => $label) : ?>
+                <option value="<?php echo esc_attr($mode); ?>" <?php selected($value, $mode); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php if (!empty($args['description'])) : ?>
+            <p class="description"><?php echo esc_html($args['description']); ?></p>
+        <?php endif; ?>
+        <?php
+    }
+
+    /**
+     * Sanitize comma-separated notification email addresses.
+     *
+     * @param mixed $value Raw option value.
+     * @return string
+     */
+    public function sanitize_notification_emails($value) {
+        $emails = preg_split('/\s*,\s*/', (string) $value);
+        $emails = is_array($emails) ? $emails : array();
+        $sanitized = array();
+
+        foreach ($emails as $email) {
+            $email = sanitize_email($email);
+            if (!empty($email) && is_email($email)) {
+                $sanitized[] = $email;
+            }
+        }
+
+        $sanitized = array_values(array_unique($sanitized));
+
+        return implode(', ', $sanitized);
+    }
+
+    /**
+     * Sanitize notification preference channel modes.
+     *
+     * @param mixed $value Raw option value.
+     * @return array
+     */
+    public function sanitize_notification_preferences($value) {
+        $preferences = is_array($value) ? $value : array();
+        $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
+        $allowed_modes = array_keys(AIPS_Notifications::get_channel_mode_options());
+
+        foreach (AIPS_Notifications::get_high_priority_notification_types() as $type => $meta) {
+            $mode = isset($preferences[$type]) ? sanitize_key($preferences[$type]) : (isset($defaults[$type]) ? $defaults[$type] : 'both');
+
+            if (!in_array($mode, $allowed_modes, true)) {
+                $mode = isset($defaults[$type]) ? $defaults[$type] : 'both';
+            }
+
+            $preferences[$type] = $mode;
+        }
+
+        return $preferences;
     }
 
     /**

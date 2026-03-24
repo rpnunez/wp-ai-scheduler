@@ -78,6 +78,13 @@ class AIPS_Config {
             'aips_log_retention_days' => 30,
             'aips_review_notifications_enabled' => 0,
             'aips_review_notifications_email' => '',
+            'aips_notification_preferences' => array(
+                'generation_failed' => 'both',
+                'quota_alert' => 'both',
+                'integration_error' => 'both',
+                'scheduler_error' => 'both',
+                'system_error' => 'both',
+            ),
             'aips_topic_similarity_threshold' => 0.8,
             'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,

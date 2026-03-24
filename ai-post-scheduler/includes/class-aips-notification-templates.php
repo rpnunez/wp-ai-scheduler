@@ -106,6 +106,11 @@ class AIPS_Notification_Templates {
 	private function register_defaults() {
 		$this->register($this->build_partial_generation_template());
 		$this->register($this->build_posts_awaiting_review_template());
+		$this->register($this->build_standard_alert_template('generation_failed', __('Generation Failed', 'ai-post-scheduler'), '#b32d2e'));
+		$this->register($this->build_standard_alert_template('quota_alert', __('Quota Alert', 'ai-post-scheduler'), '#b32d2e'));
+		$this->register($this->build_standard_alert_template('integration_error', __('Integration Error', 'ai-post-scheduler'), '#b32d2e'));
+		$this->register($this->build_standard_alert_template('scheduler_error', __('Scheduler Error', 'ai-post-scheduler'), '#b32d2e'));
+		$this->register($this->build_standard_alert_template('system_error', __('System Error', 'ai-post-scheduler'), '#b32d2e'));
 	}
 
 	/**
@@ -184,6 +189,39 @@ class AIPS_Notification_Templates {
 
 		return new AIPS_Notification_Template(
 			'posts_awaiting_review',
+			$subject,
+			$body,
+			$header_title,
+			$header_color
+		);
+	}
+
+	/**
+	 * Build a standard alert-style email template.
+	 *
+	 * @param string $type         Notification type.
+	 * @param string $header_title Email header title.
+	 * @param string $header_color Email header color.
+	 * @return AIPS_Notification_Template
+	 */
+	private function build_standard_alert_template($type, $header_title, $header_color) {
+		$subject = '[{{site_name}}] {{notification_title}}';
+
+		$body_content =
+			'<p>' . esc_html__('A high-priority notification was triggered by AI Post Scheduler.', 'ai-post-scheduler') . '</p>'
+			. '<div class="alert-box">'
+			. '<strong>' . esc_html__('Alert:', 'ai-post-scheduler') . '</strong> {{notification_title}}<br>'
+			. '<strong>' . esc_html__('Summary:', 'ai-post-scheduler') . '</strong> {{notification_message}}'
+			. '</div>'
+			. '{{details_html}}'
+			. '<p class="button-center">'
+			. '<a href="{{action_url}}" class="button">{{action_label}}</a>'
+			. '</p>';
+
+		$body = $this->render_layout($header_title, $header_color, $body_content);
+
+		return new AIPS_Notification_Template(
+			$type,
 			$subject,
 			$body,
 			$header_title,

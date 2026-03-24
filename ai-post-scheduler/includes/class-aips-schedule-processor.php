@@ -180,6 +180,18 @@ class AIPS_Schedule_Processor {
 
             if ($lock_result === false) {
                 $this->logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
+                do_action('aips_scheduler_error', array(
+                    'schedule_id'    => $schedule->schedule_id,
+                    'template_id'    => $schedule->template_id,
+                    'schedule_name'  => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
+                    'error_code'     => 'lock_acquisition_failed',
+                    'error_message'  => __('Failed to acquire execution lock for schedule.', 'ai-post-scheduler'),
+                    'frequency'      => $schedule->frequency,
+                    'creation_method'=> 'scheduled',
+                    'url'            => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+                    'dedupe_key'     => 'scheduler_lock_' . absint($schedule->schedule_id),
+                    'dedupe_window'  => 900,
+                ));
                 return; // Skip generation if we couldn't lock
             }
 
@@ -191,6 +203,18 @@ class AIPS_Schedule_Processor {
             // allowing subsequent schedules in the batch to be processed.
             $this->logger->log('Critical error processing schedule ' . $schedule->schedule_id . ': ' . $e->getMessage(), 'error', array(
                 'trace' => $e->getTraceAsString()
+            ));
+
+            do_action('aips_system_error', array(
+                'title'         => __('Schedule processing exception', 'ai-post-scheduler'),
+                'error_code'    => 'schedule_processing_exception',
+                'error_message' => $e->getMessage(),
+                'schedule_id'   => $schedule->schedule_id,
+                'template_id'   => isset($schedule->template_id) ? $schedule->template_id : 0,
+                'schedule_name' => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
+                'url'           => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+                'dedupe_key'    => 'system_schedule_exception_' . absint($schedule->schedule_id),
+                'dedupe_window' => 1800,
             ));
         }
     }
@@ -399,6 +423,7 @@ class AIPS_Schedule_Processor {
      */
     private function handle_execution_failure($schedule, $result, $history, $is_manual) {
         $error_msg = $result->get_error_message();
+        $history_id = (is_object($history) && method_exists($history, 'get_id')) ? $history->get_id() : 0;
 
         $this->logger->log('Schedule failed: ' . $error_msg, 'error', array(
             'schedule_id' => $schedule->schedule_id
@@ -426,6 +451,20 @@ class AIPS_Schedule_Processor {
         );
 
         if (!$is_manual) {
+            do_action('aips_scheduler_error', array(
+                'schedule_id'    => $schedule->schedule_id,
+                'template_id'    => $schedule->template_id,
+                'schedule_name'  => $schedule->name,
+                'error_code'     => $result->get_error_code(),
+                'error_message'  => $error_msg,
+                'frequency'      => $schedule->frequency,
+                'history_id'     => $history_id,
+                'creation_method'=> 'scheduled',
+                'url'            => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+                'dedupe_key'     => 'scheduler_failure_' . absint($schedule->schedule_id) . '_' . sanitize_key($result->get_error_code()),
+                'dedupe_window'  => 900,
+            ));
+
             // Dispatch schedule execution failed event
             do_action('aips_schedule_execution_failed', $schedule->schedule_id, $error_msg);
         }

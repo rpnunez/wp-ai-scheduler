@@ -54,6 +54,18 @@ class AIPS_Notifications {
 	/** Send the notification via email using wp_mail(). */
 	const CHANNEL_EMAIL = 'email';
 
+	/** Disable all delivery for a notification type. */
+	const MODE_OFF = 'off';
+
+	/** Persist only in the DB. */
+	const MODE_DB_ONLY = 'db';
+
+	/** Send only email notifications. */
+	const MODE_EMAIL_ONLY = 'email';
+
+	/** Send to both DB and email. */
+	const MODE_BOTH = 'both';
+
 	// -----------------------------------------------------------------------
 	// Dependencies
 	// -----------------------------------------------------------------------
@@ -107,6 +119,103 @@ class AIPS_Notifications {
 		$this->register_hooks();
 	}
 
+	/**
+	 * Return the available channel modes for settings.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function get_channel_mode_options() {
+		return array(
+			self::MODE_OFF        => __('Off', 'ai-post-scheduler'),
+			self::MODE_DB_ONLY    => __('DB only', 'ai-post-scheduler'),
+			self::MODE_EMAIL_ONLY => __('Email only', 'ai-post-scheduler'),
+			self::MODE_BOTH       => __('DB + Email', 'ai-post-scheduler'),
+		);
+	}
+
+	/**
+	 * Return the notification type registry.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	public static function get_notification_type_registry() {
+		return array(
+			'author_topics_generated' => array(
+				'label'        => __('Author Topics Generated', 'ai-post-scheduler'),
+				'description'  => __('New author topics are available for review in the admin area.', 'ai-post-scheduler'),
+				'default_mode' => self::MODE_DB_ONLY,
+				'level'        => 'info',
+			),
+			'partial_generation' => array(
+				'label'        => __('Partial Generation', 'ai-post-scheduler'),
+				'description'  => __('A post was created with one or more missing AI-generated components.', 'ai-post-scheduler'),
+				'default_mode' => self::MODE_EMAIL_ONLY,
+				'level'        => 'warning',
+			),
+			'posts_awaiting_review' => array(
+				'label'        => __('Posts Awaiting Review', 'ai-post-scheduler'),
+				'description'  => __('Daily digest of posts awaiting review.', 'ai-post-scheduler'),
+				'default_mode' => self::MODE_EMAIL_ONLY,
+				'level'        => 'info',
+			),
+			'generation_failed' => array(
+				'label'         => __('Generation Failed', 'ai-post-scheduler'),
+				'description'   => __('A manual or direct post generation request failed.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'error',
+				'dedupe_window' => 900,
+			),
+			'quota_alert' => array(
+				'label'         => __('Quota Alert', 'ai-post-scheduler'),
+				'description'   => __('The AI provider is rejecting requests because usage limits or circuit protection were reached.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'error',
+				'dedupe_window' => 1800,
+			),
+			'integration_error' => array(
+				'label'         => __('Integration Error', 'ai-post-scheduler'),
+				'description'   => __('The AI Engine dependency is unavailable or misconfigured.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'error',
+				'dedupe_window' => 1800,
+			),
+			'scheduler_error' => array(
+				'label'         => __('Scheduler Error', 'ai-post-scheduler'),
+				'description'   => __('A scheduled automation run failed or could not obtain its execution lock.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'error',
+				'dedupe_window' => 900,
+			),
+			'system_error' => array(
+				'label'         => __('System Error', 'ai-post-scheduler'),
+				'description'   => __('A plugin-level operational error occurred during activation, upgrades, or cron execution.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_BOTH,
+				'level'         => 'error',
+				'dedupe_window' => 1800,
+			),
+		);
+	}
+
+	/**
+	 * Return only the high-priority notification types.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	public static function get_high_priority_notification_types() {
+		$registry = self::get_notification_type_registry();
+
+		return array_intersect_key(
+			$registry,
+			array_flip(array(
+				'generation_failed',
+				'quota_alert',
+				'integration_error',
+				'scheduler_error',
+				'system_error',
+			))
+		);
+	}
+
 	// -----------------------------------------------------------------------
 	// Hook registry
 	// -----------------------------------------------------------------------
@@ -139,6 +248,36 @@ class AIPS_Notifications {
 				'method'        => 'handle_partial_generation',
 				'priority'      => 10,
 				'accepted_args' => 4,
+			),
+			array(
+				'hook'          => 'aips_generation_failed',
+				'method'        => 'handle_generation_failed_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_quota_alert',
+				'method'        => 'handle_quota_alert_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_integration_error',
+				'method'        => 'handle_integration_error_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_scheduler_error',
+				'method'        => 'handle_scheduler_error_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_system_error',
+				'method'        => 'handle_system_error_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
 			),
 		);
 
@@ -231,18 +370,16 @@ class AIPS_Notifications {
 		array $channels = array(self::CHANNEL_DB),
 		$to_email = '',
 		$db_url = '',
-		$db_message = ''
+		$db_message = '',
+		array $options = array()
 	) {
-		foreach ($channels as $channel) {
-			if ($channel === self::CHANNEL_DB) {
-				$this->send_db_notification($type, $db_message, $db_url);
-			} elseif ($channel === self::CHANNEL_EMAIL) {
-				$template = $this->templates->get($type);
-				if ($template && is_email($to_email)) {
-					$this->send_email_notification($to_email, $template, $vars);
-				}
-			}
-		}
+		$options['vars'] = $vars;
+		$options['channels'] = $channels;
+		$options['to_email'] = $to_email;
+		$options['url'] = $db_url;
+		$options['message'] = $db_message;
+
+		$this->dispatch_notification($type, $options);
 	}
 
 	// -----------------------------------------------------------------------
@@ -298,8 +435,7 @@ class AIPS_Notifications {
 			return;
 		}
 
-		$to_email = get_option('aips_review_notifications_email', get_option('admin_email'));
-		if (!is_email($to_email)) {
+		if (!$this->has_notification_recipients()) {
 			return;
 		}
 
@@ -340,7 +476,7 @@ class AIPS_Notifications {
 			'partial_generation',
 			$vars,
 			array(self::CHANNEL_EMAIL),
-			$to_email
+			''
 		);
 	}
 
@@ -352,8 +488,7 @@ class AIPS_Notifications {
 	 * @return void
 	 */
 	public function posts_awaiting_review(array $draft_posts, $total_count) {
-		$to_email = get_option('aips_review_notifications_email', get_option('admin_email'));
-		if (!is_email($to_email)) {
+		if (!$this->has_notification_recipients()) {
 			return;
 		}
 
@@ -404,8 +539,126 @@ class AIPS_Notifications {
 			'posts_awaiting_review',
 			$vars,
 			array(self::CHANNEL_EMAIL),
-			$to_email
+			''
 		);
+	}
+
+	/**
+	 * Send a high-priority generation failure notification.
+	 *
+	 * @param array $payload Failure payload.
+	 * @return void
+	 */
+	public function generation_failed(array $payload) {
+		$resource_label = !empty($payload['resource_label']) ? $payload['resource_label'] : __('AI generation request', 'ai-post-scheduler');
+		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('Unknown error', 'ai-post-scheduler');
+		$title = sprintf(__('Generation failed: %s', 'ai-post-scheduler'), $resource_label);
+		$message = sprintf(__('Generation failed for %1$s. Error: %2$s', 'ai-post-scheduler'), $resource_label, $error_message);
+
+		$this->dispatch_notification('generation_failed', array(
+			'title'        => $title,
+			'message'      => $message,
+			'url'          => !empty($payload['url']) ? $payload['url'] : '',
+			'level'        => 'error',
+			'meta'         => $payload,
+			'dedupe_key'   => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window'=> !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 0,
+			'vars'         => $this->build_standard_notification_vars($title, $message, $payload, !empty($payload['url']) ? $payload['url'] : '', __('Open generation history', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a high-priority quota alert notification.
+	 *
+	 * @param array $payload Alert payload.
+	 * @return void
+	 */
+	public function quota_alert(array $payload) {
+		$request_type = !empty($payload['request_type']) ? $payload['request_type'] : __('request', 'ai-post-scheduler');
+		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('Quota threshold reached.', 'ai-post-scheduler');
+		$title = sprintf(__('Quota alert: %s', 'ai-post-scheduler'), $request_type);
+		$message = sprintf(__('AI requests are being blocked for %1$s operations. Error: %2$s', 'ai-post-scheduler'), $request_type, $error_message);
+
+		$this->dispatch_notification('quota_alert', array(
+			'title'        => $title,
+			'message'      => $message,
+			'url'          => !empty($payload['url']) ? $payload['url'] : '',
+			'level'        => 'error',
+			'meta'         => $payload,
+			'dedupe_key'   => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window'=> !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 0,
+			'vars'         => $this->build_standard_notification_vars($title, $message, $payload, !empty($payload['url']) ? $payload['url'] : '', __('Review AI settings', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a high-priority integration error notification.
+	 *
+	 * @param array $payload Error payload.
+	 * @return void
+	 */
+	public function integration_error(array $payload) {
+		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('AI integration unavailable.', 'ai-post-scheduler');
+		$title = __('AI integration error', 'ai-post-scheduler');
+		$message = sprintf(__('The AI integration is unavailable. Error: %s', 'ai-post-scheduler'), $error_message);
+
+		$this->dispatch_notification('integration_error', array(
+			'title'        => $title,
+			'message'      => $message,
+			'url'          => !empty($payload['url']) ? $payload['url'] : '',
+			'level'        => 'error',
+			'meta'         => $payload,
+			'dedupe_key'   => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window'=> !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 0,
+			'vars'         => $this->build_standard_notification_vars($title, $message, $payload, !empty($payload['url']) ? $payload['url'] : '', __('Check integration status', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a scheduler error notification.
+	 *
+	 * @param array $payload Error payload.
+	 * @return void
+	 */
+	public function scheduler_error(array $payload) {
+		$schedule_name = !empty($payload['schedule_name']) ? $payload['schedule_name'] : __('Scheduled run', 'ai-post-scheduler');
+		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('Unknown scheduler error', 'ai-post-scheduler');
+		$title = sprintf(__('Scheduler error: %s', 'ai-post-scheduler'), $schedule_name);
+		$message = sprintf(__('The scheduler could not complete "%1$s". Error: %2$s', 'ai-post-scheduler'), $schedule_name, $error_message);
+
+		$this->dispatch_notification('scheduler_error', array(
+			'title'        => $title,
+			'message'      => $message,
+			'url'          => !empty($payload['url']) ? $payload['url'] : AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+			'level'        => 'error',
+			'meta'         => $payload,
+			'dedupe_key'   => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window'=> !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 0,
+			'vars'         => $this->build_standard_notification_vars($title, $message, $payload, !empty($payload['url']) ? $payload['url'] : AIPS_Admin_Menu_Helper::get_page_url('schedule'), __('Open schedules', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a system error notification.
+	 *
+	 * @param array $payload Error payload.
+	 * @return void
+	 */
+	public function system_error(array $payload) {
+		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('Unknown system error', 'ai-post-scheduler');
+		$title = !empty($payload['title']) ? $payload['title'] : __('System error', 'ai-post-scheduler');
+		$message = sprintf(__('A system-level plugin error occurred. Error: %s', 'ai-post-scheduler'), $error_message);
+
+		$this->dispatch_notification('system_error', array(
+			'title'        => $title,
+			'message'      => $message,
+			'url'          => !empty($payload['url']) ? $payload['url'] : '',
+			'level'        => 'error',
+			'meta'         => $payload,
+			'dedupe_key'   => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window'=> !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 0,
+			'vars'         => $this->build_standard_notification_vars($title, $message, $payload, !empty($payload['url']) ? $payload['url'] : '', __('Review details', 'ai-post-scheduler')),
+		));
 	}
 
 	// -----------------------------------------------------------------------
@@ -453,6 +706,66 @@ class AIPS_Notifications {
 		$this->partial_generation($post_id, $component_statuses, $context, $history_id);
 	}
 
+	/**
+	 * Hook handler for generation failures.
+	 *
+	 * @param array $payload Failure payload.
+	 * @return void
+	 */
+	public function handle_generation_failed_notification($payload) {
+		if (is_array($payload)) {
+			$this->generation_failed($payload);
+		}
+	}
+
+	/**
+	 * Hook handler for quota alerts.
+	 *
+	 * @param array $payload Alert payload.
+	 * @return void
+	 */
+	public function handle_quota_alert_notification($payload) {
+		if (is_array($payload)) {
+			$this->quota_alert($payload);
+		}
+	}
+
+	/**
+	 * Hook handler for integration errors.
+	 *
+	 * @param array $payload Error payload.
+	 * @return void
+	 */
+	public function handle_integration_error_notification($payload) {
+		if (is_array($payload)) {
+			$this->integration_error($payload);
+		}
+	}
+
+	/**
+	 * Hook handler for scheduler errors.
+	 *
+	 * @param array $payload Error payload.
+	 * @return void
+	 */
+	public function handle_scheduler_error_notification($payload) {
+		if (is_array($payload)) {
+			$this->scheduler_error($payload);
+		}
+	}
+
+	/**
+	 * Hook handler for system errors.
+	 *
+	 * @param array $payload Error payload.
+	 * @return void
+	 */
+	public function handle_system_error_notification($payload) {
+		if (is_array($payload)) {
+			$this->system_error($payload);
+		}
+	}
+
 	// -----------------------------------------------------------------------
 	// Private helpers
 	// -----------------------------------------------------------------------
@@ -465,11 +778,20 @@ class AIPS_Notifications {
 	 * @param string $url     Optional action-link URL.
 	 * @return void
 	 */
-	private function send_db_notification($type, $message, $url = '') {
+	private function send_db_notification($type, $message, $url = '', array $options = array()) {
 		if (empty($message)) {
 			return;
 		}
-		$this->repository->create($type, $message, $url);
+
+		$this->repository->create_notification(array(
+			'type'       => $type,
+			'title'      => isset($options['title']) ? $options['title'] : '',
+			'message'    => $message,
+			'url'        => $url,
+			'level'      => isset($options['level']) ? $options['level'] : 'info',
+			'meta'       => isset($options['meta']) ? $options['meta'] : null,
+			'dedupe_key' => isset($options['dedupe_key']) ? $options['dedupe_key'] : '',
+		));
 	}
 
 	/**
@@ -509,6 +831,221 @@ class AIPS_Notifications {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Dispatch a notification using the resolved channels.
+	 *
+	 * @param string $type    Notification type.
+	 * @param array  $options Notification options.
+	 * @return bool True when at least one channel was used.
+	 */
+	private function dispatch_notification($type, array $options = array()) {
+		$config = $this->get_notification_type_config($type);
+		$channels = $this->resolve_channels($type, isset($options['channels']) ? $options['channels'] : array(self::CHANNEL_DB));
+		$vars = isset($options['vars']) && is_array($options['vars']) ? $options['vars'] : array();
+		$vars['{{site_name}}'] = isset($vars['{{site_name}}']) ? $vars['{{site_name}}'] : esc_html(get_bloginfo('name'));
+
+		$dedupe_key = !empty($options['dedupe_key']) ? sanitize_text_field($options['dedupe_key']) : '';
+		$dedupe_window = isset($options['dedupe_window']) && absint($options['dedupe_window']) > 0 ? absint($options['dedupe_window']) : (isset($config['dedupe_window']) ? absint($config['dedupe_window']) : 0);
+
+		if ($this->is_duplicate_notification($dedupe_key, $dedupe_window)) {
+			return false;
+		}
+
+		$sent = false;
+		$title = isset($options['title']) ? $options['title'] : '';
+		$message = isset($options['message']) ? $options['message'] : '';
+		$url = isset($options['url']) ? $options['url'] : '';
+		$level = isset($options['level']) ? $options['level'] : (isset($config['level']) ? $config['level'] : 'info');
+		$meta = isset($options['meta']) ? $options['meta'] : null;
+
+		if (in_array(self::CHANNEL_DB, $channels, true)) {
+			$this->send_db_notification($type, $message, $url, array(
+				'title'      => $title,
+				'level'      => $level,
+				'meta'       => $meta,
+				'dedupe_key' => $dedupe_key,
+			));
+			$sent = true;
+		}
+
+		if (in_array(self::CHANNEL_EMAIL, $channels, true)) {
+			$template = $this->templates->get($type);
+			$recipients = $this->parse_notification_emails(isset($options['to_email']) ? $options['to_email'] : '');
+
+			if ($template && !empty($recipients)) {
+				foreach ($recipients as $recipient) {
+					$this->send_email_notification($recipient, $template, $vars);
+				}
+				$sent = true;
+			}
+		}
+
+		if ($sent && '' !== $dedupe_key && $dedupe_window > 0) {
+			set_transient($this->get_dedupe_transient_key($dedupe_key), 1, $dedupe_window);
+		}
+
+		return $sent;
+	}
+
+	/**
+	 * Resolve effective channels for a notification type.
+	 *
+	 * @param string $type             Notification type.
+	 * @param array  $fallback_channels Fallback channels.
+	 * @return array<int, string>
+	 */
+	private function resolve_channels($type, array $fallback_channels) {
+		$config = $this->get_notification_type_config($type);
+		$mode = null;
+
+		if (isset(self::get_high_priority_notification_types()[$type])) {
+			$preferences = get_option('aips_notification_preferences', array());
+			$mode = isset($preferences[$type]) ? $preferences[$type] : (isset($config['default_mode']) ? $config['default_mode'] : self::MODE_BOTH);
+		}
+
+		if (null === $mode) {
+			return $fallback_channels;
+		}
+
+		switch ($mode) {
+			case self::MODE_OFF:
+				return array();
+			case self::MODE_DB_ONLY:
+				return array(self::CHANNEL_DB);
+			case self::MODE_EMAIL_ONLY:
+				return array(self::CHANNEL_EMAIL);
+			case self::MODE_BOTH:
+			default:
+				return array(self::CHANNEL_DB, self::CHANNEL_EMAIL);
+		}
+	}
+
+	/**
+	 * Return notification configuration for a type.
+	 *
+	 * @param string $type Notification type.
+	 * @return array<string, mixed>
+	 */
+	private function get_notification_type_config($type) {
+		$registry = self::get_notification_type_registry();
+
+		return isset($registry[$type]) ? $registry[$type] : array();
+	}
+
+	/**
+	 * Check whether notification recipients are configured.
+	 *
+	 * @return bool
+	 */
+	private function has_notification_recipients() {
+		return !empty($this->parse_notification_emails(''));
+	}
+
+	/**
+	 * Parse a notification email list.
+	 *
+	 * @param string|array $emails Raw email list.
+	 * @return array<int, string>
+	 */
+	private function parse_notification_emails($emails) {
+		if (empty($emails)) {
+			$emails = get_option('aips_review_notifications_email', get_option('admin_email'));
+		}
+
+		if (is_array($emails)) {
+			$candidates = $emails;
+		} else {
+			$candidates = preg_split('/\s*,\s*/', (string) $emails);
+		}
+
+		$candidates = is_array($candidates) ? $candidates : array();
+		$valid = array();
+
+		foreach ($candidates as $candidate) {
+			$candidate = sanitize_email($candidate);
+			if (!empty($candidate) && is_email($candidate)) {
+				$valid[] = $candidate;
+			}
+		}
+
+		return array_values(array_unique($valid));
+	}
+
+	/**
+	 * Determine whether a notification is a duplicate inside the dedupe window.
+	 *
+	 * @param string $dedupe_key Dedupe key.
+	 * @param int    $window     Dedupe window in seconds.
+	 * @return bool
+	 */
+	private function is_duplicate_notification($dedupe_key, $window) {
+		if ('' === $dedupe_key || $window < 1) {
+			return false;
+		}
+
+		if (get_transient($this->get_dedupe_transient_key($dedupe_key))) {
+			return true;
+		}
+
+		return $this->repository->was_recently_sent($dedupe_key, $window);
+	}
+
+	/**
+	 * Return the transient key used for dedupe.
+	 *
+	 * @param string $dedupe_key Dedupe key.
+	 * @return string
+	 */
+	private function get_dedupe_transient_key($dedupe_key) {
+		return 'aips_notif_' . md5($dedupe_key);
+	}
+
+	/**
+	 * Build standard notification template variables.
+	 *
+	 * @param string $title        Notification title.
+	 * @param string $message      Notification message.
+	 * @param array  $details      Additional detail payload.
+	 * @param string $action_url   Optional action URL.
+	 * @param string $action_label Optional action label.
+	 * @return array<string, string>
+	 */
+	private function build_standard_notification_vars($title, $message, array $details, $action_url = '', $action_label = '') {
+		return array(
+			'{{site_name}}'          => esc_html(get_bloginfo('name')),
+			'{{notification_title}}' => esc_html($title),
+			'{{notification_message}}' => esc_html($message),
+			'{{details_html}}'       => $this->build_details_html($details),
+			'{{action_url}}'         => esc_url($action_url),
+			'{{action_label}}'       => esc_html($action_label),
+		);
+	}
+
+	/**
+	 * Render detail rows for email templates.
+	 *
+	 * @param array $details Notification details.
+	 * @return string
+	 */
+	private function build_details_html(array $details) {
+		$items = array();
+
+		foreach ($details as $key => $value) {
+			if (is_array($value) || is_object($value) || '' === (string) $value) {
+				continue;
+			}
+
+			$label = ucwords(str_replace(array('_', '-'), ' ', (string) $key));
+			$items[] = '<li><strong>' . esc_html($label) . ':</strong> ' . esc_html((string) $value) . '</li>';
+		}
+
+		if (empty($items)) {
+			return '';
+		}
+
+		return '<ul class="notification-details">' . implode('', $items) . '</ul>';
 	}
 
 	/**

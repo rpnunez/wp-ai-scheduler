@@ -117,6 +117,11 @@ class Test_AIPS_Notification_Templates extends WP_UnitTestCase {
 		$this->assertInstanceOf(AIPS_Notification_Template::class, $tpl);
 	}
 
+	public function test_generation_failed_template_is_registered() {
+		$tpl = $this->registry->get('generation_failed');
+		$this->assertInstanceOf(AIPS_Notification_Template::class, $tpl);
+	}
+
 	public function test_get_unknown_type_returns_null() {
 		$this->assertNull($this->registry->get('does_not_exist'));
 	}
@@ -348,6 +353,23 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
 	}
 
+	public function test_send_email_channel_supports_comma_separated_recipients() {
+		$templates = new AIPS_Notification_Templates();
+		$templates->register(new AIPS_Notification_Template('test_multi_email', 'Subject', '<p>Body</p>'));
+		$notifs = new AIPS_Notifications($this->repository, $templates);
+
+		$GLOBALS['phpmailer']->mock_sent = array();
+
+		$notifs->send(
+			'test_multi_email',
+			array(),
+			array(AIPS_Notifications::CHANNEL_EMAIL),
+			'one@example.com, two@example.com'
+		);
+
+		$this->assertCount(2, $GLOBALS['phpmailer']->mock_sent);
+	}
+
 	// -----------------------------------------------------------------------
 	// author_topics_generated()
 	// -----------------------------------------------------------------------
@@ -453,6 +475,57 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		$this->notifications->posts_awaiting_review(array('items' => array()), 5);
 
 		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
+	}
+
+	public function test_generation_failed_defaults_to_both_channels() {
+		update_option('aips_review_notifications_email', 'alerts@example.com');
+		update_option('aips_notification_preferences', array(
+			'generation_failed' => 'both',
+			'quota_alert' => 'both',
+			'integration_error' => 'both',
+			'scheduler_error' => 'both',
+			'system_error' => 'both',
+		));
+
+		$GLOBALS['phpmailer']->mock_sent = array();
+
+		$this->notifications->generation_failed(array(
+			'resource_label' => 'Template Alpha',
+			'error_message'  => 'AI request failed',
+			'dedupe_key'     => 'test_generation_failed_defaults_to_both_channels',
+		));
+
+		$this->assertEquals(1, $this->repository->count_unread());
+		$this->assertCount(1, $GLOBALS['phpmailer']->mock_sent);
+	}
+
+	public function test_generation_failed_honors_db_only_preference() {
+		update_option('aips_review_notifications_email', 'alerts@example.com');
+		update_option('aips_notification_preferences', array(
+			'generation_failed' => 'db',
+			'quota_alert' => 'both',
+			'integration_error' => 'both',
+			'scheduler_error' => 'both',
+			'system_error' => 'both',
+		));
+
+		$GLOBALS['phpmailer']->mock_sent = array();
+
+		$this->notifications->generation_failed(array(
+			'resource_label' => 'Template Beta',
+			'error_message'  => 'Create post failed',
+			'dedupe_key'     => 'test_generation_failed_honors_db_only_preference',
+		));
+
+		$this->assertEquals(1, $this->repository->count_unread());
+		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
+	}
+
+	public function test_settings_sanitize_notification_emails_accepts_multiple_addresses() {
+		$settings = new AIPS_Settings();
+		$sanitized = $settings->sanitize_notification_emails('one@example.com, invalid-email, two@example.com, one@example.com');
+
+		$this->assertSame('one@example.com, two@example.com', $sanitized);
 	}
 
 	// -----------------------------------------------------------------------

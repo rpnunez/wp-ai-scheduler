@@ -166,7 +166,23 @@ final class AI_Post_Scheduler {
         $this->check_upgrades();
 
         // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
-        AIPS_DB_Manager::install_tables();
+        $install_result = AIPS_DB_Manager::install_tables();
+
+        if (is_wp_error($install_result)) {
+            $logger->log('Table installation failed during activation: ' . $install_result->get_error_message(), 'error');
+
+            $notifications = class_exists('AIPS_Notifications') ? new AIPS_Notifications() : null;
+            if ($notifications instanceof AIPS_Notifications) {
+                $notifications->system_error(array(
+                    'title'         => __('Database installation failed', 'ai-post-scheduler'),
+                    'error_code'    => $install_result->get_error_code(),
+                    'error_message' => $install_result->get_error_message(),
+                    'url'           => admin_url('admin.php?page=aips-status'),
+                    'dedupe_key'    => 'db_install_failed_activation',
+                    'dedupe_window' => 1800,
+                ));
+            }
+        }
         
         $crons = self::get_cron_events();
 
