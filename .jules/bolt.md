@@ -23,3 +23,6 @@
 ## 2024-05-25 - [Missing Indexes on Sort Columns]
 **Learning:** The History view defaults to sorting by `created_at DESC`, but the `aips_history` table lacked an index on `created_at`, causing filesorts on every load.
 **Action:** When auditing `AIPS_DB_Manager`, ensure all columns used in default `ORDER BY` clauses are indexed.
+## 2026-03-24 - [Optimize Dashboard History Retrieval]
+**Learning:** Replacing `SELECT *` with hardcoded columns in a core repository method (like `get_history`) as a default fallback is an anti-pattern in this architecture. It creates high regression risks by starving callers of expected data (like `longtext` fields) and breaks forward compatibility when new columns are added. The safest performance optimization is to update the call sites (like list views or dashboard widgets) to explicitly request a lighter payload (e.g. `fields => 'list'`) when heavy data is unnecessary.
+**Action:** When optimizing database queries, prefer passing explicit optimization parameters from the caller rather than blindly altering default fallback behaviors in the underlying repository.

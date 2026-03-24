@@ -85,6 +85,7 @@ class AIPS_Generated_Posts_Controller {
 			'search' => $search_query,
 			'author_id' => $author_id,
 			'template_id' => $template_id,
+			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
 		));
 		
 		// Get schedule data for each post
