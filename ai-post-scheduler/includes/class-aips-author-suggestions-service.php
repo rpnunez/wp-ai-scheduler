@@ -119,7 +119,7 @@ class AIPS_Author_Suggestions_Service {
 			'Author suggestion prompt sent to AI',
 			array(
 				'prompt'   => $prompt,
-				'options'  => array('max_tokens' => 2000, 'temperature' => 0.8),
+				'options'  => array('maxTokens' => 2000, 'temperature' => 0.8),
 			)
 		);
 
@@ -130,7 +130,7 @@ class AIPS_Author_Suggestions_Service {
 		);
 
 		$response = $this->ai_service->generate_json($prompt, array(
-			'max_tokens'  => 2000,
+			'maxTokens'   => 2000,
 			'temperature' => 0.8,
 		));
 
