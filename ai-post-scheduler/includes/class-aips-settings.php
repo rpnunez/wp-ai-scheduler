@@ -845,6 +845,7 @@ class AIPS_Settings {
     public function logging_field_callback() {
         $value = get_option('aips_enable_logging', 1);
         ?>
+        <input type="hidden" name="aips_enable_logging" value="0">
         <label>
             <input type="checkbox" name="aips_enable_logging" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Enable detailed logging for debugging', 'ai-post-scheduler'); ?>
@@ -862,6 +863,7 @@ class AIPS_Settings {
     public function developer_mode_field_callback() {
         $value = get_option('aips_developer_mode', 0);
         ?>
+        <input type="hidden" name="aips_developer_mode" value="0">
         <label>
             <input type="checkbox" name="aips_developer_mode" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Enable developer tools and features', 'ai-post-scheduler'); ?>
