@@ -548,7 +548,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-history',
                 AIPS_PLUGIN_URL . 'assets/js/admin-history.js',
-                array('jquery', 'aips-admin-script'),
+                array('jquery', 'aips-admin-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );
