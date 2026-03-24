@@ -18,6 +18,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Define plugin constants
 define('AIPS_VERSION', '1.8');
 define('AIPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AIPS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -25,21 +26,73 @@ define('AIPS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
 final class AI_Post_Scheduler {
     
+    /**
+     * @var AI_Post_Scheduler|null Singleton instance
+     */
     private static $instance = null;
-    
+
+    /**
+     * Get plugin cron definitions.
+     *
+     * @return array<string,array<string,string>>
+     */
+    public static function get_cron_events() {
+        return array(
+            'aips_generate_scheduled_posts' => array(
+                'schedule' => 'hourly',
+                'label' => 'Post Generation',
+            ),
+            'aips_generate_author_topics' => array(
+                'schedule' => 'hourly',
+                'label' => 'Author Topic Generation',
+            ),
+            'aips_generate_author_posts' => array(
+                'schedule' => 'hourly',
+                'label' => 'Author Post Generation',
+            ),
+            'aips_scheduled_research' => array(
+                'schedule' => 'daily',
+                'label' => 'Automated Research',
+            ),
+            'aips_send_review_notifications' => array(
+                'schedule' => 'daily',
+                'label' => 'Review Notifications',
+            ),
+            'aips_cleanup_export_files' => array(
+                'schedule' => 'daily',
+                'label' => 'Export Cleanup',
+            ),
+        );
+    }
+
+    /**
+     * Get the singleton instance.
+     *
+     * @return AI_Post_Scheduler
+     */
     public static function get_instance() {
         if (null === self::$instance) {
             self::$instance = new self();
         }
         return self::$instance;
     }
-    
+
+    /**
+     * Construct the plugin bootstrap instance.
+     *
+     * Registers dependency checks, includes, and runtime hooks.
+     */
     private function __construct() {
         $this->check_dependencies();
         $this->includes();
         $this->init_hooks();
     }
-    
+
+    /**
+     * Register dependency checks for required runtime plugins.
+     *
+     * @return void
+     */
     private function check_dependencies() {
         add_action('admin_init', function() {
             if (!class_exists('Meow_MWAI_Core')) {
@@ -51,20 +104,39 @@ final class AI_Post_Scheduler {
             }
         });
     }
-    
+
+    /**
+     * Load required bootstrap files.
+     *
+     * @return void
+     */
     private function includes() {
+        // Register autoloader
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-autoloader.php';
         AIPS_Autoloader::register();
 
         // Helpers
         require_once AIPS_PLUGIN_DIR . 'includes/class-aips-admin-menu-helper.php';
     }
-    
+
+    /**
+     * Register plugin lifecycle and runtime hooks.
+     *
+     * @return void
+     */
     private function init_hooks() {
         add_action('plugins_loaded', array($this, 'check_upgrades'));
-        add_action('plugins_loaded', array($this, 'init'));
+        add_action('init', array($this, 'init'));
     }
-    
+
+    /**
+     * Handle plugin activation tasks.
+     *
+     * Seeds default options, runs upgrades/table checks, schedules cron events,
+     * and applies onboarding redirect logic for first-time installs.
+     *
+     * @return void
+     */
     public function activate() {
         // Ensure logger is available
         if (!class_exists('AIPS_Logger')) {
@@ -96,16 +168,10 @@ final class AI_Post_Scheduler {
         // Ensure tables exist even if version matches (e.g. re-activation after manual deletion or partial install)
         AIPS_DB_Manager::install_tables();
         
-        $crons = array(
-            'aips_generate_scheduled_posts' => 'hourly',
-            'aips_generate_author_topics' => 'hourly',
-            'aips_generate_author_posts' => 'hourly',
-            'aips_scheduled_research' => 'daily',
-            'aips_send_review_notifications' => 'daily',
-            'aips_cleanup_export_files' => 'daily'
-        );
+        $crons = self::get_cron_events();
 
-        foreach ($crons as $hook => $schedule) {
+        foreach ($crons as $hook => $cron_config) {
+            $schedule = $cron_config['schedule'];
             $logger->log("Checking cron: $hook");
 
             if (!wp_next_scheduled($hook)) {
@@ -129,34 +195,46 @@ final class AI_Post_Scheduler {
 
         $logger->log('Plugin activation finished.');
     }
-    
+
+    /**
+     * Run versioned upgrade checks.
+     *
+     * @return void
+     */
     public function check_upgrades() {
         AIPS_Upgrades::check_and_run();
     }
-    
+
+    /**
+     * Handle plugin deactivation cleanup.
+     *
+     * @return void
+     */
     public function deactivate() {
-        wp_clear_scheduled_hook('aips_generate_scheduled_posts');
-        wp_clear_scheduled_hook('aips_generate_author_topics');
-        wp_clear_scheduled_hook('aips_generate_author_posts');
-        wp_clear_scheduled_hook('aips_scheduled_research');
-        wp_clear_scheduled_hook('aips_send_review_notifications');
-        wp_clear_scheduled_hook('aips_cleanup_export_files');
+        foreach (array_keys(self::get_cron_events()) as $hook) {
+            wp_clear_scheduled_hook($hook);
+        }
         flush_rewrite_rules();
     }
-    
-    
+
+    /**
+     * Seed plugin options with default values when missing.
+     *
+     * Uses AIPS_Config defaults as the source of truth and adds activation-
+     * specific values where required.
+     *
+     * @return void
+     */
     private function set_default_options() {
-        $defaults = array(
-            'aips_default_post_status' => 'draft',
-            'aips_default_category' => 0,
-            'aips_enable_logging' => 1,
-            'aips_retry_max_attempts' => 3,
-            'aips_ai_model' => '',
-            'aips_unsplash_access_key' => '',
-            'aips_review_notifications_enabled' => 0,
-            'aips_review_notifications_email' => get_option('admin_email'),
-            'aips_db_version' => AIPS_VERSION,
-        );
+        $defaults = AIPS_Config::get_instance()->get_default_options();
+
+        // Activation-specific fallback: if unset in defaults, use admin email.
+        if (empty($defaults['aips_review_notifications_email'])) {
+            $defaults['aips_review_notifications_email'] = get_option('admin_email');
+        }
+
+        // Keep DB version initialization during activation.
+        $defaults['aips_db_version'] = AIPS_VERSION;
         
         foreach ($defaults as $key => $value) {
             if (get_option($key) === false) {
@@ -164,7 +242,15 @@ final class AI_Post_Scheduler {
             }
         }
     }
-    
+
+    /**
+     * Initialize plugin runtime.
+     *
+     * Loads translations, registers taxonomy, instantiates admin controllers,
+     * and boots scheduler/services used in all contexts.
+     *
+     * @return void
+     */
     public function init() {
         load_plugin_textdomain('ai-post-scheduler', false, dirname(AIPS_PLUGIN_BASENAME) . '/languages');
 
@@ -244,6 +330,11 @@ final class AI_Post_Scheduler {
     }
 }
 
+/**
+ * Initialize and return the plugin singleton.
+ *
+ * @return AI_Post_Scheduler
+ */
 function aips_init() {
     return AI_Post_Scheduler::get_instance();
 }
@@ -279,12 +370,22 @@ function aips_cleanup_export_files_handler() {
 	}
 }
 
+/**
+ * Activation hook callback.
+ *
+ * @return void
+ */
 function aips_activate_callback() {
     AI_Post_Scheduler::get_instance()->activate();
 }
 
 register_activation_hook(__FILE__, 'aips_activate_callback');
 
+/**
+ * Deactivation hook callback.
+ *
+ * @return void
+ */
 function aips_deactivate_callback() {
     AI_Post_Scheduler::get_instance()->deactivate();
 }

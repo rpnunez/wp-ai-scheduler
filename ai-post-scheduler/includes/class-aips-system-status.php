@@ -190,19 +190,14 @@ class AIPS_System_Status {
     }
 
     private function check_cron() {
-        $cron_events = array(
-            'aips_generate_scheduled_posts' => 'Post Generation',
-            'aips_generate_author_topics' => 'Author Topic Generation',
-            'aips_generate_author_posts' => 'Author Post Generation',
-            'aips_scheduled_research' => 'Automated Research'
-        );
+        $cron_events = AI_Post_Scheduler::get_cron_events();
 
         $status = array();
 
-        foreach ($cron_events as $event_hook => $event_label) {
+        foreach ($cron_events as $event_hook => $event_config) {
             $next_run = wp_next_scheduled($event_hook);
             $status[$event_hook] = array(
-                'label' => $event_label,
+                'label' => isset($event_config['label']) ? $event_config['label'] : $event_hook,
                 'value' => $next_run ? date('Y-m-d H:i:s', $next_run) : 'Not Scheduled',
                 'status' => $next_run ? 'ok' : 'error',
             );

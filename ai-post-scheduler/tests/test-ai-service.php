@@ -226,7 +226,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
         if (!$this->service->is_available()) {
             $options = array(
                 'model' => 'gpt-4',
-                'max_tokens' => 500,
+                'maxTokens' => 500,
                 'temperature' => 0.8,
             );
             
@@ -249,7 +249,7 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
         if (!$this->service->is_available()) {
             $options = array(
                 'model' => 'gpt-4',
-                'max_tokens' => 500,
+                'maxTokens' => 500,
                 'temperature' => 0.6,
                 'context' => 'These are supplemental instructions.',
                 'instructions' => 'Always stay concise.',

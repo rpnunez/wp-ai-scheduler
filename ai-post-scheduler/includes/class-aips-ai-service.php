@@ -65,9 +65,9 @@ class AIPS_AI_Service {
     public function __construct($logger = null, $config = null, $resilience_service = null) {
         $this->logger = $logger ?: new AIPS_Logger();
         $this->config = $config ?: AIPS_Config::get_instance();
-        $this->call_log = array();
-
         $this->resilience_service = $resilience_service ?: new AIPS_Resilience_Service($this->logger, $this->config);
+
+        $this->call_log = array();
     }
     
     /**
@@ -81,11 +81,8 @@ class AIPS_AI_Service {
         if ($this->ai_engine === null) {
             global $mwai;
             $this->ai_engine = $mwai;
-            //if (class_exists('Meow_MWAI_Core')) {
-                //global $mwai_core;
-                //$this->ai_engine = $mwai_core;
-            //}
         }
+
         return $this->ai_engine;
     }
     
@@ -113,58 +110,35 @@ class AIPS_AI_Service {
         
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
-            $this->log_call('text', $prompt, null, $options, $error->get_error_message());
+            $this->log_call('text', $prompt, $options, $error);
             return $error;
         }
         
-        $options = $this->prepare_options($options);
+        $params = $this->prepare_options($options);
         
         // Execute safely with retry, circuit breaker, and rate limiting
-        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
+        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
             try {
-                // Build params array for simpleTextQuery
-                $params = array();
-                
-                // Set model if specified
-                if (!empty($options['model'])) {
-                    $params['model'] = $options['model'];
-                }
-                
-                // Set max tokens
-                if (isset($options['max_tokens'])) {
-                    $params['maxTokens'] = $options['max_tokens'];
-                }
-                
-                // Set temperature
-                if (isset($options['temperature'])) {
-                    $params['temperature'] = $options['temperature'];
-                }
-
-                // Optional advanced parameters supported by AI Engine
-                foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
-                    if (isset($options[$key])) {
-                        $params[$key] = $options[$key];
-                    }
-                }
-                
                 // Use simpleTextQuery API method
                 $result = $ai->simpleTextQuery($prompt, $params);
-                
+
                 if ($result && !empty($result)) {
-                    $this->log_call('text', $prompt, $result, $options);
+                    $this->log_call('text', $prompt, $options, null, $result);
                     $this->resilience_service->record_success();
                     return $result;
                 }
-                
+
+                $this->resilience_service->record_failure();
+
                 $error = new WP_Error('empty_response', __('AI Engine returned an empty response.', 'ai-post-scheduler'));
-                $this->log_call('text', $prompt, null, $options, $error->get_error_message());
-                $this->resilience_service->record_failure();
+                $this->log_call('text', $prompt, $options, $error);
                 return $error;
-                
+
             } catch (Exception $e) {
-                $error = new WP_Error('generation_failed', $e->getMessage());
-                $this->log_call('text', $prompt, null, $options, $e->getMessage());
                 $this->resilience_service->record_failure();
+
+                $error = new WP_Error('generation_failed', $e->getMessage());
+                $this->log_call('text', $prompt, $options, $error);
                 return $error;
             }
         }, 'text', $prompt, $options);
@@ -172,8 +146,9 @@ class AIPS_AI_Service {
         // Log resilience failures (circuit breaker, rate limit)
         if (is_wp_error($result)) {
             $code = $result->get_error_code();
+            
             if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
-                $this->log_call('text', $prompt, null, $options, $result->get_error_message());
+                $this->log_call('text', $prompt, $options, $result);
             }
         }
 
@@ -197,28 +172,31 @@ class AIPS_AI_Service {
         
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
-            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+
+            $this->log_call('json', $prompt, $options, $error);
+
             return $error;
         }
         
         // If $ai doesn't have simpleJsonQuery, fall back to text-based JSON
         if (!method_exists($ai, 'simpleJsonQuery')) {
             $this->logger->log('Using fallback JSON generation (simpleJsonQuery not available)', 'info');
+
             return $this->fallback_json_generation($prompt, $options);
         }
         
-        $options = $this->prepare_options($options);
+        $params = $this->prepare_options($options);
         
         // Execute safely with retry, circuit breaker, and rate limiting
-        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
+        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
             try {
                 // Filter options for simpleJsonQuery - it only supports specific parameters
                 // According to AI Engine docs, simpleJsonQuery has a very limited parameter set
                 $json_query_params = array();
                 
                 // Only pass model if specified
-                if (!empty($options['model'])) {
-                    $json_query_params['model'] = $options['model'];
+                if (!empty($params['model'])) {
+                    $json_query_params['model'] = $params['model'];
                 }
                 
                 // Only pass temperature if specified
@@ -226,14 +204,14 @@ class AIPS_AI_Service {
                 //    $json_query_params['temperature'] = $options['temperature'];
                 // }
                 
-                // Convert max_tokens to maxTokens for AI Engine
-                // if (isset($options['max_tokens'])) {
-                //    $json_query_params['maxTokens'] = $options['max_tokens'];
+                // Convert maxTokens to maxTokens for AI Engine
+                // if (isset($options['maxTokens'])) {
+                //    $json_query_params['maxTokens'] = $options['maxTokens'];
                 // }
                 
-                // Only pass env_id if specified  
-                if (isset($options['env_id'])) {
-                    $json_query_params['env_id'] = $options['env_id'];
+                // Only pass env_id if specified.
+                if (isset($params['envId'])) {
+                    $json_query_params['env_id'] = $params['envId'];
                 }
                 
                 // Log what we're sending to help debug
@@ -244,26 +222,31 @@ class AIPS_AI_Service {
                 
                 if (empty($result)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty JSON response.', 'ai-post-scheduler'));
-                    $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+
+                    $this->log_call('json', $prompt, $options, $error);
                     $this->resilience_service->record_failure();
+
                     return $error;
                 }
                 
                 // Validate that we got valid JSON data
                 if (!is_array($result)) {
                     $error = new WP_Error('invalid_json', __('AI Engine did not return valid JSON data.', 'ai-post-scheduler'));
-                    $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+
+                    $this->log_call('json', $prompt, $options, $error);
                     $this->resilience_service->record_failure();
+
                     return $error;
                 }
                 
-                $this->log_call('json', $prompt, wp_json_encode($result), $options);
+                $this->log_call('json', $prompt, $options, null, wp_json_encode($result));
                 $this->resilience_service->record_success();
+
                 return $result;
-                
             } catch (Exception $e) {
                 // If simpleJsonQuery fails (e.g. unsupported params), try fallback
                 $this->logger->log('simpleJsonQuery failed, trying fallback: ' . $e->getMessage(), 'warning');
+
                 return $this->fallback_json_generation($prompt, $options);
             }
         }, 'json', $prompt, $options);
@@ -271,8 +254,9 @@ class AIPS_AI_Service {
         // Log resilience failures (circuit breaker, rate limit)
         if (is_wp_error($result)) {
             $code = $result->get_error_code();
+
             if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
-                $this->log_call('json', $prompt, null, $options, $result->get_error_message());
+                $this->log_call('json', $prompt, $options, $result);
             }
         }
 
@@ -291,15 +275,13 @@ class AIPS_AI_Service {
     private function fallback_json_generation($prompt, $options = array()) {
         $this->logger->log('Using fallback JSON generation (simpleJsonQuery not available)', 'info');
         
-        // Log the JSON generation attempt in fallback mode for accurate statistics
-        $start_time = microtime(true);
-        
         // Generate text response
         $text_response = $this->generate_text($prompt, $options);
         
         if (is_wp_error($text_response)) {
             // Re-log as json type for accurate statistics
-            $this->log_call('json', $prompt, null, $options, $text_response->get_error_message());
+            $this->log_call('json', $prompt, $options, $text_response);
+
             return $text_response;
         }
         
@@ -326,22 +308,25 @@ class AIPS_AI_Service {
             ));
 
             // Log as json type with error
-            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+            $this->log_call('json', $prompt, $options, $error);
+
             return $error;
         }
         
         if (!is_array($data)) {
             $error = new WP_Error('invalid_json_format', __('Parsed JSON is not in expected array format.', 'ai-post-scheduler'));
-            $this->log_call('json', $prompt, null, $options, $error->get_error_message());
+
+            $this->log_call('json', $prompt, $options, $error);
+
             return $error;
         }
         
         // Log successful JSON generation in fallback mode
-        $this->log_call('json', $prompt, wp_json_encode($data), $options);
+        $this->log_call('json', $prompt, $options, null, wp_json_encode($data));
         
         return $data;
     }
-    
+
     /**
      * Generate an image using AI.
      *
@@ -357,7 +342,9 @@ class AIPS_AI_Service {
         
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
-            $this->log_call('image', $prompt, null, $options, $error->get_error_message());
+
+            $this->log_call('image', $prompt, $options, $error);
+
             return $error;
         }
 
@@ -377,8 +364,10 @@ class AIPS_AI_Service {
 
                 if (!$image_url || empty($image_url)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
-                    $this->log_call('image', $prompt, null, $options, $error->get_error_message());
+
+                    $this->log_call('image', $prompt, $options, $error);
                     $this->resilience_service->record_failure();
+
                     return $error;
                 }
 
@@ -389,19 +378,23 @@ class AIPS_AI_Service {
 
                 if (empty($image_url)) {
                     $error = new WP_Error('no_image_url', __('No image URL in AI response.', 'ai-post-scheduler'));
-                    $this->log_call('image', $prompt, null, $options, $error->get_error_message());
+
+                    $this->log_call('image', $prompt, $options, $error);
                     $this->resilience_service->record_failure();
+
                     return $error;
                 }
 
-                $this->log_call('image', $prompt, $image_url, $options);
+                $this->log_call('image', $prompt, $options, null, $image_url);
                 $this->resilience_service->record_success();
-                return $image_url;
 
+                return $image_url;
             } catch (Exception $e) {
                 $error = new WP_Error('generation_failed', $e->getMessage());
-                $this->log_call('image', $prompt, null, $options, $e->getMessage());
+
+                $this->log_call('image', $prompt, $options, $error);
                 $this->resilience_service->record_failure();
+
                 return $error;
             }
         }, 'image', $prompt, $options);
@@ -409,8 +402,9 @@ class AIPS_AI_Service {
         // Log resilience failures (circuit breaker, rate limit)
         if (is_wp_error($result)) {
             $code = $result->get_error_code();
+            
             if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
-                $this->log_call('image', $prompt, null, $options, $result->get_error_message());
+                $this->log_call('image', $prompt, $options, $result);
             }
         }
 
@@ -427,14 +421,48 @@ class AIPS_AI_Service {
      */
     private function prepare_options($options) {
         $model = get_option('aips_ai_model', '');
+        $env_id = get_option('aips_ai_env_id', '');
         
         $default_options = array(
             'model' => $model,
-            'max_tokens' => 2000,
+            'envId' => $env_id,
+            'maxTokens' => 2000,
             'temperature' => 0.7,
         );
-        
-        return wp_parse_args($options, $default_options);
+
+        if (isset($options['max_tokens'])) {
+            $default_options['maxTokens'] = $options['max_tokens'];
+        }
+
+        if (isset($options['env_id'])) {
+            $default_options['envId'] = $options['env_id'];
+        } elseif (isset($options['envId'])) {
+            $default_options['envId'] = $options['envId'];
+        }
+
+        $options = wp_parse_args($default_options, $options);
+        $params  = array();
+
+        if (!empty($options['model'])) {
+            $params['model'] = $options['model'];
+        }
+
+        if (!empty($options['envId'])) {
+            $params['envId'] = $options['envId'];
+        }
+
+        if (isset($options['maxTokens'])) {
+            $params['maxTokens'] = $options['maxTokens'];
+        } elseif (isset($options['max_tokens'])) {
+            // Backward compatibility for legacy callers.
+            $params['maxTokens'] = $options['max_tokens'];
+        }
+
+        if (isset($options['temperature'])) {
+            $params['temperature'] = $options['temperature'];
+        }
+
+        return $params;
     }
 
     /**
@@ -495,13 +523,25 @@ class AIPS_AI_Service {
      *
      * Stores call information in memory and writes to the system logger.
      *
-     * @param string      $type     The type of AI call ('text' or 'image').
-     * @param string      $prompt   The prompt sent to AI.
-     * @param string|null $response The AI response, if successful.
-     * @param array       $options  The options used for the call.
-     * @param string|null $error    Error message, if call failed.
+     * @param string                         $type     The type of AI call ('text' or 'image').
+     * @param string                         $prompt   The prompt sent to AI.
+     * @param array                          $options  The options used for the call.
+     * @param WP_Error|Exception|string|null $error    Error object or message, if call failed.
+     * @param string|null                    $response The AI response, if successful.
      */
-    private function log_call($type, $prompt, $response, $options, $error = null) {
+    private function log_call($type, $prompt, $options, $error = null, $response = null) {
+        $prompt_for_length   = (string) $prompt;
+        $response_for_length = (string) $response;
+
+        // Normalize error to a string message if a WP_Error is provided.
+        if ($error instanceof WP_Error) {
+            $error_message = $error->get_error_message();
+        } elseif ($error instanceof Exception) {
+            $error_message = $error->getMessage();
+        } else {
+            $error_message = $error;
+        }
+
         $call_data = array(
             'type' => $type,
             'timestamp' => current_time('mysql'),
@@ -510,22 +550,22 @@ class AIPS_AI_Service {
                 'options' => $options,
             ),
             'response' => array(
-                'success' => $error === null,
+                'success' => $error_message === null,
                 'content' => $response,
-                'error' => $error,
+                'error' => $error_message,
             ),
         );
         
         $this->call_log[] = $call_data;
         
         // Log to system logger
-        $level = $error ? 'error' : 'info';
-        $message = $error ? "AI {$type} generation failed: {$error}" : "AI {$type} generation successful";
+        $level   = $error_message ? 'error' : 'info';
+        $message = $error_message ? "AI {$type} generation failed: {$error_message}" : "AI {$type} generation successful";
         
         $this->logger->log($message, $level, array(
             'type' => $type,
-            'prompt_length' => strlen($prompt),
-            'response_length' => $response ? strlen($response) : 0,
+            'prompt_length' => strlen($prompt_for_length),
+            'response_length' => strlen($response_for_length),
         ));
     }
     

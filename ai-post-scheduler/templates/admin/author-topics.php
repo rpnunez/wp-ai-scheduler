@@ -242,4 +242,177 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 	</div>
 </div>
 
+<?php /* ------------------------------------------------------------------ */
+/* HTML templates used by AIPS.Templates.render() in authors.js             */
+/* ------------------------------------------------------------------ */ ?>
+
+<!-- Topics List Templates -->
+<script type="text/html" id="aips-tmpl-topics-table">
+<table class="aips-table aips-topics-table">
+	<thead>
+		<tr>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-topics"></th>
+			<th class="column-topic">{{topicDetails}}</th>
+			<th class="column-generated">{{generatedAtLabel}}</th>
+			<th class="column-actions">{{actionsLabel}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{{rows}}
+	</tbody>
+</table>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-row">
+<tr data-topic-id="{{id}}">
+	<th class="check-column"><input type="checkbox" class="aips-topic-checkbox" value="{{id}}"></th>
+	<td class="topic-title-cell column-topic">
+		<div class="aips-topic-row">
+			{{expandBtn}}
+			<span class="topic-title">{{topicTitle}}</span>
+			<span class="aips-topic-similarity-slot" data-topic-id="{{id}}"></span>
+			{{postCountBadge}}
+			{{duplicateBadge}}
+			{{feedbackBadge}}
+			<input type="text" class="topic-title-edit" style="display:none;" value="{{topicTitle}}">
+		</div>
+		{{detailContent}}
+	</td>
+	<td class="column-generated">{{generatedAt}}</td>
+	<td class="topic-actions column-actions">
+		{{actions}}
+	</td>
+</tr>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-detail-section">
+<div class="aips-topic-detail-content" id="aips-topic-details-{{id}}" style="display:none;">
+	{{content}}
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-detail-item">
+<div class="aips-detail-section"><strong>{{label}}:</strong> {{value}}</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-detail-feedback">
+<div class="aips-detail-section aips-detail-feedback">
+	<strong>{{label}}:</strong> <span class="aips-feedback-badge aips-feedback-badge-{{action}}">{{actionLabel}}</span>
+	{{categoryBadge}} {{reason}} {{date}}
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-detail-duplicate">
+<div class="aips-detail-section aips-detail-duplicate">
+	<strong>{{label}}:</strong> <em>{{match}}</em>
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-actions-pending">
+<div class="cell-actions">
+	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+</div>
+<div class="cell-actions" style="margin-top: 6px;">
+	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-approve-topic" data-id="{{id}}">{{approveLabel}}</button>
+	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-reject-topic" data-id="{{id}}">{{rejectLabel}}</button>
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-actions-approved">
+<div class="cell-actions">
+	<button class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-post-now" data-id="{{id}}">{{generateLabel}}</button>
+	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+</div>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-actions-rejected">
+<div class="cell-actions">
+	<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-topic" data-id="{{id}}">{{editLabel}}</button>
+</div>
+</script>
+
+<!-- Feedback Tab Templates -->
+<script type="text/html" id="aips-tmpl-feedback-table">
+<table class="aips-table aips-feedback-table">
+	<thead>
+		<tr>
+			<th class="check-column"><input type="checkbox" class="aips-select-all-feedback"></th>
+			<th class="column-topic">{{topicLabel}}</th>
+			<th class="column-action">{{actionLabel}}</th>
+			<th class="column-reason">{{reasonLabel}}</th>
+			<th class="column-user">{{userLabel}}</th>
+			<th class="column-date">{{dateLabel}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{{rows}}
+	</tbody>
+</table>
+</script>
+
+<script type="text/html" id="aips-tmpl-feedback-row">
+<tr>
+	<th class="check-column"><input type="checkbox" class="aips-feedback-checkbox" value="{{id}}"></th>
+	<td>{{topicTitle}}</td>
+	<td><span class="aips-status aips-status-{{action}}">{{action}}</span></td>
+	<td>{{reason}}</td>
+	<td>{{userName}}</td>
+	<td>{{date}}</td>
+</tr>
+</script>
+
+<!-- Topic Logs Modal Templates -->
+<script type="text/html" id="aips-tmpl-topic-logs-table">
+<table class="wp-list-table widefat fixed striped">
+	<thead>
+		<tr>
+			<th>{{actionLabel}}</th>
+			<th>{{userLabel}}</th>
+			<th>{{dateLabel}}</th>
+			<th>{{detailsLabel}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{{rows}}
+	</tbody>
+</table>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-log-row">
+<tr>
+	<td><span class="aips-status aips-status-{{action}}">{{action}}</span></td>
+	<td>{{userName}}</td>
+	<td>{{date}}</td>
+	<td>{{notes}}</td>
+</tr>
+</script>
+
+<!-- Topic Posts Modal Templates -->
+<script type="text/html" id="aips-tmpl-topic-posts-table">
+<table class="wp-list-table widefat fixed striped">
+	<thead>
+		<tr>
+			<th>{{idLabel}}</th>
+			<th>{{titleLabel}}</th>
+			<th>{{generatedLabel}}</th>
+			<th>{{publishedLabel}}</th>
+			<th>{{actionsLabel}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{{rows}}
+	</tbody>
+</table>
+</script>
+
+<script type="text/html" id="aips-tmpl-topic-post-row">
+<tr>
+	<td>{{postId}}</td>
+	<td>{{postTitle}}</td>
+	<td>{{dateGenerated}}</td>
+	<td>{{datePublished}}</td>
+	<td>{{actions}}</td>
+</tr>
+</script>
+
 
