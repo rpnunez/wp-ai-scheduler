@@ -255,25 +255,4 @@ class AIPS_Admin_Bar {
 		);
 	}
 
-	/**
-	 * Utility: create an "author topics generated" notification.
-	 *
-	 * @param string $author_name    Author display name.
-	 * @param int    $topic_count    Number of topics generated.
-	 * @param int    $author_id      Author ID (for link).
-	 */
-	public static function notify_author_topics_generated($author_name, $topic_count, $author_id) {
-		$repo = new AIPS_Notifications_Repository();
-
-		$url = AIPS_Admin_Menu_Helper::get_page_url('author_topics', array('author_id' => absint($author_id), 'status' => 'pending'));
-
-		/* translators: 1: author name, 2: number of topics */
-		$message = sprintf(
-			__('Author (%1$s) generated %2$d pending topic(s) for review', 'ai-post-scheduler'),
-			$author_name,
-			(int) $topic_count
-		);
-
-		$repo->create('author_topics_generated', $message, $url);
-	}
 }

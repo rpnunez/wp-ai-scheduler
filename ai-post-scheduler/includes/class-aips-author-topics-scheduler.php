@@ -44,7 +44,12 @@ class AIPS_Author_Topics_Scheduler {
 	 * @var AIPS_History_Service Service for history logging
 	 */
 	private $history_service;
-	
+
+	/**
+	 * @var AIPS_Notifications Notifications service
+	 */
+	private $notifications;
+
 	/**
 	 * Initialize the scheduler.
 	 */
@@ -54,6 +59,7 @@ class AIPS_Author_Topics_Scheduler {
 		$this->logger = new AIPS_Logger();
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->history_service = new AIPS_History_Service();
+		$this->notifications = new AIPS_Notifications();
 		
 		// Hook into WordPress cron
 		add_action('aips_generate_author_topics', array($this, 'process_topic_generation'));
@@ -163,7 +169,7 @@ class AIPS_Author_Topics_Scheduler {
 		$this->logger->log("Successfully generated topics for author {$author->id}", 'info');
 
 		// Create admin bar notification
-		AIPS_Admin_Bar::notify_author_topics_generated($author->name, $topic_count, $author->id);
+		$this->notifications->author_topics_generated($author->name, $topic_count, $author->id);
 
 		return true;
 	}
