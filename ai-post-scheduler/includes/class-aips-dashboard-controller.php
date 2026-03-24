@@ -42,7 +42,10 @@ class AIPS_Dashboard_Controller {
         $topics_in_queue = isset($topic_counts['approved']) ? $topic_counts['approved'] : 0;
 
         // Get recent history
-        $recent_posts_data = $history_repo->get_history(array('per_page' => 5));
+        $recent_posts_data = $history_repo->get_history(array(
+            'per_page' => 5,
+            'fields'   => 'list' // Optimize payload by excluding longtext fields
+        ));
         $recent_posts = $recent_posts_data['items'];
 
         // Get upcoming schedules and editorial release widgets

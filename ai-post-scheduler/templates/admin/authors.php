@@ -577,7 +577,7 @@ $site_ctx = AIPS_Site_Context::get();
                     <?php else: ?>
                         <p class="description">
                             <?php esc_html_e('No Source Groups found. Create groups on the', 'ai-post-scheduler'); ?>
-                            <a href="<?php echo esc_url(admin_url('admin.php?page=aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
+                            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-sources')); ?>" target="_blank"><?php esc_html_e('Trusted Sources page', 'ai-post-scheduler'); ?></a>.
                         </p>
                     <?php endif; ?>
                 </div>
@@ -601,7 +601,7 @@ $site_ctx = AIPS_Site_Context::get();
                 <?php esc_html_e('Describe your site and goals. The AI will suggest author profiles tailored to your content strategy.', 'ai-post-scheduler'); ?>
                 <?php if (!empty($site_ctx['niche'])) : ?>
                     <?php esc_html_e('Fields below are pre-filled from your Site Content Strategy settings.', 'ai-post-scheduler'); ?>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=aips-settings#content-strategy')); ?>"><?php esc_html_e('Edit settings', 'ai-post-scheduler'); ?></a>
+                    <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('aips-settings') . '#content-strategy'); ?>"><?php esc_html_e('Edit settings', 'ai-post-scheduler'); ?></a>
                 <?php endif; ?>
             </p>
         </div>

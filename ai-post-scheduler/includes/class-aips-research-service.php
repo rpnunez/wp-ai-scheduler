@@ -77,11 +77,11 @@ class AIPS_Research_Service {
         // Use generate_json for structured data response
         // $result = $this->ai_service->generate_json($prompt, array(
         //     'temperature' => 0.7,
-        //     'max_tokens' => 2000,
+        //     'maxTokens' => 2000,
         // ));
         $result = $this->ai_service->generate_text($prompt, array(
             'temperature' => 0.7,
-            'max_tokens' => 2000,
+            'maxTokens' => 2000,
         ));
 
         if (is_wp_error($result)) {
