@@ -165,6 +165,17 @@ class AIPS_Author_Topics_Scheduler {
 		// Create admin bar notification
 		AIPS_Admin_Bar::notify_author_topics_generated($author->name, $topic_count, $author->id);
 
+		/**
+		 * Fires after topics are successfully generated for an author.
+		 *
+		 * @since 1.8.0
+		 *
+		 * @param object $author      Author object from database.
+		 * @param int    $topic_count Number of topics generated.
+		 * @param int    $history_id  Related history entry ID.
+		 */
+		do_action('aips_author_topics_generated', $author, $topic_count, $success_history->get_id());
+
 		return true;
 	}
 	
