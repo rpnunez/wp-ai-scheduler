@@ -13,3 +13,7 @@
 ## 2024-05-18 - Missing property check on returned objects
 **Learning:** Functions like `get_category()` or `get_userdata()` can sometimes return objects with missing properties in limited test mock environments or edge cases. Failing to verify `isset($obj->prop)` leads to undefined property notices or fatal errors.
 **Action:** Defensively verify that properties exist on returned objects using `isset()` before accessing them, even if the primary existence check (`if ($obj)`) passes.
+
+## 2024-05-18 - [WordPress Settings API Unchecked Checkboxes]
+**Learning:** When using the WordPress Settings API with checkboxes, an unchecked checkbox does not send a value in $_POST. This causes `options.php` to ignore the update entirely, effectively making it impossible to "uncheck" settings.
+**Action:** Always precede the checkbox with a hidden input using the same name and a '0' value (e.g., `<input type="hidden" name="option_name" value="0">`) to ensure unchecked states are saved.
