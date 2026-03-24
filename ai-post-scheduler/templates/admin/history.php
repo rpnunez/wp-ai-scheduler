@@ -102,7 +102,7 @@ $total_items = isset($history['total']) ? (int) $history['total'] : 0;
                 <div class="aips-filter-right">
                     <label class="screen-reader-text" for="aips-history-search-input"><?php esc_html_e('Search History:', 'ai-post-scheduler'); ?></label>
                     <input type="search" id="aips-history-search-input" class="aips-form-input" placeholder="<?php esc_attr_e('Search history...', 'ai-post-scheduler'); ?>" value="<?php echo esc_attr($search_query); ?>">
-                    <button type="button" id="aips-history-search-clear" class="aips-btn aips-btn-secondary" style="<?php echo $has_active_filter ? '' : 'display: none;'; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+                    <button type="button" id="aips-history-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="<?php echo $has_active_filter ? '' : 'display: none;'; ?>"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
                 </div>
             </div>
 
