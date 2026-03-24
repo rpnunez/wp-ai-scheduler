@@ -99,7 +99,7 @@ class AIPS_Onboarding_Wizard {
 
 		delete_transient($this->activation_redirect_transient);
 
-		wp_safe_redirect(admin_url('admin.php?page=' . self::PAGE_SLUG));
+		wp_safe_redirect(AIPS_Admin_Menu_Helper::get_page_url(self::PAGE_SLUG));
 		exit;
 	}
 
