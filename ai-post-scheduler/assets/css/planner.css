@@ -28,12 +28,40 @@
 }
 
 .topic-text-input {
+    flex: 1;
+    min-width: 0;
     width: 100%;
     border: 1px solid transparent;
     background: transparent;
     padding: 3px 5px;
     font-size: 14px;
     color: #1d2327;
+}
+
+.aips-remove-topic-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #a00;
+    padding: 5px;
+    margin-left: 8px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.aips-remove-topic-btn:hover {
+    background: #fee2e2;
+    color: #d63638;
+}
+
+.aips-remove-topic-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
 }
 
 .topic-text-input:hover {

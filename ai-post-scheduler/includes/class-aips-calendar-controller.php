@@ -170,7 +170,7 @@ class AIPS_Calendar_Controller {
 			$template = $this->template_repo->get_by_id($schedule->template_id);
 			if ($template && !empty($template->post_category)) {
 				$category = get_category($template->post_category);
-				if ($category && !is_wp_error($category)) {
+				if ($category && !is_wp_error($category) && isset($category->name)) {
 					return $category->name;
 				}
 			}
@@ -192,7 +192,7 @@ class AIPS_Calendar_Controller {
 			$template = $this->template_repo->get_by_id($schedule->template_id);
 			if ($template && !empty($template->post_author)) {
 				$user = get_userdata($template->post_author);
-				if ($user) {
+				if ($user && isset($user->display_name)) {
 					return $user->display_name;
 				}
 			}

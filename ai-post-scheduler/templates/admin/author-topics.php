@@ -101,19 +101,19 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 		<!-- Author Stats -->
 		<div class="aips-author-topics-stats">
 			<div class="aips-stat-card">
-				<span class="aips-stat-value"><?php echo esc_html($total_topics); ?></span>
+				<span class="aips-stat-value" id="stat-total-count"><?php echo esc_html($total_topics); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Total Topics', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card aips-stat-pending">
-				<span class="aips-stat-value"><?php echo esc_html($status_counts['pending']); ?></span>
+				<span class="aips-stat-value" id="stat-pending-count"><?php echo esc_html($status_counts['pending']); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card aips-stat-approved">
-				<span class="aips-stat-value"><?php echo esc_html($status_counts['approved']); ?></span>
+				<span class="aips-stat-value" id="stat-approved-count"><?php echo esc_html($status_counts['approved']); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Approved', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card aips-stat-rejected">
-				<span class="aips-stat-value"><?php echo esc_html($status_counts['rejected']); ?></span>
+				<span class="aips-stat-value" id="stat-rejected-count"><?php echo esc_html($status_counts['rejected']); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Rejected', 'ai-post-scheduler'); ?></span>
 			</div>
 			<div class="aips-stat-card aips-stat-generated">
@@ -221,15 +221,11 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 			<input type="hidden" id="feedback_action" name="action_type" value="">
 
 			<div class="form-group">
-				<label for="feedback_reason_category"><?php esc_html_e('Feedback Category', 'ai-post-scheduler'); ?></label>
+				<label id="feedback_reason_category_label" for="feedback_reason_category"><?php esc_html_e('Feedback Category', 'ai-post-scheduler'); ?></label>
 				<select id="feedback_reason_category" name="reason_category">
 					<option value="other"><?php esc_html_e('Other', 'ai-post-scheduler'); ?></option>
-					<option value="duplicate"><?php esc_html_e('Duplicate', 'ai-post-scheduler'); ?></option>
-					<option value="tone"><?php esc_html_e('Tone', 'ai-post-scheduler'); ?></option>
-					<option value="irrelevant"><?php esc_html_e('Irrelevant', 'ai-post-scheduler'); ?></option>
-					<option value="policy"><?php esc_html_e('Policy', 'ai-post-scheduler'); ?></option>
 				</select>
-				<p class="description"><?php esc_html_e('Select a structured reason to improve future topic quality.', 'ai-post-scheduler'); ?></p>
+				<p id="feedback_reason_category_description" class="description"><?php esc_html_e('Select a structured reason to improve future topic quality.', 'ai-post-scheduler'); ?></p>
 			</div>
 
 			<div class="form-group">

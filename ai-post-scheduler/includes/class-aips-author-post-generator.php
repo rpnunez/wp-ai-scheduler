@@ -180,6 +180,8 @@ class AIPS_Author_Post_Generator {
 						$post_id->get_error_message()
 					),
 					array(
+						'event_type' => 'topic_post_generation',
+						'event_status' => 'failed',
 						'topic_id' => $topic->id,
 						'topic_title' => $topic->topic_title,
 					),
@@ -224,6 +226,8 @@ class AIPS_Author_Post_Generator {
 					$author->name
 				),
 				array(
+					'event_type' => 'topic_post_generation',
+					'event_status' => 'success',
 					'topic_id' => $topic->id,
 					'topic_title' => $topic->topic_title,
 				),
@@ -259,6 +263,8 @@ class AIPS_Author_Post_Generator {
 					$e->getMessage()
 				),
 				array(
+					'event_type' => 'topic_post_generation',
+					'event_status' => 'failed',
 					'topic_id' => $topic->id,
 					'topic_title' => $topic->topic_title,
 				),
@@ -281,8 +287,8 @@ class AIPS_Author_Post_Generator {
 	 * @param object $author Author object from database.
 	 */
 	private function update_author_schedule($author) {
-		// Calculate next run time based on frequency
-		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency);
+		// Calculate next run time based on frequency, preserving original phase
+		$next_run = $this->interval_calculator->calculate_next_run($author->post_generation_frequency, $author->post_generation_next_run);
 		
 		$this->authors_repository->update_post_generation_schedule($author->id, $next_run);
 		

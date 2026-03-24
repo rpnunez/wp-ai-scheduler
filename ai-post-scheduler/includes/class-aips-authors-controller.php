@@ -69,6 +69,7 @@ class AIPS_Authors_Controller {
 		add_action('wp_ajax_aips_get_author_feedback', array($this, 'ajax_get_author_feedback'));
 		add_action('wp_ajax_aips_generate_topics_now', array($this, 'ajax_generate_topics_now'));
 		add_action('wp_ajax_aips_get_topic_posts', array($this, 'ajax_get_topic_posts'));
+		add_action('wp_ajax_aips_suggest_authors', array($this, 'ajax_suggest_authors'));
 	}
 	
 	/**
@@ -110,6 +111,19 @@ class AIPS_Authors_Controller {
 			'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
 			'voice_tone' => isset($_POST['voice_tone']) ? sanitize_text_field($_POST['voice_tone']) : '',
 			'writing_style' => isset($_POST['writing_style']) ? sanitize_text_field($_POST['writing_style']) : '',
+			// New expanded author profile fields
+			'target_audience' => isset($_POST['target_audience']) ? sanitize_text_field($_POST['target_audience']) : '',
+			'expertise_level' => isset($_POST['expertise_level']) ? sanitize_text_field($_POST['expertise_level']) : '',
+			'content_goals' => isset($_POST['content_goals']) ? sanitize_textarea_field($_POST['content_goals']) : '',
+			'excluded_topics' => isset($_POST['excluded_topics']) ? sanitize_textarea_field($_POST['excluded_topics']) : '',
+			'preferred_content_length' => isset($_POST['preferred_content_length']) ? sanitize_text_field($_POST['preferred_content_length']) : '',
+			'language' => isset($_POST['language']) ? sanitize_text_field($_POST['language']) : 'en',
+			'max_posts_per_topic' => isset($_POST['max_posts_per_topic']) ? max(1, absint($_POST['max_posts_per_topic'])) : 1,
+			// Source group fields
+			'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
+			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
+				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
+				: wp_json_encode(array()),
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);
 		
@@ -294,8 +308,8 @@ class AIPS_Authors_Controller {
 				if ($wp_post) {
 					$post->post_title = $wp_post->post_title;
 					$post->post_status = $wp_post->post_status;
-					$post->post_url = get_permalink($wp_post->ID);
-					$post->edit_url = get_edit_post_link($wp_post->ID, 'raw');
+					$post->post_url = esc_url_raw(get_permalink($wp_post->ID));
+					$post->edit_url = esc_url_raw(get_edit_post_link($wp_post->ID, 'raw'));
 				}
 			}
 		}
@@ -406,8 +420,8 @@ class AIPS_Authors_Controller {
 						'post_status' => $wp_post->post_status,
 						'date_generated' => $log->created_at,
 						'date_published' => $wp_post->post_status === 'publish' ? $wp_post->post_date : null,
-						'post_url' => get_permalink($wp_post->ID),
-						'edit_url' => get_edit_post_link($wp_post->ID, 'raw')
+						'post_url' => esc_url_raw(get_permalink($wp_post->ID)),
+						'edit_url' => esc_url_raw(get_edit_post_link($wp_post->ID, 'raw'))
 					);
 				}
 			}
@@ -416,6 +430,51 @@ class AIPS_Authors_Controller {
 		wp_send_json_success(array(
 			'topic' => $topic,
 			'posts' => $posts
+		));
+	}
+
+	/**
+	 * AJAX handler for generating AI-powered author profile suggestions.
+	 *
+	 * Accepts site context inputs and returns an array of suggested author
+	 * profiles that the admin can review and import with one click.
+	 */
+	public function ajax_suggest_authors() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$site_niche      = isset($_POST['site_niche']) ? sanitize_text_field($_POST['site_niche']) : '';
+		$target_audience = isset($_POST['target_audience']) ? sanitize_text_field($_POST['target_audience']) : '';
+		$content_goals   = isset($_POST['content_goals']) ? sanitize_textarea_field($_POST['content_goals']) : '';
+		$site_url        = isset($_POST['site_url']) ? esc_url_raw($_POST['site_url']) : '';
+		$count           = isset($_POST['count']) ? absint($_POST['count']) : 3;
+
+		if (empty($site_niche)) {
+			wp_send_json_error(array('message' => __('Site niche is required.', 'ai-post-scheduler')));
+		}
+
+		$service = new AIPS_Author_Suggestions_Service();
+		$suggestions = $service->suggest_authors(array(
+			'site_niche'      => $site_niche,
+			'target_audience' => $target_audience,
+			'content_goals'   => $content_goals,
+			'site_url'        => $site_url,
+		), $count);
+
+		if (is_wp_error($suggestions)) {
+			wp_send_json_error(array('message' => $suggestions->get_error_message()));
+		}
+
+		wp_send_json_success(array(
+			'suggestions' => $suggestions,
+			'message'     => sprintf(
+				/* translators: %d: number of author suggestions generated */
+				_n('%d author suggestion generated.', '%d author suggestions generated.', count($suggestions), 'ai-post-scheduler'),
+				count($suggestions)
+			),
 		));
 	}
 }

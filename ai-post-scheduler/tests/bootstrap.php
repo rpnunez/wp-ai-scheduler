@@ -130,6 +130,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $url;
         }
     }
+
+    if (!function_exists('esc_url_raw')) {
+        function esc_url_raw($url) {
+            return $url;
+        }
+    }
     
     if (!function_exists('plugin_dir_path')) {
         function plugin_dir_path($file) {
@@ -811,6 +817,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         $GLOBALS['wpdb'] = new class {
             public $prefix = 'wp_';
             public $insert_id = 0;
+            public $postmeta = 'wp_postmeta';
+            public $get_col_return_val = null;
+            public $get_results_return_val = null;
+            public $get_var_return_val = null;
             private $data = array();
             
             public function esc_like($text) {
@@ -890,6 +900,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
 
             public function get_col($query = null, $x = 0) {
+                if (isset($this->get_col_return_val)) {
+                    return $this->get_col_return_val;
+                }
                 return array();
             }
         };
@@ -903,30 +916,45 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     // Load plugin classes
     $includes_dir = dirname(__DIR__) . '/includes/';
     $files = [
+        'class-aips-autoloader.php',
         'class-aips-logger.php',
         'class-aips-config.php',
         'class-aips-db-manager.php',
+        'class-aips-trending-topics-repository.php',
         'class-aips-history-repository.php',
         'class-aips-schedule-repository.php',
         'class-aips-template-repository.php',
         'class-aips-article-structure-repository.php',
         'class-aips-prompt-section-repository.php',
+        'class-aips-sources-repository.php',
         'class-aips-template-processor.php',
         'class-aips-prompt-builder.php',
+        'class-aips-prompt-builder-post-content.php',
+        'class-aips-prompt-builder-post-title.php',
+        'class-aips-prompt-builder-post-excerpt.php',
+        'class-aips-prompt-builder-post-featured-image.php',
+        'class-aips-prompt-builder-article-structure-section.php',
+        'class-aips-prompt-builder-topic.php',
+        'class-aips-prompt-builder-authors.php',
         'class-aips-article-structure-manager.php',
         'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
         'class-aips-resilience-service.php',
         'class-aips-ai-service.php',
         'class-aips-image-service.php',
+        'class-aips-research-service.php',
         'interface-aips-generation-context.php',
         'class-aips-template-context.php',
         'class-aips-topic-context.php',
         'class-aips-generation-session.php',
+        'class-aips-generation-logger.php',
+        'class-aips-generation-context-factory.php',
         'class-aips-post-manager.php',
         'class-aips-post-creator.php',
         'class-aips-markdown-parser.php',
         'class-aips-generator.php',
+        'class-aips-component-regeneration-service.php',
+        'class-aips-ai-edit-controller.php',
         // History service layer
         'class-aips-history-type.php',
         'class-aips-history-container.php',
@@ -939,14 +967,19 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-settings.php',
         'class-aips-admin-assets.php',
         'class-aips-admin-menu-helper.php',
+        'class-aips-calendar-controller.php',
         'class-aips-system-status.php',
         'class-aips-templates.php',
         'class-aips-upgrades.php',
+        'class-aips-post-review-repository.php',
+        'class-aips-post-review-notifications.php',
+        'class-aips-partial-generation-notifications.php',
         'class-aips-voices-repository.php',
         'class-aips-voices.php',
         'class-aips-structures-controller.php',
         'class-aips-templates-controller.php',
         'class-aips-research-controller.php',
+        'class-aips-sources-controller.php',
         // Author-related classes
         'class-aips-authors-repository.php',
         'class-aips-author-topics-repository.php',
@@ -955,11 +988,13 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-topic-penalty-service.php',
         'class-aips-embeddings-service.php',
         'class-aips-topic-expansion-service.php',
+        'class-aips-site-context.php',
         'class-aips-author-topics-generator.php',
         'class-aips-author-topics-scheduler.php',
         'class-aips-authors-controller.php',
         'class-aips-author-post-generator.php',
         'class-aips-author-topics-controller.php',
+        'class-aips-author-suggestions-service.php',
     ];
     
     foreach ($files as $file) {

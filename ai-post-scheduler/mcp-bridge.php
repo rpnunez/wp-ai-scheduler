@@ -956,8 +956,8 @@ class AIPS_MCP_Bridge {
 				'id' => $post_id,
 				'title' => $post->post_title,
 				'status' => $post->post_status,
-				'url' => get_permalink($post_id),
-				'edit_url' => get_edit_post_link($post_id, 'raw')
+				'url' => esc_url_raw(get_permalink($post_id)),
+				'edit_url' => esc_url_raw(get_edit_post_link($post_id, 'raw'))
 			)
 		);
 	}
@@ -1043,8 +1043,8 @@ class AIPS_MCP_Bridge {
 				'error_message' => $item->error_message,
 				'created_at' => $item->created_at,
 				'completed_at' => $item->completed_at,
-				'post_url' => $item->post_id ? get_permalink($item->post_id) : null,
-				'edit_url' => $item->post_id ? get_edit_post_link($item->post_id, 'raw') : null
+				'post_url' => $item->post_id ? esc_url_raw(get_permalink($item->post_id)) : null,
+				'edit_url' => $item->post_id ? esc_url_raw(get_edit_post_link($item->post_id, 'raw')) : null
 			);
 		}
 		
@@ -1100,8 +1100,8 @@ class AIPS_MCP_Bridge {
 				'creation_method' => isset($history->creation_method) ? $history->creation_method : null,
 				'created_at' => $history->created_at,
 				'completed_at' => $history->completed_at,
-				'post_url' => $history->post_id ? get_permalink($history->post_id) : null,
-				'edit_url' => $history->post_id ? get_edit_post_link($history->post_id, 'raw') : null
+				'post_url' => $history->post_id ? esc_url_raw(get_permalink($history->post_id)) : null,
+				'edit_url' => $history->post_id ? esc_url_raw(get_edit_post_link($history->post_id, 'raw')) : null
 			)
 		);
 		
@@ -1515,8 +1515,8 @@ class AIPS_MCP_Bridge {
 			'tokens_used' => $tokens_used ? (int) $tokens_used : null,
 			'generation_time' => $generation_time ? (float) $generation_time : null,
 			'has_prompt' => !empty($ai_prompt),
-			'post_url' => get_permalink($post_id),
-			'edit_url' => get_edit_post_link($post_id, 'raw')
+			'post_url' => esc_url_raw(get_permalink($post_id)),
+			'edit_url' => esc_url_raw(get_edit_post_link($post_id, 'raw'))
 		);
 		
 		return array(
