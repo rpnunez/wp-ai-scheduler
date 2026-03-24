@@ -40,27 +40,27 @@ final class AI_Post_Scheduler {
         return array(
             'aips_generate_scheduled_posts' => array(
                 'schedule' => 'hourly',
-                'label' => 'Post Generation',
+                'label'   => __( 'Post Generation', 'ai-post-scheduler' ),
             ),
             'aips_generate_author_topics' => array(
                 'schedule' => 'hourly',
-                'label' => 'Author Topic Generation',
+                'label'   => __( 'Author Topic Generation', 'ai-post-scheduler' ),
             ),
             'aips_generate_author_posts' => array(
                 'schedule' => 'hourly',
-                'label' => 'Author Post Generation',
+                'label'   => __( 'Author Post Generation', 'ai-post-scheduler' ),
             ),
             'aips_scheduled_research' => array(
                 'schedule' => 'daily',
-                'label' => 'Automated Research',
+                'label'   => __( 'Automated Research', 'ai-post-scheduler' ),
             ),
             'aips_send_review_notifications' => array(
                 'schedule' => 'daily',
-                'label' => 'Review Notifications',
+                'label'   => __( 'Review Notifications', 'ai-post-scheduler' ),
             ),
             'aips_cleanup_export_files' => array(
                 'schedule' => 'daily',
-                'label' => 'Export Cleanup',
+                'label'   => __( 'Export Cleanup', 'ai-post-scheduler' ),
             ),
         );
     }
