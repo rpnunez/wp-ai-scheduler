@@ -252,10 +252,46 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_developer_mode', array(
             'sanitize_callback' => 'absint'
         ));
+        register_setting('aips_settings', 'aips_enable_retry', array(
+            'sanitize_callback' => 'absint',
+            'default' => 1
+        ));
         register_setting('aips_settings', 'aips_retry_max_attempts', array(
-            'sanitize_callback' => 'absint'
+            'sanitize_callback' => 'absint',
+            'default' => 3
+        ));
+        register_setting('aips_settings', 'aips_retry_initial_delay', array(
+            'sanitize_callback' => 'absint',
+            'default' => 1
+        ));
+        register_setting('aips_settings', 'aips_enable_rate_limiting', array(
+            'sanitize_callback' => 'absint',
+            'default' => 0
+        ));
+        register_setting('aips_settings', 'aips_rate_limit_requests', array(
+            'sanitize_callback' => 'absint',
+            'default' => 10
+        ));
+        register_setting('aips_settings', 'aips_rate_limit_period', array(
+            'sanitize_callback' => 'absint',
+            'default' => 60
+        ));
+        register_setting('aips_settings', 'aips_enable_circuit_breaker', array(
+            'sanitize_callback' => 'absint',
+            'default' => 0
+        ));
+        register_setting('aips_settings', 'aips_circuit_breaker_threshold', array(
+            'sanitize_callback' => 'absint',
+            'default' => 5
+        ));
+        register_setting('aips_settings', 'aips_circuit_breaker_timeout', array(
+            'sanitize_callback' => 'absint',
+            'default' => 300
         ));
         register_setting('aips_settings', 'aips_ai_model', array(
+            'sanitize_callback' => 'sanitize_text_field'
+        ));
+        register_setting('aips_settings', 'aips_ai_env_id', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
@@ -304,6 +340,14 @@ class AIPS_Settings {
         );
 
         add_settings_field(
+            'aips_ai_env_id',
+            __('Environment ID', 'ai-post-scheduler'),
+            array($this, 'ai_env_id_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
             'aips_unsplash_access_key',
             __('Unsplash Access Key', 'ai-post-scheduler'),
             array($this, 'unsplash_access_key_field_callback'),
@@ -311,13 +355,7 @@ class AIPS_Settings {
             'aips_general_section'
         );
         
-        add_settings_field(
-            'aips_retry_max_attempts',
-            __('Max Retries on Failure', 'ai-post-scheduler'),
-            array($this, 'max_retries_field_callback'),
-            'aips-settings',
-            'aips_general_section'
-        );
+
         
         add_settings_field(
             'aips_enable_logging',
@@ -357,6 +395,85 @@ class AIPS_Settings {
             array($this, 'topic_similarity_threshold_field_callback'),
             'aips-settings',
             'aips_general_section'
+        );
+
+        add_settings_section(
+            'aips_resilience_section',
+            __('Resilience & Limits', 'ai-post-scheduler'),
+            array($this, 'resilience_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_enable_retry',
+            __('Enable Retry', 'ai-post-scheduler'),
+            array($this, 'enable_retry_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_retry_max_attempts',
+            __('Max Retries on Failure', 'ai-post-scheduler'),
+            array($this, 'max_retries_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_retry_initial_delay',
+            __('Retry Initial Delay (Seconds)', 'ai-post-scheduler'),
+            array($this, 'retry_initial_delay_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_enable_rate_limiting',
+            __('Enable Rate Limiting', 'ai-post-scheduler'),
+            array($this, 'enable_rate_limiting_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_rate_limit_requests',
+            __('Rate Limit Max Requests', 'ai-post-scheduler'),
+            array($this, 'rate_limit_requests_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_rate_limit_period',
+            __('Rate Limit Period (Seconds)', 'ai-post-scheduler'),
+            array($this, 'rate_limit_period_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_enable_circuit_breaker',
+            __('Enable Circuit Breaker', 'ai-post-scheduler'),
+            array($this, 'enable_circuit_breaker_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_circuit_breaker_threshold',
+            __('Circuit Breaker Failure Threshold', 'ai-post-scheduler'),
+            array($this, 'circuit_breaker_threshold_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
+        );
+
+        add_settings_field(
+            'aips_circuit_breaker_timeout',
+            __('Circuit Breaker Timeout (Seconds)', 'ai-post-scheduler'),
+            array($this, 'circuit_breaker_timeout_field_callback'),
+            'aips-settings',
+            'aips_resilience_section'
         );
 
         // -----------------------------------------------------------------------
@@ -556,6 +673,21 @@ class AIPS_Settings {
         <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
         <?php
     }
+
+    /**
+     * Render the AI environment ID setting field.
+     *
+     * Displays a text input for specifying a custom AI Engine environment ID.
+     *
+     * @return void
+     */
+    public function ai_env_id_field_callback() {
+        $value = get_option('aips_ai_env_id', '');
+        ?>
+        <input type="text" name="aips_ai_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
+        <p class="description"><?php esc_html_e('AI Engine environment ID to use (leave empty to use AI Engine default environment).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
     
     /**
      * Render the Dev Tools page.
@@ -594,11 +726,112 @@ class AIPS_Settings {
      *
      * @return void
      */
+    /**
+     * Render the resilience section description.
+     */
+    public function resilience_section_callback() {
+        echo '<p>' . esc_html__('Configure advanced resilience options to protect the application from failing and being blocked when external services return errors.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the enable retry setting field.
+     */
+    public function enable_retry_field_callback() {
+        $value = get_option('aips_enable_retry', 1);
+        ?>
+        <input type="hidden" name="aips_enable_retry" value="0">
+        <input type="checkbox" name="aips_enable_retry" value="1" <?php checked(1, $value); ?>>
+        <p class="description"><?php esc_html_e('Enable exponential backoff and retry logic for failed AI requests.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the max retries setting field.
+     */
     public function max_retries_field_callback() {
         $value = get_option('aips_retry_max_attempts', 3);
         ?>
         <input type="number" name="aips_retry_max_attempts" value="<?php echo esc_attr($value); ?>" min="0" max="10" class="small-text">
         <p class="description"><?php esc_html_e('Number of retry attempts if generation fails.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the retry initial delay setting field.
+     */
+    public function retry_initial_delay_field_callback() {
+        $value = get_option('aips_retry_initial_delay', 1);
+        ?>
+        <input type="number" name="aips_retry_initial_delay" value="<?php echo esc_attr($value); ?>" min="1" max="60" class="small-text">
+        <p class="description"><?php esc_html_e('Initial delay (in seconds) before the first retry attempt.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the enable rate limiting setting field.
+     */
+    public function enable_rate_limiting_field_callback() {
+        $value = get_option('aips_enable_rate_limiting', 0);
+        ?>
+        <input type="hidden" name="aips_enable_rate_limiting" value="0">
+        <input type="checkbox" name="aips_enable_rate_limiting" value="1" <?php checked(1, $value); ?>>
+        <p class="description"><?php esc_html_e('Limit the number of AI requests per time period.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the rate limit requests setting field.
+     */
+    public function rate_limit_requests_field_callback() {
+        $value = get_option('aips_rate_limit_requests', 10);
+        ?>
+        <input type="number" name="aips_rate_limit_requests" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
+        <p class="description"><?php esc_html_e('Maximum number of allowed requests within the defined period.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the rate limit period setting field.
+     */
+    public function rate_limit_period_field_callback() {
+        $value = get_option('aips_rate_limit_period', 60);
+        ?>
+        <input type="number" name="aips_rate_limit_period" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
+        <p class="description"><?php esc_html_e('Period (in seconds) for rate limiting (e.g., 60 = 1 minute).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the enable circuit breaker setting field.
+     */
+    public function enable_circuit_breaker_field_callback() {
+        $value = get_option('aips_enable_circuit_breaker', 0);
+        ?>
+        <input type="hidden" name="aips_enable_circuit_breaker" value="0">
+        <input type="checkbox" name="aips_enable_circuit_breaker" value="1" <?php checked(1, $value); ?>>
+        <p class="description"><?php esc_html_e('Enable circuit breaker to temporarily halt requests after a number of consecutive failures.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the circuit breaker threshold setting field.
+     */
+    public function circuit_breaker_threshold_field_callback() {
+        $value = get_option('aips_circuit_breaker_threshold', 5);
+        ?>
+        <input type="number" name="aips_circuit_breaker_threshold" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
+        <p class="description"><?php esc_html_e('Number of consecutive failures required to open the circuit.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the circuit breaker timeout setting field.
+     */
+    public function circuit_breaker_timeout_field_callback() {
+        $value = get_option('aips_circuit_breaker_timeout', 300);
+        ?>
+        <input type="number" name="aips_circuit_breaker_timeout" value="<?php echo esc_attr($value); ?>" min="1" class="small-text">
+        <p class="description"><?php esc_html_e('Time (in seconds) to keep the circuit open before attempting to recover.', 'ai-post-scheduler'); ?></p>
         <?php
     }
     
@@ -1085,7 +1318,7 @@ class AIPS_Settings {
         }
 
         $ai_service = new AIPS_AI_Service();
-        $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('max_tokens' => 10));
+        $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('maxTokens' => 10));
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));

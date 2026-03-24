@@ -57,3 +57,7 @@
 **Vulnerability:** Potential SQL Injection in `AIPS_DB_Manager::drop_tables()`, `truncate_tables()`, and `backup_data()` due to unescaped string interpolation of table names.
 **Learning:** While the table names were retrieved internally from a static array, directly interpolating them into SQL queries (e.g. `$wpdb->query("DROP TABLE IF EXISTS $table")`) bypasses WordPress's recommended database preparation patterns and creates a latent risk if the table source ever becomes dynamic or user-influenced.
 **Prevention:** Use `$wpdb->prepare()` for parameters and use `esc_sql()` wrapped in backticks for table names/identifiers when constructing dynamic queries.
+## 2024-03-24 - Unsanitized POST array in AI Edit Controller Hook
+**Vulnerability:** The `$components` array from `$_POST['components']` was passed directly to the `aips_post_components_updated` action hook without being sanitized first, exposing any listeners to potentially malicious unsanitized POST data (XSS, Injection).
+**Learning:** `$_POST` arrays should be recursively sanitized or validated field-by-field before passing them to do_action.
+**Prevention:** Always construct a new array with properly sanitized fields using functions like `sanitize_text_field` and `wp_kses_post` before exposing user input through action hooks.

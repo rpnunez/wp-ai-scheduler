@@ -37,7 +37,7 @@ class AIPS_Planner {
         $prompt .= "Return ONLY a valid JSON array of strings. Do not include any other text, markdown formatting, or numbering. \n";
         $prompt .= "Example: [\"Topic 1\", \"Topic 2\", \"Topic 3\"]";
 
-        $result = $generator->generate_content($prompt, array('temperature' => 0.7, 'max_tokens' => 1000), 'planner_topics');
+        $result = $generator->generate_content($prompt, array('temperature' => 0.7, 'maxTokens' => 1000), 'planner_topics');
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));

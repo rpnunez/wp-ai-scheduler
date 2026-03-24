@@ -391,16 +391,16 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	}
 
 	// -----------------------------------------------------------------------
-	// Static factory: notify_author_topics_generated
+	// AIPS_Notifications: author_topics_generated convenience method
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Test that notify_author_topics_generated() creates a notification.
+	 * Test that AIPS_Notifications::author_topics_generated() creates a DB notification.
 	 */
 	public function test_notify_author_topics_generated_creates_notification() {
 		$before_count = $this->repository->count_unread();
 
-		AIPS_Admin_Bar::notify_author_topics_generated( 'Jane Doe', 10, 42 );
+		( new AIPS_Notifications( $this->repository ) )->author_topics_generated( 'Jane Doe', 10, 42 );
 
 		$this->assertEquals( $before_count + 1, $this->repository->count_unread() );
 

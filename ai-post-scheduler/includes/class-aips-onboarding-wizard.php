@@ -51,6 +51,7 @@ class AIPS_Onboarding_Wizard {
 		add_action('wp_ajax_aips_onboarding_generate_post', array($this, 'ajax_generate_post'));
 		add_action('wp_ajax_aips_onboarding_reset', array($this, 'ajax_reset'));
 		add_action('wp_ajax_aips_onboarding_complete', array($this, 'ajax_complete'));
+		add_action('wp_ajax_aips_onboarding_skip', array($this, 'ajax_skip'));
 	}
 
 	public function register_page() {
@@ -98,7 +99,7 @@ class AIPS_Onboarding_Wizard {
 
 		delete_transient($this->activation_redirect_transient);
 
-		wp_safe_redirect(admin_url('admin.php?page=' . self::PAGE_SLUG));
+		wp_safe_redirect(AIPS_Admin_Menu_Helper::get_page_url(self::PAGE_SLUG));
 		exit;
 	}
 
@@ -464,6 +465,17 @@ class AIPS_Onboarding_Wizard {
 		do_action('aips_onboarding_completed');
 		wp_send_json_success(array(
 			'message' => __('Onboarding completed.', 'ai-post-scheduler'),
+			'dashboard_url' => AIPS_Admin_Menu_Helper::get_page_url('dashboard'),
+		));
+	}
+
+	public function ajax_skip() {
+		$this->ajax_guard();
+		update_option($this->completed_option, 1, false);
+		delete_transient($this->activation_redirect_transient);
+		do_action('aips_onboarding_skipped');
+		wp_send_json_success(array(
+			'message' => __('Onboarding skipped.', 'ai-post-scheduler'),
 			'dashboard_url' => AIPS_Admin_Menu_Helper::get_page_url('dashboard'),
 		));
 	}

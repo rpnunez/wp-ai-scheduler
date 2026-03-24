@@ -66,13 +66,20 @@ class AIPS_Config {
 			'generated_posts_log_threshold_client' => 20,
 			'history_export_max_records' => 10000,
             'aips_ai_model' => '',
+            'aips_ai_env_id' => '',
             'aips_max_tokens' => 2000,
             'aips_temperature' => 0.7,
             'aips_default_post_status' => 'draft',
+            'aips_default_category' => 0,
             'aips_default_post_author' => 1,
+            'aips_unsplash_access_key' => '',
             'aips_enable_logging' => true,
+            'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
-            'aips_enable_retry' => true,
+            'aips_review_notifications_enabled' => 0,
+            'aips_review_notifications_email' => '',
+            'aips_topic_similarity_threshold' => 0.8,
+            'aips_enable_retry' => false,
             'aips_retry_max_attempts' => 3,
             'aips_retry_initial_delay' => 1,
             'aips_enable_rate_limiting' => false,
@@ -81,6 +88,14 @@ class AIPS_Config {
             'aips_enable_circuit_breaker' => false,
             'aips_circuit_breaker_threshold' => 5,
             'aips_circuit_breaker_timeout' => 300,
+            // Site content strategy defaults (must match AIPS_Settings::get_content_strategy_options()).
+            'aips_site_niche' => '',
+            'aips_site_target_audience' => '',
+            'aips_site_content_goals' => '',
+            'aips_site_brand_voice' => '',
+            'aips_site_content_language' => 'en',
+            'aips_site_content_guidelines' => '',
+            'aips_site_excluded_topics' => '',
         );
     }
     
@@ -173,8 +188,7 @@ class AIPS_Config {
      */
     public function get_retry_config() {
         return array(
-            //@TODO: Intentionally disabled due to making too many requests to the AI Engine
-            'enabled' => false,//(bool) $this->get_option('aips_enable_retry', true),
+            'enabled' => (bool) $this->get_option('aips_enable_retry', false),
             'max_attempts' => (int) $this->get_option('aips_retry_max_attempts', 3),
             'initial_delay' => (int) $this->get_option('aips_retry_initial_delay', 1),
             'exponential' => true,

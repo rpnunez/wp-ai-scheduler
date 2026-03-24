@@ -101,7 +101,7 @@ class AIPS_Author_Topics_Generator {
 		
 		// Use generate_json for structured topic data
 		$response = $this->ai_service->generate_json($prompt, array(
-			'max_tokens' => 2000,
+			'maxTokens' => 2000,
 			'temperature' => 0.7
 		));
 		

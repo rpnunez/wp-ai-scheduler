@@ -293,7 +293,22 @@ class AIPS_AI_Edit_Controller {
 			}
 		}
 
-		do_action('aips_post_components_updated', $post_id, $updated_components, $components);
+		// Security: Create a sanitized array of components for the action hook to prevent passing raw POST data
+		$sanitized_components = array();
+		if (isset($components['title'])) {
+			$sanitized_components['title'] = sanitize_text_field(wp_unslash($components['title']));
+		}
+		if (isset($components['excerpt'])) {
+			$sanitized_components['excerpt'] = sanitize_textarea_field(wp_unslash($components['excerpt']));
+		}
+		if (isset($components['content'])) {
+			$sanitized_components['content'] = wp_kses_post(wp_unslash($components['content']));
+		}
+		if (isset($components['featured_image_id'])) {
+			$sanitized_components['featured_image_id'] = absint($components['featured_image_id']);
+		}
+
+		do_action('aips_post_components_updated', $post_id, $updated_components, $sanitized_components);
 		
 		wp_send_json_success(array(
 			'message' => __('Post updated successfully!', 'ai-post-scheduler'),
