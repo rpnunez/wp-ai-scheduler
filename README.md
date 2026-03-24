@@ -151,3 +151,7 @@ Built with ❤️ for WordPress developers who want to automate content creation
 ---
 
 **Ready to start? Run `./start-dev.sh` and start coding in minutes! 🚀**
+
+## Links
+
+[![Hypercommit](https://img.shields.io/badge/Hypercommit-DB2475)](https://hypercommit.com/wp-ai-scheduler)
