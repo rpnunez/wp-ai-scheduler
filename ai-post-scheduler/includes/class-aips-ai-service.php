@@ -209,8 +209,10 @@ class AIPS_AI_Service {
                 //    $json_query_params['maxTokens'] = $options['maxTokens'];
                 // }
                 
-                // Only pass env_id if specified.
-                if (isset($params['envId'])) {
+                // Only pass env_id if specified. Support both 'env_id' and legacy 'envId' keys.
+                if (isset($params['env_id'])) {
+                    $json_query_params['env_id'] = $params['env_id'];
+                } elseif (isset($params['envId'])) {
                     $json_query_params['env_id'] = $params['envId'];
                 }
                 
