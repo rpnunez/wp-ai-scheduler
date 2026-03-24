@@ -19,7 +19,7 @@
          * available.
          */
         initResearch: function() {
-            this.bindResearchEvents();
+            AIPS.bindResearchEvents();
 
             if ($('#load-topics').length) {
                 $('#load-topics').trigger('click');
@@ -30,21 +30,21 @@
          * Register delegated event handlers for the research admin UI.
          */
         bindResearchEvents: function() {
-            $(document).on('submit', '#aips-research-form', this.submitResearchForm);
-            $(document).on('click', '#load-topics', this.loadTopics);
-            $(document).on('keyup search', '#filter-search', this.filterTopics);
-            $(document).on('click', '#filter-search-clear, #clear-topics-search', this.clearTopicsSearch);
-            $(document).on('change', '#select-all-topics', this.toggleAllTopics);
-            $(document).on('change', '.topic-checkbox', this.toggleTopicSelection);
-            $(document).on('click', '.delete-topic', this.deleteTopic);
-            $(document).on('submit', '#bulk-schedule-form', this.submitBulkSchedule);
-            $(document).on('click', '#aips-clear-filters', this.clearTopicFilters);
-            $(document).on('click', '#aips-start-research', this.focusResearchForm);
-            $(document).on('click', '#analyze-gaps-btn', this.analyzeGaps);
-            $(document).on('click', '.generate-gap-ideas', this.generateGapIdeas);
-            $(document).on('click', '#aips-delete-selected-topics', this.bulkDeleteSelectedTopics);
-            $(document).on('click', '#aips-generate-selected-topics', this.generateSelectedTopics);
-            $(document).on('click', '#aips-reload-topics-btn', this.reloadTopics);
+            $(document).on('submit', '#aips-research-form', AIPS.submitResearchForm);
+            $(document).on('click', '#load-topics', AIPS.loadTopics);
+            $(document).on('keyup search', '#filter-search', AIPS.filterTopics);
+            $(document).on('click', '#filter-search-clear, #clear-topics-search', AIPS.clearTopicsSearch);
+            $(document).on('change', '#select-all-topics', AIPS.toggleAllTopics);
+            $(document).on('change', '.topic-checkbox', AIPS.toggleTopicSelection);
+            $(document).on('click', '.delete-topic', AIPS.deleteTopic);
+            $(document).on('submit', '#bulk-schedule-form', AIPS.submitBulkSchedule);
+            $(document).on('click', '#aips-clear-filters', AIPS.clearTopicFilters);
+            $(document).on('click', '#aips-start-research', AIPS.focusResearchForm);
+            $(document).on('click', '#analyze-gaps-btn', AIPS.analyzeGaps);
+            $(document).on('click', '.generate-gap-ideas', AIPS.generateGapIdeas);
+            $(document).on('click', '#aips-delete-selected-topics', AIPS.bulkDeleteSelectedTopics);
+            $(document).on('click', '#aips-generate-selected-topics', AIPS.generateSelectedTopics);
+            $(document).on('click', '#aips-reload-topics-btn', AIPS.reloadTopics);
         },
 
         /**
@@ -206,8 +206,8 @@
             var isFiltered = niche || minScore !== '0' || freshOnly;
             var esc = AIPS.Templates ? AIPS.Templates.escape : function(str) { return String(str || ''); };
 
-            this.researchSelectedTopics = [];
-            this.updateSelectedTopics();
+            AIPS.researchSelectedTopics = [];
+            AIPS.updateSelectedTopics();
 
             if (!topics || topics.length === 0) {
                 if (AIPS.Templates) {
@@ -272,7 +272,7 @@
             $('#bulk-schedule-section').hide();
 
             if ($('#filter-search').val()) {
-                this.filterTopics();
+                AIPS.filterTopics();
             }
         },
 
@@ -343,18 +343,18 @@
          */
         toggleTopicSelection: function(e) {
             e.preventDefault();
-            this.updateSelectedTopics();
+            AIPS.updateSelectedTopics();
         },
 
         /**
          * Refresh selected-topic state and related action-button availability.
          */
         updateSelectedTopics: function() {
-            this.researchSelectedTopics = $('.topic-checkbox:checked').map(function() {
+            AIPS.researchSelectedTopics = $('.topic-checkbox:checked').map(function() {
                 return $(this).val();
             }).get();
 
-            var hasSelected = this.researchSelectedTopics.length > 0;
+            var hasSelected = AIPS.researchSelectedTopics.length > 0;
             $('#aips-delete-selected-topics').prop('disabled', !hasSelected);
             $('#aips-generate-selected-topics').prop('disabled', !hasSelected);
         },
