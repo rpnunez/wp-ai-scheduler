@@ -86,8 +86,8 @@ class AIPS_Notifications_Repository {
 				'meta'       => $meta_json,
 				'dedupe_key' => sanitize_text_field($data['dedupe_key']),
 				'is_read'    => absint($data['is_read']) ? 1 : 0,
-				'read_at'    => !empty($data['read_at']) ? gmdate('Y-m-d H:i:s', strtotime($data['read_at'])) : null,
-				'created_at' => !empty($data['created_at']) ? gmdate('Y-m-d H:i:s', strtotime($data['created_at'])) : current_time('mysql', true),
+				'read_at'    => !empty($data['read_at']) ? $data['read_at'] : null,
+				'created_at' => !empty($data['created_at']) ? $data['created_at'] : current_time('mysql', true),
 			),
 			array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s')
 		);
