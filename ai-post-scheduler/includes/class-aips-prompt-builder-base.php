@@ -39,9 +39,9 @@ abstract class AIPS_Prompt_Builder_Base implements AIPS_Prompt_Builder_Interface
 	 */
 	public function __construct($template_processor = null, $base_builder = null, $structure_manager = null, $section_repository = null, $article_structure_section_builder = null) {
 		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-		$this->base_builder = $base_builder ?: new AIPS_Prompt_Builder();
+		$this->base_builder = $base_builder;
 		$this->structure_manager = $structure_manager ?: new AIPS_Article_Structure_Manager();
-		$this->section_repository = $section_repository ?: new AIPS_Prompt_Section_Repository();
+		$this->section_repository = $section_repository;
 		$this->article_structure_section_builder = $article_structure_section_builder;
 	}
 
@@ -56,6 +56,10 @@ abstract class AIPS_Prompt_Builder_Base implements AIPS_Prompt_Builder_Interface
 	 * @return AIPS_Prompt_Builder
 	 */
 	protected function get_base_builder() {
+		if (null === $this->base_builder) {
+			$this->base_builder = new AIPS_Prompt_Builder();
+		}
+
 		return $this->base_builder;
 	}
 
@@ -70,6 +74,10 @@ abstract class AIPS_Prompt_Builder_Base implements AIPS_Prompt_Builder_Interface
 	 * @return AIPS_Prompt_Section_Repository
 	 */
 	protected function get_section_repository() {
+		if (null === $this->section_repository) {
+			$this->section_repository = new AIPS_Prompt_Section_Repository();
+		}
+
 		return $this->section_repository;
 	}
 
@@ -80,9 +88,9 @@ abstract class AIPS_Prompt_Builder_Base implements AIPS_Prompt_Builder_Interface
 		if (null === $this->article_structure_section_builder) {
 			$this->article_structure_section_builder = new AIPS_Prompt_Builder_Article_Structure_Section(
 				$this->template_processor,
-				$this->base_builder,
+				$this->get_base_builder(),
 				$this->structure_manager,
-				$this->section_repository
+				$this->get_section_repository()
 			);
 		}
 
