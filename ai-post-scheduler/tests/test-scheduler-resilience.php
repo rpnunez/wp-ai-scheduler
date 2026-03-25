@@ -13,6 +13,10 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
 
     public function setUp(): void {
         parent::setUp();
+        if ( isset( $GLOBALS['wpdb'] ) && is_object( $GLOBALS['wpdb'] ) && property_exists( $GLOBALS['wpdb'], 'get_col_return_val' ) ) {
+            $this->markTestSkipped( 'Database tests cannot run with mocked wpdb.' );
+        }
+
         $this->scheduler = new AIPS_Scheduler();
         $this->template_repo = new AIPS_Template_Repository();
         $this->schedule_repo = new AIPS_Schedule_Repository();

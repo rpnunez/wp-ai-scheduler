@@ -14,6 +14,10 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 	
 	public function setUp(): void {
 		parent::setUp();
+
+		if ( isset( $GLOBALS['wpdb'] ) && is_object( $GLOBALS['wpdb'] ) && property_exists( $GLOBALS['wpdb'], 'get_col_return_val' ) ) {
+			$this->markTestSkipped( 'Database tests cannot run with mocked wpdb.' );
+		}
 		
 		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-authors-repository.php';
 		require_once AIPS_PLUGIN_DIR . 'includes/class-aips-author-topics-repository.php';
