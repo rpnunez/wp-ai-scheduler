@@ -2443,6 +2443,69 @@
     transition: opacity 0.3s ease;
 }
 
+/* Post Review Preview Modal */
+#aips-post-preview-modal .aips-modal-content {
+    width: 90%;
+    max-width: 800px;
+    height: 90vh;
+}
+
+#aips-post-preview-modal .aips-modal-body {
+    height: calc(100% - 60px);
+    padding: 0;
+}
+
+#aips-preview-content-container {
+    padding: 30px;
+    height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+#aips-post-preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Post Review Preview Templates */
+.aips-loading-spinner .spinner {
+    float: none;
+    margin: 0 auto;
+    display: block;
+}
+
+.aips-loading-spinner p {
+    text-align: center;
+}
+
+.aips-preview-title {
+    margin-bottom: 20px;
+}
+
+.aips-preview-image {
+    margin-bottom: 20px;
+}
+
+.aips-preview-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+.aips-preview-excerpt {
+    background: var(--aips-gray-50, #f0f0f1);
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 4px solid #72aee6;
+}
+
+.aips-preview-edit-link {
+    margin-top: 30px;
+    border-top: 1px solid var(--aips-gray-100, #ddd);
+    padding-top: 15px;
+}
+
 /* ===================================================================
    Generated Posts Page Styles
    =================================================================== */
