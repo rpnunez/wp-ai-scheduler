@@ -400,6 +400,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('wp_unslash')) {
+        function wp_unslash($value) {
+            return is_array($value) ? array_map('wp_unslash', $value) : stripslashes($value);
+        }
+    }
+
     if (!function_exists('absint')) {
         function absint($maybeint) {
             return abs(intval($maybeint));
@@ -698,6 +704,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('_n')) {
+        function _n($single, $plural, $number, $domain = 'default') {
+            return $number === 1 ? $single : $plural;
+        }
+    }
+
     if (!function_exists('wp_parse_str')) {
         function wp_parse_str($string, &$array) {
             parse_str($string, $array);
@@ -972,8 +984,6 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-templates.php',
         'class-aips-upgrades.php',
         'class-aips-post-review-repository.php',
-        'class-aips-post-review-notifications.php',
-        'class-aips-partial-generation-notifications.php',
         'class-aips-voices-repository.php',
         'class-aips-voices.php',
         'class-aips-structures-controller.php',

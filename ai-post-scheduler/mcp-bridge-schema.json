@@ -855,7 +855,7 @@
                 "type": "object",
                 "properties": {
                   "model": { "type": "string" },
-                  "max_tokens": { "type": "integer" },
+                  "maxTokens": { "type": "integer" },
                   "temperature": { "type": "number" },
                   "default_post_status": { "type": "string" },
                   "default_post_author": { "type": "integer" }

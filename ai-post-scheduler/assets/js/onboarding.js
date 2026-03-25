@@ -144,6 +144,22 @@ jQuery(document).ready(function ($) {
 		});
 	});
 
+	$('#aips-onboarding-skip').on('click', function () {
+		if (!window.confirm(aipsAdminL10n.confirmSkipOnboarding || 'Skip the Onboarding Wizard? You can restart it later from System Status.')) {
+			return;
+		}
+		ajax('aips_onboarding_skip', {}, function (err, out) {
+			if (err) {
+				showNotice('error', err.message);
+				return;
+			}
+			showNotice('success', out.message || 'Onboarding skipped.');
+			if (out.dashboard_url) {
+				window.location.href = out.dashboard_url;
+			}
+		});
+	});
+
 	$('#aips-onboarding-reset').on('click', function () {
 		if (!window.confirm('Restart the onboarding wizard? This clears the wizard progress flags (it does not delete authors/templates/posts already created).')) {
 			return;
