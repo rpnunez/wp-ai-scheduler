@@ -1482,7 +1482,16 @@ class AIPS_Notifications {
 	 */
 	private function parse_notification_emails($emails) {
 		if (empty($emails)) {
-			$emails = get_option('aips_review_notifications_email', get_option('admin_email'));
+			$stored = get_option('aips_review_notifications_email', '');
+			if (is_string($stored)) {
+				$stored = trim($stored);
+			}
+
+			if (empty($stored)) {
+				$emails = get_option('admin_email');
+			} else {
+				$emails = $stored;
+			}
 		}
 
 		if (is_array($emails)) {
