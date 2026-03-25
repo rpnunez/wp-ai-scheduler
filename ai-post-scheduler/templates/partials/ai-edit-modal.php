@@ -219,3 +219,63 @@ if (!defined('ABSPATH')) {
 		</div>
 	</div>
 </div>
+
+<!-- =====================================================================
+     AIPS.Templates HTML blocks for admin-ai-edit.js
+     These <script type="text/html"> elements are read by AIPS.Templates.render()
+     and AIPS.Templates.renderRaw(). They are never executed as JavaScript.
+     ===================================================================== -->
+
+<!-- Template: admin notice (typeClass = CSS class suffix, e.g. error/success/info) -->
+<script type="text/html" id="aips-tmpl-ai-edit-notice">
+	<div class="notice notice-{{typeClass}} is-dismissible"><p>{{message}}</p></div>
+</script>
+
+<!-- Template: revisions AJAX load error notice -->
+<script type="text/html" id="aips-tmpl-ai-edit-revisions-error">
+	<div class="notice notice-error inline"><p>{{message}}</p></div>
+</script>
+
+<!-- Template: revision item meta row (source label + timestamp) -->
+<script type="text/html" id="aips-tmpl-ai-edit-revision-meta">
+	<div class="aips-revision-meta">
+		<span class="dashicons dashicons-backup" aria-hidden="true"></span>
+		<span class="aips-revision-source">{{source}}</span>
+		<span class="aips-revision-timestamp">{{timestamp}}</span>
+	</div>
+</script>
+
+<!-- Template: revision value for text/textarea components -->
+<script type="text/html" id="aips-tmpl-ai-edit-revision-value-text">
+	<div class="aips-revision-value aips-revision-value-{{componentType}}">{{value}}</div>
+</script>
+
+<!-- Template: revision value for featured_image with an image URL -->
+<script type="text/html" id="aips-tmpl-ai-edit-revision-value-image">
+	<div class="aips-revision-value aips-revision-value-featured_image">
+		<img src="{{imageUrl}}" alt="Revision" class="aips-revision-value-image" />
+	</div>
+</script>
+
+<!-- Template: revision value placeholder when no image exists -->
+<script type="text/html" id="aips-tmpl-ai-edit-revision-value-no-image">
+	<div class="aips-revision-value aips-revision-value-featured_image">{{noImage}}</div>
+</script>
+
+<!-- Template: revision item restore button; use render() for auto-escaping -->
+<script type="text/html" id="aips-tmpl-ai-edit-revision-actions">
+	<div class="aips-revision-actions">
+		<button type="button" class="aips-restore-revision-btn" data-revision-id="{{revisionId}}" data-component="{{component}}">
+			<span class="dashicons dashicons-undo" aria-hidden="true"></span>
+			<span>{{restoreLabel}}</span>
+		</button>
+	</div>
+</script>
+
+<!-- Template: full revision item wrapper; contentHtml and actionsHtml are pre-rendered with renderRaw() -->
+<script type="text/html" id="aips-tmpl-ai-edit-revision-item">
+	<div class="aips-revision-item" data-revision-id="{{revisionId}}">
+		<div class="aips-revision-content">{{contentHtml}}</div>
+		{{actionsHtml}}
+	</div>
+</script>

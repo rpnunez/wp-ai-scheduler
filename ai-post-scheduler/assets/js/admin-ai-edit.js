@@ -550,8 +550,11 @@
 		 */
 		showAIEditNotice: function(message, type) {
 			type = type || 'info';
-			
-			var $notice = $('<div class="notice notice-' + type + ' is-dismissible"><p>' + message + '</p></div>');
+
+			var $notice = $(AIPS.Templates.render('aips-tmpl-ai-edit-notice', {
+				typeClass: type,
+				message: message
+			}));
 			$('.wrap').first().prepend($notice);
 			
 			// Auto-dismiss after 5 seconds
@@ -663,55 +666,59 @@
 				error: function(xhr, status, error) {
 					$loading.hide();
 					console.error('Failed to load revisions:', error);
-					$list.html('<div class="notice notice-error inline"><p>Failed to load revisions. Please try again.</p></div>').show();
+					$list.html(AIPS.Templates.render('aips-tmpl-ai-edit-revisions-error', {
+						message: aipsAIEditL10n.revisionsLoadError || 'Failed to load revisions. Please try again.'
+					})).show();
 				}
 			});
 		},
 		
 		/**
-		 * Render a revision item
+		 * Render a revision item using AIPS.Templates
+		 *
+		 * @param {Object} revision      Revision data object.
+		 * @param {string} componentType The component type (title, excerpt, content, featured_image).
+		 * @return {jQuery} jQuery-wrapped revision item element.
 		 */
 		renderRevisionItem: function(revision, componentType) {
-			var $item = $('<div class="aips-revision-item"></div>');
-			$item.data('revision-id', revision.id);
-			var timestamp = revision.timestamp || '';
+			var T             = AIPS.Templates;
+			var timestamp     = revision.timestamp || '';
 			var revisionLabel = window.AIPS.getAIEditRevisionLabel(revision);
-			
-			// Content section
-			var $content = $('<div class="aips-revision-content"></div>');
-			
-			// Meta information
-			var $meta = $('<div class="aips-revision-meta"></div>');
-			$meta.append('<span class="dashicons dashicons-backup"></span>');
-			$meta.append('<span class="aips-revision-source">' + window.AIPS.escapeHtml(revisionLabel) + '</span>');
-			$meta.append('<span class="aips-revision-timestamp">' + window.AIPS.escapeHtml(timestamp) + '</span>');
-			$content.append($meta);
-			
-			// Value preview
-			var $value = $('<div class="aips-revision-value aips-revision-value-' + componentType + '"></div>');
-			
+
+			var metaHtml = T.render('aips-tmpl-ai-edit-revision-meta', {
+				source:    revisionLabel,
+				timestamp: timestamp
+			});
+
+			var valueHtml;
 			if (componentType === 'featured_image') {
 				if (revision.value && revision.value.url) {
-					$value.html('<img src="' + window.AIPS.escapeHtml(revision.value.url) + '" alt="Revision" class="aips-revision-value-image" />');
+					valueHtml = T.render('aips-tmpl-ai-edit-revision-value-image', {
+						imageUrl: revision.value.url
+					});
 				} else {
-					$value.text('No image');
+					valueHtml = T.render('aips-tmpl-ai-edit-revision-value-no-image', {
+						noImage: aipsAIEditL10n.noImage || 'No image'
+					});
 				}
 			} else {
-				$value.text(revision.value || '(empty)');
+				valueHtml = T.render('aips-tmpl-ai-edit-revision-value-text', {
+					componentType: componentType,
+					value:         revision.value || '(empty)'
+				});
 			}
-			
-			$content.append($value);
-			$item.append($content);
-			
-			// Actions section
-			var $actions = $('<div class="aips-revision-actions"></div>');
-			var $restoreBtn = $('<button type="button" class="aips-restore-revision-btn" data-revision-id="' + revision.id + '" data-component="' + componentType + '"></button>');
-			$restoreBtn.append('<span class="dashicons dashicons-undo"></span>');
-			$restoreBtn.append('<span>Restore</span>');
-			$actions.append($restoreBtn);
-			$item.append($actions);
-			
-			return $item;
+
+			var actionsHtml = T.render('aips-tmpl-ai-edit-revision-actions', {
+				revisionId:   String(revision.id),
+				component:    componentType,
+				restoreLabel: aipsAIEditL10n.restore || 'Restore'
+			});
+
+			return $(T.renderRaw('aips-tmpl-ai-edit-revision-item', {
+				revisionId:  T.escape(String(revision.id)),
+				contentHtml: metaHtml + valueHtml,
+				actionsHtml: actionsHtml
+			}));
 		},
 		
 		/**
@@ -819,20 +826,6 @@
 				$input.trigger('input');
 			}
 		},
-		
-		/**
-		 * Escape HTML for safe rendering
-		 */
-		escapeHtml: function(text) {
-			var map = {
-				'&': '&amp;',
-				'<': '&lt;',
-				'>': '&gt;',
-				'"': '&quot;',
-				"'": '&#039;'
-			};
-			return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
-		}
 		
 	});
 	

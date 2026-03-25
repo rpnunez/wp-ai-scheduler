@@ -484,7 +484,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-ai-edit',
                 AIPS_PLUGIN_URL . 'assets/js/admin-ai-edit.js',
-                array('jquery', 'aips-admin-script'),
+                array('jquery', 'aips-admin-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );
@@ -514,6 +514,9 @@ class AIPS_Admin_Assets {
                 'revisionManualEdit' => __('Manual Edit', 'ai-post-scheduler'),
                 'revisionRestored' => __('Restored Version', 'ai-post-scheduler'),
                 'revisionUnknown' => __('Revision', 'ai-post-scheduler'),
+                'restore' => __('Restore', 'ai-post-scheduler'),
+                'noImage' => __('No image', 'ai-post-scheduler'),
+                'revisionsLoadError' => __('Failed to load revisions. Please try again.', 'ai-post-scheduler'),
             ));
         }
 
