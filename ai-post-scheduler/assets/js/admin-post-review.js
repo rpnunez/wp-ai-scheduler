@@ -381,34 +381,33 @@
                 success: function(response) {
                     if (response.success) {
                         var data = response.data;
-                        var T    = AIPS.Templates;
                         var html = '';
 
                         // Title
-                        html += T.render('aips-tmpl-post-review-preview-title', { title: data.title });
+                        html += AIPS.Templates.render('aips-tmpl-post-review-preview-title', { title: data.title });
 
                         // Featured Image
                         if (data.featured_image) {
-                            html += T.renderRaw('aips-tmpl-post-review-preview-image', {
-                                src: T.escape(data.featured_image)
+                            html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-image', {
+                                src: AIPS.Templates.escape(data.featured_image)
                             });
                         }
 
                         // Excerpt
                         if (data.excerpt) {
-                            html += T.renderRaw('aips-tmpl-post-review-preview-excerpt', {
+                            html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-excerpt', {
                                 excerpt: data.excerpt
                             });
                         }
 
                         // Content
-                        html += T.renderRaw('aips-tmpl-post-review-preview-body', { content: data.content });
+                        html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-body', { content: data.content });
 
                         // Edit Link at bottom
                         if (data.edit_url) {
-                            html += T.renderRaw('aips-tmpl-post-review-preview-edit-link', {
-                                url:   T.escape(data.edit_url),
-                                label: T.escape('Edit Post in WordPress')
+                            html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-edit-link', {
+                                url:   AIPS.Templates.escape(data.edit_url),
+                                label: AIPS.Templates.escape('Edit Post in WordPress')
                             });
                         }
 
