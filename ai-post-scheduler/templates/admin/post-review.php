@@ -290,3 +290,62 @@ $templates = $template_repository->get_all();
 // Include the View Session modal partial
 include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 ?>
+
+<!-- =====================================================================
+     AIPS.Templates HTML blocks for admin-post-review.js
+     These <script type="text/html"> elements are read by AIPS.Templates.render()
+     and AIPS.Templates.renderRaw(). They are never executed as JavaScript.
+     ===================================================================== -->
+
+<!-- Template: loading spinner shown while the preview modal content is fetching -->
+<script type="text/html" id="aips-tmpl-post-review-loading">
+	<div class="aips-loading-spinner">
+		<span class="spinner is-active" style="float:none; margin: 0 auto; display:block;" aria-hidden="true"></span>
+		<p style="text-align:center;">{{text}}</p>
+	</div>
+</script>
+
+<!-- Template: empty state injected after the review form when all rows are removed -->
+<script type="text/html" id="aips-tmpl-post-review-empty-state">
+	<div class="aips-empty-state">
+		<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
+		<h3>{{heading}}</h3>
+		<p>{{description}}</p>
+	</div>
+</script>
+
+<!-- Template: title heading inside the preview modal; auto-escaped by render() -->
+<script type="text/html" id="aips-tmpl-post-review-preview-title">
+	<h1 style="margin-bottom: 20px;">{{title}}</h1>
+</script>
+
+<!-- Template: featured image block; use renderRaw() with a pre-escaped src -->
+<script type="text/html" id="aips-tmpl-post-review-preview-image">
+	<div class="aips-preview-image" style="margin-bottom: 20px;">
+		<img src="{{src}}" style="max-width: 100%; height: auto; border-radius: 4px;" alt="">
+	</div>
+</script>
+
+<!-- Template: excerpt block; use renderRaw() since excerpt may contain trusted HTML -->
+<script type="text/html" id="aips-tmpl-post-review-preview-excerpt">
+	<div class="aips-preview-excerpt" style="background: #f0f0f1; padding: 15px; margin-bottom: 20px; border-left: 4px solid #72aee6;">
+		<strong>Excerpt:</strong> {{excerpt}}
+	</div>
+</script>
+
+<!-- Template: post content body; use renderRaw() for trusted server-rendered HTML -->
+<script type="text/html" id="aips-tmpl-post-review-preview-body">
+	<div class="aips-preview-body">{{content}}</div>
+</script>
+
+<!-- Template: edit-post link footer; use renderRaw() with pre-escaped url and label -->
+<script type="text/html" id="aips-tmpl-post-review-preview-edit-link">
+	<div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px;">
+		<a href="{{url}}" target="_blank" class="button button-primary">{{label}}</a>
+	</div>
+</script>
+
+<!-- Template: error notice shown when the AJAX preview request fails -->
+<script type="text/html" id="aips-tmpl-post-review-error">
+	<div class="notice notice-error inline"><p>{{message}}</p></div>
+</script>

@@ -334,12 +334,10 @@
                 $('.tablenav').hide();
 
                 if ($('.aips-empty-state').length === 0) {
-                    var emptyStateHtml = '<div class="aips-empty-state">' +
-                        '<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>' +
-                        '<h3>' + (aipsPostReviewL10n.noDraftPosts || 'No Draft Posts') + '</h3>' +
-                        '<p>' + (aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review.') + '</p>' +
-                        '</div>';
-                    $('#aips-post-review-form').after(emptyStateHtml);
+                    $('#aips-post-review-form').after(AIPS.Templates.render('aips-tmpl-post-review-empty-state', {
+                        heading:     aipsPostReviewL10n.noDraftPosts     || 'No Draft Posts',
+                        description: aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review.'
+                    }));
                 } else {
                     $('.aips-empty-state').show();
                 }
@@ -364,7 +362,9 @@
             var headerTitle = modal.find('.aips-modal-header h2');
 
             // Reset modal state
-            contentContainer.show().html('<div class="aips-loading-spinner"><span class="spinner is-active" style="float:none; margin: 0 auto; display:block;"></span> <p style="text-align:center;">' + (aipsPostReviewL10n.loadingPreview || 'Loading preview...') + '</p></div>');
+            contentContainer.show().html(AIPS.Templates.render('aips-tmpl-post-review-loading', {
+                text: aipsPostReviewL10n.loadingPreview || 'Loading preview...'
+            }));
             iframe.hide().attr('src', '');
             headerTitle.text(aipsPostReviewL10n.previewTitle || 'Post Preview');
 
@@ -381,42 +381,48 @@
                 success: function(response) {
                     if (response.success) {
                         var data = response.data;
+                        var T    = AIPS.Templates;
                         var html = '';
 
                         // Title
-                        html += '<h1 style="margin-bottom: 20px;">' + data.title + '</h1>';
+                        html += T.render('aips-tmpl-post-review-preview-title', { title: data.title });
 
                         // Featured Image
                         if (data.featured_image) {
-                            html += '<div class="aips-preview-image" style="margin-bottom: 20px;">';
-                            html += '<img src="' + data.featured_image + '" style="max-width: 100%; height: auto; border-radius: 4px;">';
-                            html += '</div>';
+                            html += T.renderRaw('aips-tmpl-post-review-preview-image', {
+                                src: T.escape(data.featured_image)
+                            });
                         }
 
                         // Excerpt
                         if (data.excerpt) {
-                            html += '<div class="aips-preview-excerpt" style="background: #f0f0f1; padding: 15px; margin-bottom: 20px; border-left: 4px solid #72aee6;">';
-                            html += '<strong>Excerpt:</strong> ' + data.excerpt;
-                            html += '</div>';
+                            html += T.renderRaw('aips-tmpl-post-review-preview-excerpt', {
+                                excerpt: data.excerpt
+                            });
                         }
 
                         // Content
-                        html += '<div class="aips-preview-body">' + data.content + '</div>';
+                        html += T.renderRaw('aips-tmpl-post-review-preview-body', { content: data.content });
 
                         // Edit Link at bottom
                         if (data.edit_url) {
-                            html += '<div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px;">';
-                            html += '<a href="' + data.edit_url + '" target="_blank" class="button button-primary">Edit Post in WordPress</a>';
-                            html += '</div>';
+                            html += T.renderRaw('aips-tmpl-post-review-preview-edit-link', {
+                                url:   T.escape(data.edit_url),
+                                label: T.escape('Edit Post in WordPress')
+                            });
                         }
 
                         contentContainer.html(html);
                     } else {
-                        contentContainer.html('<div class="notice notice-error inline"><p>' + (response.data.message || aipsPostReviewL10n.previewError) + '</p></div>');
+                        contentContainer.html(AIPS.Templates.render('aips-tmpl-post-review-error', {
+                            message: response.data.message || aipsPostReviewL10n.previewError
+                        }));
                     }
                 },
                 error: function() {
-                    contentContainer.html('<div class="notice notice-error inline"><p>' + (aipsPostReviewL10n.previewError || 'Failed to load preview.') + '</p></div>');
+                    contentContainer.html(AIPS.Templates.render('aips-tmpl-post-review-error', {
+                        message: aipsPostReviewL10n.previewError || 'Failed to load preview.'
+                    }));
                 }
             });
         }
