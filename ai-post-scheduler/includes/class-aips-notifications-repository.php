@@ -216,4 +216,46 @@ class AIPS_Notifications_Repository {
 			)
 		);
 	}
+
+	/**
+	 * Return notification counts grouped by type over a recent time window.
+	 *
+	 * @param int   $seconds Time window in seconds.
+	 * @param array $types   Optional list of type slugs to include.
+	 * @return array<string, int>
+	 */
+	public function get_type_counts_for_window($seconds, array $types = array()) {
+		$seconds = absint($seconds);
+
+		if ($seconds < 1) {
+			return array();
+		}
+
+		$sql = "SELECT type, COUNT(*) AS count FROM {$this->table} WHERE created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d SECOND)";
+		$params = array($seconds);
+
+		if (!empty($types)) {
+			$types = array_values(array_filter(array_map('sanitize_key', $types)));
+			if (!empty($types)) {
+				$placeholders = implode(',', array_fill(0, count($types), '%s'));
+				$sql .= " AND type IN ({$placeholders})";
+				$params = array_merge($params, $types);
+			}
+		}
+
+		$sql .= ' GROUP BY type';
+
+		$rows = $this->wpdb->get_results($this->wpdb->prepare($sql, $params));
+		$counts = array();
+
+		if (empty($rows)) {
+			return $counts;
+		}
+
+		foreach ($rows as $row) {
+			$counts[sanitize_key($row->type)] = (int) $row->count;
+		}
+
+		return $counts;
+	}
 }

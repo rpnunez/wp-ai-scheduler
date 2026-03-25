@@ -367,6 +367,11 @@ add_action('aips_cleanup_export_files', 'aips_cleanup_export_files_handler');
 function aips_cleanup_export_files_handler() {
 	// Clean up files older than 24 hours (86400 seconds)
 	$result = AIPS_Session_To_JSON::cleanup_old_exports(86400);
+
+    do_action('aips_export_cleanup_completed', array(
+        'deleted' => isset($result['deleted']) ? (int) $result['deleted'] : 0,
+        'errors'  => isset($result['errors']) && is_array($result['errors']) ? count($result['errors']) : 0,
+    ));
 	
 	// Log the cleanup results
 	if (class_exists('AIPS_Logger')) {

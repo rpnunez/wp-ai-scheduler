@@ -51,6 +51,13 @@ class AIPS_Seeder_Admin {
         $result = $this->service->seed($type, $count, $keywords);
 
         if ($result['success']) {
+            do_action('aips_seeder_completed', array(
+                'type'    => $type,
+                'count'   => $count,
+                'message' => isset($result['message']) ? $result['message'] : __('Seeder completed.', 'ai-post-scheduler'),
+                'user_id' => get_current_user_id(),
+            ));
+
             wp_send_json_success($result);
         } else {
             wp_send_json_error($result);

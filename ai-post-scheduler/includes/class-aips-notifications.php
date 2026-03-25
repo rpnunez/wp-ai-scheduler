@@ -9,8 +9,6 @@
  * Built-in notification types
  * ---------------------------
  *  - author_topics_generated  — DB notification shown in the admin bar.
- *  - partial_generation       — Email alert when a post is saved with missing components.
- *  - posts_awaiting_review    — Daily email digest of draft posts waiting for review.
  *
  * Usage examples
  * --------------
@@ -18,8 +16,6 @@
  *   // 1. Convenience methods (recommended for built-in notifications)
  *   $notifs = new AIPS_Notifications();
  *   $notifs->author_topics_generated( 'Jane Doe', 10, 42 );
- *   $notifs->partial_generation( $post_id, $component_statuses, $context, $history_id );
- *   $notifs->posts_awaiting_review( $draft_posts, $draft_count );
  *
  *   // 2. Low-level send() for custom or third-party notification types
  *   $notifs->send(
@@ -146,18 +142,6 @@ class AIPS_Notifications {
 				'default_mode' => self::MODE_DB_ONLY,
 				'level'        => 'info',
 			),
-			'partial_generation' => array(
-				'label'        => __('Partial Generation', 'ai-post-scheduler'),
-				'description'  => __('A post was created with one or more missing AI-generated components.', 'ai-post-scheduler'),
-				'default_mode' => self::MODE_EMAIL_ONLY,
-				'level'        => 'warning',
-			),
-			'posts_awaiting_review' => array(
-				'label'        => __('Posts Awaiting Review', 'ai-post-scheduler'),
-				'description'  => __('Daily digest of posts awaiting review.', 'ai-post-scheduler'),
-				'default_mode' => self::MODE_EMAIL_ONLY,
-				'level'        => 'info',
-			),
 			'generation_failed' => array(
 				'label'         => __('Generation Failed', 'ai-post-scheduler'),
 				'description'   => __('A manual or direct post generation request failed.', 'ai-post-scheduler'),
@@ -228,6 +212,55 @@ class AIPS_Notifications {
 				'level'         => 'warning',
 				'dedupe_window' => 60,
 			),
+			'daily_digest' => array(
+				'label'         => __('Daily Digest', 'ai-post-scheduler'),
+				'description'   => __('Daily summary of generation and review activity.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_EMAIL_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 3600,
+			),
+			'weekly_summary' => array(
+				'label'         => __('Weekly Summary', 'ai-post-scheduler'),
+				'description'   => __('Weekly summary of generation performance and workflow activity.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_EMAIL_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 3600,
+			),
+			'monthly_report' => array(
+				'label'         => __('Monthly Report', 'ai-post-scheduler'),
+				'description'   => __('Monthly generation and operational report.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_EMAIL_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 3600,
+			),
+			'history_cleanup' => array(
+				'label'         => __('History Cleanup', 'ai-post-scheduler'),
+				'description'   => __('Operational cleanup completed.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 300,
+			),
+			'seeder_complete' => array(
+				'label'         => __('Seeder Completed', 'ai-post-scheduler'),
+				'description'   => __('Seeder operation finished successfully.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 300,
+			),
+			'template_change' => array(
+				'label'         => __('Template Changed', 'ai-post-scheduler'),
+				'description'   => __('A template was created, updated, cloned, or deleted.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 180,
+			),
+			'author_suggestions' => array(
+				'label'         => __('Author Suggestions Ready', 'ai-post-scheduler'),
+				'description'   => __('AI-generated author profile suggestions are available.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 300,
+			),
 		);
 	}
 
@@ -277,18 +310,6 @@ class AIPS_Notifications {
 	 */
 	public static function get_hook_bindings() {
 		$bindings = array(
-			array(
-				'hook'          => 'aips_send_review_notifications',
-				'method'        => 'handle_review_notifications_cron',
-				'priority'      => 10,
-				'accepted_args' => 1,
-			),
-			array(
-				'hook'          => 'aips_post_generation_incomplete',
-				'method'        => 'handle_partial_generation',
-				'priority'      => 10,
-				'accepted_args' => 4,
-			),
 			array(
 				'hook'          => 'aips_generation_failed',
 				'method'        => 'handle_generation_failed_notification',
@@ -340,8 +361,38 @@ class AIPS_Notifications {
 			array(
 				'hook'          => 'aips_post_generation_incomplete',
 				'method'        => 'handle_partial_generation_completed_notification',
-				'priority'      => 11,
+				'priority'      => 10,
 				'accepted_args' => 4,
+			),
+			array(
+				'hook'          => 'aips_send_review_notifications',
+				'method'        => 'handle_summary_rollups_cron',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_export_cleanup_completed',
+				'method'        => 'handle_history_cleanup_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_seeder_completed',
+				'method'        => 'handle_seeder_complete_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_template_changed',
+				'method'        => 'handle_template_change_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
+			),
+			array(
+				'hook'          => 'aips_author_suggestions_generated',
+				'method'        => 'handle_author_suggestions_notification',
+				'priority'      => 10,
+				'accepted_args' => 1,
 			),
 		);
 
@@ -481,129 +532,6 @@ class AIPS_Notifications {
 			'',
 			$url,
 			$message
-		);
-	}
-
-	/**
-	 * Send an email notification when a post is saved with missing generated components.
-	 *
-	 * @param int                     $post_id             WordPress post ID.
-	 * @param array                   $component_statuses  Per-component boolean status map.
-	 * @param AIPS_Generation_Context $context             Generation context.
-	 * @param int                     $history_id          Related history session ID.
-	 * @return void
-	 */
-	public function partial_generation($post_id, array $component_statuses, $context, $history_id = 0) {
-		$post_id = absint($post_id);
-		if (!$post_id) {
-			return;
-		}
-
-		if (!$this->has_notification_recipients()) {
-			return;
-		}
-
-		$missing_components = $this->get_missing_components($component_statuses);
-		if (empty($missing_components)) {
-			return;
-		}
-
-		$post       = get_post($post_id);
-		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
-		$edit_url   = get_edit_post_link($post_id);
-		$partial_url = admin_url('admin.php?page=aips-generated-posts#aips-partial-generations');
-
-		// Build the `<ul>` list for missing components.
-		$components_html = '<ul class="component-list">';
-		foreach ($missing_components as $label) {
-			$components_html .= '<li>' . esc_html($label) . '</li>';
-		}
-		$components_html .= '</ul>';
-
-		// Optional session ID row.
-		$history_id_row = '';
-		if (!empty($history_id)) {
-			$history_id_row = '<br><strong>' . esc_html__('Session ID:', 'ai-post-scheduler') . '</strong> ' . esc_html($history_id);
-		}
-
-		$vars = array(
-			'{{site_name}}'          => esc_html(get_bloginfo('name')),
-			'{{post_title}}'         => esc_html($post_title),
-			'{{source_label}}'       => esc_html($this->get_source_label($context)),
-			'{{history_id_row}}'     => $history_id_row,
-			'{{missing_components}}' => $components_html,
-			'{{edit_url}}'           => esc_url($edit_url),
-			'{{partial_url}}'        => esc_url($partial_url),
-		);
-
-		$this->send(
-			'partial_generation',
-			$vars,
-			array(self::CHANNEL_EMAIL),
-			''
-		);
-	}
-
-	/**
-	 * Send a daily digest email listing the draft posts that await review.
-	 *
-	 * @param array $draft_posts Repository result set (array with 'items' key).
-	 * @param int   $total_count Total number of draft posts.
-	 * @return void
-	 */
-	public function posts_awaiting_review(array $draft_posts, $total_count) {
-		if (!$this->has_notification_recipients()) {
-			return;
-		}
-
-		$review_url  = AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-pending-review';
-		$stats_label = sprintf(
-			_n('%d Post Awaiting Review', '%d Posts Awaiting Review', $total_count, 'ai-post-scheduler'),
-			$total_count
-		);
-
-		// Build post list HTML.
-		$post_list_html = '';
-		if (!empty($draft_posts['items'])) {
-			$post_list_html .= '<p><strong>' . esc_html__('Recent Draft Posts:', 'ai-post-scheduler') . '</strong></p>';
-			$post_list_html .= '<ul class="post-list">';
-			foreach ($draft_posts['items'] as $post) {
-				$title = $post->post_title ?: ($post->generated_title ?? __('Untitled', 'ai-post-scheduler'));
-				$meta  = sprintf(
-					__('Template: %s | Created: %s', 'ai-post-scheduler'),
-					$post->template_name ?: __('None', 'ai-post-scheduler'),
-					date_i18n(get_option('date_format'), strtotime($post->created_at))
-				);
-				$post_list_html .= '<li class="post-item">';
-				$post_list_html .= '<div class="post-title">' . esc_html($title) . '</div>';
-				$post_list_html .= '<div class="post-meta">' . esc_html($meta) . '</div>';
-				$post_list_html .= '</li>';
-			}
-			$post_list_html .= '</ul>';
-		}
-
-		// "…and N more" note.
-		$more_posts_html = '';
-		if ($total_count > 10) {
-			$more_posts_html = '<p><em>' . esc_html(sprintf(
-				__('...and %d more posts', 'ai-post-scheduler'),
-				$total_count - 10
-			)) . '</em></p>';
-		}
-
-		$vars = array(
-			'{{site_name}}'   => esc_html(get_bloginfo('name')),
-			'{{stats_label}}' => esc_html($stats_label),
-			'{{post_list}}'   => $post_list_html,
-			'{{more_posts}}'  => $more_posts_html,
-			'{{review_url}}'  => esc_url($review_url),
-		);
-
-		$this->send(
-			'posts_awaiting_review',
-			$vars,
-			array(self::CHANNEL_EMAIL),
-			''
 		);
 	}
 
@@ -869,50 +797,178 @@ class AIPS_Notifications {
 		));
 	}
 
+	/**
+	 * Send a daily digest summary notification.
+	 *
+	 * @param array $payload Summary payload.
+	 * @return void
+	 */
+	public function daily_digest(array $payload) {
+		$title = __('Daily generation digest', 'ai-post-scheduler');
+		$message = sprintf(
+			__('Today: %1$d posts generated, %2$d review-ready, %3$d errors.', 'ai-post-scheduler'),
+			isset($payload['generated']) ? (int) $payload['generated'] : 0,
+			isset($payload['review_ready']) ? (int) $payload['review_ready'] : 0,
+			isset($payload['errors']) ? (int) $payload['errors'] : 0
+		);
+
+		$url = AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+
+		$this->dispatch_notification('daily_digest', array(
+			'title'         => $title,
+			'message'       => $message,
+			'url'           => $url,
+			'level'         => 'info',
+			'meta'          => $payload,
+			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window' => 3600,
+			'channels'      => array(self::CHANNEL_DB, self::CHANNEL_EMAIL),
+			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Open generated posts', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a weekly summary notification.
+	 *
+	 * @param array $payload Summary payload.
+	 * @return void
+	 */
+	public function weekly_summary(array $payload) {
+		$title = __('Weekly generation summary', 'ai-post-scheduler');
+		$message = sprintf(
+			__('This week: %1$d posts generated, %2$d review-ready, %3$d errors.', 'ai-post-scheduler'),
+			isset($payload['generated']) ? (int) $payload['generated'] : 0,
+			isset($payload['review_ready']) ? (int) $payload['review_ready'] : 0,
+			isset($payload['errors']) ? (int) $payload['errors'] : 0
+		);
+
+		$url = AIPS_Admin_Menu_Helper::get_page_url('history');
+
+		$this->dispatch_notification('weekly_summary', array(
+			'title'         => $title,
+			'message'       => $message,
+			'url'           => $url,
+			'level'         => 'info',
+			'meta'          => $payload,
+			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window' => 3600,
+			'channels'      => array(self::CHANNEL_EMAIL),
+			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Open history', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a monthly report notification.
+	 *
+	 * @param array $payload Summary payload.
+	 * @return void
+	 */
+	public function monthly_report(array $payload) {
+		$title = __('Monthly generation report', 'ai-post-scheduler');
+		$message = sprintf(
+			__('This month: %1$d posts generated, %2$d review-ready, %3$d errors.', 'ai-post-scheduler'),
+			isset($payload['generated']) ? (int) $payload['generated'] : 0,
+			isset($payload['review_ready']) ? (int) $payload['review_ready'] : 0,
+			isset($payload['errors']) ? (int) $payload['errors'] : 0
+		);
+
+		$url = AIPS_Admin_Menu_Helper::get_page_url('status');
+
+		$this->dispatch_notification('monthly_report', array(
+			'title'         => $title,
+			'message'       => $message,
+			'url'           => $url,
+			'level'         => 'info',
+			'meta'          => $payload,
+			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
+			'dedupe_window' => 3600,
+			'channels'      => array(self::CHANNEL_EMAIL),
+			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Open system status', 'ai-post-scheduler')),
+		));
+	}
+
+	/**
+	 * Send a cleanup-completed notification.
+	 *
+	 * @param array $payload Cleanup payload.
+	 * @return void
+	 */
+	public function history_cleanup(array $payload) {
+		$deleted = isset($payload['deleted']) ? (int) $payload['deleted'] : 0;
+		$errors = isset($payload['errors']) ? (int) $payload['errors'] : 0;
+
+		$title = __('Cleanup completed', 'ai-post-scheduler');
+		$message = sprintf(__('Cleanup finished. Deleted: %1$d. Errors: %2$d.', 'ai-post-scheduler'), $deleted, $errors);
+
+		$this->dispatch_notification('history_cleanup', array(
+			'title'   => $title,
+			'message' => $message,
+			'url'     => AIPS_Admin_Menu_Helper::get_page_url('status'),
+			'level'   => $errors > 0 ? 'warning' : 'info',
+			'meta'    => $payload,
+		));
+	}
+
+	/**
+	 * Send a seeder-completed notification.
+	 *
+	 * @param array $payload Seeder payload.
+	 * @return void
+	 */
+	public function seeder_complete(array $payload) {
+		$type = !empty($payload['type']) ? sanitize_text_field($payload['type']) : __('unknown', 'ai-post-scheduler');
+		$message_raw = !empty($payload['message']) ? sanitize_text_field($payload['message']) : __('Seeder operation completed.', 'ai-post-scheduler');
+
+		$this->dispatch_notification('seeder_complete', array(
+			'title'   => sprintf(__('Seeder completed: %s', 'ai-post-scheduler'), $type),
+			'message' => $message_raw,
+			'url'     => AIPS_Admin_Menu_Helper::get_page_url('seeder'),
+			'level'   => 'info',
+			'meta'    => $payload,
+		));
+	}
+
+	/**
+	 * Send a template-change notification.
+	 *
+	 * @param array $payload Template payload.
+	 * @return void
+	 */
+	public function template_change(array $payload) {
+		$action = !empty($payload['action']) ? sanitize_key($payload['action']) : 'updated';
+		$template_name = !empty($payload['template_name']) ? sanitize_text_field($payload['template_name']) : __('Template', 'ai-post-scheduler');
+
+		$this->dispatch_notification('template_change', array(
+			'title'   => sprintf(__('Template %1$s: %2$s', 'ai-post-scheduler'), $action, $template_name),
+			'message' => sprintf(__('Template "%1$s" was %2$s.', 'ai-post-scheduler'), $template_name, $action),
+			'url'     => AIPS_Admin_Menu_Helper::get_page_url('templates'),
+			'level'   => 'info',
+			'meta'    => $payload,
+		));
+	}
+
+	/**
+	 * Send an author-suggestions-ready notification.
+	 *
+	 * @param array $payload Suggestions payload.
+	 * @return void
+	 */
+	public function author_suggestions(array $payload) {
+		$count = isset($payload['count']) ? (int) $payload['count'] : 0;
+		$niche = !empty($payload['site_niche']) ? sanitize_text_field($payload['site_niche']) : __('N/A', 'ai-post-scheduler');
+
+		$this->dispatch_notification('author_suggestions', array(
+			'title'   => sprintf(__('Author suggestions ready (%d)', 'ai-post-scheduler'), $count),
+			'message' => sprintf(__('Generated %1$d author suggestion(s) for niche "%2$s".', 'ai-post-scheduler'), $count, $niche),
+			'url'     => AIPS_Admin_Menu_Helper::get_page_url('authors'),
+			'level'   => 'info',
+			'meta'    => $payload,
+		));
+	}
+
 	// -----------------------------------------------------------------------
 	// Cron / action hook handlers
 	// -----------------------------------------------------------------------
-
-	/**
-	 * Hook handler: `aips_send_review_notifications` (daily cron).
-	 *
-	 * Checks plugin settings, fetches draft posts, and delegates to
-	 * posts_awaiting_review() which handles the actual sending.
-	 *
-	 * @return void
-	 */
-	public function handle_review_notifications_cron() {
-		if (!get_option('aips_review_notifications_enabled', 0)) {
-			return;
-		}
-
-		$repository  = new AIPS_Post_Review_Repository();
-		$draft_count = $repository->get_draft_count();
-
-		if ($draft_count === 0) {
-			return;
-		}
-
-		$draft_posts = $repository->get_draft_posts(array(
-			'per_page' => 10,
-			'page'     => 1,
-		));
-
-		$this->posts_awaiting_review($draft_posts, $draft_count);
-	}
-
-	/**
-	 * Hook handler: `aips_post_generation_incomplete` (fired by the generator).
-	 *
-	 * @param int                     $post_id            WordPress post ID.
-	 * @param array                   $component_statuses Per-component boolean status map.
-	 * @param AIPS_Generation_Context $context            Generation context.
-	 * @param int                     $history_id         Related history session ID.
-	 * @return void
-	 */
-	public function handle_partial_generation($post_id, $component_statuses, $context, $history_id = 0) {
-		$this->partial_generation($post_id, $component_statuses, $context, $history_id);
-	}
 
 	/**
 	 * Hook handler for generation failures.
@@ -1123,6 +1179,97 @@ class AIPS_Notifications {
 			'dedupe_key'         => 'partial_generation_completed_' . $post_id,
 			'dedupe_window'      => 60,
 		));
+	}
+
+	/**
+	 * Hook handler for daily/weekly/monthly summary rollups.
+	 *
+	 * @return void
+	 */
+	public function handle_summary_rollups_cron() {
+		$today_key = gmdate('Y-m-d', current_time('timestamp', true));
+		$daily_sent_key = get_option('aips_notif_daily_digest_last_sent', '');
+
+		if ($daily_sent_key !== $today_key) {
+			$this->daily_digest($this->build_rollup_payload(86400, 'daily_digest_' . $today_key));
+			update_option('aips_notif_daily_digest_last_sent', $today_key, false);
+		}
+
+		$current_timestamp = current_time('timestamp', true);
+		$weekday = gmdate('w', $current_timestamp);
+		$day_of_month = gmdate('j', $current_timestamp);
+
+		if ('1' === (string) $weekday) {
+			$weekly_key = gmdate('o-W', $current_timestamp);
+			if (get_option('aips_notif_weekly_summary_last_sent', '') !== $weekly_key) {
+				$this->weekly_summary($this->build_rollup_payload(7 * DAY_IN_SECONDS, 'weekly_summary_' . $weekly_key));
+				update_option('aips_notif_weekly_summary_last_sent', $weekly_key, false);
+			}
+		}
+
+		if ('1' === (string) $day_of_month) {
+			$monthly_key = gmdate('Y-m', $current_timestamp);
+			if (get_option('aips_notif_monthly_report_last_sent', '') !== $monthly_key) {
+				$this->monthly_report($this->build_rollup_payload(30 * DAY_IN_SECONDS, 'monthly_report_' . $monthly_key));
+				update_option('aips_notif_monthly_report_last_sent', $monthly_key, false);
+			}
+		}
+	}
+
+	/**
+	 * Hook handler for cleanup-completed notifications.
+	 *
+	 * @param array $payload Cleanup payload.
+	 * @return void
+	 */
+	public function handle_history_cleanup_notification($payload) {
+		if (!is_array($payload)) {
+			return;
+		}
+
+		$this->history_cleanup($payload);
+	}
+
+	/**
+	 * Hook handler for seeder completion notifications.
+	 *
+	 * @param array $payload Seeder payload.
+	 * @return void
+	 */
+	public function handle_seeder_complete_notification($payload) {
+		if (!is_array($payload)) {
+			return;
+		}
+
+		$this->seeder_complete($payload);
+	}
+
+	/**
+	 * Hook handler for template-change notifications.
+	 *
+	 * @param array $payload Template payload.
+	 * @return void
+	 */
+	public function handle_template_change_notification($payload) {
+		if (!is_array($payload)) {
+			return;
+		}
+
+		$this->template_change($payload);
+	}
+
+	/**
+	 * Hook handler for author suggestion notifications.
+	 *
+	 * @param array $payload Suggestions payload.
+	 * @return void
+	 */
+	public function handle_author_suggestions_notification($payload) {
+		if (!is_array($payload)) {
+			return;
+		}
+
+		$this->author_suggestions($payload);
 	}
 
 	// -----------------------------------------------------------------------
@@ -1422,6 +1569,51 @@ class AIPS_Notifications {
 		}
 
 		return '';
+	}
+
+	/**
+	 * Build summary payload for digest/report notifications.
+	 *
+	 * @param int    $window_seconds Time window in seconds.
+	 * @param string $dedupe_key     Dedupe key.
+	 * @return array<string, mixed>
+	 */
+	private function build_rollup_payload($window_seconds, $dedupe_key) {
+		$window_seconds = absint($window_seconds);
+		if ($window_seconds < 1) {
+			$window_seconds = DAY_IN_SECONDS;
+		}
+
+		$counts = $this->repository->get_type_counts_for_window($window_seconds, array(
+			'template_generated',
+			'manual_generation_completed',
+			'post_ready_for_review',
+			'generation_failed',
+			'scheduler_error',
+			'integration_error',
+			'quota_alert',
+			'system_error',
+		));
+
+		$generated = (isset($counts['template_generated']) ? (int) $counts['template_generated'] : 0)
+			+ (isset($counts['manual_generation_completed']) ? (int) $counts['manual_generation_completed'] : 0);
+
+		$errors = (isset($counts['generation_failed']) ? (int) $counts['generation_failed'] : 0)
+			+ (isset($counts['scheduler_error']) ? (int) $counts['scheduler_error'] : 0)
+			+ (isset($counts['integration_error']) ? (int) $counts['integration_error'] : 0)
+			+ (isset($counts['quota_alert']) ? (int) $counts['quota_alert'] : 0)
+			+ (isset($counts['system_error']) ? (int) $counts['system_error'] : 0);
+
+		$review_ready = isset($counts['post_ready_for_review']) ? (int) $counts['post_ready_for_review'] : 0;
+
+		return array(
+			'generated'    => $generated,
+			'review_ready' => $review_ready,
+			'errors'       => $errors,
+			'window'       => $window_seconds,
+			'dedupe_key'   => sanitize_key($dedupe_key),
+			'types'        => $counts,
+		);
 	}
 
 	/**

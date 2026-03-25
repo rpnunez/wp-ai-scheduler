@@ -76,7 +76,6 @@ class AIPS_Config {
             'aips_enable_logging' => true,
             'aips_developer_mode' => false,
             'aips_log_retention_days' => 30,
-            'aips_review_notifications_enabled' => 0,
             'aips_review_notifications_email' => '',
             'aips_notification_preferences' => array(
                 'generation_failed' => 'both',

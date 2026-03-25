@@ -468,6 +468,12 @@ class AIPS_Authors_Controller {
 			wp_send_json_error(array('message' => $suggestions->get_error_message()));
 		}
 
+		do_action('aips_author_suggestions_generated', array(
+			'count'       => count($suggestions),
+			'site_niche'  => $site_niche,
+			'user_id'     => get_current_user_id(),
+		));
+
 		wp_send_json_success(array(
 			'suggestions' => $suggestions,
 			'message'     => sprintf(

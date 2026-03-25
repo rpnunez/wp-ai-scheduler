@@ -11,7 +11,7 @@ PR: https://github.com/rpnunez/wp-ai-scheduler/pull/1022
 |------|-------|--------|
 | **Highest** (DB + Email immediate) | generation_failed, quota_alert, integration_error, scheduler_error, system_error | ✅ Complete |
 | **High** (DB immediate; Email digest default) | template_generated, manual_generation_completed, post_ready_for_review, post_rejected, partial_generation_completed | ✅ Implementation complete (tests pending) |
-| **Medium/Low** (Digest or DB-only) | daily digest, weekly summary, monthly report, history_cleanup, seeder_complete, template_change, author_suggestions | ⬜ Not started |
+| **Medium/Low** (Digest or DB-only) | daily digest, weekly summary, monthly report, history_cleanup, seeder_complete, template_change, author_suggestions | ✅ Implementation complete (tests pending) |
 
 ---
 
@@ -54,7 +54,7 @@ All five highest-priority types are fully wired end-to-end.
 
 ---
 
-## Tier: High Priority — 🔄 IN PROGRESS
+## Tier: High Priority — ✅ IMPLEMENTATION COMPLETE (TESTS PENDING)
 
 **Default channel:** DB immediate + Email digest (stored as `'db'` default; user can opt into `'both'` or `'email'`).
 
@@ -116,11 +116,31 @@ All five highest-priority types are fully wired end-to-end.
 
 ---
 
-## Tier: Medium/Low — ⬜ NOT STARTED
+## Tier: Medium/Low — ✅ IMPLEMENTATION COMPLETE (TESTS PENDING)
 
 Types: `daily_digest`, `weekly_summary`, `monthly_report`, `history_cleanup`, `seeder_complete`, `template_change`, `author_suggestions`
 
-All require new cron hooks or action hook wiring at admin-level classes. Defer until High tier is complete.
+### What was implemented
+
+1. **Registry** — Added all 7 Medium/Low type entries to `AIPS_Notifications::get_notification_type_registry()`.
+2. **Summary rollups** — Added daily/weekly/monthly summary generation using the existing daily cron hook (`aips_send_review_notifications`) with last-sent guards.
+3. **Repository aggregation** — Added `AIPS_Notifications_Repository::get_type_counts_for_window()` for rollup counts.
+4. **Operational handlers** — Added handlers for:
+  - `aips_export_cleanup_completed` → `history_cleanup`
+  - `aips_seeder_completed` → `seeder_complete`
+  - `aips_template_changed` → `template_change`
+  - `aips_author_suggestions_generated` → `author_suggestions`
+5. **Emitters** — Added emitter actions in:
+  - `ai-post-scheduler.php` export cleanup handler
+  - `class-aips-seeder-admin.php`
+  - `class-aips-templates-controller.php` save/delete/clone paths
+  - `class-aips-authors-controller.php` suggestions endpoint
+6. **Email templates** — Added event templates for `daily_digest`, `weekly_summary`, and `monthly_report`.
+
+### Outstanding for Medium/Low tier
+
+- [ ] Add/adjust PHPUnit coverage for Medium/Low hooks and summary rollups
+- [ ] Run notification-related test suite after all notification tiers are finalized
 
 ---
 
