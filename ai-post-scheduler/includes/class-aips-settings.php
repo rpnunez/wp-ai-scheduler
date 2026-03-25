@@ -207,7 +207,7 @@ class AIPS_Settings {
      * @return string
      */
     public function fix_author_topics_parent_file($parent_file) {
-        $page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
         if ($page === 'aips-author-topics') {
             return 'ai-post-scheduler';
         }
@@ -224,7 +224,7 @@ class AIPS_Settings {
      * @return string
      */
     public function fix_author_topics_submenu_file($submenu_file) {
-        $page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
         if ($page === 'aips-author-topics') {
             return 'aips-authors';
         }
@@ -291,6 +291,9 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_ai_model', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
+        register_setting('aips_settings', 'aips_ai_env_id', array(
+            'sanitize_callback' => 'sanitize_text_field'
+        ));
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
@@ -332,6 +335,14 @@ class AIPS_Settings {
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
             array($this, 'ai_model_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_ai_env_id',
+            __('Environment ID', 'ai-post-scheduler'),
+            array($this, 'ai_env_id_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -662,6 +673,21 @@ class AIPS_Settings {
         <p class="description"><?php esc_html_e('AI Engine model to use (leave empty to use AI Engine default).', 'ai-post-scheduler'); ?></p>
         <?php
     }
+
+    /**
+     * Render the AI environment ID setting field.
+     *
+     * Displays a text input for specifying a custom AI Engine environment ID.
+     *
+     * @return void
+     */
+    public function ai_env_id_field_callback() {
+        $value = get_option('aips_ai_env_id', '');
+        ?>
+        <input type="text" name="aips_ai_env_id" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="Leave empty for default">
+        <p class="description"><?php esc_html_e('AI Engine environment ID to use (leave empty to use AI Engine default environment).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
     
     /**
      * Render the Dev Tools page.
@@ -819,6 +845,7 @@ class AIPS_Settings {
     public function logging_field_callback() {
         $value = get_option('aips_enable_logging', 1);
         ?>
+        <input type="hidden" name="aips_enable_logging" value="0">
         <label>
             <input type="checkbox" name="aips_enable_logging" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Enable detailed logging for debugging', 'ai-post-scheduler'); ?>
@@ -836,6 +863,7 @@ class AIPS_Settings {
     public function developer_mode_field_callback() {
         $value = get_option('aips_developer_mode', 0);
         ?>
+        <input type="hidden" name="aips_developer_mode" value="0">
         <label>
             <input type="checkbox" name="aips_developer_mode" value="1" <?php checked($value, 1); ?>>
             <?php esc_html_e('Enable developer tools and features', 'ai-post-scheduler'); ?>
@@ -1292,7 +1320,7 @@ class AIPS_Settings {
         }
 
         $ai_service = new AIPS_AI_Service();
-        $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('max_tokens' => 10));
+        $result = $ai_service->generate_text('Say "Hello World" in 2 words.', array('maxTokens' => 10));
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));

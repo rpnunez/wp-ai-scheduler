@@ -18,7 +18,7 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $niche = isset($_POST['niche']) ? sanitize_text_field($_POST['niche']) : '';
+        $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
         $count = isset($_POST['count']) ? absint($_POST['count']) : 10;
 
         if (empty($niche)) {
@@ -38,7 +38,7 @@ class AIPS_Planner {
         $prompt .= "Return ONLY a valid JSON array of strings. Do not include any other text, markdown formatting, or numbering. \n";
         $prompt .= "Example: [\"Topic 1\", \"Topic 2\", \"Topic 3\"]";
 
-        $result = $generator->generate_content($prompt, array('temperature' => 0.7, 'max_tokens' => 1000), 'planner_topics');
+        $result = $generator->generate_content($prompt, array('temperature' => 0.7, 'maxTokens' => 1000), 'planner_topics');
 
         if (is_wp_error($result)) {
             wp_send_json_error(array('message' => $result->get_error_message()));
@@ -107,8 +107,8 @@ class AIPS_Planner {
 
         $topics = isset($_POST['topics']) ? (array) $_POST['topics'] : array();
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-        $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : '';
-        $frequency = isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily';
+        $start_date = isset($_POST['start_date']) ? sanitize_text_field(wp_unslash($_POST['start_date'])) : '';
+        $frequency = isset($_POST['frequency']) ? sanitize_text_field(wp_unslash($_POST['frequency'])) : 'daily';
 
         if (empty($topics) || empty($template_id) || empty($start_date)) {
             wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));

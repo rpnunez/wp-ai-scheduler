@@ -105,7 +105,7 @@ class AIPS_Content_Auditor {
 
         // 3. Call AI Service
         $options = array(
-            'max_tokens' => 2000,
+            'maxTokens' => 2000,
             'temperature' => 0.7
         );
 
@@ -158,7 +158,7 @@ class AIPS_Content_Auditor {
         // 3. Call AI Service
         $options = array(
             'temperature' => 0.7,
-            'max_tokens' => 2000,
+            'maxTokens' => 2000,
         );
         
         // Override potentially bad model setting

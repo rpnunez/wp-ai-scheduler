@@ -243,7 +243,7 @@ class AIPS_Generator {
 
         // Call AI to resolve the variables.
         // Max tokens of 200 is sufficient for JSON responses with typical variable values.
-        $options = array('max_tokens' => 200);
+        $options = array('maxTokens' => 200);
         $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
 
         if (is_wp_error($result)) {
@@ -350,7 +350,7 @@ class AIPS_Generator {
         $prompt = $this->post_title_prompt_builder->build($context, null, null, $content);
 
         // Set token limit for title generation
-        $options['max_tokens'] = 100;
+        $options['maxTokens'] = 100;
 
         // Request title from AI service
         $result = $this->generate_content($prompt, $options, 'title');
@@ -386,7 +386,7 @@ class AIPS_Generator {
         $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice, $topic);
 
         // Set token limit for excerpt generation
-        //$options['max_tokens'] = 150;
+        //$options['maxTokens'] = 150;
 
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
@@ -426,7 +426,7 @@ class AIPS_Generator {
         $excerpt_prompt = $this->post_excerpt_prompt_builder->build($title, $content, $voice_obj, $topic_str);
 
         // Set token limit for excerpt generation
-        $options['max_tokens'] = 150;
+        $options['maxTokens'] = 150;
 
         // Request excerpt from AI service
         $result = $this->generate_content($excerpt_prompt, $options, 'excerpt');
