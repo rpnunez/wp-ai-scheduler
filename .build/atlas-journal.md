@@ -1343,3 +1343,12 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Positive:** Improved user control over AI service interaction limits and error handling. Adheres to plugin standard of dynamic option retrieval.
 - **Negative:** Added slightly more UI complexity to the settings page.
 **Tests:** Confirmed fields appear in the Settings page and `AIPS_Config` retrieves them correctly.
+
+## 2026-03-08 - Extract Admin Menu Logic from Settings
+**Context:** The `AIPS_Settings` class was a God Object (over 1300 lines) responsible for both handling the WordPress Settings API options and registering/rendering all admin menu pages. This violated the Single Responsibility Principle and made the file difficult to maintain.
+**Decision:** Applied "Separation of Concerns". Created a dedicated `AIPS_Admin_Menu` class in `includes/class-aips-admin-menu.php`. Extracted all `add_menu_page`, `add_submenu_page`, and corresponding `render_*_page` methods from `AIPS_Settings` into `AIPS_Admin_Menu`. Retained only the strict WordPress Settings API (`register_settings`, `add_settings_sections`, `add_settings_fields`, and their rendering callbacks) within `AIPS_Settings`. Instantiated `AIPS_Admin_Menu` in `ai-post-scheduler.php` alongside `AIPS_Settings`.
+**Consequence:**
+* `AIPS_Settings` is leaner and strictly focused on plugin configurations.
+* `AIPS_Admin_Menu` centralizes routing and template rendering for the admin panel, making future menu changes easier.
+* Trade-off: Added one new file to the includes directory and one extra instantiation on `is_admin()`, but the maintainability gains outweigh the slight footprint increase.
+**Tests:** Added `tests/test-aips-admin-menu.php` to ensure the class instantiates properly. Updated `tests/test-autoloader.php` to verify `AIPS_Admin_Menu` is loaded as a controller. All PHPUnit tests pass in limited testing mode.
