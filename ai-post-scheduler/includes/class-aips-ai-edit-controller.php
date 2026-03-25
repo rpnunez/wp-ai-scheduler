@@ -149,7 +149,7 @@ class AIPS_AI_Edit_Controller {
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
 		$history_id = isset($_POST['history_id']) ? absint($_POST['history_id']) : 0;
-		$component = isset($_POST['component']) ? sanitize_text_field($_POST['component']) : '';
+		$component = isset($_POST['component']) ? sanitize_text_field(wp_unslash($_POST['component'])) : '';
 		$current_value = isset($_POST['current_value']) ? wp_unslash($_POST['current_value']) : null;
 		$current_source = isset($_POST['current_source']) ? sanitize_key(wp_unslash($_POST['current_source'])) : '';
 		$current_reason = isset($_POST['current_reason']) ? sanitize_key(wp_unslash($_POST['current_reason'])) : '';
@@ -329,9 +329,9 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
-		$component = isset($_POST['component']) ? sanitize_text_field($_POST['component']) : '';
+		$component = isset($_POST['component']) ? sanitize_text_field(wp_unslash($_POST['component'])) : '';
 		if (empty($component) && isset($_POST['component_type'])) {
-			$component = sanitize_text_field($_POST['component_type']);
+			$component = sanitize_text_field(wp_unslash($_POST['component_type']));
 		}
 		
 		if (!$post_id || !$component) {
@@ -371,9 +371,9 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
-		$component = isset($_POST['component']) ? sanitize_text_field($_POST['component']) : '';
+		$component = isset($_POST['component']) ? sanitize_text_field(wp_unslash($_POST['component'])) : '';
 		if (empty($component) && isset($_POST['component_type'])) {
-			$component = sanitize_text_field($_POST['component_type']);
+			$component = sanitize_text_field(wp_unslash($_POST['component_type']));
 		}
 		$revision_id = isset($_POST['revision_id']) ? absint($_POST['revision_id']) : 0;
 		$current_value = isset($_POST['current_value']) ? wp_unslash($_POST['current_value']) : null;

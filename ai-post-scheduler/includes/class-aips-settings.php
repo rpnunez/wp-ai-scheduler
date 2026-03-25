@@ -207,7 +207,7 @@ class AIPS_Settings {
      * @return string
      */
     public function fix_author_topics_parent_file($parent_file) {
-        $page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
         if ($page === 'aips-author-topics') {
             return 'ai-post-scheduler';
         }
@@ -224,7 +224,7 @@ class AIPS_Settings {
      * @return string
      */
     public function fix_author_topics_submenu_file($submenu_file) {
-        $page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
         if ($page === 'aips-author-topics') {
             return 'aips-authors';
         }
