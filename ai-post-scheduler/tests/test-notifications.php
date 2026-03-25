@@ -137,13 +137,13 @@ class Test_AIPS_Notification_Templates extends WP_UnitTestCase {
 	}
 
 	public function test_register_overwrites_existing_template() {
-		$original    = new AIPS_Notification_Template('partial_generation', 'Old', 'Old body');
-		$replacement = new AIPS_Notification_Template('partial_generation', 'New', 'New body');
+		$original    = new AIPS_Notification_Template('custom_event', 'Old', 'Old body');
+		$replacement = new AIPS_Notification_Template('custom_event', 'New', 'New body');
 
 		$this->registry->register($original);
 		$this->registry->register($replacement);
 
-		$this->assertSame('New', $this->registry->get('partial_generation')->render_subject());
+		$this->assertSame('New', $this->registry->get('custom_event')->render_subject());
 	}
 
 	// -----------------------------------------------------------------------
@@ -155,6 +155,14 @@ class Test_AIPS_Notification_Templates extends WP_UnitTestCase {
 		$this->assertIsArray($all);
 		$this->assertArrayHasKey('generation_failed', $all);
 		$this->assertArrayHasKey('partial_generation_completed', $all);
+		$this->assertArrayHasKey('daily_digest', $all);
+		$this->assertArrayHasKey('weekly_summary', $all);
+		$this->assertArrayHasKey('monthly_report', $all);
+	}
+
+	public function test_legacy_templates_are_not_registered() {
+		$this->assertNull($this->registry->get('partial_generation'));
+		$this->assertNull($this->registry->get('posts_awaiting_review'));
 	}
 
 	// -----------------------------------------------------------------------
@@ -251,22 +259,34 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 	/** @var AIPS_Notifications_Repository */
 	private $repository;
 
+	/** @var AIPS_Test_History_Service */
+	private $history_service;
+
 	public function setUp(): void {
 		parent::setUp();
 
-		AIPS_DB_Manager::install_tables();
+		$GLOBALS['aips_test_options'] = array();
 
-		global $wpdb;
-		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_notifications" );
+		$this->repository      = new AIPS_Test_Notifications_Repository();
+		$this->history_service = new AIPS_Test_History_Service();
+		$this->notifications   = new AIPS_Notifications($this->repository, null, $this->history_service);
 
-		$this->repository    = new AIPS_Notifications_Repository();
-		$this->notifications = new AIPS_Notifications($this->repository);
+		$GLOBALS['aips_wp_mail_log'] = array();
 	}
 
 	public function tearDown(): void {
-		global $wpdb;
-		$wpdb->query( "DELETE FROM {$wpdb->prefix}aips_notifications" );
+		$this->repository->reset();
+		$GLOBALS['aips_wp_mail_log'] = array();
 		parent::tearDown();
+	}
+
+	/**
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function get_mail_log() {
+		return isset($GLOBALS['aips_wp_mail_log']) && is_array($GLOBALS['aips_wp_mail_log'])
+			? $GLOBALS['aips_wp_mail_log']
+			: array();
 	}
 
 	// -----------------------------------------------------------------------
@@ -309,10 +329,9 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 			'<p>Hello {{name}}</p>'
 		));
 
-		$notifs = new AIPS_Notifications($this->repository, $templates);
+		$notifs = new AIPS_Notifications($this->repository, $templates, $this->history_service);
 
-		// Reset mock sent log.
-		$GLOBALS['phpmailer']->mock_sent = array();
+		$GLOBALS['aips_wp_mail_log'] = array();
 
 		$notifs->send(
 			'test_email',
@@ -321,13 +340,14 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 			'test@example.com'
 		);
 
-		$this->assertCount(1, $GLOBALS['phpmailer']->mock_sent);
-		$this->assertSame('test@example.com', $GLOBALS['phpmailer']->mock_sent[0]['to'][0][0]);
-		$this->assertStringContainsString('MyBlog', $GLOBALS['phpmailer']->mock_sent[0]['subject']);
+		$mail_log = $this->get_mail_log();
+		$this->assertCount(1, $mail_log);
+		$this->assertSame('test@example.com', $mail_log[0]['to']);
+		$this->assertStringContainsString('MyBlog', $mail_log[0]['subject']);
 	}
 
 	public function test_send_email_channel_skips_when_template_not_registered() {
-		$GLOBALS['phpmailer']->mock_sent = array();
+		$GLOBALS['aips_wp_mail_log'] = array();
 
 		$this->notifications->send(
 			'unregistered_type',
@@ -336,27 +356,27 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 			'test@example.com'
 		);
 
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
+		$this->assertEmpty($this->get_mail_log());
 	}
 
 	public function test_send_email_channel_skips_invalid_email() {
 		$templates = new AIPS_Notification_Templates();
 		$templates->register(new AIPS_Notification_Template('t', 'S', '<p>B</p>'));
-		$notifs = new AIPS_Notifications($this->repository, $templates);
+		$notifs = new AIPS_Notifications($this->repository, $templates, $this->history_service);
 
-		$GLOBALS['phpmailer']->mock_sent = array();
+		$GLOBALS['aips_wp_mail_log'] = array();
 
 		$notifs->send('t', array(), array(AIPS_Notifications::CHANNEL_EMAIL), 'not-an-email');
 
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
+		$this->assertEmpty($this->get_mail_log());
 	}
 
 	public function test_send_email_channel_supports_comma_separated_recipients() {
 		$templates = new AIPS_Notification_Templates();
 		$templates->register(new AIPS_Notification_Template('test_multi_email', 'Subject', '<p>Body</p>'));
-		$notifs = new AIPS_Notifications($this->repository, $templates);
+		$notifs = new AIPS_Notifications($this->repository, $templates, $this->history_service);
 
-		$GLOBALS['phpmailer']->mock_sent = array();
+		$GLOBALS['aips_wp_mail_log'] = array();
 
 		$notifs->send(
 			'test_multi_email',
@@ -365,7 +385,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 			'one@example.com, two@example.com'
 		);
 
-		$this->assertCount(2, $GLOBALS['phpmailer']->mock_sent);
+		$this->assertCount(2, $this->get_mail_log());
 	}
 
 	// -----------------------------------------------------------------------
@@ -400,12 +420,14 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		update_option('aips_review_notifications_email', 'test@example.com');
 		$today_key = gmdate('Y-m-d', time());
 		update_option('aips_notif_daily_digest_last_sent', $today_key);
+		update_option('aips_notif_weekly_summary_last_sent', gmdate('o-W', current_time('timestamp', true)));
+		update_option('aips_notif_monthly_report_last_sent', gmdate('Y-m', current_time('timestamp', true)));
 
-		$GLOBALS['phpmailer']->mock_sent = array();
+		$GLOBALS['aips_wp_mail_log'] = array();
 
 		$this->notifications->handle_summary_rollups_cron();
 
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
+		$this->assertEmpty($this->get_mail_log());
 	}
 
 	public function test_summary_rollups_cron_sends_daily_digest_when_not_yet_sent_today() {
@@ -413,12 +435,32 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		update_option('aips_notification_preferences', array('daily_digest' => 'email'));
 		// Use a past date to ensure the daily key differs from today.
 		update_option('aips_notif_daily_digest_last_sent', '2000-01-01');
+		update_option('aips_notif_weekly_summary_last_sent', gmdate('o-W', current_time('timestamp', true)));
+		update_option('aips_notif_monthly_report_last_sent', gmdate('Y-m', current_time('timestamp', true)));
 
-		$GLOBALS['phpmailer']->mock_sent = array();
+		$GLOBALS['aips_wp_mail_log'] = array();
 
 		$this->notifications->handle_summary_rollups_cron();
 
-		$this->assertCount(1, $GLOBALS['phpmailer']->mock_sent);
+		$this->assertCount(1, $this->get_mail_log());
+	}
+
+	public function test_summary_rollups_cron_sends_weekly_and_monthly_when_not_sent() {
+		update_option('aips_review_notifications_email', 'test@example.com');
+		update_option('aips_notification_preferences', array(
+			'daily_digest'   => 'email',
+			'weekly_summary' => 'email',
+			'monthly_report' => 'email',
+		));
+		update_option('aips_notif_daily_digest_last_sent', '2000-01-01');
+		update_option('aips_notif_weekly_summary_last_sent', '2000-01');
+		update_option('aips_notif_monthly_report_last_sent', '2000-01');
+
+		$GLOBALS['aips_wp_mail_log'] = array();
+
+		$this->notifications->handle_summary_rollups_cron();
+
+		$this->assertCount(3, $this->get_mail_log());
 	}
 
 	// -----------------------------------------------------------------------
@@ -435,7 +477,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 			'system_error' => 'both',
 		));
 
-		$GLOBALS['phpmailer']->mock_sent = array();
+		$GLOBALS['aips_wp_mail_log'] = array();
 
 		$this->notifications->generation_failed(array(
 			'resource_label' => 'Template Alpha',
@@ -444,7 +486,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		));
 
 		$this->assertEquals(1, $this->repository->count_unread());
-		$this->assertCount(1, $GLOBALS['phpmailer']->mock_sent);
+		$this->assertCount(1, $this->get_mail_log());
 	}
 
 	public function test_generation_failed_honors_db_only_preference() {
@@ -457,7 +499,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 			'system_error' => 'both',
 		));
 
-		$GLOBALS['phpmailer']->mock_sent = array();
+		$GLOBALS['aips_wp_mail_log'] = array();
 
 		$this->notifications->generation_failed(array(
 			'resource_label' => 'Template Beta',
@@ -466,7 +508,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		));
 
 		$this->assertEquals(1, $this->repository->count_unread());
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
+		$this->assertEmpty($this->get_mail_log());
 	}
 
 	public function test_settings_sanitize_notification_emails_accepts_multiple_addresses() {
@@ -476,6 +518,20 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		$this->assertSame('one@example.com, two@example.com', $sanitized);
 	}
 
+	public function test_settings_sanitize_notification_preferences_covers_full_registry() {
+		$settings = new AIPS_Settings();
+		$sanitized = $settings->sanitize_notification_preferences(array(
+			'daily_digest' => 'db',
+			'generation_failed' => 'invalid-mode',
+		));
+
+		$registry = AIPS_Notifications::get_notification_type_registry();
+		$this->assertCount(count($registry), $sanitized);
+		$this->assertSame('db', $sanitized['daily_digest']);
+		$this->assertNotSame('invalid-mode', $sanitized['generation_failed']);
+		$this->assertArrayHasKey('author_topics_generated', $sanitized);
+	}
+
 	// -----------------------------------------------------------------------
 	// handle_partial_generation_completed_notification() — gate checks
 	// -----------------------------------------------------------------------
@@ -483,11 +539,11 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 	public function test_handle_partial_generation_completed_notification_skips_zero_post_id() {
 		update_option('aips_review_notifications_email', 'admin@example.com');
 
-		$GLOBALS['phpmailer']->mock_sent = array();
+		$GLOBALS['aips_wp_mail_log'] = array();
 
 		$this->notifications->handle_partial_generation_completed_notification(0, array('post_title' => false), null);
 
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
+		$this->assertEmpty($this->get_mail_log());
 		$this->assertEquals(0, $this->repository->count_unread());
 	}
 
@@ -509,6 +565,32 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		));
 
 		$this->assertEquals(1, $this->repository->count_unread());
+
+		wp_delete_post($post_id, true);
+	}
+
+	public function test_post_ready_for_review_honors_email_only_preference() {
+		update_option('aips_review_notifications_email', 'review@example.com');
+		update_option('aips_notification_preferences', array(
+			'post_ready_for_review' => 'email',
+		));
+
+		$post_id = wp_insert_post(array(
+			'post_title'  => 'Review Me',
+			'post_status' => 'draft',
+			'post_type'   => 'post',
+		));
+
+		$GLOBALS['aips_wp_mail_log'] = array();
+
+		$this->notifications->post_ready_for_review(array(
+			'post_id'       => $post_id,
+			'dedupe_key'    => 'test_post_ready_for_review_email_only_' . $post_id,
+			'dedupe_window' => 0,
+		));
+
+		$this->assertCount(1, $this->get_mail_log());
+		$this->assertEquals(0, $this->repository->count_unread());
 
 		wp_delete_post($post_id, true);
 	}
@@ -550,7 +632,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		add_filter('aips_notification_hook_bindings', function ( $bindings ) {
 			$bindings[] = array(
 				'hook'          => 'my_custom_event',
-				'method'        => 'handle_review_notifications_cron',
+				'method'        => 'handle_summary_rollups_cron',
 				'priority'      => 20,
 				'accepted_args' => 1,
 			);
@@ -561,6 +643,13 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		$hooks    = array_column($bindings, 'hook');
 
 		$this->assertContains('my_custom_event', $hooks);
+	}
+
+	public function test_get_hook_bindings_does_not_include_legacy_rollup_hook() {
+		$bindings = AIPS_Notifications::get_hook_bindings();
+		$hooks    = array_column($bindings, 'hook');
+
+		$this->assertNotContains('aips_send_review_notifications', $hooks);
 	}
 
 	public function test_binding_with_nonexistent_method_is_skipped_with_warning() {
@@ -596,6 +685,143 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 
 		// Clean up: reset flag for other tests.
 		$prop->setValue(null, false);
+	}
+}
+
+class AIPS_Test_Notifications_Repository extends AIPS_Notifications_Repository {
+
+	/** @var array<int, object> */
+	private $notifications = array();
+
+	/** @var int */
+	private $next_id = 1;
+
+	public function __construct() {
+	}
+
+	public function reset() {
+		$this->notifications = array();
+		$this->next_id = 1;
+	}
+
+	public function create_notification(array $data) {
+		$defaults = array(
+			'type'       => '',
+			'title'      => '',
+			'message'    => '',
+			'url'        => '',
+			'level'      => 'info',
+			'meta'       => null,
+			'dedupe_key' => '',
+			'is_read'    => 0,
+			'created_at' => current_time('mysql', true),
+		);
+
+		$data = wp_parse_args($data, $defaults);
+
+		$id = $this->next_id++;
+		$this->notifications[] = (object) array(
+			'id'         => $id,
+			'type'       => sanitize_key($data['type']),
+			'title'      => sanitize_text_field($data['title']),
+			'message'    => sanitize_textarea_field($data['message']),
+			'url'        => esc_url_raw($data['url']),
+			'level'      => sanitize_key($data['level']),
+			'meta'       => $data['meta'],
+			'dedupe_key' => sanitize_text_field($data['dedupe_key']),
+			'is_read'    => absint($data['is_read']) ? 1 : 0,
+			'created_at' => $data['created_at'],
+		);
+
+		return $id;
+	}
+
+	public function count_unread() {
+		$unread = array_filter($this->notifications, function($notification) {
+			return empty($notification->is_read);
+		});
+
+		return count($unread);
+	}
+
+	public function get_unread($limit = 20) {
+		$limit = absint($limit);
+		if ($limit < 1) {
+			$limit = 20;
+		}
+
+		$unread = array_values(array_filter($this->notifications, function($notification) {
+			return empty($notification->is_read);
+		}));
+
+		return array_slice(array_reverse($unread), 0, $limit);
+	}
+
+	public function was_recently_sent($dedupe_key, $window_seconds = 3600) {
+		$dedupe_key = sanitize_text_field($dedupe_key);
+		if ('' === $dedupe_key || absint($window_seconds) < 1) {
+			return false;
+		}
+
+		foreach ($this->notifications as $notification) {
+			if (!empty($notification->dedupe_key) && $notification->dedupe_key === $dedupe_key) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public function get_type_counts_for_window($seconds, array $types = array()) {
+		$counts = array();
+		$types = array_values(array_filter(array_map('sanitize_key', $types)));
+
+		foreach ($this->notifications as $notification) {
+			if (!empty($types) && !in_array($notification->type, $types, true)) {
+				continue;
+			}
+
+			if (!isset($counts[$notification->type])) {
+				$counts[$notification->type] = 0;
+			}
+
+			$counts[$notification->type]++;
+		}
+
+		return $counts;
+	}
+}
+
+class AIPS_Test_History_Container {
+
+	/** @var array<int, array<string, mixed>> */
+	public $records = array();
+
+	public function record($kind, $message, $event_data = array(), $unused = null, $context = array()) {
+		$this->records[] = array(
+			'kind'       => $kind,
+			'message'    => $message,
+			'event_data' => $event_data,
+			'context'    => $context,
+		);
+
+		return true;
+	}
+}
+
+class AIPS_Test_History_Service extends AIPS_History_Service {
+
+	/** @var array<int, AIPS_Test_History_Container> */
+	public $containers = array();
+
+	public function __construct($repository = null) {
+	}
+
+	public function create($type, $metadata = array()) {
+		$container = new AIPS_Test_History_Container();
+		$this->containers[] = $container;
+
+		return $container;
 	}
 }
 
