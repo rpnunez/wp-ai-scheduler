@@ -1,37 +1,116 @@
 (function($) {
     'use strict';
 
-    $(document).ready(function() {
+    window.AIPS = window.AIPS || {};
+    var AIPS = window.AIPS;
+    AIPS.PostReview = AIPS.PostReview || {};
+    var PostReview = AIPS.PostReview;
 
-        // Select all checkbox functionality
-        $('#cb-select-all-1').on('change', function() {
-            $('.aips-post-checkbox').prop('checked', $(this).prop('checked'));
-        });
+    Object.assign(PostReview, {
+        /**
+         * Initialize post review handlers.
+         */
+        init: function() {
+            this.bindEvents();
+        },
 
-        // Update select all checkbox when individual checkboxes change
-        $('.aips-post-checkbox').on('change', function() {
+        /**
+         * Register delegated event handlers for post review interactions.
+         */
+        bindEvents: function() {
+            $(document).on('change', '#cb-select-all-1', PostReview.toggleAllPostSelection);
+            $(document).on('change', '.aips-post-checkbox', PostReview.updateSelectAllPostCheckbox);
+            $(document).on('click', '.aips-preview-post, .aips-preview-trigger', PostReview.handlePreviewPostClick);
+            $(document).on('click', '.aips-publish-post', PostReview.handlePublishPostClick);
+            $(document).on('click', '.aips-delete-post', PostReview.handleDeletePostClick);
+            $(document).on('click', '.aips-regenerate-post', PostReview.handleRegeneratePostClick);
+            $(document).on('click', '#aips-bulk-action-btn', PostReview.handleBulkActionClick);
+            $(document).on('click', '#aips-reload-posts-btn', PostReview.reloadPostReviewPage);
+            $(document).on('click', '#aips-post-preview-modal .aips-modal-close, #aips-post-preview-modal .aips-modal-overlay', PostReview.closePreviewModal);
+        },
+
+        /**
+         * Parse a user-controlled value as a positive integer ID.
+         *
+         * @param {*} value Raw value from data attributes.
+         * @returns {?number} Parsed integer ID or null when invalid.
+         */
+        sanitizeId: function(value) {
+            var parsed = parseInt(value, 10);
+            return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+        },
+
+        /**
+         * Toggle all row checkboxes from the header checkbox.
+         *
+         * @param {Event} e Change event.
+         */
+        toggleAllPostSelection: function(e) {
+            var isChecked = $(e.currentTarget).prop('checked');
+            $('.aips-post-checkbox').prop('checked', isChecked);
+        },
+
+        /**
+         * Sync the header checkbox state based on row selections.
+         *
+         * @param {Event} e Change event.
+         */
+        updateSelectAllPostCheckbox: function(e) {
             var allChecked = $('.aips-post-checkbox').length === $('.aips-post-checkbox:checked').length;
             $('#cb-select-all-1').prop('checked', allChecked);
-        });
+        },
 
-        // Preview Post (Button and Icon)
-        $(document).on('click', '.aips-preview-post, .aips-preview-trigger', function(e) {
+        /**
+         * Open the preview modal for the selected post.
+         *
+         * @param {Event} e Click event.
+         */
+        handlePreviewPostClick: function(e) {
             e.preventDefault();
-            var postId = $(this).data('post-id');
-            previewPost(postId);
-        });
+            var postId = PostReview.sanitizeId($(e.currentTarget).data('post-id'));
 
-        // Publish single post
-        $(document).on('click', '.aips-publish-post', function(e) {
+            if (!postId) {
+                AIPS.Utilities.showToast(aipsPostReviewL10n.previewError || 'Failed to load preview.', 'error');
+                return;
+            }
+
+            PostReview.previewPost(postId);
+        },
+
+        /**
+         * Handle publish action for a single draft post.
+         *
+         * @param {Event} e Click event.
+         */
+        handlePublishPostClick: function(e) {
             e.preventDefault();
-            var postId = $(this).data('post-id');
-            var row = $(this).closest('tr');
 
-            var button = $(this);
+            var button = $(e.currentTarget);
+            var postId = PostReview.sanitizeId(button.data('post-id'));
+            var row = button.closest('tr');
+
+            if (!postId || row.length === 0) {
+                AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
+                return;
+            }
+
             AIPS.Utilities.confirm(aipsPostReviewL10n.confirmPublish, 'Notice', [
-                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    button.prop('disabled', true).text(aipsPostReviewL10n.loading || 'Publishing...');
+                    PostReview.publishSinglePost(button, row, postId);
+                }}
+            ]);
+        },
+
+        /**
+         * Publish a single draft post via AJAX.
+         *
+         * @param {jQuery} button Trigger button.
+         * @param {jQuery} row Table row for removal on success.
+         * @param {number} postId Draft post ID.
+         */
+        publishSinglePost: function(button, row, postId) {
+            button.prop('disabled', true).text(aipsPostReviewL10n.loading || 'Publishing...');
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -43,47 +122,76 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        var rawMsg = response.data.message || aipsPostReviewL10n.publishSuccess;
-                        var safeMsg = $('<div>').text(rawMsg).html();
-                        if (response.data.post_id) {
-                            var editUrl = 'post.php?post=' + encodeURIComponent(response.data.post_id) + '&action=edit';
-                            var safeLink = '<a href="' + editUrl.replace(/"/g, '&quot;') + '" target="_blank">Edit Post</a>';
-                            AIPS.Utilities.showToast(safeMsg + ' ' + safeLink, 'success', { isHtml: true });
-                        } else {
-                            AIPS.Utilities.showToast(safeMsg, 'success');
-                        }
-
-                        row.fadeOut(400, function() {
-                            $(this).remove();
-                            updateDraftCount();
-                            checkEmptyState();
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
-                        button.prop('disabled', false).text(aipsPostReviewL10n.publish || 'Publish');
+                        PostReview.showPublishSuccessToast(response);
+                        PostReview.removeRowAndRefreshState(row);
+                        return;
                     }
+
+                    AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
+                    button.prop('disabled', false).text(aipsPostReviewL10n.publish || 'Publish');
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
                     button.prop('disabled', false).text(aipsPostReviewL10n.publish || 'Publish');
                 }
             });
+        },
+
+        /**
+         * Show the publish success toast, optionally with an Edit Post link.
+         *
+         * @param {Object} response AJAX response payload.
+         */
+        showPublishSuccessToast: function(response) {
+            var rawMsg = response.data.message || aipsPostReviewL10n.publishSuccess;
+            var safeMsg = $('<div>').text(rawMsg).html();
+
+            if (response.data.post_id) {
+                var editUrl = 'post.php?post=' + encodeURIComponent(response.data.post_id) + '&action=edit';
+                var safeLink = '<a href="' + editUrl.replace(/"/g, '&quot;') + '" target="_blank">Edit Post</a>';
+                AIPS.Utilities.showToast(safeMsg + ' ' + safeLink, 'success', { isHtml: true });
+                return;
+            }
+
+            AIPS.Utilities.showToast(safeMsg, 'success');
+        },
+
+        /**
+         * Handle delete action for a single draft post.
+         *
+         * @param {Event} e Click event.
+         */
+        handleDeletePostClick: function(e) {
+            e.preventDefault();
+
+            var button = $(e.currentTarget);
+            var postId = PostReview.sanitizeId(button.data('post-id'));
+            var historyId = PostReview.sanitizeId(button.data('history-id'));
+            var row = button.closest('tr');
+
+            if (!postId || !historyId || row.length === 0) {
+                AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
+                return;
+            }
+
+            AIPS.Utilities.confirm(aipsPostReviewL10n.confirmDelete, 'Notice', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    PostReview.deleteSinglePost(button, row, postId, historyId);
                 }}
             ]);
-        });
+        },
 
-        // Delete single post
-        $(document).on('click', '.aips-delete-post', function(e) {
-            e.preventDefault();
-            var postId = $(this).data('post-id');
-            var historyId = $(this).data('history-id');
-            var row = $(this).closest('tr');
-
-            var button = $(this);
-            AIPS.Utilities.confirm(aipsPostReviewL10n.confirmDelete, 'Notice', [
-                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    button.prop('disabled', true).text(aipsPostReviewL10n.deleting || 'Deleting...');
+        /**
+         * Delete a single draft post via AJAX.
+         *
+         * @param {jQuery} button Trigger button.
+         * @param {jQuery} row Table row for removal on success.
+         * @param {number} postId Draft post ID.
+         * @param {number} historyId History record ID.
+         */
+        deleteSinglePost: function(button, row, postId, historyId) {
+            button.prop('disabled', true).text(aipsPostReviewL10n.deleting || 'Deleting...');
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -97,37 +205,54 @@
                 success: function(response) {
                     if (response.success) {
                         AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteSuccess, 'success');
-
-                        row.fadeOut(400, function() {
-                            $(this).remove();
-                            updateDraftCount();
-                            checkEmptyState();
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
-                        button.prop('disabled', false).text(aipsPostReviewL10n.delete || 'Delete');
+                        PostReview.removeRowAndRefreshState(row);
+                        return;
                     }
+
+                    AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
+                    button.prop('disabled', false).text(aipsPostReviewL10n.delete || 'Delete');
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
                     button.prop('disabled', false).text(aipsPostReviewL10n.delete || 'Delete');
                 }
             });
+        },
+
+        /**
+         * Handle regenerate action for a single draft post.
+         *
+         * @param {Event} e Click event.
+         */
+        handleRegeneratePostClick: function(e) {
+            e.preventDefault();
+
+            var button = $(e.currentTarget);
+            var historyId = PostReview.sanitizeId(button.data('history-id'));
+            var row = button.closest('tr');
+
+            if (!historyId || row.length === 0) {
+                AIPS.Utilities.showToast(aipsPostReviewL10n.regenerateError, 'error');
+                return;
+            }
+
+            AIPS.Utilities.confirm(aipsPostReviewL10n.confirmRegenerate, 'Notice', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, regenerate', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    PostReview.regenerateSinglePost(button, row, historyId);
                 }}
             ]);
-        });
+        },
 
-        // Regenerate post
-        $(document).on('click', '.aips-regenerate-post', function(e) {
-            e.preventDefault();
-            var historyId = $(this).data('history-id');
-            var row = $(this).closest('tr');
-
-            var button = $(this);
-            AIPS.Utilities.confirm(aipsPostReviewL10n.confirmRegenerate, 'Notice', [
-                { label: 'No, cancel',     className: 'aips-btn aips-btn-primary' },
-                { label: 'Yes, regenerate', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    button.prop('disabled', true).text(aipsPostReviewL10n.regenerating || 'Regenerating...');
+        /**
+         * Trigger regeneration for a post by history ID via AJAX.
+         *
+         * @param {jQuery} button Trigger button.
+         * @param {jQuery} row Table row for removal on success.
+         * @param {number} historyId History record ID.
+         */
+        regenerateSinglePost: function(button, row, historyId) {
+            button.prop('disabled', true).text(aipsPostReviewL10n.regenerating || 'Regenerating...');
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -139,32 +264,28 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Show generic "Started" message instead of "Success"
                         var msg = response.data.message || aipsPostReviewL10n.regenerateSuccess;
                         AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success');
-
-                        // We still remove the row because the post is deleted
-                        row.fadeOut(400, function() {
-                            $(this).remove();
-                            updateDraftCount();
-                            checkEmptyState();
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
-                        button.prop('disabled', false).text(aipsPostReviewL10n.regenerate || 'Re-generate');
+                        PostReview.removeRowAndRefreshState(row);
+                        return;
                     }
+
+                    AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
+                    button.prop('disabled', false).text(aipsPostReviewL10n.regenerate || 'Re-generate');
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsPostReviewL10n.regenerateError, 'error');
                     button.prop('disabled', false).text(aipsPostReviewL10n.regenerate || 'Re-generate');
                 }
             });
-                }}
-            ]);
-        });
+        },
 
-        // Bulk actions
-        $('#aips-bulk-action-btn').on('click', function(e) {
+        /**
+         * Run the selected bulk action for checked rows.
+         *
+         * @param {Event} e Click event.
+         */
+        handleBulkActionClick: function(e) {
             e.preventDefault();
 
             var action = $('#bulk-action-selector-top').val();
@@ -179,34 +300,52 @@
             }
 
             if (action === 'publish') {
-                bulkPublish(checkedBoxes);
-            } else if (action === 'delete') {
-                bulkDelete(checkedBoxes);
+                PostReview.bulkPublish(checkedBoxes);
+                return;
             }
-        });
 
-        // Bulk publish
+            if (action === 'delete') {
+                PostReview.bulkDelete(checkedBoxes);
+            }
+        },
+
         /**
-         * Bulk-publish the selected draft posts via `aips_bulk_publish_posts`.
+         * Bulk-publish selected draft posts.
          *
-         * Shows a confirmation dialog with the post count. On confirmation,
-         * collects the post IDs from the checked boxes and sends them to the
-         * server. Fades out each published row and refreshes the draft count and
-         * empty-state check on success.
-         *
-         * @param {jQuery} checkedBoxes - The set of checked `.aips-post-checkbox` elements.
+         * @param {jQuery} checkedBoxes Checked row checkboxes.
          */
-        function bulkPublish(checkedBoxes) {
+        bulkPublish: function(checkedBoxes) {
             var count = checkedBoxes.length;
             var confirmMsg = aipsPostReviewL10n.confirmBulkPublish.replace('%d', count);
 
             AIPS.Utilities.confirm(confirmMsg, 'Notice', [
-                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, publish', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    PostReview.submitBulkPublish(checkedBoxes, count);
+                }}
+            ]);
+        },
+
+        /**
+         * Send the bulk publish AJAX request.
+         *
+         * @param {jQuery} checkedBoxes Checked row checkboxes.
+         * @param {number} count Selected row count.
+         */
+        submitBulkPublish: function(checkedBoxes, count) {
             var postIds = [];
+
             checkedBoxes.each(function() {
-                postIds.push($(this).data('post-id'));
+                var postId = PostReview.sanitizeId($(this).data('post-id'));
+                if (postId) {
+                    postIds.push(postId);
+                }
             });
+
+            if (postIds.length === 0) {
+                AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
+                return;
+            }
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -220,51 +359,60 @@
                     if (response.success) {
                         var msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
                         AIPS.Utilities.showToast(msg, 'success');
-
-                        checkedBoxes.each(function() {
-                            $(this).closest('tr').fadeOut(400, function() {
-                                $(this).remove();
-                                updateDraftCount();
-                                checkEmptyState();
-                            });
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
+                        PostReview.removeRowsForCheckedBoxes(checkedBoxes);
+                        return;
                     }
+
+                    AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.publishError, 'error');
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsPostReviewL10n.publishError, 'error');
                 }
             });
-                }}
-            ]);
-        }
+        },
 
-        // Bulk delete
         /**
-         * Bulk-delete the selected draft posts via `aips_bulk_delete_draft_posts`.
+         * Bulk-delete selected draft posts.
          *
-         * Shows a confirmation dialog with the post count. On confirmation,
-         * builds an array of `{post_id, history_id}` objects and sends them to
-         * the server. Fades out each deleted row and refreshes the draft count and
-         * empty-state check on success.
-         *
-         * @param {jQuery} checkedBoxes - The set of checked `.aips-post-checkbox` elements.
+         * @param {jQuery} checkedBoxes Checked row checkboxes.
          */
-        function bulkDelete(checkedBoxes) {
+        bulkDelete: function(checkedBoxes) {
             var count = checkedBoxes.length;
             var confirmMsg = aipsPostReviewL10n.confirmBulkDelete.replace('%d', count);
 
             AIPS.Utilities.confirm(confirmMsg, 'Notice', [
-                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, delete', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    PostReview.submitBulkDelete(checkedBoxes, count);
+                }}
+            ]);
+        },
+
+        /**
+         * Send the bulk delete AJAX request.
+         *
+         * @param {jQuery} checkedBoxes Checked row checkboxes.
+         * @param {number} count Selected row count.
+         */
+        submitBulkDelete: function(checkedBoxes, count) {
             var items = [];
+
             checkedBoxes.each(function() {
-                items.push({
-                    post_id: $(this).data('post-id'),
-                    history_id: $(this).data('history-id')
-                });
+                var postId = PostReview.sanitizeId($(this).data('post-id'));
+                var historyId = PostReview.sanitizeId($(this).data('history-id'));
+
+                if (postId && historyId) {
+                    items.push({
+                        post_id: postId,
+                        history_id: historyId
+                    });
+                }
             });
+
+            if (items.length === 0) {
+                AIPS.Utilities.showToast(aipsPostReviewL10n.noPostsSelected, 'warning');
+                return;
+            }
 
             $.ajax({
                 url: aipsPostReviewL10n.ajaxUrl,
@@ -278,90 +426,95 @@
                     if (response.success) {
                         var msg = aipsPostReviewL10n.bulkDeleteSuccess.replace('%d', response.data.count || count);
                         AIPS.Utilities.showToast(msg, 'success');
-
-                        checkedBoxes.each(function() {
-                            $(this).closest('tr').fadeOut(400, function() {
-                                $(this).remove();
-                                updateDraftCount();
-                                checkEmptyState();
-                            });
-                        });
-                    } else {
-                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
+                        PostReview.removeRowsForCheckedBoxes(checkedBoxes);
+                        return;
                     }
+
+                    AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.deleteError, 'error');
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
                 }
             });
-                }}
-            ]);
-        }
+        },
 
-        // Reload posts
-        $('#aips-reload-posts-btn').on('click', function(e) {
+        /**
+         * Remove checked rows and refresh count/empty-state.
+         *
+         * @param {jQuery} checkedBoxes Checked row checkboxes.
+         */
+        removeRowsForCheckedBoxes: function(checkedBoxes) {
+            checkedBoxes.each(function() {
+                PostReview.removeRowAndRefreshState($(this).closest('tr'));
+            });
+        },
+
+        /**
+         * Remove a table row and update counts and empty state.
+         *
+         * @param {jQuery} row Row element to remove.
+         */
+        removeRowAndRefreshState: function(row) {
+            row.fadeOut(400, function() {
+                $(this).remove();
+                PostReview.updateDraftCount();
+                PostReview.checkEmptyState();
+            });
+        },
+
+        /**
+         * Reload the current post review page.
+         *
+         * @param {Event} e Click event.
+         */
+        reloadPostReviewPage: function(e) {
             e.preventDefault();
             location.reload();
-        });
+        },
 
-        // Update draft count
         /**
-         * Refresh the `#aips-draft-count` badge with the number of currently
-         * visible table rows.
-         *
-         * Called after any row is removed (published, deleted, or regenerated)
-         * so the count stays accurate without a full page reload.
+         * Refresh the draft count badge from visible rows.
          */
-        function updateDraftCount() {
+        updateDraftCount: function() {
             var visibleRows = $('.aips-post-review-table tbody tr:visible').length;
             $('#aips-draft-count').text(visibleRows);
-        }
+        },
 
-        // Check if table is empty and show empty state
         /**
-         * Show or hide the empty-state placeholder based on whether any table
-         * rows remain visible.
-         *
-         * When all rows have been removed, hides the table and pagination
-         * controls and injects (or reveals) an `.aips-empty-state` element with
-         * a friendly "no draft posts" message.
+         * Show empty state when there are no visible draft rows.
          */
-        function checkEmptyState() {
+        checkEmptyState: function() {
             var visibleRows = $('.aips-post-review-table tbody tr:visible').length;
 
-            if (visibleRows === 0) {
-                $('.aips-post-review-table').hide();
-                $('.tablenav').hide();
-
-                if ($('.aips-empty-state').length === 0) {
-                    $('#aips-post-review-form').after(AIPS.Templates.render('aips-tmpl-post-review-empty-state', {
-                        heading:     aipsPostReviewL10n.noDraftPosts     || 'No Draft Posts',
-                        description: aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review.'
-                    }));
-                } else {
-                    $('.aips-empty-state').show();
-                }
+            if (visibleRows !== 0) {
+                return;
             }
-        }
 
-        // Preview Post Function
+            $('.aips-post-review-table').hide();
+            $('.tablenav').hide();
+
+            if ($('.aips-empty-state').length === 0) {
+                $('#aips-post-review-form').after(AIPS.Templates.render('aips-tmpl-post-review-empty-state', {
+                    heading: aipsPostReviewL10n.noDraftPosts || 'No Draft Posts',
+                    description: aipsPostReviewL10n.noDraftPostsDesc || 'There are no draft posts waiting for review.'
+                }));
+                return;
+            }
+
+            $('.aips-empty-state').show();
+        },
+
         /**
-         * Open the post-preview modal and load the rendered post content.
+         * Open the post-preview modal and load rendered content.
          *
-         * Resets the modal to a loading state, then sends the
-         * `aips_get_draft_post_preview` AJAX action. On success, builds and
-         * injects an HTML preview (title, featured image, excerpt, body content,
-         * and an optional edit link) into `#aips-preview-content-container`.
-         *
-         * @param {number} postId - The WordPress post ID to preview.
+         * @param {number} postId WordPress post ID.
          */
-        function previewPost(postId) {
+        previewPost: function(postId) {
             var modal = $('#aips-post-preview-modal');
             var contentContainer = $('#aips-preview-content-container');
             var iframe = $('#aips-post-preview-iframe');
             var headerTitle = modal.find('.aips-modal-header h2');
 
-            // Reset modal state
             contentContainer.show().html(AIPS.Templates.render('aips-tmpl-post-review-loading', {
                 text: aipsPostReviewL10n.loadingPreview || 'Loading preview...'
             }));
@@ -380,58 +533,70 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        var data = response.data;
-                        var html = '';
-
-                        // Title
-                        html += AIPS.Templates.render('aips-tmpl-post-review-preview-title', { title: data.title });
-
-                        // Featured Image
-                        if (data.featured_image) {
-                            html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-image', {
-                                src: AIPS.Templates.escape(data.featured_image)
-                            });
-                        }
-
-                        // Excerpt
-                        if (data.excerpt) {
-                            html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-excerpt', {
-                                excerpt: data.excerpt
-                            });
-                        }
-
-                        // Content
-                        html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-body', { content: data.content });
-
-                        // Edit Link at bottom
-                        if (data.edit_url) {
-                            html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-edit-link', {
-                                url:   AIPS.Templates.escape(data.edit_url),
-                                label: AIPS.Templates.escape('Edit Post in WordPress')
-                            });
-                        }
-
-                        contentContainer.html(html);
-                    } else {
-                        contentContainer.html(AIPS.Templates.render('aips-tmpl-post-review-error', {
-                            message: response.data.message || aipsPostReviewL10n.previewError
-                        }));
+                        PostReview.renderPreviewResponse(response.data);
+                        return;
                     }
+
+                    $('#aips-preview-content-container').html(AIPS.Templates.render('aips-tmpl-post-review-error', {
+                        message: response.data.message || aipsPostReviewL10n.previewError
+                    }));
                 },
                 error: function() {
-                    contentContainer.html(AIPS.Templates.render('aips-tmpl-post-review-error', {
+                    $('#aips-preview-content-container').html(AIPS.Templates.render('aips-tmpl-post-review-error', {
                         message: aipsPostReviewL10n.previewError || 'Failed to load preview.'
                     }));
                 }
             });
-        }
+        },
 
-        // Close modal handlers (using delegated events to handle dynamically added modals if any)
-        $(document).on('click', '#aips-post-preview-modal .aips-modal-close, #aips-post-preview-modal .aips-modal-overlay', function() {
+        /**
+         * Render preview payload content into the preview container.
+         *
+         * @param {Object} data Preview payload.
+         */
+        renderPreviewResponse: function(data) {
+            var html = '';
+
+            html += AIPS.Templates.render('aips-tmpl-post-review-preview-title', { title: data.title });
+
+            if (data.featured_image) {
+                html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-image', {
+                    src: AIPS.Templates.escape(data.featured_image)
+                });
+            }
+
+            if (data.excerpt) {
+                html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-excerpt', {
+                    excerpt: data.excerpt
+                });
+            }
+
+            html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-body', { content: data.content });
+
+            if (data.edit_url) {
+                html += AIPS.Templates.renderRaw('aips-tmpl-post-review-preview-edit-link', {
+                    url: AIPS.Templates.escape(data.edit_url),
+                    label: AIPS.Templates.escape('Edit Post in WordPress')
+                });
+            }
+
+            $('#aips-preview-content-container').html(html);
+        },
+
+        /**
+         * Close the preview modal and clear iframe content.
+         *
+         * @param {Event} e Click event.
+         */
+        closePreviewModal: function(e) {
+            e.preventDefault();
             $('#aips-post-preview-modal').hide();
             $('#aips-post-preview-iframe').attr('src', '');
-        });
+        }
+    });
 
+    $(document).ready(function() {
+        PostReview.init();
     });
 
 })(jQuery);
