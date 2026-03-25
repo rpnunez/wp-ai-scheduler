@@ -107,13 +107,13 @@ class Test_AIPS_Notification_Templates extends WP_UnitTestCase {
 	// Built-in templates
 	// -----------------------------------------------------------------------
 
-	public function test_partial_generation_template_is_registered() {
-		$tpl = $this->registry->get('partial_generation');
+	public function test_partial_generation_completed_template_is_registered() {
+		$tpl = $this->registry->get('partial_generation_completed');
 		$this->assertInstanceOf(AIPS_Notification_Template::class, $tpl);
 	}
 
-	public function test_posts_awaiting_review_template_is_registered() {
-		$tpl = $this->registry->get('posts_awaiting_review');
+	public function test_post_ready_for_review_template_is_registered() {
+		$tpl = $this->registry->get('post_ready_for_review');
 		$this->assertInstanceOf(AIPS_Notification_Template::class, $tpl);
 	}
 
@@ -153,8 +153,8 @@ class Test_AIPS_Notification_Templates extends WP_UnitTestCase {
 	public function test_all_returns_array_of_templates() {
 		$all = $this->registry->all();
 		$this->assertIsArray($all);
-		$this->assertArrayHasKey('partial_generation', $all);
-		$this->assertArrayHasKey('posts_awaiting_review', $all);
+		$this->assertArrayHasKey('generation_failed', $all);
+		$this->assertArrayHasKey('partial_generation_completed', $all);
 	}
 
 	// -----------------------------------------------------------------------
@@ -176,8 +176,8 @@ class Test_AIPS_Notification_Templates extends WP_UnitTestCase {
 	// Shared layout: built-in templates use the email layout file
 	// -----------------------------------------------------------------------
 
-	public function test_partial_generation_body_uses_shared_layout_chrome() {
-		$tpl  = $this->registry->get('partial_generation');
+	public function test_partial_generation_completed_body_uses_shared_layout_chrome() {
+		$tpl  = $this->registry->get('partial_generation_completed');
 		$body = $tpl->render_body(array());
 
 		// Verify the full HTML document structure from the shared layout is present.
@@ -188,8 +188,8 @@ class Test_AIPS_Notification_Templates extends WP_UnitTestCase {
 		$this->assertStringContainsString('.email-footer', $body);
 	}
 
-	public function test_posts_awaiting_review_body_uses_shared_layout_chrome() {
-		$tpl  = $this->registry->get('posts_awaiting_review');
+	public function test_post_ready_for_review_body_uses_shared_layout_chrome() {
+		$tpl  = $this->registry->get('post_ready_for_review');
 		$body = $tpl->render_body(array());
 
 		$this->assertStringContainsString('<!DOCTYPE html>', $body);
@@ -200,41 +200,39 @@ class Test_AIPS_Notification_Templates extends WP_UnitTestCase {
 	// Built-in template token smoke tests
 	// -----------------------------------------------------------------------
 
-	public function test_partial_generation_subject_renders_site_name() {
-		$tpl     = $this->registry->get('partial_generation');
+	public function test_partial_generation_completed_subject_renders_site_name() {
+		$tpl     = $this->registry->get('partial_generation_completed');
 		$subject = $tpl->render_subject(array('{{site_name}}' => 'TestSite'));
 		$this->assertStringContainsString('TestSite', $subject);
 	}
 
-	public function test_partial_generation_body_renders_post_title() {
-		$tpl  = $this->registry->get('partial_generation');
-		$body = $tpl->render_body(array('{{post_title}}' => 'My Special Post'));
-		$this->assertStringContainsString('My Special Post', $body);
+	public function test_partial_generation_completed_body_renders_notification_message() {
+		$tpl  = $this->registry->get('partial_generation_completed');
+		$body = $tpl->render_body(array('{{notification_message}}' => 'Post saved with missing components'));
+		$this->assertStringContainsString('Post saved with missing components', $body);
 	}
 
-	public function test_partial_generation_body_renders_missing_components() {
-		$tpl  = $this->registry->get('partial_generation');
-		$body = $tpl->render_body(array('{{missing_components}}' => '<ul><li>Excerpt</li></ul>'));
+	public function test_partial_generation_completed_body_renders_details_html() {
+		$tpl  = $this->registry->get('partial_generation_completed');
+		$body = $tpl->render_body(array('{{details_html}}' => '<ul><li>Excerpt</li></ul>'));
 		$this->assertStringContainsString('Excerpt', $body);
 	}
 
-	public function test_posts_awaiting_review_subject_renders_stats_label() {
-		$tpl     = $this->registry->get('posts_awaiting_review');
+	public function test_post_ready_for_review_subject_renders_site_name() {
+		$tpl     = $this->registry->get('post_ready_for_review');
 		$subject = $tpl->render_subject(array(
-			'{{site_name}}'   => 'My Blog',
-			'{{stats_label}}' => '3 Posts Awaiting Review',
+			'{{site_name}}'        => 'My Blog',
+			'{{notification_title}}' => 'Post Ready For Review',
 		));
-		$this->assertStringContainsString('3 Posts Awaiting Review', $subject);
+		$this->assertStringContainsString('My Blog', $subject);
 	}
 
-	public function test_posts_awaiting_review_body_renders_review_url() {
-		$tpl  = $this->registry->get('posts_awaiting_review');
+	public function test_post_ready_for_review_body_renders_action_url() {
+		$tpl  = $this->registry->get('post_ready_for_review');
 		$body = $tpl->render_body(array(
-			'{{review_url}}'  => 'https://example.com/review',
-			'{{stats_label}}' => '1 Post',
-			'{{post_list}}'   => '',
-			'{{more_posts}}'  => '',
-			'{{site_name}}'   => 'Blog',
+			'{{action_url}}'   => 'https://example.com/review',
+			'{{action_label}}' => 'Review Post',
+			'{{site_name}}'    => 'Blog',
 		));
 		$this->assertStringContainsString('https://example.com/review', $body);
 	}
@@ -395,87 +393,37 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 	}
 
 	// -----------------------------------------------------------------------
-	// handle_review_notifications_cron() — gate checks
+	// handle_summary_rollups_cron() — gate checks
 	// -----------------------------------------------------------------------
 
-	public function test_review_notifications_cron_skips_when_disabled() {
-		update_option('aips_review_notifications_enabled', 0);
+	public function test_summary_rollups_cron_skips_daily_digest_if_already_sent_today() {
 		update_option('aips_review_notifications_email', 'test@example.com');
+		$today_key = gmdate('Y-m-d', time());
+		update_option('aips_notif_daily_digest_last_sent', $today_key);
 
 		$GLOBALS['phpmailer']->mock_sent = array();
 
-		$this->notifications->handle_review_notifications_cron();
+		$this->notifications->handle_summary_rollups_cron();
 
 		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
 	}
 
-	public function test_review_notifications_cron_skips_when_no_draft_posts() {
-		update_option('aips_review_notifications_enabled', 1);
+	public function test_summary_rollups_cron_sends_daily_digest_when_not_yet_sent_today() {
 		update_option('aips_review_notifications_email', 'test@example.com');
+		update_option('aips_notification_preferences', array('daily_digest' => 'email'));
+		// Use a past date to ensure the daily key differs from today.
+		update_option('aips_notif_daily_digest_last_sent', '2000-01-01');
 
 		$GLOBALS['phpmailer']->mock_sent = array();
 
-		$this->notifications->handle_review_notifications_cron();
-
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
-	}
-
-	// -----------------------------------------------------------------------
-	// posts_awaiting_review()
-	// -----------------------------------------------------------------------
-
-	public function test_posts_awaiting_review_sends_email() {
-		update_option('aips_review_notifications_email', 'admin@example.com');
-
-		$draft_posts = array(
-			'items' => array(
-				(object) array(
-					'post_title'    => 'Draft 1',
-					'generated_title' => '',
-					'template_name' => 'My Template',
-					'created_at'    => '2025-01-01 10:00:00',
-				),
-			),
-		);
-
-		$GLOBALS['phpmailer']->mock_sent = array();
-
-		$this->notifications->posts_awaiting_review($draft_posts, 1);
+		$this->notifications->handle_summary_rollups_cron();
 
 		$this->assertCount(1, $GLOBALS['phpmailer']->mock_sent);
-		$this->assertSame('admin@example.com', $GLOBALS['phpmailer']->mock_sent[0]['to'][0][0]);
 	}
 
-	public function test_posts_awaiting_review_email_contains_post_title() {
-		update_option('aips_review_notifications_email', 'admin@example.com');
-
-		$draft_posts = array(
-			'items' => array(
-				(object) array(
-					'post_title'    => 'My Review Post',
-					'generated_title' => '',
-					'template_name' => 'T',
-					'created_at'    => '2025-01-01 10:00:00',
-				),
-			),
-		);
-
-		$GLOBALS['phpmailer']->mock_sent = array();
-
-		$this->notifications->posts_awaiting_review($draft_posts, 1);
-
-		$this->assertStringContainsString('My Review Post', $GLOBALS['phpmailer']->mock_sent[0]['body']);
-	}
-
-	public function test_posts_awaiting_review_skips_invalid_email() {
-		update_option('aips_review_notifications_email', 'bad-email');
-
-		$GLOBALS['phpmailer']->mock_sent = array();
-
-		$this->notifications->posts_awaiting_review(array('items' => array()), 5);
-
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
-	}
+	// -----------------------------------------------------------------------
+	// post_ready_for_review notifications
+	// -----------------------------------------------------------------------
 
 	public function test_generation_failed_defaults_to_both_channels() {
 		update_option('aips_review_notifications_email', 'alerts@example.com');
@@ -529,45 +477,23 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 	}
 
 	// -----------------------------------------------------------------------
-	// partial_generation() — gate checks
+	// handle_partial_generation_completed_notification() — gate checks
 	// -----------------------------------------------------------------------
 
-	public function test_partial_generation_skips_when_post_id_is_zero() {
+	public function test_handle_partial_generation_completed_notification_skips_zero_post_id() {
 		update_option('aips_review_notifications_email', 'admin@example.com');
 
 		$GLOBALS['phpmailer']->mock_sent = array();
 
-		$this->notifications->partial_generation(0, array('post_title' => false), null);
+		$this->notifications->handle_partial_generation_completed_notification(0, array('post_title' => false), null);
 
 		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
+		$this->assertEquals(0, $this->repository->count_unread());
 	}
 
-	public function test_partial_generation_skips_when_no_missing_components() {
+	public function test_partial_generation_completed_writes_db_notification() {
 		update_option('aips_review_notifications_email', 'admin@example.com');
-
-		$post_id = wp_insert_post(array(
-			'post_title'  => 'Test',
-			'post_status' => 'draft',
-			'post_type'   => 'post',
-		));
-
-		$GLOBALS['phpmailer']->mock_sent = array();
-
-		// All components present (all true).
-		$this->notifications->partial_generation($post_id, array(
-			'post_title'     => true,
-			'post_content'   => true,
-			'post_excerpt'   => true,
-			'featured_image' => true,
-		), null);
-
-		$this->assertEmpty($GLOBALS['phpmailer']->mock_sent);
-
-		wp_delete_post($post_id, true);
-	}
-
-	public function test_partial_generation_sends_email_with_missing_components() {
-		update_option('aips_review_notifications_email', 'admin@example.com');
+		update_option('aips_notification_preferences', array('partial_generation_completed' => 'db'));
 
 		$post_id = wp_insert_post(array(
 			'post_title'  => 'Partial Post',
@@ -575,28 +501,14 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 			'post_type'   => 'post',
 		));
 
-		$GLOBALS['phpmailer']->mock_sent = array();
-
-		$context = new AIPS_Template_Context((object) array(
-			'id'              => 1,
-			'name'            => 'Blog Template',
-			'prompt_template' => 'Prompt',
-			'post_status'     => 'draft',
-			'post_category'   => 0,
+		$this->notifications->partial_generation_completed(array(
+			'post_id'            => $post_id,
+			'missing_components' => array('post_content', 'post_excerpt'),
+			'dedupe_key'         => 'test_partial_generation_completed_writes_db_' . $post_id,
+			'dedupe_window'      => 0,
 		));
 
-		$this->notifications->partial_generation($post_id, array(
-			'post_title'     => true,
-			'post_content'   => false,
-			'post_excerpt'   => false,
-			'featured_image' => true,
-		), $context, 99);
-
-		$this->assertCount(1, $GLOBALS['phpmailer']->mock_sent);
-		$this->assertStringContainsString('Partial Post', $GLOBALS['phpmailer']->mock_sent[0]['body']);
-		$this->assertStringContainsString('Excerpt', $GLOBALS['phpmailer']->mock_sent[0]['body']);
-		$this->assertStringContainsString('Content', $GLOBALS['phpmailer']->mock_sent[0]['body']);
-		$this->assertStringContainsString('Blog Template', $GLOBALS['phpmailer']->mock_sent[0]['body']);
+		$this->assertEquals(1, $this->repository->count_unread());
 
 		wp_delete_post($post_id, true);
 	}
@@ -622,10 +534,10 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		$this->assertIsArray($bindings);
 	}
 
-	public function test_get_hook_bindings_includes_review_notifications_cron() {
+	public function test_get_hook_bindings_includes_notification_rollups_cron() {
 		$bindings = AIPS_Notifications::get_hook_bindings();
 		$hooks    = array_column($bindings, 'hook');
-		$this->assertContains('aips_send_review_notifications', $hooks);
+		$this->assertContains('aips_notification_rollups', $hooks);
 	}
 
 	public function test_get_hook_bindings_includes_post_generation_incomplete() {
