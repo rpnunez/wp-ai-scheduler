@@ -822,7 +822,7 @@ class AIPS_Notifications {
 			'meta'          => $payload,
 			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
 			'dedupe_window' => 3600,
-			'channels'      => array(self::CHANNEL_DB, self::CHANNEL_EMAIL),
+			'channels'      => array(self::CHANNEL_EMAIL),
 			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Open generated posts', 'ai-post-scheduler')),
 		));
 	}

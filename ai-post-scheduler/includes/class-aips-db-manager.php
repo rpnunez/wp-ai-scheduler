@@ -364,9 +364,10 @@ class AIPS_DB_Manager {
         global $wpdb;
 
         foreach ($schema as $sql) {
+            $pre_error = $wpdb->last_error;
             dbDelta($sql);
 
-            if (!empty($wpdb->last_error)) {
+            if (!empty($wpdb->last_error) && $wpdb->last_error !== $pre_error) {
                 return new WP_Error('db_install_failed', $wpdb->last_error);
             }
         }
