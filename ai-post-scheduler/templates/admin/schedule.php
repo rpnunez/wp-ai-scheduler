@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
 
 // Data for the unified schedules page
 $unified_service = new AIPS_Unified_Schedule_Service();
-$type_filter     = isset($_GET['schedule_type']) ? sanitize_key($_GET['schedule_type']) : '';
+$type_filter     = isset($_GET['schedule_type']) ? sanitize_key(wp_unslash($_GET['schedule_type'])) : '';
 $all_schedules   = $unified_service->get_all($type_filter);
 
 // Also fetch template-schedule data needed for the "Add Schedule" modal

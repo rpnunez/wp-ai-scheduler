@@ -82,7 +82,7 @@ class AIPS_Onboarding_Wizard {
 		}
 
 		// Avoid redirect loops.
-		$page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+		$page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
 		if ($page === self::PAGE_SLUG) {
 			return;
 		}
@@ -104,7 +104,7 @@ class AIPS_Onboarding_Wizard {
 	}
 
 	public function fix_parent_file($parent_file) {
-		$page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+		$page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
 		if ($page === self::PAGE_SLUG) {
 			return 'ai-post-scheduler';
 		}
@@ -112,7 +112,7 @@ class AIPS_Onboarding_Wizard {
 	}
 
 	public function fix_submenu_file($submenu_file) {
-		$page = isset($_GET['page']) ? sanitize_key($_GET['page']) : '';
+		$page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
 		if ($page === self::PAGE_SLUG) {
 			return 'ai-post-scheduler';
 		}
@@ -251,8 +251,8 @@ class AIPS_Onboarding_Wizard {
 			));
 		}
 
-		$name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
-		$field_niche = isset($_POST['field_niche']) ? sanitize_text_field($_POST['field_niche']) : '';
+		$name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
+		$field_niche = isset($_POST['field_niche']) ? sanitize_text_field(wp_unslash($_POST['field_niche'])) : '';
 
 		if ($name === '' || $field_niche === '') {
 			wp_send_json_error(array('message' => __('Name and Field/Niche are required.', 'ai-post-scheduler')), 400);
@@ -263,14 +263,14 @@ class AIPS_Onboarding_Wizard {
 		$data = array(
 			'name' => $name,
 			'field_niche' => $field_niche,
-			'description' => isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '',
-			'voice_tone' => isset($_POST['voice_tone']) ? sanitize_text_field($_POST['voice_tone']) : '',
-			'target_audience' => isset($_POST['target_audience']) ? sanitize_text_field($_POST['target_audience']) : '',
-			'content_goals' => isset($_POST['content_goals']) ? sanitize_textarea_field($_POST['content_goals']) : '',
-			'language' => isset($_POST['language']) ? sanitize_text_field($_POST['language']) : 'en',
+			'description' => isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '',
+			'voice_tone' => isset($_POST['voice_tone']) ? sanitize_text_field(wp_unslash($_POST['voice_tone'])) : '',
+			'target_audience' => isset($_POST['target_audience']) ? sanitize_text_field(wp_unslash($_POST['target_audience'])) : '',
+			'content_goals' => isset($_POST['content_goals']) ? sanitize_textarea_field(wp_unslash($_POST['content_goals'])) : '',
+			'language' => isset($_POST['language']) ? sanitize_text_field(wp_unslash($_POST['language'])) : 'en',
 			'topic_generation_quantity' => isset($_POST['topic_generation_quantity']) ? max(1, absint($_POST['topic_generation_quantity'])) : 5,
-			'topic_generation_frequency' => isset($_POST['topic_generation_frequency']) ? sanitize_text_field($_POST['topic_generation_frequency']) : 'weekly',
-			'post_generation_frequency' => isset($_POST['post_generation_frequency']) ? sanitize_text_field($_POST['post_generation_frequency']) : 'daily',
+			'topic_generation_frequency' => isset($_POST['topic_generation_frequency']) ? sanitize_text_field(wp_unslash($_POST['topic_generation_frequency'])) : 'weekly',
+			'post_generation_frequency' => isset($_POST['post_generation_frequency']) ? sanitize_text_field(wp_unslash($_POST['post_generation_frequency'])) : 'daily',
 			'post_status' => get_option('aips_default_post_status', 'draft'),
 			'post_category' => (int) get_option('aips_default_category', 0),
 			'post_author' => get_current_user_id(),
@@ -308,8 +308,8 @@ class AIPS_Onboarding_Wizard {
 			));
 		}
 
-		$name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
-		$prompt_template = isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '';
+		$name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
+		$prompt_template = isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '';
 
 		if ($name === '' || $prompt_template === '') {
 			wp_send_json_error(array('message' => __('Template name and Content Prompt are required.', 'ai-post-scheduler')), 400);
@@ -318,7 +318,7 @@ class AIPS_Onboarding_Wizard {
 		$data = array(
 			'name' => $name,
 			'prompt_template' => $prompt_template,
-			'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field($_POST['title_prompt']) : '',
+			'title_prompt' => isset($_POST['title_prompt']) ? sanitize_text_field(wp_unslash($_POST['title_prompt'])) : '',
 			'post_quantity' => 1,
 			'generate_featured_image' => 0,
 			'featured_image_source' => 'ai_prompt',
@@ -417,7 +417,7 @@ class AIPS_Onboarding_Wizard {
 			wp_send_json_error(array('message' => __('Create a Template first.', 'ai-post-scheduler')), 400);
 		}
 
-		$topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+		$topic = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '';
 		if ($topic === '' && !empty($state['first_topic'])) {
 			$topic = sanitize_text_field((string) $state['first_topic']);
 		}

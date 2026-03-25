@@ -142,7 +142,7 @@ class AIPS_Generator {
 
         $result = $this->ai_service->generate_text($prompt, $options);
 
-        // Normalize values for logging to avoid deprecated warnings when null.
+        // Normalize values for logging to avoid deprecation warnings when null.
         $prompt_for_length  = (string) $prompt;
         $result_for_length  = is_string($result) ? $result : '';
 
