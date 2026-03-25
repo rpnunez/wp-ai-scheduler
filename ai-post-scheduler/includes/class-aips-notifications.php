@@ -1196,23 +1196,23 @@ class AIPS_Notifications {
 		}
 
 		$current_timestamp = current_time('timestamp', true);
-		$weekday = gmdate('w', $current_timestamp);
-		$day_of_month = gmdate('j', $current_timestamp);
 
-		if ('1' === (string) $weekday) {
-			$weekly_key = gmdate('o-W', $current_timestamp);
-			if (get_option('aips_notif_weekly_summary_last_sent', '') !== $weekly_key) {
-				$this->weekly_summary($this->build_rollup_payload(7 * DAY_IN_SECONDS, 'weekly_summary_' . $weekly_key));
-				update_option('aips_notif_weekly_summary_last_sent', $weekly_key, false);
-			}
+		// Weekly summary: send once per ISO week when the week key changes.
+		$weekly_key       = gmdate('o-W', $current_timestamp);
+		$weekly_last_sent = get_option('aips_notif_weekly_summary_last_sent', '');
+
+		if ($weekly_last_sent !== $weekly_key) {
+			$this->weekly_summary($this->build_rollup_payload(7 * DAY_IN_SECONDS, 'weekly_summary_' . $weekly_key));
+			update_option('aips_notif_weekly_summary_last_sent', $weekly_key, false);
 		}
 
-		if ('1' === (string) $day_of_month) {
-			$monthly_key = gmdate('Y-m', $current_timestamp);
-			if (get_option('aips_notif_monthly_report_last_sent', '') !== $monthly_key) {
-				$this->monthly_report($this->build_rollup_payload(30 * DAY_IN_SECONDS, 'monthly_report_' . $monthly_key));
-				update_option('aips_notif_monthly_report_last_sent', $monthly_key, false);
-			}
+		// Monthly report: send once per calendar month when the month key changes.
+		$monthly_key       = gmdate('Y-m', $current_timestamp);
+		$monthly_last_sent = get_option('aips_notif_monthly_report_last_sent', '');
+
+		if ($monthly_last_sent !== $monthly_key) {
+			$this->monthly_report($this->build_rollup_payload(30 * DAY_IN_SECONDS, 'monthly_report_' . $monthly_key));
+			update_option('aips_notif_monthly_report_last_sent', $monthly_key, false);
 		}
 	}
 
