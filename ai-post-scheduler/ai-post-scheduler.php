@@ -54,9 +54,9 @@ final class AI_Post_Scheduler {
                 'schedule' => 'daily',
                 'label'   => __( 'Automated Research', 'ai-post-scheduler' ),
             ),
-            'aips_send_review_notifications' => array(
+            'aips_notification_rollups' => array(
                 'schedule' => 'daily',
-                'label'   => __( 'Review Notifications', 'ai-post-scheduler' ),
+                'label'   => __( 'Notification Rollups', 'ai-post-scheduler' ),
             ),
             'aips_cleanup_export_files' => array(
                 'schedule' => 'daily',
@@ -355,6 +355,11 @@ function aips_init() {
 }
 
 add_action('plugins_loaded', 'aips_init', 5);
+
+// Backward-compatibility alias: old review hook now triggers the rollup hook.
+add_action('aips_send_review_notifications', function() {
+    do_action('aips_notification_rollups');
+}, 1);
 
 // Register cleanup cron handler
 add_action('aips_cleanup_export_files', 'aips_cleanup_export_files_handler');

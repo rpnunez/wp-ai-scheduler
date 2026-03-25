@@ -22,6 +22,7 @@ class AIPS_Settings {
         add_action('admin_menu', array($this, 'add_menu_pages'));
         add_action('admin_init', array($this, 'register_settings'));
         add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
+        add_action('wp_ajax_aips_notifications_data_hygiene', array($this, 'ajax_notifications_data_hygiene'));
         add_filter('parent_file', array($this, 'fix_author_topics_parent_file'));
         add_filter('submenu_file', array($this, 'fix_author_topics_submenu_file'));
     }
@@ -389,7 +390,7 @@ class AIPS_Settings {
             'aips-settings'
         );
 
-        foreach (AIPS_Notifications::get_high_priority_notification_types() as $type => $meta) {
+        foreach (AIPS_Notifications::get_notification_type_registry() as $type => $meta) {
             add_settings_field(
                 'aips_notification_preferences_' . $type,
                 $meta['label'],
@@ -904,7 +905,7 @@ class AIPS_Settings {
      * @return void
      */
     public function notifications_section_callback() {
-        echo '<p>' . esc_html__('Configure delivery channels for critical and high-priority plugin notifications. Email is always sent to the notification email addresses above.', 'ai-post-scheduler') . '</p>';
+        echo '<p>' . esc_html__('Configure delivery channels for all plugin notifications. Email is sent to the notification email addresses above.', 'ai-post-scheduler') . '</p>';
     }
 
     /**
@@ -917,7 +918,9 @@ class AIPS_Settings {
         $type = isset($args['type']) ? sanitize_key($args['type']) : '';
         $preferences = get_option('aips_notification_preferences', array());
         $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
-        $value = isset($preferences[$type]) ? $preferences[$type] : (isset($defaults[$type]) ? $defaults[$type] : 'both');
+        $registry = AIPS_Notifications::get_notification_type_registry();
+        $registry_default = isset($registry[$type]['default_mode']) ? $registry[$type]['default_mode'] : AIPS_Notifications::MODE_BOTH;
+        $value = isset($preferences[$type]) ? $preferences[$type] : (isset($defaults[$type]) ? $defaults[$type] : $registry_default);
         ?>
         <select name="aips_notification_preferences[<?php echo esc_attr($type); ?>]">
             <?php foreach (AIPS_Notifications::get_channel_mode_options() as $mode => $label) : ?>
@@ -963,8 +966,9 @@ class AIPS_Settings {
         $preferences = is_array($value) ? $value : array();
         $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
         $allowed_modes = array_keys(AIPS_Notifications::get_channel_mode_options());
+        $sanitized = array();
 
-        foreach (AIPS_Notifications::get_high_priority_notification_types() as $type => $meta) {
+        foreach (AIPS_Notifications::get_notification_type_registry() as $type => $meta) {
             $fallback_mode = isset($defaults[$type]) ? $defaults[$type] : (isset($meta['default_mode']) ? $meta['default_mode'] : 'both');
             $mode = isset($preferences[$type]) ? sanitize_key($preferences[$type]) : $fallback_mode;
 
@@ -972,10 +976,76 @@ class AIPS_Settings {
                 $mode = $fallback_mode;
             }
 
-            $preferences[$type] = $mode;
+            $sanitized[$type] = $mode;
         }
 
-        return $preferences;
+        return $sanitized;
+    }
+
+    /**
+     * Run one-time notifications hygiene actions from System Status.
+     *
+     * @return void
+     */
+    public function ajax_notifications_data_hygiene() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+        }
+
+        $removed_options = 0;
+        if (false !== get_option('aips_review_notifications_enabled', false)) {
+            delete_option('aips_review_notifications_enabled');
+            $removed_options++;
+        }
+
+        $unscheduled_events = 0;
+        $legacy_hook = 'aips_send_review_notifications';
+        $next_run = wp_next_scheduled($legacy_hook);
+        while ($next_run) {
+            wp_unschedule_event($next_run, $legacy_hook);
+            $unscheduled_events++;
+            $next_run = wp_next_scheduled($legacy_hook);
+        }
+
+        $rollup_scheduled = (bool) wp_next_scheduled('aips_notification_rollups');
+        if (!$rollup_scheduled) {
+            wp_schedule_event(time(), 'daily', 'aips_notification_rollups');
+            $rollup_scheduled = (bool) wp_next_scheduled('aips_notification_rollups');
+        }
+
+        $registry = AIPS_Notifications::get_notification_type_registry();
+        $allowed_modes = array_keys(AIPS_Notifications::get_channel_mode_options());
+        $current_preferences = get_option('aips_notification_preferences', array());
+        $current_preferences = is_array($current_preferences) ? $current_preferences : array();
+        $config_defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
+        $config_defaults = is_array($config_defaults) ? $config_defaults : array();
+
+        $cleaned_preferences = array();
+        foreach ($registry as $type => $meta) {
+            $fallback = isset($config_defaults[$type]) ? $config_defaults[$type] : (isset($meta['default_mode']) ? $meta['default_mode'] : AIPS_Notifications::MODE_BOTH);
+            $mode = isset($current_preferences[$type]) ? sanitize_key($current_preferences[$type]) : $fallback;
+            if (!in_array($mode, $allowed_modes, true)) {
+                $mode = $fallback;
+            }
+            $cleaned_preferences[$type] = $mode;
+        }
+
+        $preferences_changed = ($cleaned_preferences !== $current_preferences);
+        if ($preferences_changed) {
+            update_option('aips_notification_preferences', $cleaned_preferences, false);
+        }
+
+        wp_send_json_success(array(
+            'message' => __('Notifications hygiene completed successfully.', 'ai-post-scheduler'),
+            'details' => array(
+                'removed_options'    => $removed_options,
+                'unscheduled_events' => $unscheduled_events,
+                'rollup_scheduled'   => $rollup_scheduled ? 1 : 0,
+                'preferences_changed'=> $preferences_changed ? 1 : 0,
+            ),
+        ));
     }
 
     /**

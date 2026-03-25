@@ -365,7 +365,7 @@ class AIPS_Notifications {
 				'accepted_args' => 4,
 			),
 			array(
-				'hook'          => 'aips_send_review_notifications',
+				'hook'          => 'aips_notification_rollups',
 				'method'        => 'handle_summary_rollups_cron',
 				'priority'      => 10,
 				'accepted_args' => 1,
@@ -1308,7 +1308,7 @@ class AIPS_Notifications {
 	 * @param string                     $to_email Target email address.
 	 * @param AIPS_Notification_Template $template Template to render.
 	 * @param array                      $vars     Token-replacement map.
-	 * @return void
+	 * @return bool True when wp_mail reports success.
 	 */
 	private function send_email_notification($to_email, AIPS_Notification_Template $template, array $vars) {
 		$subject = $template->render_subject($vars);
@@ -1336,7 +1336,27 @@ class AIPS_Notifications {
 					'to_email'          => $to_email,
 				)
 			);
+
+			return true;
 		}
+
+		$history = $this->history_service->create('notification_sent', array());
+		$history->record(
+			'activity',
+			/* translators: %s: recipient email address */
+			sprintf(__('Notification email failed for %s', 'ai-post-scheduler'), $to_email),
+			array(
+				'event_type'   => 'notification_email_sent',
+				'event_status' => 'failed',
+			),
+			null,
+			array(
+				'notification_type' => $template->get_type(),
+				'to_email'          => $to_email,
+			)
+		);
+
+		return false;
 	}
 
 	/**
@@ -1381,10 +1401,15 @@ class AIPS_Notifications {
 			$recipients = $this->parse_notification_emails(isset($options['to_email']) ? $options['to_email'] : '');
 
 			if ($template && !empty($recipients)) {
+				$email_sent = false;
 				foreach ($recipients as $recipient) {
-					$this->send_email_notification($recipient, $template, $vars);
+					if ($this->send_email_notification($recipient, $template, $vars)) {
+						$email_sent = true;
+					}
 				}
-				$sent = true;
+				if ($email_sent) {
+					$sent = true;
+				}
 			}
 		}
 
@@ -1406,7 +1431,7 @@ class AIPS_Notifications {
 		$config = $this->get_notification_type_config($type);
 		$mode = null;
 
-		if (isset(self::get_high_priority_notification_types()[$type])) {
+		if (isset($config['default_mode'])) {
 			$preferences = get_option('aips_notification_preferences', array());
 			$mode = isset($preferences[$type]) ? $preferences[$type] : (isset($config['default_mode']) ? $config['default_mode'] : self::MODE_BOTH);
 		}

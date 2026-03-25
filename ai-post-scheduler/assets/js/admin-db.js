@@ -254,6 +254,53 @@
             });
                 }}
             ]);
+        },
+
+        /**
+         * Run one-time notifications hygiene command from System Status.
+         *
+         * @param {Event} e - Click event from an `.aips-notifications-hygiene` element.
+         */
+        runNotificationsHygiene: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var $result = $('.aips-notifications-hygiene-result');
+
+            AIPS.Utilities.confirm('Run notifications hygiene now? This cleans legacy notification options, unschedules deprecated hooks, and normalizes preferences.', 'Confirm', [
+                { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, run hygiene', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                    $btn.prop('disabled', true).text('Running...');
+                    $result.hide().empty();
+
+                    $.ajax({
+                        url: aipsAjax.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'aips_notifications_data_hygiene',
+                            nonce: aipsAjax.nonce
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                var details = response.data && response.data.details ? response.data.details : {};
+                                var summary = 'Removed options: ' + (details.removed_options || 0)
+                                    + ' | Unscheduled events: ' + (details.unscheduled_events || 0)
+                                    + ' | Rollup scheduled: ' + ((details.rollup_scheduled || 0) ? 'yes' : 'no')
+                                    + ' | Preferences normalized: ' + ((details.preferences_changed || 0) ? 'yes' : 'no');
+                                AIPS.Utilities.showToast(response.data.message, 'success');
+                                $result.html('<p class="aips-status-message aips-status-success">' + summary + '</p>').show();
+                            } else {
+                                AIPS.Utilities.showToast(response.data.message || 'Hygiene command failed.', 'error');
+                            }
+                        },
+                        error: function() {
+                            AIPS.Utilities.showToast('An error occurred while running hygiene.', 'error');
+                        },
+                        complete: function() {
+                            $btn.prop('disabled', false).text('Run Notifications Hygiene');
+                        }
+                    });
+                }}
+            ]);
         }
     });
 
@@ -264,6 +311,7 @@
         $(document).on('click', '.aips-wipe-db', window.AIPS.wipeDb);
         $(document).on('click', '.aips-export-data', window.AIPS.exportData);
         $(document).on('click', '.aips-import-data', window.AIPS.importData);
+		$(document).on('click', '.aips-notifications-hygiene', window.AIPS.runNotificationsHygiene);
     });
 
 })(jQuery);
