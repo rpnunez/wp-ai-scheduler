@@ -40,7 +40,7 @@ class AIPS_Seeder_Admin {
         $keywords = isset($_POST['keywords']) ? sanitize_textarea_field(wp_unslash($_POST['keywords'])) : '';
 
         if (empty($type)) {
-            wp_send_json_error(array('message' => 'Missing type.'));
+            wp_send_json_error(array('message' => __('Missing type.', 'ai-post-scheduler')));
         }
 
         // Increase timeout for AI generation
