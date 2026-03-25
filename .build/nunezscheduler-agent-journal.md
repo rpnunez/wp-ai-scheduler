@@ -176,3 +176,9 @@
 - `ai-post-scheduler/assets/js/admin-planner.js`
 - `ai-post-scheduler/includes/class-aips-planner.php`
 **Outcome:** Enhances efficiency for the user by streamlining the multi-step navigation process directly to task execution, fulfilling the "from research to schedule in one flow" shortcut.
+
+## 2026-03-25 - Planner Optimization
+**Target Feature:** Planner (Topic Brainstorming and Bulk Scheduling/Generation)
+**Improvement:** Optimized the flow by not clearing the entire list of topics upon bulk generation or scheduling. Instead, the UI now removes only the successfully processed topics. The results panel is only hidden when all selected topics are consumed. This allows users to generate or schedule partial batches without losing their work.
+**Files Modified:** ai-post-scheduler/assets/js/admin-planner.js
+**Outcome:** Users can now incrementally process brainstormed topics (e.g., generating some immediately and scheduling others) without their remaining topics disappearing unexpectedly, preserving their workflow.
