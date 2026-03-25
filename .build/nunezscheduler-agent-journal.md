@@ -168,3 +168,9 @@
 - `ai-post-scheduler/assets/js/admin-planner.js`
 - `ai-post-scheduler/assets/css/planner.css`
 **Outcome:** Greatly enhances the speed and fluidity of curating brainstormed topic lists by allowing one-click removal of unwanted suggestions.
+
+## 2025-03-24 - Post Review Inline Editing Optimization
+**Target Feature:** Post Review
+**Improvement:** Allowed editors to make lightweight inline edits (title, category, tags) directly within the Post Review interface without navigating away to the full post editor. Added an "Inline Edit" button that expands a hidden form and saves the changes via AJAX.
+**Files Modified:** `ai-post-scheduler/templates/admin/post-review.php`, `ai-post-scheduler/includes/class-aips-post-review.php`, `ai-post-scheduler/assets/js/admin-post-review.js`, `ai-post-scheduler/includes/class-aips-admin-assets.php`
+**Outcome:** Reduces context switching and speeds up the workflow for editors reviewing generated draft posts.

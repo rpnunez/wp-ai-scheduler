@@ -45,6 +45,7 @@ class AIPS_Post_Review {
 		add_action('wp_ajax_aips_delete_draft_post', array($this, 'ajax_delete_draft_post'));
 		add_action('wp_ajax_aips_bulk_delete_draft_posts', array($this, 'ajax_bulk_delete_draft_posts'));
 		add_action('wp_ajax_aips_get_draft_post_preview', array($this, 'ajax_get_draft_post_preview'));
+		add_action('wp_ajax_aips_save_inline_edit_post', array($this, 'ajax_save_inline_edit_post'));
 	}
 	
 	/**
@@ -577,6 +578,56 @@ class AIPS_Post_Review {
 	/**
 	 * AJAX handler to delete multiple draft posts.
 	 */
+	/**
+	 * AJAX handler for saving inline edits to a draft post.
+	 *
+	 * Handles title, category, and tag updates.
+	 *
+	 * @return void
+	 */
+	public function ajax_save_inline_edit_post() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('edit_posts')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
+		$category = isset($_POST['category']) ? absint($_POST['category']) : 0;
+		$tags = isset($_POST['tags']) ? sanitize_text_field($_POST['tags']) : '';
+
+		if (!$post_id) {
+			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
+		}
+
+		$post = get_post($post_id);
+		if (!$post) {
+			wp_send_json_error(array('message' => __('Post not found.', 'ai-post-scheduler')));
+		}
+
+		// Update title
+		if (!empty($title)) {
+			wp_update_post(array(
+				'ID' => $post_id,
+				'post_title' => $title,
+			));
+		}
+
+		// Update category
+		if ($category > 0) {
+			wp_set_post_categories($post_id, array($category));
+		} else {
+			// If empty/no category selected, clear categories
+			wp_set_post_categories($post_id, array());
+		}
+
+		// Update tags
+		wp_set_post_tags($post_id, $tags);
+
+		wp_send_json_success(array('message' => __('Post updated successfully.', 'ai-post-scheduler')));
+	}
+
 	public function ajax_bulk_delete_draft_posts() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
 		

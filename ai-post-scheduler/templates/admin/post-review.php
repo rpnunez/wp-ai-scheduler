@@ -129,7 +129,13 @@ $templates = $template_repository->get_all();
 						</thead>
 						<tbody>
 							<?php foreach ($draft_posts['items'] as $item): ?>
-							<tr data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>">
+							<?php
+							// Fetch post terms for inline editing
+							$post_categories = wp_get_post_categories($item->post_id, array('fields' => 'ids'));
+							$post_tags = wp_get_post_tags($item->post_id, array('fields' => 'names'));
+							$tags_string = implode(', ', $post_tags);
+							?>
+							<tr data-post-id="<?php echo esc_attr($item->post_id); ?>" data-history-id="<?php echo esc_attr($item->id); ?>" class="aips-post-row">
 								<th scope="row" class="check-column">
 									<label class="screen-reader-text" for="cb-select-<?php echo esc_attr($item->post_id); ?>"><?php esc_html_e('Select Post', 'ai-post-scheduler'); ?></label>
 									<input id="cb-select-<?php echo esc_attr($item->post_id); ?>" type="checkbox" class="aips-post-checkbox" 
@@ -138,38 +144,110 @@ $templates = $template_repository->get_all();
 										   data-history-id="<?php echo esc_attr($item->id); ?>">
 								</th>
 								<td class="column-title">
-									<div class="aips-table-primary">
-										<strong>
-											<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" target="_blank">
-												<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
-											</a>
-										</strong>
+									<!-- View Mode -->
+									<div class="aips-view-mode">
+										<div class="aips-table-primary">
+											<strong>
+												<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" target="_blank" class="aips-post-title-link">
+													<?php echo esc_html($item->post_title ?: $item->generated_title ?: __('Untitled', 'ai-post-scheduler')); ?>
+												</a>
+											</strong>
+										</div>
+										<div class="aips-table-meta">
+											<?php printf(
+												esc_html__('Modified: %s', 'ai-post-scheduler'),
+												esc_html(date_i18n(get_option('date_format'), strtotime($item->post_modified)))
+											); ?>
+										</div>
+										<?php if (!empty($post_categories) || !empty($tags_string)): ?>
+										<div class="aips-table-meta aips-post-terms-display" style="margin-top: 4px; font-size: 12px;">
+											<?php
+											if (!empty($post_categories)) {
+												$cat_names = array();
+												foreach ($post_categories as $cat_id) {
+													$cat = get_category($cat_id);
+													if ($cat && !is_wp_error($cat)) {
+														$cat_names[] = $cat->name;
+													}
+												}
+												if (!empty($cat_names)) {
+													echo '<strong>' . esc_html__('Categories:', 'ai-post-scheduler') . '</strong> ' . esc_html(implode(', ', $cat_names));
+												}
+											}
+											if (!empty($tags_string)) {
+												if (!empty($post_categories)) echo ' | ';
+												echo '<strong>' . esc_html__('Tags:', 'ai-post-scheduler') . '</strong> ' . esc_html($tags_string);
+											}
+											?>
+										</div>
+										<?php endif; ?>
 									</div>
-									<div class="aips-table-meta">
-										<?php printf(
-											esc_html__('Modified: %s', 'ai-post-scheduler'),
-											esc_html(date_i18n(get_option('date_format'), strtotime($item->post_modified)))
-										); ?>
+
+									<!-- Edit Mode (Hidden by default) -->
+									<div class="aips-edit-mode" style="display: none; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;">
+										<div class="aips-form-group" style="margin-bottom: 10px;">
+											<label for="inline_title_<?php echo esc_attr($item->post_id); ?>"><strong><?php esc_html_e('Title', 'ai-post-scheduler'); ?></strong></label>
+											<input type="text" id="inline_title_<?php echo esc_attr($item->post_id); ?>" class="aips-form-input aips-inline-title" value="<?php echo esc_attr($item->post_title ?: $item->generated_title); ?>" style="width: 100%;">
+										</div>
+
+										<div class="aips-form-group" style="margin-bottom: 10px;">
+											<label for="inline_category_<?php echo esc_attr($item->post_id); ?>"><strong><?php esc_html_e('Category', 'ai-post-scheduler'); ?></strong></label>
+											<?php
+											wp_dropdown_categories(array(
+												'show_option_none' => __('No category', 'ai-post-scheduler'),
+												'hide_empty'       => 0,
+												'name'             => 'inline_category_' . $item->post_id,
+												'id'               => 'inline_category_' . $item->post_id,
+												'class'            => 'aips-form-select aips-inline-category',
+												'selected'         => !empty($post_categories) ? $post_categories[0] : 0,
+											));
+											?>
+										</div>
+
+										<div class="aips-form-group" style="margin-bottom: 10px;">
+											<label for="inline_tags_<?php echo esc_attr($item->post_id); ?>"><strong><?php esc_html_e('Tags (comma-separated)', 'ai-post-scheduler'); ?></strong></label>
+											<input type="text" id="inline_tags_<?php echo esc_attr($item->post_id); ?>" class="aips-form-input aips-inline-tags" value="<?php echo esc_attr($tags_string); ?>" style="width: 100%;">
+										</div>
+
+										<div class="aips-edit-actions" style="margin-top: 10px;">
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-primary aips-save-inline-edit" data-post-id="<?php echo esc_attr($item->post_id); ?>">
+												<?php esc_html_e('Save', 'ai-post-scheduler'); ?>
+											</button>
+											<button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-cancel-inline-edit">
+												<?php esc_html_e('Cancel', 'ai-post-scheduler'); ?>
+											</button>
+											<span class="spinner aips-inline-spinner" style="float: none; margin-top: 0;"></span>
+										</div>
 									</div>
 								</td>
 								<td class="column-template">
-									<?php if ($item->template_name): ?>
-										<span class="aips-badge aips-badge-info"><?php echo esc_html($item->template_name); ?></span>
-									<?php else: ?>
-										<span class="aips-table-meta">-</span>
-									<?php endif; ?>
+									<div class="aips-view-mode">
+										<?php if ($item->template_name): ?>
+											<span class="aips-badge aips-badge-info"><?php echo esc_html($item->template_name); ?></span>
+										<?php else: ?>
+											<span class="aips-table-meta">-</span>
+										<?php endif; ?>
+									</div>
 								</td>
 								<td class="column-date">
-									<div class="aips-table-meta">
-										<?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item->created_at))); ?>
+									<div class="aips-view-mode">
+										<div class="aips-table-meta">
+											<?php echo esc_html(date_i18n(get_option('date_format'), strtotime($item->created_at))); ?>
+										</div>
 									</div>
 								</td>
 								<td class="column-actions">
-									<div class="aips-action-buttons">
+									<div class="aips-action-buttons aips-view-mode">
+										<button type="button"
+												class="aips-btn aips-btn-sm aips-inline-edit-btn"
+												data-post-id="<?php echo esc_attr($item->post_id); ?>"
+												title="<?php esc_attr_e('Inline Edit', 'ai-post-scheduler'); ?>">
+											<span class="dashicons dashicons-edit-page"></span>
+										</button>
 										<a href="<?php echo esc_url(get_edit_post_link($item->post_id)); ?>" 
 										   class="aips-btn aips-btn-sm" 
 										   target="_blank"
-										   title="<?php esc_attr_e('Edit this post', 'ai-post-scheduler'); ?>">
+										   title="<?php esc_attr_e('Full Edit', 'ai-post-scheduler'); ?>">
 											<span class="dashicons dashicons-edit"></span>
 										</a>
 										<button type="button"

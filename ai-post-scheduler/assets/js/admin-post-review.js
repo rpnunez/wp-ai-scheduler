@@ -14,6 +14,90 @@
             $('#cb-select-all-1').prop('checked', allChecked);
         });
 
+        // Inline Edit: Show edit form
+        $(document).on('click', '.aips-inline-edit-btn', function(e) {
+            e.preventDefault();
+            var row = $(this).closest('.aips-post-row');
+
+            // Revert any currently open inline edits
+            $('.aips-post-row').each(function() {
+                $(this).find('.aips-view-mode').show();
+                $(this).find('.aips-edit-mode').hide();
+            });
+
+            // Show edit fields for this row
+            row.find('.aips-view-mode').hide();
+            row.find('.aips-edit-mode').show();
+        });
+
+        // Inline Edit: Cancel
+        $(document).on('click', '.aips-cancel-inline-edit', function(e) {
+            e.preventDefault();
+            var row = $(this).closest('.aips-post-row');
+            row.find('.aips-edit-mode').hide();
+            row.find('.aips-view-mode').show();
+        });
+
+        // Inline Edit: Save
+        $(document).on('click', '.aips-save-inline-edit', function(e) {
+            e.preventDefault();
+            var button = $(this);
+            var row = button.closest('.aips-post-row');
+            var postId = button.data('post-id');
+            var spinner = row.find('.aips-inline-spinner');
+
+            var newTitle = row.find('.aips-inline-title').val();
+            var newCategory = row.find('.aips-inline-category').val();
+            var newTags = row.find('.aips-inline-tags').val();
+
+            button.prop('disabled', true);
+            row.find('.aips-cancel-inline-edit').prop('disabled', true);
+            spinner.addClass('is-active');
+
+            $.ajax({
+                url: aipsPostReviewL10n.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_save_inline_edit_post',
+                    nonce: aipsPostReviewL10n.nonce,
+                    post_id: postId,
+                    title: newTitle,
+                    category: newCategory,
+                    tags: newTags
+                },
+                success: function(response) {
+                    if (response.success) {
+                        AIPS.Utilities.showToast(response.data.message || 'Saved inline edits.', 'success');
+
+                        // Update UI without full page reload. For title, category and tags we must reload the page so the terms render correctly via PHP, or simply do a window.location.reload.
+                        // To follow best practices for this plugin as noted in memory: Use $.get(location.href) to fetch updated HTML and .replaceWith on the specific wrapper, or just reload since post review is complex. Given the complexity of the row, let's fetch the new row HTML.
+                        $.get(window.location.href, function(html) {
+                            var newRow = $(html).find('tr[data-post-id="' + postId + '"]');
+                            if (newRow.length) {
+                                row.replaceWith(newRow);
+                            } else {
+                                window.location.reload();
+                            }
+                        }).fail(function() {
+                            window.location.reload();
+                        });
+
+                    } else {
+                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.saveInlineEditError, 'error');
+                        button.prop('disabled', false);
+                        row.find('.aips-cancel-inline-edit').prop('disabled', false);
+                        spinner.removeClass('is-active');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsPostReviewL10n.saveInlineEditError, 'error');
+                    button.prop('disabled', false);
+                    row.find('.aips-cancel-inline-edit').prop('disabled', false);
+                    spinner.removeClass('is-active');
+                }
+            });
+        });
+
         // Preview Post (Button and Icon)
         $(document).on('click', '.aips-preview-post, .aips-preview-trigger', function(e) {
             e.preventDefault();
