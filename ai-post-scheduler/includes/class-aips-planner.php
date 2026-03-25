@@ -17,7 +17,7 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $niche = isset($_POST['niche']) ? sanitize_text_field($_POST['niche']) : '';
+        $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
         $count = isset($_POST['count']) ? absint($_POST['count']) : 10;
 
         if (empty($niche)) {
@@ -80,8 +80,8 @@ class AIPS_Planner {
 
         $topics = isset($_POST['topics']) ? (array) $_POST['topics'] : array();
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-        $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : '';
-        $frequency = isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily';
+        $start_date = isset($_POST['start_date']) ? sanitize_text_field(wp_unslash($_POST['start_date'])) : '';
+        $frequency = isset($_POST['frequency']) ? sanitize_text_field(wp_unslash($_POST['frequency'])) : 'daily';
 
         if (empty($topics) || empty($template_id) || empty($start_date)) {
             wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));

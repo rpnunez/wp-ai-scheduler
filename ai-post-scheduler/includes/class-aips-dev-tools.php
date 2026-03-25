@@ -40,7 +40,7 @@ class AIPS_Dev_Tools {
             wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
         }
 
-        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+        $topic = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '';
         $include_voice = isset($_POST['include_voice']) && $_POST['include_voice'] === 'true';
         $include_structure = isset($_POST['include_structure']) && $_POST['include_structure'] === 'true';
         $include_title_prompt = isset($_POST['include_title_prompt']) && $_POST['include_title_prompt'] === 'true';

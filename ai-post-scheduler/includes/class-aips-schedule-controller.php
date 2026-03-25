@@ -38,13 +38,13 @@ class AIPS_Schedule_Controller {
         $data = array(
             'id' => isset($_POST['schedule_id']) ? absint($_POST['schedule_id']) : 0,
             'template_id' => isset($_POST['template_id']) ? absint($_POST['template_id']) : 0,
-            'title' => isset($_POST['schedule_title']) ? sanitize_text_field($_POST['schedule_title']) : '',
-            'frequency' => isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily',
-            'start_time' => isset($_POST['start_time']) ? sanitize_text_field($_POST['start_time']) : null,
+            'title' => isset($_POST['schedule_title']) ? sanitize_text_field(wp_unslash($_POST['schedule_title'])) : '',
+            'frequency' => isset($_POST['frequency']) ? sanitize_text_field(wp_unslash($_POST['frequency'])) : 'daily',
+            'start_time' => isset($_POST['start_time']) ? sanitize_text_field(wp_unslash($_POST['start_time'])) : null,
             'is_active' => isset($_POST['is_active']) && 1 === absint($_POST['is_active']) ? 1 : 0,
-            'topic' => isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '',
+            'topic' => isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '',
             'article_structure_id' => isset($_POST['article_structure_id']) && $_POST['article_structure_id'] !== '' ? absint($_POST['article_structure_id']) : null,
-            'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? sanitize_text_field($_POST['rotation_pattern']) : null,
+            'rotation_pattern' => isset($_POST['rotation_pattern']) && $_POST['rotation_pattern'] !== '' ? sanitize_text_field(wp_unslash($_POST['rotation_pattern'])) : null,
         );
 
         if (empty($data['template_id'])) {
@@ -177,7 +177,7 @@ class AIPS_Schedule_Controller {
         $errors = array();
 
         $generator = new AIPS_Generator();
-        $topic = isset($_POST['topic']) ? sanitize_text_field($_POST['topic']) : '';
+        $topic = isset($_POST['topic']) ? sanitize_text_field(wp_unslash($_POST['topic'])) : '';
 
         for ($i = 0; $i < $quantity; $i++) {
             $result = $generator->generate_post($template, $voice, $topic);
@@ -459,7 +459,7 @@ class AIPS_Schedule_Controller {
         }
 
         $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
-        $type = isset($_POST['type']) ? sanitize_key($_POST['type']) : '';
+        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
 
         if (!$id || empty($type)) {
             wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));
@@ -523,7 +523,7 @@ class AIPS_Schedule_Controller {
         }
 
         $id        = isset($_POST['id']) ? absint($_POST['id']) : 0;
-        $type      = isset($_POST['type']) ? sanitize_key($_POST['type']) : '';
+        $type      = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
         $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
 
         if (!$id || empty($type)) {
@@ -690,7 +690,7 @@ class AIPS_Schedule_Controller {
         }
 
         $id   = isset($_POST['id']) ? absint($_POST['id']) : 0;
-        $type = isset($_POST['type']) ? sanitize_key($_POST['type']) : '';
+        $type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
 
         if (!$id || empty($type)) {
             wp_send_json_error(array('message' => __('Invalid parameters.', 'ai-post-scheduler')));

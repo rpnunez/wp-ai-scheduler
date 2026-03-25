@@ -18,7 +18,7 @@ if (!isset($aips_post_review_handler) && !isset($post_review_handler)) {
 
 // Get filter parameters
 $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
-$search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+$search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 $template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
 
 // Get draft posts

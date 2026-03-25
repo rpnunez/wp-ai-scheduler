@@ -67,3 +67,8 @@
 **Vulnerability:** The `$components` array from `$_POST['components']` was passed directly to the `aips_post_components_updated` action hook without being sanitized first, exposing any listeners to potentially malicious unsanitized POST data (XSS, Injection).
 **Learning:** `$_POST` arrays should be recursively sanitized or validated field-by-field before passing them to do_action.
 **Prevention:** Always construct a new array with properly sanitized fields using functions like `sanitize_text_field` and `wp_kses_post` before exposing user input through action hooks.
+
+## 2026-03-24 - [Missing Input Unslashing before Sanitization]
+**Vulnerability:** Superglobals like `$_POST`, `$_GET`, and `$_REQUEST` were passed directly to sanitization functions (e.g., `sanitize_text_field`, `wp_kses_post`) without first being unslashed.
+**Learning:** WordPress automatically adds slashes to `$_POST`, `$_GET`, and `$_REQUEST` arrays. If these slashes are not removed using `wp_unslash()` before sanitization, it can lead to data corruption (e.g., literal backslashes being saved to the database) or potentially bypass certain sanitization filters, leading to XSS vulnerabilities.
+**Prevention:** Always apply `wp_unslash()` to values retrieved from `$_POST`, `$_GET`, or `$_REQUEST` immediately before passing them to any sanitization function.

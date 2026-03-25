@@ -57,10 +57,10 @@ class AIPS_Structures_Controller {
         }
 
         $id = isset($_POST['structure_id']) ? absint($_POST['structure_id']) : 0;
-        $name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
-        $description = isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '';
-        $sections = isset($_POST['sections']) && is_array($_POST['sections']) ? array_map('sanitize_text_field', $_POST['sections']) : array();
-        $prompt_template = isset($_POST['prompt_template']) ? wp_kses_post($_POST['prompt_template']) : '';
+        $name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
+        $description = isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '';
+        $sections = isset($_POST['sections']) && is_array($_POST['sections']) ? array_map('sanitize_text_field', wp_unslash($_POST['sections'])) : array();
+        $prompt_template = isset($_POST['prompt_template']) ? wp_kses_post(wp_unslash($_POST['prompt_template'])) : '';
         $is_active = isset($_POST['is_active']) ? 1 : 0;
         $is_default = isset($_POST['is_default']) ? 1 : 0;
 
@@ -148,4 +148,3 @@ class AIPS_Structures_Controller {
         wp_send_json_success(array('message' => __('Structure status updated.', 'ai-post-scheduler')));
     }
 }
-
