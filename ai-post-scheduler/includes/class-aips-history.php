@@ -72,7 +72,7 @@ class AIPS_History {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+        $status = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
 
         $this->clear_history($status);
 
@@ -91,8 +91,8 @@ class AIPS_History {
             wp_die(__('Permission denied.', 'ai-post-scheduler'));
         }
 
-        $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
-        $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $status_filter = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
+        $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
 
         // Get max records limit from configuration
         $config = AIPS_Config::get_instance();
@@ -273,8 +273,8 @@ class AIPS_History {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $status_filter = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
-        $search_query = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $status_filter = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : '';
+        $search_query = isset($_POST['search']) ? sanitize_text_field(wp_unslash($_POST['search'])) : '';
         $paged = isset($_POST['paged']) ? max(1, absint($_POST['paged'])) : 1;
 
         $history = $this->get_history(array(
@@ -471,8 +471,8 @@ class AIPS_History {
      */
     public function render_page() {
         $current_page = isset($_GET['paged']) ? absint($_GET['paged']) : 1;
-        $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
-        $search_query = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+        $status_filter = isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : '';
+        $search_query = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
         
         $history = $this->get_history(array(
             'page' => $current_page,
