@@ -529,13 +529,25 @@ class AIPS_Generator {
     public function generate_post($template_or_context, $voice = null, $topic = null) {
         // Check if we're using the new context-based approach
         if ($template_or_context instanceof AIPS_Generation_Context) {
-            return $this->generate_post_from_context($template_or_context);
+            $result = $this->generate_post_from_context($template_or_context);
+
+            if (is_wp_error($result) && $template_or_context->get_creation_method() !== 'scheduled') {
+                $this->emit_generation_failure_notification($template_or_context, $result);
+            }
+
+            return $result;
         }
 
         // Legacy template-based approach - convert to context and delegate
         $template = $template_or_context;
         $context = new AIPS_Template_Context($template, $voice, $topic);
-        return $this->generate_post_from_context($context);
+        $result = $this->generate_post_from_context($context);
+
+        if (is_wp_error($result)) {
+            $this->emit_generation_failure_notification($context, $result);
+        }
+
+        return $result;
     }
 
     /**
@@ -776,14 +788,49 @@ class AIPS_Generator {
         // For backward compatibility, extract template if it's a template context
         if ($context instanceof AIPS_Template_Context) {
             $template_obj = $context->get_template();
-            do_action('aips_post_generated', $post_id, $template_obj, $this->current_history->get_id());
+            do_action('aips_post_generated', $post_id, $template_obj, $this->current_history->get_id(), $context);
         } else {
-            do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id());
+            do_action('aips_post_generated', $post_id, $context, $this->current_history->get_id(), $context);
         }
 
         $this->generation_logger->set_history_id(null);
 
         return $post_id;
+    }
+
+    /**
+     * Emit a generation failure notification for non-scheduled runs.
+     *
+     * @param AIPS_Generation_Context $context Generation context.
+     * @param WP_Error                $error   Error object.
+     * @return void
+     */
+    private function emit_generation_failure_notification($context, WP_Error $error) {
+        $resource_label = __('Manual generation', 'ai-post-scheduler');
+        $dedupe_parts = array('generation_failed', $context->get_type(), $context->get_id(), $error->get_error_code());
+
+        if ($context instanceof AIPS_Template_Context) {
+            $template = $context->get_template();
+            if ($template && !empty($template->name)) {
+                $resource_label = sprintf(__('template "%s"', 'ai-post-scheduler'), $template->name);
+            }
+        } elseif ($context instanceof AIPS_Topic_Context && !empty($context->get_topic())) {
+            $resource_label = sprintf(__('author topic "%s"', 'ai-post-scheduler'), $context->get_topic());
+        }
+
+        do_action('aips_generation_failed', array(
+            'resource_label'  => $resource_label,
+            'error_code'      => $error->get_error_code(),
+            'error_message'   => $error->get_error_message(),
+            'context_type'    => $context->get_type(),
+            'context_id'      => $context->get_id(),
+            'history_id'      => $this->current_history ? $this->current_history->get_id() : 0,
+            'creation_method' => $context->get_creation_method(),
+            'topic'           => $context->get_topic(),
+            'url'             => AIPS_Admin_Menu_Helper::get_page_url('history'),
+            'dedupe_key'      => implode('_', array_map('sanitize_key', array_map('strval', $dedupe_parts))),
+            'dedupe_window'   => 900,
+        ));
     }
 
     /**
