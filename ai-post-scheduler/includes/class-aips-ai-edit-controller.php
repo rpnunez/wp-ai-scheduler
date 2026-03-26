@@ -261,17 +261,17 @@ class AIPS_AI_Edit_Controller {
 		$updated_components = array();
 		
 		if (isset($components['title'])) {
-			$post_data['post_title'] = sanitize_text_field($components['title']);
+			$post_data['post_title'] = sanitize_text_field(wp_unslash($components['title']));
 			$updated_components[] = 'title';
 		}
 		
 		if (isset($components['excerpt'])) {
-			$post_data['post_excerpt'] = sanitize_textarea_field($components['excerpt']);
+			$post_data['post_excerpt'] = sanitize_textarea_field(wp_unslash($components['excerpt']));
 			$updated_components[] = 'excerpt';
 		}
 		
 		if (isset($components['content'])) {
-			$post_data['post_content'] = wp_kses_post($components['content']);
+			$post_data['post_content'] = wp_kses_post(wp_unslash($components['content']));
 			$updated_components[] = 'content';
 		}
 		
