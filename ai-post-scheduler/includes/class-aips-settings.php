@@ -97,7 +97,7 @@ class AIPS_Settings {
       
         // Author Topics page - hidden from menu navigation, accessible via URL
         add_submenu_page(
-            null,
+            'ai-post-scheduler',
             __('Author Topics', 'ai-post-scheduler'),
             __('Author Topics', 'ai-post-scheduler'),
             'manage_options',
@@ -210,8 +210,9 @@ class AIPS_Settings {
     public function fix_author_topics_parent_file($parent_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
         if ($page === 'aips-author-topics') {
-            return 'ai-post-scheduler';
+            $parent_file = 'ai-post-scheduler';
         }
+        error_log('[parent_file] Current page: ' . $page .' - Parent file: ' . $parent_file);
         return $parent_file;
     }
 
@@ -227,8 +228,9 @@ class AIPS_Settings {
     public function fix_author_topics_submenu_file($submenu_file) {
         $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
         if ($page === 'aips-author-topics') {
-            return 'aips-authors';
+            $submenu_file = 'aips-authors';
         }
+        error_log('[submenu_file] Current page: ' . $page .' - Submenu file: ' . $submenu_file);
         return $submenu_file;
     }
 

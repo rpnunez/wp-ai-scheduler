@@ -309,13 +309,27 @@ class AIPS_Author_Topics_Repository {
 	 * @return array Associative array of status => count.
 	 */
 	public function get_status_counts($author_id) {
-		$results = $this->wpdb->get_results($this->wpdb->prepare(
-			"SELECT status, COUNT(*) as count 
-			FROM {$this->table_name} 
-			WHERE author_id = %d 
-			GROUP BY status",
-			$author_id
-		), ARRAY_A);
+		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
+
+		// When counting approved topics, we need to exclude any topics that
+		// already have one or more generated posts associated with them. This
+		// keeps the "Approved" count aligned with the UI semantics, where the
+		// Approved tab only shows topics that have not yet produced posts.
+		$results = $this->wpdb->get_results(
+			$this->wpdb->prepare(
+				"SELECT t.status, COUNT(DISTINCT t.id) AS count
+				FROM {$this->table_name} t
+				LEFT JOIN {$logs_table} l
+					ON l.author_topic_id = t.id
+					AND l.action = 'post_generated'
+					AND l.post_id IS NOT NULL
+				WHERE t.author_id = %d
+					AND (t.status <> 'approved' OR l.id IS NULL)
+				GROUP BY t.status",
+				$author_id
+			),
+			ARRAY_A
+		);
 		
 		$counts = array(
 			'pending' => 0,

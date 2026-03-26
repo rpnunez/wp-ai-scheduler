@@ -1755,10 +1755,6 @@
 .aips-details-table th {
     text-align: left;
     padding: 8px 12px 8px 0;
-    vertical-align: top;
-    width: 150px;
-    color: #646970;
-    font-weight: 500;
 }
 
 .aips-details-table td {
@@ -3380,3 +3376,7 @@ margin-right: 8px;
     display: block;
 }
 
+/* Hide Author Topics from Admin Menu */
+li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
+    display: none;
+}

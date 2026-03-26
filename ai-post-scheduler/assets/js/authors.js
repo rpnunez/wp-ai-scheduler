@@ -73,6 +73,7 @@
 			
 			// Topic detail expand/collapse
 			$(document).on('click', '.aips-topic-expand-btn', this.toggleTopicDetail.bind(this));
+			$(document).on('click', '.topic-title-cell', this.onTopicTitleCellClick.bind(this));
 
 			// Topic search (author-topics page)
 			$(document).on('keyup search', '#aips-topic-search', this.filterTopics.bind(this));
@@ -482,6 +483,9 @@
 		 *                          (`'pending'`, `'approved'`, or `'rejected'`).
 		 */
 		loadTopics: function (status) {
+			// Immediately show a loading skeleton while the AJAX request is in flight.
+			this.showTopicsLoading();
+
 			$.ajax({
 				url: ajaxurl,
 				type: 'POST',
@@ -498,14 +502,44 @@
 						if (status === 'pending') {
 							this.renderInlineSimilarityIndicators();
 						}
+						// After rendering new content, hide the loading skeleton and
+						// reveal the topics table for the requested tab.
+						this.hideTopicsLoading();
 					} else {
 						$('#aips-topics-content').html('<p>' + (response.data && response.data.message ? response.data.message : aipsAuthorsL10n.errorLoadingTopics) + '</p>');
+						this.hideTopicsLoading();
 					}
 				},
 				error: () => {
 					$('#aips-topics-content').html('<p>' + aipsAuthorsL10n.errorLoadingTopics + '</p>');
+					this.hideTopicsLoading();
 				}
 			});
+		},
+
+		/**
+		 * Show the topics loading section.
+		 *
+		 * Hides the current topics table body to indicate that the selected
+		 * tab is being loaded.
+		 */
+		showTopicsLoading: function () {
+			var $loading = $('#aips-topics-loading');
+			var $content = $('#aips-topics-content');
+			var $list = $('#aips-topics-loading-list');
+
+			$content.hide();
+			$loading.show();
+			$('#aips-author-topics-panel').addClass('aips-topics-loading-active');
+		},
+
+		/**
+		 * Hide the topics loading section and reveal the topics content area.
+		 */
+		hideTopicsLoading: function () {
+			$('#aips-topics-loading').hide();
+			$('#aips-topics-content').show();
+			$('#aips-author-topics-panel').removeClass('aips-topics-loading-active');
 		},
 
 		/**
@@ -622,7 +656,7 @@
 						approveLabel: AIPS.Templates.escape(aipsAuthorsL10n.approveWithFeedback || 'Approve with Feedback'),
 						rejectLabel: AIPS.Templates.escape(aipsAuthorsL10n.rejectWithFeedback || 'Reject with Feedback')
 					});
-				} else if (status === 'approved') {
+				} else if (status === 'approved' || status === 'posts_generated') {
 					actionsHtml = AIPS.Templates.renderRaw('aips-tmpl-topic-actions-approved', {
 						id: topic.id,
 						generateLabel: AIPS.Templates.escape(aipsAuthorsL10n.generatePostNow || 'Generate Post Now'),
@@ -635,6 +669,9 @@
 					});
 				}
 
+				var rawGeneratedAt = topic.generated_at || '';
+				var formattedGeneratedAt = this.formatTopicDate(rawGeneratedAt) || rawGeneratedAt;
+
 				rowsHtml += AIPS.Templates.renderRaw('aips-tmpl-topic-row', {
 					id: topic.id,
 					topicTitle: AIPS.Templates.escape(topic.topic_title),
@@ -643,7 +680,7 @@
 					duplicateBadge: duplicateBadgeHtml,
 					feedbackBadge: feedbackBadgeHtml,
 					detailContent: detailSectionHtml,
-					generatedAt: AIPS.Templates.escape(topic.generated_at),
+					generatedAt: AIPS.Templates.escape(formattedGeneratedAt),
 					actions: actionsHtml
 				});
 			});
@@ -733,6 +770,22 @@
 		},
 
 		/**
+		 * Convert a label to Title Case while preserving separators like
+		 * slashes and hyphens.
+		 *
+		 * @param {string} text - Input label text.
+		 * @returns {string} Title-cased label.
+		 */
+		toTitleCase: function (text) {
+			if (!text || typeof text !== 'string') {
+				return text;
+			}
+			return text.toLowerCase().replace(/\b\w/g, function (match) {
+				return match.toUpperCase();
+			});
+		},
+
+		/**
 		 * Return the human-readable label for a feedback reason category.
 		 *
 		 * Looks up the category value in `aipsAuthorsL10n.approvalCategories` or
@@ -772,13 +825,118 @@
 				return '';
 			}
 
-			const label = this.getCategoryLabel(action, category);
+			const rawLabel = this.getCategoryLabel(action, category);
+			const label = this.toTitleCase(rawLabel);
 			const isPositive = action === 'approved';
 			const groupClass = isPositive ? 'aips-reason-category-badge-positive' : 'aips-reason-category-badge-negative';
 			const specificClass = 'aips-reason-category-badge-' + category.replace(/_/g, '-');
-			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + this.escapeHtml(label) + '">'
-				+ this.escapeHtml(label)
-				+ '</span>';
+			let iconClass = '';
+			switch (category) {
+				case 'timely':
+					iconClass = 'dashicons-clock';
+					break;
+				case 'relevant':
+					iconClass = 'dashicons-location-alt';
+					break;
+				case 'well_researched':
+					iconClass = 'dashicons-search';
+					break;
+				case 'engaging':
+					iconClass = 'dashicons-megaphone';
+					break;
+				case 'original':
+					iconClass = 'dashicons-lightbulb';
+					break;
+				case 'duplicate':
+					iconClass = 'dashicons-admin-page';
+					break;
+				case 'tone':
+					iconClass = 'dashicons-admin-customizer';
+					break;
+				case 'irrelevant':
+					iconClass = 'dashicons-dismiss';
+					break;
+				case 'policy':
+					iconClass = 'dashicons-warning';
+					break;
+				default:
+					iconClass = '';
+			}
+
+			const iconHtml = iconClass ? '<span class="dashicons ' + iconClass + '"></span>' : '';
+
+			return '<span class="aips-reason-category-badge ' + groupClass + ' ' + specificClass + '" title="' + this.escapeHtml(label) + '">' +
+				iconHtml + this.escapeHtml(label) +
+			'</span>';
+		},
+
+		/**
+		 * Format a topic generated_at timestamp into a friendly string.
+		 *
+		 * - Today: "Today, 2:32pm"
+		 * - Yesterday: "Yesterday, 2:32pm"
+		 * - Otherwise: "March 26, 2026 2:32pm"
+		 *
+		 * @param {string} raw - Datetime string (YYYY-MM-DD HH:MM:SS).
+		 * @returns {string} Formatted date string.
+		 */
+		formatTopicDate: function (raw) {
+			if (!raw || typeof raw !== 'string') {
+				return raw;
+			}
+
+			// Parse "YYYY-MM-DD HH:MM:SS" into a local Date.
+			var parts = raw.split(' ');
+			if (parts.length < 2) {
+				return raw;
+			}
+			var dateParts = parts[0].split('-');
+			var timeParts = parts[1].split(':');
+			if (dateParts.length < 3 || timeParts.length < 2) {
+				return raw;
+			}
+
+			var year = parseInt(dateParts[0], 10);
+			var monthIndex = parseInt(dateParts[1], 10) - 1; // 0-based
+			var day = parseInt(dateParts[2], 10);
+			var hour = parseInt(timeParts[0], 10);
+			var minute = parseInt(timeParts[1], 10);
+
+			if (isNaN(year) || isNaN(monthIndex) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+				return raw;
+			}
+
+			var d = new Date(year, monthIndex, day, hour, minute, 0);
+			var now = new Date();
+			var isToday = d.getFullYear() === now.getFullYear() &&
+				d.getMonth() === now.getMonth() &&
+				d.getDate() === now.getDate();
+
+			var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+			var isYesterday = d.getFullYear() === yesterday.getFullYear() &&
+				d.getMonth() === yesterday.getMonth() &&
+				d.getDate() === yesterday.getDate();
+
+			var hours12 = d.getHours() % 12 || 12;
+			var minutesStr = minute < 10 ? '0' + minute : String(minute);
+			var ampm = d.getHours() >= 12 ? 'pm' : 'am';
+			var timeStr = hours12 + ':' + minutesStr + ampm;
+
+			if (isToday) {
+				return 'Today, ' + timeStr;
+			}
+
+			if (isYesterday) {
+				return 'Yesterday, ' + timeStr;
+			}
+
+			var monthNames = [
+				'January', 'February', 'March', 'April', 'May', 'June',
+				'July', 'August', 'September', 'October', 'November', 'December'
+			];
+
+			var monthName = monthNames[monthIndex] || (monthIndex + 1);
+			return monthName + ' ' + day + ', ' + year + ' ' + timeStr;
 		},
 
 		/**
@@ -794,11 +952,13 @@
 			const approved = counts.approved || 0;
 			const rejected = counts.rejected || 0;
 			const total    = pending + approved + rejected;
+			const postsGenerated = counts.posts_generated || 0;
 
 			// Tab count badges
 			$('#pending-count').text(pending);
 			$('#approved-count').text(approved);
 			$('#rejected-count').text(rejected);
+			$('#posts-generated-count').text(postsGenerated);
 
 			// Stats Cards
 			$('#stat-total-count').text(total);
@@ -822,16 +982,15 @@
 			// Reset topic search when switching tabs
 			$('#aips-topic-search').val('');
 			$('#aips-topic-search-clear').hide();
-
-			// Add fade transition and reload content for the selected tab
-			$('#aips-topics-content').fadeOut(200, () => {
-				if (status === 'feedback') {
-					this.loadFeedback();
-				} else {
-					this.loadTopics(status);
-				}
-				$('#aips-topics-content').fadeIn(200);
-			});
+			
+			// Immediately switch to the loading skeleton, then fetch the
+			// appropriate content for the selected tab.
+			if (status === 'feedback') {
+				this.showTopicsLoading();
+				this.loadFeedback();
+			} else {
+				this.loadTopics(status);
+			}
 
 			// Update bulk action dropdown options based on tab
 			this.updateBulkActionDropdown(status);
@@ -900,7 +1059,7 @@
 					$dropdown.append('<option value="approve">' + (aipsAuthorsL10n.approve || 'Approve') + '</option>');
 					$dropdown.append('<option value="reject">' + (aipsAuthorsL10n.reject || 'Reject') + '</option>');
 					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
-				} else if (status === 'approved') {
+				} else if (status === 'approved' || status === 'posts_generated') {
 					// Approved tab: Generate Now, Delete (no Approve)
 					$dropdown.append('<option value="generate_now">' + (aipsAuthorsL10n.generateNow || 'Generate Now') + '</option>');
 					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
@@ -912,6 +1071,38 @@
 					$dropdown.append('<option value="delete">' + (aipsAuthorsL10n.delete || 'Delete') + '</option>');
 				}
 			});
+		},
+
+		/**
+		 * Handle clicks anywhere in the Topic Details column.
+		 *
+		 * Expands/collapses the topic details in the same way as clicking the
+		 * small arrow button, but ignores clicks on interactive controls inside
+		 * the cell (buttons, links, inputs, etc.).
+		 *
+		 * @param {Event} e - Click event from `.topic-title-cell`.
+		 */
+		onTopicTitleCellClick: function (e) {
+			// Do not toggle when clicking on interactive elements inside the cell.
+			if (
+				$(e.target).closest('button, a, input, textarea, select, label').length ||
+				$(e.target).closest('.aips-topic-expand-btn').length
+			) {
+				return;
+			}
+
+			const $row = $(e.currentTarget).closest('tr[data-topic-id]');
+			const topicId = $row.data('topic-id');
+
+			if (!topicId) {
+				return;
+			}
+
+			const $button = $('.aips-topic-expand-btn[data-topic-id="' + topicId + '"]');
+
+			if ($button.length) {
+				$button.trigger('click');
+			}
 		},
 
 		/**
@@ -1085,7 +1276,7 @@
 		loadFeedback: function () {
 			if (!this.currentAuthorId) {
 				$('#aips-topics-content').html('<p>No author selected.</p>');
-				
+				this.hideTopicsLoading();
 				return;
 			}
 
@@ -1105,9 +1296,11 @@
 					} else {
 						$('#aips-topics-content').html('<p>No feedback found.</p>');
 					}
+					this.hideTopicsLoading();
 				},
 				error: () => {
 					$('#aips-topics-content').html('<p>Error loading feedback.</p>');
+					this.hideTopicsLoading();
 				}
 			});
 		},
