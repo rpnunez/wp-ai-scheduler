@@ -46,6 +46,24 @@ Fires after AI Edit saves updated post components.
     *   `array $updated_components`: Updated component keys (`title`, `excerpt`, `content`, `featured_image`).
     *   `array $components`: Raw component payload submitted by AI Edit.
 
+#### `aips_generation_failed`
+Fires when a non-scheduled/manual generation flow fails and should create a high-priority notification.
+
+*   **Arguments:**
+    *   `array $payload`: Associative payload containing keys such as `resource_label`, `error_code`, `error_message`, `context_type`, `context_id`, `history_id`, `creation_method`, `url`, `dedupe_key`, and `dedupe_window`.
+
+#### `aips_quota_alert`
+Fires when the AI service detects quota/rate-limit/circuit-breaker conditions that should notify administrators.
+
+*   **Arguments:**
+    *   `array $payload`: Associative payload containing keys such as `request_type`, `error_code`, `error_message`, `url`, `dedupe_key`, and `dedupe_window`.
+
+#### `aips_integration_error`
+Fires when the AI Engine integration is unavailable or misconfigured.
+
+*   **Arguments:**
+    *   `array $payload`: Associative payload containing keys such as `request_type`, `error_code`, `error_message`, `url`, `dedupe_key`, and `dedupe_window`.
+
 #### `aips_partial_generation_state_reconciled`
 Fires after partial-generation metadata is reconciled from current post values.
 
@@ -68,6 +86,12 @@ Fires when a schedule item fails to execute.
 *   **Arguments:**
     *   `int $schedule_id`: The ID of the schedule.
     *   `string $error_message`: The error message.
+
+#### `aips_scheduler_error`
+Fires when a scheduled automation run fails or cannot obtain its execution lock and should create a high-priority notification.
+
+*   **Arguments:**
+    *   `array $payload`: Associative payload containing keys such as `schedule_id`, `template_id`, `schedule_name`, `error_code`, `error_message`, `frequency`, `history_id`, `url`, `dedupe_key`, and `dedupe_window`.
 
 #### `aips_schedule_execution_completed`
 Fires when a schedule item is successfully executed.
@@ -93,6 +117,14 @@ Fires when the automated research background process completes.
     *   `string $niche`: The niche that was researched.
     *   `int $saved_count`: The number of new topics saved.
     *   `array $topics`: The array of raw topic data retrieved.
+
+### System / Operational Errors
+
+#### `aips_system_error`
+Fires when a plugin-level operational error occurs during activation, upgrade, or cron execution and should create a high-priority notification.
+
+*   **Arguments:**
+    *   `array $payload`: Associative payload containing keys such as `title`, `error_code`, `error_message`, `schedule_id`, `template_id`, `url`, `dedupe_key`, and `dedupe_window`.
 
 ### Planner
 

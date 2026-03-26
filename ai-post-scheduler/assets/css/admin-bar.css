@@ -166,3 +166,33 @@
 	font-style: italic;
 	font-size: 12px;
 }
+
+/* -------------------------------------------------------
+   Notification severity levels
+------------------------------------------------------- */
+#wpadminbar .aips-notif-level-warning > .ab-item {
+	border-left: 3px solid #f0b429;
+}
+
+#wpadminbar .aips-notif-level-error > .ab-item {
+	border-left: 3px solid #d63638;
+}
+
+/* Notification title line */
+#wpadminbar .aips-notif-title {
+	display: block;
+	font-size: 11px;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.6);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-bottom: 2px;
+}
+
+#wpadminbar .aips-notif-level-warning .aips-notif-title {
+	color: #f0b429;
+}
+
+#wpadminbar .aips-notif-level-error .aips-notif-title {
+	color: #f86368;
+}
