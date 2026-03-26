@@ -19,7 +19,7 @@ $niches = $repository->get_niche_list();
 $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
 $interval_calculator = new AIPS_Interval_Calculator();
 $default_research_frequency = 'daily';
-$active_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'trending';
+$active_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'trending';
 $valid_tabs = array('trending', 'planner', 'gap-analysis');
 if (!in_array($active_tab, $valid_tabs, true)) {
     $active_tab = 'trending';

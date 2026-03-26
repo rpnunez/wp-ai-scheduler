@@ -35,12 +35,12 @@ class AIPS_Seeder_Admin {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : '';
+        $type = isset($_POST['type']) ? sanitize_text_field(wp_unslash($_POST['type'])) : '';
         $count = isset($_POST['count']) ? absint($_POST['count']) : 0;
-        $keywords = isset($_POST['keywords']) ? sanitize_textarea_field($_POST['keywords']) : '';
+        $keywords = isset($_POST['keywords']) ? sanitize_textarea_field(wp_unslash($_POST['keywords'])) : '';
 
         if (empty($type)) {
-            wp_send_json_error(array('message' => 'Missing type.'));
+            wp_send_json_error(array('message' => __('Missing type.', 'ai-post-scheduler')));
         }
 
         // Increase timeout for AI generation
