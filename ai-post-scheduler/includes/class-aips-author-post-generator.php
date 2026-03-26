@@ -248,6 +248,27 @@ class AIPS_Author_Post_Generator {
 			
 		} catch (Exception $e) {
 			$this->logger->log("Exception generating post for topic {$topic->id}: " . $e->getMessage(), 'error');
+
+			$payload = array(
+				'resource_label'  => sprintf(__('author topic "%s"', 'ai-post-scheduler'), $topic->topic_title),
+				'schedule_name'   => sprintf(__('Author post generation for %s', 'ai-post-scheduler'), $author->name),
+				'error_code'      => 'generation_failed',
+				'error_message'   => $e->getMessage(),
+				'topic_id'        => $topic->id,
+				'topic_title'     => $topic->topic_title,
+				'author_id'       => $author->id,
+				'author_name'     => $author->name,
+				'creation_method' => $creation_method,
+				'url'             => 'scheduled' === $creation_method ? AIPS_Admin_Menu_Helper::get_page_url('schedule') : AIPS_Admin_Menu_Helper::get_page_url('history'),
+				'dedupe_key'      => sanitize_key($creation_method . '_author_topic_' . $topic->id . '_exception'),
+				'dedupe_window'   => 900,
+			);
+
+			if ('scheduled' === $creation_method) {
+				do_action('aips_scheduler_error', $payload);
+			} else {
+				do_action('aips_generation_failed', $payload);
+			}
 			
 			// Log exception using new History API
 			$history = $this->history_service->create('topic_post_generation', array(

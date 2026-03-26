@@ -77,6 +77,33 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that create_notification() persists rich notification fields.
+	 */
+	public function test_create_notification_persists_rich_fields() {
+		global $wpdb;
+
+		$id = $this->repository->create_notification( array(
+			'type'       => 'generation_failed',
+			'title'      => 'Generation failed',
+			'message'    => 'Template Alpha failed',
+			'url'        => 'https://example.com/history',
+			'level'      => 'error',
+			'meta'       => array( 'history_id' => 99 ),
+			'dedupe_key' => 'generation_failed_alpha',
+		) );
+
+		$row = $wpdb->get_row( $wpdb->prepare(
+			"SELECT * FROM {$wpdb->prefix}aips_notifications WHERE id = %d",
+			$id
+		) );
+
+		$this->assertSame( 'Generation failed', $row->title );
+		$this->assertSame( 'error', $row->level );
+		$this->assertSame( 'generation_failed_alpha', $row->dedupe_key );
+		$this->assertStringContainsString( 'history_id', $row->meta );
+	}
+
+	/**
 	 * Test that create() stores created_at in UTC.
 	 */
 	public function test_create_stores_utc_timestamp() {
@@ -171,6 +198,27 @@ class Test_AIPS_Notifications extends WP_UnitTestCase {
 
 		$this->assertTrue( $result );
 		$this->assertEquals( 0, $this->repository->count_unread() );
+
+		global $wpdb;
+		$read_at = $wpdb->get_var( $wpdb->prepare(
+			"SELECT read_at FROM {$wpdb->prefix}aips_notifications WHERE id = %d",
+			$id
+		) );
+
+		$this->assertNotEmpty( $read_at );
+	}
+
+	/**
+	 * Test dedupe helper against a recent notification.
+	 */
+	public function test_was_recently_sent_returns_true_for_recent_dedupe_key() {
+		$this->repository->create_notification( array(
+			'type'       => 'quota_alert',
+			'message'    => 'Rate limit hit',
+			'dedupe_key' => 'quota_alert_text_rate_limit_exceeded',
+		) );
+
+		$this->assertTrue( $this->repository->was_recently_sent( 'quota_alert_text_rate_limit_exceeded', 3600 ) );
 	}
 
 	// -----------------------------------------------------------------------

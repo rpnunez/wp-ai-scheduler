@@ -93,6 +93,14 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!defined('HOUR_IN_SECONDS')) {
         define('HOUR_IN_SECONDS', 3600);
     }
+
+    if (!defined('MINUTE_IN_SECONDS')) {
+        define('MINUTE_IN_SECONDS', 60);
+    }
+
+    if (!defined('DAY_IN_SECONDS')) {
+        define('DAY_IN_SECONDS', 86400);
+    }
     
     // Mock WordPress functions if not available
     if (!function_exists('esc_html__')) {
@@ -448,6 +456,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+	if (!function_exists('wp_delete_post')) {
+		function wp_delete_post($postid = 0, $force_delete = false) {
+			return true;
+		}
+	}
+
     if (!function_exists('get_post')) {
         function get_post($post_id = null) {
             global $test_posts;
@@ -682,6 +696,46 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
     if (!function_exists('sanitize_textarea_field')) {
         function sanitize_textarea_field($str) {
             return strip_tags($str);
+        }
+    }
+
+    if (!function_exists('sanitize_key')) {
+        function sanitize_key($key) {
+            $key = is_scalar($key) ? (string) $key : '';
+            $key = strtolower($key);
+            return preg_replace('/[^a-z0-9_\-]/', '', $key);
+        }
+    }
+
+    if (!function_exists('sanitize_email')) {
+        function sanitize_email($email) {
+            $email = is_scalar($email) ? (string) $email : '';
+            return trim(filter_var($email, FILTER_SANITIZE_EMAIL));
+        }
+    }
+
+    if (!function_exists('is_email')) {
+        function is_email($email) {
+            $email = sanitize_email($email);
+            return (false !== filter_var($email, FILTER_VALIDATE_EMAIL)) ? $email : false;
+        }
+    }
+
+    if (!function_exists('wp_mail')) {
+        function wp_mail($to, $subject, $message, $headers = '', $attachments = array()) {
+            if (!isset($GLOBALS['aips_wp_mail_log']) || !is_array($GLOBALS['aips_wp_mail_log'])) {
+                $GLOBALS['aips_wp_mail_log'] = array();
+            }
+
+            $GLOBALS['aips_wp_mail_log'][] = array(
+                'to'          => $to,
+                'subject'     => $subject,
+                'message'     => $message,
+                'headers'     => $headers,
+                'attachments' => $attachments,
+            );
+
+            return true;
         }
     }
     
@@ -977,6 +1031,10 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-planner.php',
         'class-aips-history.php',
         'class-aips-settings.php',
+        'class-aips-notification-template.php',
+        'class-aips-notification-templates.php',
+        'class-aips-notifications-repository.php',
+        'class-aips-notifications.php',
         'class-aips-admin-assets.php',
         'class-aips-admin-menu-helper.php',
         'class-aips-calendar-controller.php',
