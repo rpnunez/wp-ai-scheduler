@@ -46,3 +46,6 @@
 ## 2026-03-25 - Add Call-to-Actions in Empty States
 Learning: Empty states that tell users to go somewhere without providing a direct link create unnecessary friction and break the flow.
 Action: Always include clear call-to-action buttons (like 'Create X') in empty states that direct users to the exact next step needed.
+## 2026-03-26 - Standardize Planner Empty State
+Learning: The `planner.php` empty state for search was hardcoded inside `admin-planner.js` without utilizing the global `.aips-empty-state` styling component, causing UI inconsistency with tables like Templates and History.
+Action: Extracted the HTML into a template tag in `planner.php` using standard empty state CSS classes, and updated `admin-planner.js` to merely toggle its display based on the search result count.

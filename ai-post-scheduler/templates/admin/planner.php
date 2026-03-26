@@ -78,6 +78,20 @@ $default_planner_frequency = 'daily';
                 <!-- Topics inserted via JS -->
             </div>
 
+            <!-- Empty state template -->
+            <script type="text/html" id="aips-tmpl-planner-search-empty">
+                <div id="planner-topic-search-no-results" class="aips-empty-state" style="padding: 40px 20px;">
+                    <div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+                    <h3 class="aips-empty-state-title"><?php esc_html_e('No Topics Found', 'ai-post-scheduler'); ?></h3>
+                    <p class="aips-empty-state-description"><?php esc_html_e('No topics match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
+                    <div class="aips-empty-state-actions">
+                        <button type="button" class="aips-btn aips-btn-primary aips-clear-planner-search-btn">
+                            <?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+                </div>
+            </script>
+
             <div class="aips-schedule-settings aips-planner-schedule-settings">
                 <h4 ><?php echo esc_html__('Bulk Schedule Settings', 'ai-post-scheduler'); ?></h4>
 

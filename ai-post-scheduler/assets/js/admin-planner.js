@@ -267,15 +267,18 @@
             // Show an empty state message when no topics match the filter
             var $topicsList = $('#topics-list');
             var visibleCount = $topicsList.find('.topic-item:visible').length;
-            var $emptyState = $topicsList.find('.topics-empty-state');
+            var $emptyState = $('#planner-topic-search-no-results');
 
             if (term && visibleCount === 0) {
                 if ($emptyState.length === 0) {
-                    $topicsList.append('<div class="topics-empty-state" style="padding: 20px; text-align: center; color: #666;">No topics match your search.</div>');
+                    var emptyStateHtml = $('#aips-tmpl-planner-search-empty').html();
+                    $topicsList.after(emptyStateHtml);
+                } else {
+                    $emptyState.show();
                 }
             } else {
                 if ($emptyState.length) {
-                    $emptyState.remove();
+                    $emptyState.hide();
                 }
             }
         },
@@ -547,6 +550,7 @@
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('click', '#planner-topic-search-clear', window.AIPS.clearTopicSearch);
+        $(document).on('click', '.aips-clear-planner-search-btn', window.AIPS.clearTopicSearch);
         $(document).on('click', '.aips-remove-topic-btn', window.AIPS.removeTopic);
     });
 
