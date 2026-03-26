@@ -43,7 +43,12 @@ class AIPS_Authors_Controller {
 	 * @var AIPS_Author_Topics_Scheduler Topics scheduler
 	 */
 	private $topics_scheduler;
-	
+
+	/**
+	 * @var AIPS_Notifications Notifications service
+	 */
+	private $notifications;
+
 	/**
 	 * Initialize the controller.
 	 */
@@ -53,6 +58,7 @@ class AIPS_Authors_Controller {
 		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository = new AIPS_Feedback_Repository();
 		$this->topics_scheduler = new AIPS_Author_Topics_Scheduler();
+		$this->notifications = new AIPS_Notifications();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_save_author', array($this, 'ajax_save_author'));
@@ -78,8 +84,8 @@ class AIPS_Authors_Controller {
 		
 		// Sanitize and validate input
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
-		$field_niche = isset($_POST['field_niche']) ? sanitize_text_field($_POST['field_niche']) : '';
+		$name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
+		$field_niche = isset($_POST['field_niche']) ? sanitize_text_field(wp_unslash($_POST['field_niche'])) : '';
 		
 		if (empty($name) || empty($field_niche)) {
 			wp_send_json_error(array('message' => __('Name and Field/Niche are required.', 'ai-post-scheduler')));
@@ -89,29 +95,29 @@ class AIPS_Authors_Controller {
 		$data = array(
 			'name' => $name,
 			'field_niche' => $field_niche,
-			'description' => isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '',
-			'keywords' => isset($_POST['keywords']) ? sanitize_text_field($_POST['keywords']) : '',
-			'details' => isset($_POST['details']) ? sanitize_textarea_field($_POST['details']) : '',
+			'description' => isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '',
+			'keywords' => isset($_POST['keywords']) ? sanitize_text_field(wp_unslash($_POST['keywords'])) : '',
+			'details' => isset($_POST['details']) ? sanitize_textarea_field(wp_unslash($_POST['details'])) : '',
 			'article_structure_id' => !empty($_POST['article_structure_id']) ? absint($_POST['article_structure_id']) : null,
-			'topic_generation_prompt' => isset($_POST['topic_generation_prompt']) ? sanitize_textarea_field($_POST['topic_generation_prompt']) : '',
-			'topic_generation_frequency' => isset($_POST['topic_generation_frequency']) ? sanitize_text_field($_POST['topic_generation_frequency']) : 'weekly',
+			'topic_generation_prompt' => isset($_POST['topic_generation_prompt']) ? sanitize_textarea_field(wp_unslash($_POST['topic_generation_prompt'])) : '',
+			'topic_generation_frequency' => isset($_POST['topic_generation_frequency']) ? sanitize_text_field(wp_unslash($_POST['topic_generation_frequency'])) : 'weekly',
 			'topic_generation_quantity' => isset($_POST['topic_generation_quantity']) ? absint($_POST['topic_generation_quantity']) : 5,
-			'post_generation_frequency' => isset($_POST['post_generation_frequency']) ? sanitize_text_field($_POST['post_generation_frequency']) : 'daily',
-			'post_status' => isset($_POST['post_status']) ? sanitize_text_field($_POST['post_status']) : 'draft',
+			'post_generation_frequency' => isset($_POST['post_generation_frequency']) ? sanitize_text_field(wp_unslash($_POST['post_generation_frequency'])) : 'daily',
+			'post_status' => isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft',
 			'post_category' => isset($_POST['post_category']) ? absint($_POST['post_category']) : null,
-			'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field($_POST['post_tags']) : '',
+			'post_tags' => isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '',
 			'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
 			'generate_featured_image' => isset($_POST['generate_featured_image']) ? 1 : 0,
-			'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field($_POST['featured_image_source']) : 'ai_prompt',
-			'voice_tone' => isset($_POST['voice_tone']) ? sanitize_text_field($_POST['voice_tone']) : '',
-			'writing_style' => isset($_POST['writing_style']) ? sanitize_text_field($_POST['writing_style']) : '',
+			'featured_image_source' => isset($_POST['featured_image_source']) ? sanitize_text_field(wp_unslash($_POST['featured_image_source'])) : 'ai_prompt',
+			'voice_tone' => isset($_POST['voice_tone']) ? sanitize_text_field(wp_unslash($_POST['voice_tone'])) : '',
+			'writing_style' => isset($_POST['writing_style']) ? sanitize_text_field(wp_unslash($_POST['writing_style'])) : '',
 			// New expanded author profile fields
-			'target_audience' => isset($_POST['target_audience']) ? sanitize_text_field($_POST['target_audience']) : '',
-			'expertise_level' => isset($_POST['expertise_level']) ? sanitize_text_field($_POST['expertise_level']) : '',
-			'content_goals' => isset($_POST['content_goals']) ? sanitize_textarea_field($_POST['content_goals']) : '',
-			'excluded_topics' => isset($_POST['excluded_topics']) ? sanitize_textarea_field($_POST['excluded_topics']) : '',
-			'preferred_content_length' => isset($_POST['preferred_content_length']) ? sanitize_text_field($_POST['preferred_content_length']) : '',
-			'language' => isset($_POST['language']) ? sanitize_text_field($_POST['language']) : 'en',
+			'target_audience' => isset($_POST['target_audience']) ? sanitize_text_field(wp_unslash($_POST['target_audience'])) : '',
+			'expertise_level' => isset($_POST['expertise_level']) ? sanitize_text_field(wp_unslash($_POST['expertise_level'])) : '',
+			'content_goals' => isset($_POST['content_goals']) ? sanitize_textarea_field(wp_unslash($_POST['content_goals'])) : '',
+			'excluded_topics' => isset($_POST['excluded_topics']) ? sanitize_textarea_field(wp_unslash($_POST['excluded_topics'])) : '',
+			'preferred_content_length' => isset($_POST['preferred_content_length']) ? sanitize_text_field(wp_unslash($_POST['preferred_content_length'])) : '',
+			'language' => isset($_POST['language']) ? sanitize_text_field(wp_unslash($_POST['language'])) : 'en',
 			'max_posts_per_topic' => isset($_POST['max_posts_per_topic']) ? max(1, absint($_POST['max_posts_per_topic'])) : 1,
 			// Source group fields
 			'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
@@ -223,7 +229,7 @@ class AIPS_Authors_Controller {
 		}
 		
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
-		$status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : null;
+		$status = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : null;
 		
 		if (!$author_id) {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
@@ -336,7 +342,7 @@ class AIPS_Authors_Controller {
 		// Create admin bar notification for manual topic generation
 		$author = $this->repository->get_by_id($author_id);
 		if ($author && is_array($result)) {
-			AIPS_Admin_Bar::notify_author_topics_generated($author->name, count($result), $author_id);
+			$this->notifications->author_topics_generated($author->name, count($result), $author_id);
 		}
 
 		wp_send_json_success(array(
@@ -440,10 +446,10 @@ class AIPS_Authors_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		$site_niche      = isset($_POST['site_niche']) ? sanitize_text_field($_POST['site_niche']) : '';
-		$target_audience = isset($_POST['target_audience']) ? sanitize_text_field($_POST['target_audience']) : '';
-		$content_goals   = isset($_POST['content_goals']) ? sanitize_textarea_field($_POST['content_goals']) : '';
-		$site_url        = isset($_POST['site_url']) ? esc_url_raw($_POST['site_url']) : '';
+		$site_niche      = isset($_POST['site_niche']) ? sanitize_text_field(wp_unslash($_POST['site_niche'])) : '';
+		$target_audience = isset($_POST['target_audience']) ? sanitize_text_field(wp_unslash($_POST['target_audience'])) : '';
+		$content_goals   = isset($_POST['content_goals']) ? sanitize_textarea_field(wp_unslash($_POST['content_goals'])) : '';
+		$site_url        = isset($_POST['site_url']) ? esc_url_raw(wp_unslash($_POST['site_url'])) : '';
 		$count           = isset($_POST['count']) ? absint($_POST['count']) : 3;
 
 		if (empty($site_niche)) {
@@ -472,4 +478,3 @@ class AIPS_Authors_Controller {
 		));
 	}
 }
-

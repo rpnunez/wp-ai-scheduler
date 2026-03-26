@@ -81,9 +81,9 @@ class AIPS_Research_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
         
-        $niche = isset($_POST['niche']) ? sanitize_text_field($_POST['niche']) : '';
+        $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
         $count = isset($_POST['count']) ? absint($_POST['count']) : 10;
-        $keywords = isset($_POST['keywords']) ? array_map('sanitize_text_field', (array) $_POST['keywords']) : array();
+        $keywords = isset($_POST['keywords']) ? array_map('sanitize_text_field', (array) wp_unslash($_POST['keywords'])) : array();
         
         if (empty($niche)) {
             wp_send_json_error(array('message' => __('Niche is required.', 'ai-post-scheduler')));
@@ -126,7 +126,7 @@ class AIPS_Research_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
         
-        $niche = isset($_POST['niche']) ? sanitize_text_field($_POST['niche']) : '';
+        $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
         $min_score = isset($_POST['min_score']) ? absint($_POST['min_score']) : 0;
         $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 20;
         $fresh_only = isset($_POST['fresh_only']) && $_POST['fresh_only'] === 'true';
@@ -232,8 +232,8 @@ class AIPS_Research_Controller {
         
         $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
-        $start_date = isset($_POST['start_date']) ? sanitize_text_field($_POST['start_date']) : '';
-        $frequency = isset($_POST['frequency']) ? sanitize_text_field($_POST['frequency']) : 'daily';
+        $start_date = isset($_POST['start_date']) ? sanitize_text_field(wp_unslash($_POST['start_date'])) : '';
+        $frequency = isset($_POST['frequency']) ? sanitize_text_field(wp_unslash($_POST['frequency'])) : 'daily';
         
         if (empty($topic_ids) || empty($template_id) || empty($start_date)) {
             wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));
@@ -414,7 +414,7 @@ class AIPS_Research_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $niche = isset($_POST['niche']) ? sanitize_text_field($_POST['niche']) : '';
+        $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
 
         if (empty($niche)) {
             wp_send_json_error(array('message' => __('Niche is required.', 'ai-post-scheduler')));
@@ -444,8 +444,8 @@ class AIPS_Research_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $gap_topic = isset($_POST['gap_topic']) ? sanitize_text_field($_POST['gap_topic']) : '';
-        $niche = isset($_POST['niche']) ? sanitize_text_field($_POST['niche']) : '';
+        $gap_topic = isset($_POST['gap_topic']) ? sanitize_text_field(wp_unslash($_POST['gap_topic'])) : '';
+        $niche = isset($_POST['niche']) ? sanitize_text_field(wp_unslash($_POST['niche'])) : '';
 
         if (empty($gap_topic) || empty($niche)) {
             wp_send_json_error(array('message' => __('Gap topic and niche are required.', 'ai-post-scheduler')));

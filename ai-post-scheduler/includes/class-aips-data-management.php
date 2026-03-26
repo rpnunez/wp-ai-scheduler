@@ -82,7 +82,7 @@ class AIPS_Data_Management {
 			return;
 		}
 		
-		$format = isset($_POST['format']) ? sanitize_text_field($_POST['format']) : 'mysql';
+		$format = isset($_POST['format']) ? sanitize_text_field(wp_unslash($_POST['format'])) : 'mysql';
 		
 		if (!isset($this->export_formats[$format])) {
 			wp_send_json_error(array('message' => __('Invalid export format', 'ai-post-scheduler')));
@@ -94,7 +94,8 @@ class AIPS_Data_Management {
 			$exporter->do_export();
 			// Script will exit after sending download
 		} catch (Exception $e) {
-			wp_send_json_error(array('message' => $e->getMessage()));
+			error_log('AIPS Export Error: ' . $e->getMessage());
+			wp_send_json_error(array('message' => __('An error occurred during export. Please check server logs.', 'ai-post-scheduler')));
 		}
 	}
 	
@@ -109,7 +110,7 @@ class AIPS_Data_Management {
 			return;
 		}
 		
-		$format = isset($_POST['format']) ? sanitize_text_field($_POST['format']) : 'mysql';
+		$format = isset($_POST['format']) ? sanitize_text_field(wp_unslash($_POST['format'])) : 'mysql';
 		
 		if (!isset($this->import_formats[$format])) {
 			wp_send_json_error(array('message' => __('Invalid import format', 'ai-post-scheduler')));
