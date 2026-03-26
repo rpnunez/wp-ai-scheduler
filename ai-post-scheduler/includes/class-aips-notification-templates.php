@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
  *   $registry = new AIPS_Notification_Templates();
  *
  *   // Retrieve a template:
- *   $tpl = $registry->get('partial_generation');
+ *   $tpl = $registry->get('generation_failed');
  *
  *   // Register a custom template at run-time:
  *   $registry->register( new AIPS_Notification_Template( 'my_event', ... ) );
@@ -104,46 +104,47 @@ class AIPS_Notification_Templates {
 	 * @return void
 	 */
 	private function register_defaults() {
-		$this->register($this->build_partial_generation_template());
-		$this->register($this->build_posts_awaiting_review_template());
+		$this->register($this->build_standard_alert_template('generation_failed', __('Generation Failed', 'ai-post-scheduler'), '#b32d2e'));
+		$this->register($this->build_standard_alert_template('quota_alert', __('Quota Alert', 'ai-post-scheduler'), '#b32d2e'));
+		$this->register($this->build_standard_alert_template('integration_error', __('Integration Error', 'ai-post-scheduler'), '#b32d2e'));
+		$this->register($this->build_standard_alert_template('scheduler_error', __('Scheduler Error', 'ai-post-scheduler'), '#b32d2e'));
+		$this->register($this->build_standard_alert_template('system_error', __('System Error', 'ai-post-scheduler'), '#b32d2e'));
+		$this->register($this->build_standard_event_template('template_generated', __('Template Generation Completed', 'ai-post-scheduler'), '#2271b1'));
+		$this->register($this->build_standard_event_template('manual_generation_completed', __('Manual Generation Completed', 'ai-post-scheduler'), '#2271b1'));
+		$this->register($this->build_standard_event_template('post_ready_for_review', __('Post Ready For Review', 'ai-post-scheduler'), '#2271b1'));
+		$this->register($this->build_standard_event_template('post_rejected', __('Post Rejected', 'ai-post-scheduler'), '#dba617'));
+		$this->register($this->build_standard_event_template('partial_generation_completed', __('Partial Generation Completed', 'ai-post-scheduler'), '#dba617'));
+		$this->register($this->build_standard_event_template('daily_digest', __('Daily Digest', 'ai-post-scheduler'), '#2271b1'));
+		$this->register($this->build_standard_event_template('weekly_summary', __('Weekly Summary', 'ai-post-scheduler'), '#2271b1'));
+		$this->register($this->build_standard_event_template('monthly_report', __('Monthly Report', 'ai-post-scheduler'), '#2271b1'));
 	}
 
 	/**
-	 * Build the "partial generation detected" email template.
+	 * Build a standard alert-style email template.
 	 *
-	 * Tokens consumed by this template:
-	 *   {{site_name}}             – WordPress site name
-	 *   {{post_title}}            – Title of the generated post
-	 *   {{source_label}}          – Human-readable source (e.g. "Template: Blog Post")
-	 *   {{history_id_row}}        – Optional "<br><strong>Session ID:</strong> N" HTML, or empty
-	 *   {{missing_components}}    – Pre-rendered `<ul>` HTML list of missing component labels
-	 *   {{edit_url}}              – WordPress edit-post URL
-	 *   {{partial_url}}           – Admin URL for the Partial Generations tab
-	 *
+	 * @param string $type         Notification type.
+	 * @param string $header_title Email header title.
+	 * @param string $header_color Email header color.
 	 * @return AIPS_Notification_Template
 	 */
-	private function build_partial_generation_template() {
-		$subject = '[{{site_name}}] ' . __('Partial AI Post Generation Detected', 'ai-post-scheduler');
+	private function build_standard_alert_template($type, $header_title, $header_color) {
+		$subject = '[{{site_name}}] {{notification_title}}';
 
 		$body_content =
-			'<p>' . esc_html__('An AI-generated post was created, but one or more requested components failed to generate.', 'ai-post-scheduler') . '</p>'
+			'<p>' . esc_html__('A high-priority notification was triggered by AI Post Scheduler.', 'ai-post-scheduler') . '</p>'
 			. '<div class="alert-box">'
-			. '<strong>' . esc_html__('Post:', 'ai-post-scheduler') . '</strong> {{post_title}}<br>'
-			. '<strong>' . esc_html__('Source:', 'ai-post-scheduler') . '</strong> {{source_label}}{{history_id_row}}'
+			. '<strong>' . esc_html__('Alert:', 'ai-post-scheduler') . '</strong> {{notification_title}}<br>'
+			. '<strong>' . esc_html__('Summary:', 'ai-post-scheduler') . '</strong> {{notification_message}}'
 			. '</div>'
-			. '<p><strong>' . esc_html__('Missing Components:', 'ai-post-scheduler') . '</strong></p>'
-			. '{{missing_components}}'
-			. '<p>'
-			. '<a href="{{edit_url}}" class="button">' . esc_html__('Edit Post', 'ai-post-scheduler') . '</a>'
-			. '<a href="{{partial_url}}" class="button button-secondary">' . esc_html__('Open Partial Generations', 'ai-post-scheduler') . '</a>'
+			. '{{details_html}}'
+			. '<p class="button-center">'
+			. '<a href="{{action_url}}" class="button">{{action_label}}</a>'
 			. '</p>';
 
-		$header_title = __('Partial Generation Detected', 'ai-post-scheduler');
-		$header_color = '#b32d2e';
-		$body         = $this->render_layout($header_title, $header_color, $body_content);
+		$body = $this->render_layout($header_title, $header_color, $body_content);
 
 		return new AIPS_Notification_Template(
-			'partial_generation',
+			$type,
 			$subject,
 			$body,
 			$header_title,
@@ -152,38 +153,31 @@ class AIPS_Notification_Templates {
 	}
 
 	/**
-	 * Build the "posts awaiting review" email template.
+	 * Build a standard non-error event email template.
 	 *
-	 * Tokens consumed by this template:
-	 *   {{site_name}}       – WordPress site name
-	 *   {{stats_label}}     – Localised singular/plural count label
-	 *   {{post_list}}       – Pre-rendered `<ul>` HTML list of posts (may be empty string)
-	 *   {{more_posts}}      – Optional "…and N more posts" paragraph, or empty string
-	 *   {{review_url}}      – Admin URL for the Pending Review tab
-	 *
+	 * @param string $type         Notification type.
+	 * @param string $header_title Email header title.
+	 * @param string $header_color Email header color.
 	 * @return AIPS_Notification_Template
 	 */
-	private function build_posts_awaiting_review_template() {
-		$subject = '[{{site_name}}] {{stats_label}}';
+	private function build_standard_event_template($type, $header_title, $header_color) {
+		$subject = '[{{site_name}}] {{notification_title}}';
 
 		$body_content =
-			'<p>' . esc_html__('Hello,', 'ai-post-scheduler') . '</p>'
-			. '<p>' . esc_html__('You have AI-generated posts waiting for review before publication.', 'ai-post-scheduler') . '</p>'
-			. '<div class="stats-box">{{stats_label}}</div>'
-			. '{{post_list}}'
-			. '{{more_posts}}'
+			'<p>' . esc_html__('AI Post Scheduler has a new notification for your review.', 'ai-post-scheduler') . '</p>'
+			. '<div class="alert-box">'
+			. '<strong>' . esc_html__('Update:', 'ai-post-scheduler') . '</strong> {{notification_title}}<br>'
+			. '<strong>' . esc_html__('Summary:', 'ai-post-scheduler') . '</strong> {{notification_message}}'
+			. '</div>'
+			. '{{details_html}}'
 			. '<p class="button-center">'
-			. '<a href="{{review_url}}" class="button">' . esc_html__('Review Posts', 'ai-post-scheduler') . '</a>'
-			. '</p>'
-			. '<p>' . esc_html__('Click the button above to review and publish your posts.', 'ai-post-scheduler') . '</p>'
-			. '<p>' . esc_html__('To disable these notifications, visit the plugin settings page.', 'ai-post-scheduler') . '</p>';
+			. '<a href="{{action_url}}" class="button">{{action_label}}</a>'
+			. '</p>';
 
-		$header_title = __('Posts Awaiting Review', 'ai-post-scheduler');
-		$header_color = '#2271b1';
-		$body         = $this->render_layout($header_title, $header_color, $body_content);
+		$body = $this->render_layout($header_title, $header_color, $body_content);
 
 		return new AIPS_Notification_Template(
-			'posts_awaiting_review',
+			$type,
 			$subject,
 			$body,
 			$header_title,

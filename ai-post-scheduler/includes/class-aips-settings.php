@@ -21,6 +21,41 @@ class AIPS_Settings {
     public function __construct() {
         add_action('admin_init', array($this, 'register_settings'));
         add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
+        add_action('wp_ajax_aips_notifications_data_hygiene', array($this, 'ajax_notifications_data_hygiene'));
+    }
+    
+    /**
+     * Expand the "AI Post Scheduler" top-level menu when on the hidden Author Topics page.
+     *
+     * WordPress collapses the parent menu when a page is registered with null parent_slug.
+     * This filter overrides that behaviour so the plugin menu stays open.
+     *
+     * @param string $parent_file The current parent file slug.
+     * @return string
+     */
+    public function fix_author_topics_parent_file($parent_file) {
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if ($page === 'aips-author-topics') {
+            return 'ai-post-scheduler';
+        }
+        return $parent_file;
+    }
+
+    /**
+     * Highlight the "Authors" submenu item when on the hidden Author Topics page.
+     *
+     * Because the Author Topics page is registered with a null parent, WordPress
+     * does not activate any submenu item. This filter makes "Authors" appear active.
+     *
+     * @param string $submenu_file The current submenu file slug.
+     * @return string
+     */
+    public function fix_author_topics_submenu_file($submenu_file) {
+        $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+        if ($page === 'aips-author-topics') {
+            return 'aips-authors';
+        }
+        return $submenu_file;
     }
 
     /**
@@ -89,11 +124,12 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_unsplash_access_key', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
-        register_setting('aips_settings', 'aips_review_notifications_enabled', array(
-            'sanitize_callback' => 'absint'
-        ));
         register_setting('aips_settings', 'aips_review_notifications_email', array(
-            'sanitize_callback' => 'sanitize_email'
+            'sanitize_callback' => array($this, 'sanitize_notification_emails')
+        ));
+        register_setting('aips_settings', 'aips_notification_preferences', array(
+            'sanitize_callback' => array($this, 'sanitize_notification_preferences'),
+            'default' => AIPS_Config::get_instance()->get_option('aips_notification_preferences', array())
         ));
         register_setting('aips_settings', 'aips_topic_similarity_threshold', array(
             'sanitize_callback' => array($this, 'sanitize_similarity_threshold'),
@@ -166,20 +202,33 @@ class AIPS_Settings {
         );
         
         add_settings_field(
-            'aips_review_notifications_enabled',
-            __('Send Email Notifications for Posts Awaiting Review', 'ai-post-scheduler'),
-            array($this, 'review_notifications_enabled_field_callback'),
-            'aips-settings',
-            'aips_general_section'
-        );
-        
-        add_settings_field(
             'aips_review_notifications_email',
             __('Notifications Email Address', 'ai-post-scheduler'),
             array($this, 'review_notifications_email_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
+
+        add_settings_section(
+            'aips_notifications_section',
+            __('System Notifications', 'ai-post-scheduler'),
+            array($this, 'notifications_section_callback'),
+            'aips-settings'
+        );
+
+        foreach (AIPS_Notifications::get_notification_type_registry() as $type => $meta) {
+            add_settings_field(
+                'aips_notification_preferences_' . $type,
+                $meta['label'],
+                array($this, 'notification_preference_field_callback'),
+                'aips-settings',
+                'aips_notifications_section',
+                array(
+                    'type'        => $type,
+                    'description' => $meta['description'],
+                )
+            );
+        }
 
         add_settings_field(
             'aips_topic_similarity_threshold',
@@ -649,25 +698,6 @@ class AIPS_Settings {
     }
     
     /**
-     * Render the review notifications enabled setting field.
-     *
-     * Displays a checkbox to enable or disable email notifications for posts awaiting review.
-     *
-     * @return void
-     */
-    public function review_notifications_enabled_field_callback() {
-        $value = get_option('aips_review_notifications_enabled', 0);
-        ?>
-        <input type="hidden" name="aips_review_notifications_enabled" value="0">
-        <label>
-            <input type="checkbox" name="aips_review_notifications_enabled" value="1" <?php checked($value, 1); ?>>
-            <?php esc_html_e('Send daily email notifications when posts are awaiting review', 'ai-post-scheduler'); ?>
-        </label>
-        <p class="description"><?php esc_html_e('A daily email will be sent with a list of draft posts pending review.', 'ai-post-scheduler'); ?></p>
-        <?php
-    }
-    
-    /**
      * Render the review notifications email setting field.
      *
      * Displays an email input field for the notifications recipient.
@@ -677,9 +707,158 @@ class AIPS_Settings {
     public function review_notifications_email_field_callback() {
         $value = get_option('aips_review_notifications_email', get_option('admin_email'));
         ?>
-        <input type="email" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
-        <p class="description"><?php esc_html_e('Email address to receive notifications about posts awaiting review.', 'ai-post-scheduler'); ?></p>
+        <input type="text" name="aips_review_notifications_email" value="<?php echo esc_attr($value); ?>" class="regular-text">
+        <p class="description"><?php esc_html_e('Comma-separated email addresses used for system notification emails.', 'ai-post-scheduler'); ?></p>
         <?php
+    }
+
+    /**
+     * Render the notifications section description.
+     *
+     * @return void
+     */
+    public function notifications_section_callback() {
+        echo '<p>' . esc_html__('Configure delivery channels for all plugin notifications. Email is sent to the notification email addresses above.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render a notification channel preference select field.
+     *
+     * @param array $args Field configuration.
+     * @return void
+     */
+    public function notification_preference_field_callback($args) {
+        $type = isset($args['type']) ? sanitize_key($args['type']) : '';
+        $preferences = get_option('aips_notification_preferences', array());
+        $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
+        $registry = AIPS_Notifications::get_notification_type_registry();
+        $registry_default = isset($registry[$type]['default_mode']) ? $registry[$type]['default_mode'] : AIPS_Notifications::MODE_BOTH;
+        $value = isset($preferences[$type]) ? $preferences[$type] : (isset($defaults[$type]) ? $defaults[$type] : $registry_default);
+        ?>
+        <select name="aips_notification_preferences[<?php echo esc_attr($type); ?>]">
+            <?php foreach (AIPS_Notifications::get_channel_mode_options() as $mode => $label) : ?>
+                <option value="<?php echo esc_attr($mode); ?>" <?php selected($value, $mode); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php if (!empty($args['description'])) : ?>
+            <p class="description"><?php echo esc_html($args['description']); ?></p>
+        <?php endif; ?>
+        <?php
+    }
+
+    /**
+     * Sanitize comma-separated notification email addresses.
+     *
+     * @param mixed $value Raw option value.
+     * @return string
+     */
+    public function sanitize_notification_emails($value) {
+        $emails = preg_split('/\s*,\s*/', (string) $value);
+        $emails = is_array($emails) ? $emails : array();
+        $sanitized = array();
+
+        foreach ($emails as $email) {
+            $email = sanitize_email($email);
+            if (!empty($email) && is_email($email)) {
+                $sanitized[] = $email;
+            }
+        }
+
+        $sanitized = array_values(array_unique($sanitized));
+
+        return implode(', ', $sanitized);
+    }
+
+    /**
+     * Sanitize notification preference channel modes.
+     *
+     * @param mixed $value Raw option value.
+     * @return array
+     */
+    public function sanitize_notification_preferences($value) {
+        $preferences = is_array($value) ? $value : array();
+        $defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
+        $allowed_modes = array_keys(AIPS_Notifications::get_channel_mode_options());
+        $sanitized = array();
+
+        foreach (AIPS_Notifications::get_notification_type_registry() as $type => $meta) {
+            $fallback_mode = isset($defaults[$type]) ? $defaults[$type] : (isset($meta['default_mode']) ? $meta['default_mode'] : 'both');
+            $mode = isset($preferences[$type]) ? sanitize_key($preferences[$type]) : $fallback_mode;
+
+            if (!in_array($mode, $allowed_modes, true)) {
+                $mode = $fallback_mode;
+            }
+
+            $sanitized[$type] = $mode;
+        }
+
+        return $sanitized;
+    }
+
+    /**
+     * Run one-time notifications hygiene actions from System Status.
+     *
+     * @return void
+     */
+    public function ajax_notifications_data_hygiene() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+        }
+
+        $removed_options = 0;
+        if (false !== get_option('aips_review_notifications_enabled', false)) {
+            delete_option('aips_review_notifications_enabled');
+            $removed_options++;
+        }
+
+        $unscheduled_events = 0;
+        $legacy_hook = 'aips_send_review_notifications';
+        $next_run = wp_next_scheduled($legacy_hook);
+        while ($next_run) {
+            wp_unschedule_event($next_run, $legacy_hook);
+            $unscheduled_events++;
+            $next_run = wp_next_scheduled($legacy_hook);
+        }
+
+        $rollup_scheduled = (bool) wp_next_scheduled('aips_notification_rollups');
+        if (!$rollup_scheduled) {
+            wp_schedule_event(time(), 'daily', 'aips_notification_rollups');
+            $rollup_scheduled = (bool) wp_next_scheduled('aips_notification_rollups');
+        }
+
+        $registry = AIPS_Notifications::get_notification_type_registry();
+        $allowed_modes = array_keys(AIPS_Notifications::get_channel_mode_options());
+        $current_preferences = get_option('aips_notification_preferences', array());
+        $current_preferences = is_array($current_preferences) ? $current_preferences : array();
+        $config_defaults = AIPS_Config::get_instance()->get_option('aips_notification_preferences', array());
+        $config_defaults = is_array($config_defaults) ? $config_defaults : array();
+
+        $cleaned_preferences = array();
+        foreach ($registry as $type => $meta) {
+            $fallback = isset($config_defaults[$type]) ? $config_defaults[$type] : (isset($meta['default_mode']) ? $meta['default_mode'] : AIPS_Notifications::MODE_BOTH);
+            $mode = isset($current_preferences[$type]) ? sanitize_key($current_preferences[$type]) : $fallback;
+            if (!in_array($mode, $allowed_modes, true)) {
+                $mode = $fallback;
+            }
+            $cleaned_preferences[$type] = $mode;
+        }
+
+        $preferences_changed = ($cleaned_preferences !== $current_preferences);
+        if ($preferences_changed) {
+            update_option('aips_notification_preferences', $cleaned_preferences, false);
+        }
+
+        wp_send_json_success(array(
+            'message' => __('Notifications hygiene completed successfully.', 'ai-post-scheduler'),
+            'details' => array(
+                'removed_options'    => $removed_options,
+                'unscheduled_events' => $unscheduled_events,
+                'rollup_scheduled'   => $rollup_scheduled ? 1 : 0,
+                'preferences_changed'=> $preferences_changed ? 1 : 0,
+            ),
+        ));
     }
 
     /**

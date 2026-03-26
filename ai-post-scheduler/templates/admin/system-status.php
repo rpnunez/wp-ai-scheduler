@@ -179,6 +179,28 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
 
+            <!-- Notifications Maintenance -->
+            <div class="aips-content-panel" style="margin-bottom: 20px;">
+                <div class="aips-panel-header">
+                    <h2>
+                        <span class="dashicons dashicons-bell" style="margin-right: 5px;"></span>
+                        <?php esc_html_e('Notifications Maintenance', 'ai-post-scheduler'); ?>
+                    </h2>
+                </div>
+                <div class="aips-panel-body">
+                    <p><?php esc_html_e('Run a one-time hygiene command to clean legacy notification options, unschedule deprecated cron hooks, and normalize notification channel preferences.', 'ai-post-scheduler'); ?></p>
+
+                    <div class="aips-btn-group" style="margin-bottom: 8px;">
+                        <button type="button" class="aips-btn aips-btn-secondary aips-notifications-hygiene">
+                            <span class="dashicons dashicons-broom"></span>
+                            <?php esc_html_e('Run Notifications Hygiene', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+
+                    <div class="aips-notifications-hygiene-result" style="display:none;"></div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
