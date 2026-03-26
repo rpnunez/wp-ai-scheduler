@@ -195,7 +195,7 @@ class AIPS_Research_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', wp_unslash((array) $_POST['topic_ids'])) : array();
+        $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
         
         // Filter out any IDs that are 0 or less (invalid)
         $topic_ids = array_filter($topic_ids, function($id) {
@@ -230,7 +230,7 @@ class AIPS_Research_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
         
-        $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', wp_unslash((array) $_POST['topic_ids'])) : array();
+        $topic_ids = isset($_POST['topic_ids']) ? array_map('absint', (array) $_POST['topic_ids']) : array();
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
         $start_date = isset($_POST['start_date']) ? sanitize_text_field(wp_unslash($_POST['start_date'])) : '';
         $frequency = isset($_POST['frequency']) ? sanitize_text_field(wp_unslash($_POST['frequency'])) : 'daily';
