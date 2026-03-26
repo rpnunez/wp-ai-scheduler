@@ -898,26 +898,32 @@ class AIPS_History_Repository {
         $args = wp_parse_args($args, $defaults);
         
         $where = array();
+        $query_args = array();
         
         // Add age filter if specified
         if ($args['older_than_days'] > 0) {
             $date = date('Y-m-d H:i:s', strtotime("-{$args['older_than_days']} days"));
-            $where[] = $this->wpdb->prepare("created_at < %s", $date);
+            $where[] = "created_at < %s";
+            $query_args[] = $date;
         }
         
         // Add status filter if not 'all'
         if ($args['status'] !== 'all') {
-            $where[] = $this->wpdb->prepare("status = %s", $args['status']);
+            $where[] = "status = %s";
+            $query_args[] = $args['status'];
         }
         
         // Build WHERE clause
         $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
         
         // Count records that will be deleted
-        $count = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name} $where_clause");
-        
-        // Delete records
-        $deleted = $this->wpdb->query("DELETE FROM {$this->table_name} $where_clause");
+        if (!empty($query_args)) {
+            $count = $this->wpdb->get_var($this->wpdb->prepare("SELECT COUNT(*) FROM {$this->table_name} $where_clause", $query_args));
+            $deleted = $this->wpdb->query($this->wpdb->prepare("DELETE FROM {$this->table_name} $where_clause", $query_args));
+        } else {
+            $count = $this->wpdb->get_var("SELECT COUNT(*) FROM {$this->table_name}");
+            $deleted = $this->wpdb->query("DELETE FROM {$this->table_name}");
+        }
         
         // Clear cache
         if ($deleted !== false && $deleted > 0) {

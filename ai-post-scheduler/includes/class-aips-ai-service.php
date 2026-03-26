@@ -111,6 +111,7 @@ class AIPS_AI_Service {
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, $options, $error);
+            $this->emit_integration_error_notification('text', $error, $options);
             return $error;
         }
         
@@ -149,6 +150,7 @@ class AIPS_AI_Service {
             
             if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
                 $this->log_call('text', $prompt, $options, $result);
+                $this->emit_quota_alert_notification('text', $result, $options);
             }
         }
 
@@ -174,6 +176,7 @@ class AIPS_AI_Service {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 
             $this->log_call('json', $prompt, $options, $error);
+            $this->emit_integration_error_notification('json', $error, $options);
 
             return $error;
         }
@@ -259,6 +262,7 @@ class AIPS_AI_Service {
 
             if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
                 $this->log_call('json', $prompt, $options, $result);
+                $this->emit_quota_alert_notification('json', $result, $options);
             }
         }
 
@@ -346,6 +350,7 @@ class AIPS_AI_Service {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 
             $this->log_call('image', $prompt, $options, $error);
+            $this->emit_integration_error_notification('image', $error, $options);
 
             return $error;
         }
@@ -407,6 +412,7 @@ class AIPS_AI_Service {
             
             if (in_array($code, array('circuit_breaker_open', 'rate_limit_exceeded'), true)) {
                 $this->log_call('image', $prompt, $options, $result);
+                $this->emit_quota_alert_notification('image', $result, $options);
             }
         }
 
@@ -533,6 +539,46 @@ class AIPS_AI_Service {
                     break;
             }
         }
+    }
+
+    /**
+     * Emit an integration error notification payload.
+     *
+     * @param string   $request_type Request type.
+     * @param WP_Error $error        Error object.
+     * @param array    $options      Request options.
+     * @return void
+     */
+    private function emit_integration_error_notification($request_type, WP_Error $error, $options = array()) {
+        do_action('aips_integration_error', array(
+            'request_type'   => $request_type,
+            'error_code'     => $error->get_error_code(),
+            'error_message'  => $error->get_error_message(),
+            'dedupe_key'     => 'integration_error_' . sanitize_key($request_type) . '_' . sanitize_key($error->get_error_code()),
+            'dedupe_window'  => 1800,
+            'url'            => admin_url('admin.php?page=aips-settings'),
+            'ai_model'       => isset($options['model']) ? $options['model'] : get_option('aips_ai_model', ''),
+        ));
+    }
+
+    /**
+     * Emit a quota alert notification payload.
+     *
+     * @param string   $request_type Request type.
+     * @param WP_Error $error        Error object.
+     * @param array    $options      Request options.
+     * @return void
+     */
+    private function emit_quota_alert_notification($request_type, WP_Error $error, $options = array()) {
+        do_action('aips_quota_alert', array(
+            'request_type'   => $request_type,
+            'error_code'     => $error->get_error_code(),
+            'error_message'  => $error->get_error_message(),
+            'dedupe_key'     => 'quota_alert_' . sanitize_key($request_type) . '_' . sanitize_key($error->get_error_code()),
+            'dedupe_window'  => 1800,
+            'url'            => admin_url('admin.php?page=aips-settings'),
+            'ai_model'       => isset($options['model']) ? $options['model'] : get_option('aips_ai_model', ''),
+        ));
     }
     
     /**
