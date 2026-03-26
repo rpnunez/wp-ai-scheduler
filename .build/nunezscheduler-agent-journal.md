@@ -183,7 +183,7 @@
 **Files Modified:** ai-post-scheduler/assets/js/admin-planner.js
 **Outcome:** Users can now incrementally process brainstormed topics (e.g., generating some immediately and scheduling others) without their remaining topics disappearing unexpectedly, preserving their workflow.
 
-## 2024-05-09 - Templates Controller Optimization
+## 2026-03-26 - Templates Controller Optimization
 **Target Feature:** Templates Controller
 **Improvement:** Optimized the flow and reliability of the template management process by enforcing early input validation across all key AJAX endpoints (`ajax_save_template`, `ajax_test_template`, `ajax_preview_template_prompts`, `ajax_clone_template`, `ajax_delete_template`, `ajax_get_template`). Validations included robust checks for required inputs, type coercion limits, integer boundary limits, and trimming of empty string values.
 **Files Modified:** `ai-post-scheduler/includes/class-aips-templates-controller.php`
