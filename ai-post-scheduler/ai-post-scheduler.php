@@ -279,6 +279,7 @@ final class AI_Post_Scheduler {
         
         if (is_admin()) {
             new AIPS_DB_Manager();
+            new AIPS_Admin_Menu();
             new AIPS_Settings();
             new AIPS_Onboarding_Wizard();
             new AIPS_Admin_Assets();

@@ -1343,3 +1343,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Positive:** Improved user control over AI service interaction limits and error handling. Adheres to plugin standard of dynamic option retrieval.
 - **Negative:** Added slightly more UI complexity to the settings page.
 **Tests:** Confirmed fields appear in the Settings page and `AIPS_Config` retrieves them correctly.
+
+## 2024-10-24 - [Extract Admin Menu Logic from Settings]
+**Context:** `AIPS_Settings` had bloated responsibilities, managing both WordPress Settings API configurations and the registration/rendering of the plugin's extensive admin menu and submenu pages. This violated the Single Responsibility Principle, making the file excessively large (>1300 lines) and conflating Settings logic with Menu/Routing logic.
+**Decision:** Extracted the Admin Menu registration (`add_menu_page`, `add_submenu_page`), menu highlighting filters (`parent_file`, `submenu_file`), and page rendering proxy methods into a new `AIPS_Admin_Menu` class. `AIPS_Settings` now exclusively handles `register_settings()`, settings fields, options logic, and the connection test AJAX endpoint.
+**Consequence:** `AIPS_Settings` is smaller, highly cohesive, and focused purely on plugin configurations. `AIPS_Admin_Menu` serves as a clean routing layer for the backend interface. No backward compatibility issues introduced as this is an internal structural change to WordPress hooks.
+**Tests:** Verified autoloader compatibility by adding `AIPS_Admin_Menu` to `$controllers` in `test-autoloader.php`. Ran test suite to ensure PHP syntax validity and proper initialization within the `ai-post-scheduler.php` bootstrap sequence.
