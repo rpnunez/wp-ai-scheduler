@@ -17,3 +17,7 @@
 ## 2024-05-18 - [WordPress Settings API Unchecked Checkboxes]
 **Learning:** When using the WordPress Settings API with checkboxes, an unchecked checkbox does not send a value in $_POST. This causes `options.php` to ignore the update entirely, effectively making it impossible to "uncheck" settings.
 **Action:** Always precede the checkbox with a hidden input using the same name and a '0' value (e.g., `<input type="hidden" name="option_name" value="0">`) to ensure unchecked states are saved.
+
+## 2025-03-25 - Missing wp_unslash on Arrays
+**Learning:** `$_POST` array inputs passed through mapping functions (like `array_map('sanitize_text_field', ...)`) must be unslashed before mapping, otherwise WordPress magic quotes will persist.
+**Action:** Always wrap `$_POST['array_key']` with `wp_unslash()` when dealing with arrays, as `wp_unslash` recursively handles arrays safely.
