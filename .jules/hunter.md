@@ -19,5 +19,5 @@
 **Action:** Always precede the checkbox with a hidden input using the same name and a '0' value (e.g., `<input type="hidden" name="option_name" value="0">`) to ensure unchecked states are saved.
 
 ## 2026-03-25 - [Missing wp_unslash on Arrays]
-**Learning:** `$_POST` array inputs passed through mapping functions (like `array_map('sanitize_text_field', ...)`) must be unslashed before mapping, otherwise WordPress magic quotes will persist.
-**Action:** Always wrap `$_POST['array_key']` with `wp_unslash()` when dealing with arrays, as `wp_unslash` recursively handles arrays safely.
+**Learning:** `$_POST` array inputs containing user-supplied text (e.g. topic titles, names, free-form text from text inputs) must be unslashed before sanitizing or mapping, otherwise WordPress magic quotes will persist and leave backslashes in stored data. However, arrays whose values are IDs or structured keys from checkbox/bulk-selection submissions (e.g. `"type:id"` pairs like `"template:5"`) contain no characters affected by magic quotes and do not need `wp_unslash()`.
+**Action:** Apply `wp_unslash()` to `$_POST['array_key']` only when the values are text or user input (titles, labels, free-form strings). Skip it when the values are integer IDs, slugs, or structured keys from bulk-selection checkboxes, as those values are sanitized by `absint()` or `sanitize_key()` and contain no quotable characters.
