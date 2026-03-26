@@ -8,6 +8,7 @@ class AIPS_Logger {
     private $log_file;
     private $enabled;
     private $dir_checked = false;
+    private $history_container = null;
     
     public function __construct() {
         $upload_dir = wp_upload_dir();
@@ -57,43 +58,105 @@ class AIPS_Logger {
         
         $this->dir_checked = true;
     }
+
+    /**
+     * Set the history container for unified logging.
+     *
+     * @param AIPS_History_Container $history_container The history container instance.
+     */
+    public function set_history_container($history_container) {
+        $this->history_container = $history_container;
+    }
     
-    public function log($message, $level = 'info', $context = array()) {
-        if (!$this->enabled) {
-            return;
+    public function log($message, $level = 'info', $context = array(), $ai_data = array()) {
+        if ($this->enabled) {
+            $this->ensure_directory_exists();
+
+            $timestamp = current_time('mysql');
+            $upper_level = strtoupper($level);
+
+            $log_entry = sprintf(
+                "[%s] [%s] %s",
+                $timestamp,
+                $upper_level,
+                $message
+            );
+
+            if (!empty($context)) {
+                $log_entry .= ' | Context: ' . json_encode($context);
+            }
+
+            $log_entry .= PHP_EOL;
+
+            error_log($log_entry, 3, $this->log_file);
+
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[AI Post Scheduler] ' . $log_entry);
+            }
         }
 
-        $this->ensure_directory_exists();
-        
-        $timestamp = current_time('mysql');
-        $level = strtoupper($level);
-        
-        $log_entry = sprintf(
-            "[%s] [%s] %s",
-            $timestamp,
-            $level,
-            $message
-        );
-        
-        if (!empty($context)) {
-            $log_entry .= ' | Context: ' . json_encode($context);
-        }
-        
-        $log_entry .= PHP_EOL;
-        
-        error_log($log_entry, 3, $this->log_file);
-        
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[AI Post Scheduler] ' . $log_entry);
+        // Handle database/session history logging
+        if ($this->history_container) {
+            // Map log level to history record type
+            $history_type = strtolower($level);
+            if (!in_array($history_type, array('info', 'warning', 'error', 'debug', 'activity', 'log'), true)) {
+                $history_type = 'log';
+            }
+
+            if (!empty($ai_data) && isset($ai_data['type'])) {
+                // It's an AI call log
+                $type = $ai_data['type'];
+                $prompt = isset($ai_data['prompt']) ? $ai_data['prompt'] : null;
+                $options = isset($ai_data['options']) ? $ai_data['options'] : array();
+                $response = isset($ai_data['response']) ? $ai_data['response'] : null;
+                $err_msg = isset($ai_data['error']) ? $ai_data['error'] : null;
+
+                // Log AI request before
+                if ($type === 'ai_request') {
+                    $this->history_container->record(
+                        'ai_request',
+                        $message,
+                        array('prompt' => $prompt, 'options' => $options),
+                        null,
+                        $context
+                    );
+                } elseif ($type === 'ai_response' || $type === 'ai_error') {
+                    // Determine if error or response
+                    if ($err_msg) {
+                        $this->history_container->record(
+                            'error',
+                            $message,
+                            array('prompt' => $prompt, 'options' => $options),
+                            null,
+                            array_merge($context, array('error' => $err_msg))
+                        );
+                    } else {
+                        $this->history_container->record(
+                            'ai_response',
+                            $message,
+                            null,
+                            $response,
+                            $context
+                        );
+                    }
+                }
+            } else {
+                // Standard log entry
+                if ($history_type === 'error') {
+                    $this->history_container->record_error($message, $context);
+                } else {
+                    $this->history_container->record($history_type, $message, null, null, $context);
+                }
+            }
         }
     }
 
-    public function warning($message, $context = array()) {
-        $this->log($message, 'warning', $context);
+    public function warning($message, $context = array(), $ai_data = array()) {
+        $this->log($message, 'warning', $context, $ai_data);
     }
 
-    public function error($message, $context = array()) {
-        $this->log($message, 'error', $context);
+    public function error($message, $context = array(), $ai_data = array()) {
+        $this->log($message, 'error', $context, $ai_data);
     }
     
     public function get_logs($lines = 100) {

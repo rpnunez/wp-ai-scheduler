@@ -98,76 +98,6 @@ class AIPS_Generator {
     }
 
     /**
-     * Unified logging method to handle both file logging and session/history logging.
-     *
-     * @param string $message The log message.
-     * @param string $level   The log level (info, warning, error, etc.).
-     * @param array  $context Optional context array for the file logger.
-     * @param array  $ai_data Optional AI data for the history record. Needs 'component', 'prompt', 'options', 'response', 'error'.
-     * @return void
-     */
-    private function log($message, $level = 'info', $context = array(), $ai_data = array()) {
-        // Map log level to history record type
-        $history_type = $level;
-        if (!in_array($history_type, array('info', 'warning', 'error', 'debug', 'activity', 'log'), true)) {
-            $history_type = 'log';
-        }
-
-        // Always write to the file logger
-        $this->logger->log($message, $level, $context);
-
-        if (!$this->current_history) {
-            return;
-        }
-
-        if (!empty($ai_data) && isset($ai_data['type'])) {
-            // It's an AI call log
-            $type = $ai_data['type'];
-            $prompt = isset($ai_data['prompt']) ? $ai_data['prompt'] : null;
-            $options = isset($ai_data['options']) ? $ai_data['options'] : array();
-            $response = isset($ai_data['response']) ? $ai_data['response'] : null;
-            $error = isset($ai_data['error']) ? $ai_data['error'] : null;
-
-            // Log AI request before
-            if ($type === 'ai_request') {
-                $this->current_history->record(
-                    'ai_request',
-                    $message,
-                    array('prompt' => $prompt, 'options' => $options),
-                    null,
-                    $context
-                );
-            } elseif ($type === 'ai_response' || $type === 'ai_error') {
-                // Determine if error or response
-                if ($error) {
-                    $this->current_history->record(
-                        'error',
-                        $message,
-                        array('prompt' => $prompt, 'options' => $options),
-                        null,
-                        array_merge($context, array('error' => $error))
-                    );
-                } else {
-                    $this->current_history->record(
-                        'ai_response',
-                        $message,
-                        null,
-                        $response,
-                        $context
-                    );
-                }
-            }
-        } else {
-            // Standard log entry
-            if ($level === 'error') {
-                $this->current_history->record_error($message, $context);
-            } else {
-                $this->current_history->record($history_type, $message, null, null, $context);
-            }
-        }
-    }
-
-    /**
      * Check if AI is available in the configured AI service.
      *
      * @return bool True if AI Engine is available, false otherwise.
@@ -189,7 +119,7 @@ class AIPS_Generator {
      */
     public function generate_content($prompt, $options = array(), $log_type = 'content') {
         // Log AI request before making the call
-        $this->log(
+        $this->logger->log(
             "Requesting AI generation for {$log_type}",
             'info',
             array('component' => $log_type),
@@ -208,7 +138,7 @@ class AIPS_Generator {
 
         if (is_wp_error($result)) {
             // Log the error
-            $this->log(
+            $this->logger->log(
                 "AI generation failed for {$log_type}: " . $result->get_error_message(),
                 'error',
                 array(
@@ -224,7 +154,7 @@ class AIPS_Generator {
             );
         } else {
             // Log successful AI response
-            $this->log(
+            $this->logger->log(
                 "Content generated successfully for {$log_type}",
                 'info',
                 array(
@@ -302,7 +232,7 @@ class AIPS_Generator {
         $result = $this->generate_content($resolve_prompt, $options, 'ai_variables');
 
         if (is_wp_error($result)) {
-            $this->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
+            $this->logger->log('Failed to resolve AI variables: ' . $result->get_error_message(), 'warning');
             return array();
         }
 
@@ -312,12 +242,12 @@ class AIPS_Generator {
         if (empty($resolved_values)) {
             // AI call succeeded but we could not extract any variable values.
             // This usually indicates invalid JSON or an unexpected response format.
-            $this->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
+            $this->logger->log('AI variables response contained no parsable variables. This may indicate invalid JSON or an unexpected format.', 'warning', array(
                 'variables' => $ai_variables,
                 'raw_response' => $result,
             ));
         } else {
-            $this->log('Resolved AI variables', 'info', array(
+            $this->logger->log('Resolved AI variables', 'info', array(
                 'variables' => $ai_variables,
                 'resolved'   => $resolved_values,
             ));
@@ -644,16 +574,17 @@ class AIPS_Generator {
         $history_metadata['creation_method'] = $creation_method;
 
         $this->current_history = $this->history_service->create('post_generation', $history_metadata)->with_session($context);
+        $this->logger->set_history_container($this->current_history);
 
         if (!$this->current_history->get_id()) {
             // Fallback if history creation fails (though unlikely)
-            $this->log('Failed to create history record', 'error');
+            $this->logger->log('Failed to create history record', 'error');
         }
 
         // Build the full content prompt from context
         $content_prompt = $this->post_content_prompt_builder->build($context);
 
-        $this->log("Built content prompt", 'log', array('component' => 'content', 'prompt' => isset($content_prompt) ? $content_prompt : ''));
+        $this->logger->log("Built content prompt", 'log', array('component' => 'content', 'prompt' => isset($content_prompt) ? $content_prompt : ''));
 
         // Build contextual instructions to pass through AI Engine context channel.
         $content_context = $this->prompt_builder->build_content_context($context);
@@ -667,7 +598,7 @@ class AIPS_Generator {
         $content = $this->generate_content($content_prompt, $content_options, 'content');
 
         if (is_wp_error($content)) {
-            $this->log($content->get_error_message(), 'error', array(
+            $this->logger->log($content->get_error_message(), 'error', array(
                 'component' => 'content',
                 'prompt' => $content_prompt,
             ));
@@ -684,7 +615,7 @@ class AIPS_Generator {
         $title = $this->generate_title_from_context($context, $content, $ai_variables);
 
         // Log post title
-        $this->log("Post title generated", 'info', array('component' => 'title'));
+        $this->logger->log("Post title generated", 'info', array('component' => 'title'));
 
         // Detect unresolved template placeholders in the generated title.
         $has_unresolved_placeholders = false;
@@ -694,7 +625,7 @@ class AIPS_Generator {
                 $has_unresolved_placeholders = true;
 
                 // Log a warning for observability when AI variables were not resolved correctly.
-                $this->log(
+                $this->logger->log(
                     'Generated title contains unresolved AI variables; falling back to safe default title.',
                     'warning',
                     array(
@@ -783,7 +714,7 @@ class AIPS_Generator {
 
         // Log activity
         if ($generation_incomplete) {
-            $this->log(
+            $this->logger->log(
                 sprintf('Post "%s" generated with missing components', $title),
                 'warning',
                 array(
@@ -795,7 +726,7 @@ class AIPS_Generator {
                 )
             );
         } else {
-            $this->log(
+            $this->logger->log(
                 sprintf('Post "%s" generated successfully', $title),
                 'activity',
                 array(
@@ -910,7 +841,7 @@ class AIPS_Generator {
             $processed_image_prompt = $this->post_featured_image_prompt_builder->build($context);
 
             // Log AI request for featured image
-            $this->log(
+            $this->logger->log(
                 "Requesting AI generation for featured image",
                 'info',
                 array('component' => 'featured_image', 'title' => $title),
@@ -929,7 +860,7 @@ class AIPS_Generator {
                 $component_success = true;
 
                 // Log successful featured image generation
-                $this->log(
+                $this->logger->log(
                     "Featured image generated successfully",
                     'info',
                     array('component' => 'featured_image'),
@@ -947,7 +878,7 @@ class AIPS_Generator {
             $component_success = false;
 
             // Log featured image generation error
-            $this->log(
+            $this->logger->log(
                 "Featured image handling failed: " . $featured_image_result->get_error_message(),
                 'error',
                 array('component' => 'featured_image'),
@@ -996,5 +927,6 @@ class AIPS_Generator {
      */
     public function set_history_container($history_container) {
         $this->current_history = $history_container;
+        $this->logger->set_history_container($history_container);
     }
 }
