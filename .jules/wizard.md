@@ -43,3 +43,6 @@
 
 **Learning:** Empty states for searches across different admin pages had inconsistent classes (`dashicons` vs `aips-empty-state-icon`, missing `aips-empty-state-actions`), and PHP-driven clear buttons lacked the standardized `.aips-btn-secondary` class.
 **Action:** Ensured `generated-posts.php` and `post-review.php` have the correct classes on their search clear links, and applied the exact `.aips-empty-state*` class hierarchy to all `*-no-results` empty states.
+## 2026-03-25 - Add Call-to-Actions in Empty States
+Learning: Empty states that tell users to go somewhere without providing a direct link create unnecessary friction and break the flow.
+Action: Always include clear call-to-action buttons (like 'Create X') in empty states that direct users to the exact next step needed.
