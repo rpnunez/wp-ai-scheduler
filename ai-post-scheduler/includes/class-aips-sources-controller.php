@@ -112,7 +112,7 @@ class AIPS_Sources_Controller {
 		$description = isset($_POST['description']) ? sanitize_textarea_field(wp_unslash($_POST['description'])) : '';
 		$is_active   = isset($_POST['is_active']) ? 1 : 0;
 		$term_ids    = isset($_POST['term_ids']) && is_array($_POST['term_ids'])
-			? array_map('absint', $_POST['term_ids'])
+			? array_map('absint', wp_unslash($_POST['term_ids']))
 			: array();
 
 		if (empty($url)) {

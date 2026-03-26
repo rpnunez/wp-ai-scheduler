@@ -231,7 +231,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
+        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', wp_unslash($_POST['ids'])) : array();
         $ids = array_filter($ids);
 
         if (empty($ids)) {
@@ -261,7 +261,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
+        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', wp_unslash($_POST['ids'])) : array();
         $ids = array_filter($ids);
         $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
 
@@ -297,7 +297,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
+        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', wp_unslash($_POST['ids'])) : array();
         $ids = array_filter($ids);
 
         if (empty($ids)) {
@@ -367,7 +367,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
+        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', wp_unslash($_POST['ids'])) : array();
         $ids = array_filter($ids);
 
         if (empty($ids)) {
@@ -555,7 +555,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $items     = isset($_POST['items']) && is_array($_POST['items']) ? $_POST['items'] : array();
+        $items     = isset($_POST['items']) && is_array($_POST['items']) ? wp_unslash($_POST['items']) : array();
         $is_active = isset($_POST['is_active']) ? absint($_POST['is_active']) : 0;
 
         if (empty($items)) {
@@ -609,7 +609,7 @@ class AIPS_Schedule_Controller {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $items = isset($_POST['items']) && is_array($_POST['items']) ? $_POST['items'] : array();
+        $items = isset($_POST['items']) && is_array($_POST['items']) ? wp_unslash($_POST['items']) : array();
 
         if (empty($items)) {
             wp_send_json_error(array('message' => __('No items provided.', 'ai-post-scheduler')));

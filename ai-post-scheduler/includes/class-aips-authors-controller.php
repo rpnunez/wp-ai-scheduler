@@ -122,7 +122,7 @@ class AIPS_Authors_Controller {
 			// Source group fields
 			'include_sources' => isset($_POST['include_sources']) ? 1 : 0,
 			'source_group_ids' => isset($_POST['source_group_ids']) && is_array($_POST['source_group_ids'])
-				? wp_json_encode(array_map('absint', $_POST['source_group_ids']))
+				? wp_json_encode(array_map('absint', wp_unslash($_POST['source_group_ids'])))
 				: wp_json_encode(array()),
 			'is_active' => isset($_POST['is_active']) ? 1 : 0
 		);

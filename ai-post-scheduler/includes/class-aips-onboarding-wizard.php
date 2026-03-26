@@ -225,7 +225,7 @@ class AIPS_Onboarding_Wizard {
 	public function ajax_save_strategy() {
 		$this->ajax_guard();
 
-		$input = isset($_POST['strategy']) ? (array) $_POST['strategy'] : array();
+		$input = isset($_POST['strategy']) ? wp_unslash((array) $_POST['strategy']) : array();
 		$sanitized = $this->sanitize_content_strategy_input($input);
 
 		foreach ($sanitized as $option_key => $value) {
