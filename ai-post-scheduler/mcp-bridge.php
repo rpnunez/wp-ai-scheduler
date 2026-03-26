@@ -157,7 +157,7 @@ class AIPS_MCP_Bridge {
 				'parameters' => array(
 					'hook' => array(
 						'type' => 'string',
-						'description' => 'Cron hook name: aips_generate_scheduled_posts, aips_generate_author_topics, aips_generate_author_posts, aips_scheduled_research, aips_send_review_notifications, aips_cleanup_export_files',
+						'description' => 'Cron hook name: aips_generate_scheduled_posts, aips_generate_author_topics, aips_generate_author_posts, aips_scheduled_research, aips_notification_rollups, aips_send_review_notifications (legacy), aips_cleanup_export_files',
 						'required' => true
 					)
 				),
@@ -734,6 +734,7 @@ class AIPS_MCP_Bridge {
 			'aips_generate_author_topics',
 			'aips_generate_author_posts',
 			'aips_scheduled_research',
+			'aips_notification_rollups',
 			'aips_send_review_notifications',
 			'aips_cleanup_export_files'
 		);
@@ -766,6 +767,7 @@ class AIPS_MCP_Bridge {
 			'aips_generate_author_topics',
 			'aips_generate_author_posts',
 			'aips_scheduled_research',
+			'aips_notification_rollups',
 			'aips_send_review_notifications',
 			'aips_cleanup_export_files'
 		);
