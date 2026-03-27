@@ -129,3 +129,4 @@ All notable changes to this project will be documented in this file.
 ## [sentinel-prevent-directory-listing] - 2024-05-24
 ### Security
 - [2024-05-24] Added empty `index.php` files to all plugin subdirectories to prevent directory listing and information disclosure.
+- 2024-03-27: Fixed unsafe file access patterns in `AIPS_Logger` and `AIPS_System_Status`, added robust type safety for `false` returns, removed silent error suppressions, and updated DocBlocks.

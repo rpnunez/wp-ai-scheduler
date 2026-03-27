@@ -41,6 +41,12 @@ class AIPS_Logger {
         return $secret;
     }
 
+    /**
+     * Ensures the log directory exists and is writable.
+     * Disables logging if directory creation fails to prevent endless errors.
+     *
+     * @return void
+     */
     private function ensure_directory_exists() {
         if ($this->dir_checked) {
             return;
@@ -50,14 +56,30 @@ class AIPS_Logger {
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
 
         if (!file_exists($log_dir)) {
-            wp_mkdir_p($log_dir);
-            file_put_contents($log_dir . '/.htaccess', 'deny from all');
-            file_put_contents($log_dir . '/index.php', '<?php // Silence is golden');
+            if (!wp_mkdir_p($log_dir)) {
+                $this->enabled = false;
+                $this->dir_checked = true;
+                return;
+            }
+            if (is_writable($log_dir)) {
+                file_put_contents($log_dir . '/.htaccess', 'deny from all');
+                file_put_contents($log_dir . '/index.php', '<?php // Silence is golden');
+            }
+        } elseif (!is_writable($log_dir)) {
+            $this->enabled = false;
         }
         
         $this->dir_checked = true;
     }
     
+    /**
+     * Writes a message to the log file.
+     *
+     * @param string $message The message to log.
+     * @param string $level   The log severity level (e.g., info, warning, error).
+     * @param array  $context Optional context array to append as JSON.
+     * @return void
+     */
     public function log($message, $level = 'info', $context = array()) {
         if (!$this->enabled) {
             return;
@@ -65,6 +87,10 @@ class AIPS_Logger {
 
         $this->ensure_directory_exists();
         
+        if (!$this->enabled) {
+            return;
+        }
+
         $timestamp = current_time('mysql');
         $level = strtoupper($level);
         
@@ -81,23 +107,52 @@ class AIPS_Logger {
         
         $log_entry .= PHP_EOL;
         
-        error_log($log_entry, 3, $this->log_file);
+        // Ensure file is writable before writing
+        if (!file_exists($this->log_file) || is_writable($this->log_file)) {
+            $result = error_log($log_entry, 3, $this->log_file);
+            if (!$result) {
+                $this->enabled = false;
+            }
+        } else {
+            $this->enabled = false;
+        }
         
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log('[AI Post Scheduler] ' . $log_entry);
         }
     }
 
+    /**
+     * Logs a warning message.
+     *
+     * @param string $message The warning message.
+     * @param array  $context Optional context data.
+     * @return void
+     */
     public function warning($message, $context = array()) {
         $this->log($message, 'warning', $context);
     }
 
+    /**
+     * Logs an error message.
+     *
+     * @param string $message The error message.
+     * @param array  $context Optional context data.
+     * @return void
+     */
     public function error($message, $context = array()) {
         $this->log($message, 'error', $context);
     }
     
+    /**
+     * Retrieves the most recent log lines.
+     * Uses fseek for O(1) tail read performance on large files.
+     *
+     * @param int $lines Number of lines to retrieve.
+     * @return array Array of log lines, or empty array on failure.
+     */
     public function get_logs($lines = 100) {
-        if (!file_exists($this->log_file)) {
+        if (!file_exists($this->log_file) || !is_readable($this->log_file)) {
             return array();
         }
 
@@ -112,7 +167,7 @@ class AIPS_Logger {
         fseek($fp, 0, SEEK_END);
         $filesize = ftell($fp);
 
-        if ($filesize <= 0) {
+        if ($filesize === false || $filesize <= 0) {
             fclose($fp);
             return array();
         }
@@ -159,28 +214,51 @@ class AIPS_Logger {
         return array_values($file_lines);
     }
     
+    /**
+     * Clears the current log file.
+     *
+     * @return bool True on success, false otherwise.
+     */
     public function clear_logs() {
-        if (file_exists($this->log_file)) {
-            unlink($this->log_file);
+        if (!file_exists($this->log_file)) {
+            return true;
         }
-        return true;
+
+        if (is_writable($this->log_file)) {
+            return unlink($this->log_file);
+        }
+
+        return false;
     }
     
+    /**
+     * Gets a list of all existing log files.
+     *
+     * @return array List of log files with their metadata.
+     */
     public function get_log_files() {
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
         
-        if (!is_dir($log_dir)) {
+        if (!is_dir($log_dir) || !is_readable($log_dir)) {
             return array();
         }
         
         $files = glob($log_dir . '/aips-*.log');
+        if (!is_array($files)) {
+            return array();
+        }
+
         $log_files = array();
         
         foreach ($files as $file) {
+            if (!is_readable($file)) {
+                continue;
+            }
+            $size = filesize($file);
             $log_files[] = array(
                 'name' => basename($file),
-                'size' => size_format(filesize($file)),
+                'size' => $size !== false ? size_format($size) : 'Unknown',
                 'modified' => date('Y-m-d H:i:s', filemtime($file)),
             );
         }

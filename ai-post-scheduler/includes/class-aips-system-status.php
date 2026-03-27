@@ -339,15 +339,23 @@ class AIPS_System_Status {
         return $logs_data;
     }
 
+    /**
+     * Scans a given file for specific error keywords (e.g., error, warning, fatal).
+     *
+     * @param string  $file_path     The absolute path to the file.
+     * @param int     $lines         The maximum number of lines to scan from the end of the file.
+     * @param bool    $filter_plugin Optional. If true, filters for lines containing 'ai-post-scheduler'.
+     * @return array Array of matched error lines, or empty array if file is inaccessible.
+     */
     private function scan_file_for_errors($file_path, $lines = 100, $filter_plugin = false) {
-        if (!file_exists($file_path)) {
+        if (!file_exists($file_path) || !is_readable($file_path)) {
             return array();
         }
 
         $chunk_size = 1024 * 100; // Read last 100KB
         $file_size = filesize($file_path);
 
-        if ($file_size === 0) {
+        if ($file_size === false || $file_size === 0) {
             return array();
         }
 

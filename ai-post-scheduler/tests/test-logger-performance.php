@@ -21,6 +21,12 @@ class Test_AIPS_Logger_Performance extends WP_UnitTestCase {
         $property->setAccessible(true);
         $this->log_file = $property->getValue($this->logger);
 
+        // Ensure directory exists!
+        $dir = dirname($this->log_file);
+        if (!file_exists($dir)) {
+            wp_mkdir_p($dir);
+        }
+
         // Create a dummy log file
         file_put_contents($this->log_file, "");
     }
@@ -66,5 +72,19 @@ class Test_AIPS_Logger_Performance extends WP_UnitTestCase {
         $logs = $this->logger->get_logs(10);
         $this->assertCount(10, $logs);
         $this->assertStringContainsString("Line 1000", end($logs));
+    }
+
+    public function test_get_logs_unreadable_file_returns_empty() {
+        // Create an unreadable file
+        file_put_contents($this->log_file, "Line 1");
+        chmod($this->log_file, 0222); // Write only
+
+        // The method should handle this gracefully and return an empty array
+        $logs = $this->logger->get_logs(5);
+        $this->assertIsArray($logs);
+        $this->assertEmpty($logs);
+
+        // Restore permissions so tearDown can delete it
+        chmod($this->log_file, 0644);
     }
 }
