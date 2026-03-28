@@ -359,6 +359,7 @@ class AIPS_Component_Regeneration_Service {
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		$post_id = absint($context['post_id']);
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
+		$image_generation_start = microtime(true);
 
 		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
 		if (is_wp_error($history_container)) {
@@ -372,6 +373,7 @@ class AIPS_Component_Regeneration_Service {
 				'Featured image regeneration metric snapshot',
 				array(
 					'outcome' => 'failed',
+					'duration_seconds' => (int) round( microtime(true) - $image_generation_start ),
 					'image_attempted' => true,
 					'image_success' => false,
 				)
@@ -407,6 +409,7 @@ class AIPS_Component_Regeneration_Service {
 				'Featured image regeneration metric snapshot',
 				array(
 					'outcome' => 'failed',
+					'duration_seconds' => (int) round( microtime(true) - $image_generation_start ),
 					'image_attempted' => true,
 					'image_success' => false,
 				)
@@ -432,6 +435,7 @@ class AIPS_Component_Regeneration_Service {
 			'Featured image regeneration metric snapshot',
 			array(
 				'outcome' => 'completed',
+				'duration_seconds' => (int) round( microtime(true) - $image_generation_start ),
 				'image_attempted' => true,
 				'image_success' => true,
 			)

@@ -890,6 +890,7 @@ class AIPS_Generator {
             $featured_image_source = 'ai_prompt';
         }
 
+        $image_generation_start = microtime(true);
         $featured_image_result = null;
 
         if ($featured_image_source === 'unsplash') {
@@ -976,10 +977,11 @@ class AIPS_Generator {
                 'metric_generation_result',
                 'Featured image generation metric snapshot',
                 array(
-                    'outcome' => is_wp_error($featured_image_result) ? 'failed' : 'completed',
-                    'image_attempted' => true,
-                    'image_success' => !is_wp_error($featured_image_result),
-                    'image_source' => $featured_image_source,
+                    'outcome'          => is_wp_error($featured_image_result) ? 'failed' : 'completed',
+                    'duration_seconds' => (int) round( microtime(true) - $image_generation_start ),
+                    'image_attempted'  => true,
+                    'image_success'    => !is_wp_error($featured_image_result),
+                    'image_source'     => $featured_image_source,
                 ),
                 null,
                 array('component' => 'featured_image')
