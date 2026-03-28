@@ -36,6 +36,12 @@ class Test_N_Plus_One extends WP_UnitTestCase {
         ));
 
         $templates = new AIPS_Templates();
+
+        global $wpdb;
+        if (property_exists($wpdb, 'get_col_return_val')) {
+			$this->markTestSkipped('Database tests cannot run with mocked wpdb.');
+		}
+
         $stats = $templates->get_all_pending_stats();
 
         $this->assertArrayHasKey($t1, $stats);

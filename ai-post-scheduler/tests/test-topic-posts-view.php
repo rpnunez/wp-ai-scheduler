@@ -36,6 +36,11 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 	 * Test that ajax_get_author_topics includes post_count for each topic
 	 */
 	public function test_get_author_topics_includes_post_count() {
+		global $wpdb;
+		if (property_exists($wpdb, 'get_col_return_val')) {
+			$this->markTestSkipped('Database tests cannot run with mocked wpdb.');
+		}
+
 		// Create a test author
 		$authors_repo = new AIPS_Authors_Repository();
 		$author_id = $authors_repo->create(array(
@@ -84,6 +89,11 @@ class Test_Topic_Posts_View extends WP_UnitTestCase {
 	 * Test that topics with no posts have post_count of 0
 	 */
 	public function test_topics_without_posts_have_zero_count() {
+		global $wpdb;
+		if (property_exists($wpdb, 'get_col_return_val')) {
+			$this->markTestSkipped('Database tests cannot run with mocked wpdb.');
+		}
+
 		// Create a test author
 		$authors_repo = new AIPS_Authors_Repository();
 		$author_id = $authors_repo->create(array(

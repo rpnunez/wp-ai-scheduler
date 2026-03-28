@@ -72,6 +72,61 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
             $this->markTestSkipped('set_generator method not implemented yet.');
         }
 
+        // Mock getting due schedules for limited mode without db support
+        global $wpdb;
+        $mock_due_schedules = array(
+            (object) array(
+                'id' => $schedule1_id,
+                'schedule_id' => $schedule1_id,
+                'template_id' => $template_id,
+                'frequency' => 'daily',
+                'next_run' => date('Y-m-d H:i:s', strtotime('-1 hour')),
+                'is_active' => 1,
+                'topic' => 'Topic 1',
+                'name' => 'Resilience Test Template',
+                'prompt_template' => 'Write about {{topic}}',
+                'post_status' => 'publish',
+                'post_category' => 1,
+            ),
+            (object) array(
+                'id' => $schedule2_id,
+                'schedule_id' => $schedule2_id,
+                'template_id' => $template_id,
+                'frequency' => 'daily',
+                'next_run' => date('Y-m-d H:i:s', strtotime('-1 hour')),
+                'is_active' => 1,
+                'topic' => 'Topic 2',
+                'name' => 'Resilience Test Template',
+                'prompt_template' => 'Write about {{topic}}',
+                'post_status' => 'publish',
+                'post_category' => 1,
+            )
+        );
+
+        $mock_schedule_repo = $this->getMockBuilder('AIPS_Schedule_Repository')
+            ->onlyMethods(array('get_due_schedules', 'update', 'get_by_id'))
+            ->getMock();
+        $mock_schedule_repo->method('get_due_schedules')->willReturn($mock_due_schedules);
+        $mock_schedule_repo->method('update')->willReturn(true);
+        $mock_schedule_repo->method('get_by_id')->willReturn((object) array('schedule_history_id' => null));
+
+        $this->scheduler->set_repository($mock_schedule_repo);
+
+        $mock_template_repo = $this->getMockBuilder('AIPS_Template_Repository')
+            ->onlyMethods(array('get_by_id'))
+            ->getMock();
+        $mock_template_repo->method('get_by_id')->willReturn((object) array(
+            'id' => $template_id,
+            'name' => 'Resilience Test Template',
+            'prompt_template' => 'Write about {{topic}}',
+            'post_status' => 'publish',
+            'post_category' => 1,
+            'is_active' => 1,
+            'post_quantity' => 1
+        ));
+
+        $this->scheduler->set_template_repository($mock_template_repo);
+
         // 5. Run the scheduler
         $this->scheduler->process_scheduled_posts();
     }

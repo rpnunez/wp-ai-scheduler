@@ -139,6 +139,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('esc_js')) {
+        function esc_js($text) {
+            return $text;
+        }
+    }
+
     if (!function_exists('esc_url_raw')) {
         function esc_url_raw($url) {
             return $url;
@@ -931,6 +937,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
                 $obj->failed = 0;
                 $obj->processing = 0;
                 $obj->count = 0;
+                $obj->partial = 0;
 
                 if ($output == ARRAY_A) {
                     return (array) $obj;
@@ -940,6 +947,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_var($query, $x = 0, $y = 0) {
+                if (isset($this->get_var_return_val)) {
+                    return $this->get_var_return_val;
+                }
                 return null;
             }
             

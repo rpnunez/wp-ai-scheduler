@@ -10,12 +10,17 @@ $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
 
 if (isset($history_handler)) {
-    $history = $history_handler->get_history(array(
-        'page'   => $current_page,
-        'status' => $status_filter,
-        'search' => $search_query,
-        'fields' => 'list',
-    ));
+    if (!isset($history) || (is_object($history) && $history instanceof AIPS_History)) {
+        $history = $history_handler->get_history(array(
+            'page'   => $current_page,
+            'status' => $status_filter,
+            'search' => $search_query,
+            'fields' => 'list',
+        ));
+    }
+    if (!isset($stats)) {
+        $stats = $history_handler->get_stats();
+    }
 }
 
 $items       = isset($history['items']) ? $history['items'] : array();

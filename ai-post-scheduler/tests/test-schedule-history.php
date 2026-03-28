@@ -83,6 +83,8 @@ $this->assertEmpty( $logs );
  * Schedule with no history ID should return success with empty entries array.
  */
 public function test_ajax_get_schedule_history_returns_empty_when_no_history() {
+	$this->expectOutputRegex('/\{"success":true,"data":\{"entries":\[\]\}\}/');
+
 // Mock get_row to return a schedule without schedule_history_id
 global $wpdb;
 $schedule_obj = new stdClass();
@@ -98,12 +100,6 @@ $this->controller->ajax_get_schedule_history();
 } catch ( WPAjaxDieContinueException $e ) {
 // expected
 }
-
-$output   = $this->getActualOutput();
-$response = json_decode( $output, true );
-
-$this->assertTrue( $response['success'] );
-$this->assertIsArray( $response['data']['entries'] );
 }
 
 /**
@@ -111,6 +107,8 @@ $this->assertIsArray( $response['data']['entries'] );
  * Should return error when schedule_id is 0 or missing.
  */
 public function test_ajax_get_schedule_history_requires_valid_schedule_id() {
+	$this->expectOutputRegex('/\{"success":false,"data":\{"message":"Invalid schedule ID."\}\}/');
+
 $_POST['schedule_id'] = 0;
 $_POST['nonce']       = wp_create_nonce( 'aips_ajax_nonce' );
 $_REQUEST['nonce']    = $_POST['nonce'];
@@ -120,12 +118,6 @@ $this->controller->ajax_get_schedule_history();
 } catch ( WPAjaxDieContinueException $e ) {
 // expected
 }
-
-$output   = $this->getActualOutput();
-$response = json_decode( $output, true );
-
-$this->assertFalse( $response['success'] );
-$this->assertStringContainsString( 'Invalid schedule ID', $response['data']['message'] );
 }
 
 /**
@@ -133,6 +125,8 @@ $this->assertStringContainsString( 'Invalid schedule ID', $response['data']['mes
  * Non-admin user should be denied.
  */
 public function test_ajax_get_schedule_history_permission_denied() {
+	$this->expectOutputRegex('/\{"success":false,"data":\{"message":"Permission denied."\}\}/');
+
 wp_set_current_user( 0 );
 
 $_POST['schedule_id'] = 1;
@@ -144,11 +138,5 @@ $this->controller->ajax_get_schedule_history();
 } catch ( WPAjaxDieContinueException $e ) {
 // expected
 }
-
-$output   = $this->getActualOutput();
-$response = json_decode( $output, true );
-
-$this->assertFalse( $response['success'] );
-$this->assertStringContainsString( 'Permission denied', $response['data']['message'] );
 }
 }
