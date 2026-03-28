@@ -29,6 +29,11 @@ class AIPS_Post_Review {
 	 * @var AIPS_History_Service Service for history logging
 	 */
 	private $history_service;
+
+	/**
+	 * @var AIPS_Internal_Link_Suggestions_Service
+	 */
+	private $internal_link_service;
 	
 	/**
 	 * Initialize the post review handler.
@@ -36,6 +41,7 @@ class AIPS_Post_Review {
 	public function __construct() {
 		$this->repository = new AIPS_Post_Review_Repository();
 		$this->history_service = new AIPS_History_Service();
+		$this->internal_link_service = new AIPS_Internal_Link_Suggestions_Service();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_draft_posts', array($this, 'ajax_get_draft_posts'));
@@ -45,6 +51,9 @@ class AIPS_Post_Review {
 		add_action('wp_ajax_aips_delete_draft_post', array($this, 'ajax_delete_draft_post'));
 		add_action('wp_ajax_aips_bulk_delete_draft_posts', array($this, 'ajax_bulk_delete_draft_posts'));
 		add_action('wp_ajax_aips_get_draft_post_preview', array($this, 'ajax_get_draft_post_preview'));
+		add_action('wp_ajax_aips_get_internal_link_suggestions', array($this, 'ajax_get_internal_link_suggestions'));
+		add_action('wp_ajax_aips_update_internal_link_suggestion', array($this, 'ajax_update_internal_link_suggestion'));
+		add_action('wp_ajax_aips_regenerate_internal_link_suggestions', array($this, 'ajax_regenerate_internal_link_suggestions'));
 	}
 	
 	/**
@@ -98,6 +107,73 @@ class AIPS_Post_Review {
 		);
 
 		wp_send_json_success($data);
+	}
+
+	/**
+	 * AJAX handler to fetch ranked internal link suggestions for a draft post.
+	 */
+	public function ajax_get_internal_link_suggestions() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		if (!$post_id) {
+			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
+		}
+
+		$suggestions = $this->internal_link_service->get_or_generate_suggestions($post_id, false);
+		wp_send_json_success(array('suggestions' => $suggestions));
+	}
+
+	/**
+	 * AJAX handler for accepting/rejecting a suggestion.
+	 */
+	public function ajax_update_internal_link_suggestion() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		$suggestion_id = isset($_POST['suggestion_id']) ? sanitize_text_field(wp_unslash($_POST['suggestion_id'])) : '';
+		$decision = isset($_POST['decision']) ? sanitize_key(wp_unslash($_POST['decision'])) : '';
+
+		if (!$post_id || '' === $suggestion_id || '' === $decision) {
+			wp_send_json_error(array('message' => __('Missing suggestion request data.', 'ai-post-scheduler')));
+		}
+
+		$result = $this->internal_link_service->set_suggestion_decision($post_id, $suggestion_id, $decision);
+		if (empty($result['success'])) {
+			wp_send_json_error(array('message' => isset($result['message']) ? $result['message'] : __('Unable to update suggestion.', 'ai-post-scheduler')));
+		}
+
+		wp_send_json_success(array(
+			'suggestions' => isset($result['suggestions']) ? $result['suggestions'] : array(),
+			'applied' => !empty($result['applied']),
+		));
+	}
+
+	/**
+	 * AJAX handler to regenerate suggestions while keeping accepted links.
+	 */
+	public function ajax_regenerate_internal_link_suggestions() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
+		if (!$post_id) {
+			wp_send_json_error(array('message' => __('Invalid post ID.', 'ai-post-scheduler')));
+		}
+
+		$suggestions = $this->internal_link_service->get_or_generate_suggestions($post_id, true);
+		wp_send_json_success(array('suggestions' => $suggestions));
 	}
 
 	/**

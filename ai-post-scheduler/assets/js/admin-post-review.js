@@ -2,6 +2,7 @@
     'use strict';
 
     $(document).ready(function() {
+        var currentPreviewPostId = 0;
 
         // Select all checkbox functionality
         $('#cb-select-all-1').on('change', function() {
@@ -358,6 +359,7 @@
          * @param {number} postId - The WordPress post ID to preview.
          */
         function previewPost(postId) {
+            currentPreviewPostId = postId;
             var modal = $('#aips-post-preview-modal');
             var contentContainer = $('#aips-preview-content-container');
             var iframe = $('#aips-post-preview-iframe');
@@ -410,7 +412,17 @@
                             html += '</div>';
                         }
 
+                        html += '<div class="aips-internal-link-review" style="margin-top: 30px; border-top: 1px solid #dcdcde; padding-top: 20px;">';
+                        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;">';
+                        html += '<h3 style="margin:0;">' + (aipsPostReviewL10n.internalLinksTitle || 'Internal Link Suggestions') + '</h3>';
+                        html += '<button type="button" class="button button-secondary" id="aips-regenerate-link-suggestions">' + (aipsPostReviewL10n.regenerateLinks || 'Regenerate Suggestions') + '</button>';
+                        html += '</div>';
+                        html += '<p class="description" style="margin-top:0;">' + (aipsPostReviewL10n.internalLinksDescription || 'Review ranked suggestions and accept or reject each recommendation before publishing.') + '</p>';
+                        html += '<div id="aips-internal-link-suggestions"></div>';
+                        html += '</div>';
+
                         contentContainer.html(html);
+                        loadLinkSuggestions(postId);
                     } else {
                         contentContainer.html('<div class="notice notice-error inline"><p>' + (response.data.message || aipsPostReviewL10n.previewError) + '</p></div>');
                     }
@@ -425,8 +437,149 @@
         $(document).on('click', '#aips-post-preview-modal .aips-modal-close, #aips-post-preview-modal .aips-modal-overlay', function() {
             $('#aips-post-preview-modal').hide();
             $('#aips-post-preview-iframe').attr('src', '');
+            currentPreviewPostId = 0;
         });
 
-    });
+        // Internal link suggestion actions
+        $(document).on('click', '.aips-link-suggestion-action', function(e) {
+            e.preventDefault();
+            if (!currentPreviewPostId) {
+                return;
+            }
+
+            var button = $(this);
+            var suggestionId = button.data('suggestion-id');
+            var decision = button.data('decision');
+            button.prop('disabled', true);
+
+            $.ajax({
+                url: aipsPostReviewL10n.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_update_internal_link_suggestion',
+                    post_id: currentPreviewPostId,
+                    suggestion_id: suggestionId,
+                    decision: decision,
+                    nonce: aipsPostReviewL10n.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        renderLinkSuggestions(response.data.suggestions || []);
+                        if (decision === 'accepted') {
+                            AIPS.Utilities.showToast(aipsPostReviewL10n.linkAccepted || 'Link suggestion accepted.', 'success');
+                        } else if (decision === 'rejected') {
+                            AIPS.Utilities.showToast(aipsPostReviewL10n.linkRejected || 'Link suggestion rejected.', 'success');
+                        }
+                    } else {
+                        AIPS.Utilities.showToast((response.data && response.data.message) || aipsPostReviewL10n.linkActionError || 'Failed to update suggestion.', 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsPostReviewL10n.linkActionError || 'Failed to update suggestion.', 'error');
+                },
+                complete: function() {
+                    button.prop('disabled', false);
+                }
+            });
+        });
+
+        $(document).on('click', '#aips-regenerate-link-suggestions', function(e) {
+            e.preventDefault();
+            if (!currentPreviewPostId) {
+                return;
+            }
+
+            var button = $(this);
+            button.prop('disabled', true);
+
+            $.ajax({
+                url: aipsPostReviewL10n.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_regenerate_internal_link_suggestions',
+                    post_id: currentPreviewPostId,
+                    nonce: aipsPostReviewL10n.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        renderLinkSuggestions(response.data.suggestions || []);
+                        AIPS.Utilities.showToast(aipsPostReviewL10n.linkRegenerated || 'Suggestions regenerated.', 'success');
+                    } else {
+                        AIPS.Utilities.showToast((response.data && response.data.message) || aipsPostReviewL10n.linkActionError || 'Failed to regenerate suggestions.', 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsPostReviewL10n.linkActionError || 'Failed to regenerate suggestions.', 'error');
+                },
+                complete: function() {
+                    button.prop('disabled', false);
+                }
+            });
+        });
+
+        function loadLinkSuggestions(postId) {
+            var container = $('#aips-internal-link-suggestions');
+            container.html('<p class="description">' + (aipsPostReviewL10n.loadingLinkSuggestions || 'Loading link suggestions...') + '</p>');
+
+            $.ajax({
+                url: aipsPostReviewL10n.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_get_internal_link_suggestions',
+                    post_id: postId,
+                    nonce: aipsPostReviewL10n.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        renderLinkSuggestions((response.data && response.data.suggestions) || []);
+                    } else {
+                        container.html('<div class="notice notice-error inline"><p>' + (((response.data && response.data.message) || aipsPostReviewL10n.linkLoadError || 'Failed to load internal links.')) + '</p></div>');
+                    }
+                },
+                error: function() {
+                    container.html('<div class="notice notice-error inline"><p>' + (aipsPostReviewL10n.linkLoadError || 'Failed to load internal links.') + '</p></div>');
+                }
+            });
+        }
+
+        function renderLinkSuggestions(suggestions) {
+            var container = $('#aips-internal-link-suggestions');
+            if (!suggestions || suggestions.length === 0) {
+                container.html('<p class="description">' + (aipsPostReviewL10n.noLinkSuggestions || 'No relevant internal links found.') + '</p>');
+                return;
+            }
+
+            var html = '';
+            html += '<div class="aips-link-suggestions-list">';
+            for (var i = 0; i < suggestions.length; i++) {
+                var suggestion = suggestions[i] || {};
+                var status = suggestion.status || 'pending';
+                var confidence = parseInt(suggestion.confidence || 0, 10);
+                var badgeClass = status === 'accepted' ? 'aips-badge-success' : (status === 'rejected' ? 'aips-badge-warning' : 'aips-badge-info');
+                var terms = $.isArray(suggestion.relevance_terms) ? suggestion.relevance_terms.join(', ') : '';
+
+                html += '<div class="aips-link-suggestion-row" style="border:1px solid #dcdcde;padding:12px;margin:0 0 10px;border-radius:4px;background:#fff;">';
+                html += '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">';
+                html += '<div style="flex:1;">';
+                html += '<div><strong>' + (aipsPostReviewL10n.targetLabel || 'Target URL') + ':</strong> <a href="' + (suggestion.target_url || '#') + '" target="_blank" rel="noopener noreferrer">' + (suggestion.target_url || '') + '</a></div>';
+                html += '<div><strong>' + (aipsPostReviewL10n.anchorLabel || 'Anchor') + ':</strong> ' + AIPS.Templates.escape(suggestion.anchor_text || '') + '</div>';
+                html += '<div><strong>' + (aipsPostReviewL10n.confidenceLabel || 'Confidence') + ':</strong> ' + confidence + '%</div>';
+                if (terms) {
+                    html += '<div><strong>' + (aipsPostReviewL10n.relevanceLabel || 'Relevance terms') + ':</strong> ' + AIPS.Templates.escape(terms) + '</div>';
+                }
+                html += '</div>';
+                html += '<div style="white-space:nowrap;text-align:right;">';
+                html += '<span class="aips-badge ' + badgeClass + '" style="margin-bottom:8px;display:inline-block;">' + AIPS.Templates.escape(status) + '</span><br>';
+                html += '<button type="button" class="button button-small aips-link-suggestion-action" data-suggestion-id="' + AIPS.Templates.escape(suggestion.id || '') + '" data-decision="accepted" style="margin-right:6px;">' + (aipsPostReviewL10n.acceptLink || 'Accept') + '</button>';
+                html += '<button type="button" class="button button-small aips-link-suggestion-action" data-suggestion-id="' + AIPS.Templates.escape(suggestion.id || '') + '" data-decision="rejected">' + (aipsPostReviewL10n.rejectLink || 'Reject') + '</button>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            }
+            html += '</div>';
+            container.html(html);
+        }
+
+        });
 
 })(jQuery);
