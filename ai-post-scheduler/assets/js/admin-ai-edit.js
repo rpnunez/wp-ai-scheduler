@@ -41,6 +41,7 @@
 			$(document).on('click', '.aips-ai-edit-btn', window.AIPS.openAIEditModal);
 			$(document).on('click', '#aips-ai-edit-cancel, #aips-ai-edit-close', window.AIPS.closeAIEditModal);
 			$(document).on('click', '.aips-regenerate-btn', window.AIPS.regenerateComponent);
+			$(document).on('click', '#aips-ai-edit-regenerate-all', window.AIPS.regenerateAllComponents);
 			$(document).on('click', '#aips-ai-edit-save', window.AIPS.saveAIEditChanges);
 			$(document).on('click', '.aips-modal-overlay', window.AIPS.closeAIEditModal);
 			
@@ -191,6 +192,103 @@
 					window.AIPS.onRegenerateError($btn, component);
 				}
 			});
+		},
+
+		/**
+		 * Build a map of manually edited component values that should be snapshotted.
+		 */
+		getAIEditManualSnapshots: function(components) {
+			var snapshots = {};
+
+			components.forEach(function(component) {
+				if (window.AIPS.shouldCaptureManualRevision(component)) {
+					snapshots[component] = window.AIPS.getAIEditCurrentComponentValue(component);
+				}
+			});
+
+			return snapshots;
+		},
+
+		/**
+		 * Regenerate all supported components in one request.
+		 */
+		regenerateAllComponents: function(e) {
+			e.preventDefault();
+
+			var $button = $(e.currentTarget);
+			var manualSnapshots = window.AIPS.getAIEditManualSnapshots(['title', 'excerpt', 'content', 'featured_image']);
+
+			$button.prop('disabled', true).text(aipsAIEditL10n.regeneratingAll);
+			$('.aips-regenerate-btn').prop('disabled', true);
+
+			$.ajax({
+				url: aipsAIEditL10n.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'aips_regenerate_all_components',
+					post_id: aiEditState.postId,
+					history_id: aiEditState.historyId,
+					manual_snapshots: manualSnapshots,
+					nonce: aipsAIEditL10n.nonce
+				},
+				success: function(response) {
+					window.AIPS.onRegenerateAllSuccess($button, response);
+				},
+				error: function() {
+					window.AIPS.onRegenerateAllError($button);
+				}
+			});
+		},
+
+		/**
+		 * Handle Regenerate All success/error payload.
+		 */
+		onRegenerateAllSuccess: function($button, response) {
+			$button.prop('disabled', false).text(aipsAIEditL10n.regenerateAll);
+			$('.aips-regenerate-btn').prop('disabled', false);
+
+			if (!response.success) {
+				window.AIPS.showAIEditNotice(response.data && response.data.message ? response.data.message : aipsAIEditL10n.regenerateAllError, 'error');
+				return;
+			}
+
+			var regenerated = response.data.regenerated || {};
+			var skipped = response.data.skipped || {};
+			var errors = response.data.errors || {};
+			var regeneratedCount = 0;
+
+			Object.keys(regenerated).forEach(function(component) {
+				window.AIPS.updateAIEditComponentValue(component, regenerated[component], 'ai_generated');
+				aiEditState.changedComponents.add(component);
+				$('.aips-component-section[data-component="' + component + '"]').addClass('changed');
+				window.AIPS.showComponentStatus(component, 'success', aipsAIEditL10n.regenerateSuccess);
+				window.AIPS.refreshComponentRevisions(component);
+				regeneratedCount += 1;
+			});
+
+			Object.keys(skipped).forEach(function(component) {
+				window.AIPS.showComponentStatus(component, 'success', skipped[component]);
+			});
+
+			Object.keys(errors).forEach(function(component) {
+				window.AIPS.showComponentStatus(component, 'error', errors[component]);
+			});
+
+			if (regeneratedCount > 0) {
+				window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.regenerateAllSuccess, 'success');
+				return;
+			}
+
+			window.AIPS.showAIEditNotice(response.data.message || aipsAIEditL10n.regenerateAllError, 'error');
+		},
+
+		/**
+		 * Handle Regenerate All network error.
+		 */
+		onRegenerateAllError: function($button) {
+			$button.prop('disabled', false).text(aipsAIEditL10n.regenerateAll);
+			$('.aips-regenerate-btn').prop('disabled', false);
+			window.AIPS.showAIEditNotice(aipsAIEditL10n.regenerateAllError, 'error');
 		},
 		
 		/**
