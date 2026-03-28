@@ -557,8 +557,8 @@ class AIPS_Admin_Assets {
                 'ajaxUrl'       => admin_url('admin-ajax.php'),
                 'nonce'         => wp_create_nonce('aips_ajax_nonce'),
                 'maxVariants'   => (string) AIPS_Multi_Draft_Controller::get_max_variants(),
-                /* translators: 1: number of variants, 2: number of AI API calls */
-                'costEstimate'  => __('Generating %d_variants variants will make approximately %d_calls AI API calls.', 'ai-post-scheduler'),
+                /* translators: 1: number of variants (%1$d), 2: number of AI API calls (%2$d) */
+                'costEstimate'  => __('Generating %1$d variants will make approximately %2$d AI API calls.', 'ai-post-scheduler'),
                 /* translators: %d: variant number */
                 'variantLabel'  => __('Variant %d', 'ai-post-scheduler'),
                 'labelTitle'    => __('Title', 'ai-post-scheduler'),
