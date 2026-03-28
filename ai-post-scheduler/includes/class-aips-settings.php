@@ -102,13 +102,16 @@ class AIPS_Settings {
             'default' => 0.8
         ));
         
+        // -----------------------------------------------------------------------
+        // General section: Default Post Status, Default Category
+        // -----------------------------------------------------------------------
         add_settings_section(
             'aips_general_section',
             __('General Settings', 'ai-post-scheduler'),
             array($this, 'general_section_callback'),
             'aips-settings'
         );
-        
+
         add_settings_field(
             'aips_default_post_status',
             __('Default Post Status', 'ai-post-scheduler'),
@@ -116,7 +119,7 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
-        
+
         add_settings_field(
             'aips_default_category',
             __('Default Category', 'ai-post-scheduler'),
@@ -124,13 +127,23 @@ class AIPS_Settings {
             'aips-settings',
             'aips_general_section'
         );
-        
+
+        // -----------------------------------------------------------------------
+        // AI section: AI Model, Environment ID
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_ai_section',
+            __('AI Settings', 'ai-post-scheduler'),
+            array($this, 'ai_section_callback'),
+            'aips-settings'
+        );
+
         add_settings_field(
             'aips_ai_model',
             __('AI Model', 'ai-post-scheduler'),
             array($this, 'ai_model_field_callback'),
             'aips-settings',
-            'aips_general_section'
+            'aips_ai_section'
         );
 
         add_settings_field(
@@ -138,48 +151,43 @@ class AIPS_Settings {
             __('Environment ID', 'ai-post-scheduler'),
             array($this, 'ai_env_id_field_callback'),
             'aips-settings',
-            'aips_general_section'
+            'aips_ai_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Feedback section: Topic Similarity Threshold
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_feedback_section',
+            __('Feedback Settings', 'ai-post-scheduler'),
+            array($this, 'feedback_section_callback'),
+            'aips-settings'
         );
 
         add_settings_field(
-            'aips_unsplash_access_key',
-            __('Unsplash Access Key', 'ai-post-scheduler'),
-            array($this, 'unsplash_access_key_field_callback'),
+            'aips_topic_similarity_threshold',
+            __('Topic Similarity Threshold', 'ai-post-scheduler'),
+            array($this, 'topic_similarity_threshold_field_callback'),
             'aips-settings',
-            'aips_general_section'
-        );
-        
-
-        
-        add_settings_field(
-            'aips_enable_logging',
-            __('Enable Logging', 'ai-post-scheduler'),
-            array($this, 'logging_field_callback'),
-            'aips-settings',
-            'aips_general_section'
+            'aips_feedback_section'
         );
 
-        add_settings_field(
-            'aips_developer_mode',
-            __('Developer Mode', 'ai-post-scheduler'),
-            array($this, 'developer_mode_field_callback'),
-            'aips-settings',
-            'aips_general_section'
+        // -----------------------------------------------------------------------
+        // Notifications section: Email address + all per-type preferences
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_notifications_section',
+            __('Notifications', 'ai-post-scheduler'),
+            array($this, 'notifications_section_callback'),
+            'aips-settings'
         );
-        
+
         add_settings_field(
             'aips_review_notifications_email',
             __('Notifications Email Address', 'ai-post-scheduler'),
             array($this, 'review_notifications_email_field_callback'),
             'aips-settings',
-            'aips_general_section'
-        );
-
-        add_settings_section(
-            'aips_notifications_section',
-            __('System Notifications', 'ai-post-scheduler'),
-            array($this, 'notifications_section_callback'),
-            'aips-settings'
+            'aips_notifications_section'
         );
 
         foreach (AIPS_Notifications::get_notification_type_registry() as $type => $meta) {
@@ -196,12 +204,48 @@ class AIPS_Settings {
             );
         }
 
+        // -----------------------------------------------------------------------
+        // API Keys section: Unsplash Access Key
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_api_keys_section',
+            __('API Keys', 'ai-post-scheduler'),
+            array($this, 'api_keys_section_callback'),
+            'aips-settings'
+        );
+
         add_settings_field(
-            'aips_topic_similarity_threshold',
-            __('Topic Similarity Threshold', 'ai-post-scheduler'),
-            array($this, 'topic_similarity_threshold_field_callback'),
+            'aips_unsplash_access_key',
+            __('Unsplash Access Key', 'ai-post-scheduler'),
+            array($this, 'unsplash_access_key_field_callback'),
             'aips-settings',
-            'aips_general_section'
+            'aips_api_keys_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Developers section: Enable Logging, Developer Mode
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_developers_section',
+            __('Developer Settings', 'ai-post-scheduler'),
+            array($this, 'developers_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_enable_logging',
+            __('Enable Logging', 'ai-post-scheduler'),
+            array($this, 'logging_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
+        );
+
+        add_settings_field(
+            'aips_developer_mode',
+            __('Developer Mode', 'ai-post-scheduler'),
+            array($this, 'developer_mode_field_callback'),
+            'aips-settings',
+            'aips_developers_section'
         );
 
         add_settings_section(
@@ -426,6 +470,42 @@ class AIPS_Settings {
      */
     public function general_section_callback() {
         echo '<p>' . esc_html__('Configure default settings for AI-generated posts.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the description for the AI settings section.
+     *
+     * @return void
+     */
+    public function ai_section_callback() {
+        echo '<p>' . esc_html__('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the description for the feedback settings section.
+     *
+     * @return void
+     */
+    public function feedback_section_callback() {
+        echo '<p>' . esc_html__('Configure how the plugin evaluates and deduplicates generated topic suggestions.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the description for the API keys settings section.
+     *
+     * @return void
+     */
+    public function api_keys_section_callback() {
+        echo '<p>' . esc_html__('Enter API keys for third-party services used by the plugin.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the description for the developer settings section.
+     *
+     * @return void
+     */
+    public function developers_section_callback() {
+        echo '<p>' . esc_html__('Options for debugging and plugin development. Not recommended for production use.', 'ai-post-scheduler') . '</p>';
     }
     
     /**
@@ -684,7 +764,7 @@ class AIPS_Settings {
      * @return void
      */
     public function notifications_section_callback() {
-        echo '<p>' . esc_html__('Configure delivery channels for all plugin notifications. Email is sent to the notification email addresses above.', 'ai-post-scheduler') . '</p>';
+        echo '<p>' . esc_html__('Configure the notification email address and delivery channels for all plugin notifications. Email is sent to the notification email addresses configured below.', 'ai-post-scheduler') . '</p>';
     }
 
     /**
