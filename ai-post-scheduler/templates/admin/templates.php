@@ -574,6 +574,13 @@ if (!defined('ABSPATH')) {
                         <span class="dashicons dashicons-controls-play"></span>
                         <?php esc_html_e('Test Generation', 'ai-post-scheduler'); ?>
                     </button>
+                    <label for="aips-test-variant-count" class="aips-inline-variant-label"><?php esc_html_e('Variants', 'ai-post-scheduler'); ?></label>
+                    <select id="aips-test-variant-count" class="aips-inline-variant-select">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                    <span id="aips-inline-variant-estimate" class="aips-inline-variant-estimate"></span>
                     <button type="button" class="button aips-preview-prompts" title="<?php esc_attr_e('Preview the prompts that will be sent to AI', 'ai-post-scheduler'); ?>">
                         <span class="dashicons dashicons-visibility"></span>
                         <?php esc_html_e('Preview Prompts', 'ai-post-scheduler'); ?>
@@ -656,14 +663,21 @@ if (!defined('ABSPATH')) {
             </div>
             <div class="aips-modal-body">
                 <div id="aips-test-result-container">
-                    <div class="aips-form-row">
-                        <label><strong><?php esc_html_e('Generated Title:', 'ai-post-scheduler'); ?></strong></label>
-                        <div id="aips-test-title" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                    <div class="aips-form-row aips-variant-controls-row">
+                        <label for="aips-variant-count"><strong><?php esc_html_e('Variants to Generate', 'ai-post-scheduler'); ?></strong></label>
+                        <select id="aips-variant-count">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                        <p class="description" id="aips-variant-estimate"></p>
                     </div>
 
+                    <div id="aips-variant-compare-grid" class="aips-variant-compare-grid"></div>
+
                     <div class="aips-form-row">
-                        <label><strong><?php esc_html_e('Generated Excerpt:', 'ai-post-scheduler'); ?></strong></label>
-                        <div id="aips-test-excerpt" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7;"></div>
+                        <label><strong><?php esc_html_e('Section Merge Controls', 'ai-post-scheduler'); ?></strong></label>
+                        <div id="aips-merge-controls" class="aips-merge-controls"></div>
                     </div>
 
                     <div class="aips-form-row" id="aips-test-image-row" style="display: none;">
@@ -672,12 +686,21 @@ if (!defined('ABSPATH')) {
                     </div>
 
                     <div class="aips-form-row">
-                        <label><strong><?php esc_html_e('Generated Content:', 'ai-post-scheduler'); ?></strong></label>
-                        <div id="aips-test-content" class="aips-preview-box" style="background: #f0f0f1; padding: 10px; border: 1px solid #c3c4c7; max-height: 400px; overflow-y: auto; white-space: pre-wrap;"></div>
+                        <label for="aips-final-title"><strong><?php esc_html_e('Final Merged Title', 'ai-post-scheduler'); ?></strong></label>
+                        <input type="text" id="aips-final-title" class="regular-text" />
+                    </div>
+                    <div class="aips-form-row">
+                        <label for="aips-final-excerpt"><strong><?php esc_html_e('Final Merged Excerpt', 'ai-post-scheduler'); ?></strong></label>
+                        <textarea id="aips-final-excerpt" rows="3" class="large-text"></textarea>
+                    </div>
+                    <div class="aips-form-row">
+                        <label for="aips-final-content"><strong><?php esc_html_e('Final Merged Content', 'ai-post-scheduler'); ?></strong></label>
+                        <textarea id="aips-final-content" rows="12" class="large-text"></textarea>
                     </div>
                 </div>
             </div>
             <div class="aips-modal-footer">
+                <button type="button" class="button button-primary" id="aips-create-merged-draft"><?php esc_html_e('Create Draft from Final Selection', 'ai-post-scheduler'); ?></button>
                 <button type="button" class="button aips-modal-close" aria-label="<?php esc_attr_e('Close modal', 'ai-post-scheduler'); ?>"><?php esc_html_e('Close', 'ai-post-scheduler'); ?></button>
             </div>
         </div>

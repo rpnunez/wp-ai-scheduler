@@ -32,6 +32,7 @@
             this.initAIVariablesScanner();
             this.handleInitialTabFromHash();
             this.initScheduleAutoOpen();
+            this.updateVariantCostPreview();
         },
 
         /**
@@ -70,6 +71,10 @@
             $(document).on('click', '.aips-save-template', this.saveTemplate);
             $(document).on('click', '.aips-save-draft-template', this.saveDraftTemplate);
             $(document).on('click', '.aips-test-template', this.testTemplate);
+            $(document).on('change', '#aips-test-variant-count, #prompt_template, #title_prompt', this.updateVariantCostPreview);
+            $(document).on('click', '.aips-apply-section-variant', this.applyVariantSectionToFinal);
+            $(document).on('click', '.aips-use-whole-variant', this.applyWholeVariantToFinal);
+            $(document).on('click', '#aips-create-merged-draft', this.createMergedDraftFromVariants);
             $(document).on('click', '.aips-run-now', this.runNow);
             $(document).on('change', '#generate_featured_image', this.toggleImagePrompt);
             $(document).on('change', '#featured_image_source', this.toggleFeaturedImageSourceFields);
@@ -855,6 +860,7 @@
                 post_category: $('#post_category').val(),
                 post_tags: $('#post_tags').val(),
                 post_author: $('#post_author').val(),
+                variant_count: $('#aips-test-variant-count').val() || 1,
             };
 
             $.ajax({
@@ -863,16 +869,18 @@
                 data: data,
                 success: function(response) {
                     if (response.success) {
-                        var result = response.data.result;
+                        var variants = (response.data && response.data.variants) ? response.data.variants : [];
+                        if (!variants.length && response.data.result) {
+                            variants = [response.data.result];
+                        }
+                        AIPS.renderVariantComparison(variants);
+                        AIPS.updateVariantCostPreview();
+                        $('#aips-variant-count').val(String(variants.length || 1));
 
-                        // Populate modal
-                        $('#aips-test-title').text(result.title || '-');
-                        $('#aips-test-excerpt').text(result.excerpt || '-');
-                        $('#aips-test-content').text(result.content || '-');
-
-                        if (result.image_prompt) {
+                        var first = variants[0] || {};
+                        if (first.image_prompt) {
                             $('#aips-test-image-row').show();
-                            $('#aips-test-image').text(result.image_prompt);
+                            $('#aips-test-image').text(first.image_prompt);
                         } else {
                             $('#aips-test-image-row').hide();
                         }
@@ -887,6 +895,124 @@
                 },
                 complete: function() {
                     $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        },
+
+        updateVariantCostPreview: function() {
+            var contentPrompt = $('#prompt_template').val() || '';
+            var titlePrompt = $('#title_prompt').val() || '';
+            var count = parseInt($('#aips-test-variant-count').val(), 10) || 1;
+            var estimatedInputTokens = Math.ceil((contentPrompt.length + titlePrompt.length) / 4);
+            var estimatedOutputTokensPerVariant = 1400;
+            var estimatedTotalTokens = (estimatedInputTokens + estimatedOutputTokensPerVariant) * count;
+            var estimatedCost = (estimatedTotalTokens / 1000) * 0.01;
+            var copy = '≈ ' + estimatedTotalTokens + ' tokens, ≈ $' + estimatedCost.toFixed(2) + ' @ $0.01 / 1K tokens';
+            $('#aips-inline-variant-estimate').text(copy);
+            $('#aips-variant-estimate').text(copy);
+        },
+
+        renderVariantComparison: function(variants) {
+            var $grid = $('#aips-variant-compare-grid');
+            var $controls = $('#aips-merge-controls');
+            $grid.empty();
+            $controls.empty();
+
+            if (!variants || !variants.length) {
+                return;
+            }
+
+            variants.forEach(function(variant, index) {
+                var variantNo = index + 1;
+                var $card = $('<div class="aips-variant-card"></div>');
+                $card.append('<div class="aips-variant-card-header"><strong>Variant ' + variantNo + '</strong> <button type="button" class="button-link aips-use-whole-variant" data-variant="' + variantNo + '">Use whole variant</button></div>');
+                $card.append('<h4>Title</h4><div class="aips-variant-card-box">' + AIPS.escapeHtml(variant.title || '') + '</div>');
+                $card.append('<h4>Excerpt</h4><div class="aips-variant-card-box">' + AIPS.escapeHtml(variant.excerpt || '') + '</div>');
+                $card.append('<h4>Content</h4><div class="aips-variant-card-box aips-variant-content-box">' + AIPS.escapeHtml(variant.content || '') + '</div>');
+                $card.data('variantData', variant);
+                $grid.append($card);
+            });
+
+            ['title', 'excerpt', 'content'].forEach(function(section) {
+                var $row = $('<div class="aips-merge-row"><strong>' + section.charAt(0).toUpperCase() + section.slice(1) + ':</strong></div>');
+                variants.forEach(function(variant, index) {
+                    var variantNo = index + 1;
+                    var $btn = $('<button type="button" class="button aips-apply-section-variant">Use V' + variantNo + '</button>');
+                    $btn.attr('data-section', section);
+                    $btn.attr('data-value', variant[section] || '');
+                    $row.append($btn);
+                });
+                $controls.append($row);
+            });
+
+            $('#aips-final-title').val(variants[0].title || '');
+            $('#aips-final-excerpt').val(variants[0].excerpt || '');
+            $('#aips-final-content').val(variants[0].content || '');
+        },
+
+        applyVariantSectionToFinal: function(e) {
+            e.preventDefault();
+            var section = $(this).data('section');
+            var value = $(this).data('value') || '';
+            if (section === 'title') {
+                $('#aips-final-title').val(value);
+            } else if (section === 'excerpt') {
+                $('#aips-final-excerpt').val(value);
+            } else if (section === 'content') {
+                $('#aips-final-content').val(value);
+            }
+        },
+
+        applyWholeVariantToFinal: function(e) {
+            e.preventDefault();
+            var variantNo = parseInt($(this).data('variant'), 10);
+            if (!variantNo) {
+                return;
+            }
+            var $card = $('#aips-variant-compare-grid .aips-variant-card').eq(variantNo - 1);
+            var data = $card.data('variantData') || {};
+            $('#aips-final-title').val(data.title || '');
+            $('#aips-final-excerpt').val(data.excerpt || '');
+            $('#aips-final-content').val(data.content || '');
+        },
+
+        createMergedDraftFromVariants: function(e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var originalText = $btn.text();
+            $btn.prop('disabled', true).text(aipsAdminL10n.saving || 'Saving...');
+
+            $.ajax({
+                url: aipsAjax.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_create_merged_draft',
+                    nonce: aipsAjax.nonce,
+                    final_title: $('#aips-final-title').val(),
+                    final_excerpt: $('#aips-final-excerpt').val(),
+                    final_content: $('#aips-final-content').val(),
+                    post_category: $('#post_category').val(),
+                    post_tags: $('#post_tags').val(),
+                    post_author: $('#post_author').val()
+                },
+                success: function(response) {
+                    if (response && response.success) {
+                        var msg = (response.data && response.data.message) ? response.data.message : 'Merged draft created.';
+                        AIPS.Utilities.showToast(msg, 'success');
+                        if (response.data && response.data.edit_url) {
+                            window.open(response.data.edit_url, '_blank');
+                        }
+                    } else {
+                        var err = (response && response.data && response.data.message) ? response.data.message : aipsAdminL10n.errorTryAgain;
+                        AIPS.Utilities.showToast(err, 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).text(originalText);
                 }
             });
         },

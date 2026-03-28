@@ -14,6 +14,7 @@ class AIPS_Templates_Controller {
         add_action('wp_ajax_aips_delete_template', array($this, 'ajax_delete_template'));
         add_action('wp_ajax_aips_get_template', array($this, 'ajax_get_template'));
         add_action('wp_ajax_aips_test_template', array($this, 'ajax_test_template'));
+        add_action('wp_ajax_aips_create_merged_draft', array($this, 'ajax_create_merged_draft'));
         add_action('wp_ajax_aips_clone_template', array($this, 'ajax_clone_template'));
         add_action('wp_ajax_aips_preview_template_prompts', array($this, 'ajax_preview_template_prompts'));
     }
@@ -243,16 +244,83 @@ class AIPS_Templates_Controller {
         // Create context
         $context = new AIPS_Template_Context($template, $voice, null, 'preview');
 
-        $generator = new AIPS_Generator();
-        $result = $generator->generate_preview($context);
+        $requested_variants = isset($_POST['variant_count']) ? absint($_POST['variant_count']) : 1;
+        $max_variants = (int) apply_filters('aips_test_generation_max_variants', 3);
+        $max_variants = max(1, min(3, $max_variants));
+        $variant_count = min($max_variants, max(1, $requested_variants));
 
-        if (is_wp_error($result)) {
-            wp_send_json_error(array('message' => $result->get_error_message()));
+        $generator = new AIPS_Generator();
+        $variants = array();
+        for ($i = 1; $i <= $variant_count; $i++) {
+            $result = $generator->generate_preview($context);
+
+            if (is_wp_error($result)) {
+                wp_send_json_error(array('message' => $result->get_error_message()));
+            }
+
+            $result['variant_index'] = $i;
+            $variants[] = $result;
         }
 
         wp_send_json_success(array(
-            'result' => $result,
+            'result' => isset($variants[0]) ? $variants[0] : array(),
+            'variants' => $variants,
+            'max_variants' => $max_variants,
             'message' => __('Test generation successful.', 'ai-post-scheduler')
+        ));
+    }
+
+    /**
+     * Create a draft post from manually merged multi-variant content.
+     *
+     * @return void
+     */
+    public function ajax_create_merged_draft() {
+        check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+        }
+
+        $title = isset($_POST['final_title']) ? sanitize_text_field(wp_unslash($_POST['final_title'])) : '';
+        $excerpt = isset($_POST['final_excerpt']) ? sanitize_textarea_field(wp_unslash($_POST['final_excerpt'])) : '';
+        $content = isset($_POST['final_content']) ? wp_kses_post(wp_unslash($_POST['final_content'])) : '';
+        $post_author = isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id();
+        $post_category = isset($_POST['post_category']) ? absint($_POST['post_category']) : 0;
+        $post_tags = isset($_POST['post_tags']) ? sanitize_text_field(wp_unslash($_POST['post_tags'])) : '';
+
+        if (empty(trim($title)) || empty(trim(wp_strip_all_tags($content)))) {
+            wp_send_json_error(array('message' => __('A title and content are required to create the merged draft.', 'ai-post-scheduler')));
+        }
+
+        $post_data = array(
+            'post_title' => $title,
+            'post_excerpt' => $excerpt,
+            'post_content' => $content,
+            'post_status' => 'draft',
+            'post_type' => 'post',
+            'post_author' => $post_author,
+        );
+
+        if ($post_category > 0) {
+            $post_data['post_category'] = array($post_category);
+        }
+
+        $post_id = wp_insert_post($post_data, true);
+        if (is_wp_error($post_id)) {
+            wp_send_json_error(array('message' => $post_id->get_error_message()));
+        }
+
+        if (!empty($post_tags)) {
+            wp_set_post_tags($post_id, $post_tags, false);
+        }
+
+        update_post_meta($post_id, '_aips_variant_merge_draft', 1);
+
+        wp_send_json_success(array(
+            'message' => __('Merged draft created successfully.', 'ai-post-scheduler'),
+            'post_id' => $post_id,
+            'edit_url' => get_edit_post_link($post_id, ''),
         ));
     }
 

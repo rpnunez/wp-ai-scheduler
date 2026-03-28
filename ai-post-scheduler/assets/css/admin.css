@@ -3127,6 +3127,69 @@
     margin-right: 4px;
 }
 
+.aips-inline-variant-label {
+    margin-left: 10px;
+    font-weight: 600;
+}
+
+.aips-inline-variant-select {
+    min-width: 70px;
+}
+
+.aips-inline-variant-estimate {
+    display: inline-block;
+    margin-left: 8px;
+    color: #50575e;
+    font-size: 12px;
+}
+
+.aips-variant-compare-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.aips-variant-card {
+    border: 1px solid #dcdcde;
+    background: #fff;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.aips-variant-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.aips-variant-card-box {
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    padding: 8px;
+    max-height: 140px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+.aips-variant-content-box {
+    max-height: 220px;
+}
+
+.aips-merge-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.aips-merge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 @media screen and (max-width: 782px) {
     .aips-preview-drawer-content {
         max-height: 400px;
