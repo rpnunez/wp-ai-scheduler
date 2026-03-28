@@ -3351,6 +3351,9 @@ margin-right: 8px;
 }
 
 /* Hide Author Topics from Admin Menu */
+li.toplevel_page_ai-post-scheduler li > a[href*="aips-author-topics"] {
+    display: none;
+}
 li.toplevel_page_ai-post-scheduler li:has(> a[href*="aips-author-topics"]) {
     display: none;
 }

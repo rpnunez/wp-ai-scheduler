@@ -55,7 +55,7 @@ if (!$author) {
 $topics_repository  = new AIPS_Author_Topics_Repository();
 $logs_repository    = new AIPS_Author_Topic_Logs_Repository();
 $status_counts      = $topics_repository->get_status_counts($author_id);
-$total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
+$total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'] + $status_counts['posts_generated'];
 $posts_count        = $logs_repository->count_generated_posts_by_author($author_id);
 ?>
 <div class="wrap aips-wrap">
@@ -140,7 +140,7 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				</button>
 				<button class="aips-tab-link" data-tab="posts_generated">
 					<?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?>
-					<span class="aips-tab-count" id="posts-generated-count"><?php echo esc_html($posts_count); ?></span>
+					<span class="aips-tab-count" id="posts-generated-count"><?php echo esc_html($status_counts['posts_generated']); ?></span>
 				</button>
 				<button class="aips-tab-link" data-tab="feedback">
 					<?php esc_html_e('Feedback', 'ai-post-scheduler'); ?>

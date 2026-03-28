@@ -305,42 +305,58 @@ class AIPS_Author_Topics_Repository {
 	/**
 	 * Get topic counts by status for an author.
 	 *
+	 * Returns counts for each status bucket:
+	 * - pending:         topics awaiting review
+	 * - approved:        approved topics that have not yet produced a post
+	 * - rejected:        rejected topics
+	 * - posts_generated: approved topics that have at least one generated post
+	 *
+	 * The four buckets are mutually exclusive and exhaustive, so
+	 * pending + approved + rejected + posts_generated == total topics for
+	 * the author.
+	 *
 	 * @param int $author_id Author ID.
-	 * @return array Associative array of status => count.
+	 * @return array Associative array of bucket => count.
 	 */
 	public function get_status_counts($author_id) {
 		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
 
-		// When counting approved topics, we need to exclude any topics that
-		// already have one or more generated posts associated with them. This
-		// keeps the "Approved" count aligned with the UI semantics, where the
-		// Approved tab only shows topics that have not yet produced posts.
+		// Bucket approved topics that already produced a post under
+		// 'posts_generated' so the Approved tab only shows topics still
+		// waiting for post creation, while keeping all totals additive.
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT t.status, COUNT(DISTINCT t.id) AS count
+				"SELECT
+					CASE
+						WHEN t.status = 'approved' AND l.id IS NOT NULL THEN 'posts_generated'
+						ELSE t.status
+					END AS bucket,
+					COUNT(DISTINCT t.id) AS count
 				FROM {$this->table_name} t
 				LEFT JOIN {$logs_table} l
 					ON l.author_topic_id = t.id
 					AND l.action = 'post_generated'
 					AND l.post_id IS NOT NULL
 				WHERE t.author_id = %d
-					AND (t.status <> 'approved' OR l.id IS NULL)
-				GROUP BY t.status",
+				GROUP BY bucket",
 				$author_id
 			),
 			ARRAY_A
 		);
-		
+
 		$counts = array(
-			'pending' => 0,
-			'approved' => 0,
-			'rejected' => 0
+			'pending'         => 0,
+			'approved'        => 0,
+			'rejected'        => 0,
+			'posts_generated' => 0,
 		);
-		
+
 		foreach ($results as $row) {
-			$counts[$row['status']] = (int) $row['count'];
+			if (array_key_exists($row['bucket'], $counts)) {
+				$counts[$row['bucket']] = (int) $row['count'];
+			}
 		}
-		
+
 		return $counts;
 	}
 

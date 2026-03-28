@@ -526,7 +526,6 @@
 		showTopicsLoading: function () {
 			var $loading = $('#aips-topics-loading');
 			var $content = $('#aips-topics-content');
-			var $list = $('#aips-topics-loading-list');
 
 			$content.hide();
 			$loading.show();
@@ -873,9 +872,13 @@
 		/**
 		 * Format a topic generated_at timestamp into a friendly string.
 		 *
-		 * - Today: "Today, 2:32pm"
+		 * - Today:     "Today, 2:32pm"
 		 * - Yesterday: "Yesterday, 2:32pm"
 		 * - Otherwise: "March 26, 2026 2:32pm"
+		 *
+		 * Month names, "Today", "Yesterday", and am/pm labels are pulled from
+		 * the server-side aipsAuthorsL10n object so non-English sites are
+		 * supported without hard-coding English strings.
 		 *
 		 * @param {string} raw - Datetime string (YYYY-MM-DD HH:MM:SS).
 		 * @returns {string} Formatted date string.
@@ -917,23 +920,31 @@
 				d.getMonth() === yesterday.getMonth() &&
 				d.getDate() === yesterday.getDate();
 
-			var hours12 = d.getHours() % 12 || 12;
+			// Use localized strings from aipsAuthorsL10n when available.
+			var l10n        = (typeof aipsAuthorsL10n !== 'undefined') ? aipsAuthorsL10n : {};
+			var labelToday  = l10n.dateToday     || 'Today';
+			var labelYday   = l10n.dateYesterday || 'Yesterday';
+			var labelAM     = l10n.dateAM        || 'am';
+			var labelPM     = l10n.datePM        || 'pm';
+			var monthNames  = (l10n.dateMonthNames && l10n.dateMonthNames.length === 12)
+				? l10n.dateMonthNames
+				: [
+					'January', 'February', 'March', 'April', 'May', 'June',
+					'July', 'August', 'September', 'October', 'November', 'December'
+				];
+
+			var hours12    = d.getHours() % 12 || 12;
 			var minutesStr = minute < 10 ? '0' + minute : String(minute);
-			var ampm = d.getHours() >= 12 ? 'pm' : 'am';
-			var timeStr = hours12 + ':' + minutesStr + ampm;
+			var ampm       = d.getHours() >= 12 ? labelPM : labelAM;
+			var timeStr    = hours12 + ':' + minutesStr + ampm;
 
 			if (isToday) {
-				return 'Today, ' + timeStr;
+				return labelToday + ', ' + timeStr;
 			}
 
 			if (isYesterday) {
-				return 'Yesterday, ' + timeStr;
+				return labelYday + ', ' + timeStr;
 			}
-
-			var monthNames = [
-				'January', 'February', 'March', 'April', 'May', 'June',
-				'July', 'August', 'September', 'October', 'November', 'December'
-			];
 
 			var monthName = monthNames[monthIndex] || (monthIndex + 1);
 			return monthName + ' ' + day + ', ' + year + ' ' + timeStr;
@@ -942,17 +953,18 @@
 		/**
 		 * Update the per-status topic count badges in the tab bar and the Stats Cards.
 		 *
-		 * @param {Object} counts           - Map of status string → count number.
-		 * @param {number} [counts.pending] - Number of pending topics.
-		 * @param {number} [counts.approved] - Number of approved topics.
-		 * @param {number} [counts.rejected] - Number of rejected topics.
+		 * @param {Object} counts                    - Map of status string → count number.
+		 * @param {number} [counts.pending]          - Number of pending topics.
+		 * @param {number} [counts.approved]         - Number of approved topics without generated posts.
+		 * @param {number} [counts.rejected]         - Number of rejected topics.
+		 * @param {number} [counts.posts_generated]  - Number of approved topics that have produced a post.
 		 */
 		updateTopicCounts: function (counts) {
-			const pending  = counts.pending  || 0;
-			const approved = counts.approved || 0;
-			const rejected = counts.rejected || 0;
-			const total    = pending + approved + rejected;
+			const pending        = counts.pending         || 0;
+			const approved       = counts.approved        || 0;
+			const rejected       = counts.rejected        || 0;
 			const postsGenerated = counts.posts_generated || 0;
+			const total          = pending + approved + rejected + postsGenerated;
 
 			// Tab count badges
 			$('#pending-count').text(pending);
