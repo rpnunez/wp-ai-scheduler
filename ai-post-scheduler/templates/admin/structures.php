@@ -138,10 +138,12 @@ if (!isset($sections) || !is_array($sections)) {
 			</div>
 			<?php else: ?>
 			<div class="aips-empty-state">
-				<span class="dashicons dashicons-layout" aria-hidden="true"></span>
-				<h3><?php esc_html_e('No Article Structures', 'ai-post-scheduler'); ?></h3>
-				<p><?php esc_html_e('Create article structures to customize how templates assemble content.', 'ai-post-scheduler'); ?></p>
-				<button class="aips-btn aips-btn-primary aips-add-structure-btn"><?php esc_html_e('Create Structure', 'ai-post-scheduler'); ?></button>
+				<div class="dashicons dashicons-layout aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No Article Structures', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('Create article structures to customize how templates assemble content.', 'ai-post-scheduler'); ?></p>
+				<div class="aips-empty-state-actions">
+					<button class="aips-btn aips-btn-primary aips-add-structure-btn"><?php esc_html_e('Create Structure', 'ai-post-scheduler'); ?></button>
+				</div>
 			</div>
 			<?php endif; ?>
 		</div>
@@ -228,10 +230,12 @@ if (!isset($sections) || !is_array($sections)) {
 			</div>
 			<?php else : ?>
 			<div class="aips-empty-state">
-				<span class="dashicons dashicons-editor-table" aria-hidden="true"></span>
-				<h3><?php esc_html_e('No Prompt Sections', 'ai-post-scheduler'); ?></h3>
-				<p><?php esc_html_e('Create prompt sections to reuse across article structures.', 'ai-post-scheduler'); ?></p>
-				<button class="aips-btn aips-btn-primary aips-add-section-btn"><?php esc_html_e('Create Section', 'ai-post-scheduler'); ?></button>
+				<div class="dashicons dashicons-editor-table aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No Prompt Sections', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('Create prompt sections to reuse across article structures.', 'ai-post-scheduler'); ?></p>
+				<div class="aips-empty-state-actions">
+					<button class="aips-btn aips-btn-primary aips-add-section-btn"><?php esc_html_e('Create Section', 'ai-post-scheduler'); ?></button>
+				</div>
 			</div>
 			<?php endif; ?>
 		</div>
