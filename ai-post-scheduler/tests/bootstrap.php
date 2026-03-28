@@ -1065,6 +1065,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-author-post-generator.php',
         'class-aips-author-topics-controller.php',
         'class-aips-author-suggestions-service.php',
+        'class-aips-metrics-repository.php',
     ];
     
     foreach ($files as $file) {
