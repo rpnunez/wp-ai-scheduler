@@ -87,8 +87,11 @@ class AIPS_Author_Topics_Scheduler {
 		// generation run so the full chain (scheduler → topics → history) is traceable.
 		foreach ($due_authors as $author) {
 			AIPS_Correlation_ID::generate();
-			$this->generate_topics_for_author($author);
-			AIPS_Correlation_ID::reset();
+			try {
+				$this->generate_topics_for_author($author);
+			} finally {
+				AIPS_Correlation_ID::reset();
+			}
 		}
 		
 		$this->logger->log('Completed scheduled topic generation', 'info');
