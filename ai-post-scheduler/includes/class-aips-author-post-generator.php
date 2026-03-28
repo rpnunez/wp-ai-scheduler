@@ -101,8 +101,27 @@ class AIPS_Author_Post_Generator {
 		// post generation run so the full chain is traceable end-to-end.
 		foreach ($due_authors as $author) {
 			AIPS_Correlation_ID::generate();
-			$this->generate_post_for_author($author);
-			AIPS_Correlation_ID::reset();
+			try {
+				$this->generate_post_for_author($author);
+			} catch ( \Throwable $e ) {
+				$this->logger->log(
+					'Error generating post for author ID ' . $author->id . ': ' . $e->getMessage(),
+					'error'
+				);
+				$history = $this->history_service->create('author_post_generation', array(
+					'author_id' => $author->id,
+				));
+				$history->record(
+					'error',
+					sprintf(
+						__('Error generating post for Author ID %d: %s', 'ai-post-scheduler'),
+						$author->id,
+						$e->getMessage()
+					)
+				);
+			} finally {
+				AIPS_Correlation_ID::reset();
+			}
 		}
 		
 		$this->logger->log('Completed scheduled author post generation', 'info');
