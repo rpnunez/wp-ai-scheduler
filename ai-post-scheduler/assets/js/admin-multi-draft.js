@@ -94,8 +94,7 @@
 		/**
 		 * Format the cost estimate message using the localized template.
 		 *
-		 * Supports both numbered placeholders like `%1$d` / `%2$d` and the
-		 * legacy `%d_variants` / `%d_calls` tokens for backwards compatibility.
+		 * Supports numbered placeholders like `%1$d` / `%2$d`
 		 *
 		 * @param {number} variants Number of variants to generate.
 		 * @param {number} calls    Estimated API call count.
@@ -110,17 +109,9 @@
 				return '';
 			}
 
-			// Prefer numbered placeholders if present, e.g. "%1$d" and "%2$d".
-			if (/%[12]\$d/.test(template)) {
-				return template
+			return template
 					.replace(/%1\$d/g, variants)
 					.replace(/%2\$d/g, calls);
-			}
-
-			// Fallback for legacy tokens used in existing translations.
-			return template
-				.replace('%d_variants', variants)
-				.replace('%d_calls',    calls);
 		},
 
 		/**
