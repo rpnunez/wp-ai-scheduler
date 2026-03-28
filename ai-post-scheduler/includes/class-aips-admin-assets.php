@@ -338,6 +338,25 @@ class AIPS_Admin_Assets {
             'topicPromptLabel' => __('Topic Generation Prompt', 'ai-post-scheduler'),
             'viewDetails' => __('View Details', 'ai-post-scheduler'),
             'noFeedbackYet' => __('No feedback yet.', 'ai-post-scheduler'),
+            // Date formatting strings used by formatTopicDate()
+            'dateToday'     => __('Today', 'ai-post-scheduler'),
+            'dateYesterday' => __('Yesterday', 'ai-post-scheduler'),
+            'dateAM'        => _x('am', 'time of day', 'ai-post-scheduler'),
+            'datePM'        => _x('pm', 'time of day', 'ai-post-scheduler'),
+            'dateMonthNames' => array(
+                __('January', 'ai-post-scheduler'),
+                __('February', 'ai-post-scheduler'),
+                __('March', 'ai-post-scheduler'),
+                __('April', 'ai-post-scheduler'),
+                __('May', 'ai-post-scheduler'),
+                __('June', 'ai-post-scheduler'),
+                __('July', 'ai-post-scheduler'),
+                __('August', 'ai-post-scheduler'),
+                __('September', 'ai-post-scheduler'),
+                __('October', 'ai-post-scheduler'),
+                __('November', 'ai-post-scheduler'),
+                __('December', 'ai-post-scheduler'),
+            ),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
