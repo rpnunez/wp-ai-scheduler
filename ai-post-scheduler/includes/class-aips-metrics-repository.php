@@ -273,7 +273,7 @@ class AIPS_Metrics_Repository {
 					SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed,
 					SUM(CASE WHEN status = 'partial'   THEN 1 ELSE 0 END) AS partial
 				FROM {$this->table_history}
-				WHERE created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				WHERE created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)",
 				$window_days
 			)
 		);
