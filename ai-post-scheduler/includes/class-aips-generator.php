@@ -876,6 +876,7 @@ class AIPS_Generator {
      */
     private function set_featured_image_from_context($context, $post_id, $title, &$component_success = null) {
         $featured_image_id = null;
+        $featured_image_source = '';
 
         if (!$context->should_generate_featured_image()) {
             $component_success = true;
@@ -968,6 +969,21 @@ class AIPS_Generator {
                     array('component' => 'featured_image', 'error' => $featured_image_result->get_error_message())
                 );
             }
+        }
+
+        if ($this->current_history) {
+            $this->current_history->record(
+                'metric_generation_result',
+                'Featured image generation metric snapshot',
+                array(
+                    'outcome' => is_wp_error($featured_image_result) ? 'failed' : 'completed',
+                    'image_attempted' => true,
+                    'image_success' => !is_wp_error($featured_image_result),
+                    'image_source' => $featured_image_source,
+                ),
+                null,
+                array('component' => 'featured_image')
+            );
         }
 
         return $featured_image_id;

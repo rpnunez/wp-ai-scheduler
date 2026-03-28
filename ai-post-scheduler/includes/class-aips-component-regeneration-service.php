@@ -359,15 +359,25 @@ class AIPS_Component_Regeneration_Service {
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		$post_id = absint($context['post_id']);
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
-		
-		$processed_image_prompt = $this->post_featured_image_prompt_builder->build($generation_context);
-		if (empty($processed_image_prompt)) {
-			return new WP_Error('no_image_prompt', __('No image prompt available for this context.', 'ai-post-scheduler'));
-		}
-		
+
 		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
 		if (is_wp_error($history_container)) {
 			return $history_container;
+		}
+		
+		$processed_image_prompt = $this->post_featured_image_prompt_builder->build($generation_context);
+		if (empty($processed_image_prompt)) {
+			$history_container->record(
+				'metric_generation_result',
+				'Featured image regeneration metric snapshot',
+				array(
+					'outcome' => 'failed',
+					'image_attempted' => true,
+					'image_success' => false,
+				)
+			);
+
+			return new WP_Error('no_image_prompt', __('No image prompt available for this context.', 'ai-post-scheduler'));
 		}
 		
 		// Log the AI request for image generation
@@ -391,6 +401,17 @@ class AIPS_Component_Regeneration_Service {
 				'component' => 'featured_image',
 				'post_id' => $post_id,
 			));
+
+			$history_container->record(
+				'metric_generation_result',
+				'Featured image regeneration metric snapshot',
+				array(
+					'outcome' => 'failed',
+					'image_attempted' => true,
+					'image_success' => false,
+				)
+			);
+
 			return $attachment_id;
 		}
 		
@@ -404,6 +425,16 @@ class AIPS_Component_Regeneration_Service {
 				'url' => wp_get_attachment_url($attachment_id),
 			),
 			array('component' => 'featured_image', 'post_id' => $post_id)
+		);
+
+		$history_container->record(
+			'metric_generation_result',
+			'Featured image regeneration metric snapshot',
+			array(
+				'outcome' => 'completed',
+				'image_attempted' => true,
+				'image_success' => true,
+			)
 		);
 		
 		// Return attachment ID and URL
