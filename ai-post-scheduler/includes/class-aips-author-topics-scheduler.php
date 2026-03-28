@@ -83,9 +83,12 @@ class AIPS_Author_Topics_Scheduler {
 		
 		$this->logger->log('Found ' . count($due_authors) . ' authors due for topic generation', 'info');
 		
-		// Process each author
+		// Process each author, scoping a unique correlation ID to each author's
+		// generation run so the full chain (scheduler → topics → history) is traceable.
 		foreach ($due_authors as $author) {
+			AIPS_Correlation_ID::generate();
 			$this->generate_topics_for_author($author);
+			AIPS_Correlation_ID::reset();
 		}
 		
 		$this->logger->log('Completed scheduled topic generation', 'info');

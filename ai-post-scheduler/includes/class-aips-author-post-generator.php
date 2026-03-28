@@ -97,9 +97,12 @@ class AIPS_Author_Post_Generator {
 		
 		$this->logger->log('Found ' . count($due_authors) . ' authors due for post generation', 'info');
 		
-		// Process each author
+		// Process each author, scoping a unique correlation ID to each author's
+		// post generation run so the full chain is traceable end-to-end.
 		foreach ($due_authors as $author) {
+			AIPS_Correlation_ID::generate();
 			$this->generate_post_for_author($author);
+			AIPS_Correlation_ID::reset();
 		}
 		
 		$this->logger->log('Completed scheduled author post generation', 'info');
@@ -259,6 +262,7 @@ class AIPS_Author_Post_Generator {
 				'author_id'       => $author->id,
 				'author_name'     => $author->name,
 				'creation_method' => $creation_method,
+				'correlation_id'  => AIPS_Correlation_ID::get(),
 				'url'             => 'scheduled' === $creation_method ? AIPS_Admin_Menu_Helper::get_page_url('schedule') : AIPS_Admin_Menu_Helper::get_page_url('history'),
 				'dedupe_key'      => sanitize_key($creation_method . '_author_topic_' . $topic->id . '_exception'),
 				'dedupe_window'   => 900,

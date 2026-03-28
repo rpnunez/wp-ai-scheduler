@@ -147,7 +147,12 @@ class AIPS_Schedule_Processor {
         $schedule_with_template->schedule_id = $schedule->id;
         $schedule_with_template->name = $template_data->name; // ensure template name is preserved
 
-        return $this->execute_schedule_logic($schedule_with_template, true, $quantity_override);
+        // Generate a correlation ID for this manual run and reset it when done.
+        AIPS_Correlation_ID::generate();
+        $result = $this->execute_schedule_logic($schedule_with_template, true, $quantity_override);
+        AIPS_Correlation_ID::reset();
+
+        return $result;
     }
 
     /**
@@ -156,6 +161,10 @@ class AIPS_Schedule_Processor {
      * @param object $schedule Schedule object (merged with template).
      */
     private function execute_schedule_with_lock($schedule) {
+        // Generate a fresh correlation ID for this automated run so all history
+        // records and notifications produced during this execution share one ID.
+        $correlation_id = AIPS_Correlation_ID::generate();
+
         try {
             // Claim-First Locking Strategy (Hunter)
             // Immediately calculate and update next_run to lock this schedule from concurrent processes.
@@ -188,10 +197,12 @@ class AIPS_Schedule_Processor {
                     'error_message'  => __('Failed to acquire execution lock for schedule.', 'ai-post-scheduler'),
                     'frequency'      => $schedule->frequency,
                     'creation_method'=> 'scheduled',
+                    'correlation_id' => $correlation_id,
                     'url'            => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
                     'dedupe_key'     => 'scheduler_lock_' . absint($schedule->schedule_id),
                     'dedupe_window'  => 900,
                 ));
+                AIPS_Correlation_ID::reset();
                 return; // Skip generation if we couldn't lock
             }
 
@@ -212,10 +223,15 @@ class AIPS_Schedule_Processor {
                 'schedule_id'   => $schedule->schedule_id,
                 'template_id'   => isset($schedule->template_id) ? $schedule->template_id : 0,
                 'schedule_name' => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
+                'correlation_id' => $correlation_id,
                 'url'           => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
                 'dedupe_key'    => 'system_schedule_exception_' . absint($schedule->schedule_id),
                 'dedupe_window' => 1800,
             ));
+        } finally {
+            // Always reset the correlation ID after a run to prevent bleed-over
+            // into any subsequent scheduled jobs in the same cron batch.
+            AIPS_Correlation_ID::reset();
         }
     }
 
@@ -459,6 +475,7 @@ class AIPS_Schedule_Processor {
                 'error_message'  => $error_msg,
                 'frequency'      => $schedule->frequency,
                 'history_id'     => $history_id,
+                'correlation_id' => AIPS_Correlation_ID::get(),
                 'creation_method'=> 'scheduled',
                 'url'            => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
                 'dedupe_key'     => 'scheduler_failure_' . absint($schedule->schedule_id) . '_' . sanitize_key($result->get_error_code()),
