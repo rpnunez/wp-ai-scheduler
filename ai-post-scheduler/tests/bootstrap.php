@@ -299,6 +299,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return delete_option('_transient_' . $transient);
         }
     }
+
+    if (!function_exists('wp_using_ext_object_cache')) {
+        function wp_using_ext_object_cache() {
+            return false;
+        }
+    }
     
     if (!function_exists('current_time')) {
         function current_time($type = 'mysql', $gmt = 0) {
@@ -1065,6 +1071,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-author-post-generator.php',
         'class-aips-author-topics-controller.php',
         'class-aips-author-suggestions-service.php',
+        'class-aips-metrics-repository.php',
     ];
     
     foreach ($files as $file) {

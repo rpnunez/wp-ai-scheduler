@@ -65,6 +65,11 @@ class AIPS_History_Type {
 	 * Generation session metadata
 	 */
 	const SESSION_METADATA = 9;
+
+	/**
+	 * Structured metric snapshot (generation outcome, duration, image result)
+	 */
+	const METRIC = 10;
 	
 	/**
 	 * Get human-readable label for a history type
@@ -83,6 +88,7 @@ class AIPS_History_Type {
 			self::DEBUG => __('Debug', 'ai-post-scheduler'),
 			self::ACTIVITY => __('Activity', 'ai-post-scheduler'),
 			self::SESSION_METADATA => __('Session Metadata', 'ai-post-scheduler'),
+			self::METRIC => __('Metric', 'ai-post-scheduler'),
 		);
 		
 		return isset($labels[$type]) ? $labels[$type] : __('Unknown', 'ai-post-scheduler');
@@ -104,6 +110,7 @@ class AIPS_History_Type {
 			self::DEBUG => self::get_label(self::DEBUG),
 			self::ACTIVITY => self::get_label(self::ACTIVITY),
 			self::SESSION_METADATA => self::get_label(self::SESSION_METADATA),
+			self::METRIC => self::get_label(self::METRIC),
 		);
 	}
 	
