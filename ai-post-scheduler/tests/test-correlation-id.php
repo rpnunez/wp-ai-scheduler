@@ -98,7 +98,6 @@ class Test_AIPS_Correlation_ID extends WP_UnitTestCase {
 	 */
 	private function make_capture_repo(stdClass $capture, $return_id = 1) {
 		return new class($capture, $return_id) {
-			public $get_col_return_val = array();
 			private $capture;
 			private $id;
 			public function __construct($capture, $id) {

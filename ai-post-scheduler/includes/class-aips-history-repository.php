@@ -746,7 +746,7 @@ class AIPS_History_Repository {
     public function create($data) {
         $insert_data = array(
             'uuid' => isset($data['uuid']) ? $data['uuid'] : null,
-            'correlation_id' => isset($data['correlation_id']) ? sanitize_text_field($data['correlation_id']) : null,
+            'correlation_id' => !empty($data['correlation_id']) ? sanitize_text_field($data['correlation_id']) : null,
             'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
             'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
             'topic_id' => isset($data['topic_id']) ? absint($data['topic_id']) : null,
