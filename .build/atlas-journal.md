@@ -1343,3 +1343,11 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Positive:** Improved user control over AI service interaction limits and error handling. Adheres to plugin standard of dynamic option retrieval.
 - **Negative:** Added slightly more UI complexity to the settings page.
 **Tests:** Confirmed fields appear in the Settings page and `AIPS_Config` retrieves them correctly.
+
+## 2026-03-08 - [Extract Admin Menu Logic from Settings]
+**Context:** The `AIPS_Settings` class was a "God Object" taking on too many responsibilities (over 1400 lines of code). It managed both the WordPress Settings API configuration and the rendering/registration of the entire plugin's Admin menu hierarchy, violating the Single Responsibility Principle.
+**Decision:** Extracted the admin menu registration (`add_menu_pages`) and template rendering (`render_*` methods) into a new `AIPS_Admin_Menu` class. `AIPS_Settings` now strictly handles configuration definitions via the Settings API.
+**Consequence:**
+- **Positive:** Improved separation of concerns. `AIPS_Settings` is smaller, more focused, and strictly manages options. `AIPS_Admin_Menu` is responsible for building the UI framework.
+- **Negative:** Added a new class that requires its own instantiation and autoloader entry in tests.
+**Tests:** Created `ai-post-scheduler/tests/test-admin-menu.php` which validates `AIPS_Admin_Menu` hooks and assertions. The new class was added to the autoloader array to ensure 100% load test coverage.
