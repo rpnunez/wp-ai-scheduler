@@ -104,13 +104,15 @@ if (!isset($sections) || !is_array($sections)) {
 			<?php else : ?>
 			<!-- Empty State -->
 			<div class="aips-empty-state">
-				<span class="dashicons dashicons-editor-table" style="font-size: 64px; width: 64px; height: 64px;"></span>
-				<h3><?php esc_html_e('No Prompt Sections', 'ai-post-scheduler'); ?></h3>
-				<p><?php esc_html_e('Create reusable prompt sections that can be inserted into your article structures using placeholders like {{section:key}}.', 'ai-post-scheduler'); ?></p>
-				<button class="aips-btn aips-btn-primary aips-add-section-btn">
-					<span class="dashicons dashicons-plus-alt"></span>
-					<?php esc_html_e('Create First Section', 'ai-post-scheduler'); ?>
-				</button>
+				<div class="dashicons dashicons-editor-table aips-empty-state-icon" aria-hidden="true"></div>
+				<h3 class="aips-empty-state-title"><?php esc_html_e('No Prompt Sections', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-state-description"><?php esc_html_e('Create reusable prompt sections that can be inserted into your article structures using placeholders like {{section:key}}.', 'ai-post-scheduler'); ?></p>
+				<div class="aips-empty-state-actions">
+					<button class="aips-btn aips-btn-primary aips-add-section-btn">
+						<span class="dashicons dashicons-plus-alt"></span>
+						<?php esc_html_e('Create First Section', 'ai-post-scheduler'); ?>
+					</button>
+				</div>
 			</div>
 			<?php endif; ?>
 		</div>
