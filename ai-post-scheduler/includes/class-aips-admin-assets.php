@@ -56,6 +56,7 @@ class AIPS_Admin_Assets {
             // Progress-bar modal strings (used by AIPS.Utilities.showProgressBar on every admin page)
             'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
             'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
+            'takingLonger'             => __('Taking a little bit longer than expected\u2026', 'ai-post-scheduler'),
             'seconds'                  => __('seconds', 'ai-post-scheduler'),
             'minute'                   => __('1 minute', 'ai-post-scheduler'),
             'minutes'                  => __('%d minutes', 'ai-post-scheduler'),

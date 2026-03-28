@@ -2761,6 +2761,24 @@
     width: 0%;
 }
 
+.aips-progress-bar-fill--indeterminate {
+    width: 100% !important;
+    transition: width 0.5s ease-in-out;
+    background: linear-gradient(
+        90deg,
+        var(--aips-primary) 0%,
+        var(--aips-primary-hover) 50%,
+        var(--aips-primary) 100%
+    );
+    background-size: 200% 100%;
+    animation: aips-progress-shimmer 1.6s linear infinite;
+}
+
+@keyframes aips-progress-shimmer {
+    0%   { background-position: 200% center; }
+    100% { background-position: -200% center; }
+}
+
 .aips-progress-status {
     margin: 0;
     font-size: var(--aips-text-sm);
