@@ -93,7 +93,7 @@ class AIPS_History_Container {
 			: AIPS_Correlation_ID::get();
 		
 		// Create new container
-		$this->uuid = $this->generate_uuid();
+		$this->uuid = AIPS_Utilities::generate_uuid();
 		$this->history_id = null;
 		$this->type = $type;
 		$this->metadata = $metadata;
@@ -181,28 +181,6 @@ class AIPS_History_Container {
 		}
 
 		return $history_container;
-	}
-	
-	/**
-	 * Generate a unique UUID for this history container
-	 *
-	 * @return string UUID
-	 */
-	private function generate_uuid() {
-		// Use WordPress's unique ID generation if available
-		if (function_exists('wp_generate_uuid4')) {
-			return wp_generate_uuid4();
-		}
-		
-		// Fallback to custom UUID generation
-		return sprintf(
-			'%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-			mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-			mt_rand(0, 0xffff),
-			mt_rand(0, 0x0fff) | 0x4000,
-			mt_rand(0, 0x3fff) | 0x8000,
-			mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-		);
 	}
 	
 	/**

@@ -1023,6 +1023,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-ai-edit-controller.php',
         // History service layer
         'class-aips-history-type.php',
+        'class-aips-utilities.php',
         'class-aips-correlation-id.php',
         'class-aips-history-container.php',
         'class-aips-history-service.php',

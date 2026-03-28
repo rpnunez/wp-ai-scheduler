@@ -49,7 +49,7 @@ class AIPS_Correlation_ID {
 	 * @return string The newly generated UUID-based correlation ID.
 	 */
 	public static function generate() {
-		self::$current_id = self::create_uuid();
+		self::$current_id = AIPS_Utilities::generate_uuid();
 		return self::$current_id;
 	}
 
@@ -86,26 +86,4 @@ class AIPS_Correlation_ID {
 		self::$current_id = null;
 	}
 
-	/**
-	 * Generate a UUID v4 string.
-	 *
-	 * Delegates to WordPress's wp_generate_uuid4() when available, and falls
-	 * back to a custom implementation otherwise.
-	 *
-	 * @return string UUID v4 string.
-	 */
-	private static function create_uuid() {
-		if (function_exists('wp_generate_uuid4')) {
-			return wp_generate_uuid4();
-		}
-
-		return sprintf(
-			'%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-			random_int(0, 0xffff), random_int(0, 0xffff),
-			random_int(0, 0xffff),
-			random_int(0, 0x0fff) | 0x4000,
-			random_int(0, 0x3fff) | 0x8000,
-			random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
-		);
-	}
 }
