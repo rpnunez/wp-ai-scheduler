@@ -229,6 +229,18 @@ class AIPS_AI_Edit_Controller {
 			wp_send_json_error(array('message' => $result->get_error_message()));
 		}
 		
+		/**
+		 * Fires after a single post component has been regenerated via AI.
+		 *
+		 * @since 1.8.0
+		 *
+		 * @param string $component The name of the regenerated component (title, excerpt, content, featured_image).
+		 * @param mixed  $result    The newly generated value (string for text, array for featured_image).
+		 * @param int    $post_id   The ID of the post being edited.
+		 * @param int    $history_id The ID of the generation history record used for context.
+		 */
+		do_action('aips_post_component_regenerated', $component, $result, $post_id, $history_id);
+
 		wp_send_json_success(array('new_value' => $result));
 	}
 	

@@ -188,3 +188,9 @@
 **Improvement:** Optimized the flow and reliability of the template management process by enforcing early input validation across all key AJAX endpoints (`ajax_save_template`, `ajax_test_template`, `ajax_preview_template_prompts`, `ajax_clone_template`, `ajax_delete_template`, `ajax_get_template`). Validations included robust checks for required inputs, type coercion limits, integer boundary limits, and trimming of empty string values.
 **Files Modified:** `ai-post-scheduler/includes/class-aips-templates-controller.php`
 **Outcome:** Prevents users from accidentally saving corrupt templates with empty prompts or invalid names, increasing the robustness and flow of the template wizard experience by providing clear, immediate backend error messages instead of failing silently or proceeding with incomplete data.
+
+## 2026-04-01 - Component Regeneration Service Optimization
+**Target Feature:** Component Regeneration Service
+**Improvement:** Optimized AI Edit flow by adding a 'Regenerate All Components' action, streamlining multi-component generation.
+**Files Modified:** assets/js/admin-ai-edit.js, templates/partials/ai-edit-modal.php
+**Outcome:** Allows users to regenerate title, excerpt, content, and featured image in parallel with a single click, drastically reducing wait time and clicks during post revisions.
