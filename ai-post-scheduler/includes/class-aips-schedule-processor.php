@@ -149,9 +149,12 @@ class AIPS_Schedule_Processor {
 
         // Generate a correlation ID for this manual run and reset it when done.
         AIPS_Correlation_ID::generate();
-        $result = $this->execute_schedule_logic($schedule_with_template, true, $quantity_override);
-        AIPS_Correlation_ID::reset();
 
+        try {
+            $result = $this->execute_schedule_logic($schedule_with_template, true, $quantity_override);
+        } finally {
+            AIPS_Correlation_ID::reset();
+        }
         return $result;
     }
 
