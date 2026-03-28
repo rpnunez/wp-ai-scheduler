@@ -1,0 +1,203 @@
+/**
+ * Multi-Draft Compare UI — Styles
+ *
+ * Side-by-side variant comparison modal for multi-draft generation.
+ *
+ * @package AI_Post_Scheduler
+ * @since   2.1.0
+ */
+
+/* -----------------------------------------------------------------------
+   Modal sizing
+----------------------------------------------------------------------- */
+#aips-multi-draft-modal .aips-modal-content {
+	width: 95%;
+	max-width: 1240px;
+	max-height: 90vh;
+}
+
+#aips-multi-draft-modal .aips-modal-body {
+	overflow-y: auto;
+	padding: 20px 24px;
+	box-sizing: border-box;
+}
+
+/* -----------------------------------------------------------------------
+   Config step
+----------------------------------------------------------------------- */
+.aips-mdc-config-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.aips-mdc-config-row label {
+	font-weight: 600;
+	min-width: 180px;
+	font-size: 13px;
+}
+
+.aips-mdc-count-input {
+	width: 70px;
+	text-align: center;
+}
+
+.aips-mdc-cost-notice {
+	background: #f0f6fc;
+	border-left: 4px solid #2271b1;
+	padding: 10px 14px;
+	border-radius: 3px;
+	font-size: 13px;
+	color: #1d2327;
+	margin-top: 4px;
+}
+
+/* -----------------------------------------------------------------------
+   Generating step
+----------------------------------------------------------------------- */
+.aips-mdc-generating {
+	text-align: center;
+	padding: 48px 20px;
+}
+
+.aips-mdc-generating .spinner {
+	float: none;
+	display: inline-block;
+	visibility: visible;
+	margin: 0 auto 12px;
+}
+
+.aips-mdc-generating-text {
+	font-size: 14px;
+	color: #50575e;
+	margin-top: 12px;
+}
+
+/* -----------------------------------------------------------------------
+   Compare step — section rows
+----------------------------------------------------------------------- */
+.aips-mdc-section {
+	margin-bottom: 24px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.aips-mdc-section-label {
+	background: #f6f7f7;
+	margin: 0;
+	padding: 8px 16px;
+	font-size: 11px;
+	font-weight: 700;
+	border-bottom: 1px solid #dcdcde;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: #50575e;
+}
+
+/* -----------------------------------------------------------------------
+   Compare step — columns grid
+----------------------------------------------------------------------- */
+.aips-mdc-columns {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr); /* safe fallback for 2 columns */
+}
+
+/* Explicit 2- and 3-column helpers set from JS class names */
+.aips-mdc-cols-2 { grid-template-columns: 1fr 1fr; }
+.aips-mdc-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+.aips-mdc-column {
+	padding: 14px 16px;
+	border-right: 1px solid #dcdcde;
+	transition: background-color 0.15s ease, box-shadow 0.15s ease;
+	box-sizing: border-box;
+}
+
+.aips-mdc-column:last-child {
+	border-right: none;
+}
+
+.aips-mdc-column.is-selected {
+	background: #f0f6fc;
+	box-shadow: inset 0 0 0 2px #2271b1;
+}
+
+/* -----------------------------------------------------------------------
+   Column header (radio label)
+----------------------------------------------------------------------- */
+.aips-mdc-column-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+	font-size: 13px;
+	margin-bottom: 10px;
+	color: #1d2327;
+	cursor: pointer;
+}
+
+.aips-mdc-column-header input[type="radio"] {
+	margin: 0;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+/* -----------------------------------------------------------------------
+   Field values
+----------------------------------------------------------------------- */
+.aips-mdc-field-value {
+	font-size: 13px;
+	line-height: 1.6;
+	color: #3c434a;
+	word-break: break-word;
+}
+
+/* Content preview — scrollable, fixed height */
+.aips-mdc-content-preview {
+	font-size: 12px;
+	line-height: 1.75;
+	color: #3c434a;
+	max-height: 200px;
+	overflow-y: auto;
+	border: 1px solid #e0e0e0;
+	border-radius: 3px;
+	padding: 8px 10px;
+	background: #fff;
+	word-break: break-word;
+	white-space: pre-wrap;
+}
+
+/* -----------------------------------------------------------------------
+   Modal footer
+----------------------------------------------------------------------- */
+#aips-multi-draft-modal .aips-modal-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+	padding: 12px 20px;
+	border-top: 1px solid #dcdcde;
+	background: #f6f7f7;
+	flex-shrink: 0;
+}
+
+/* -----------------------------------------------------------------------
+   Responsive: stack columns on narrow screens
+----------------------------------------------------------------------- */
+@media screen and (max-width: 782px) {
+	.aips-mdc-columns,
+	.aips-mdc-cols-2,
+	.aips-mdc-cols-3 {
+		grid-template-columns: 1fr;
+	}
+
+	.aips-mdc-column {
+		border-right: none;
+		border-bottom: 1px solid #dcdcde;
+	}
+
+	.aips-mdc-column:last-child {
+		border-bottom: none;
+	}
+}

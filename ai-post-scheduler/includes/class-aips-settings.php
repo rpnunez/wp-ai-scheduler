@@ -39,6 +39,10 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_default_category', array(
             'sanitize_callback' => 'absint'
         ));
+        register_setting('aips_settings', 'aips_multi_draft_max_variants', array(
+            'sanitize_callback' => array($this, 'sanitize_multi_draft_max_variants'),
+            'default'           => 3,
+        ));
         register_setting('aips_settings', 'aips_enable_logging', array(
             'sanitize_callback' => 'absint'
         ));
@@ -124,6 +128,14 @@ class AIPS_Settings {
             'aips_default_category',
             __('Default Category', 'ai-post-scheduler'),
             array($this, 'category_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_multi_draft_max_variants',
+            __('Multi-Draft Max Variants', 'ai-post-scheduler'),
+            array($this, 'multi_draft_max_variants_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -544,6 +556,37 @@ class AIPS_Settings {
             'hide_empty' => false,
         ));
         echo '<p class="description">' . esc_html__('Default category for generated posts.', 'ai-post-scheduler') . '</p>';
+    }
+
+    /**
+     * Render the multi-draft max variants setting field.
+     *
+     * Displays a number selector (2 or 3) for the maximum number of variants
+     * a user can generate when using the Compare Variants feature.
+     *
+     * @return void
+     */
+    public function multi_draft_max_variants_field_callback() {
+        $value = (int) get_option('aips_multi_draft_max_variants', 3);
+        ?>
+        <select name="aips_multi_draft_max_variants">
+            <option value="2" <?php selected($value, 2); ?>><?php esc_html_e('2 variants', 'ai-post-scheduler'); ?></option>
+            <option value="3" <?php selected($value, 3); ?>><?php esc_html_e('3 variants', 'ai-post-scheduler'); ?></option>
+        </select>
+        <p class="description"><?php esc_html_e('Maximum number of draft variants users may generate at once when using the Compare Variants feature. Each variant requires 3 AI API calls.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Sanitize the multi-draft max variants value.
+     *
+     * Clamps the value to the allowed range of 2–3.
+     *
+     * @param mixed $value Raw input value.
+     * @return int
+     */
+    public function sanitize_multi_draft_max_variants($value) {
+        return max(2, min(3, absint($value)));
     }
     
     /**

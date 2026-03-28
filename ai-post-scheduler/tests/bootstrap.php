@@ -1021,6 +1021,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-generator.php',
         'class-aips-component-regeneration-service.php',
         'class-aips-ai-edit-controller.php',
+        'class-aips-multi-draft-controller.php',
         // History service layer
         'class-aips-history-type.php',
         'class-aips-utilities.php',

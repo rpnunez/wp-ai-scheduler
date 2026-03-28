@@ -536,6 +536,42 @@ class AIPS_Admin_Assets {
             ));
         }
 
+        // Multi-Draft Compare (Generated Posts + standalone Post Review pages)
+        if (strpos($hook, 'aips-generated-posts') !== false || strpos($hook, 'aips-post-review') !== false) {
+            wp_enqueue_style(
+                'aips-admin-multi-draft',
+                AIPS_PLUGIN_URL . 'assets/css/admin-multi-draft.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-admin-multi-draft',
+                AIPS_PLUGIN_URL . 'assets/js/admin-multi-draft.js',
+                array('jquery', 'aips-admin-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-multi-draft', 'aipsMultiDraftL10n', array(
+                'ajaxUrl'       => admin_url('admin-ajax.php'),
+                'nonce'         => wp_create_nonce('aips_ajax_nonce'),
+                'maxVariants'   => (string) AIPS_Multi_Draft_Controller::get_max_variants(),
+                /* translators: 1: number of variants, 2: number of AI API calls */
+                'costEstimate'  => __('Generating %d_variants variants will make approximately %d_calls AI API calls.', 'ai-post-scheduler'),
+                /* translators: %d: variant number */
+                'variantLabel'  => __('Variant %d', 'ai-post-scheduler'),
+                'labelTitle'    => __('Title', 'ai-post-scheduler'),
+                'labelExcerpt'  => __('Excerpt', 'ai-post-scheduler'),
+                'labelContent'  => __('Content', 'ai-post-scheduler'),
+                'generateError' => __('Failed to generate variants. Please try again.', 'ai-post-scheduler'),
+                'applySuccess'  => __('Draft applied to post successfully!', 'ai-post-scheduler'),
+                'applyError'    => __('Failed to apply draft. Please try again.', 'ai-post-scheduler'),
+                'applying'      => __('Applying…', 'ai-post-scheduler'),
+                'applyDraft'    => __('Apply Selected Draft', 'ai-post-scheduler'),
+            ));
+        }
+
         // Calendar Page Scripts
         if (strpos($hook, 'aips-schedule-calendar') !== false) {
             wp_enqueue_style(
