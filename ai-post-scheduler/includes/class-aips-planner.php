@@ -105,7 +105,7 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $topics = isset($_POST['topics']) ? (array) $_POST['topics'] : array();
+        $topics = isset($_POST['topics']) ? wp_unslash((array) $_POST['topics']) : array();
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
         $start_date = isset($_POST['start_date']) ? sanitize_text_field(wp_unslash($_POST['start_date'])) : '';
         $frequency = isset($_POST['frequency']) ? sanitize_text_field(wp_unslash($_POST['frequency'])) : 'daily';

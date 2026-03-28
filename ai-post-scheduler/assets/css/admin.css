@@ -1542,32 +1542,6 @@
     margin-right: 8px;
 }
 
-.aips-empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    background: #fff;
-    border: 1px solid #c3c4c7;
-    border-radius: 4px;
-}
-
-.aips-empty-state .dashicons {
-    font-size: 60px;
-    width: 60px;
-    height: 60px;
-    color: #c3c4c7;
-    margin-bottom: 15px;
-}
-
-.aips-empty-state h3 {
-    margin: 0 0 10px;
-    color: #1d2327;
-}
-
-.aips-empty-state p {
-    color: #646970;
-    margin-bottom: 20px;
-}
-
 .aips-search-wrapper {
     margin-left: auto;
     display: flex;

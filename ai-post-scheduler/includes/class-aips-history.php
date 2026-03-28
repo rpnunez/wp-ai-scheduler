@@ -45,7 +45,7 @@ class AIPS_History {
             wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
         }
 
-        $ids = isset($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
+        $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('absint', $_POST['ids']) : array();
 
         if (empty($ids)) {
             wp_send_json_error(array('message' => __('No items selected.', 'ai-post-scheduler')));

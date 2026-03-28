@@ -639,5 +639,16 @@ class AIPS_Admin_Assets {
                 'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
             ));
         }
+
+        // Settings Page Scripts
+        if (strpos($hook, 'aips-settings') !== false) {
+            wp_enqueue_script(
+                'aips-admin-settings',
+                AIPS_PLUGIN_URL . 'assets/js/admin-settings.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
     }
 }
