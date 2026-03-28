@@ -36,6 +36,10 @@ class AIPS_Settings {
         register_setting('aips_settings', 'aips_default_post_status', array(
             'sanitize_callback' => 'sanitize_text_field'
         ));
+        register_setting('aips_settings', 'aips_max_draft_variants', array(
+            'sanitize_callback' => array($this, 'sanitize_max_draft_variants'),
+            'default' => 3
+        ));
         register_setting('aips_settings', 'aips_default_category', array(
             'sanitize_callback' => 'absint'
         ));
@@ -124,6 +128,14 @@ class AIPS_Settings {
             'aips_default_category',
             __('Default Category', 'ai-post-scheduler'),
             array($this, 'category_field_callback'),
+            'aips-settings',
+            'aips_general_section'
+        );
+
+        add_settings_field(
+            'aips_max_draft_variants',
+            __('Max Draft Variants', 'ai-post-scheduler'),
+            array($this, 'max_draft_variants_field_callback'),
             'aips-settings',
             'aips_general_section'
         );
@@ -508,6 +520,41 @@ class AIPS_Settings {
         echo '<p>' . esc_html__('Options for debugging and plugin development. Not recommended for production use.', 'ai-post-scheduler') . '</p>';
     }
     
+    /**
+     * Render the max draft variants setting field.
+     *
+     * Displays a number input for configuring the maximum number of draft variants
+     * generated in the multi-draft compare feature.
+     *
+     * @return void
+     */
+    public function max_draft_variants_field_callback() {
+        $value = (int) get_option('aips_max_draft_variants', 3);
+        ?>
+        <input type="number" name="aips_max_draft_variants" value="<?php echo esc_attr($value); ?>" min="2" max="3" class="small-text">
+        <p class="description"><?php esc_html_e('Maximum number of draft variants to generate when using the Compare Drafts feature (2–3).', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Sanitize the max draft variants option.
+     *
+     * Clamps the value to the allowed range of 2–3.
+     *
+     * @param mixed $value Raw option value.
+     * @return int
+     */
+    public function sanitize_max_draft_variants($value) {
+        $value = absint($value);
+        if ($value < 2) {
+            return 2;
+        }
+        if ($value > 3) {
+            return 3;
+        }
+        return $value;
+    }
+
     /**
      * Render the default post status setting field.
      *

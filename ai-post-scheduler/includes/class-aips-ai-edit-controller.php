@@ -44,6 +44,7 @@ class AIPS_AI_Edit_Controller {
 		add_action('wp_ajax_aips_save_post_components', array($this, 'ajax_save_post_components'));
 		add_action('wp_ajax_aips_get_component_revisions', array($this, 'ajax_get_component_revisions'));
 		add_action('wp_ajax_aips_restore_component_revision', array($this, 'ajax_restore_component_revision'));
+		add_action('wp_ajax_aips_generate_multi_draft', array($this, 'ajax_generate_multi_draft'));
 	}
 	
 	/**
@@ -469,6 +470,128 @@ class AIPS_AI_Edit_Controller {
 			'message' => __('Revision restored successfully!', 'ai-post-scheduler'),
 			'component' => $component,
 			'value' => $restored_value,
+		));
+	}
+
+	/**
+	 * AJAX handler: Generate multiple draft variants for comparison.
+	 *
+	 * Generates N independent variants of selected post components using the
+	 * original generation context so editors can pick the best version or merge
+	 * sections across variants.
+	 *
+	 * Expected POST params:
+	 *   post_id      (int)   – WordPress post ID
+	 *   history_id   (int)   – History record ID used to reconstruct context
+	 *   variant_count (int)  – Number of variants to generate (2–3)
+	 *   components   (array) – Subset of ['title','excerpt','content'] to generate
+	 */
+	public function ajax_generate_multi_draft() {
+		check_ajax_referer('aips_ajax_nonce', 'nonce');
+
+		if (!current_user_can('edit_posts')) {
+			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
+		}
+
+		$post_id       = isset($_POST['post_id'])      ? absint($_POST['post_id'])      : 0;
+		$history_id    = isset($_POST['history_id'])   ? absint($_POST['history_id'])   : 0;
+		$variant_count = isset($_POST['variant_count']) ? absint($_POST['variant_count']) : 2;
+		$requested     = isset($_POST['components']) && is_array($_POST['components'])
+			? array_map('sanitize_key', wp_unslash($_POST['components']))
+			: array('title', 'excerpt', 'content');
+
+		if (!$post_id || !$history_id) {
+			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
+		}
+
+		// Clamp variant count to the configured maximum (2–3).
+		$max_variants  = (int) get_option('aips_max_draft_variants', 3);
+		$variant_count = max(2, min($max_variants, $variant_count));
+
+		// Validate requested components (featured_image is excluded from multi-draft).
+		$valid_components = array('title', 'excerpt', 'content');
+		$components = array_values(array_intersect($requested, $valid_components));
+		if (empty($components)) {
+			wp_send_json_error(array('message' => __('No valid components selected.', 'ai-post-scheduler')));
+		}
+
+		if (!current_user_can('edit_post', $post_id)) {
+			wp_send_json_error(array('message' => __('You do not have permission to edit this post.', 'ai-post-scheduler')));
+		}
+
+		$post = get_post($post_id);
+		if (!$post) {
+			wp_send_json_error(array('message' => __('Post not found.', 'ai-post-scheduler')));
+		}
+
+		// Build generation context once — it is stateless so safe to reuse.
+		$context = $this->service->get_generation_context($history_id);
+		if (is_wp_error($context)) {
+			wp_send_json_error(array('message' => $context->get_error_message()));
+		}
+
+		if (isset($context['post_id']) && absint($context['post_id']) !== $post_id) {
+			wp_send_json_error(array('message' => __('Invalid history context for this post.', 'ai-post-scheduler')));
+		}
+
+		// Enrich context with current post data so components that depend on
+		// sibling values (e.g. excerpt needs title + content) remain coherent.
+		$context['post_id']        = $post_id;
+		$context['history_id']     = $history_id;
+		$context['current_title']   = $post->post_title;
+		$context['current_excerpt'] = $post->post_excerpt;
+		$context['current_content'] = $post->post_content;
+
+		// Generate all variants.
+		$variants = array();
+		$errors   = array();
+
+		for ($i = 0; $i < $variant_count; $i++) {
+			$variant = array();
+
+			foreach ($components as $component) {
+				$result = null;
+				switch ($component) {
+					case 'title':
+						$result = $this->service->regenerate_title($context);
+						break;
+					case 'excerpt':
+						$result = $this->service->regenerate_excerpt($context);
+						break;
+					case 'content':
+						$result = $this->service->regenerate_content($context);
+						break;
+				}
+
+				if (is_wp_error($result)) {
+					$errors[] = sprintf(
+						/* translators: 1: variant number (1-based), 2: component name, 3: error message */
+						__('Variant %1$d – %2$s: %3$s', 'ai-post-scheduler'),
+						$i + 1,
+						$component,
+						$result->get_error_message()
+					);
+					$variant[$component] = null;
+				} else {
+					$variant[$component] = $result;
+				}
+			}
+
+			$variants[] = $variant;
+		}
+
+		if (!empty($errors) && count($errors) === $variant_count * count($components)) {
+			wp_send_json_error(array(
+				'message' => __('All variant generations failed. Please try again.', 'ai-post-scheduler'),
+				'errors'  => $errors,
+			));
+		}
+
+		wp_send_json_success(array(
+			'variants'       => $variants,
+			'components'     => $components,
+			'variant_count'  => $variant_count,
+			'errors'         => $errors,
 		));
 	}
 

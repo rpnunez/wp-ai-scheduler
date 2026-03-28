@@ -1,0 +1,266 @@
+/**
+ * Multi-Draft Compare Modal – Styles
+ *
+ * Provides the side-by-side comparison layout and visual chrome for the
+ * multi-draft generation feature.
+ *
+ * @package AI_Post_Scheduler
+ * @since 2.0.0
+ */
+
+/* =========================================================================
+   Modal size override
+   ========================================================================= */
+
+#aips-multi-draft-modal .aips-modal-content.aips-modal-xl {
+	max-width: 1200px;
+	width: 95%;
+	max-height: 92vh;
+	display: flex;
+	flex-direction: column;
+}
+
+#aips-multi-draft-modal .aips-modal-body.aips-multi-draft-body {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	padding: 20px 24px;
+}
+
+/* =========================================================================
+   Configuration panel
+   ========================================================================= */
+
+.aips-multi-draft-config-inner {
+	max-width: 560px;
+	margin: 0 auto;
+	padding: 8px 0;
+}
+
+.aips-multi-draft-config-inner h3 {
+	margin-top: 0;
+	font-size: 1.1em;
+}
+
+.aips-multi-draft-component-check {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	margin-right: 16px;
+	cursor: pointer;
+}
+
+.aips-multi-draft-cost-estimate {
+	background: #f0f6fc;
+	border: 1px solid #c3dafe;
+	border-radius: 4px;
+	padding: 10px 14px;
+	margin: 16px 0;
+}
+
+.aips-multi-draft-cost-inner {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	font-size: 0.9em;
+	color: #1d4ed8;
+}
+
+.aips-multi-draft-cost-inner .dashicons {
+	flex-shrink: 0;
+	margin-top: 1px;
+}
+
+.aips-multi-draft-config-actions {
+	display: flex;
+	gap: 10px;
+	justify-content: flex-end;
+	margin-top: 20px;
+}
+
+/* =========================================================================
+   Loading state
+   ========================================================================= */
+
+.aips-multi-draft-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 60px 20px;
+	gap: 16px;
+}
+
+.aips-multi-draft-loading .spinner {
+	float: none;
+	margin: 0;
+}
+
+/* =========================================================================
+   Toolbar
+   ========================================================================= */
+
+.aips-multi-draft-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 14px;
+	gap: 10px;
+}
+
+.aips-multi-draft-summary {
+	font-size: 0.9em;
+	color: #555;
+}
+
+/* =========================================================================
+   Error list
+   ========================================================================= */
+
+.aips-multi-draft-errors {
+	background: #fff8f1;
+	border: 1px solid #fbbf24;
+	border-radius: 4px;
+	padding: 10px 14px;
+	margin-bottom: 16px;
+	font-size: 0.88em;
+}
+
+.aips-multi-draft-error-heading {
+	margin: 0 0 6px;
+	font-weight: 600;
+	color: #92400e;
+}
+
+.aips-multi-draft-errors ul {
+	margin: 0;
+	padding-left: 18px;
+	color: #b45309;
+}
+
+/* =========================================================================
+   Compare grid
+   ========================================================================= */
+
+.aips-draft-grid {
+	display: grid;
+	gap: 12px;
+	align-items: start;
+	margin-bottom: 20px;
+}
+
+.aips-draft-grid.aips-draft-cols-2 {
+	grid-template-columns: repeat(2, 1fr);
+}
+
+.aips-draft-grid.aips-draft-cols-3 {
+	grid-template-columns: repeat(3, 1fr);
+}
+
+/* Column */
+.aips-draft-col {
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	overflow: hidden;
+	background: #fff;
+}
+
+.aips-draft-col-header {
+	background: #f6f7f7;
+	border-bottom: 1px solid #ddd;
+	padding: 8px 12px;
+	font-weight: 600;
+	font-size: 0.9em;
+	color: #333;
+}
+
+/* Cell */
+.aips-draft-cell {
+	border-bottom: 1px solid #e8e8e8;
+	padding: 10px 12px;
+}
+
+.aips-draft-cell:last-child {
+	border-bottom: none;
+}
+
+.aips-draft-cell-selected {
+	background: #f0fdf4;
+	border-left: 3px solid #16a34a;
+}
+
+.aips-draft-cell-error {
+	background: #fef2f2;
+	opacity: 0.8;
+}
+
+.aips-draft-cell-label {
+	font-size: 0.78em;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #777;
+	margin-bottom: 6px;
+	font-weight: 600;
+}
+
+.aips-draft-cell-body {
+	font-size: 0.9em;
+	line-height: 1.55;
+	color: #333;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.aips-draft-cell-content-preview {
+	max-height: 180px;
+	overflow-y: auto;
+}
+
+.aips-draft-cell-body-error {
+	color: #b91c1c;
+	font-style: italic;
+}
+
+.aips-draft-cell-actions {
+	margin-top: 8px;
+}
+
+/* =========================================================================
+   Selection summary
+   ========================================================================= */
+
+.aips-multi-draft-selections {
+	margin-top: 16px;
+	padding: 12px 16px;
+	background: #fafafa;
+	border: 1px solid #e2e8f0;
+	border-radius: 4px;
+}
+
+.aips-multi-draft-selections h4 {
+	margin: 0 0 8px;
+	font-size: 0.9em;
+}
+
+.aips-multi-draft-selections ul {
+	margin: 0;
+	padding-left: 18px;
+	font-size: 0.88em;
+}
+
+.aips-multi-draft-no-selection {
+	color: #888;
+	font-style: italic;
+	list-style: none;
+	padding: 0;
+}
+
+/* =========================================================================
+   Responsive: collapse to single column on narrow screens
+   ========================================================================= */
+
+@media screen and (max-width: 900px) {
+	.aips-draft-grid.aips-draft-cols-2,
+	.aips-draft-grid.aips-draft-cols-3 {
+		grid-template-columns: 1fr;
+	}
+}
