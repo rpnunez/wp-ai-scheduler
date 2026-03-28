@@ -537,6 +537,17 @@ class AIPS_Admin_Assets {
             ));
         }
 
+        // Schedule Page Scripts
+        if (strpos($hook, 'aips-schedule') !== false && strpos($hook, 'aips-schedule-calendar') === false) {
+            wp_enqueue_script(
+                'aips-admin-schedules',
+                AIPS_PLUGIN_URL . 'assets/js/admin-schedules.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
+        }
+
         // Calendar Page Scripts
         if (strpos($hook, 'aips-schedule-calendar') !== false) {
             wp_enqueue_style(
