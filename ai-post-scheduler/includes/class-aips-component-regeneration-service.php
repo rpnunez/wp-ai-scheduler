@@ -261,14 +261,18 @@ class AIPS_Component_Regeneration_Service {
 			$thumbnail_id = absint($this->get_post_meta_value($post_id, '_thumbnail_id'));
 		}
 
-		if ($thumbnail_id > 0) {
+		$component_statuses = json_decode((string) $this->get_post_meta_value($post_id, 'aips_post_generation_component_statuses'), true);
+		$has_featured_image_status = is_array($component_statuses)
+			&& array_key_exists('featured_image', $component_statuses);
+		$featured_image_status = $has_featured_image_status ? $component_statuses['featured_image'] : null;
+
+		// Regenerate when there is an existing generated featured image.
+		if ($thumbnail_id > 0 && !empty($featured_image_status)) {
 			return true;
 		}
 
-		$component_statuses = json_decode((string) $this->get_post_meta_value($post_id, 'aips_post_generation_component_statuses'), true);
-		if (is_array($component_statuses)
-			&& array_key_exists('featured_image', $component_statuses)
-			&& empty($component_statuses['featured_image'])) {
+		// Regenerate when the original generation attempted and failed to produce the featured image.
+		if ($has_featured_image_status && empty($featured_image_status)) {
 			return true;
 		}
 
