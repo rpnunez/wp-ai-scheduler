@@ -993,8 +993,8 @@ class AIPS_History_Repository {
             AND details LIKE %s
             AND details LIKE %s",
             $history_id,
-            '%\"image_attempted\":true%',
-            '%\"image_success\":false%'
+            '%"image_attempted":true%',
+            '%"image_success":false%'
         ));
 
         return ((int) $count) > 0;
