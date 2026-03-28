@@ -26,6 +26,11 @@ class AIPS_History_Container {
 	private $uuid;
 	
 	/**
+	 * @var string|null Correlation ID linking this container to a run
+	 */
+	private $correlation_id;
+	
+	/**
 	 * @var int|null Database ID once persisted
 	 */
 	private $history_id;
@@ -72,6 +77,7 @@ class AIPS_History_Container {
 			$history = $repository->get_by_id($existing_history_id);
 			if ($history) {
 				$this->uuid = $history->uuid;
+				$this->correlation_id = isset($history->correlation_id) ? $history->correlation_id : null;
 				$this->history_id = $history->id;
 				$this->type = $type;
 				$this->metadata = $metadata;
@@ -80,8 +86,14 @@ class AIPS_History_Container {
 			}
 		}
 		
+		// Resolve correlation ID: prefer explicit metadata value, fall back to the
+		// currently active ID from the static manager, then leave null.
+		$this->correlation_id = isset($metadata['correlation_id']) && $metadata['correlation_id']
+			? $metadata['correlation_id']
+			: AIPS_Correlation_ID::get();
+		
 		// Create new container
-		$this->uuid = $this->generate_uuid();
+		$this->uuid = AIPS_Utilities::generate_uuid();
 		$this->history_id = null;
 		$this->type = $type;
 		$this->metadata = $metadata;
@@ -172,28 +184,6 @@ class AIPS_History_Container {
 	}
 	
 	/**
-	 * Generate a unique UUID for this history container
-	 *
-	 * @return string UUID
-	 */
-	private function generate_uuid() {
-		// Use WordPress's unique ID generation if available
-		if (function_exists('wp_generate_uuid4')) {
-			return wp_generate_uuid4();
-		}
-		
-		// Fallback to custom UUID generation
-		return sprintf(
-			'%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-			mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-			mt_rand(0, 0xffff),
-			mt_rand(0, 0x0fff) | 0x4000,
-			mt_rand(0, 0x3fff) | 0x8000,
-			mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-		);
-	}
-	
-	/**
 	 * Persist this history container to the database
 	 *
 	 * @return bool True on success, false on failure
@@ -206,6 +196,7 @@ class AIPS_History_Container {
 		$data = array_merge(
 			array(
 				'uuid' => $this->uuid,
+				'correlation_id' => $this->correlation_id,
 				'status' => 'processing',
 			),
 			$this->metadata
@@ -228,6 +219,18 @@ class AIPS_History_Container {
 	 */
 	public function get_uuid() {
 		return $this->uuid;
+	}
+
+	/**
+	 * Get the correlation ID associated with this history container.
+	 *
+	 * Returns the ID that links this container to all other history records
+	 * created during the same run (schedule execution, generation chain, etc.).
+	 *
+	 * @return string|null Correlation ID or null if none was set.
+	 */
+	public function get_correlation_id() {
+		return $this->correlation_id;
 	}
 	
 	/**
