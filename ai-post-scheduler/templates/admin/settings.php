@@ -40,9 +40,6 @@ if (!defined('ABSPATH')) {
 					<!-- General Tab -->
 					<div id="settings-general-tab" class="aips-tab-content">
 						<p class="description"><?php esc_html_e('Configure default settings for AI-generated posts.', 'ai-post-scheduler'); ?></p>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_general_section'); ?>
 						</table>
@@ -54,9 +51,6 @@ if (!defined('ABSPATH')) {
 					<!-- AI Tab -->
 					<div id="settings-ai-tab" class="aips-tab-content" style="display:none;">
 						<p class="description"><?php esc_html_e('Configure the AI Engine model and environment used for content generation.', 'ai-post-scheduler'); ?></p>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_ai_section'); ?>
 						</table>
@@ -68,9 +62,6 @@ if (!defined('ABSPATH')) {
 					<!-- Feedback Tab -->
 					<div id="settings-feedback-tab" class="aips-tab-content" style="display:none;">
 						<p class="description"><?php esc_html_e('Configure how the plugin evaluates and deduplicates generated topic suggestions.', 'ai-post-scheduler'); ?></p>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_feedback_section'); ?>
 						</table>
@@ -82,9 +73,6 @@ if (!defined('ABSPATH')) {
 					<!-- Notifications Tab -->
 					<div id="settings-notifications-tab" class="aips-tab-content" style="display:none;">
 						<p class="description"><?php esc_html_e('Configure the notification email address and delivery channels for all plugin notifications.', 'ai-post-scheduler'); ?></p>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_notifications_section'); ?>
 						</table>
@@ -96,9 +84,6 @@ if (!defined('ABSPATH')) {
 					<!-- Resilience & Limits Tab -->
 					<div id="settings-resilience-tab" class="aips-tab-content" style="display:none;">
 						<p class="description"><?php esc_html_e('Configure advanced resilience options to protect the application from failing and being blocked when external services return errors.', 'ai-post-scheduler'); ?></p>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_resilience_section'); ?>
 						</table>
@@ -110,9 +95,6 @@ if (!defined('ABSPATH')) {
 					<!-- Content Strategy Tab -->
 					<div id="settings-content-strategy-tab" class="aips-tab-content" style="display:none;">
 						<p class="description"><?php esc_html_e('Define the overall content identity of your website. These settings are shared across Author Suggestions, topic generation, and post generation to ensure consistent, on-brand output.', 'ai-post-scheduler'); ?></p>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_content_strategy_section'); ?>
 						</table>
@@ -124,9 +106,6 @@ if (!defined('ABSPATH')) {
 					<!-- API Keys Tab -->
 					<div id="settings-api-keys-tab" class="aips-tab-content" style="display:none;">
 						<p class="description"><?php esc_html_e('Enter API keys for third-party services used by the plugin.', 'ai-post-scheduler'); ?></p>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_api_keys_section'); ?>
 						</table>
@@ -138,9 +117,6 @@ if (!defined('ABSPATH')) {
 					<!-- Developers Tab -->
 					<div id="settings-developers-tab" class="aips-tab-content" style="display:none;">
 						<p class="description"><?php esc_html_e('Options for debugging and plugin development. Not recommended for production use.', 'ai-post-scheduler'); ?></p>
-						<p class="submit">
-							<input type="submit" class="button button-primary" value="<?php esc_attr_e('Save Settings', 'ai-post-scheduler'); ?>">
-						</p>
 						<table class="form-table" role="presentation">
 							<?php do_settings_fields('aips-settings', 'aips_developers_section'); ?>
 						</table>
