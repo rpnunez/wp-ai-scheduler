@@ -648,8 +648,9 @@
 		 */
 		showAIEditNotice: function(message, type) {
 			type = type || 'info';
-			
-			var $notice = $('<div class="notice notice-' + type + ' is-dismissible"><p>' + message + '</p></div>');
+
+			var $p = $('<p>').text(message);
+			var $notice = $('<div class="notice notice-' + type + ' is-dismissible">').append($p);
 			$('.wrap').first().prepend($notice);
 			
 			// Auto-dismiss after 5 seconds

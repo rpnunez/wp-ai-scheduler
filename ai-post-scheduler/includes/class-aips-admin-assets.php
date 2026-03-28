@@ -521,7 +521,7 @@ class AIPS_Admin_Assets {
                 'nonce' => wp_create_nonce('aips_ajax_nonce'),
                 'regenerate' => __('Re-generate', 'ai-post-scheduler'),
                 'regenerating' => __('Regenerating...', 'ai-post-scheduler'),
-                'regenerateAll' => __('Re-generate All', 'ai-post-scheduler'),
+                'regenerateAll' => __('Regenerate All', 'ai-post-scheduler'),
                 'regeneratingAll' => __('Regenerating all components...', 'ai-post-scheduler'),
                 'regenerateAllSuccess' => __('Components regenerated successfully.', 'ai-post-scheduler'),
                 'regenerateAllError' => __('Failed to regenerate all components.', 'ai-post-scheduler'),
