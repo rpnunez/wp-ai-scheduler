@@ -497,6 +497,22 @@ class AIPS_Admin_Assets {
                 'previewTitle' => __('Post Preview', 'ai-post-scheduler'),
                 'loadingPreview' => __('Loading preview...', 'ai-post-scheduler'),
                 'previewError' => __('Failed to load preview.', 'ai-post-scheduler'),
+                'internalLinksTitle' => __('Internal Link Suggestions', 'ai-post-scheduler'),
+                'internalLinksDescription' => __('Review ranked suggestions and accept or reject each recommendation before publishing.', 'ai-post-scheduler'),
+                'regenerateLinks' => __('Regenerate Suggestions', 'ai-post-scheduler'),
+                'loadingLinkSuggestions' => __('Loading link suggestions...', 'ai-post-scheduler'),
+                'noLinkSuggestions' => __('No relevant internal links found.', 'ai-post-scheduler'),
+                'linkLoadError' => __('Failed to load internal link suggestions.', 'ai-post-scheduler'),
+                'linkActionError' => __('Failed to update internal link suggestion.', 'ai-post-scheduler'),
+                'linkAccepted' => __('Link suggestion accepted.', 'ai-post-scheduler'),
+                'linkRejected' => __('Link suggestion rejected.', 'ai-post-scheduler'),
+                'linkRegenerated' => __('Internal link suggestions regenerated.', 'ai-post-scheduler'),
+                'targetLabel' => __('Target URL', 'ai-post-scheduler'),
+                'anchorLabel' => __('Anchor', 'ai-post-scheduler'),
+                'confidenceLabel' => __('Confidence', 'ai-post-scheduler'),
+                'relevanceLabel' => __('Relevance terms', 'ai-post-scheduler'),
+                'acceptLink' => __('Accept', 'ai-post-scheduler'),
+                'rejectLink' => __('Reject', 'ai-post-scheduler'),
             ));
             
             // AI Edit Modal (for Generated Posts page)
