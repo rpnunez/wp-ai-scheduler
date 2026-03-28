@@ -72,3 +72,7 @@
 **Vulnerability:** Superglobals like `$_POST`, `$_GET`, and `$_REQUEST` were passed directly to sanitization functions (e.g., `sanitize_text_field`, `wp_kses_post`) without first being unslashed.
 **Learning:** WordPress automatically adds slashes to `$_POST`, `$_GET`, and `$_REQUEST` arrays. If these slashes are not removed using `wp_unslash()` before sanitization, it can lead to data corruption (e.g., literal backslashes being saved to the database) or potentially bypass certain sanitization filters, leading to XSS vulnerabilities.
 **Prevention:** Always apply `wp_unslash()` to values retrieved from `$_POST`, `$_GET`, or `$_REQUEST` immediately before passing them to any sanitization function.
+## 2025-02-12 - Fix error message leakage in MCP bridge
+**Vulnerability:** The MCP bridge API endpoints (`execute_tool`, `tool_regenerate_post_component`, and `tool_test_ai_connection`) were catching internal `Exception` objects and returning their raw `$e->getMessage()` strings directly to the client in JSON error responses.
+**Learning:** Returning raw exception messages exposes internal application state, stack traces, or sensitive configuration details to potential attackers. This violates the principle of "Error Handling: Log detailed errors internally but return generic messages to the client".
+**Prevention:** Always log detailed exception messages internally using a secure logger, but map them to safe, generic error strings (e.g., "An error occurred during execution.") when returning API responses to external clients.
