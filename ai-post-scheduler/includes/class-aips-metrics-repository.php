@@ -401,54 +401,55 @@ class AIPS_Metrics_Repository {
 	}
 
 	/**
-	 * Image generation failure rate for posts created within the window.
+	 * Image generation failure rate, derived from `metric_generation_result`
+	 * log entries written by the generator into `aips_history_log`.
 	 *
-	 * Reads the `aips_post_generation_component_statuses` post meta, which is
-	 * written by AIPS_Post_Manager::update_generation_status_meta() as a JSON
-	 * object.  Only posts that have this meta key are included (i.e. posts
-	 * where image generation was attempted).  The window boundary uses
-	 * UTC_TIMESTAMP() to stay consistent with history table timestamps.
+	 * Only posts where image generation was actually attempted are counted
+	 * (i.e. entries where `image_attempted` is true in the stored JSON).
+	 * This replaces the old post-meta approach which could balloon on installs
+	 * with thousands of posts.
+	 *
+	 * The window boundary uses UTC_TIMESTAMP() to stay consistent with
+	 * history table timestamps.
 	 *
 	 * @param int $window_days Number of days to look back.
-	 * @return float Failure rate as a percentage (0–100), or -1 if no data.
+	 * @return float Failure rate as a percentage (0–100), or -1.0 if no data.
 	 */
 	private function get_image_failure_rate( $window_days ) {
-		// Bail if the WordPress table references are not available (e.g. tests).
-		if ( empty( $this->wpdb->postmeta ) || empty( $this->wpdb->posts ) ) {
-			return -1.0;
-		}
-
-		$postmeta = $this->wpdb->postmeta;
-		$posts    = $this->wpdb->posts;
-
-		// Count posts that have the meta key and were published/created within the window.
+		// Total image-generation attempts within the window.
+		// The generator records "image_attempted":true only when
+		// context->should_generate_featured_image() is true.
 		$total = (int) $this->wpdb->get_var(
 			$this->wpdb->prepare(
 				"SELECT COUNT(*)
-				FROM {$postmeta} pm
-				INNER JOIN {$posts} p ON pm.post_id = p.ID
-				WHERE pm.meta_key = %s
-				  AND p.post_date >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
-				'aips_post_generation_component_statuses',
+				FROM {$this->table_history_log} hl
+				INNER JOIN {$this->table_history} h ON hl.history_id = h.id
+				WHERE hl.log_type = %s
+				  AND hl.details LIKE %s
+				  AND h.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				'metric_generation_result',
+				'%"image_attempted":true%',
 				$window_days
 			)
 		);
 
 		if ( $total === 0 ) {
-			return -1.0; // No image-generation data available.
+			return -1.0; // No image-generation data available yet.
 		}
 
-		// Count posts where featured_image is explicitly false in the JSON.
+		// Subset where image generation failed (image_success:false).
 		$failed = (int) $this->wpdb->get_var(
 			$this->wpdb->prepare(
 				"SELECT COUNT(*)
-				FROM {$postmeta} pm
-				INNER JOIN {$posts} p ON pm.post_id = p.ID
-				WHERE pm.meta_key = %s
-				  AND pm.meta_value LIKE %s
-				  AND p.post_date >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
-				'aips_post_generation_component_statuses',
-				'%"featured_image":false%',
+				FROM {$this->table_history_log} hl
+				INNER JOIN {$this->table_history} h ON hl.history_id = h.id
+				WHERE hl.log_type = %s
+				  AND hl.details LIKE %s
+				  AND hl.details LIKE %s
+				  AND h.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				'metric_generation_result',
+				'%"image_attempted":true%',
+				'%"image_success":false%',
 				$window_days
 			)
 		);
