@@ -3,14 +3,14 @@
  * Metrics Repository
  *
  * Collects and exposes baseline reliability and performance metrics for
- * scheduler and generation workflows.  All queries read from existing tables
- * and post-meta; no schema changes are required.
+ * scheduler and generation workflows.  All queries read from existing plugin
+ * tables; no schema changes are required.
  *
  * Metrics exposed:
  *  - Generation success/failure rates and counts (windowed and all-time)
  *  - Average and percentile generation durations (created_at → completed_at)
- *  - Average AI-call count per completed post generation
- *  - Image generation failure rate (from component-status post meta)
+ *  - Average AI-request count per completed post generation
+ *  - Image generation failure rate (from `metric_generation_result` history log entries)
  *  - Schedule run success rate (scheduled creation-method history records)
  *  - Queue-depth surrogates (active schedules, approved topics)
  *  - Recent generation outcomes (last N history records)
@@ -27,8 +27,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Class AIPS_Metrics_Repository
  *
  * Repository that aggregates baseline observability metrics from existing
- * plugin tables and post-meta.  Results are cached in WordPress transients
- * for a configurable TTL to keep collection overhead low.
+ * plugin tables.  Results are cached in WordPress transients for a
+ * configurable TTL to keep collection overhead low.
  */
 class AIPS_Metrics_Repository {
 
@@ -142,8 +142,8 @@ class AIPS_Metrics_Repository {
 		}
 
 		// Pass the window in days to each helper; the SQL boundary is derived
-		// via DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY) so the timezone used
-		// matches the server UTC clock that MySQL CURRENT_TIMESTAMP writes.
+		// via DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY) to match the
+		// timezone used by the DB DEFAULT CURRENT_TIMESTAMP on created_at.
 		$counts = $this->get_generation_counts( $window_days );
 		$durations = $this->get_duration_percentiles( $window_days );
 		$ai_calls  = $this->get_avg_ai_calls_per_post( $window_days );
@@ -212,10 +212,15 @@ class AIPS_Metrics_Repository {
 	/**
 	 * Invalidate all cached metrics.
 	 *
-	 * Deletes every `aips_metrics_generation_*` transient stored by this class
-	 * regardless of window size, plus the queue-depth transient.  Uses a
-	 * LIKE-based options-table query so that arbitrary window values are always
-	 * cleaned up — not just a hardcoded set of windows.
+	 * Removes every `aips_metrics_generation_*` transient stored by this class
+	 * regardless of window size, plus the queue-depth transient.
+	 *
+	 * When WordPress is using an external object cache (e.g. Redis/Memcached),
+	 * transients do not live in the options table, so `delete_transient()` is
+	 * used for all known keys plus the standard common windows.  When no
+	 * external cache is present the options table is queried to sweep every
+	 * window suffix — both the value row and the paired timeout row — so no
+	 * orphaned entries are left behind.
 	 *
 	 * Call this when history records are bulk-deleted or after schema upgrades
 	 * so stale summaries are not presented.
@@ -225,20 +230,32 @@ class AIPS_Metrics_Repository {
 	public function invalidate_cache() {
 		global $wpdb;
 
-		// Delete all generation transients regardless of their window suffix.
-		// WordPress stores transients as _transient_<key> options.
-		// Guard for test environments where $wpdb->options may not be set.
-		if ( ! empty( $wpdb->options ) ) {
-			$prefix = $wpdb->esc_like( '_transient_' . self::TRANSIENT_GENERATION . '_' );
+		// Common window values used by callers (covers the typical System Status view).
+		$common_windows = array( 1, 7, 14, 30, 45, 60, 90 );
+
+		if ( wp_using_ext_object_cache() ) {
+			// External object cache: delete_transient() is the only reliable path.
+			foreach ( $common_windows as $days ) {
+				delete_transient( self::TRANSIENT_GENERATION . '_' . $days );
+			}
+		} elseif ( ! empty( $wpdb->options ) ) {
+			// No external cache: sweep via SQL so arbitrary window suffixes
+			// (e.g. window=45) are also removed.  Delete both the value row and
+			// the paired timeout row to avoid orphaned options accumulating.
+			$value_prefix   = $wpdb->esc_like( '_transient_' . self::TRANSIENT_GENERATION . '_' );
+			$timeout_prefix = $wpdb->esc_like( '_transient_timeout_' . self::TRANSIENT_GENERATION . '_' );
 			$wpdb->query(
 				$wpdb->prepare(
-					"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-					$prefix . '%'
+					"DELETE FROM {$wpdb->options}
+					WHERE option_name LIKE %s
+					   OR option_name LIKE %s",
+					$value_prefix . '%',
+					$timeout_prefix . '%'
 				)
 			);
 		} else {
-			// Fallback for test environments: delete the common window keys explicitly.
-			foreach ( array( 1, 7, 14, 30, 45, 60, 90 ) as $days ) {
+			// Fallback for test environments where $wpdb->options is absent.
+			foreach ( $common_windows as $days ) {
 				delete_transient( self::TRANSIENT_GENERATION . '_' . $days );
 			}
 		}
@@ -295,8 +312,8 @@ class AIPS_Metrics_Repository {
 	 * for completed records within the given window.
 	 *
 	 * Duration is measured from created_at to completed_at.  Records with a
-	 * NULL completed_at are excluded.  The window boundary uses UTC_TIMESTAMP()
-	 * to stay in the same timezone as the CURRENT_TIMESTAMP defaults.
+	 * NULL completed_at are excluded.  The window boundary uses
+	 * CURRENT_TIMESTAMP() to match how `created_at` is written by the DB.
 	 *
 	 * @param int $window_days Number of days to look back.
 	 * @return array {
@@ -314,7 +331,7 @@ class AIPS_Metrics_Repository {
 				FROM {$this->table_history}
 				WHERE status = 'completed'
 				  AND completed_at IS NOT NULL
-				  AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)
+				  AND created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)
 				ORDER BY duration ASC",
 				$window_days
 			)
@@ -354,22 +371,22 @@ class AIPS_Metrics_Repository {
 	}
 
 	/**
-	 * Average number of AI-type log entries per completed history record.
+	 * Average number of AI requests per completed history record.
 	 *
 	 * Uses a LEFT JOIN from completed history records so posts with zero
-	 * matching AI log entries are counted as 0 rather than excluded, giving an
-	 * accurate population average.  The window boundary uses UTC_TIMESTAMP().
+	 * matching AI request entries are counted as 0 rather than excluded,
+	 * giving an accurate population average.  The window boundary uses
+	 * CURRENT_TIMESTAMP() to stay in the same timezone as the DB default.
 	 *
-	 * AI call entries are identified by log_type values that represent
-	 * generation component calls: title, content, excerpt, featured_image,
-	 * and any generic "ai_call" entries.
+	 * AI requests are identified by `log_type = 'ai_request'` — the value the
+	 * generator writes via `record('ai_request', ...)` for every AI call.
 	 *
 	 * @param int $window_days Number of days to look back.
 	 * @return float Average count (0.0 if no data).
 	 */
 	private function get_avg_ai_calls_per_post( $window_days ) {
-		// Compute average AI log entries per completed history record,
-		// including posts with zero AI calls (counted as 0).
+		// Compute average AI request entries per completed history record,
+		// including posts with zero AI requests (counted as 0).
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
 				"SELECT
@@ -385,9 +402,9 @@ class AIPS_Metrics_Repository {
 					FROM {$this->table_history} h
 					LEFT JOIN {$this->table_history_log} hl
 						ON hl.history_id = h.id
-						AND hl.log_type IN ('title', 'content', 'excerpt', 'featured_image', 'ai_call', 'ai_variables')
+						AND hl.log_type = 'ai_request'
 					WHERE h.status = 'completed'
-					  AND h.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)
+					  AND h.created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)
 				) AS stats",
 				$window_days
 			)
@@ -409,8 +426,8 @@ class AIPS_Metrics_Repository {
 	 * This replaces the old post-meta approach which could balloon on installs
 	 * with thousands of posts.
 	 *
-	 * The window boundary uses UTC_TIMESTAMP() to stay consistent with
-	 * history table timestamps.
+	 * The window boundary uses CURRENT_TIMESTAMP() to match how `created_at`
+	 * is written by the DB.
 	 *
 	 * @param int $window_days Number of days to look back.
 	 * @return float Failure rate as a percentage (0–100), or -1.0 if no data.
@@ -426,7 +443,7 @@ class AIPS_Metrics_Repository {
 				INNER JOIN {$this->table_history} h ON hl.history_id = h.id
 				WHERE hl.log_type = %s
 				  AND hl.details LIKE %s
-				  AND h.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				  AND h.created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)",
 				'metric_generation_result',
 				'%"image_attempted":true%',
 				$window_days
@@ -446,7 +463,7 @@ class AIPS_Metrics_Repository {
 				WHERE hl.log_type = %s
 				  AND hl.details LIKE %s
 				  AND hl.details LIKE %s
-				  AND h.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				  AND h.created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)",
 				'metric_generation_result',
 				'%"image_attempted":true%',
 				'%"image_success":false%',
@@ -462,7 +479,7 @@ class AIPS_Metrics_Repository {
 	 *
 	 * Uses history records with creation_method='scheduled' to determine what
 	 * fraction of automated runs resulted in a completed post.  The window
-	 * boundary uses UTC_TIMESTAMP() to stay consistent with history timestamps.
+	 * boundary uses CURRENT_TIMESTAMP() to match how `created_at` is written.
 	 *
 	 * @param int $window_days Number of days to look back.
 	 * @return float Success rate as a percentage (0–100), or -1 if no data.
@@ -475,7 +492,7 @@ class AIPS_Metrics_Repository {
 					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed
 				FROM {$this->table_history}
 				WHERE creation_method = %s
-				  AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL %d DAY)",
+				  AND created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d DAY)",
 				'scheduled',
 				$window_days
 			)
