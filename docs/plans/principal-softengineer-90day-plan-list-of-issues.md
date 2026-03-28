@@ -30,21 +30,21 @@ For each template below:
 
 ## Recommended Creation Order
 
-1. Issue 1
-2. Issue 13
-3. Issue 14
-4. Issue 10
-5. Issue 7
-6. Issue 8
-7. Issue 4
-8. Issue 5
-9. Issue 2
-10. Issue 11
-11. Issue 6
-12. Issue 9
-13. Issue 15
-14. Issue 3
-15. Issue 12
+1. Issue 1 - Architecture: define canonical generation boundary and legacy adapter strategy
+2. Issue 13 - Observability: add correlation IDs across scheduler, generation, and notifications
+3. Issue 14 - Observability: publish baseline metrics for scheduler and generation reliability
+4. Issue 10 - Frontend: extract schedule modal controller from admin.js into page-level module
+5. Issue 7 - Generation: move core execution to context-only internals via legacy adapter
+6. Issue 8 - Generation: implement explicit generation lifecycle states and transitions
+7. Issue 4 - Scheduler: introduce queue-backed generation jobs with idempotency keys
+8. Issue 5 - Scheduler: implement worker locking, pacing, and bounded retries
+9. Issue 2 - Architecture: complete repository migration for high-value controller flows
+10. Issue 11 - Frontend: standardize admin action state handling for loading, error, and success states
+11. Issue 6 - Scheduler: add missed-run recovery and safe catch-up processing
+12. Issue 9 - Generation: support partial recovery for content/image split failures
+13. Issue 15 - Observability: extend system status with queue health and operator runbook
+14. Issue 3 - Architecture: start PSR-4 strangler migration for new refactor modules
+15. Issue 12 - Frontend: plan and execute second admin page extraction after scheduling stabilization
 
 ---
 
