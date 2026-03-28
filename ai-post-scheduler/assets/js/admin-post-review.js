@@ -561,7 +561,9 @@
                 html += '<div class="aips-link-suggestion-row" style="border:1px solid #dcdcde;padding:12px;margin:0 0 10px;border-radius:4px;background:#fff;">';
                 html += '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">';
                 html += '<div style="flex:1;">';
-                html += '<div><strong>' + (aipsPostReviewL10n.targetLabel || 'Target URL') + ':</strong> <a href="' + (suggestion.target_url || '#') + '" target="_blank" rel="noopener noreferrer">' + (suggestion.target_url || '') + '</a></div>';
+                var targetUrl = AIPS.Templates.escape(suggestion.target_url || '#');
+                var targetUrlText = AIPS.Templates.escape(suggestion.target_url || '');
+                html += '<div><strong>' + (aipsPostReviewL10n.targetLabel || 'Target URL') + ':</strong> <a href="' + targetUrl + '" target="_blank" rel="noopener noreferrer">' + targetUrlText + '</a></div>';
                 html += '<div><strong>' + (aipsPostReviewL10n.anchorLabel || 'Anchor') + ':</strong> ' + AIPS.Templates.escape(suggestion.anchor_text || '') + '</div>';
                 html += '<div><strong>' + (aipsPostReviewL10n.confidenceLabel || 'Confidence') + ':</strong> ' + confidence + '%</div>';
                 if (terms) {
