@@ -1,0 +1,448 @@
+# GitHub CLI issue creation commands for the Principal Software Engineer high-impact user-facing plan
+# Usage:
+# 1) Ensure you are authenticated: gh auth status
+# 2) Run from repo root: bash docs/plans/principal-softengineer-high-impact-user-facing-gh-issue-create-commands.txt
+# 3) These commands target: rpnunez/wp-ai-scheduler
+
+set -euo pipefail
+
+REPO="rpnunez/wp-ai-scheduler"
+
+# Optional: ensure milestone title exists before issue creation.
+# If milestone already exists, this call is a harmless failure due to duplicate title.
+gh api -X POST "repos/$REPO/milestones" -f title="PSE High-Impact User-Facing Plan" >/dev/null 2>&1 || true
+
+# Optional: create suggested rollout labels if they do not exist.
+# Label creation will be skipped automatically when labels already exist.
+gh label create "wave-1" --repo "$REPO" --color "B60205" --description "Wave 1 rollout - highest business leverage" >/dev/null 2>&1 || true
+gh label create "wave-2" --repo "$REPO" --color "0E8A16" --description "Wave 2 rollout - editorial throughput and strategy" >/dev/null 2>&1 || true
+gh label create "wave-3" --repo "$REPO" --color "1D76DB" --description "Wave 3 rollout - optimization and scale" >/dev/null 2>&1 || true
+gh label create "high-priority" --repo "$REPO" --color "D93F0B" --description "High implementation priority" >/dev/null 2>&1 || true
+gh label create "user-facing" --repo "$REPO" --color "5319E7" --description "Direct user-facing functionality" >/dev/null 2>&1 || true
+gh label create "content-quality" --repo "$REPO" --color "FBCA04" --description "Content quality and trust improvements" >/dev/null 2>&1 || true
+gh label create "scheduler" --repo "$REPO" --color "0052CC" --description "Scheduling and automation functionality" >/dev/null 2>&1 || true
+gh label create "authors" --repo "$REPO" --color "C2E0C6" --description "Authors workflow functionality" >/dev/null 2>&1 || true
+gh label create "frontend" --repo "$REPO" --color "0366D6" --description "Frontend/admin UX improvements" >/dev/null 2>&1 || true
+gh label create "generation" --repo "$REPO" --color "D4C5F9" --description "Generation workflow improvements" >/dev/null 2>&1 || true
+gh label create "seo" --repo "$REPO" --color "A2EEEF" --description "SEO-oriented improvements" >/dev/null 2>&1 || true
+gh label create "content-strategy" --repo "$REPO" --color "F9D0C4" --description "Campaign and planning strategy" >/dev/null 2>&1 || true
+gh label create "analytics" --repo "$REPO" --color "BFD4F2" --description "Recommendation and analytics-informed features" >/dev/null 2>&1 || true
+
+echo "== Wave 1: Highest Business Leverage =="
+echo "Suggested labels: wave-1, user-facing, high-priority + domain labels"
+
+echo "Creating Wave 1 / Issue 1..."
+gh issue create --repo "$REPO" \
+  --title "Content Quality: add pre-publish quality gate scorecard with configurable thresholds" \
+  --label "wave-1" --label "content-quality" --label "user-facing" --label "high-priority" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE1'
+## Summary
+Add a pre-publish quality scorecard with configurable thresholds to improve first-draft publishability.
+
+## Problem
+Generated content quality is difficult to evaluate consistently before publishing.
+
+## Scope
+- [ ] Define score dimensions (readability, structure, intent alignment, originality risk indicators).
+- [ ] Add scorecard UI in review/publish flow.
+- [ ] Support global and per-template thresholds.
+- [ ] Persist scorecard outcomes in history.
+
+## Acceptance Criteria
+- [ ] Scorecard displays sub-scores and overall pass/fail.
+- [ ] Thresholds are configurable globally and per template.
+- [ ] Failed checks provide actionable remediation guidance.
+- [ ] Scorecard results are traceable in history.
+
+## Effort
+L
+
+## Risk
+Medium
+
+## Out Of Scope
+- Full external quality benchmarking platform.
+EOF_ISSUE1
+
+echo "Creating Wave 1 / Issue 2..."
+gh issue create --repo "$REPO" \
+  --title "Content Trust: implement source-aware generation mode with citations and evidence panel" \
+  --label "wave-1" --label "content-quality" --label "user-facing" --label "high-priority" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE2'
+## Summary
+Implement source-aware generation mode requiring citations and evidence snippets for key claims.
+
+## Problem
+Users need stronger factual grounding and confidence for production content.
+
+## Scope
+- [ ] Add template policy to require citations/evidence.
+- [ ] Attach claim-level citation metadata.
+- [ ] Add evidence review panel and missing-citation flags.
+- [ ] Expose citation metadata in export/history surfaces.
+
+## Acceptance Criteria
+- [ ] Source-aware mode can be enabled per template.
+- [ ] Key claims include citation metadata.
+- [ ] Missing or weak evidence is flagged before publish.
+- [ ] Citation traces are available in diagnostics/history.
+
+## Effort
+XL
+
+## Risk
+High
+
+## Out Of Scope
+- Third-party fact-checking platform integrations.
+EOF_ISSUE2
+
+echo "Creating Wave 1 / Issue 3..."
+gh issue create --repo "$REPO" \
+  --title "Scheduling UX: implement smart scheduling rules engine with blackout and cadence policies" \
+  --label "wave-1" --label "scheduler" --label "user-facing" --label "high-priority" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE3'
+## Summary
+Implement policy-driven scheduling constraints such as blackout windows, allowed publish windows, and cadence controls.
+
+## Problem
+Advanced editorial cadence controls are limited and prone to manual workarounds.
+
+## Scope
+- [ ] Add rules configuration in schedule UI.
+- [ ] Validate conflicting rules with actionable errors.
+- [ ] Log rule evaluation outcomes in schedule diagnostics.
+- [ ] Preserve backward compatibility for existing schedules.
+
+## Acceptance Criteria
+- [ ] Rules can be configured and persisted per schedule.
+- [ ] Invalid rule combinations are blocked with clear feedback.
+- [ ] Rule decisions are visible in diagnostics.
+- [ ] Existing schedules run unchanged with default behavior.
+
+## Effort
+L
+
+## Risk
+Medium
+
+## Out Of Scope
+- Full predictive scheduling/forecasting engine.
+EOF_ISSUE3
+
+echo "Creating Wave 1 / Issue 4..."
+gh issue create --repo "$REPO" \
+  --title "Authors UX: complete topic review workflow with bulk actions and detail modal" \
+  --label "wave-1" --label "authors" --label "frontend" --label "user-facing" --label "high-priority" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE4'
+## Summary
+Complete the Authors frontend workflow with bulk approve/reject, topic detail modal, and stronger action feedback.
+
+## Problem
+Authors backend capability is strong, but incomplete frontend UX limits operator throughput and reliability.
+
+## Scope
+- [ ] Implement bulk approve/reject interaction flow.
+- [ ] Add topic detail modal with inline edit support.
+- [ ] Improve generated-post linkage visibility.
+- [ ] Harden frontend error and success state handling.
+
+## Acceptance Criteria
+- [ ] Bulk actions are available and reliable.
+- [ ] Detail modal supports context review and edit actions.
+- [ ] Topic rows expose generated post linkage.
+- [ ] Regression tests cover primary review interactions.
+
+## Effort
+M
+
+## Risk
+Low
+
+## Out Of Scope
+- Full redesign of all author-related admin pages.
+EOF_ISSUE4
+
+echo "== Wave 2: Editorial Throughput And Strategy =="
+echo "Suggested labels: wave-2, user-facing + domain labels"
+
+echo "Creating Wave 2 / Issue 1..."
+gh issue create --repo "$REPO" \
+  --title "Generation UX: add content brief builder (intent, audience, outcome)" \
+  --label "wave-2" --label "generation" --label "user-facing" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE5'
+## Summary
+Introduce reusable content briefs that feed generation context with intent, audience, and outcome constraints.
+
+## Problem
+Prompt quality varies by operator and workflow, reducing consistency of generated output.
+
+## Scope
+- [ ] Add brief model with reusable templates.
+- [ ] Integrate brief fields into generation prompt assembly.
+- [ ] Allow requiring briefs on selected templates/schedules.
+- [ ] Surface brief context in history/session views.
+
+## Acceptance Criteria
+- [ ] Users can create and reuse briefs.
+- [ ] Brief context is applied in generation.
+- [ ] Templates can enforce brief usage.
+- [ ] Brief metadata is visible in diagnostics/history.
+
+## Effort
+M
+
+## Risk
+Low
+
+## Out Of Scope
+- AI-generated briefs from external analytics.
+EOF_ISSUE5
+
+echo "Creating Wave 2 / Issue 2..."
+gh issue create --repo "$REPO" \
+  --title "Brand Safety: add brand voice guardrails with required/forbidden policy checks" \
+  --label "wave-2" --label "content-quality" --label "user-facing" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE6'
+## Summary
+Implement enforceable brand guardrails for tone, banned terms, required language, and compliance disclaimers.
+
+## Problem
+Voice consistency and policy adherence can drift across templates and operators.
+
+## Scope
+- [ ] Add policy configuration for required/optional/forbidden patterns.
+- [ ] Validate generated drafts against policy rules.
+- [ ] Provide remediation guidance for violations.
+- [ ] Integrate policy outcomes into quality diagnostics.
+
+## Acceptance Criteria
+- [ ] Guardrails can be configured globally and per template.
+- [ ] Violations are clearly identified with fix guidance.
+- [ ] Guardrail status appears in review and history.
+- [ ] Overrides are tracked with justification when allowed.
+
+## Effort
+M
+
+## Risk
+Low
+
+## Out Of Scope
+- External legal policy engine integration.
+EOF_ISSUE6
+
+echo "Creating Wave 2 / Issue 3..."
+gh issue create --repo "$REPO" \
+  --title "Editorial Controls: add automated pre-publish QA checklist rules" \
+  --label "wave-2" --label "content-quality" --label "user-facing" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE7'
+## Summary
+Add configurable editorial QA checklist validation to enforce publish standards consistently.
+
+## Problem
+Editorial quality requirements are not consistently enforced before publishing.
+
+## Scope
+- [ ] Add checklist definitions globally and per template.
+- [ ] Validate generated drafts against checklist rules.
+- [ ] Require pass or controlled override with reason capture.
+- [ ] Persist checklist outcomes in history.
+
+## Acceptance Criteria
+- [ ] Checklist rules are configurable and reusable.
+- [ ] Validation shows clear pass/fail per rule.
+- [ ] Override workflow captures rationale when permitted.
+- [ ] Checklist results are visible in diagnostics/history.
+
+## Effort
+M
+
+## Risk
+Low
+
+## Out Of Scope
+- Organization-wide external workflow approvals.
+EOF_ISSUE7
+
+echo "Creating Wave 2 / Issue 4..."
+gh issue create --repo "$REPO" \
+  --title "SEO UX: add internal linking assistant with ranked anchor suggestions" \
+  --label "wave-2" --label "seo" --label "user-facing" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE8'
+## Summary
+Add internal linking suggestions with relevance ranking and anchor recommendations.
+
+## Problem
+Internal linking is manual and inconsistent, reducing editorial throughput and SEO quality.
+
+## Scope
+- [ ] Build ranked internal link recommendation flow.
+- [ ] Show target URL, anchor text suggestion, and confidence.
+- [ ] Support accept/reject/regenerate in review UI.
+- [ ] Prevent duplicate and low-relevance suggestions.
+
+## Acceptance Criteria
+- [ ] Users see ranked internal link suggestions during review.
+- [ ] Users can accept/reject suggestions before publish.
+- [ ] Link insertion maintains formatting and sanitization.
+- [ ] Duplicates and low-relevance links are filtered.
+
+## Effort
+M
+
+## Risk
+Medium
+
+## Out Of Scope
+- External backlink discovery.
+EOF_ISSUE8
+
+echo "== Wave 3: Optimization And Portfolio Scale =="
+echo "Suggested labels: wave-3, user-facing + domain labels"
+
+echo "Creating Wave 3 / Issue 1..."
+gh issue create --repo "$REPO" \
+  --title "Content Strategy: add topic cluster campaign planning with dependency scheduling" \
+  --label "wave-3" --label "content-strategy" --label "user-facing" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE9'
+## Summary
+Add campaign planning around pillar topics and supporting clusters with dependency-aware scheduling.
+
+## Problem
+Current planning is post-centric and does not natively model cluster strategy execution.
+
+## Scope
+- [ ] Add campaign model for pillar + cluster topics.
+- [ ] Support dependency order and spacing rules.
+- [ ] Show campaign progress and blocked states.
+- [ ] Link cluster context to generated posts.
+
+## Acceptance Criteria
+- [ ] Users can create and manage pillar/cluster campaigns.
+- [ ] Scheduling respects dependencies and spacing.
+- [ ] Progress states are visible in admin workflows.
+- [ ] Cluster relationships are traceable in generated content views.
+
+## Effort
+L
+
+## Risk
+Medium
+
+## Out Of Scope
+- Multi-channel campaign orchestration beyond WordPress content.
+EOF_ISSUE9
+
+echo "Creating Wave 3 / Issue 2..."
+gh issue create --repo "$REPO" \
+  --title "Lifecycle UX: add automated content refresh workflow for stale posts" \
+  --label "wave-3" --label "content-quality" --label "scheduler" --label "user-facing" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE10'
+## Summary
+Add stale-content detection and refresh generation workflows with revision-safe updates.
+
+## Problem
+The platform emphasizes net-new generation but lacks structured refresh automation for aging posts.
+
+## Scope
+- [ ] Define staleness policies and refresh candidate detection.
+- [ ] Generate refresh proposals with reason codes.
+- [ ] Support queueing approved refresh tasks.
+- [ ] Track refresh revisions and outcomes.
+
+## Acceptance Criteria
+- [ ] Users can configure staleness and refresh rules.
+- [ ] Refresh candidates are surfaced with reasons.
+- [ ] Approved refreshes execute safely and preserve revision history.
+- [ ] Bulk refresh queueing is available with safety limits.
+
+## Effort
+L
+
+## Risk
+Medium
+
+## Out Of Scope
+- Fully autonomous publish-without-review refresh mode.
+EOF_ISSUE10
+
+echo "Creating Wave 3 / Issue 3..."
+gh issue create --repo "$REPO" \
+  --title "Editor Experience: support multi-draft generation with side-by-side compare and merge" \
+  --label "wave-3" --label "generation" --label "user-facing" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE11'
+## Summary
+Allow generating multiple variants and comparing/merging sections into a final selected draft.
+
+## Problem
+Single-output generation can require manual rewrites when angle or tone is not ideal.
+
+## Scope
+- [ ] Add configurable multi-variant generation option.
+- [ ] Add side-by-side compare UI for title/content/excerpt.
+- [ ] Support selecting one variant or section-level merge.
+- [ ] Show projected token/cost impact pre-run.
+
+## Acceptance Criteria
+- [ ] Users can request 2-3 variants within configured limits.
+- [ ] Compare UI enables efficient selection/merge.
+- [ ] Finalized merged draft can proceed to publish workflow.
+- [ ] Cost impact is visible before execution.
+
+## Effort
+L
+
+## Risk
+Medium
+
+## Out Of Scope
+- Unlimited variant generation.
+EOF_ISSUE11
+
+echo "Creating Wave 3 / Issue 4..."
+gh issue create --repo "$REPO" \
+  --title "Scheduling Intelligence: add best-time publish recommendations by topic/category" \
+  --label "wave-3" --label "scheduler" --label "analytics" --label "user-facing" \
+  --milestone "PSE High-Impact User-Facing Plan" \
+  --body-file - <<'EOF_ISSUE12'
+## Summary
+Recommend optimal publish windows based on historical engagement and configurable heuristics.
+
+## Problem
+Publish timing is mostly static and lacks decision support.
+
+## Scope
+- [ ] Add recommendation engine inputs and heuristics.
+- [ ] Show ranked time-window recommendations in scheduling UX.
+- [ ] Provide explainability for recommendations.
+- [ ] Add opt-out controls globally/per schedule.
+
+## Acceptance Criteria
+- [ ] Recommendations appear in schedule create/edit flow.
+- [ ] Users can see why a recommendation was made.
+- [ ] Recommendations are optional and can be disabled.
+- [ ] Outcome tracking supports before/after impact review.
+
+## Effort
+M
+
+## Risk
+Medium
+
+## Out Of Scope
+- Real-time external analytics ingestion pipeline.
+EOF_ISSUE12
+
+echo "All planned high-impact user-facing issues submitted in Wave 1/2/3 order with suggested labels."
