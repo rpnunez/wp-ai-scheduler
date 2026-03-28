@@ -122,43 +122,10 @@
 #aips-topics-content > p {
 	padding: 20px;
 	margin: 0;
-	text-align: center;
-}
-
-/* Topics Loading State */
-#aips-topics-loading {
-	min-height: 200px;
-	padding: 20px;
-	text-align: center;
-}
-
-.aips-topics-loading-inner {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-}
-
-.aips-topics-loading-icon-wrapper {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-bottom: 8px;
-}
-
-.aips-topics-loading-text {
-	margin: 0;
-}
-
-/* Dim the topics panel slightly while loading */
-#aips-author-topics-panel.aips-topics-loading-active {
-	opacity: 0.85;
-	transition: opacity var(--aips-transition-base);
 }
 
 .topic-title-cell {
 	position: relative;
-	cursor: pointer;
 }
 
 .topic-title-edit {
@@ -669,9 +636,8 @@
 
 /* Inline similarity indicator for pending topic rows */
 .aips-topic-similarity-slot {
-	display: block;
-	margin-left: 0;
-	margin-top: 4px;
+	display: inline-flex;
+	margin-left: 8px;
 	vertical-align: middle;
 }
 
@@ -927,15 +893,9 @@
 	font-size: 10px;
 	font-weight: 600;
 	letter-spacing: 0.3px;
+	text-transform: uppercase;
 	vertical-align: middle;
 	cursor: default;
-}
-
-.aips-reason-category-badge .dashicons {
-	font-size: 12px;
-	width: 12px;
-	height: 12px;
-	margin-right: 4px;
 }
 
 /* -- Positive approval categories -- */

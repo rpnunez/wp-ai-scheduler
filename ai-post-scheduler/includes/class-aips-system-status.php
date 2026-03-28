@@ -5,30 +5,6 @@ if (!defined('ABSPATH')) {
 
 class AIPS_System_Status {
 
-    /**
-     * Minimum success rate (%) considered healthy for scheduler runs and
-     * post-generation outcomes.  At or above this threshold → 'ok'.
-     */
-    const METRIC_OK_THRESHOLD = 90;
-
-    /**
-     * Minimum success rate (%) considered a warning level.
-     * Between METRIC_WARN_THRESHOLD and METRIC_OK_THRESHOLD → 'warning'.
-     * Below METRIC_WARN_THRESHOLD → 'error'.
-     */
-    const METRIC_WARN_THRESHOLD = 70;
-
-    /**
-     * Maximum image-generation failure rate (%) considered healthy → 'ok'.
-     */
-    const IMAGE_FAIL_OK_THRESHOLD = 10;
-
-    /**
-     * Image-generation failure rate (%) upper bound for 'warning' level.
-     * Above this → 'error'.
-     */
-    const IMAGE_FAIL_WARN_THRESHOLD = 30;
-
     public function render_page() {
         $system_info = $this->get_system_info();
         $data_management = $this->get_data_management();
@@ -70,15 +46,13 @@ class AIPS_System_Status {
     }
     public function get_system_info() {
         return array(
-            'environment'        => $this->check_environment(),
-            'plugin'             => $this->check_plugin(),
-            'database'           => $this->check_database(),
-            'filesystem'         => $this->check_filesystem(),
-            'cron'               => $this->check_cron(),
-            'scheduler health'   => $this->check_scheduler_health(),
-            'generation metrics' => $this->check_generation_metrics(),
-            'notifications'      => $this->check_notifications(),
-            'logs'               => $this->check_logs(),
+            'environment' => $this->check_environment(),
+            'plugin' => $this->check_plugin(),
+            'database' => $this->check_database(),
+            'filesystem' => $this->check_filesystem(),
+            'cron' => $this->check_cron(),
+            'notifications' => $this->check_notifications(),
+            'logs' => $this->check_logs(),
         );
     }
 
@@ -159,191 +133,6 @@ class AIPS_System_Status {
                 'details'=> $top_types,
             ),
         );
-    }
-
-    /**
-     * Scheduler health checks.
-     *
-     * Reports cron registration status, queue-depth surrogates, and the
-     * success/failure rate for scheduled generation runs over the last 30 days.
-     *
-     * @return array<string, array<string, mixed>>
-     */
-    private function check_scheduler_health() {
-        $checks = array();
-
-        // --- Cron hooks registered ---
-        $cron_events = AI_Post_Scheduler::get_cron_events();
-        $all_scheduled = true;
-        foreach ( $cron_events as $hook => $config ) {
-            if ( ! wp_next_scheduled( $hook ) ) {
-                $all_scheduled = false;
-                break;
-            }
-        }
-        $checks['cron_hooks'] = array(
-            'label'  => __( 'Scheduler Cron Hooks', 'ai-post-scheduler' ),
-            'value'  => $all_scheduled
-                ? sprintf( __( 'All %d hooks scheduled', 'ai-post-scheduler' ), count( $cron_events ) )
-                : __( 'One or more cron hooks are not scheduled', 'ai-post-scheduler' ),
-            'status' => $all_scheduled ? 'ok' : 'error',
-        );
-
-        // --- Metrics from repository ---
-        if ( ! class_exists( 'AIPS_Metrics_Repository' ) ) {
-            return $checks;
-        }
-
-        $metrics_repo = new AIPS_Metrics_Repository();
-        $queue        = $metrics_repo->get_queue_depth_metrics();
-        $generation   = $metrics_repo->get_generation_metrics( 30 );
-
-        // Queue depth surrogates
-        $checks['active_schedules'] = array(
-            'label'  => __( 'Active Schedules', 'ai-post-scheduler' ),
-            'value'  => (string) $queue['active_schedules'],
-            'status' => $queue['active_schedules'] > 0 ? 'ok' : 'info',
-        );
-
-        $checks['approved_topics'] = array(
-            'label'  => __( 'Approved Topics in Queue', 'ai-post-scheduler' ),
-            'value'  => (string) $queue['approved_topics'],
-            'status' => $queue['approved_topics'] > 0 ? 'info' : 'ok',
-        );
-
-        // Scheduled-run success rate
-        if ( $generation['schedule_success_rate'] >= 0 ) {
-            $schedule_rate   = $generation['schedule_success_rate'];
-            $schedule_status = $schedule_rate >= self::METRIC_OK_THRESHOLD ? 'ok' : ( $schedule_rate >= self::METRIC_WARN_THRESHOLD ? 'warning' : 'error' );
-            $checks['schedule_success_rate'] = array(
-                'label'  => __( 'Schedule Run Success Rate (30d)', 'ai-post-scheduler' ),
-                'value'  => $schedule_rate . '%',
-                'status' => $schedule_status,
-            );
-        } else {
-            $checks['schedule_success_rate'] = array(
-                'label'  => __( 'Schedule Run Success Rate (30d)', 'ai-post-scheduler' ),
-                'value'  => __( 'No scheduled runs recorded', 'ai-post-scheduler' ),
-                'status' => 'info',
-            );
-        }
-
-        return $checks;
-    }
-
-    /**
-     * Baseline generation performance and reliability metrics.
-     *
-     * Surfaces generation success/failure rates, duration percentiles, average
-     * AI-call counts, and the image-generation failure rate for the last 30 days.
-     *
-     * @return array<string, array<string, mixed>>
-     */
-    private function check_generation_metrics() {
-        if ( ! class_exists( 'AIPS_Metrics_Repository' ) ) {
-            return array(
-                'unavailable' => array(
-                    'label'  => __( 'Generation Metrics', 'ai-post-scheduler' ),
-                    'value'  => __( 'Metrics repository not available', 'ai-post-scheduler' ),
-                    'status' => 'info',
-                ),
-            );
-        }
-
-        $metrics_repo = new AIPS_Metrics_Repository();
-        $m            = $metrics_repo->get_generation_metrics( 30 );
-
-        $checks = array();
-
-        // Success / failure rates
-        $success_status = $m['success_rate'] >= self::METRIC_OK_THRESHOLD ? 'ok' : ( $m['success_rate'] >= self::METRIC_WARN_THRESHOLD ? 'warning' : 'error' );
-        $checks['success_rate'] = array(
-            'label'  => __( 'Generation Success Rate (30d)', 'ai-post-scheduler' ),
-            'value'  => $m['total'] > 0 ? $m['success_rate'] . '%' : __( 'No data', 'ai-post-scheduler' ),
-            'status' => $m['total'] > 0 ? $success_status : 'info',
-            'details' => $m['total'] > 0 ? array(
-                sprintf( __( 'Total: %d | Completed: %d | Failed: %d | Partial: %d', 'ai-post-scheduler' ),
-                    $m['total'], $m['successful'], $m['failed'], $m['partial'] ),
-            ) : array(),
-        );
-
-        // Generation duration percentiles
-        $checks['generation_duration'] = array(
-            'label'  => __( 'Generation Duration (30d, completed)', 'ai-post-scheduler' ),
-            'value'  => $m['avg_duration_seconds'] > 0
-                ? sprintf( __( 'Avg %ds', 'ai-post-scheduler' ), $m['avg_duration_seconds'] )
-                : __( 'No data', 'ai-post-scheduler' ),
-            'status' => 'info',
-            'details' => $m['avg_duration_seconds'] > 0 ? array(
-                sprintf( __( 'p50: %ds | p95: %ds', 'ai-post-scheduler' ),
-                    $m['p50_duration_seconds'], $m['p95_duration_seconds'] ),
-            ) : array(),
-        );
-
-        // Avg AI calls per post
-        $checks['avg_ai_calls'] = array(
-            'label'  => __( 'Avg AI Calls per Completed Post (30d)', 'ai-post-scheduler' ),
-            'value'  => $m['avg_ai_calls_per_post'] > 0
-                ? (string) $m['avg_ai_calls_per_post']
-                : __( 'No data', 'ai-post-scheduler' ),
-            'status' => 'info',
-        );
-
-        // Image failure rate
-        if ( $m['image_failure_rate'] >= 0 ) {
-            $img_status = $m['image_failure_rate'] <= self::IMAGE_FAIL_OK_THRESHOLD ? 'ok' : ( $m['image_failure_rate'] <= self::IMAGE_FAIL_WARN_THRESHOLD ? 'warning' : 'error' );
-            $checks['image_failure_rate'] = array(
-                'label'  => __( 'Image Generation Failure Rate (30d)', 'ai-post-scheduler' ),
-                'value'  => $m['image_failure_rate'] . '%',
-                'status' => $img_status,
-            );
-        } else {
-            $checks['image_failure_rate'] = array(
-                'label'  => __( 'Image Generation Failure Rate (30d)', 'ai-post-scheduler' ),
-                'value'  => __( 'No image-generation data', 'ai-post-scheduler' ),
-                'status' => 'info',
-            );
-        }
-
-        // Recent outcomes (last 10)
-        $recent = $m['recent_outcomes'];
-        if ( ! empty( $recent ) ) {
-            $outcome_lines = array();
-            foreach ( $recent as $outcome ) {
-                $line = sprintf( '[%s] %s', $outcome['created_at'], strtoupper( $outcome['status'] ) );
-                if ( $outcome['duration_seconds'] !== null ) {
-                    $line .= sprintf( ' (%ds)', $outcome['duration_seconds'] );
-                }
-                if ( $outcome['error_message'] ) {
-                    $line .= ' — ' . $outcome['error_message'];
-                }
-                $outcome_lines[] = $line;
-            }
-
-            $failed_recent = array_filter( $recent, function ( $o ) {
-                return $o['status'] === 'failed';
-            } );
-            $recent_status = count( $failed_recent ) === 0 ? 'ok'
-                : ( count( $failed_recent ) <= 2 ? 'warning' : 'error' );
-
-            $checks['recent_outcomes'] = array(
-                'label'   => __( 'Recent Generation Outcomes (last 10)', 'ai-post-scheduler' ),
-                'value'   => sprintf(
-                    __( '%d shown | %d failed', 'ai-post-scheduler' ),
-                    count( $recent ), count( $failed_recent )
-                ),
-                'status'  => $recent_status,
-                'details' => $outcome_lines,
-            );
-        } else {
-            $checks['recent_outcomes'] = array(
-                'label'  => __( 'Recent Generation Outcomes', 'ai-post-scheduler' ),
-                'value'  => __( 'No generation history found', 'ai-post-scheduler' ),
-                'status' => 'info',
-            );
-        }
-
-        return $checks;
     }
 
     private function check_environment() {

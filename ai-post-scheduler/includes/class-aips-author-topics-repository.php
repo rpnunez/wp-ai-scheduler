@@ -305,56 +305,26 @@ class AIPS_Author_Topics_Repository {
 	/**
 	 * Get topic counts by status for an author.
 	 *
-	 * Returns counts for each status bucket:
-	 * - pending:         topics awaiting review
-	 * - approved:        approved topics that have not yet produced a post
-	 * - rejected:        rejected topics
-	 * - posts_generated: approved topics that have at least one generated post
-	 *
-	 * The four buckets are mutually exclusive and exhaustive, so
-	 * pending + approved + rejected + posts_generated == total topics for
-	 * the author.
-	 *
 	 * @param int $author_id Author ID.
-	 * @return array Associative array of bucket => count.
+	 * @return array Associative array of status => count.
 	 */
 	public function get_status_counts($author_id) {
-		$logs_table = $this->wpdb->prefix . 'aips_author_topic_logs';
-
-		// Bucket approved topics that already produced a post under
-		// 'posts_generated' so the Approved tab only shows topics still
-		// waiting for post creation, while keeping all totals additive.
-		$results = $this->wpdb->get_results(
-			$this->wpdb->prepare(
-				"SELECT
-					CASE
-						WHEN t.status = 'approved' AND l.id IS NOT NULL THEN 'posts_generated'
-						ELSE t.status
-					END AS bucket,
-					COUNT(DISTINCT t.id) AS count
-				FROM {$this->table_name} t
-				LEFT JOIN {$logs_table} l
-					ON l.author_topic_id = t.id
-					AND l.action = 'post_generated'
-					AND l.post_id IS NOT NULL
-				WHERE t.author_id = %d
-				GROUP BY bucket",
-				$author_id
-			),
-			ARRAY_A
-		);
+		$results = $this->wpdb->get_results($this->wpdb->prepare(
+			"SELECT status, COUNT(*) as count
+			FROM {$this->table_name}
+			WHERE author_id = %d
+			GROUP BY status",
+			$author_id
+		), ARRAY_A);
 
 		$counts = array(
-			'pending'         => 0,
-			'approved'        => 0,
-			'rejected'        => 0,
-			'posts_generated' => 0,
+			'pending' => 0,
+			'approved' => 0,
+			'rejected' => 0
 		);
 
 		foreach ($results as $row) {
-			if (array_key_exists($row['bucket'], $counts)) {
-				$counts[$row['bucket']] = (int) $row['count'];
-			}
+			$counts[$row['status']] = (int) $row['count'];
 		}
 
 		return $counts;
@@ -406,5 +376,3 @@ class AIPS_Author_Topics_Repository {
 		);
 	}
 }
-
-

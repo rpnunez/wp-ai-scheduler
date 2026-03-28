@@ -2,28 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.0.1] - 2026-03-28
-### Added
-- **Observability baseline metrics**: scheduler and generation reliability metrics reviewable from System Status.
-  - New `AIPS_Metrics_Repository` class — collects and exposes summary metrics from existing plugin tables (including `aips_history_log` metrics log entries; no schema changes); results are cached in WordPress transients (15-minute TTL, invalidate-able via `invalidate_cache()`).
-  - **Generation metrics** (windowed, default 30 days): success rate, failure rate, partial rate, average/p50/p95 generation duration, average AI calls per completed post, image-generation failure rate, scheduled-run success rate, and recent generation outcomes (last 10 records).
-  - **Queue-depth surrogates**: active schedule count and approved-topic count from existing tables.
-  - New `scheduler health` section in System Status — cron hook registration status, active schedule count, approved topic queue depth, and 30-day schedule success rate.
-  - New `generation metrics` section in System Status — 30-day success/failure rates with counts, generation duration percentiles, average AI call count, image failure rate, and an expandable list of the last 10 generation outcomes with status and duration.
-  - 20 new PHPUnit tests covering baseline metric shapes, zero-data edge cases, window-day normalization, cache invalidation, and ISO-8601 timestamp format.
-- **Correlation IDs**: run-level traceability across all history records and operational notifications.
-  - New `AIPS_Correlation_ID` static class (`generate()` / `get()` / `set()` / `reset()`).
-  - New `AIPS_Utilities` static helpers class with a shared `generate_uuid()` method (delegates to `wp_generate_uuid4()`, falls back to `random_int()`-based UUID v4). Removes UUID duplication previously spread across `AIPS_History_Container` and `AIPS_Correlation_ID`.
-  - `correlation_id varchar(36)` column (indexed) added to `aips_history` table via the existing `dbDelta` upgrade path.
-  - `AIPS_History_Repository::get_by_correlation_id()` — retrieves all records for a single run in chronological order.
-  - `AIPS_History_Container` auto-inherits the active correlation ID on construction (explicit `correlation_id` in metadata takes precedence); new `get_correlation_id()` accessor.
-  - `AIPS_History_Repository::create()` persists `correlation_id`; `get_history()` projects and filters by it.
-  - Correlation ID propagated at scheduler/generator entry points:
-    - `AIPS_Schedule_Processor` — generated at the start of automated and manual runs; reset in `finally`; included in error notification payloads.
-    - `AIPS_Author_Topics_Scheduler` — scoped per-author topic generation run; reset in `finally`.
-    - `AIPS_Author_Post_Generator` — scoped per-author post generation run; loop wrapped in `try/catch(\Throwable)/finally`: catch logs via logger and records a structured error entry in a history container; `finally` always resets the ID. Included in exception notification payloads.
-  - 16 new PHPUnit tests covering ID lifecycle, container auto-inheritance, explicit override, cross-container sharing within a run, run isolation, and repository payload correctness.
-
 ## [refactor-post-generation-flow] - 2026-02-07
 ### Changed
 - **MAJOR**: Refactored post generation to use AI Engine's Chatbot feature for conversational context

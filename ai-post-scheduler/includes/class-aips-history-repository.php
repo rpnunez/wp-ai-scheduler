@@ -71,7 +71,6 @@ class AIPS_History_Repository {
             'search' => '',
             'template_id' => 0,
             'author_id' => 0,
-            'correlation_id' => '',
             'orderby' => 'created_at',
             'order' => 'DESC',
             'fields' => 'all',
@@ -83,13 +82,13 @@ class AIPS_History_Repository {
 
         // Build select fields
         if ($args['fields'] === 'list') {
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.post_id, h.template_id, h.topic_id, h.status, h.generated_title, h.created_at, h.error_message, h.completed_at, t.name as template_name";
         } elseif ($args['fields'] === 'all') {
             // Include longtext fields only when 'all' is explicitly requested or defaulted to, to prevent breaking changes
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, h.generated_content, h.generation_log, t.name as template_name";
         } else {
             // For specifically 'performance' or any other restricted fields
-            $fields_sql = "h.id, h.uuid, h.correlation_id, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
+            $fields_sql = "h.id, h.uuid, h.post_id, h.template_id, h.status, h.generated_title, h.error_message, h.created_at, h.completed_at, h.author_id, h.topic_id, h.creation_method, h.prompt, t.name as template_name";
         }
 
         // Build where clauses
@@ -109,11 +108,6 @@ class AIPS_History_Repository {
         if (!empty($args['author_id'])) {
             $where_clauses[] = "h.author_id = %d";
             $where_args[] = $args['author_id'];
-        }
-
-        if (!empty($args['correlation_id'])) {
-            $where_clauses[] = "h.correlation_id = %s";
-            $where_args[] = sanitize_text_field($args['correlation_id']);
         }
 
         if (!empty($args['search'])) {
@@ -356,34 +350,6 @@ class AIPS_History_Repository {
         return $this->wpdb->get_row($this->wpdb->prepare(
             "SELECT * FROM {$this->table_name} WHERE post_id = %d ORDER BY created_at DESC LIMIT 1",
             $post_id
-        ));
-    }
-
-    /**
-     * Get all history records that share the given correlation ID.
-     *
-     * Returns an array of lightweight history objects (id, uuid, correlation_id,
-     * post_id, template_id, author_id, topic_id, status, creation_method,
-     * created_at, completed_at) sorted oldest-first so callers can replay the
-     * execution timeline in order.
-     *
-     * @param string $correlation_id The correlation ID to search for.
-     * @return array Array of history record objects (empty if none found).
-     */
-    public function get_by_correlation_id($correlation_id) {
-        $correlation_id = sanitize_text_field((string) $correlation_id);
-
-        if ($correlation_id === '') {
-            return array();
-        }
-
-        return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT id, uuid, correlation_id, post_id, template_id, author_id, topic_id,
-                    status, creation_method, generated_title, error_message, created_at, completed_at
-             FROM {$this->table_name}
-             WHERE correlation_id = %s
-             ORDER BY created_at ASC",
-            $correlation_id
         ));
     }
     
@@ -746,7 +712,6 @@ class AIPS_History_Repository {
     public function create($data) {
         $insert_data = array(
             'uuid' => isset($data['uuid']) ? $data['uuid'] : null,
-            'correlation_id' => !empty($data['correlation_id']) ? sanitize_text_field($data['correlation_id']) : null,
             'template_id' => isset($data['template_id']) ? absint($data['template_id']) : null,
             'author_id' => isset($data['author_id']) ? absint($data['author_id']) : null,
             'topic_id' => isset($data['topic_id']) ? absint($data['topic_id']) : null,
@@ -759,7 +724,7 @@ class AIPS_History_Repository {
             'post_id' => isset($data['post_id']) ? absint($data['post_id']) : null,
         );
         
-        $format = array('%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
+        $format = array('%s', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d');
         
         $result = $this->wpdb->insert($this->table_name, $insert_data, $format);
         

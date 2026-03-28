@@ -258,15 +258,11 @@ $templates = $template_repository->get_all();
 			<?php else: ?>
 			<!-- Empty State -->
 			<div class="aips-empty-state">
-				<div class="dashicons dashicons-yes-alt aips-empty-state-icon" aria-hidden="true"></div>
-				<h3 class="aips-empty-state-title"><?php esc_html_e('No Draft Posts', 'ai-post-scheduler'); ?></h3>
-				<p class="aips-empty-state-description"><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
-				<div class="aips-empty-state-actions">
-					<a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('schedule')); ?>" class="aips-btn aips-btn-secondary">
-						<span class="dashicons dashicons-calendar-alt"></span>
-						<?php esc_html_e('Manage Schedules', 'ai-post-scheduler'); ?>
-					</a>
+				<div class="aips-empty-icon">
+					<span class="dashicons dashicons-yes-alt"></span>
 				</div>
+				<h3 class="aips-empty-title"><?php esc_html_e('No Draft Posts', 'ai-post-scheduler'); ?></h3>
+				<p class="aips-empty-description"><?php esc_html_e('There are no draft posts waiting for review. All generated posts have been published or deleted.', 'ai-post-scheduler'); ?></p>
 			</div>
 			<?php endif; ?>
 		</div>
