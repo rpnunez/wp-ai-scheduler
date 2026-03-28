@@ -336,6 +336,7 @@
             var startTime        = Date.now();
             var tickInterval;
             var closed           = false;
+            var overdue          = false; // true once the estimated time has elapsed
             var lastAnnounceTime = 0;
             var ANNOUNCE_INTERVAL_MS = 5000; // announce to screen readers at most every 5 s
 
@@ -369,15 +370,31 @@
             function tick() {
                 if (closed) { return; }
 
-                var elapsed  = (Date.now() - startTime) / 1000;
+                var elapsed   = (Date.now() - startTime) / 1000;
+                var remaining = Math.max(0, totalSeconds - elapsed);
+
+                // Once the estimated time has elapsed, switch to indeterminate mode.
+                if (remaining <= 0) {
+                    if (!overdue) {
+                        overdue = true;
+                        $barFill
+                            .css('width', '100%')
+                            .attr('aria-valuenow', '100')
+                            .addClass('aips-progress-bar-fill--indeterminate');
+                        var overdueMsg = l10n.takingLonger || 'Taking a little bit longer than expected\u2026';
+                        $statusLine.text(overdueMsg);
+                        $liveRegion.text(overdueMsg); // Announce to screen readers.
+                    }
+                    return;
+                }
+
                 var progress = Math.min((elapsed / totalSeconds) * 100, stallAt);
                 var pct      = progress.toFixed(1);
 
                 $barFill.css('width', pct + '%').attr('aria-valuenow', Math.round(progress));
 
-                var remaining = Math.max(0, totalSeconds - elapsed);
-                var tpl       = l10n.estimatedTimeRemaining || 'Estimated time remaining: %s';
-                var timeText  = tpl.replace('%s', formatTime(remaining));
+                var tpl      = l10n.estimatedTimeRemaining || 'Estimated time remaining: %s';
+                var timeText = tpl.replace('%s', formatTime(remaining));
 
                 // Update the visible countdown on every tick.
                 $statusLine.text(timeText);
@@ -404,7 +421,10 @@
             function complete(completionMessage, type) {
                 if (closed) { return; }
                 clearInterval(tickInterval);
-                $barFill.css('width', '100%').attr('aria-valuenow', '100');
+                $barFill
+                    .removeClass('aips-progress-bar-fill--indeterminate')
+                    .css('width', '100%')
+                    .attr('aria-valuenow', '100');
 
                 var msg = completionMessage || l10n.generationComplete || 'Generation complete!';
                 $statusLine.text(msg);
