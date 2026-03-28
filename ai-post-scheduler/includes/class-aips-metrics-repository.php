@@ -338,19 +338,27 @@ class AIPS_Metrics_Repository {
 	 * @return float Average count (0.0 if no data).
 	 */
 	private function get_avg_ai_calls_per_post( $since ) {
-		// Count AI log entries per completed history record, then average.
+		// Compute average AI log entries per completed history record,
+		// including posts with zero AI calls (counted as 0).
 		$row = $this->wpdb->get_row(
 			$this->wpdb->prepare(
-				"SELECT AVG(call_count) AS avg_calls
+				"SELECT
+					CASE
+						WHEN COALESCE(stats.total_completed, 0) > 0
+							THEN COALESCE(stats.total_ai_calls, 0) / stats.total_completed
+						ELSE 0
+					END AS avg_calls
 				FROM (
-					SELECT hl.history_id, COUNT(*) AS call_count
-					FROM {$this->table_history_log} hl
-					INNER JOIN {$this->table_history} h ON hl.history_id = h.id
+					SELECT
+						COUNT(DISTINCT h.id) AS total_completed,
+						COUNT(hl.id) AS total_ai_calls
+					FROM {$this->table_history} h
+					LEFT JOIN {$this->table_history_log} hl
+						ON hl.history_id = h.id
+						AND hl.log_type IN ('title', 'content', 'excerpt', 'featured_image', 'ai_call', 'ai_variables')
 					WHERE h.status = 'completed'
 					  AND h.created_at >= %s
-					  AND hl.log_type IN ('title', 'content', 'excerpt', 'featured_image', 'ai_call', 'ai_variables')
-					GROUP BY hl.history_id
-				) AS per_post",
+				) AS stats",
 				$since
 			)
 		);
