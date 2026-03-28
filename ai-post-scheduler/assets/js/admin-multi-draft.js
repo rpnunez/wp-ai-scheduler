@@ -92,14 +92,44 @@
 		},
 
 		/**
+		 * Format the cost estimate message using the localized template.
+		 *
+		 * Supports both numbered placeholders like `%1$d` / `%2$d` and the
+		 * legacy `%d_variants` / `%d_calls` tokens for backwards compatibility.
+		 *
+		 * @param {number} variants Number of variants to generate.
+		 * @param {number} calls    Estimated API call count.
+		 * @returns {string} Formatted cost estimate message.
+		 */
+		formatMultiDraftCostEstimate: function(variants, calls) {
+			var template = (typeof aipsMultiDraftL10n !== 'undefined' && aipsMultiDraftL10n && aipsMultiDraftL10n.costEstimate)
+				? aipsMultiDraftL10n.costEstimate
+				: '';
+
+			if (!template) {
+				return '';
+			}
+
+			// Prefer numbered placeholders if present, e.g. "%1$d" and "%2$d".
+			if (/%[12]\$d/.test(template)) {
+				return template
+					.replace(/%1\$d/g, variants)
+					.replace(/%2\$d/g, calls);
+			}
+
+			// Fallback for legacy tokens used in existing translations.
+			return template
+				.replace('%d_variants', variants)
+				.replace('%d_calls',    calls);
+		},
+
+		/**
 		 * Recalculate and display the expected API-call impact before generating.
 		 */
 		updateMultiDraftCostEstimate: function() {
-			var count   = parseInt($('#aips-multi-draft-count').val(), 10) || 2;
-			var calls   = count * 3; // content + title + excerpt per variant
-			var message = aipsMultiDraftL10n.costEstimate
-				.replace('%d_variants', count)
-				.replace('%d_calls',    calls);
+			var count = parseInt($('#aips-multi-draft-count').val(), 10) || 2;
+			var calls = count * 3; // content + title + excerpt per variant
+			var message = AIPS.formatMultiDraftCostEstimate(count, calls);
 			$('#aips-multi-draft-cost-estimate').text(message);
 		},
 
