@@ -1,0 +1,472 @@
+# GitHub CLI issue creation commands for the Principal Software Engineer 90-Day plan
+# Usage:
+# 1) Ensure you are authenticated: gh auth status
+# 2) Run from repo root: bash docs/plans/principal-softengineer-90day-gh-issue-create-commands.txt
+# 3) These commands target: rpnunez/wp-ai-scheduler
+
+set -euo pipefail
+
+REPO="rpnunez/wp-ai-scheduler"
+
+# Optional: ensure milestone titles exist before issue creation.
+# If milestones already exist, these calls are harmless failures due to duplicate titles.
+gh api -X POST "repos/$REPO/milestones" -f title="PSE 90-Day Plan - Phase 1" >/dev/null 2>&1 || true
+gh api -X POST "repos/$REPO/milestones" -f title="PSE 90-Day Plan - Phase 2" >/dev/null 2>&1 || true
+gh api -X POST "repos/$REPO/milestones" -f title="PSE 90-Day Plan - Phase 3" >/dev/null 2>&1 || true
+
+echo "Creating Issue 1..."
+gh issue create --repo "$REPO" \
+  --title "Architecture: define canonical generation boundary and legacy adapter strategy" \
+  --label "architecture" --label "tech-debt" --label "phase-1" --label "high-priority" \
+  --milestone "PSE 90-Day Plan - Phase 1" \
+  --body-file - <<'EOF'
+## Summary
+Define a canonical internal generation boundary and isolate legacy template-based input handling behind a single adapter.
+
+## Problem
+Generation logic still contains inline branching for legacy and context-driven flows, increasing complexity, test scope, and change risk.
+
+## Scope
+- [ ] Inventory all legacy generation entrypoints.
+- [ ] Define canonical internal generation input model.
+- [ ] Define legacy adapter contract and ownership.
+- [ ] Capture design in an ADR or equivalent architecture decision doc.
+
+## Acceptance Criteria
+- [ ] Legacy entrypoints are fully enumerated.
+- [ ] Canonical generation input model is documented and approved.
+- [ ] Adapter boundary and ownership are explicit.
+- [ ] Follow-on implementation issues reference this design.
+
+## Risk Controls
+- Do not change runtime behavior in this issue.
+- Keep scope limited to architecture decisions and boundaries.
+
+## Out Of Scope
+- Implementation of adapter internals.
+- Refactoring prompt builder or generator code paths.
+EOF
+
+echo "Creating Issue 13..."
+gh issue create --repo "$REPO" \
+  --title "Observability: add correlation IDs across scheduler, generation, and notifications" \
+  --label "observability" --label "phase-1" --label "high-priority" \
+  --milestone "PSE 90-Day Plan - Phase 1" \
+  --body-file - <<'EOF'
+## Summary
+Introduce correlation IDs to trace a run end-to-end across scheduling, generation, history, and notifications.
+
+## Problem
+Run-level diagnostics are fragmented across disconnected records, increasing mean time to diagnose failures.
+
+## Scope
+- [ ] Define correlation ID generation and propagation rules.
+- [ ] Thread IDs through schedule runs, generation sessions, history events, and notifications.
+- [ ] Expose IDs in operator-usable diagnostics.
+
+## Acceptance Criteria
+- [ ] One run is traceable end-to-end using a single ID.
+- [ ] History/diagnostic records include the ID.
+- [ ] Operators can diagnose flows without guesswork.
+
+## Risk Controls
+- Keep implementation lightweight and additive.
+- Avoid exposing sensitive internals in user-facing surfaces.
+
+## Out Of Scope
+- Full distributed tracing platform integration.
+EOF
+
+echo "Creating Issue 14..."
+gh issue create --repo "$REPO" \
+  --title "Observability: publish baseline metrics for scheduler and generation reliability" \
+  --label "observability" --label "phase-1" \
+  --milestone "PSE 90-Day Plan - Phase 1" \
+  --body-file - <<'EOF'
+## Summary
+Establish baseline reliability and performance metrics for scheduler and generation workflows.
+
+## Problem
+Without baseline metrics, optimization and risk decisions are difficult to justify and verify.
+
+## Scope
+- [ ] Define key metrics (duration, failure rate, retry counts, backlog indicators).
+- [ ] Collect and expose summary metrics.
+- [ ] Provide pre/post comparison basis for refactor outcomes.
+
+## Acceptance Criteria
+- [ ] Baseline metrics exist and are reviewable.
+- [ ] Reliability and performance trends can be compared over time.
+- [ ] Follow-on issues can use baseline as success benchmark.
+
+## Risk Controls
+- Prefer summary metrics over heavy instrumentation.
+- Keep collection non-blocking and low overhead.
+
+## Out Of Scope
+- Advanced analytics dashboards.
+EOF
+
+echo "Creating Issue 10..."
+gh issue create --repo "$REPO" \
+  --title "Frontend: extract schedule modal controller from admin.js into page-level module" \
+  --label "frontend" --label "tech-debt" --label "phase-1" --label "high-priority" \
+  --milestone "PSE 90-Day Plan - Phase 1" \
+  --body-file - <<'EOF'
+## Summary
+Extract schedule modal logic from the shared admin bootstrap into a dedicated page-level controller.
+
+## Problem
+Schedule create/edit flows rely on duplicated modal reset/fallback logic in admin.js, creating fragile behavior and high change risk.
+
+## Scope
+- [ ] Extract open/edit/populate/submit/close logic into dedicated module.
+- [ ] Add shared state helpers for reset and error handling.
+- [ ] Preserve existing selectors and localized payload contracts.
+
+## Acceptance Criteria
+- [ ] Schedule create/edit flows use one controller path.
+- [ ] Duplicated modal reset logic in shared flow is removed.
+- [ ] Manual QA passes for create/edit/cancel/preselect/validation cases.
+
+## Risk Controls
+- Keep compatibility path until stabilized.
+- Avoid broad UI redesign in same issue.
+
+## Out Of Scope
+- Non-schedule admin page refactors.
+EOF
+
+echo "Creating Issue 7..."
+gh issue create --repo "$REPO" \
+  --title "Generation: move core execution to context-only internals via legacy adapter" \
+  --label "generation" --label "architecture" --label "phase-2" --label "high-priority" \
+  --milestone "PSE 90-Day Plan - Phase 2" \
+  --body-file - <<'EOF'
+## Summary
+Move generation internals to one context-driven execution path, keeping legacy support only at the edge adapter.
+
+## Problem
+Core generation classes currently support dual execution styles inline, creating branching and duplication.
+
+## Scope
+- [ ] Implement legacy-to-context adapter.
+- [ ] Update core generation orchestration to consume context input only.
+- [ ] Remove duplicated inline dual-path logic from core flow.
+- [ ] Add regression coverage for template and topic generation paths.
+
+## Acceptance Criteria
+- [ ] Core internals use a single canonical input model.
+- [ ] Legacy callers continue to work through adapter conversion.
+- [ ] Regression tests confirm behavior compatibility.
+
+## Risk Controls
+- Keep adapter coverage high before deleting old branches.
+- Preserve output compatibility and user-visible behavior.
+
+## Out Of Scope
+- New generation feature expansion unrelated to migration.
+EOF
+
+echo "Creating Issue 8..."
+gh issue create --repo "$REPO" \
+  --title "Generation: implement explicit generation lifecycle states and transitions" \
+  --label "generation" --label "observability" --label "phase-2" \
+  --milestone "PSE 90-Day Plan - Phase 2" \
+  --body-file - <<'EOF'
+## Summary
+Add explicit generation lifecycle states and transition rules for deterministic retries and recovery.
+
+## Problem
+Generation progress and failure modes are insufficiently explicit, making diagnosis and recovery difficult.
+
+## Scope
+- [ ] Define lifecycle states and transition rules.
+- [ ] Persist state, timestamps, and retry metadata.
+- [ ] Expose states via history/status diagnostics.
+
+## Acceptance Criteria
+- [ ] Lifecycle states are explicit and test-covered.
+- [ ] Partial failures are distinguishable from terminal failures.
+- [ ] Recovery logic can target the failed stage.
+
+## Risk Controls
+- Start with append-only transition history where practical.
+- Avoid tight coupling between early state model and UI assumptions.
+
+## Out Of Scope
+- Full workflow visualization UI.
+EOF
+
+echo "Creating Issue 4..."
+gh issue create --repo "$REPO" \
+  --title "Scheduler: introduce queue-backed generation jobs with idempotency keys" \
+  --label "scheduler" --label "tech-debt" --label "phase-2" --label "high-priority" \
+  --milestone "PSE 90-Day Plan - Phase 2" \
+  --body-file - <<'EOF'
+## Summary
+Introduce queue-backed generation jobs and idempotency to replace unbounded cron execution patterns.
+
+## Problem
+Cron-driven direct scheduling can produce duplicate work, poor batching, and unstable load behavior.
+
+## Scope
+- [ ] Add queue storage/abstraction for generation jobs.
+- [ ] Include idempotency key, lock token, attempt count, and available-at time.
+- [ ] Update cron flow to enqueue and process bounded work.
+
+## Acceptance Criteria
+- [ ] Due work is represented as queue jobs.
+- [ ] Duplicate active work for same schedule occurrence is prevented under overlap conditions.
+- [ ] Worker batch size is bounded and configurable.
+
+## Risk Controls
+- Feature-gate rollout.
+- Add overlap/replay tests before production enablement.
+
+## Out Of Scope
+- Full missed-run recovery policy.
+EOF
+
+echo "Creating Issue 5..."
+gh issue create --repo "$REPO" \
+  --title "Scheduler: implement worker locking, pacing, and bounded retries" \
+  --label "scheduler" --label "risk-control" --label "phase-2" \
+  --milestone "PSE 90-Day Plan - Phase 2" \
+  --body-file - <<'EOF'
+## Summary
+Harden queue processing with lock discipline, pacing controls, and bounded retry behavior.
+
+## Problem
+Queue adoption alone will not prevent API spikes, stuck jobs, or duplicate claim attempts.
+
+## Scope
+- [ ] Add lock acquisition and expiration semantics.
+- [ ] Add pacing controls for worker batch processing.
+- [ ] Add bounded retries and terminal failure handling.
+
+## Acceptance Criteria
+- [ ] A job cannot be processed by multiple workers concurrently.
+- [ ] Retries are bounded and observable.
+- [ ] Worker pacing prevents bursty over-execution.
+
+## Risk Controls
+- Use conservative defaults.
+- Expose pacing/retry limits via config or filters.
+
+## Out Of Scope
+- End-user UI for queue tuning.
+EOF
+
+echo "Creating Issue 2..."
+gh issue create --repo "$REPO" \
+  --title "Architecture: complete repository migration for high-value controller flows" \
+  --label "architecture" --label "tech-debt" --label "phase-2" \
+  --milestone "PSE 90-Day Plan - Phase 2" \
+  --body-file - <<'EOF'
+## Summary
+Complete repository-backed persistence in high-value controller paths and remove direct persistence logic from those controllers.
+
+## Problem
+Some controllers still mix request handling and persistence behavior, reducing testability and increasing coupling.
+
+## Scope
+- [ ] Audit high-value controllers (schedule, generation-related, author-topic).
+- [ ] Replace direct persistence with repository/service methods.
+- [ ] Add/expand tests proving controller delegation behavior.
+
+## Acceptance Criteria
+- [ ] Targeted controllers no longer perform direct persistence logic.
+- [ ] Repository contracts cover targeted operations.
+- [ ] Tests assert controller -> service -> repository boundaries.
+
+## Risk Controls
+- Prioritize high-leverage flows first.
+- Avoid low-value opportunistic migration in the same issue.
+
+## Out Of Scope
+- Full repository migration for the entire plugin.
+EOF
+
+echo "Creating Issue 11..."
+gh issue create --repo "$REPO" \
+  --title "Frontend: standardize admin action state handling for loading, error, and success states" \
+  --label "frontend" --label "phase-2" \
+  --milestone "PSE 90-Day Plan - Phase 2" \
+  --body-file - <<'EOF'
+## Summary
+Standardize admin action-state handling for loading, error, and success across targeted pages.
+
+## Problem
+Inconsistent action-state patterns create duplicate logic and uneven UX feedback.
+
+## Scope
+- [ ] Define reusable action-state conventions.
+- [ ] Introduce shared helpers/primitives for loading, error, and success.
+- [ ] Apply to scheduling and at least one additional admin area.
+
+## Acceptance Criteria
+- [ ] At least two admin areas share one action-state pattern.
+- [ ] Loading and error behavior is consistent in targeted areas.
+- [ ] Duplicated close/reset logic is reduced.
+
+## Risk Controls
+- Keep helper surface minimal.
+- Avoid introducing a frontend framework in this roadmap.
+
+## Out Of Scope
+- Full admin UI redesign.
+EOF
+
+echo "Creating Issue 6..."
+gh issue create --repo "$REPO" \
+  --title "Scheduler: add missed-run recovery and safe catch-up processing" \
+  --label "scheduler" --label "phase-3" \
+  --milestone "PSE 90-Day Plan - Phase 3" \
+  --body-file - <<'EOF'
+## Summary
+Implement bounded missed-run recovery that safely catches up without overwhelming generation infrastructure.
+
+## Problem
+Low-traffic WordPress environments can miss cron windows, causing publishing gaps and unsafe manual recovery.
+
+## Scope
+- [ ] Detect missed schedule windows.
+- [ ] Create bounded catch-up work.
+- [ ] Prevent thundering-herd behavior during recovery.
+
+## Acceptance Criteria
+- [ ] Missed runs are detected reliably.
+- [ ] Catch-up work is bounded and paced.
+- [ ] Recovery does not create unsafe backlog spikes.
+
+## Risk Controls
+- Add hard limits on catch-up depth.
+- Optionally support dry-run verification mode.
+
+## Out Of Scope
+- Advanced predictive scheduling.
+EOF
+
+echo "Creating Issue 9..."
+gh issue create --repo "$REPO" \
+  --title "Generation: support partial recovery for content/image split failures" \
+  --label "generation" --label "phase-3" \
+  --milestone "PSE 90-Day Plan - Phase 3" \
+  --body-file - <<'EOF'
+## Summary
+Implement recoverable partial generation behavior for content/image split failures.
+
+## Problem
+Late-stage failures can discard successful generation outputs that should be recoverable.
+
+## Scope
+- [ ] Separate content completion from image completion outcomes.
+- [ ] Mark recoverable failures explicitly.
+- [ ] Add targeted recovery actions for recoverable states.
+
+## Acceptance Criteria
+- [ ] Content can survive image-stage failures when configured.
+- [ ] Recoverable failures are clearly visible to operators.
+- [ ] Recovery actions are bounded and safe.
+
+## Risk Controls
+- Gate partial persistence behind explicit policy.
+- Add cleanup rules for partial assets/metadata.
+
+## Out Of Scope
+- Broad post-editing workflow redesign.
+EOF
+
+echo "Creating Issue 15..."
+gh issue create --repo "$REPO" \
+  --title "Observability: extend system status with queue health and operator runbook" \
+  --label "observability" --label "scheduler" --label "phase-3" \
+  --milestone "PSE 90-Day Plan - Phase 3" \
+  --body-file - <<'EOF'
+## Summary
+Add queue-health visibility and a practical operator runbook for queue and generation incident handling.
+
+## Problem
+Queue-backed scheduling requires clear admin-facing health diagnostics and repeatable troubleshooting procedures.
+
+## Scope
+- [ ] Add queue health indicators to system status.
+- [ ] Add backlog, retry saturation, and stuck-job signals.
+- [ ] Write short operator runbook for investigation and recovery.
+
+## Acceptance Criteria
+- [ ] Queue health is visible and understandable in admin/system status.
+- [ ] Operators can identify stuck/failing work quickly.
+- [ ] Runbook can be followed by non-authors.
+
+## Risk Controls
+- Avoid raw low-level output without summarization.
+- Validate runbook with at least one dry-run exercise.
+
+## Out Of Scope
+- Full on-call alerting platform rollout.
+EOF
+
+echo "Creating Issue 3..."
+gh issue create --repo "$REPO" \
+  --title "Architecture: start PSR-4 strangler migration for new refactor modules" \
+  --label "architecture" --label "tech-debt" --label "phase-3" \
+  --milestone "PSE 90-Day Plan - Phase 3" \
+  --body-file - <<'EOF'
+## Summary
+Begin PSR-4 strangler migration by placing new refactor modules in the new structure with compatibility bridges.
+
+## Problem
+Continuing to place new refactor code in the flat legacy include structure compounds long-term maintenance costs.
+
+## Scope
+- [ ] Define placement rules for new refactor modules.
+- [ ] Add compatibility bridge strategy where required.
+- [ ] Move at least one new module family to the new structure.
+- [ ] Publish migration checklist for subsequent waves.
+
+## Acceptance Criteria
+- [ ] At least one module family uses the new structure.
+- [ ] Runtime behavior remains stable.
+- [ ] Migration checklist exists for future waves.
+
+## Risk Controls
+- No mass renaming of stable modules.
+- Preserve backward compatibility at entrypoints.
+
+## Out Of Scope
+- Full plugin-wide PSR-4 migration.
+EOF
+
+echo "Creating Issue 12..."
+gh issue create --repo "$REPO" \
+  --title "Frontend: plan and execute second admin page extraction after scheduling stabilization" \
+  --label "frontend" --label "phase-3" \
+  --milestone "PSE 90-Day Plan - Phase 3" \
+  --body-file - <<'EOF'
+## Summary
+Execute a second page-level extraction to validate frontend modularization beyond scheduling.
+
+## Problem
+Without proving the pattern on another page, admin.js remains too central and future work risks regression.
+
+## Scope
+- [ ] Select one page family (history, planner, or generated posts).
+- [ ] Extract page logic into dedicated module.
+- [ ] Reuse established action-state and initialization conventions.
+
+## Acceptance Criteria
+- [ ] One additional page family is modularized successfully.
+- [ ] Shared initialization contract remains stable.
+- [ ] Regression smoke tests pass.
+
+## Risk Controls
+- Choose least-coupled page after scheduling.
+- Keep extraction incremental.
+
+## Out Of Scope
+- Multi-page extraction wave.
+EOF
+
+echo "All planned issues submitted."

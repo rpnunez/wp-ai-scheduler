@@ -56,6 +56,7 @@ class AIPS_Admin_Assets {
             // Progress-bar modal strings (used by AIPS.Utilities.showProgressBar on every admin page)
             'estimatedTimeRemaining'   => __('Estimated time remaining: %s', 'ai-post-scheduler'),
             'generationComplete'       => __('Generation complete!', 'ai-post-scheduler'),
+            'takingLonger'             => __('Taking a little bit longer than expected\u2026', 'ai-post-scheduler'),
             'seconds'                  => __('seconds', 'ai-post-scheduler'),
             'minute'                   => __('1 minute', 'ai-post-scheduler'),
             'minutes'                  => __('%d minutes', 'ai-post-scheduler'),
@@ -338,6 +339,25 @@ class AIPS_Admin_Assets {
             'topicPromptLabel' => __('Topic Generation Prompt', 'ai-post-scheduler'),
             'viewDetails' => __('View Details', 'ai-post-scheduler'),
             'noFeedbackYet' => __('No feedback yet.', 'ai-post-scheduler'),
+            // Date formatting strings used by formatTopicDate()
+            'dateToday'     => __('Today', 'ai-post-scheduler'),
+            'dateYesterday' => __('Yesterday', 'ai-post-scheduler'),
+            'dateAM'        => _x('am', 'time of day', 'ai-post-scheduler'),
+            'datePM'        => _x('pm', 'time of day', 'ai-post-scheduler'),
+            'dateMonthNames' => array(
+                __('January', 'ai-post-scheduler'),
+                __('February', 'ai-post-scheduler'),
+                __('March', 'ai-post-scheduler'),
+                __('April', 'ai-post-scheduler'),
+                __('May', 'ai-post-scheduler'),
+                __('June', 'ai-post-scheduler'),
+                __('July', 'ai-post-scheduler'),
+                __('August', 'ai-post-scheduler'),
+                __('September', 'ai-post-scheduler'),
+                __('October', 'ai-post-scheduler'),
+                __('November', 'ai-post-scheduler'),
+                __('December', 'ai-post-scheduler'),
+            ),
           ));
 
           // Pass page-context data (not i18n) in a separate object so it stays
@@ -638,6 +658,17 @@ class AIPS_Admin_Assets {
                 'groupNameRequired' => __('Please enter a group name.', 'ai-post-scheduler'),
                 'deleteGroupConfirm' => __('Delete this Source Group? Sources in this group will not be deleted.', 'ai-post-scheduler'),
             ));
+        }
+
+        // Settings Page Scripts
+        if (strpos($hook, 'aips-settings') !== false) {
+            wp_enqueue_script(
+                'aips-admin-settings',
+                AIPS_PLUGIN_URL . 'assets/js/admin-settings.js',
+                array('aips-admin-script'),
+                AIPS_VERSION,
+                true
+            );
         }
     }
 }

@@ -46,3 +46,6 @@
 ## 2026-03-25 - Add Call-to-Actions in Empty States
 Learning: Empty states that tell users to go somewhere without providing a direct link create unnecessary friction and break the flow.
 Action: Always include clear call-to-action buttons (like 'Create X') in empty states that direct users to the exact next step needed.
+## 2026-03-26 - Empty State Consistency
+Learning: Empty states across different admin pages had inconsistent classes and missing wrapper elements.
+Action: Standardized all empty states to use `.aips-empty-state-icon`, `.aips-empty-state-title`, `.aips-empty-state-description`, and `.aips-empty-state-actions` to ensure consistent UI.
