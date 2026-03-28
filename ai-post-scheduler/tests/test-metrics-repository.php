@@ -34,9 +34,10 @@ class Test_AIPS_Metrics_Repository extends WP_UnitTestCase {
 	private function make_repo( array $overrides = array() ) {
 		global $wpdb;
 
-		// The limited-mode mock $wpdb has get_col_return_val when running
-		// outside the real WordPress test suite.
-		if ( isset( $wpdb->get_col_return_val ) ) {
+		// Detect the limited-mode mock $wpdb using property_exists() rather
+		// than isset() because the sentinel property is initialised to null and
+		// isset() returns false for null values.
+		if ( property_exists( $wpdb, 'get_col_return_val' ) ) {
 			// Already a mock - apply custom overrides via closure-based approach.
 			foreach ( $overrides as $method => $value ) {
 				$wpdb->{$method . '_return_val'} = $value;
@@ -48,6 +49,10 @@ class Test_AIPS_Metrics_Repository extends WP_UnitTestCase {
 
 	/**
 	 * Clear any transients written during tests.
+	 *
+	 * AIPS_Metrics_Repository::invalidate_cache() detects the limited-mode
+	 * mock environment (no $wpdb->options) and falls back to deleting common
+	 * window keys, so it is safe to call here.
 	 */
 	public function tearDown(): void {
 		$repo = new AIPS_Metrics_Repository();
