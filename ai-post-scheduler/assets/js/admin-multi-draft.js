@@ -14,6 +14,7 @@
 	'use strict';
 
 	window.AIPS = window.AIPS || {};
+	var AIPS = window.AIPS;
 
 	/** Mutable state for the currently-open compare session. */
 	var multiDraftState = {
@@ -23,7 +24,7 @@
 		selections: {}
 	};
 
-	Object.assign(window.AIPS, {
+	Object.assign(AIPS, {
 
 		/**
 		 * Bootstrap multi-draft functionality.
