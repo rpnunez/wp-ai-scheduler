@@ -49,3 +49,7 @@ Action: Always include clear call-to-action buttons (like 'Create X') in empty s
 ## 2026-03-26 - Empty State Consistency
 Learning: Empty states across different admin pages had inconsistent classes and missing wrapper elements.
 Action: Standardized all empty states to use `.aips-empty-state-icon`, `.aips-empty-state-title`, `.aips-empty-state-description`, and `.aips-empty-state-actions` to ensure consistent UI.
+
+## 2026-03-29 - Planner Topic Search Empty State
+**Learning:** The Planner topic search filter used an inline appended div instead of the standard `.aips-empty-state` UI component.
+**Action:** Standardized the empty state UI in `planner.php` and updated `admin-planner.js` to toggle its visibility instead of injecting HTML.
