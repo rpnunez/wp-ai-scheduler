@@ -1351,3 +1351,8 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Positive:** Improved class cohesion by decoupling the UI rendering layer from the options/settings logic. Each class now has a distinct, single responsibility.
 - **Trade-offs:** Additional object instantiated during the plugin bootstrap sequence.
 **Tests:** Created `test-admin-menu.php` to verify that `AIPS_Admin_Menu` hooks and filters apply as intended. Modified `test-autoloader.php` to assert the new class is properly autoloaded.
+## 2025-02-18 - Standardize Bulk Action JSON Responses
+**Context:** Several bulk action handlers (`ajax_bulk_publish_posts`, `ajax_bulk_delete_draft_posts`, `ajax_bulk_delete_schedules`, `ajax_bulk_delete_history`) inconsistently return generic `count` keys or completely hardcode their response message. This violates the API design pattern of returning explicit `success_count`, `failed_count`, and dynamic `message`.
+**Decision:** Updated the PHP controller methods to explicitly calculate `success_count` and `failed_count`, generate a formatted string, and updated corresponding JS files to gracefully render the new keys.
+**Consequence:** Consistent, parseable payloads for bulk interactions across features.
+**Tests:** Manually evaluated with the frontend test suite. Pre-existing tests were not affected.

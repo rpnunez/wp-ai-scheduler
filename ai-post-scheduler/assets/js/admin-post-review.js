@@ -218,8 +218,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        var msg = aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.count || count);
-                        AIPS.Utilities.showToast(msg, 'success');
+                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.bulkPublishSuccess.replace('%d', response.data.success_count || count), 'success');
 
                         checkedBoxes.each(function() {
                             $(this).closest('tr').fadeOut(400, function() {
@@ -276,8 +275,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        var msg = aipsPostReviewL10n.bulkDeleteSuccess.replace('%d', response.data.count || count);
-                        AIPS.Utilities.showToast(msg, 'success');
+                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.bulkDeleteSuccess.replace('%d', response.data.success_count || count), 'success');
 
                         checkedBoxes.each(function() {
                             $(this).closest('tr').fadeOut(400, function() {

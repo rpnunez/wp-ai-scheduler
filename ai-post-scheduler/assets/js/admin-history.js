@@ -427,7 +427,7 @@
 						},
 						success: function (response) {
 							if (response.success) {
-								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
+								AIPS.Utilities.showToast(response.data.message || aipsHistoryL10n.deletedSuccess || 'Items deleted successfully.', 'success');
 								self.reload();
 							} else {
 								AIPS.Utilities.showToast(
@@ -478,7 +478,7 @@
 						},
 						success: function (response) {
 							if (response.success) {
-								AIPS.Utilities.showToast(aipsHistoryL10n.deletedSuccess || 'Item deleted.', 'success');
+								AIPS.Utilities.showToast(response.data.message || aipsHistoryL10n.deletedSuccess || 'Item deleted.', 'success');
 								self.reload();
 							} else {
 								AIPS.Utilities.showToast(

@@ -57,7 +57,27 @@ class AIPS_History {
             wp_send_json_error(array('message' => __('Failed to delete items.', 'ai-post-scheduler')));
         }
 
-        wp_send_json_success(array('message' => __('Selected items deleted successfully.', 'ai-post-scheduler')));
+        $success_count = $result;
+        $failed_count = count($ids) - $result;
+
+        if ($failed_count > 0) {
+            $message = sprintf(
+                __('Deleted %1$d items successfully. %2$d items failed.', 'ai-post-scheduler'),
+                $success_count,
+                $failed_count
+            );
+        } else {
+            $message = sprintf(
+                __('Deleted %d items successfully.', 'ai-post-scheduler'),
+                $success_count
+            );
+        }
+
+        wp_send_json_success(array(
+            'message' => $message,
+            'success_count' => $success_count,
+            'failed_count' => $failed_count,
+        ));
     }
 
     /**

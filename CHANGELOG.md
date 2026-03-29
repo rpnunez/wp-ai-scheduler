@@ -72,3 +72,11 @@ All notable changes to this project will be documented in this file.
 - [2025-12-21 01:48:42] Added search functionality to the Generation History page to filter posts by title.
 - [2024-05-22 10:00:00] Refactored Scheduler: Extracted AJAX handlers to `AIPS_Schedule_Controller`, enhanced `AIPS_Scheduler` with better topic and next_run support, and updated `AIPS_Planner` to use the Scheduler service instead of direct SQL.
 - [2024-05-22 10:00:00] Made generated topic titles editable in the Planner before scheduling.
+
+### Fixed
+- Fixed potential double-encoding of ampersands in URLs within JSON/API responses by using the `raw` parameter for `get_edit_post_link()`.
+- Fixed potential data corruption bug with double-unslashing of `$_POST['components']` in `AIPS_AI_Edit_Controller`.
+
+### Changed
+- Standardized AJAX bulk action endpoints (`ajax_bulk_delete_draft_posts`, `ajax_bulk_publish_posts`, `ajax_bulk_delete_schedules`, `ajax_bulk_delete_history`) to consistently return explicit `success_count` and `failed_count` integers, along with a dynamically constructed `message` in the JSON response payload.
+- Updated admin javascript files to correctly consume the updated standardized bulk action responses.

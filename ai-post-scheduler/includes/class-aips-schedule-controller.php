@@ -242,12 +242,26 @@ class AIPS_Schedule_Controller {
         $deleted = $repository->delete_bulk($ids);
 
         if ($deleted !== false) {
+            $success_count = $deleted;
+            $failed_count = count($ids) - $deleted;
+
+            if ($failed_count > 0) {
+                $message = sprintf(
+                    _n('%1$d schedule deleted successfully. %2$d failed.', '%1$d schedules deleted successfully. %2$d failed.', $success_count, 'ai-post-scheduler'),
+                    $success_count,
+                    $failed_count
+                );
+            } else {
+                $message = sprintf(
+                    _n('%d schedule deleted successfully.', '%d schedules deleted successfully.', $success_count, 'ai-post-scheduler'),
+                    $success_count
+                );
+            }
+
             wp_send_json_success(array(
-                'message' => sprintf(
-                    _n('%d schedule deleted successfully.', '%d schedules deleted successfully.', $deleted, 'ai-post-scheduler'),
-                    $deleted
-                ),
-                'deleted' => $deleted,
+                'message' => $message,
+                'success_count' => $success_count,
+                'failed_count' => $failed_count,
             ));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete schedules.', 'ai-post-scheduler')));

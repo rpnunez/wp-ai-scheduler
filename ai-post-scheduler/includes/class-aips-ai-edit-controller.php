@@ -245,9 +245,9 @@ class AIPS_AI_Edit_Controller {
 		}
 		
 		$post_id = isset($_POST['post_id']) ? absint($_POST['post_id']) : 0;
-		$components = isset($_POST['components']) ? $_POST['components'] : array();
+		$components = isset($_POST['components']) ? wp_unslash($_POST['components']) : array();
 		
-		if (!$post_id || empty($components)) {
+		if (!$post_id || empty($components) || !is_array($components)) {
 			wp_send_json_error(array('message' => __('Invalid request.', 'ai-post-scheduler')));
 		}
 		
@@ -261,17 +261,17 @@ class AIPS_AI_Edit_Controller {
 		$updated_components = array();
 		
 		if (isset($components['title'])) {
-			$post_data['post_title'] = sanitize_text_field(wp_unslash($components['title']));
+			$post_data['post_title'] = sanitize_text_field($components['title']);
 			$updated_components[] = 'title';
 		}
 		
 		if (isset($components['excerpt'])) {
-			$post_data['post_excerpt'] = sanitize_textarea_field(wp_unslash($components['excerpt']));
+			$post_data['post_excerpt'] = sanitize_textarea_field($components['excerpt']);
 			$updated_components[] = 'excerpt';
 		}
 		
 		if (isset($components['content'])) {
-			$post_data['post_content'] = wp_kses_post(wp_unslash($components['content']));
+			$post_data['post_content'] = wp_kses_post($components['content']);
 			$updated_components[] = 'content';
 		}
 		
@@ -296,13 +296,13 @@ class AIPS_AI_Edit_Controller {
 		// Security: Create a sanitized array of components for the action hook to prevent passing raw POST data
 		$sanitized_components = array();
 		if (isset($components['title'])) {
-			$sanitized_components['title'] = sanitize_text_field(wp_unslash($components['title']));
+			$sanitized_components['title'] = sanitize_text_field($components['title']);
 		}
 		if (isset($components['excerpt'])) {
-			$sanitized_components['excerpt'] = sanitize_textarea_field(wp_unslash($components['excerpt']));
+			$sanitized_components['excerpt'] = sanitize_textarea_field($components['excerpt']);
 		}
 		if (isset($components['content'])) {
-			$sanitized_components['content'] = wp_kses_post(wp_unslash($components['content']));
+			$sanitized_components['content'] = wp_kses_post($components['content']);
 		}
 		if (isset($components['featured_image_id'])) {
 			$sanitized_components['featured_image_id'] = absint($components['featured_image_id']);

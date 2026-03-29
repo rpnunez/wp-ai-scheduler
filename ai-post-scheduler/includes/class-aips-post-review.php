@@ -94,7 +94,7 @@ class AIPS_Post_Review {
 			'content' => apply_filters('the_content', $post->post_content),
 			'excerpt' => get_the_excerpt($post),
 			'featured_image' => esc_url_raw(get_the_post_thumbnail_url($post_id, 'full')),
-			'edit_url' => esc_url_raw(get_edit_post_link($post_id)),
+			'edit_url' => esc_url_raw(get_edit_post_link($post_id, 'raw')),
 		);
 
 		wp_send_json_success($data);
@@ -360,10 +360,23 @@ class AIPS_Post_Review {
 			}
 		}
 		
+		if ($failed_count > 0) {
+			$message = sprintf(
+				__('%1$d posts published successfully. %2$d failed.', 'ai-post-scheduler'),
+				$success_count,
+				$failed_count
+			);
+		} else {
+			$message = sprintf(
+				__('%d posts published successfully.', 'ai-post-scheduler'),
+				$success_count
+			);
+		}
+
 		wp_send_json_success(array(
-			'message' => sprintf(__('%d posts published successfully.', 'ai-post-scheduler'), $success_count),
-			'count' => $success_count,
-			'failed' => $failed_count,
+			'message' => $message,
+			'success_count' => $success_count,
+			'failed_count' => $failed_count,
 		));
 	}
 	
@@ -689,10 +702,23 @@ class AIPS_Post_Review {
 			$history->complete_success(array('deleted_count' => $success_count));
 		}
 		
+		if ($failed_count > 0) {
+			$message = sprintf(
+				__('%1$d posts deleted successfully. %2$d failed.', 'ai-post-scheduler'),
+				$success_count,
+				$failed_count
+			);
+		} else {
+			$message = sprintf(
+				__('%d posts deleted successfully.', 'ai-post-scheduler'),
+				$success_count
+			);
+		}
+
 		wp_send_json_success(array(
-			'message' => sprintf(__('%d posts deleted successfully.', 'ai-post-scheduler'), $success_count),
-			'count' => $success_count,
-			'failed' => $failed_count,
+			'message' => $message,
+			'success_count' => $success_count,
+			'failed_count' => $failed_count,
 		));
 	}
 }
