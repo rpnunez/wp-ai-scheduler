@@ -538,6 +538,21 @@
     $(document).ready(function() {
         $(document).on('click', '#btn-generate-topics', window.AIPS.generateTopics);
         $(document).on('click', '#btn-parse-manual', window.AIPS.parseManualTopics);
+
+        // Keyboard shortcuts
+        $(document).on('keydown', '#planner-niche, #planner-count', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $('#btn-generate-topics').click();
+            }
+        });
+
+        $(document).on('keydown', '#planner-manual-topics', function(e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                $('#btn-parse-manual').click();
+            }
+        });
         $(document).on('click', '#btn-bulk-schedule', window.AIPS.bulkSchedule);
         $(document).on('click', '#btn-bulk-generate-now', window.AIPS.bulkGenerateNow);
         $(document).on('click', '#btn-clear-topics', window.AIPS.clearTopics);

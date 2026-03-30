@@ -35,6 +35,25 @@
 		bindCalendarEvents: function() {
 			// Navigation
 			$(document).on('click', '.aips-calendar-prev', this.calendarPrevious.bind(this));
+
+			// Keyboard navigation
+			$(document).on('keydown', function(e) {
+				if ($('.aips-calendar-container').is(':visible') && !$('#aips-calendar-event-modal').is(':visible')) {
+					// Only proceed if the user is not focused on an input
+					var activeTag = document.activeElement ? document.activeElement.tagName : '';
+					if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') {
+						return;
+					}
+
+					if (e.key === 'ArrowLeft') {
+						e.preventDefault();
+						$('.aips-calendar-prev').click();
+					} else if (e.key === 'ArrowRight') {
+						e.preventDefault();
+						$('.aips-calendar-next').click();
+					}
+				}
+			});
 			$(document).on('click', '.aips-calendar-next', this.calendarNext.bind(this));
 			$(document).on('click', '.aips-calendar-today-btn', this.calendarToday.bind(this));
 
