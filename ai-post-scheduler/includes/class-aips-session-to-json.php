@@ -296,6 +296,7 @@ class AIPS_Session_To_JSON {
 	 *
 	 * This is useful for very large sessions where returning the JSON string directly may
 	 * be impractical. The file will be created under wp_upload_dir()/aips-exports.
+	 * Failures to set restrictive permissions (chmod) are logged instead of causing a fatal error.
 	 *
 	 * @param int  $history_id   The history item ID
 	 * @param bool $pretty_print Whether to format JSON with indentation
@@ -343,7 +344,9 @@ class AIPS_Session_To_JSON {
 		}
 		
 		// Try to set restrictive permissions
-		@chmod($filepath, 0644);
+		if (!chmod($filepath, 0644)) {
+			error_log('AIPS_Session_To_JSON: Failed to set permissions on export file ' . $filepath);
+		}
 		
 		return array(
 			'path' => $filepath,
@@ -355,7 +358,11 @@ class AIPS_Session_To_JSON {
 	/**
 	 * Create .htaccess file to protect export directory
 	 *
+	 * Creates an .htaccess and index.php file to prevent direct directory listing
+	 * and access to the JSON export files. Logs errors on write failures.
+	 *
 	 * @param string $dir Directory path
+	 * @return void
 	 */
 	private function create_htaccess_protection($dir) {
 		$htaccess_file = trailingslashit($dir) . '.htaccess';
@@ -369,11 +376,15 @@ class AIPS_Session_To_JSON {
 			$content .= "    Deny from all\n";
 			$content .= "</Files>\n";
 
-			@file_put_contents($htaccess_file, $content);
+			if (file_put_contents($htaccess_file, $content) === false) {
+				error_log('AIPS_Session_To_JSON: Failed to write .htaccess protection file to ' . $dir);
+			}
 		}
 		
 		if (!file_exists($index_file)) {
-			@file_put_contents($index_file, '<?php // Silence is golden');
+			if (file_put_contents($index_file, '<?php // Silence is golden') === false) {
+				error_log('AIPS_Session_To_JSON: Failed to write index.php protection file to ' . $dir);
+			}
 		}
 	}
 	
@@ -381,7 +392,8 @@ class AIPS_Session_To_JSON {
 	 * Clean up old export files
 	 *
 	 * Removes files older than the specified age in seconds.
-	 * Should be called regularly via WP-Cron.
+	 * Should be called regularly via WP-Cron. Validates file writability
+	 * before unlinking and collects errors on failure.
 	 *
 	 * @param int $max_age Maximum age in seconds (default: 1 hour)
 	 * @return array Array with 'deleted' count and 'errors' array
@@ -420,7 +432,12 @@ class AIPS_Session_To_JSON {
 			
 			// Delete if older than max age
 			if (($current_time - $file_time) > $max_age) {
-				if (@unlink($file)) {
+				if (!is_writable($file)) {
+					$result['errors'][] = 'File is not writable: ' . basename($file);
+					continue;
+				}
+
+				if (unlink($file)) {
 					$result['deleted']++;
 				} else {
 					$result['errors'][] = 'Failed to delete: ' . basename($file);

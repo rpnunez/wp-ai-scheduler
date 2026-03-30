@@ -216,6 +216,7 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 			'AIPS_Schedule_Controller',
 			'AIPS_Settings',
 			'AIPS_Admin_Menu',
+			'AIPS_Session_To_JSON',
 		);
 		
 		foreach ($controllers as $class_name) {
