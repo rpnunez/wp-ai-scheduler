@@ -1351,3 +1351,9 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Positive:** Improved class cohesion by decoupling the UI rendering layer from the options/settings logic. Each class now has a distinct, single responsibility.
 - **Trade-offs:** Additional object instantiated during the plugin bootstrap sequence.
 **Tests:** Created `test-admin-menu.php` to verify that `AIPS_Admin_Menu` hooks and filters apply as intended. Modified `test-autoloader.php` to assert the new class is properly autoloaded.
+
+## $(date +%Y-%m-%d) - Extracted AIPS_Schedule_Controller_Bulk
+**Context:** The `AIPS_Schedule_Controller` class was handling both single schedule actions and bulk actions, violating the Single Responsibility Principle.
+**Decision:** Extracted the bulk action methods into a dedicated `AIPS_Schedule_Controller_Bulk` class.
+**Consequence:** Improved separation of concerns and maintainability.
+**Tests:** Verified autoloader loads the new class and tests pass in limited mode.

@@ -310,6 +310,7 @@ final class AI_Post_Scheduler {
             
             new AIPS_Planner();
             new AIPS_Schedule_Controller();
+            new AIPS_Schedule_Controller_Bulk();
             new AIPS_Generated_Posts_Controller();
             new AIPS_Research_Controller();
             new AIPS_Seeder_Admin();
