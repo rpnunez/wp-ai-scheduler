@@ -946,6 +946,9 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_var($query, $x = 0, $y = 0) {
+                if (isset($this->get_var_return_val)) {
+                    return $this->get_var_return_val;
+                }
                 return null;
             }
             

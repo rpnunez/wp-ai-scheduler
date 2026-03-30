@@ -21,3 +21,9 @@
 ## 2026-03-25 - [Missing wp_unslash on Arrays]
 **Learning:** `$_POST` array inputs containing user-supplied text (e.g. topic titles, names, free-form text from text inputs) must be unslashed before sanitizing or mapping, otherwise WordPress magic quotes will persist and leave backslashes in stored data. However, arrays whose values are IDs or structured keys from checkbox/bulk-selection submissions (e.g. `"type:id"` pairs like `"template:5"`) contain no characters affected by magic quotes and do not need `wp_unslash()`.
 **Action:** Apply `wp_unslash()` to `$_POST['array_key']` only when the values are text or user input (titles, labels, free-form strings). Skip it when the values are integer IDs, slugs, or structured keys from bulk-selection checkboxes, as those values are sanitized by `absint()` or `sanitize_key()` and contain no quotable characters.
+
+## 2024-06-18 - Limited Testing Mode mock logic
+
+**Learning:** When writing tests that may run in limited mode, missing WordPress core functionality and mocked `$wpdb` properties like `get_var_return_val` need to be explicitly declared on the anonymous mocked class in `tests/bootstrap.php` to prevent PHP 8.2+ dynamic property deprecation errors. These can be set inside specific test methods using `$GLOBALS['wpdb']->get_var_return_val = <expected value>;` to bypass DB interactions and verify test logic accurately.
+
+**Action:** Whenever `$wpdb->get_var()` or similar queries are used in tests meant to run in limited mode, explicitly set the `get_var_return_val` on the mocked `$wpdb` so the mock can predictably return expected database states for the tests to process. Avoid using `@` suppression; instead use `property_exists()` checks to verify the property can be written securely.
