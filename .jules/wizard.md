@@ -49,3 +49,8 @@ Action: Always include clear call-to-action buttons (like 'Create X') in empty s
 ## 2026-03-26 - Empty State Consistency
 Learning: Empty states across different admin pages had inconsistent classes and missing wrapper elements.
 Action: Standardized all empty states to use `.aips-empty-state-icon`, `.aips-empty-state-title`, `.aips-empty-state-description`, and `.aips-empty-state-actions` to ensure consistent UI.
+## 2024-03-31 - Standardize Search Clear Buttons Classes
+
+Learning: Discovered inconsistencies in the CSS classes for "Search" and "Clear" buttons across various admin panel filter interfaces where `.aips-btn-sm` was omitted, violating standard UI component consistency guidelines.
+
+Action: Replaced `class="aips-btn aips-btn-secondary"` with `class="aips-btn aips-btn-sm aips-btn-secondary"` strictly on search and clear buttons within `.aips-filter-right` sections in all admin PHP templates to ensure uniform appearance across the plugin interface.
