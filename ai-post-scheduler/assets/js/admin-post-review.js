@@ -182,6 +182,8 @@
                 bulkPublish(checkedBoxes);
             } else if (action === 'delete') {
                 bulkDelete(checkedBoxes);
+            } else if (action === 'regenerate') {
+                bulkRegenerate(checkedBoxes);
             }
         });
 
@@ -292,6 +294,64 @@
                 },
                 error: function() {
                     AIPS.Utilities.showToast(aipsPostReviewL10n.deleteError, 'error');
+                }
+            });
+                }}
+            ]);
+        }
+
+        // Bulk regenerate
+        /**
+         * Bulk-regenerate the selected draft posts via `aips_bulk_regenerate_posts`.
+         *
+         * Shows a confirmation dialog with the post count. On confirmation,
+         * builds an array of `{post_id, history_id}` objects and sends them to
+         * the server. Fades out each regenerated row and refreshes the draft count and
+         * empty-state check on success.
+         *
+         * @param {jQuery} checkedBoxes - The set of checked `.aips-post-checkbox` elements.
+         */
+        function bulkRegenerate(checkedBoxes) {
+            var count = checkedBoxes.length;
+            var confirmMsg = aipsPostReviewL10n.confirmBulkRegenerate.replace('%d', count);
+
+            AIPS.Utilities.confirm(confirmMsg, 'Notice', [
+                { label: 'No, cancel',  className: 'aips-btn aips-btn-primary' },
+                { label: 'Yes, regenerate', className: 'aips-btn aips-btn-danger-solid', action: function() {
+            var items = [];
+            checkedBoxes.each(function() {
+                items.push({
+                    post_id: $(this).data('post-id'),
+                    history_id: $(this).data('history-id')
+                });
+            });
+
+            $.ajax({
+                url: aipsPostReviewL10n.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'aips_bulk_regenerate_posts',
+                    items: items,
+                    nonce: aipsPostReviewL10n.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        var msg = aipsPostReviewL10n.bulkRegenerateSuccess.replace('%d', response.data.success_count || count);
+                        AIPS.Utilities.showToast(msg + ' Check History for progress.', 'success');
+
+                        checkedBoxes.each(function() {
+                            $(this).closest('tr').fadeOut(400, function() {
+                                $(this).remove();
+                                updateDraftCount();
+                                checkEmptyState();
+                            });
+                        });
+                    } else {
+                        AIPS.Utilities.showToast(response.data.message || aipsPostReviewL10n.regenerateError, 'error');
+                    }
+                },
+                error: function() {
+                    AIPS.Utilities.showToast(aipsPostReviewL10n.regenerateError, 'error');
                 }
             });
                 }}

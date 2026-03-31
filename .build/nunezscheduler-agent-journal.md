@@ -188,3 +188,8 @@
 **Improvement:** Optimized the flow and reliability of the template management process by enforcing early input validation across all key AJAX endpoints (`ajax_save_template`, `ajax_test_template`, `ajax_preview_template_prompts`, `ajax_clone_template`, `ajax_delete_template`, `ajax_get_template`). Validations included robust checks for required inputs, type coercion limits, integer boundary limits, and trimming of empty string values.
 **Files Modified:** `ai-post-scheduler/includes/class-aips-templates-controller.php`
 **Outcome:** Prevents users from accidentally saving corrupt templates with empty prompts or invalid names, increasing the robustness and flow of the template wizard experience by providing clear, immediate backend error messages instead of failing silently or proceeding with incomplete data.
+## 2026-03-31 - Post Review Optimization
+**Target Feature:** Post Review
+**Improvement:** Added Bulk Regenerate functionality to handle multiple poor generations efficiently.
+**Files Modified:** `ai-post-scheduler/includes/class-aips-post-review.php`, `ai-post-scheduler/templates/admin/post-review.php`, `ai-post-scheduler/assets/js/admin-post-review.js`, `ai-post-scheduler/includes/class-aips-admin-assets.php`
+**Outcome:** Users can now select multiple draft posts and regenerate them all at once, streamlining the workflow and reducing manual effort.
