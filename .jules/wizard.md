@@ -49,3 +49,4 @@ Action: Always include clear call-to-action buttons (like 'Create X') in empty s
 ## 2026-03-26 - Empty State Consistency
 Learning: Empty states across different admin pages had inconsistent classes and missing wrapper elements.
 Action: Standardized all empty states to use `.aips-empty-state-icon`, `.aips-empty-state-title`, `.aips-empty-state-description`, and `.aips-empty-state-actions` to ensure consistent UI.
+## 2025-02-23 - Context-aware Search Empty States\nLearning: Empty states shouldn't just say 'No content exists' when a user is actively filtering content—they should acknowledge the active filter and offer a way to clear it to avoid user confusion.\nAction: Implemented context-aware empty state blocks in generated-posts.php and post-review.php that conditionally render a 'No results match filters' state with a clear button if filter arguments are present in the URL.
