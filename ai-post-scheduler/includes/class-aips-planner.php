@@ -115,7 +115,13 @@ class AIPS_Planner {
         }
 
         // Sanitize topics
-        $topics = array_map('sanitize_text_field', $topics);
+        $sanitized_topics = array();
+        foreach ($topics as $t) {
+            if (is_scalar($t)) {
+                $sanitized_topics[] = sanitize_text_field((string) $t);
+            }
+        }
+        $topics = $sanitized_topics;
 
         $scheduler = new AIPS_Scheduler();
         $count = 0;
@@ -171,7 +177,15 @@ class AIPS_Planner {
         }
 
         $raw_topics  = isset($_POST['topics']) ? wp_unslash((array) $_POST['topics']) : array();
-        $topics      = array_values(array_filter(array_map('sanitize_text_field', $raw_topics)));
+        $topics      = array();
+        foreach ($raw_topics as $t) {
+            if (is_scalar($t)) {
+                $sanitized = sanitize_text_field((string) $t);
+                if (!empty($sanitized)) {
+                    $topics[] = $sanitized;
+                }
+            }
+        }
         $template_id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
         if (empty($topics) || empty($template_id)) {

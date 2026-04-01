@@ -21,3 +21,7 @@
 ## 2026-03-25 - [Missing wp_unslash on Arrays]
 **Learning:** `$_POST` array inputs containing user-supplied text (e.g. topic titles, names, free-form text from text inputs) must be unslashed before sanitizing or mapping, otherwise WordPress magic quotes will persist and leave backslashes in stored data. However, arrays whose values are IDs or structured keys from checkbox/bulk-selection submissions (e.g. `"type:id"` pairs like `"template:5"`) contain no characters affected by magic quotes and do not need `wp_unslash()`.
 **Action:** Apply `wp_unslash()` to `$_POST['array_key']` only when the values are text or user input (titles, labels, free-form strings). Skip it when the values are integer IDs, slugs, or structured keys from bulk-selection checkboxes, as those values are sanitized by `absint()` or `sanitize_key()` and contain no quotable characters.
+
+## 2026-03-25 - [PHP array_map TypeError on Nested Arrays]
+**Learning:** In PHP 8+, passing a nested array to `sanitize_text_field` via `array_map` throws a fatal `TypeError` when dealing with user input like `$_POST['keywords'][0][nested] = value`.
+**Action:** When sanitizing loosely structured or user-provided arrays from superglobals, use a `foreach` loop to verify elements with `is_scalar()` before passing them to string-expecting sanitization functions instead of blindly applying `array_map()`.
