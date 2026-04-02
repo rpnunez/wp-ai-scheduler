@@ -343,7 +343,11 @@ class AIPS_Session_To_JSON {
 		}
 		
 		// Try to set restrictive permissions
-		@chmod($filepath, 0644);
+		$chmod_result = chmod($filepath, 0644);
+		if ($chmod_result === false) {
+			$logger = new AIPS_Logger();
+			$logger->warning('Failed to set permissions for export file', array('file' => $filepath));
+		}
 		
 		return array(
 			'path' => $filepath,
@@ -356,10 +360,12 @@ class AIPS_Session_To_JSON {
 	 * Create .htaccess file to protect export directory
 	 *
 	 * @param string $dir Directory path
+	 * @return void
 	 */
 	private function create_htaccess_protection($dir) {
 		$htaccess_file = trailingslashit($dir) . '.htaccess';
 		$index_file = trailingslashit($dir) . 'index.php';
+		$logger = new AIPS_Logger();
 		
 		if (!file_exists($htaccess_file)) {
 			$content = "# Protect AIPS export files\n";
@@ -369,11 +375,17 @@ class AIPS_Session_To_JSON {
 			$content .= "    Deny from all\n";
 			$content .= "</Files>\n";
 
-			@file_put_contents($htaccess_file, $content);
+			$put_result = file_put_contents($htaccess_file, $content);
+			if ($put_result === false) {
+				$logger->warning('Failed to write .htaccess for export directory', array('file' => $htaccess_file));
+			}
 		}
 		
 		if (!file_exists($index_file)) {
-			@file_put_contents($index_file, '<?php // Silence is golden');
+			$put_result = file_put_contents($index_file, '<?php // Silence is golden');
+			if ($put_result === false) {
+				$logger->warning('Failed to write index.php for export directory', array('file' => $index_file));
+			}
 		}
 	}
 	
@@ -420,7 +432,12 @@ class AIPS_Session_To_JSON {
 			
 			// Delete if older than max age
 			if (($current_time - $file_time) > $max_age) {
-				if (@unlink($file)) {
+				if (!is_writable($file)) {
+					$result['errors'][] = 'File is not writable/deletable: ' . basename($file);
+					continue;
+				}
+				$unlink_result = unlink($file);
+				if ($unlink_result === true) {
 					$result['deleted']++;
 				} else {
 					$result['errors'][] = 'Failed to delete: ' . basename($file);
