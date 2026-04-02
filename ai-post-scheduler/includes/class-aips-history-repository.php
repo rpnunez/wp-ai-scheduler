@@ -973,6 +973,34 @@ class AIPS_History_Repository {
     }
 
     /**
+     * Determine whether featured image generation failed for a history run.
+     *
+     * @param int $history_id History ID.
+     * @return bool True when featured image generation was attempted and failed.
+     */
+    public function did_featured_image_generation_fail($history_id) {
+        $history_id = absint($history_id);
+
+        if (!$history_id) {
+            return false;
+        }
+
+        $count = $this->wpdb->get_var($this->wpdb->prepare(
+            "SELECT COUNT(*)
+            FROM {$this->table_name_log}
+            WHERE history_id = %d
+            AND log_type = 'metric_generation_result'
+            AND details LIKE %s
+            AND details LIKE %s",
+            $history_id,
+            '%"image_attempted":true%',
+            '%"image_success":false%'
+        ));
+
+        return ((int) $count) > 0;
+    }
+
+    /**
      * Get all revisions for a specific post component
      *
      * Retrieves all AI_RESPONSE logs for a given post and component type,
