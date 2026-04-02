@@ -260,7 +260,7 @@ class AIPS_Schedule_Processor {
 
         // Explicitly fetch the template to ensure we have the most up-to-date post_quantity
         $actual_template_model = $this->template_repository->get_by_id($schedule->template_id);
-        $template_post_quantity = $actual_template_model ? $actual_template_model->post_quantity : 1;
+        $template_post_quantity = ($actual_template_model && isset($actual_template_model->post_quantity)) ? $actual_template_model->post_quantity : 1;
 
         // Use caller-supplied override, or fall back to the template's post_quantity, defaulting to 1.
         $raw_quantity = $quantity_override ?? ($template_post_quantity ?? 1);
