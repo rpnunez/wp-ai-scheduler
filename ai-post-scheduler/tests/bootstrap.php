@@ -893,6 +893,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             public $get_col_return_val = null;
             public $get_results_return_val = null;
             public $get_var_return_val = null;
+            public $get_row_return_val = null;
             private $data = array();
             
             public function esc_like($text) {
@@ -925,10 +926,18 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             }
             
             public function get_results($query, $output = OBJECT) {
+                if (isset($this->get_results_return_val)) {
+                    return $this->get_results_return_val;
+                }
+
                 return array();
             }
             
             public function get_row($query, $output = OBJECT, $y = 0) {
+                if (isset($this->get_row_return_val)) {
+                    return $this->get_row_return_val;
+                }
+
                 // Return a default object with common properties to prevent null reference errors
                 $obj = new stdClass();
                 $obj->id = 1; // Default ID
