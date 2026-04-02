@@ -115,17 +115,17 @@ class AIPS_Admin_Bar {
 		$quick_links = array(
 			array(
 				'id'    => 'aips-toolbar-templates',
-				'title' => '<span class="dashicons dashicons-media-document"></span> ' . esc_html__('Templates', 'ai-post-scheduler'),
+				'title' => '<span class="aips-toolbar-link-icon dashicons dashicons-admin-page" aria-hidden="true"></span><span class="aips-toolbar-link-label">' . esc_html__('Templates', 'ai-post-scheduler') . '</span>',
 				'href'  => AIPS_Admin_Menu_Helper::get_page_url('templates'),
 			),
 			array(
 				'id'    => 'aips-toolbar-authors',
-				'title' => '<span class="dashicons dashicons-admin-users"></span> ' . esc_html__('Authors', 'ai-post-scheduler'),
+				'title' => '<span class="aips-toolbar-link-icon dashicons dashicons-admin-users" aria-hidden="true"></span><span class="aips-toolbar-link-label">' . esc_html__('Authors', 'ai-post-scheduler') . '</span>',
 				'href'  => AIPS_Admin_Menu_Helper::get_page_url('authors'),
 			),
 			array(
 				'id'    => 'aips-toolbar-schedules',
-				'title' => '<span class="dashicons dashicons-calendar-alt"></span> ' . esc_html__('Schedules', 'ai-post-scheduler'),
+				'title' => '<span class="aips-toolbar-link-icon dashicons dashicons-calendar-alt" aria-hidden="true"></span><span class="aips-toolbar-link-label">' . esc_html__('Schedules', 'ai-post-scheduler') . '</span>',
 				'href'  => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
 			),
 		);
@@ -165,6 +165,10 @@ class AIPS_Admin_Bar {
 				'title'  => '<span class="aips-toolbar-notif-heading">'
 					. esc_html__('Notifications', 'ai-post-scheduler')
 					. '</span>'
+					. '<span class="aips-toolbar-notif-columns">'
+					. '<span class="aips-toolbar-notif-column-label">' . esc_html__('Content', 'ai-post-scheduler') . '</span>'
+					. '<span class="aips-toolbar-notif-column-label">' . esc_html__('Date/Time', 'ai-post-scheduler') . '</span>'
+					. '</span>'
 					. '<button class="aips-mark-all-read" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '">'
 					. esc_html__('Mark all as read', 'ai-post-scheduler')
 					. '</button>',
@@ -173,19 +177,29 @@ class AIPS_Admin_Bar {
 			));
 
 			foreach ($notifications as $notif) {
-				$title_markup = '';
-				if (!empty($notif->title)) {
-					$title_markup = '<span class="aips-notif-title">' . esc_html($notif->title) . '</span>';
+				$notification_title_parts = $this->get_notification_title_parts($notif);
+				$event_label = $notification_title_parts['event'];
+				$context_label = $notification_title_parts['context'];
+				$timestamp_label = $this->format_notification_timestamp($notif);
+
+				$node_title  = '<span class="aips-notif-grid">';
+				$node_title .= '<span class="aips-notif-content">';
+				$node_title .= '<span class="aips-notif-event">' . esc_html($event_label) . '</span>';
+
+				if ('' !== $context_label) {
+					$node_title .= '<span class="aips-notif-context">' . esc_html($context_label) . '</span>';
 				}
 
-				$node_title = $title_markup . '<span class="aips-notif-message">';
+				if (!empty($notif->message)) {
+					$node_title .= '<span class="aips-notif-message">' . esc_html($notif->message) . '</span>';
+				}
 
 				if (!empty($notif->url)) {
-					$node_title .= '<a href="' . esc_url($notif->url) . '">' . esc_html($notif->message) . '</a>';
-				} else {
-					$node_title .= esc_html($notif->message);
+					$node_title .= '<a class="aips-notif-action" href="' . esc_url($notif->url) . '">' . esc_html__('View Post', 'ai-post-scheduler') . '</a>';
 				}
 
+				$node_title .= '</span>';
+				$node_title .= '<span class="aips-notif-datetime">' . esc_html($timestamp_label) . '</span>';
 				$node_title .= '</span>'
 					. '<button class="aips-mark-read" data-id="' . esc_attr($notif->id) . '" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '" title="' . esc_attr__('Mark as read', 'ai-post-scheduler') . '">'
 					. '<span class="dashicons dashicons-yes-alt"></span>'
@@ -208,6 +222,52 @@ class AIPS_Admin_Bar {
 				));
 			}
 		}
+	}
+
+	/**
+	 * Build display-friendly event/context labels from a notification title.
+	 *
+	 * @param object $notification Notification row object.
+	 * @return array<string, string>
+	 */
+	private function get_notification_title_parts($notification) {
+		$title = isset($notification->title) ? wp_strip_all_tags((string) $notification->title) : '';
+
+		if ('' !== $title) {
+			$segments = explode(':', $title, 2);
+			$event = trim($segments[0]);
+			$context = isset($segments[1]) ? trim($segments[1]) : '';
+
+			if ('' !== $event) {
+				return array(
+					'event'   => $event,
+					'context' => $context,
+				);
+			}
+		}
+
+		$type_label = isset($notification->type) ? str_replace('_', ' ', (string) $notification->type) : '';
+
+		return array(
+			'event'   => '' !== $type_label ? ucwords($type_label) : __('Notification', 'ai-post-scheduler'),
+			'context' => '',
+		);
+	}
+
+	/**
+	 * Format notification timestamp using the site timezone settings.
+	 *
+	 * @param object $notification Notification row object.
+	 * @return string
+	 */
+	private function format_notification_timestamp($notification) {
+		if (empty($notification->created_at) || !is_string($notification->created_at)) {
+			return __('Unknown time', 'ai-post-scheduler');
+		}
+
+		$format = get_option('date_format') . ' ' . get_option('time_format');
+
+		return get_date_from_gmt($notification->created_at, $format);
 	}
 
 	/**

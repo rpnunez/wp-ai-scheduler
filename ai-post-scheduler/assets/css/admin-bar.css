@@ -40,7 +40,8 @@
    Dropdown container
 ------------------------------------------------------- */
 #wpadminbar #wp-admin-bar-aips-toolbar .ab-sub-wrapper {
-	min-width: 320px;
+	width: min(860px, calc(100vw - 24px));
+	max-width: calc(100vw - 24px);
 }
 
 /* -------------------------------------------------------
@@ -52,10 +53,24 @@
 	margin-bottom: 4px;
 }
 
-#wpadminbar #wp-admin-bar-aips-toolbar-links .ab-item .dashicons {
+#wpadminbar #wp-admin-bar-aips-toolbar-links .ab-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+#wpadminbar #wp-admin-bar-aips-toolbar-links .aips-toolbar-link-icon {
+	font-family: dashicons;
 	font-size: 16px;
+	line-height: 1;
+	display: inline-block;
 	vertical-align: middle;
-	margin-right: 4px;
+	width: 16px;
+	height: 16px;
+}
+
+#wpadminbar #wp-admin-bar-aips-toolbar-links .aips-toolbar-link-label {
+	line-height: 1.4;
 }
 
 /* -------------------------------------------------------
@@ -71,27 +86,44 @@
 	display: flex !important;
 	align-items: center;
 	justify-content: space-between;
-	padding: 6px 12px;
+	padding: 8px 12px;
 	cursor: default;
 	pointer-events: none; /* clicks handled by inner buttons */
-	color: rgba(255, 255, 255, 0.7);
-	font-size: 11px;
+	color: rgba(255, 255, 255, 0.8);
+	font-size: 12px;
 	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
+	text-transform: none;
+	letter-spacing: 0.01em;
 }
 
 #wpadminbar .aips-toolbar-notif-heading {
 	pointer-events: none;
+	font-weight: 700;
+}
+
+#wpadminbar .aips-toolbar-notif-columns {
+	display: inline-flex;
+	gap: 12px;
+	margin-left: auto;
+	margin-right: 12px;
+	min-width: 300px;
+	justify-content: space-between;
+	pointer-events: none;
+}
+
+#wpadminbar .aips-toolbar-notif-column-label {
+	font-size: 11px;
+	font-weight: 500;
+	color: rgba(255, 255, 255, 0.62);
 }
 
 /* "Mark all as read" button inside header */
 #wpadminbar .aips-mark-all-read {
 	pointer-events: all;
 	background: none;
-	border: 1px solid rgba(255, 255, 255, 0.4);
+	border: 1px solid rgba(255, 255, 255, 0.35);
 	border-radius: 3px;
-	color: rgba(255, 255, 255, 0.8);
+	color: rgba(255, 255, 255, 0.85);
 	cursor: pointer;
 	font-size: 11px;
 	padding: 2px 6px;
@@ -109,40 +141,96 @@
 	align-items: flex-start;
 	gap: 8px;
 	white-space: normal;
-	padding: 8px 12px;
+	padding: 10px 12px;
 	line-height: 1.4;
 	cursor: default;
+	border-left: 3px solid #5f9dd9;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(41, 90, 138, 0.2);
 }
 
 #wpadminbar .aips-toolbar-notification > .ab-item:hover {
-	background: rgba(255, 255, 255, 0.07);
+	background: rgba(56, 111, 166, 0.26);
+}
+
+#wpadminbar .aips-notif-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 170px;
+	gap: 12px;
+	width: 100%;
+	align-items: start;
+}
+
+#wpadminbar .aips-notif-content {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+#wpadminbar .aips-notif-event {
+	display: block;
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: none;
+	color: #fff;
+	line-height: 1.35;
+}
+
+#wpadminbar .aips-notif-context {
+	display: block;
+	font-size: 11px;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.86);
+	line-height: 1.35;
 }
 
 #wpadminbar .aips-notif-message {
 	flex: 1;
-	font-size: 12px;
-	color: rgba(255, 255, 255, 0.9);
+	font-size: 11px;
+	color: rgba(255, 255, 255, 0.75);
 	word-break: break-word;
 }
 
-#wpadminbar .aips-notif-message a {
-	color: #72aee6;
-	text-decoration: underline;
+#wpadminbar .aips-notif-action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	align-self: flex-start;
+	margin-top: 6px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	border: 1px solid rgba(114, 174, 230, 0.8);
+	color: #b9defe;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.6;
+	text-decoration: none;
 }
 
-#wpadminbar .aips-notif-message a:hover {
-	color: #a8d0f0;
+#wpadminbar .aips-notif-action:hover {
+	background: rgba(114, 174, 230, 0.18);
+	color: #fff;
+}
+
+#wpadminbar .aips-notif-datetime {
+	font-size: 11px;
+	line-height: 1.4;
+	color: rgba(255, 255, 255, 0.68);
+	white-space: nowrap;
+	text-align: right;
 }
 
 /* Mark-as-read button */
 #wpadminbar .aips-mark-read {
 	background: none;
 	border: none;
-	color: rgba(255, 255, 255, 0.5);
+	color: rgba(255, 255, 255, 0.6);
 	cursor: pointer;
 	padding: 0;
 	flex-shrink: 0;
 	line-height: 1;
+	margin-top: 2px;
 }
 
 #wpadminbar .aips-mark-read:hover {
@@ -171,11 +259,13 @@
    Notification severity levels
 ------------------------------------------------------- */
 #wpadminbar .aips-notif-level-warning > .ab-item {
-	border-left: 3px solid #f0b429;
+	border-left-color: #5f9dd9;
+	background: rgba(41, 90, 138, 0.2);
 }
 
 #wpadminbar .aips-notif-level-error > .ab-item {
-	border-left: 3px solid #d63638;
+	border-left-color: #d85a66;
+	background: rgba(130, 44, 55, 0.24);
 }
 
 /* Notification title line */
@@ -184,13 +274,13 @@
 	font-size: 11px;
 	font-weight: 600;
 	color: rgba(255, 255, 255, 0.6);
-	text-transform: uppercase;
+	text-transform: none;
 	letter-spacing: 0.04em;
 	margin-bottom: 2px;
 }
 
 #wpadminbar .aips-notif-level-warning .aips-notif-title {
-	color: #f0b429;
+	color: rgba(255, 255, 255, 0.74);
 }
 
 #wpadminbar .aips-notif-level-error .aips-notif-title {
