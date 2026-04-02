@@ -178,9 +178,10 @@
 		/**
 		 * Register all delegated event listeners for the schedule admin UI.
 		 *
-		 * Uses event delegation on `document` with a per-handler reference so
-		 * the Escape key, backdrop click, and close-button all share a single
-		 * `closeModal` call.
+		 * Uses event delegation on `document` with per-handler references for
+		 * schedule CRUD, toggle, run-now, search, and history actions. Modal
+		 * close behavior (Escape key, backdrop click, close buttons) continues
+		 * to be handled globally by admin.js.
 		 */
 		bindEvents: function() {
 			var S = AIPS.Schedules;
