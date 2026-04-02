@@ -25,3 +25,7 @@
 ## 2026-03-25 - [PHP array_map TypeError on Nested Arrays]
 **Learning:** In PHP 8+, passing a nested array to `sanitize_text_field` via `array_map` throws a fatal `TypeError` when dealing with user input like `$_POST['keywords'][0][nested] = value`.
 **Action:** When sanitizing loosely structured or user-provided arrays from superglobals, use a `foreach` loop to verify elements with `is_scalar()` before passing them to string-expecting sanitization functions instead of blindly applying `array_map()`.
+
+## 2024-03-31 - [Fix PHP Warning in AIPS_Schedule_Processor and missing mock support in Tests]
+**Learning:** The tests rely on `$wpdb->get_results` properly simulating queries with complex joins, but in limited test mode, a mocked `get_results_return_val` is needed, but missing in `tests/bootstrap.php`. Additionally, `AIPS_Schedule_Processor::execute_schedule_logic()` assumes `$actual_template_model` has a `post_quantity` property, which emits a PHP Warning if the object exists but lacks the property (e.g., from mock environments or incomplete data).
+**Action:** Added `get_results_return_val` to the mock `wpdb` class in `tests/bootstrap.php` and modified `get_results()` to return it if set. Also fixed the PHP Warning in `AIPS_Schedule_Processor` by checking `isset($actual_template_model->post_quantity)`.
