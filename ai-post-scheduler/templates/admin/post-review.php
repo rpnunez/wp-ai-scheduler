@@ -308,7 +308,7 @@ include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 	<div class="aips-modal-overlay"></div>
 	<div class="aips-modal-content aips-modal-large" style="display: flex; flex-direction: column; max-height: 90vh;">
 		<div class="aips-modal-header">
-			<h2 id="aips-multi-draft-modal-title"><?php esc_html_e('Generate &amp; Compare Draft Variants', 'ai-post-scheduler'); ?></h2>
+			<h2 id="aips-multi-draft-modal-title"><?php esc_html_e('Generate & Compare Draft Variants', 'ai-post-scheduler'); ?></h2>
 			<button type="button" id="aips-multi-draft-close" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
 				<span class="dashicons dashicons-no-alt"></span>
 			</button>
@@ -332,7 +332,7 @@ include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 				<div class="aips-mdc-generating">
 					<span class="spinner is-active"></span>
 					<p class="aips-mdc-generating-text">
-						<?php esc_html_e('Generating draft variants using AI. This may take a minute or two&hellip;', 'ai-post-scheduler'); ?>
+						<?php esc_html_e('Generating draft variants using AI. This may take a minute or two…', 'ai-post-scheduler'); ?>
 					</p>
 				</div>
 			</div>
