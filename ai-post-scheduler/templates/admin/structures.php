@@ -349,3 +349,55 @@ if (!isset($sections) || !is_array($sections)) {
 	</div><!-- .aips-page-container -->
 </div><!-- .wrap -->
 
+<?php /* HTML templates used by AIPS.Templates.renderRaw() in admin.js */ ?>
+
+<script type="text/html" id="aips-tmpl-structure-row">
+<tr data-structure-id="{{id}}">
+	<td class="column-name cell-primary">{{name}}</td>
+	<td class="column-description">{{description}}</td>
+	<td class="column-active">{{activeBadge}}</td>
+	<td class="column-default">{{defaultBadge}}</td>
+	<td class="column-actions">
+		<div class="aips-action-buttons">
+			<button class="aips-btn aips-btn-sm aips-edit-structure" data-id="{{id}}" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-edit"></span>
+				<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
+			</button>
+			<a class="aips-btn aips-btn-sm aips-btn-ghost" href="{{scheduleUrl}}" title="<?php esc_attr_e('Schedule', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-calendar-alt"></span>
+				<span class="screen-reader-text"><?php esc_html_e('Schedule', 'ai-post-scheduler'); ?></span>
+			</a>
+			<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-structure" data-id="{{id}}" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-trash"></span>
+				<span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
+			</button>
+		</div>
+	</td>
+</tr>
+</script>
+
+<script type="text/html" id="aips-tmpl-section-row">
+<tr data-section-id="{{id}}">
+	<td class="column-name cell-primary">{{name}}</td>
+	<td class="column-key"><code>{{section_key}}</code></td>
+	<td class="column-description">{{description}}</td>
+	<td>{{activeBadge}}</td>
+	<td>
+		<div class="aips-action-buttons">
+			<button class="aips-btn aips-btn-sm aips-edit-section" data-id="{{id}}" title="<?php esc_attr_e('Edit', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-edit"></span>
+				<span class="screen-reader-text"><?php esc_html_e('Edit', 'ai-post-scheduler'); ?></span>
+			</button>
+			<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-section" data-id="{{id}}" title="<?php esc_attr_e('Delete', 'ai-post-scheduler'); ?>">
+				<span class="dashicons dashicons-trash"></span>
+				<span class="screen-reader-text"><?php esc_html_e('Delete', 'ai-post-scheduler'); ?></span>
+			</button>
+		</div>
+	</td>
+</tr>
+</script>
+
+<script type="text/html" id="aips-tmpl-section-option">
+<option value="{{section_key}}">{{name}}</option>
+</script>
+

@@ -94,6 +94,9 @@ class AIPS_Admin_Assets {
             'saveSectionFailed' => __('Failed to save prompt section.', 'ai-post-scheduler'),
             'loadSectionFailed' => __('Failed to load prompt section.', 'ai-post-scheduler'),
             'deleteSectionFailed' => __('Failed to delete prompt section.', 'ai-post-scheduler'),
+            'activeLabel'  => __('Active', 'ai-post-scheduler'),
+            'inactiveLabel' => __('Inactive', 'ai-post-scheduler'),
+            'defaultLabel'  => __('Default', 'ai-post-scheduler'),
             'errorOccurred' => __('An error occurred.', 'ai-post-scheduler'),
             'errorTryAgain' => __('An error occurred. Please try again.', 'ai-post-scheduler'),
             // Template Wizard strings
