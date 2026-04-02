@@ -56,14 +56,20 @@ class AIPS_Schedule_Processor {
     private $logger;
 
     /**
+     * @var AIPS_Generation_Execution_Runner
+     */
+    private $runner;
+
+    /**
      * Constructor.
      *
-     * @param AIPS_Schedule_Repository|null    $repository
-     * @param AIPS_Template_Repository|null    $template_repository
-     * @param AIPS_Generator|null              $generator
-     * @param AIPS_History_Service|null        $history_service
-     * @param AIPS_Template_Type_Selector|null $template_type_selector
-     * @param AIPS_Logger|null                 $logger
+     * @param AIPS_Schedule_Repository|null         $repository
+     * @param AIPS_Template_Repository|null         $template_repository
+     * @param AIPS_Generator|null                   $generator
+     * @param AIPS_History_Service|null             $history_service
+     * @param AIPS_Template_Type_Selector|null      $template_type_selector
+     * @param AIPS_Logger|null                      $logger
+     * @param AIPS_Generation_Execution_Runner|null $runner
      */
     public function __construct(
         $repository = null,
@@ -71,7 +77,8 @@ class AIPS_Schedule_Processor {
         $generator = null,
         $history_service = null,
         $template_type_selector = null,
-        $logger = null
+        $logger = null,
+        $runner = null
     ) {
         $this->repository = $repository ?: new AIPS_Schedule_Repository();
         $this->template_repository = $template_repository ?: new AIPS_Template_Repository();
@@ -81,6 +88,7 @@ class AIPS_Schedule_Processor {
         $this->interval_calculator = new AIPS_Interval_Calculator();
         $this->template_type_selector = $template_type_selector ?: new AIPS_Template_Type_Selector();
         $this->logger = $logger ?: new AIPS_Logger();
+        $this->runner = $runner ?: new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
     }
 
     /**
@@ -96,6 +104,10 @@ class AIPS_Schedule_Processor {
 
     public function set_template_repository($repository) {
         $this->template_repository = $repository;
+    }
+
+    public function set_runner($runner) {
+        $this->runner = $runner;
     }
 
     /**
@@ -163,79 +175,85 @@ class AIPS_Schedule_Processor {
      *
      * @param object $schedule Schedule object (merged with template).
      */
+    /**
+     * Execute a schedule with claim-first locking.
+     *
+     * LOCKING STRATEGY — claim-first (load-shedding):
+     * `next_run` is advanced to the next interval *before* the generation
+     * work begins.  This ensures that a second cron worker that overlaps
+     * with this one will see a future `next_run` and skip the schedule,
+     * preventing duplicate post generation.  The trade-off is intentional:
+     * if the process crashes mid-execution the schedule will not retry until
+     * the next calculated interval.  For template schedules (which run
+     * frequently) missing one run is safer than producing duplicate posts.
+     *
+     * This asymmetry is deliberate — see generate_post_for_author() in
+     * AIPS_Author_Post_Generator for the contrasting "advance-after"
+     * strategy used by the coarser per-author schedule.
+     *
+     * @param object $schedule Schedule object (merged with template data).
+     */
     private function execute_schedule_with_lock($schedule) {
-        // Generate a fresh correlation ID for this automated run so all history
-        // records and notifications produced during this execution share one ID.
-        $correlation_id = AIPS_Correlation_ID::generate();
+        $this->runner->run(
+            function() use ($schedule) {
+                $original_next_run = $schedule->next_run;
 
-        try {
-            // Claim-First Locking Strategy (Hunter)
-            // Immediately calculate and update next_run to lock this schedule from concurrent processes.
+                if ($schedule->frequency === 'once') {
+                    // For one-time schedules, "claim" it by pushing next_run forward.
+                    // If the process crashes it will be retried in 1 hour.
+                    // On success it will be deleted by handle_post_execution_cleanup().
+                    $new_next_run = date('Y-m-d H:i:s', current_time('timestamp') + HOUR_IN_SECONDS);
+                } else {
+                    // Calculate next run using original next_run to preserve phase.
+                    $new_next_run = $this->interval_calculator->calculate_next_run($schedule->frequency, $original_next_run);
+                }
 
-            $original_next_run = $schedule->next_run;
-            $new_next_run = null;
+                // Update next_run immediately to lock this schedule from concurrent runs.
+                $lock_result = $this->repository->update($schedule->schedule_id, array(
+                    'next_run' => $new_next_run
+                ));
 
-            if ($schedule->frequency === 'once') {
-                // For one-time schedules, "claim" it by pushing next_run forward (e.g., 1 hour)
-                // If the process crashes, it will be retried in 1 hour.
-                // If it succeeds, it will be deleted.
-                $new_next_run = date('Y-m-d H:i:s', current_time('timestamp') + HOUR_IN_SECONDS);
-            } else {
-                 // Calculate next run using original next_run to preserve phase
-                 $new_next_run = $this->interval_calculator->calculate_next_run($schedule->frequency, $original_next_run);
-            }
+                if ($lock_result === false) {
+                    $this->logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
+                    do_action('aips_scheduler_error', array(
+                        'schedule_id'     => $schedule->schedule_id,
+                        'template_id'     => $schedule->template_id,
+                        'schedule_name'   => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
+                        'error_code'      => 'lock_acquisition_failed',
+                        'error_message'   => __('Failed to acquire execution lock for schedule.', 'ai-post-scheduler'),
+                        'frequency'       => $schedule->frequency,
+                        'creation_method' => 'scheduled',
+                        'correlation_id'  => AIPS_Correlation_ID::get(),
+                        'url'             => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+                        'dedupe_key'      => 'scheduler_lock_' . absint($schedule->schedule_id),
+                        'dedupe_window'   => 900,
+                    ));
+                    // Early return; the runner's finally block will reset the correlation ID.
+                    return;
+                }
 
-            // Update next_run immediately to lock this schedule from concurrent runs
-            $lock_result = $this->repository->update($schedule->schedule_id, array(
-                'next_run' => $new_next_run
-            ));
-
-            if ($lock_result === false) {
-                $this->logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
-                do_action('aips_scheduler_error', array(
+                $this->execute_schedule_logic($schedule, false);
+            },
+            'schedule_execution',
+            array('schedule_id' => $schedule->schedule_id),
+            function(\Throwable $e, $correlation_id) use ($schedule) {
+                // Catch-all for unexpected exceptions. The runner has already recorded
+                // this to the history service; fire the site-level system error action
+                // so operators are notified via the admin bar / notification system.
+                do_action('aips_system_error', array(
+                    'title'          => __('Schedule processing exception', 'ai-post-scheduler'),
+                    'error_code'     => 'schedule_processing_exception',
+                    'error_message'  => $e->getMessage(),
                     'schedule_id'    => $schedule->schedule_id,
-                    'template_id'    => $schedule->template_id,
+                    'template_id'    => isset($schedule->template_id) ? $schedule->template_id : 0,
                     'schedule_name'  => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
-                    'error_code'     => 'lock_acquisition_failed',
-                    'error_message'  => __('Failed to acquire execution lock for schedule.', 'ai-post-scheduler'),
-                    'frequency'      => $schedule->frequency,
-                    'creation_method'=> 'scheduled',
                     'correlation_id' => $correlation_id,
                     'url'            => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
-                    'dedupe_key'     => 'scheduler_lock_' . absint($schedule->schedule_id),
-                    'dedupe_window'  => 900,
+                    'dedupe_key'     => 'system_schedule_exception_' . absint($schedule->schedule_id),
+                    'dedupe_window'  => 1800,
                 ));
-                AIPS_Correlation_ID::reset();
-                return; // Skip generation if we couldn't lock
             }
-
-            // Execute the core logic
-            $this->execute_schedule_logic($schedule, false);
-
-        } catch (Throwable $e) {
-            // Catch any unexpected exceptions to prevent the cron job from crashing,
-            // allowing subsequent schedules in the batch to be processed.
-            $this->logger->log('Critical error processing schedule ' . $schedule->schedule_id . ': ' . $e->getMessage(), 'error', array(
-                'trace' => $e->getTraceAsString()
-            ));
-
-            do_action('aips_system_error', array(
-                'title'         => __('Schedule processing exception', 'ai-post-scheduler'),
-                'error_code'    => 'schedule_processing_exception',
-                'error_message' => $e->getMessage(),
-                'schedule_id'   => $schedule->schedule_id,
-                'template_id'   => isset($schedule->template_id) ? $schedule->template_id : 0,
-                'schedule_name' => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
-                'correlation_id' => $correlation_id,
-                'url'           => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
-                'dedupe_key'    => 'system_schedule_exception_' . absint($schedule->schedule_id),
-                'dedupe_window' => 1800,
-            ));
-        } finally {
-            // Always reset the correlation ID after a run to prevent bleed-over
-            // into any subsequent scheduled jobs in the same cron batch.
-            AIPS_Correlation_ID::reset();
-        }
+        );
     }
 
     /**
