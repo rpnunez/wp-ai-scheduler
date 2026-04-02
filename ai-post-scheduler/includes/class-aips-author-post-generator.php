@@ -74,9 +74,6 @@ class AIPS_Author_Post_Generator {
 		$this->interval_calculator = new AIPS_Interval_Calculator();
 		$this->expansion_service = new AIPS_Topic_Expansion_Service();
 		$this->history_service = new AIPS_History_Service();
-		
-		// Hook into WordPress cron
-		add_action('aips_generate_author_posts', array($this, 'process_post_generation'));
 	}
 	
 	/**
