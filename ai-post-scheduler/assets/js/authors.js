@@ -1015,9 +1015,11 @@
 		 * `.aips-topics-table`. Shows a clear button when a term is active.
 		 */
 		filterTopics: function() {
-			var term = $('#aips-topic-search').val().toLowerCase().trim();
-			var $rows = $('.aips-topics-table tbody tr');
-			var $clearBtn = $('#aips-topic-search-clear');
+			var term = $("#aips-topic-search").val().toLowerCase().trim();
+			var $rows = $(".aips-topics-table tbody tr");
+			var $clearBtn = $("#aips-topic-search-clear");
+			var $noResults = $("#aips-topic-search-no-results");
+			var $topicsTable = $(".aips-topics-table");
 
 			if (term.length > 0) {
 				$clearBtn.show();
@@ -1025,15 +1027,27 @@
 				$clearBtn.hide();
 			}
 
+			var visibleCount = 0;
 			$rows.each(function() {
 				var $row = $(this);
-				var title = $row.find('.topic-title').text().toLowerCase();
+				var title = $row.find(".topic-title").text().toLowerCase();
 				if (title.indexOf(term) > -1) {
 					$row.show();
+					visibleCount++;
 				} else {
 					$row.hide();
 				}
 			});
+
+			if (term.length > 0 && visibleCount === 0 && $rows.length > 0) {
+				$topicsTable.hide();
+				$noResults.show();
+			} else {
+				if ($rows.length > 0) {
+					$topicsTable.show();
+				}
+				$noResults.hide();
+			}
 		},
 
 		/**

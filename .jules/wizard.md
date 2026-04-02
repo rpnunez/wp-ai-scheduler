@@ -55,3 +55,8 @@
 ## 2026-03-31 - Standardize Search Clear Buttons Classes
 **Learning:** Discovered inconsistencies in the CSS classes for "Search" and "Clear" buttons across various admin panel filter interfaces where `.aips-btn-sm` was omitted, violating standard UI component consistency guidelines.
 **Action:** Replaced `class="aips-btn aips-btn-secondary"` with `class="aips-btn aips-btn-sm aips-btn-secondary"` strictly on search and clear buttons within `.aips-filter-right` sections in all admin PHP templates to ensure uniform appearance across the plugin interface.
+## 2026-04-02 - Add Empty State to JS Topic Search
+
+Learning: Empty states for JS-filtered lists are important UX tools, but they need explicit HTML and JavaScript logic to track visible elements, unlike PHP-driven list searches which natively show empty states via array counts.
+
+Action: Implemented a 'No Topics Found' empty state on the Author Topics page. The `filterTopics` function now explicitly counts `visibleCount` and toggles the `.aips-empty-state` block when the user's search yields 0 results.
