@@ -10,7 +10,7 @@
  * previously lived inline in each open/edit/clone handler.
  *
  * @package AI_Post_Scheduler
- * @since   2.3.0
+ * @since   1.7.3
  */
 
 (function($) {
