@@ -201,6 +201,28 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
 
+            <!-- Scheduler Management -->
+            <div class="aips-content-panel" style="margin-bottom: 20px;">
+                <div class="aips-panel-header">
+                    <h2>
+                        <span class="dashicons dashicons-clock" style="margin-right: 5px;"></span>
+                        <?php esc_html_e('Scheduler Management', 'ai-post-scheduler'); ?>
+                    </h2>
+                </div>
+                <div class="aips-panel-body">
+                    <p><?php esc_html_e('Use this tool to reset the plugin\'s WP-Cron events. If duplicate or stacked cron events have accumulated (which can trigger excessive AI calls), flush and re-register all events with one click.', 'ai-post-scheduler'); ?></p>
+
+                    <div class="aips-btn-group" style="margin-bottom: 8px;">
+                        <button type="button" class="aips-btn aips-btn-secondary aips-flush-cron">
+                            <span class="dashicons dashicons-controls-repeat"></span>
+                            <?php esc_html_e('Flush WP-Cron Events', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+
+                    <div class="aips-flush-cron-result" style="display:none;"></div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
