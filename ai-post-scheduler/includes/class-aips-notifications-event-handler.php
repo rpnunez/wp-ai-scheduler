@@ -186,7 +186,8 @@ class AIPS_Notifications_Event_Handler {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_trigger_error
 				trigger_error(
 					sprintf(
-						'AIPS_Notifications: hook binding skipped — method "%s" does not exist on %s (hook: %s)',
+						'%s: hook binding skipped — method "%s" does not exist on %s (hook: %s)',
+						__CLASS__,
 						$binding['method'],
 						__CLASS__,
 						$binding['hook']

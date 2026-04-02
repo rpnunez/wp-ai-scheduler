@@ -113,6 +113,15 @@ class AIPS_Notifications {
 	}
 
 	/**
+	 * Return the event handler instance.
+	 *
+	 * @return AIPS_Notifications_Event_Handler
+	 */
+	public function get_event_handler() {
+		return $this->event_handler;
+	}
+
+	/**
 	 * Return the available channel modes for settings.
 	 *
 	 * @return array<string, string>
@@ -285,26 +294,6 @@ class AIPS_Notifications {
 			))
 		);
 	}
-
-	// -----------------------------------------------------------------------
-	// Hook registry
-	// -----------------------------------------------------------------------
-
-	/**
-	 * Declare the WordPress action hook bindings for this service.
-	 *
-	 * Returns an array of binding maps.  Each map may contain:
-	 *   - 'hook'          (string, required) — WordPress action hook name.
-	 *   - 'method'        (string, required) — Public method name on this class.
-	 *   - 'priority'      (int,    optional) — Hook priority.  Default 10.
-	 *   - 'accepted_args' (int,    optional) — Number of accepted arguments.  Default 1.
-	 *
-	 * Third-party code can add, modify, or remove bindings via the
-	 * `aips_notification_hook_bindings` filter before this service is
-	 * first instantiated.
-	 *
-	 * @return array<int, array{hook: string, method: string, priority?: int, accepted_args?: int}>
-	 */
 
 	// -----------------------------------------------------------------------
 	// Core send method
