@@ -64,7 +64,6 @@ class AIPS_Scheduler {
             $this->template_type_selector
         );
 
-        add_filter('cron_schedules', array($this, 'add_cron_intervals'));
     }
 
     /**
