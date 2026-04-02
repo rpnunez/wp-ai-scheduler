@@ -1279,7 +1279,7 @@
 							if ($row.length) {
 								AIPS.Schedules.updateUnifiedRowStatus($row, isActive);
 								if (Object.keys(failedKeysMap).length > 0) {
-									$row.find('.aips-unified-select').prop('checked', false);
+									$row.find('.aips-unified-checkbox').prop('checked', false);
 								}
 							}
 						});
