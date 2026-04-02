@@ -209,6 +209,9 @@ if (!defined('ABSPATH')) {
 				<p><?php esc_html_e('Changes marked with * will be saved', 'ai-post-scheduler'); ?></p>
 			</div>
 			<div class="aips-modal-footer-right">
+				<button type="button" class="button" id="aips-ai-edit-regenerate-all">
+					<?php esc_html_e('Regenerate All', 'ai-post-scheduler'); ?>
+				</button>
 				<button type="button" class="button" id="aips-ai-edit-cancel">
 					<?php esc_html_e('Cancel', 'ai-post-scheduler'); ?>
 				</button>

@@ -1520,7 +1520,8 @@
          * Save the article structure form via AJAX.
          *
          * Sends the `aips_save_structure` AJAX action with all structure form
-         * fields. Reloads the page on success or shows a toast on failure.
+         * fields. On success, renders the updated row using `AIPS.Templates` and
+         * replaces or inserts it in the structures table without a page reload.
          *
          * Bound to the `click` event on `.aips-save-structure`.
          */
@@ -1543,7 +1544,39 @@
             $.post(aipsAjax.ajaxUrl, data, function(response){
                 $btn.prop('disabled', false).text('Save Structure');
                 if (response.success) {
-                    location.reload();
+                    AIPS.Utilities.showToast(response.data.message || 'Structure saved successfully', 'success');
+                    $('#aips-structure-modal').hide();
+
+                    var structure = response.data.structure;
+                    if (structure) {
+                        var T = AIPS.Templates;
+                        var activeBadge = structure.is_active == 1
+                            ? '<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> ' + T.escape(aipsAdminL10n.activeLabel) + '</span>'
+                            : '<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> ' + T.escape(aipsAdminL10n.inactiveLabel) + '</span>';
+                        var defaultBadge = structure.is_default == 1
+                            ? '<span class="aips-badge aips-badge-info">' + T.escape(aipsAdminL10n.defaultLabel) + '</span>'
+                            : '<span class="cell-meta">&mdash;</span>';
+                        var scheduleUrl = (aipsAjax.schedulePageUrl || '') + '&schedule_structure=' + T.escape(String(structure.id));
+
+                        var rowHtml = T.renderRaw('aips-tmpl-structure-row', {
+                            id: T.escape(String(structure.id)),
+                            name: T.escape(structure.name || ''),
+                            description: T.escape(structure.description || ''),
+                            activeBadge: activeBadge,
+                            defaultBadge: defaultBadge,
+                            scheduleUrl: scheduleUrl,
+                        });
+
+                        var $existingRow = $('tr[data-structure-id="' + parseInt(structure.id, 10) + '"]');
+                        if ($existingRow.length) {
+                            $existingRow.replaceWith(rowHtml);
+                        } else {
+                            var $tbody = $('.aips-structures-list tbody');
+                            if ($tbody.length) {
+                                $tbody.append(rowHtml);
+                            }
+                        }
+                    }
                 } else {
                     AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveStructureFailed, 'error');
                 }
@@ -1646,7 +1679,9 @@
          * Save the prompt section form via AJAX.
          *
          * Sends the `aips_save_prompt_section` AJAX action with all section form
-         * fields. Reloads the page on success or shows a toast on failure.
+         * fields. On success, renders the updated row using `AIPS.Templates` and
+         * replaces or inserts it in the sections table, then refreshes the
+         * `#structure_sections` select options — all without a page reload.
          *
          * Bound to the `click` event on `.aips-save-section`.
          */
@@ -1668,7 +1703,48 @@
             $.post(aipsAjax.ajaxUrl, data, function(response){
                 $btn.prop('disabled', false).text('Save Section');
                 if (response.success) {
-                    location.reload();
+                    AIPS.Utilities.showToast(response.data.message || 'Section saved successfully', 'success');
+                    $('#aips-section-modal').hide();
+
+                    var section = response.data.section;
+                    if (section) {
+                        var T = AIPS.Templates;
+                        var activeBadge = section.is_active == 1
+                            ? '<span class="aips-badge aips-badge-success"><span class="dashicons dashicons-yes-alt"></span> ' + T.escape(aipsAdminL10n.activeLabel) + '</span>'
+                            : '<span class="aips-badge aips-badge-neutral"><span class="dashicons dashicons-minus"></span> ' + T.escape(aipsAdminL10n.inactiveLabel) + '</span>';
+
+                        var rowHtml = T.renderRaw('aips-tmpl-section-row', {
+                            id: T.escape(String(section.id)),
+                            name: T.escape(section.name || ''),
+                            section_key: T.escape(section.section_key || ''),
+                            description: T.escape(section.description || ''),
+                            activeBadge: activeBadge,
+                        });
+
+                        var $existingRow = $('tr[data-section-id="' + parseInt(section.id, 10) + '"]');
+                        if ($existingRow.length) {
+                            $existingRow.replaceWith(rowHtml);
+                        } else {
+                            var $tbody = $('.aips-sections-list tbody');
+                            if ($tbody.length) {
+                                $tbody.append(rowHtml);
+                            }
+                        }
+
+                        // Refresh the section option in the structure modal's multi-select.
+                        var sectionKey = section.section_key || '';
+                        var optionHtml = T.renderRaw('aips-tmpl-section-option', {
+                            section_key: T.escape(sectionKey),
+                            name: T.escape(section.name || ''),
+                        });
+                        var $select = $('#structure_sections');
+                        var $existingOption = $select.find('option[value="' + T.escape(sectionKey) + '"]');
+                        if ($existingOption.length) {
+                            $existingOption.replaceWith(optionHtml);
+                        } else {
+                            $select.append(optionHtml);
+                        }
+                    }
                 } else {
                     AIPS.Utilities.showToast(response.data.message || aipsAdminL10n.saveSectionFailed, 'error');
                 }
