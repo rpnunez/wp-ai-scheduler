@@ -375,15 +375,16 @@ class AIPS_Notifications {
 	public function generation_failed(array $payload) {
 		$resource_label = !empty($payload['resource_label']) ? $payload['resource_label'] : __('AI generation request', 'ai-post-scheduler');
 		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('Unknown error', 'ai-post-scheduler');
-		$title = sprintf(__('Generation failed: %s', 'ai-post-scheduler'), $resource_label);
+		$title = __('Generation failed', 'ai-post-scheduler');
 		$message = sprintf(__('Generation failed for %1$s. Error: %2$s', 'ai-post-scheduler'), $resource_label, $error_message);
+		$meta = $this->with_notification_context($payload, $resource_label);
 
 		$this->dispatch_notification('generation_failed', array(
 			'title'        => $title,
 			'message'      => $message,
 			'url'          => !empty($payload['url']) ? $payload['url'] : '',
 			'level'        => 'error',
-			'meta'         => $payload,
+			'meta'         => $meta,
 			'dedupe_key'   => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
 			'dedupe_window'=> !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 0,
 			'vars'         => $this->build_standard_notification_vars($title, $message, $payload, !empty($payload['url']) ? $payload['url'] : '', __('Open generation history', 'ai-post-scheduler')),
@@ -399,15 +400,16 @@ class AIPS_Notifications {
 	public function quota_alert(array $payload) {
 		$request_type = !empty($payload['request_type']) ? $payload['request_type'] : __('request', 'ai-post-scheduler');
 		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('Quota threshold reached.', 'ai-post-scheduler');
-		$title = sprintf(__('Quota alert: %s', 'ai-post-scheduler'), $request_type);
+		$title = __('Quota alert', 'ai-post-scheduler');
 		$message = sprintf(__('AI requests are being blocked for %1$s operations. Error: %2$s', 'ai-post-scheduler'), $request_type, $error_message);
+		$meta = $this->with_notification_context($payload, $request_type);
 
 		$this->dispatch_notification('quota_alert', array(
 			'title'        => $title,
 			'message'      => $message,
 			'url'          => !empty($payload['url']) ? $payload['url'] : '',
 			'level'        => 'error',
-			'meta'         => $payload,
+			'meta'         => $meta,
 			'dedupe_key'   => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
 			'dedupe_window'=> !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 0,
 			'vars'         => $this->build_standard_notification_vars($title, $message, $payload, !empty($payload['url']) ? $payload['url'] : '', __('Review AI settings', 'ai-post-scheduler')),
@@ -446,15 +448,16 @@ class AIPS_Notifications {
 	public function scheduler_error(array $payload) {
 		$schedule_name = !empty($payload['schedule_name']) ? $payload['schedule_name'] : __('Scheduled run', 'ai-post-scheduler');
 		$error_message = !empty($payload['error_message']) ? $payload['error_message'] : __('Unknown scheduler error', 'ai-post-scheduler');
-		$title = sprintf(__('Scheduler error: %s', 'ai-post-scheduler'), $schedule_name);
+		$title = __('Scheduler error', 'ai-post-scheduler');
 		$message = sprintf(__('The scheduler could not complete "%1$s". Error: %2$s', 'ai-post-scheduler'), $schedule_name, $error_message);
+		$meta = $this->with_notification_context($payload, $schedule_name);
 
 		$this->dispatch_notification('scheduler_error', array(
 			'title'        => $title,
 			'message'      => $message,
 			'url'          => !empty($payload['url']) ? $payload['url'] : AIPS_Admin_Menu_Helper::get_page_url('schedule'),
 			'level'        => 'error',
-			'meta'         => $payload,
+			'meta'         => $meta,
 			'dedupe_key'   => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
 			'dedupe_window'=> !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 0,
 			'vars'         => $this->build_standard_notification_vars($title, $message, $payload, !empty($payload['url']) ? $payload['url'] : AIPS_Admin_Menu_Helper::get_page_url('schedule'), __('Open schedules', 'ai-post-scheduler')),
@@ -532,16 +535,17 @@ class AIPS_Notifications {
 		$post = $post_id ? get_post($post_id) : null;
 		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
 
-		$title = sprintf(__('Manual generation completed: %s', 'ai-post-scheduler'), $post_title);
+		$title = __('Manual generation completed', 'ai-post-scheduler');
 		$message = sprintf(__('Manual generation created post "%s".', 'ai-post-scheduler'), $post_title);
 		$url = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+		$meta = $this->with_notification_context($payload, $post_title);
 
 		$this->dispatch_notification('manual_generation_completed', array(
 			'title'         => $title,
 			'message'       => $message,
 			'url'           => $url,
 			'level'         => 'info',
-			'meta'          => $payload,
+			'meta'          => $meta,
 			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
 			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 60,
 			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Edit generated post', 'ai-post-scheduler')),
@@ -559,16 +563,17 @@ class AIPS_Notifications {
 		$post = $post_id ? get_post($post_id) : null;
 		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
 
-		$title = sprintf(__('Post ready for review: %s', 'ai-post-scheduler'), $post_title);
+		$title = __('Post ready for review', 'ai-post-scheduler');
 		$message = sprintf(__('Generated post "%s" is awaiting review.', 'ai-post-scheduler'), $post_title);
 		$url = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+		$meta = $this->with_notification_context($payload, $post_title);
 
 		$this->dispatch_notification('post_ready_for_review', array(
 			'title'         => $title,
 			'message'       => $message,
 			'url'           => $url,
 			'level'         => 'info',
-			'meta'          => $payload,
+			'meta'          => $meta,
 			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
 			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 60,
 			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Open review queue', 'ai-post-scheduler')),
@@ -585,16 +590,17 @@ class AIPS_Notifications {
 		$post_id = !empty($payload['post_id']) ? absint($payload['post_id']) : 0;
 		$post_label = !empty($payload['post_title']) ? $payload['post_title'] : sprintf(__('Post #%d', 'ai-post-scheduler'), $post_id);
 
-		$title = sprintf(__('Post rejected: %s', 'ai-post-scheduler'), $post_label);
+		$title = __('Post rejected', 'ai-post-scheduler');
 		$message = sprintf(__('Generated draft "%s" was removed from the review queue.', 'ai-post-scheduler'), $post_label);
 		$url = !empty($payload['url']) ? $payload['url'] : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+		$meta = $this->with_notification_context($payload, $post_label);
 
 		$this->dispatch_notification('post_rejected', array(
 			'title'         => $title,
 			'message'       => $message,
 			'url'           => $url,
 			'level'         => 'warning',
-			'meta'          => $payload,
+			'meta'          => $meta,
 			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
 			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 120,
 			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Open generated posts', 'ai-post-scheduler')),
@@ -612,16 +618,17 @@ class AIPS_Notifications {
 		$post = $post_id ? get_post($post_id) : null;
 		$post_title = ($post && !empty($post->post_title)) ? $post->post_title : __('Untitled', 'ai-post-scheduler');
 
-		$title = sprintf(__('Partial generation completed: %s', 'ai-post-scheduler'), $post_title);
+		$title = __('Partial generation completed', 'ai-post-scheduler');
 		$message = sprintf(__('Post "%s" was saved with missing components and requires review.', 'ai-post-scheduler'), $post_title);
 		$url = !empty($payload['url']) ? $payload['url'] : admin_url('admin.php?page=aips-generated-posts#aips-partial-generations');
+		$meta = $this->with_notification_context($payload, $post_title);
 
 		$this->dispatch_notification('partial_generation_completed', array(
 			'title'         => $title,
 			'message'       => $message,
 			'url'           => $url,
 			'level'         => 'warning',
-			'meta'          => $payload,
+			'meta'          => $meta,
 			'dedupe_key'    => !empty($payload['dedupe_key']) ? $payload['dedupe_key'] : '',
 			'dedupe_window' => !empty($payload['dedupe_window']) ? (int) $payload['dedupe_window'] : 60,
 			'vars'          => $this->build_standard_notification_vars($title, $message, $payload, $url, __('Open partial generations', 'ai-post-scheduler')),
@@ -749,13 +756,14 @@ class AIPS_Notifications {
 	public function seeder_complete(array $payload) {
 		$type = !empty($payload['type']) ? sanitize_text_field($payload['type']) : __('unknown', 'ai-post-scheduler');
 		$message_raw = !empty($payload['message']) ? sanitize_text_field($payload['message']) : __('Seeder operation completed.', 'ai-post-scheduler');
+		$meta = $this->with_notification_context($payload, $type);
 
 		$this->dispatch_notification('seeder_complete', array(
-			'title'   => sprintf(__('Seeder completed: %s', 'ai-post-scheduler'), $type),
+			'title'   => __('Seeder completed', 'ai-post-scheduler'),
 			'message' => $message_raw,
 			'url'     => AIPS_Admin_Menu_Helper::get_page_url('seeder'),
 			'level'   => 'info',
-			'meta'    => $payload,
+			'meta'    => $meta,
 		));
 	}
 
@@ -768,13 +776,14 @@ class AIPS_Notifications {
 	public function template_change(array $payload) {
 		$action = !empty($payload['action']) ? sanitize_key($payload['action']) : 'updated';
 		$template_name = !empty($payload['template_name']) ? sanitize_text_field($payload['template_name']) : __('Template', 'ai-post-scheduler');
+		$meta = $this->with_notification_context($payload, $template_name);
 
 		$this->dispatch_notification('template_change', array(
-			'title'   => sprintf(__('Template %1$s: %2$s', 'ai-post-scheduler'), $action, $template_name),
+			'title'   => sprintf(__('Template %s', 'ai-post-scheduler'), $action),
 			'message' => sprintf(__('Template "%1$s" was %2$s.', 'ai-post-scheduler'), $template_name, $action),
 			'url'     => AIPS_Admin_Menu_Helper::get_page_url('templates'),
 			'level'   => 'info',
-			'meta'    => $payload,
+			'meta'    => $meta,
 		));
 	}
 
@@ -946,6 +955,19 @@ class AIPS_Notifications {
 		}
 
 		return $sent;
+	}
+
+	/**
+	 * Add a UI context label to notification meta payload.
+	 *
+	 * @param array  $payload Notification payload.
+	 * @param string $context Context label displayed in the admin bar.
+	 * @return array
+	 */
+	private function with_notification_context(array $payload, $context) {
+		$payload['notification_context'] = sanitize_text_field((string) $context);
+
+		return $payload;
 	}
 
 	/**

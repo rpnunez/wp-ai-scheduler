@@ -79,6 +79,7 @@
 #wpadminbar .aips-toolbar-group-notifications {
 	max-height: 320px;
 	overflow-y: auto;
+	padding-bottom: 6px;
 }
 
 /* Notifications header row */
@@ -86,6 +87,8 @@
 	display: flex !important;
 	align-items: center;
 	justify-content: space-between;
+	height: auto;
+	min-height: 0;
 	padding: 8px 12px;
 	cursor: default;
 	pointer-events: none; /* clicks handled by inner buttons */
@@ -106,7 +109,7 @@
 	gap: 12px;
 	margin-left: auto;
 	margin-right: 12px;
-	min-width: 300px;
+	min-width: 420px;
 	justify-content: space-between;
 	pointer-events: none;
 }
@@ -115,6 +118,20 @@
 	font-size: 11px;
 	font-weight: 500;
 	color: rgba(255, 255, 255, 0.62);
+}
+
+#wpadminbar .aips-toolbar-notif-column-label:first-child {
+	min-width: 220px;
+}
+
+#wpadminbar .aips-toolbar-notif-column-label:nth-child(2) {
+	min-width: 120px;
+	text-align: right;
+}
+
+#wpadminbar .aips-toolbar-notif-column-label:nth-child(3) {
+	min-width: 70px;
+	text-align: right;
 }
 
 /* "Mark all as read" button inside header */
@@ -140,13 +157,19 @@
 	display: flex !important;
 	align-items: flex-start;
 	gap: 8px;
+	height: auto;
+	min-height: 0;
 	white-space: normal;
-	padding: 10px 12px;
+	padding: 12px 12px;
 	line-height: 1.4;
 	cursor: default;
 	border-left: 3px solid #5f9dd9;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 	background: rgba(41, 90, 138, 0.2);
+}
+
+#wpadminbar .aips-toolbar-notification + .aips-toolbar-notification {
+	margin-top: 6px;
 }
 
 #wpadminbar .aips-toolbar-notification > .ab-item:hover {
@@ -155,7 +178,7 @@
 
 #wpadminbar .aips-notif-grid {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 170px;
+	grid-template-columns: minmax(0, 1fr) 170px 92px;
 	gap: 12px;
 	width: 100%;
 	align-items: start;
@@ -164,7 +187,7 @@
 #wpadminbar .aips-notif-content {
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: 5px;
 	min-width: 0;
 }
 
@@ -196,8 +219,8 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	align-self: flex-start;
-	margin-top: 6px;
+	align-self: center;
+	margin-top: 0;
 	padding: 2px 8px;
 	border-radius: 999px;
 	border: 1px solid rgba(114, 174, 230, 0.8);
@@ -213,12 +236,20 @@
 	color: #fff;
 }
 
+#wpadminbar .aips-notif-action-cell {
+	display: flex;
+	justify-content: flex-end;
+	align-items: flex-start;
+	min-height: 20px;
+}
+
 #wpadminbar .aips-notif-datetime {
 	font-size: 11px;
 	line-height: 1.4;
 	color: rgba(255, 255, 255, 0.68);
 	white-space: nowrap;
 	text-align: right;
+	padding-top: 1px;
 }
 
 /* Mark-as-read button */
@@ -247,6 +278,10 @@
 /* "No new notifications" row */
 #wpadminbar .aips-toolbar-no-notifications > .ab-item {
 	cursor: default;
+	height: auto;
+	min-height: 0;
+	padding-top: 10px;
+	padding-bottom: 10px;
 }
 
 #wpadminbar .aips-toolbar-empty {

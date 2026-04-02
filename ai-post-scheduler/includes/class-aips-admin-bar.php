@@ -168,6 +168,7 @@ class AIPS_Admin_Bar {
 					. '<span class="aips-toolbar-notif-columns">'
 					. '<span class="aips-toolbar-notif-column-label">' . esc_html__('Content', 'ai-post-scheduler') . '</span>'
 					. '<span class="aips-toolbar-notif-column-label">' . esc_html__('Date/Time', 'ai-post-scheduler') . '</span>'
+					. '<span class="aips-toolbar-notif-column-label">' . esc_html__('Action', 'ai-post-scheduler') . '</span>'
 					. '</span>'
 					. '<button class="aips-mark-all-read" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '">'
 					. esc_html__('Mark all as read', 'ai-post-scheduler')
@@ -194,12 +195,15 @@ class AIPS_Admin_Bar {
 					$node_title .= '<span class="aips-notif-message">' . esc_html($notif->message) . '</span>';
 				}
 
-				if (!empty($notif->url)) {
-					$node_title .= '<a class="aips-notif-action" href="' . esc_url($notif->url) . '">' . esc_html__('View Post', 'ai-post-scheduler') . '</a>';
-				}
-
 				$node_title .= '</span>';
 				$node_title .= '<span class="aips-notif-datetime">' . esc_html($timestamp_label) . '</span>';
+
+				if (!empty($notif->url)) {
+					$node_title .= '<span class="aips-notif-action-cell"><a class="aips-notif-action" href="' . esc_url($notif->url) . '">' . esc_html__('View Post', 'ai-post-scheduler') . '</a></span>';
+				} else {
+					$node_title .= '<span class="aips-notif-action-cell"></span>';
+				}
+
 				$node_title .= '</span>'
 					. '<button class="aips-mark-read" data-id="' . esc_attr($notif->id) . '" data-nonce="' . esc_attr(wp_create_nonce('aips_admin_bar_nonce')) . '" title="' . esc_attr__('Mark as read', 'ai-post-scheduler') . '">'
 					. '<span class="dashicons dashicons-yes-alt"></span>'
@@ -232,11 +236,10 @@ class AIPS_Admin_Bar {
 	 */
 	private function get_notification_title_parts($notification) {
 		$title = isset($notification->title) ? wp_strip_all_tags((string) $notification->title) : '';
+		$context = $this->get_notification_context_from_meta($notification);
 
 		if ('' !== $title) {
-			$segments = explode(':', $title, 2);
-			$event = trim($segments[0]);
-			$context = isset($segments[1]) ? trim($segments[1]) : '';
+			$event = trim($title);
 
 			if ('' !== $event) {
 				return array(
@@ -250,8 +253,28 @@ class AIPS_Admin_Bar {
 
 		return array(
 			'event'   => '' !== $type_label ? ucwords($type_label) : __('Notification', 'ai-post-scheduler'),
-			'context' => '',
+			'context' => $context,
 		);
+	}
+
+	/**
+	 * Extract notification context from persisted meta JSON.
+	 *
+	 * @param object $notification Notification row object.
+	 * @return string
+	 */
+	private function get_notification_context_from_meta($notification) {
+		if (empty($notification->meta) || !is_string($notification->meta)) {
+			return '';
+		}
+
+		$meta = json_decode($notification->meta, true);
+
+		if (!is_array($meta) || empty($meta['notification_context'])) {
+			return '';
+		}
+
+		return sanitize_text_field((string) $meta['notification_context']);
 	}
 
 	/**
