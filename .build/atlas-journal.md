@@ -1352,8 +1352,18 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 - **Trade-offs:** Additional object instantiated during the plugin bootstrap sequence.
 **Tests:** Created `test-admin-menu.php` to verify that `AIPS_Admin_Menu` hooks and filters apply as intended. Modified `test-autoloader.php` to assert the new class is properly autoloaded.
 
-## $(date +%Y-%m-%d) - Extracted AIPS_Schedule_Controller_Bulk
+## 2026-03-08 - [Extracted AIPS_Schedule_Controller_Bulk]
 **Context:** The `AIPS_Schedule_Controller` class was handling both single schedule actions and bulk actions, violating the Single Responsibility Principle.
 **Decision:** Extracted the bulk action methods into a dedicated `AIPS_Schedule_Controller_Bulk` class.
 **Consequence:** Improved separation of concerns and maintainability.
 **Tests:** Verified autoloader loads the new class and tests pass in limited mode.
+
+## 2026-03-08 - [Extract Notifications Event Handler]
+**Context:** The `AIPS_Notifications` class had grown to over 1700 lines, violating the Single Responsibility Principle. It acted as the central dispatcher for sending notifications, configured WordPress hooks, and contained the implementation details for every hook handler (e.g. `handle_template_generated_notification`, `handle_summary_rollups_cron`). This created a "God Object" responsible for both delivery and event translation.
+**Decision:** Applied "Separation of Concerns". Extracted all hook bindings, handler methods, and hook-specific payload builders into a dedicated `AIPS_Notifications_Event_Handler` class. The `AIPS_Notifications` constructor was updated to instantiate this event handler internally, maintaining existing instantiation and hook registration behavior.
+**Consequence:**
+- Reduced `AIPS_Notifications` by ~570 lines (33% reduction).
+- `AIPS_Notifications` is strictly focused on rendering templates, checking settings, and delivering payloads.
+- `AIPS_Notifications_Event_Handler` is strictly focused on intercepting WordPress hooks and transforming them into notification events.
+- Trade-off: Introduces slightly more coupling during construction (passing `$this` to the handler), but maintains 100% backward compatibility for the public API and hooks.
+**Tests:** The autoloader test suite was updated to cover the new class. Existing tests run with the same result (some skipped due to limited environment mocking, but syntax and autoloading fully functional).

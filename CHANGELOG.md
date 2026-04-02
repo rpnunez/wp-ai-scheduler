@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Changed
+- Standardized search and clear button CSS classes across all admin interfaces (`.aips-btn-sm`) for consistent UX.
 
 ### Added
 - [2026-02-11] **MCP Bridge - Phase 3 Tools (v1.3.0)**: Extended MCP Bridge with 5 analytics and testing tools for performance monitoring, metadata access, and configuration management.

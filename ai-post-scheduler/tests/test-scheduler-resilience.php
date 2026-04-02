@@ -53,6 +53,39 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
             'topic' => 'Topic 2'
         ));
 
+        global $wpdb;
+        if (isset($wpdb) && is_object($wpdb) && property_exists($wpdb, 'get_results_return_val')) {
+            $s1 = new stdClass();
+            $s1->id = $schedule1_id;
+            $s1->schedule_id = $schedule1_id;
+            $s1->template_id = $template_id;
+            $s1->name = 'Resilience Test Template';
+            $s1->prompt_template = 'Write about {{topic}}';
+            $s1->post_status = 'publish';
+            $s1->post_category = 1;
+            $s1->is_active = 1;
+            $s1->frequency = 'daily';
+            $s1->next_run = date('Y-m-d H:i:s', strtotime('-1 hour'));
+            $s1->topic = 'Topic 1';
+            $s1->post_quantity = 1;
+
+            $s2 = new stdClass();
+            $s2->id = $schedule2_id;
+            $s2->schedule_id = $schedule2_id;
+            $s2->template_id = $template_id;
+            $s2->name = 'Resilience Test Template';
+            $s2->prompt_template = 'Write about {{topic}}';
+            $s2->post_status = 'publish';
+            $s2->post_category = 1;
+            $s2->is_active = 1;
+            $s2->frequency = 'daily';
+            $s2->next_run = date('Y-m-d H:i:s', strtotime('-1 hour'));
+            $s2->topic = 'Topic 2';
+            $s2->post_quantity = 1;
+
+            $wpdb->get_results_return_val = array($s1, $s2);
+        }
+
         // 3. Mock the Generator
         $mock_generator = $this->getMockBuilder('AIPS_Generator')
             ->disableOriginalConstructor()

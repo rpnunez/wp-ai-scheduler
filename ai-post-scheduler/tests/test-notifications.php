@@ -256,6 +256,9 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 	/** @var AIPS_Notifications */
 	private $notifications;
 
+	/** @var AIPS_Notifications_Event_Handler */
+	private $event_handler;
+
 	/** @var AIPS_Notifications_Repository */
 	private $repository;
 
@@ -270,6 +273,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 		$this->repository      = new AIPS_Test_Notifications_Repository();
 		$this->history_service = new AIPS_Test_History_Service();
 		$this->notifications   = new AIPS_Notifications($this->repository, null, $this->history_service);
+		$this->event_handler   = $this->notifications->get_event_handler();
 
 		$GLOBALS['aips_wp_mail_log'] = array();
 	}
@@ -425,7 +429,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 
 		$GLOBALS['aips_wp_mail_log'] = array();
 
-		$this->notifications->handle_summary_rollups_cron();
+		$this->event_handler->handle_summary_rollups_cron();
 
 		$this->assertEmpty($this->get_mail_log());
 	}
@@ -440,7 +444,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 
 		$GLOBALS['aips_wp_mail_log'] = array();
 
-		$this->notifications->handle_summary_rollups_cron();
+		$this->event_handler->handle_summary_rollups_cron();
 
 		$this->assertCount(1, $this->get_mail_log());
 	}
@@ -458,7 +462,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 
 		$GLOBALS['aips_wp_mail_log'] = array();
 
-		$this->notifications->handle_summary_rollups_cron();
+		$this->event_handler->handle_summary_rollups_cron();
 
 		$this->assertCount(3, $this->get_mail_log());
 	}
@@ -541,7 +545,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 
 		$GLOBALS['aips_wp_mail_log'] = array();
 
-		$this->notifications->handle_partial_generation_completed_notification(0, array('post_title' => false), null);
+		$this->event_handler->handle_partial_generation_completed_notification(0, array('post_title' => false), null);
 
 		$this->assertEmpty($this->get_mail_log());
 		$this->assertEquals(0, $this->repository->count_unread());
@@ -612,18 +616,18 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 	// -----------------------------------------------------------------------
 
 	public function test_get_hook_bindings_returns_array() {
-		$bindings = AIPS_Notifications::get_hook_bindings();
+		$bindings = AIPS_Notifications_Event_Handler::get_hook_bindings();
 		$this->assertIsArray($bindings);
 	}
 
 	public function test_get_hook_bindings_includes_notification_rollups_cron() {
-		$bindings = AIPS_Notifications::get_hook_bindings();
+		$bindings = AIPS_Notifications_Event_Handler::get_hook_bindings();
 		$hooks    = array_column($bindings, 'hook');
 		$this->assertContains('aips_notification_rollups', $hooks);
 	}
 
 	public function test_get_hook_bindings_includes_post_generation_incomplete() {
-		$bindings = AIPS_Notifications::get_hook_bindings();
+		$bindings = AIPS_Notifications_Event_Handler::get_hook_bindings();
 		$hooks    = array_column($bindings, 'hook');
 		$this->assertContains('aips_post_generation_incomplete', $hooks);
 	}
@@ -639,14 +643,14 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 			return $bindings;
 		});
 
-		$bindings = AIPS_Notifications::get_hook_bindings();
+		$bindings = AIPS_Notifications_Event_Handler::get_hook_bindings();
 		$hooks    = array_column($bindings, 'hook');
 
 		$this->assertContains('my_custom_event', $hooks);
 	}
 
 	public function test_get_hook_bindings_does_not_include_legacy_rollup_hook() {
-		$bindings = AIPS_Notifications::get_hook_bindings();
+		$bindings = AIPS_Notifications_Event_Handler::get_hook_bindings();
 		$hooks    = array_column($bindings, 'hook');
 
 		$this->assertNotContains('aips_send_review_notifications', $hooks);
@@ -654,7 +658,7 @@ class Test_AIPS_Notifications_Service extends WP_UnitTestCase {
 
 	public function test_binding_with_nonexistent_method_is_skipped_with_warning() {
 		// Reset static flag so hooks can re-register (test isolation).
-		$reflection = new ReflectionClass(AIPS_Notifications::class);
+		$reflection = new ReflectionClass(AIPS_Notifications_Event_Handler::class);
 		$prop       = $reflection->getProperty('hooks_registered');
 		$prop->setAccessible(true);
 		$prop->setValue(null, false);

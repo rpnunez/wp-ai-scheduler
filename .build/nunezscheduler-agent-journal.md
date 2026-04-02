@@ -188,3 +188,9 @@
 **Improvement:** Optimized the flow and reliability of the template management process by enforcing early input validation across all key AJAX endpoints (`ajax_save_template`, `ajax_test_template`, `ajax_preview_template_prompts`, `ajax_clone_template`, `ajax_delete_template`, `ajax_get_template`). Validations included robust checks for required inputs, type coercion limits, integer boundary limits, and trimming of empty string values.
 **Files Modified:** `ai-post-scheduler/includes/class-aips-templates-controller.php`
 **Outcome:** Prevents users from accidentally saving corrupt templates with empty prompts or invalid names, increasing the robustness and flow of the template wizard experience by providing clear, immediate backend error messages instead of failing silently or proceeding with incomplete data.
+
+## 2026-03-31 - Article Structures Flow Optimization
+**Target Feature:** Article Structures
+**Improvement:** Optimized the save flow for Article Structures and Prompt Sections. Previously, saving either entity triggered a full page reload (`location.reload()`), disrupting the user flow and causing context loss. The save functions now issue a success toast, seamlessly close the modal, and dynamically refresh the respective table (and select dropdowns) using an AJAX fetch.
+**Files Modified:** `ai-post-scheduler/assets/js/admin.js`
+**Outcome:** Enhances the user's workflow by creating a seamless, single-page application feel when modifying structures and sections, eliminating disruptive flashes and improving overall administrative efficiency.
