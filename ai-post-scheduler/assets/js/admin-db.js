@@ -301,8 +301,68 @@
                     });
                 }}
             ]);
+        },
+
+        /**
+         * Flush all plugin WP-Cron events and re-register each exactly once.
+         *
+         * Shows a confirmation dialog warning that active cron events will be
+         * removed and re-scheduled, then sends the `aips_flush_cron_events` AJAX
+         * action. Reloads the page after a short delay on success so the updated
+         * cron diagnostics are visible.
+         *
+         * @param {Event} e - Click event from an `.aips-flush-cron` element.
+         */
+        flushCronEvents: function(e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var $result = $('.aips-flush-cron-result');
+
+            AIPS.Utilities.confirm(
+                'This will remove ALL registered instances of every plugin WP-Cron event and re-register each one exactly once. ' +
+                'Use this when duplicate cron events have accumulated and are causing excessive AI calls. Continue?',
+                'Flush WP-Cron Events',
+                [
+                    { label: 'No, cancel', className: 'aips-btn aips-btn-primary' },
+                    { label: 'Yes, flush & reschedule', className: 'aips-btn aips-btn-danger-solid', action: function() {
+                        $btn.prop('disabled', true).text('Flushing...');
+                        $result.hide().empty();
+
+                        $.ajax({
+                            url: aipsAjax.ajaxUrl,
+                            type: 'POST',
+                            data: {
+                                action: 'aips_flush_cron_events',
+                                nonce: aipsAjax.nonce
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    var details = response.data && response.data.details ? response.data.details : {};
+                                    var rescheduled = details.rescheduled ? details.rescheduled.join(', ') : '';
+                                    var summary = response.data.message;
+                                    if (rescheduled) {
+                                        summary += ' Rescheduled: ' + rescheduled + '.';
+                                    }
+                                    AIPS.Utilities.showToast(response.data.message, 'success');
+                                    $result.html('<p class="aips-status-message aips-status-success">' + $('<span>').text(summary).html() + '</p>').show();
+                                    setTimeout(function() { location.reload(); }, 2000);
+                                } else {
+                                    var errMsg = response.data && response.data.message ? response.data.message : 'Flush failed.';
+                                    AIPS.Utilities.showToast(errMsg, 'error');
+                                    $result.html('<p class="aips-status-message aips-status-error">' + $('<span>').text(errMsg).html() + '</p>').show();
+                                }
+                            },
+                            error: function() {
+                                AIPS.Utilities.showToast('An error occurred while flushing cron events.', 'error');
+                            },
+                            complete: function() {
+                                $btn.prop('disabled', false).text('Flush WP-Cron Events');
+                            }
+                        });
+                    }}
+                ]
+            );
         }
-    });
 
     // Bind DB Management Events
     $(document).ready(function() {
@@ -312,6 +372,7 @@
         $(document).on('click', '.aips-export-data', window.AIPS.exportData);
         $(document).on('click', '.aips-import-data', window.AIPS.importData);
 		$(document).on('click', '.aips-notifications-hygiene', window.AIPS.runNotificationsHygiene);
+        $(document).on('click', '.aips-flush-cron', window.AIPS.flushCronEvents);
     });
 
 })(jQuery);
