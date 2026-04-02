@@ -4,7 +4,7 @@ Tags: ai, content, automation, scheduling, meow apps, ai engine
 Requires at least: 5.8
 Tested up to: 6.4
 Requires PHP: 8.2
-Stable tag: 1.7.0
+Stable tag: 2.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -124,6 +124,17 @@ The Trending Topics feature uses AI to analyze what's currently trending in your
 Yes! After researching topics, you can select multiple topics from your library and bulk schedule them with a template and frequency. The system will create schedules for each topic automatically.
 
 == Changelog ==
+
+= 2.0.1 =
+* NEW: Run-level correlation IDs for end-to-end traceability across history records and notifications
+* Added: AIPS_Correlation_ID static utility class (generate / get / set / reset)
+* Added: AIPS_Utilities static helpers class with shared generate_uuid() method
+* Added: correlation_id column (varchar 36, indexed) to aips_history table
+* Added: AIPS_History_Repository::get_by_correlation_id() for per-run record queries
+* Enhanced: AIPS_History_Container auto-inherits active correlation ID on construction
+* Enhanced: AIPS_Schedule_Processor, AIPS_Author_Topics_Scheduler, and AIPS_Author_Post_Generator propagate correlation IDs at run entry points with try/catch/finally guards
+* Added: correlation_id included in scheduler error and generation-failed notification payloads
+* Added: 16 new tests covering correlation ID lifecycle, container inheritance, and repository persistence
 
 = 1.6.0 =
 * NEW: Trending Topics Research feature - AI-powered trend discovery

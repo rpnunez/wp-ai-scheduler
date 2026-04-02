@@ -386,23 +386,33 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		$topic_ids = isset($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
 
 		if (empty($topic_ids)) {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
 		}
 
 		$success_count = 0;
+		$failed_count  = 0;
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->update_status($topic_id, 'approved', get_current_user_id());
 			if ($result) {
 				$this->logs_repository->log_approval($topic_id, get_current_user_id());
 				$success_count++;
+			} else {
+				$failed_count++;
 			}
 		}
 
+		$message = sprintf(__('%d topics approved successfully.', 'ai-post-scheduler'), $success_count);
+		if ($failed_count > 0) {
+			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
+		}
+
 		wp_send_json_success(array(
-			'message' => sprintf(__('%d topics approved successfully.', 'ai-post-scheduler'), $success_count)
+			'message'       => $message,
+			'success_count' => $success_count,
+			'failed_count'  => $failed_count,
 		));
 	}
 
@@ -416,23 +426,33 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		$topic_ids = isset($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
 
 		if (empty($topic_ids)) {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
 		}
 
 		$success_count = 0;
+		$failed_count  = 0;
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->update_status($topic_id, 'rejected', get_current_user_id());
 			if ($result) {
 				$this->logs_repository->log_rejection($topic_id, get_current_user_id());
 				$success_count++;
+			} else {
+				$failed_count++;
 			}
 		}
 
+		$message = sprintf(__('%d topics rejected successfully.', 'ai-post-scheduler'), $success_count);
+		if ($failed_count > 0) {
+			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
+		}
+
 		wp_send_json_success(array(
-			'message' => sprintf(__('%d topics rejected successfully.', 'ai-post-scheduler'), $success_count)
+			'message'       => $message,
+			'success_count' => $success_count,
+			'failed_count'  => $failed_count,
 		));
 	}
 
@@ -446,7 +466,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		$topic_ids = isset($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
 
 		if (empty($topic_ids)) {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
@@ -468,11 +488,13 @@ class AIPS_Author_Topics_Controller {
 		);
 
 		$success_count = 0;
+		$failed_count  = 0;
 		foreach ($topic_ids as $topic_id) {
 			$result = $this->repository->delete($topic_id);
 			if ($result) {
 				$success_count++;
 			} else {
+				$failed_count++;
 				$history->record('warning', sprintf(__('Failed to delete topic ID %d', 'ai-post-scheduler'), $topic_id), null, null, array('topic_id' => $topic_id));
 			}
 		}
@@ -481,10 +503,19 @@ class AIPS_Author_Topics_Controller {
 			'deleted_count' => $success_count,
 			'requested_count' => count($topic_ids)
 		));
-		$history->complete_success(array('deleted_count' => $success_count));
+
+		$message = sprintf(__('%d topics deleted successfully.', 'ai-post-scheduler'), $success_count);
+		if ($failed_count > 0) {
+			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
+			$history->complete_success(array('deleted_count' => $success_count, 'failed_count' => $failed_count));
+		} else {
+			$history->complete_success(array('deleted_count' => $success_count));
+		}
 
 		wp_send_json_success(array(
-			'message' => sprintf(__('%d topics deleted successfully.', 'ai-post-scheduler'), $success_count)
+			'message'       => $message,
+			'success_count' => $success_count,
+			'failed_count'  => $failed_count,
 		));
 	}
 
@@ -714,7 +745,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		$topic_ids = isset($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
 
 		if (empty($topic_ids)) {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
@@ -787,7 +818,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		$topic_ids = isset($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
+		$topic_ids = isset($_POST['topic_ids']) && is_array($_POST['topic_ids']) ? array_map('absint', $_POST['topic_ids']) : array();
 
 		if (empty($topic_ids)) {
 			wp_send_json_error(array('message' => __('No topics selected.', 'ai-post-scheduler')));
@@ -861,7 +892,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Permission denied.', 'ai-post-scheduler')));
 		}
 
-		$feedback_ids = isset($_POST['feedback_ids']) ? array_map('absint', $_POST['feedback_ids']) : array();
+		$feedback_ids = isset($_POST['feedback_ids']) && is_array($_POST['feedback_ids']) ? array_map('absint', $_POST['feedback_ids']) : array();
 
 		if (empty($feedback_ids)) {
 			wp_send_json_error(array('message' => __('No feedback items selected.', 'ai-post-scheduler')));
@@ -883,11 +914,13 @@ class AIPS_Author_Topics_Controller {
 		);
 
 		$success_count = 0;
+		$failed_count  = 0;
 		foreach ($feedback_ids as $feedback_id) {
 			$result = $this->feedback_repository->delete($feedback_id);
 			if ($result) {
 				$success_count++;
 			} else {
+				$failed_count++;
 				$history->record('warning', sprintf(__('Failed to delete feedback ID %d', 'ai-post-scheduler'), $feedback_id), null, null, array('feedback_id' => $feedback_id));
 			}
 		}
@@ -896,10 +929,19 @@ class AIPS_Author_Topics_Controller {
 			'deleted_count' => $success_count,
 			'requested_count' => count($feedback_ids)
 		));
-		$history->complete_success(array('deleted_count' => $success_count));
+
+		$message = sprintf(__('%d feedback item(s) deleted successfully.', 'ai-post-scheduler'), $success_count);
+		if ($failed_count > 0) {
+			$message .= ' ' . sprintf(__('%d failed.', 'ai-post-scheduler'), $failed_count);
+			$history->complete_success(array('deleted_count' => $success_count, 'failed_count' => $failed_count));
+		} else {
+			$history->complete_success(array('deleted_count' => $success_count));
+		}
 
 		wp_send_json_success(array(
-			'message' => sprintf(__('%d feedback item(s) deleted successfully.', 'ai-post-scheduler'), $success_count)
+			'message'       => $message,
+			'success_count' => $success_count,
+			'failed_count'  => $failed_count,
 		));
 	}
 
