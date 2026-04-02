@@ -55,7 +55,7 @@ if (!$author) {
 $topics_repository  = new AIPS_Author_Topics_Repository();
 $logs_repository    = new AIPS_Author_Topic_Logs_Repository();
 $status_counts      = $topics_repository->get_status_counts($author_id);
-$total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'];
+$total_topics       = $status_counts['pending'] + $status_counts['approved'] + $status_counts['rejected'] + $status_counts['posts_generated'];
 $posts_count        = $logs_repository->count_generated_posts_by_author($author_id);
 ?>
 <div class="wrap aips-wrap">
@@ -100,10 +100,6 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 
 		<!-- Author Stats -->
 		<div class="aips-author-topics-stats">
-			<div class="aips-stat-card">
-				<span class="aips-stat-value" id="stat-total-count"><?php echo esc_html($total_topics); ?></span>
-				<span class="aips-stat-label"><?php esc_html_e('Total Topics', 'ai-post-scheduler'); ?></span>
-			</div>
 			<div class="aips-stat-card aips-stat-pending">
 				<span class="aips-stat-value" id="stat-pending-count"><?php echo esc_html($status_counts['pending']); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Pending Review', 'ai-post-scheduler'); ?></span>
@@ -119,6 +115,10 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 			<div class="aips-stat-card aips-stat-generated">
 				<span class="aips-stat-value"><?php echo esc_html($posts_count); ?></span>
 				<span class="aips-stat-label"><?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?></span>
+			</div>
+			<div class="aips-stat-card">
+				<span class="aips-stat-value" id="stat-total-count"><?php echo esc_html($total_topics); ?></span>
+				<span class="aips-stat-label"><?php esc_html_e('Total Topics', 'ai-post-scheduler'); ?></span>
 			</div>
 		</div>
 
@@ -137,6 +137,10 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<button class="aips-tab-link" data-tab="rejected">
 					<?php esc_html_e('Rejected', 'ai-post-scheduler'); ?>
 					<span class="aips-tab-count" id="rejected-count"><?php echo esc_html($status_counts['rejected']); ?></span>
+				</button>
+				<button class="aips-tab-link" data-tab="posts_generated">
+					<?php esc_html_e('Posts Generated', 'ai-post-scheduler'); ?>
+					<span class="aips-tab-count" id="posts-generated-count"><?php echo esc_html($status_counts['posts_generated']); ?></span>
 				</button>
 				<button class="aips-tab-link" data-tab="feedback">
 					<?php esc_html_e('Feedback', 'ai-post-scheduler'); ?>
@@ -157,15 +161,22 @@ $posts_count        = $logs_repository->count_generated_posts_by_author($author_
 				<div class="aips-filter-right">
 					<label class="screen-reader-text" for="aips-topic-search"><?php esc_html_e('Search Topics:', 'ai-post-scheduler'); ?></label>
 					<input type="search" id="aips-topic-search" class="aips-form-input" placeholder="<?php esc_attr_e('Search topics...', 'ai-post-scheduler'); ?>">
-					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
+					<button type="button" id="aips-topic-search-clear" class="aips-btn aips-btn-sm aips-btn-secondary" style="display: none;"><?php esc_html_e('Clear', 'ai-post-scheduler'); ?></button>
 				</div>
 			</div>
 
 			<!-- Topics Content -->
 			<div class="aips-panel-body no-padding">
-				<div id="aips-topics-content">
-					<p><?php esc_html_e('Loading topics...', 'ai-post-scheduler'); ?></p>
+				<div id="aips-topics-loading" class="aips-topics-loading">
+					<div class="aips-topics-loading-inner">
+						<div class="aips-topics-loading-icon-wrapper">
+							<span class="dashicons dashicons-update aips-spin" aria-hidden="true"></span>
+						</div>
+						<p class="aips-topics-loading-text"><?php esc_html_e('Loading...', 'ai-post-scheduler'); ?></p>
+						<ul class="aips-topics-loading-list" id="aips-topics-loading-list"></ul>
+					</div>
 				</div>
+				<div id="aips-topics-content" style="display: none;"></div>
 			</div>
 		</div>
 		<!-- Table footer -->

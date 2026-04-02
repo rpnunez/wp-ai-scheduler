@@ -198,6 +198,7 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 		$services = array(
 			'AIPS_AI_Service',
 			'AIPS_Image_Service',
+			'AIPS_Notifications_Event_Handler',
 		);
 		
 		foreach ($services as $class_name) {
@@ -215,6 +216,7 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 		$controllers = array(
 			'AIPS_Schedule_Controller',
 			'AIPS_Settings',
+			'AIPS_Admin_Menu',
 		);
 		
 		foreach ($controllers as $class_name) {

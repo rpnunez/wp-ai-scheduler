@@ -51,8 +51,12 @@ class AIPS_Templates_Controller {
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
         );
 
-        if (empty($data['name']) || empty($data['prompt_template'])) {
+        if (empty(trim($data['name'])) || empty(trim($data['prompt_template']))) {
             wp_send_json_error(array('message' => __('Name and prompt template are required.', 'ai-post-scheduler')));
+        }
+
+        if (mb_strlen($data['name']) > 255) {
+            wp_send_json_error(array('message' => __('Template name cannot exceed 255 characters.', 'ai-post-scheduler')));
         }
 
         if ($data['post_quantity'] < 1 || $data['post_quantity'] > 20) {
@@ -62,6 +66,13 @@ class AIPS_Templates_Controller {
         $id = $this->templates->save($data);
 
         if ($id) {
+            do_action('aips_template_changed', array(
+                'action'        => $data['id'] ? 'updated' : 'created',
+                'template_id'   => absint($id),
+                'template_name' => $data['name'],
+                'user_id'       => get_current_user_id(),
+            ));
+
             wp_send_json_success(array(
                 'message' => __('Template saved successfully.', 'ai-post-scheduler'),
                 'template_id' => $id
@@ -80,11 +91,20 @@ class AIPS_Templates_Controller {
 
         $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
-        if (!$id) {
+        if ($id <= 0) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
         }
 
+        $template = $this->templates->get($id);
+
         if ($this->templates->delete($id)) {
+            do_action('aips_template_changed', array(
+                'action'        => 'deleted',
+                'template_id'   => $id,
+                'template_name' => ($template && !empty($template->name)) ? $template->name : __('Template', 'ai-post-scheduler'),
+                'user_id'       => get_current_user_id(),
+            ));
+
             wp_send_json_success(array('message' => __('Template deleted successfully.', 'ai-post-scheduler')));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete template.', 'ai-post-scheduler')));
@@ -100,7 +120,7 @@ class AIPS_Templates_Controller {
 
         $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
-        if (!$id) {
+        if ($id <= 0) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
         }
 
@@ -122,7 +142,7 @@ class AIPS_Templates_Controller {
 
         $id = isset($_POST['template_id']) ? absint($_POST['template_id']) : 0;
 
-        if (!$id) {
+        if ($id <= 0) {
             wp_send_json_error(array('message' => __('Invalid template ID.', 'ai-post-scheduler')));
         }
 
@@ -156,6 +176,13 @@ class AIPS_Templates_Controller {
         $new_id = $this->templates->save($new_data);
 
         if ($new_id) {
+            do_action('aips_template_changed', array(
+                'action'        => 'cloned',
+                'template_id'   => absint($new_id),
+                'template_name' => $new_data['name'],
+                'user_id'       => get_current_user_id(),
+            ));
+
             wp_send_json_success(array(
                 'message' => __('Template cloned successfully.', 'ai-post-scheduler'),
                 'template_id' => $new_id
@@ -195,8 +222,12 @@ class AIPS_Templates_Controller {
             'post_author' => isset($_POST['post_author']) ? absint($_POST['post_author']) : get_current_user_id(),
         );
 
-        if (empty($data['prompt_template'])) {
+        if (empty(trim($data['prompt_template']))) {
             wp_send_json_error(array('message' => __('Prompt template is required.', 'ai-post-scheduler')));
+        }
+
+        if (mb_strlen($data['name']) > 255) {
+            wp_send_json_error(array('message' => __('Template name cannot exceed 255 characters.', 'ai-post-scheduler')));
         }
 
         // Convert to object for context
@@ -259,7 +290,7 @@ class AIPS_Templates_Controller {
                 : wp_json_encode(array()),
         );
 
-        if (empty($template_data->prompt_template)) {
+        if (empty(trim($template_data->prompt_template))) {
             wp_send_json_error(array('message' => __('Please enter a content prompt to generate the preview.', 'ai-post-scheduler')));
         }
 

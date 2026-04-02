@@ -74,6 +74,7 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_history (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             uuid varchar(36) DEFAULT NULL,
+            correlation_id varchar(36) DEFAULT NULL,
             post_id bigint(20) DEFAULT NULL,
             template_id bigint(20) DEFAULT NULL,
             author_id bigint(20) DEFAULT NULL,
@@ -96,7 +97,8 @@ class AIPS_DB_Manager {
             KEY status (status),
             KEY created_at (created_at),
             KEY status_created (status, created_at),
-            KEY template_created (template_id, created_at)
+            KEY template_created (template_id, created_at),
+            KEY correlation_id (correlation_id)
         ) $charset_collate;";
 
         $sql[] = "CREATE TABLE $table_history_log (
@@ -314,12 +316,19 @@ class AIPS_DB_Manager {
         $sql[] = "CREATE TABLE $table_notifications (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             type varchar(100) NOT NULL,
+            title varchar(255) DEFAULT NULL,
             message text NOT NULL,
             url varchar(500) DEFAULT NULL,
+            level varchar(20) NOT NULL DEFAULT 'info',
+            meta longtext DEFAULT NULL,
+            dedupe_key varchar(191) DEFAULT NULL,
             is_read tinyint(1) NOT NULL DEFAULT 0,
+            read_at datetime DEFAULT NULL,
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY type (type),
+            KEY level (level),
+            KEY dedupe_key (dedupe_key),
             KEY is_read (is_read),
             KEY created_at (created_at)
         ) $charset_collate;";
@@ -354,8 +363,15 @@ class AIPS_DB_Manager {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         $instance = new self();
         $schema = $instance->get_schema();
+        global $wpdb;
+
         foreach ($schema as $sql) {
+            $pre_error = $wpdb->last_error;
             dbDelta($sql);
+
+            if (!empty($wpdb->last_error) && $wpdb->last_error !== $pre_error) {
+                return new WP_Error('db_install_failed', $wpdb->last_error);
+            }
         }
 
         // Seed default data for new installations or upgrades
@@ -363,6 +379,8 @@ class AIPS_DB_Manager {
 
         // Record that the DB schema is now at the current plugin version
         update_option('aips_db_version', AIPS_VERSION);
+
+        return true;
     }
 
     public function drop_tables() {

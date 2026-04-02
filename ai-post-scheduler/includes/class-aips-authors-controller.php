@@ -235,8 +235,20 @@ class AIPS_Authors_Controller {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 		
-		$topics = $this->topics_repository->get_by_author($author_id, $status);
+		// For the special "posts_generated" tab, we need to consider all topics
+		// for this author, then filter by whether they have generated posts.
+		// For other tabs, we continue to filter by status at the database level
+		// for efficiency, and then further refine by post_count where needed.
+		if ('posts_generated' === $status) {
+			$topics = $this->topics_repository->get_by_author($author_id, null);
+		} else {
+			$topics = $this->topics_repository->get_by_author($author_id, $status);
+		}
 		$status_counts = $this->topics_repository->get_status_counts($author_id);
+		// Augment status counts with posts_generated using the same logic as the
+		// Posts Generated stat card on the Author Topics page.
+		$posts_generated_count = $this->logs_repository->count_generated_posts_by_author($author_id);
+		$status_counts['posts_generated'] = (int) $posts_generated_count;
 		$topic_ids = array();
 		foreach ($topics as $topic) {
 			$topic_ids[] = (int) $topic->id;
@@ -276,6 +288,25 @@ class AIPS_Authors_Controller {
 			}
 		}
 		unset($topic);
+		
+		// Refine the topic collection based on the active tab semantics:
+		// - "approved" tab: only approved topics that have NO generated posts yet.
+		// - "rejected" tab: only rejected topics that have NO generated posts yet.
+		// - "posts_generated" tab: any topics (regardless of current status)
+		//   that have one or more generated posts associated with them.
+		if ('approved' === $status) {
+			$topics = array_values(array_filter($topics, function ($topic) {
+				return ('approved' === $topic->status && (int) $topic->post_count === 0);
+			}));
+		} elseif ('rejected' === $status) {
+			$topics = array_values(array_filter($topics, function ($topic) {
+				return ('rejected' === $topic->status && (int) $topic->post_count === 0);
+			}));
+		} elseif ('posts_generated' === $status) {
+			$topics = array_values(array_filter($topics, function ($topic) {
+				return (int) $topic->post_count > 0;
+			}));
+		}
 		
 		wp_send_json_success(array(
 			'topics' => $topics,
@@ -467,6 +498,12 @@ class AIPS_Authors_Controller {
 		if (is_wp_error($suggestions)) {
 			wp_send_json_error(array('message' => $suggestions->get_error_message()));
 		}
+
+		do_action('aips_author_suggestions_generated', array(
+			'count'       => count($suggestions),
+			'site_niche'  => $site_niche,
+			'user_id'     => get_current_user_id(),
+		));
 
 		wp_send_json_success(array(
 			'suggestions' => $suggestions,

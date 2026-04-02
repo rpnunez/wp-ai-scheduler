@@ -234,6 +234,115 @@ class AIPS_Component_Regeneration_Service {
 		
 		return $result;
 	}
+
+	/**
+	 * Determine whether featured image should be regenerated.
+	 *
+	 * For Regenerate All we only regenerate images when there is an existing
+	 * generated featured image, or when the original generation attempted and
+	 * failed to produce the featured image.
+	 *
+	 * @param int $post_id Post ID.
+	 * @param int $history_id History ID.
+	 * @return bool
+	 */
+	public function should_regenerate_featured_image($post_id, $history_id = 0) {
+		$post_id = absint($post_id);
+		$history_id = absint($history_id);
+
+		if (!$post_id) {
+			return false;
+		}
+
+		$thumbnail_id = 0;
+		if (function_exists('get_post_thumbnail_id')) {
+			$thumbnail_id = absint(get_post_thumbnail_id($post_id));
+		} else {
+			$thumbnail_id = absint($this->get_post_meta_value($post_id, '_thumbnail_id'));
+		}
+
+		$component_statuses = json_decode((string) $this->get_post_meta_value($post_id, 'aips_post_generation_component_statuses'), true);
+		$has_featured_image_status = is_array($component_statuses)
+			&& array_key_exists('featured_image', $component_statuses);
+		$featured_image_status = $has_featured_image_status ? $component_statuses['featured_image'] : null;
+
+		// Regenerate when there is an existing generated featured image.
+		if ($thumbnail_id > 0 && !empty($featured_image_status)) {
+			return true;
+		}
+
+		// Regenerate when the original generation attempted and failed to produce the featured image.
+		if ($has_featured_image_status && empty($featured_image_status)) {
+			return true;
+		}
+
+		if ($history_id && $this->history_repository->did_featured_image_generation_fail($history_id)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Regenerate all supported post components.
+	 *
+	 * @param array $context Generation context payload.
+	 * @return array|WP_Error
+	 */
+	public function regenerate_all_components($context) {
+		if (!isset($context['generation_context']) || !($context['generation_context'] instanceof AIPS_Generation_Context)) {
+			return new WP_Error('missing_context', __('Generation context is required.', 'ai-post-scheduler'));
+		}
+
+		$post_id = isset($context['post_id']) ? absint($context['post_id']) : 0;
+		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
+
+		if (!$post_id || !$history_id) {
+			return new WP_Error('invalid_request', __('Post and history identifiers are required.', 'ai-post-scheduler'));
+		}
+
+		$result = array(
+			'regenerated' => array(),
+			'skipped' => array(),
+			'errors' => array(),
+		);
+
+		$title = $this->regenerate_title($context);
+		if (is_wp_error($title)) {
+			$result['errors']['title'] = $title->get_error_message();
+		} else {
+			$result['regenerated']['title'] = $title;
+			$context['current_title'] = $title;
+		}
+
+		$content = $this->regenerate_content($context);
+		if (is_wp_error($content)) {
+			$result['errors']['content'] = $content->get_error_message();
+		} else {
+			$result['regenerated']['content'] = $content;
+			$context['current_content'] = $content;
+		}
+
+		$excerpt = $this->regenerate_excerpt($context);
+		if (is_wp_error($excerpt)) {
+			$result['errors']['excerpt'] = $excerpt->get_error_message();
+		} else {
+			$result['regenerated']['excerpt'] = $excerpt;
+		}
+
+		if ($this->should_regenerate_featured_image($post_id, $history_id)) {
+			$featured_image = $this->regenerate_featured_image($context);
+			if (is_wp_error($featured_image)) {
+				$result['errors']['featured_image'] = $featured_image->get_error_message();
+			} else {
+				$result['regenerated']['featured_image'] = $featured_image;
+			}
+		} else {
+			$result['skipped']['featured_image'] = __('Featured image skipped because there was no previous generation and no original image-generation failure.', 'ai-post-scheduler');
+		}
+
+		return $result;
+	}
 	
 	/**
 	 * Regenerate featured image
@@ -254,15 +363,27 @@ class AIPS_Component_Regeneration_Service {
 		$title = isset($context['current_title']) ? $context['current_title'] : '';
 		$post_id = absint($context['post_id']);
 		$history_id = isset($context['history_id']) ? absint($context['history_id']) : 0;
-		
-		$processed_image_prompt = $this->post_featured_image_prompt_builder->build($generation_context);
-		if (empty($processed_image_prompt)) {
-			return new WP_Error('no_image_prompt', __('No image prompt available for this context.', 'ai-post-scheduler'));
-		}
-		
+		$image_generation_start = microtime(true);
+
 		$history_container = AIPS_History_Container::resolve_existing($this->history_repository, $post_id, $history_id);
 		if (is_wp_error($history_container)) {
 			return $history_container;
+		}
+		
+		$processed_image_prompt = $this->post_featured_image_prompt_builder->build($generation_context);
+		if (empty($processed_image_prompt)) {
+			$history_container->record(
+				'metric_generation_result',
+				'Featured image regeneration metric snapshot',
+				array(
+					'outcome' => 'failed',
+					'duration_seconds' => (int) round( microtime(true) - $image_generation_start ),
+					'image_attempted' => true,
+					'image_success' => false,
+				)
+			);
+
+			return new WP_Error('no_image_prompt', __('No image prompt available for this context.', 'ai-post-scheduler'));
 		}
 		
 		// Log the AI request for image generation
@@ -286,6 +407,18 @@ class AIPS_Component_Regeneration_Service {
 				'component' => 'featured_image',
 				'post_id' => $post_id,
 			));
+
+			$history_container->record(
+				'metric_generation_result',
+				'Featured image regeneration metric snapshot',
+				array(
+					'outcome' => 'failed',
+					'duration_seconds' => (int) round( microtime(true) - $image_generation_start ),
+					'image_attempted' => true,
+					'image_success' => false,
+				)
+			);
+
 			return $attachment_id;
 		}
 		
@@ -299,6 +432,17 @@ class AIPS_Component_Regeneration_Service {
 				'url' => wp_get_attachment_url($attachment_id),
 			),
 			array('component' => 'featured_image', 'post_id' => $post_id)
+		);
+
+		$history_container->record(
+			'metric_generation_result',
+			'Featured image regeneration metric snapshot',
+			array(
+				'outcome' => 'completed',
+				'duration_seconds' => (int) round( microtime(true) - $image_generation_start ),
+				'image_attempted' => true,
+				'image_success' => true,
+			)
 		);
 		
 		// Return attachment ID and URL
@@ -358,6 +502,26 @@ class AIPS_Component_Regeneration_Service {
 		);
 
 		return true;
+	}
+
+	/**
+	 * Safely read post meta in runtime and limited test environments.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $meta_key Meta key.
+	 * @return mixed
+	 */
+	private function get_post_meta_value($post_id, $meta_key) {
+		if (function_exists('get_post_meta')) {
+			return get_post_meta($post_id, $meta_key, true);
+		}
+
+		global $aips_test_meta;
+		if (isset($aips_test_meta[$post_id]) && array_key_exists($meta_key, $aips_test_meta[$post_id])) {
+			return $aips_test_meta[$post_id][$meta_key];
+		}
+
+		return '';
 	}
 
 }

@@ -147,7 +147,15 @@ class AIPS_Schedule_Processor {
         $schedule_with_template->schedule_id = $schedule->id;
         $schedule_with_template->name = $template_data->name; // ensure template name is preserved
 
-        return $this->execute_schedule_logic($schedule_with_template, true, $quantity_override);
+        // Generate a correlation ID for this manual run and reset it when done.
+        AIPS_Correlation_ID::generate();
+
+        try {
+            $result = $this->execute_schedule_logic($schedule_with_template, true, $quantity_override);
+        } finally {
+            AIPS_Correlation_ID::reset();
+        }
+        return $result;
     }
 
     /**
@@ -156,6 +164,10 @@ class AIPS_Schedule_Processor {
      * @param object $schedule Schedule object (merged with template).
      */
     private function execute_schedule_with_lock($schedule) {
+        // Generate a fresh correlation ID for this automated run so all history
+        // records and notifications produced during this execution share one ID.
+        $correlation_id = AIPS_Correlation_ID::generate();
+
         try {
             // Claim-First Locking Strategy (Hunter)
             // Immediately calculate and update next_run to lock this schedule from concurrent processes.
@@ -180,6 +192,20 @@ class AIPS_Schedule_Processor {
 
             if ($lock_result === false) {
                 $this->logger->log('Failed to acquire lock for schedule ' . $schedule->schedule_id, 'error');
+                do_action('aips_scheduler_error', array(
+                    'schedule_id'    => $schedule->schedule_id,
+                    'template_id'    => $schedule->template_id,
+                    'schedule_name'  => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
+                    'error_code'     => 'lock_acquisition_failed',
+                    'error_message'  => __('Failed to acquire execution lock for schedule.', 'ai-post-scheduler'),
+                    'frequency'      => $schedule->frequency,
+                    'creation_method'=> 'scheduled',
+                    'correlation_id' => $correlation_id,
+                    'url'            => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+                    'dedupe_key'     => 'scheduler_lock_' . absint($schedule->schedule_id),
+                    'dedupe_window'  => 900,
+                ));
+                AIPS_Correlation_ID::reset();
                 return; // Skip generation if we couldn't lock
             }
 
@@ -192,6 +218,23 @@ class AIPS_Schedule_Processor {
             $this->logger->log('Critical error processing schedule ' . $schedule->schedule_id . ': ' . $e->getMessage(), 'error', array(
                 'trace' => $e->getTraceAsString()
             ));
+
+            do_action('aips_system_error', array(
+                'title'         => __('Schedule processing exception', 'ai-post-scheduler'),
+                'error_code'    => 'schedule_processing_exception',
+                'error_message' => $e->getMessage(),
+                'schedule_id'   => $schedule->schedule_id,
+                'template_id'   => isset($schedule->template_id) ? $schedule->template_id : 0,
+                'schedule_name' => !empty($schedule->name) ? $schedule->name : __('Scheduled run', 'ai-post-scheduler'),
+                'correlation_id' => $correlation_id,
+                'url'           => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+                'dedupe_key'    => 'system_schedule_exception_' . absint($schedule->schedule_id),
+                'dedupe_window' => 1800,
+            ));
+        } finally {
+            // Always reset the correlation ID after a run to prevent bleed-over
+            // into any subsequent scheduled jobs in the same cron batch.
+            AIPS_Correlation_ID::reset();
         }
     }
 
@@ -217,7 +260,7 @@ class AIPS_Schedule_Processor {
 
         // Explicitly fetch the template to ensure we have the most up-to-date post_quantity
         $actual_template_model = $this->template_repository->get_by_id($schedule->template_id);
-        $template_post_quantity = $actual_template_model ? $actual_template_model->post_quantity : 1;
+        $template_post_quantity = ($actual_template_model && isset($actual_template_model->post_quantity)) ? $actual_template_model->post_quantity : 1;
 
         // Use caller-supplied override, or fall back to the template's post_quantity, defaulting to 1.
         $raw_quantity = $quantity_override ?? ($template_post_quantity ?? 1);
@@ -399,6 +442,7 @@ class AIPS_Schedule_Processor {
      */
     private function handle_execution_failure($schedule, $result, $history, $is_manual) {
         $error_msg = $result->get_error_message();
+        $history_id = (is_object($history) && method_exists($history, 'get_id')) ? $history->get_id() : 0;
 
         $this->logger->log('Schedule failed: ' . $error_msg, 'error', array(
             'schedule_id' => $schedule->schedule_id
@@ -426,6 +470,21 @@ class AIPS_Schedule_Processor {
         );
 
         if (!$is_manual) {
+            do_action('aips_scheduler_error', array(
+                'schedule_id'    => $schedule->schedule_id,
+                'template_id'    => $schedule->template_id,
+                'schedule_name'  => $schedule->name,
+                'error_code'     => $result->get_error_code(),
+                'error_message'  => $error_msg,
+                'frequency'      => $schedule->frequency,
+                'history_id'     => $history_id,
+                'correlation_id' => AIPS_Correlation_ID::get(),
+                'creation_method'=> 'scheduled',
+                'url'            => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
+                'dedupe_key'     => 'scheduler_failure_' . absint($schedule->schedule_id) . '_' . sanitize_key($result->get_error_code()),
+                'dedupe_window'  => 900,
+            ));
+
             // Dispatch schedule execution failed event
             do_action('aips_schedule_execution_failed', $schedule->schedule_id, $error_msg);
         }
@@ -487,7 +546,7 @@ class AIPS_Schedule_Processor {
 
         if (!$is_manual) {
             // Dispatch schedule execution completed event
-            do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result);
+            do_action('aips_schedule_execution_completed', $schedule->schedule_id, $result, $schedule);
 
             // Invalidate the schedule execution count cache (Bolt)
             $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
