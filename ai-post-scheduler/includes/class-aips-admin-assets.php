@@ -549,7 +549,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-schedules',
                 AIPS_PLUGIN_URL . 'assets/js/admin-schedules.js',
-                array('aips-admin-script'),
+                array('aips-admin-script', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );

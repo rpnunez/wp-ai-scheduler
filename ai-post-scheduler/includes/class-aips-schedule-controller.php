@@ -59,13 +59,202 @@ class AIPS_Schedule_Controller {
         $id = $this->scheduler->save_schedule($data);
 
         if ($id) {
+            $row_tokens = $this->build_schedule_row_tokens($id);
             wp_send_json_success(array(
-                'message' => __('Schedule saved successfully.', 'ai-post-scheduler'),
-                'schedule_id' => $id
+                'message'     => __('Schedule saved successfully.', 'ai-post-scheduler'),
+                'schedule_id' => $id,
+                'row'         => $row_tokens,
+                'is_update'   => !empty($data['id']),
             ));
         } else {
             wp_send_json_error(array('message' => __('Failed to save schedule.', 'ai-post-scheduler')));
         }
+    }
+
+    /**
+     * Build the template token data for a single schedule row in the unified table.
+     *
+     * Returns an associative array whose keys match the `{{tokens}}` in the
+     * `aips-tmpl-unified-schedule-row` client-side template.  Complex
+     * conditional markup (type badge, status badge, action buttons, last/next
+     * run cells) is pre-rendered here as safe HTML strings so the JS side can
+     * use `AIPS.Templates.renderRaw()` without double-escaping issues.
+     *
+     * @param int $schedule_id The ID of the saved schedule.
+     * @return array Token map, or empty array when the schedule cannot be found.
+     */
+    private function build_schedule_row_tokens($schedule_id) {
+        $repository = new AIPS_Schedule_Repository();
+        $schedule   = $repository->get_by_id($schedule_id);
+
+        // Guard against null or incomplete objects (e.g. from test mocks).
+        if (!$schedule || !isset($schedule->template_id, $schedule->frequency, $schedule->is_active)) {
+            return array();
+        }
+
+        $is_active   = (int) $schedule->is_active;
+        $status      = $is_active ? 'active' : 'inactive';
+        $type        = AIPS_Unified_Schedule_Service::TYPE_TEMPLATE;
+        $row_key     = esc_attr($type . ':' . $schedule->id);
+        $date_format = get_option('date_format') . ' ' . get_option('time_format');
+
+        // Status badge
+        switch ($status) {
+            case 'failed':
+                $badge_cls  = 'aips-badge-error';
+                $icon_cls   = 'dashicons-warning';
+                $status_lbl = __('Failed', 'ai-post-scheduler');
+                break;
+            case 'inactive':
+                $badge_cls  = 'aips-badge-neutral';
+                $icon_cls   = 'dashicons-minus';
+                $status_lbl = __('Paused', 'ai-post-scheduler');
+                break;
+            default:
+                $badge_cls  = 'aips-badge-success';
+                $icon_cls   = 'dashicons-yes-alt';
+                $status_lbl = __('Active', 'ai-post-scheduler');
+        }
+
+        $status_badge_html = sprintf(
+            '<span class="aips-badge %s"><span class="dashicons %s"></span> %s</span>',
+            esc_attr($badge_cls),
+            esc_attr($icon_cls),
+            esc_html($status_lbl)
+        );
+
+        // Type badge
+        $type_badge_html = '<span class="aips-badge aips-badge-type-template">' . esc_html__('Post Generation', 'ai-post-scheduler') . '</span>';
+
+        // Frequency label
+        $schedules_list    = wp_get_schedules();
+        $frequency         = !empty($schedule->frequency) ? $schedule->frequency : '';
+        $frequency_label   = isset($schedules_list[$frequency])
+            ? $schedules_list[$frequency]['display']
+            : ucfirst(str_replace('_', ' ', $frequency));
+
+        // Determine display title (mirrors AIPS_Unified_Schedule_Service logic)
+        $template_name = !empty($schedule->template_name)
+            ? $schedule->template_name
+            : $this->get_template_name((int) $schedule->template_id);
+        $title = !empty($schedule->title) ? $schedule->title
+            : ($template_name ?: sprintf(__('Schedule #%d', 'ai-post-scheduler'), $schedule->id));
+
+        // Subtitle (template name)
+        $subtitle     = $template_name ?: __('Unknown Template', 'ai-post-scheduler');
+        $subtitle_html = sprintf(
+            '<div class="cell-meta">%s</div>',
+            esc_html($subtitle)
+        );
+
+        // Last run cell
+        $last_run_ts = !empty($schedule->last_run) ? strtotime($schedule->last_run) : 0;
+        if ($last_run_ts) {
+            $last_run_html = sprintf(
+                '<div class="cell-meta">%s</div><div class="cell-meta aips-muted" style="font-size:11px;">%s</div>',
+                esc_html(date_i18n($date_format, $last_run_ts)),
+                esc_html__('Generated post from template', 'ai-post-scheduler')
+            );
+        } else {
+            $last_run_html = sprintf('<div class="cell-meta aips-muted">%s</div>', esc_html__('Never', 'ai-post-scheduler'));
+        }
+
+        // Next run cell
+        $next_run_ts = !empty($schedule->next_run) ? strtotime($schedule->next_run) : 0;
+        if ($next_run_ts) {
+            $next_run_html = sprintf(
+                '<div class="cell-meta">%s</div><div class="cell-meta aips-muted" style="font-size:11px;">%s</div>',
+                esc_html(date_i18n($date_format, $next_run_ts)),
+                esc_html__('Expected output: generated post', 'ai-post-scheduler')
+            );
+            if ($next_run_ts < time() && $is_active) {
+                $next_run_html .= sprintf(
+                    '<div class="cell-meta" style="color:var(--aips-warning);font-size:11px;">%s</div>',
+                    esc_html__('Due — runs on next cron trigger', 'ai-post-scheduler')
+                );
+            }
+        } else {
+            $next_run_html = sprintf('<div class="cell-meta aips-muted">%s</div>', esc_html__('—', 'ai-post-scheduler'));
+        }
+
+        // Action buttons (edit + run now + delete)
+        $actions_html = sprintf(
+            '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-edit-schedule"
+                aria-label="%s" title="%s"
+                data-schedule-id="%d"
+                data-template-id="%d"
+                data-title="%s"
+                data-frequency="%s"
+                data-next-run="%s"
+                data-is-active="%d">
+                <span class="dashicons dashicons-edit"></span>
+            </button>',
+            esc_attr__('Edit schedule', 'ai-post-scheduler'),
+            esc_attr__('Edit', 'ai-post-scheduler'),
+            absint($schedule->id),
+            absint($schedule->template_id),
+            esc_attr($title),
+            esc_attr($frequency),
+            esc_attr($schedule->next_run ?? ''),
+            $is_active
+        );
+        $actions_html .= sprintf(
+            '<button class="aips-btn aips-btn-sm aips-btn-ghost aips-unified-run-now"
+                data-id="%d" data-type="%s"
+                aria-label="%s" title="%s">
+                <span class="dashicons dashicons-controls-play"></span>
+            </button>',
+            absint($schedule->id),
+            esc_attr($type),
+            esc_attr__('Run now', 'ai-post-scheduler'),
+            esc_attr__('Run Now', 'ai-post-scheduler')
+        );
+        $actions_html .= sprintf(
+            '<button class="aips-btn aips-btn-sm aips-btn-danger aips-delete-schedule"
+                data-id="%d"
+                aria-label="%s" title="%s">
+                <span class="dashicons dashicons-trash"></span>
+            </button>',
+            absint($schedule->id),
+            esc_attr__('Delete schedule', 'ai-post-scheduler'),
+            esc_attr__('Delete', 'ai-post-scheduler')
+        );
+
+        return array(
+            'id'               => absint($schedule->id),
+            'type'             => esc_attr($type),
+            'rowKey'           => $row_key,
+            'isActive'         => $is_active,
+            'title'            => esc_attr($title),
+            'titleDisplay'     => esc_html($title),
+            'ariaSelectLabel'  => esc_attr(sprintf(__('Select: %s', 'ai-post-scheduler'), $title)),
+            'subtitleHtml'     => $subtitle_html,
+            'typeBadgeHtml'    => $type_badge_html,
+            'cronHook'         => esc_html('aips_generate_scheduled_posts'),
+            'frequencyLabel'   => esc_html($frequency_label),
+            'lastRunHtml'      => $last_run_html,
+            'nextRunHtml'      => $next_run_html,
+            'statsCount'       => 0,
+            'statsLabel'       => esc_html__('posts generated', 'ai-post-scheduler'),
+            'statusBadgeHtml'  => $status_badge_html,
+            'toggleChecked'    => $is_active ? 'checked' : '',
+            'actionsHtml'      => $actions_html,
+        );
+    }
+
+    /**
+     * Retrieve the display name for a template by its ID.
+     *
+     * @param int $template_id
+     * @return string Template name, or empty string if not found.
+     */
+    private function get_template_name($template_id) {
+        if (!$template_id) {
+            return '';
+        }
+        $repository = new AIPS_Template_Repository();
+        $template   = $repository->get_by_id($template_id);
+        return ($template && !empty($template->name)) ? (string) $template->name : '';
     }
 
     public function ajax_delete_schedule() {

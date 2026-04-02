@@ -369,7 +369,7 @@
 					if (response.success) {
 						AIPS.Utilities.showToast(response.data.message || 'Schedule saved successfully', 'success');
 						$('#aips-schedule-modal').hide();
-						AIPS.Schedules.refreshScheduleTable();
+						AIPS.Schedules.insertOrUpdateScheduleRow(response.data);
 					} else {
 						AIPS.Utilities.showToast(response.data.message, 'error');
 					}
@@ -430,7 +430,7 @@
 							'success'
 						);
 						$wizardModal.hide();
-						AIPS.Schedules.refreshScheduleTable();
+						AIPS.Schedules.insertOrUpdateScheduleRow(response.data);
 					} else {
 						AIPS.Utilities.showToast(response.data.message, 'error');
 					}
@@ -445,34 +445,78 @@
 		},
 
 		/**
-		 * Reload the schedule table panel in place after a create/edit/clone.
+		 * Insert a new schedule row into the unified table, or update an
+		 * existing row in place, using the Template engine.
 		 *
-		 * Fetches the current page HTML and swaps in the updated
-		 * `.aips-schedule-table` panel, avoiding a full page reload.
-		 * Falls back to `location.reload()` when the panel cannot be found.
+		 * Called from `saveSchedule` and `saveScheduleWizard` after a
+		 * successful `aips_save_schedule` AJAX response.  Receives the
+		 * `response.data` object which must include a `row` key (token map
+		 * from the server) and an `is_update` boolean.
+		 *
+		 * Renders the `aips-tmpl-unified-schedule-row` template via
+		 * `AIPS.Templates.renderRaw()` so pre-escaped HTML blobs (badges,
+		 * action buttons, run-date cells) are injected without
+		 * double-escaping.  Falls back to `location.reload()` when the
+		 * template is not found in the DOM (e.g. legacy page without the
+		 * `<script type="text/html">` block).
+		 *
+		 * @param {Object}  responseData          - The `response.data` payload from the server.
+		 * @param {Object}  responseData.row       - Token map produced by `build_schedule_row_tokens()`.
+		 * @param {boolean} responseData.is_update - `true` when editing an existing schedule.
 		 */
-		refreshScheduleTable: function() {
-			$.get(location.href, function(html) {
-				var $newDoc     = $(html);
-				var $newContent = $newDoc.find('.aips-schedule-table').closest('.aips-content-panel');
-				var $existing   = $('.aips-schedule-table').closest('.aips-content-panel');
+		insertOrUpdateScheduleRow: function(responseData) {
+			var rowData  = responseData && responseData.row;
+			var isUpdate = !!(responseData && responseData.is_update);
 
-				if ($newContent.length) {
-					if ($existing.length) {
-						$existing.replaceWith($newContent);
-					} else {
-						var $empty = $('.aips-content-panel').has('.aips-empty-state').last();
-						if ($empty.length) {
-							$empty.replaceWith($newContent);
-						} else {
-							location.reload();
-						}
-					}
-					AIPS.Schedules.updateScheduleBulkActions();
-				} else {
-					location.reload();
+			if (!rowData || !rowData.rowKey) {
+				// No row data — fall back to a full page reload
+				location.reload();
+				return;
+			}
+
+			var rowHtml = AIPS.Templates.renderRaw('aips-tmpl-unified-schedule-row', rowData);
+			if (!rowHtml) {
+				// Template not found in DOM
+				location.reload();
+				return;
+			}
+
+			var $newRow = $(rowHtml);
+
+			if (isUpdate) {
+				// Replace the existing row in place
+				var $existing = $('tr[data-row-key="' + rowData.rowKey + '"]');
+				if ($existing.length) {
+					$existing.replaceWith($newRow);
+					AIPS.Schedules.updateUnifiedBulkActions();
+					return;
 				}
-			});
+			}
+
+			// Insert new row — ensure the table exists and is visible
+			var $table = $('.aips-unified-schedule-table');
+			var $emptyState = $('.aips-empty-state:not(#aips-unified-search-no-results)');
+
+			if (!$table.length) {
+				// Table doesn't exist yet (empty-state shown); reload to render full shell
+				location.reload();
+				return;
+			}
+
+			// Hide empty state if visible
+			$emptyState.hide();
+			$table.find('tbody').prepend($newRow);
+			$table.show();
+
+			// Update footer row count
+			var rowCount = $table.find('tbody tr.aips-unified-row').length;
+			$('.aips-table-footer-count').text(
+				rowCount === 1
+					? rowCount + ' ' + (aipsAdminL10n.scheduleSingular || 'schedule')
+					: rowCount + ' ' + (aipsAdminL10n.schedulePlural  || 'schedules')
+			);
+
+			AIPS.Schedules.updateUnifiedBulkActions();
 		},
 
 		/* ------------------------------------------------------------------ */

@@ -472,6 +472,77 @@ if (!function_exists('aips_run_output_label')) {
 </div>
 
 <!-- ============================================================ -->
+<!-- JS Template: Unified Schedule Table Row                      -->
+<!--                                                              -->
+<!-- Used by admin-schedules.js AIPS.Templates.renderRaw() after -->
+<!-- a template schedule is created or edited via the modal.      -->
+<!-- Pre-rendered HTML blobs (badges, buttons, run cells) are     -->
+<!-- supplied as tokens from the server so the engine can inject  -->
+<!-- them without double-escaping.                                -->
+<!-- ============================================================ -->
+<script type="text/html" id="aips-tmpl-unified-schedule-row">
+<tr class="aips-unified-row"
+	data-id="{{id}}"
+	data-type="{{type}}"
+	data-row-key="{{rowKey}}"
+	data-is-active="{{isActive}}"
+	data-title="{{title}}"
+	data-schedule-id="{{id}}">
+	<th scope="row" class="check-column">
+		<input type="checkbox"
+			class="aips-unified-checkbox"
+			value="{{rowKey}}"
+			aria-label="{{ariaSelectLabel}}">
+	</th>
+	<td class="column-title">
+		<div class="cell-primary"><strong>{{titleDisplay}}</strong></div>
+		{{subtitleHtml}}
+		<div class="cell-meta" style="margin-top:4px;">
+			<button type="button"
+				class="aips-btn aips-btn-sm aips-btn-ghost aips-view-unified-history"
+				data-id="{{id}}"
+				data-type="{{type}}"
+				data-name="{{title}}"
+				style="padding:1px 6px;font-size:11px;">
+				<span class="dashicons dashicons-backup" style="font-size:14px;width:14px;height:14px;"></span>
+				<?php esc_html_e('Previous Runs', 'ai-post-scheduler'); ?>
+			</button>
+		</div>
+	</td>
+	<td class="column-type">
+		{{typeBadgeHtml}}
+		<div class="cell-meta" style="font-size:11px;margin-top:4px;opacity:.7;">{{cronHook}}</div>
+	</td>
+	<td class="column-frequency">
+		<span class="aips-badge aips-badge-info">{{frequencyLabel}}</span>
+	</td>
+	<td class="column-last-run">{{lastRunHtml}}</td>
+	<td class="column-next-run">{{nextRunHtml}}</td>
+	<td class="column-stats">
+		<div class="cell-primary"><strong>{{statsCount}}</strong></div>
+		<div class="cell-meta">{{statsLabel}}</div>
+	</td>
+	<td class="column-status">
+		<div class="aips-schedule-status-wrapper" style="display:flex;align-items:center;gap:8px;">
+			{{statusBadgeHtml}}
+			<label class="aips-toggle">
+				<input type="checkbox"
+					class="aips-unified-toggle-schedule"
+					data-id="{{id}}"
+					data-type="{{type}}"
+					aria-label="<?php esc_attr_e('Toggle schedule status', 'ai-post-scheduler'); ?>"
+					{{toggleChecked}}>
+				<span class="aips-toggle-slider"></span>
+			</label>
+		</div>
+	</td>
+	<td class="column-actions">
+		<div class="cell-actions">{{actionsHtml}}</div>
+	</td>
+</tr>
+</script>
+
+<!-- ============================================================ -->
 <!-- Schedule History Modal                                       -->
 <!-- ============================================================ -->
 <div id="aips-schedule-history-modal" class="aips-modal" style="display:none;"
