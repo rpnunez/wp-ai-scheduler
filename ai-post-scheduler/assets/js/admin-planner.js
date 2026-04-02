@@ -143,15 +143,6 @@
         },
 
         /**
-         * Show or hide `.topic-item` rows based on whether their text input
-         * value matches the current `#planner-topic-search` value.
-         *
-         * Only tests `.topic-item` elements that are currently visible.
-         * Calls `updateSelectionCount` after filtering to keep the count accurate.
-         *
-         * Bound to the first `keyup search` listener on `#planner-topic-search`.
-         */
-        /**
          * Sync all `.topic-checkbox` elements with the state of the
          * `#check-all-topics` "select all" checkbox.
          *
@@ -236,7 +227,7 @@
          * message when no topics match the term. Removes the empty-state message
          * when the field is cleared or topics become visible again.
          *
-         * Bound to the second `keyup search` listener on `#planner-topic-search`.
+         * Bound to the `keyup search` listener on `#planner-topic-search`.
          */
         filterTopics: function() {
             var term = $(this).val().toLowerCase();
@@ -253,6 +244,7 @@
                 var text = $(this).find('.topic-text-input').val().toLowerCase();
                 $(this).toggle(text.indexOf(term) > -1);
             });
+            window.AIPS.updateSelectionCount();
             
             // Show an empty state message when no topics match the filter
             var $topicsList = $('#topics-list');
@@ -533,7 +525,6 @@
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('change', '#check-all-topics', window.AIPS.toggleAllTopics);
         $(document).on('change', '.topic-checkbox', window.AIPS.updateSelectionCount);
-        $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('click', '#planner-topic-search-clear', window.AIPS.clearTopicSearch);
         $(document).on('click', '.aips-clear-topic-search-btn', window.AIPS.clearTopicSearch);
         $(document).on('click', '.aips-remove-topic-btn', window.AIPS.removeTopic);
