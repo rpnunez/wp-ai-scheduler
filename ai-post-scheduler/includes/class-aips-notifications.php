@@ -534,7 +534,7 @@ class AIPS_Notifications {
 
 		$title = sprintf(__('Manual generation completed: %s', 'ai-post-scheduler'), $post_title);
 		$message = sprintf(__('Manual generation created post "%s".', 'ai-post-scheduler'), $post_title);
-		$url = $post_id ? get_edit_post_link($post_id) : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+		$url = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
 
 		$this->dispatch_notification('manual_generation_completed', array(
 			'title'         => $title,
@@ -561,7 +561,7 @@ class AIPS_Notifications {
 
 		$title = sprintf(__('Post ready for review: %s', 'ai-post-scheduler'), $post_title);
 		$message = sprintf(__('Generated post "%s" is awaiting review.', 'ai-post-scheduler'), $post_title);
-		$url = $post_id ? get_edit_post_link($post_id) : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
+		$url = $post_id ? esc_url_raw(get_edit_post_link($post_id, 'raw')) : AIPS_Admin_Menu_Helper::get_page_url('generated_posts');
 
 		$this->dispatch_notification('post_ready_for_review', array(
 			'title'         => $title,
