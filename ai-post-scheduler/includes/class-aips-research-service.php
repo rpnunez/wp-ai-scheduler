@@ -290,13 +290,20 @@ class AIPS_Research_Service {
      * @return array Normalized topic.
      */
     private function normalize_topic($topic) {
+        $keywords = array();
+        if (isset($topic['keywords']) && is_array($topic['keywords'])) {
+            foreach ($topic['keywords'] as $kw) {
+                if (is_scalar($kw)) {
+                    $keywords[] = sanitize_text_field((string) $kw);
+                }
+            }
+        }
+
         return array(
             'topic' => sanitize_text_field($topic['topic']),
             'score' => absint($topic['score']),
             'reason' => isset($topic['reason']) ? sanitize_text_field($topic['reason']) : '',
-            'keywords' => isset($topic['keywords']) && is_array($topic['keywords'])
-                ? array_map('sanitize_text_field', $topic['keywords'])
-                : array(),
+            'keywords' => $keywords,
             'researched_at' => current_time('mysql'),
         );
     }

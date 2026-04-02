@@ -261,9 +261,14 @@ class AIPS_Author_Topics_Generator {
 			// Extract and sanitize data
 			$title = sanitize_text_field($item['title']);
 			$score = isset($item['score']) ? absint($item['score']) : 50;
-			$keywords = isset($item['keywords']) && is_array($item['keywords']) 
-				? array_map('sanitize_text_field', $item['keywords']) 
-				: array();
+			$keywords = array();
+			if (isset($item['keywords']) && is_array($item['keywords'])) {
+				foreach ($item['keywords'] as $kw) {
+					if (is_scalar($kw)) {
+						$keywords[] = sanitize_text_field((string) $kw);
+					}
+				}
+			}
 			
 			// Skip if title is too short
 			if (strlen($title) < 10) {
