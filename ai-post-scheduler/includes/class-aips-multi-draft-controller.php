@@ -85,6 +85,11 @@ class AIPS_Multi_Draft_Controller {
 			wp_send_json_error( array( 'message' => __( 'You do not have permission to edit this post.', 'ai-post-scheduler' ) ) );
 		}
 
+		$post = get_post( $post_id );
+		if ( ! ( $post instanceof WP_Post ) ) {
+			wp_send_json_error( array( 'message' => __( 'Post not found.', 'ai-post-scheduler' ) ) );
+		}
+
 		// Clamp to the configured limit.
 		$max_variants  = self::get_max_variants();
 		$variant_count = max( 2, min( $variant_count, $max_variants ) );
@@ -100,6 +105,11 @@ class AIPS_Multi_Draft_Controller {
 		}
 
 		$generation_context = $context['generation_context'];
+		$current_components = array(
+			'title' => (string) $post->post_title,
+			'excerpt' => (string) $post->post_excerpt,
+			'content' => (string) $post->post_content,
+		);
 
 		// Increase PHP time limit for multiple generation calls.
 		if ( ! ini_get( 'safe_mode' ) ) {
@@ -129,6 +139,7 @@ class AIPS_Multi_Draft_Controller {
 		wp_send_json_success( array(
 			'variants'      => $variants,
 			'variant_count' => count( $variants ),
+			'current_components' => $current_components,
 		) );
 	}
 
@@ -137,6 +148,7 @@ class AIPS_Multi_Draft_Controller {
 	 *
 	 * Accepts POST fields:
 	 *   post_id    (int)
+	 *   history_id (int)
 	 *   components (array: title, excerpt, content)
 	 *
 	 * Returns JSON success with:
@@ -151,9 +163,10 @@ class AIPS_Multi_Draft_Controller {
 		}
 
 		$post_id    = isset( $_POST['post_id'] )                                  ? absint( $_POST['post_id'] )   : 0;
+		$history_id = isset( $_POST['history_id'] )                               ? absint( $_POST['history_id'] ) : 0;
 		$components = isset( $_POST['components'] ) && is_array( $_POST['components'] ) ? $_POST['components'] : array();
 
-		if ( ! $post_id || empty( $components ) ) {
+		if ( ! $post_id || ! $history_id || empty( $components ) ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid request.', 'ai-post-scheduler' ) ) );
 		}
 
@@ -161,26 +174,68 @@ class AIPS_Multi_Draft_Controller {
 			wp_send_json_error( array( 'message' => __( 'You do not have permission to edit this post.', 'ai-post-scheduler' ) ) );
 		}
 
+		$post = get_post( $post_id );
+		if ( ! ( $post instanceof WP_Post ) ) {
+			wp_send_json_error( array( 'message' => __( 'Post not found.', 'ai-post-scheduler' ) ) );
+		}
+
 		$post_data          = array( 'ID' => $post_id );
 		$updated_components = array();
+		$sanitized          = array();
 
-		if ( ! empty( $components['title'] ) ) {
-			$post_data['post_title'] = sanitize_text_field( wp_unslash( $components['title'] ) );
-			$updated_components[]    = 'title';
-		}
+		$current_components = array(
+			'title' => (string) $post->post_title,
+			'excerpt' => (string) $post->post_excerpt,
+			'content' => (string) $post->post_content,
+		);
 
-		if ( isset( $components['excerpt'] ) ) {
-			$post_data['post_excerpt'] = sanitize_textarea_field( wp_unslash( $components['excerpt'] ) );
-			$updated_components[]      = 'excerpt';
-		}
+		$component_fields = array(
+			'title' => 'post_title',
+			'excerpt' => 'post_excerpt',
+			'content' => 'post_content',
+		);
 
-		if ( ! empty( $components['content'] ) ) {
-			$post_data['post_content'] = wp_kses_post( wp_unslash( $components['content'] ) );
-			$updated_components[]      = 'content';
+		$component_sanitizers = array(
+			'title' => 'sanitize_text_field',
+			'excerpt' => 'sanitize_textarea_field',
+			'content' => 'wp_kses_post',
+		);
+
+		foreach ( array( 'title', 'excerpt', 'content' ) as $component ) {
+			if ( ! array_key_exists( $component, $components ) ) {
+				continue;
+			}
+
+			$raw_new_value = wp_unslash( $components[ $component ] );
+			$new_value = call_user_func( $component_sanitizers[ $component ], $raw_new_value );
+			$sanitized[ $component ] = $new_value;
+
+			if ( (string) $new_value === (string) $current_components[ $component ] ) {
+				continue;
+			}
+
+			$snapshot_result = $this->service->capture_component_revision(
+				$post_id,
+				$history_id,
+				$component,
+				$this->sanitize_component_revision_value( $component, $current_components[ $component ] ),
+				'multi_draft',
+				'pre_apply_multi_draft'
+			);
+
+			if ( is_wp_error( $snapshot_result ) ) {
+				wp_send_json_error( array( 'message' => $snapshot_result->get_error_message() ) );
+			}
+
+			$post_data[ $component_fields[ $component ] ] = $new_value;
+			$updated_components[] = $component;
 		}
 
 		if ( empty( $updated_components ) ) {
-			wp_send_json_error( array( 'message' => __( 'No components selected.', 'ai-post-scheduler' ) ) );
+			wp_send_json_success( array(
+				'message' => __( 'No changes were applied.', 'ai-post-scheduler' ),
+				'updated_components' => array(),
+			) );
 		}
 
 		$result = wp_update_post( $post_data, true );
@@ -190,16 +245,41 @@ class AIPS_Multi_Draft_Controller {
 		}
 
 		// Build a sanitized copy for the action hook (mirrors AIPS_AI_Edit_Controller pattern).
-		$sanitized = array();
-		if ( isset( $post_data['post_title'] ) )   { $sanitized['title']   = $post_data['post_title']; }
-		if ( isset( $post_data['post_excerpt'] ) ) { $sanitized['excerpt'] = $post_data['post_excerpt']; }
-		if ( isset( $post_data['post_content'] ) ) { $sanitized['content'] = $post_data['post_content']; }
+		$sanitized_for_action = array();
+		foreach ( $updated_components as $component ) {
+			if ( isset( $sanitized[ $component ] ) ) {
+				$sanitized_for_action[ $component ] = $sanitized[ $component ];
+			}
+		}
 
-		do_action( 'aips_post_components_updated', $post_id, $updated_components, $sanitized );
+		do_action( 'aips_post_components_updated', $post_id, $updated_components, $sanitized_for_action );
 
 		wp_send_json_success( array(
 			'message'            => __( 'Draft applied to post successfully!', 'ai-post-scheduler' ),
 			'updated_components' => $updated_components,
 		) );
+	}
+
+	/**
+	 * Sanitize revision snapshot values before persistence.
+	 *
+	 * @param string $component Component key.
+	 * @param mixed  $value Component value.
+	 * @return string
+	 */
+	private function sanitize_component_revision_value( $component, $value ) {
+		switch ( $component ) {
+			case 'title':
+				return sanitize_text_field( (string) $value );
+
+			case 'excerpt':
+				return sanitize_textarea_field( (string) $value );
+
+			case 'content':
+				return wp_kses_post( (string) $value );
+
+			default:
+				return '';
+		}
 	}
 }

@@ -20,6 +20,7 @@
 	var multiDraftState = {
 		postId:     null,
 		historyId:  null,
+		currentComponents: {},
 		variants:   [],
 		selections: {}
 	};
@@ -57,6 +58,7 @@
 
 			multiDraftState.postId    = $btn.data('post-id');
 			multiDraftState.historyId = $btn.data('history-id');
+			multiDraftState.currentComponents = {};
 			multiDraftState.variants  = [];
 			multiDraftState.selections = {};
 
@@ -133,6 +135,8 @@
 		generateVariants: function(e) {
 			e.preventDefault();
 			var variantCount = parseInt($('#aips-multi-draft-count').val(), 10) || 2;
+			var errorHeading = aipsMultiDraftL10n.errorHeading || 'Generation Failed';
+			var okLabel = aipsMultiDraftL10n.okLabel || 'OK';
 
 			AIPS.showMultiDraftStep('generating');
 
@@ -149,20 +153,32 @@
 				},
 				success: function(response) {
 					if (response.success) {
+						multiDraftState.currentComponents = response.data.current_components || {};
 						multiDraftState.variants = response.data.variants;
-						AIPS.renderMultiDraftComparison(response.data.variants);
+						AIPS.renderMultiDraftComparison(response.data.variants, multiDraftState.currentComponents);
 						AIPS.showMultiDraftStep('compare');
 					} else {
 						AIPS.showMultiDraftStep('config');
-						AIPS.Utilities.showToast(
+						AIPS.Utilities.alertAcknowledge(
 							(response.data && response.data.message) || aipsMultiDraftL10n.generateError,
-							'error'
+							errorHeading,
+							okLabel
 						);
 					}
 				},
-				error: function() {
+				error: function(jqXHR) {
+					var message = aipsMultiDraftL10n.generateError;
+
+					if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
+						message = jqXHR.responseJSON.data.message;
+					}
+
 					AIPS.showMultiDraftStep('config');
-					AIPS.Utilities.showToast(aipsMultiDraftL10n.generateError, 'error');
+					AIPS.Utilities.alertAcknowledge(
+						message,
+						errorHeading,
+						okLabel
+					);
 				}
 			});
 		},
@@ -174,36 +190,59 @@
 		 * contains one column per variant. A radio button on each column header
 		 * lets the editor select which variant's value to keep.
 		 *
-		 * @param {Array} variants Array of variant objects: {index, title, excerpt, content}.
+		 * @param {Array}  variants          Array of variant objects: {index, title, excerpt, content}.
+		 * @param {Object} currentComponents Current post values keyed by title/excerpt/content.
 		 */
-		renderMultiDraftComparison: function(variants) {
+		renderMultiDraftComparison: function(variants, currentComponents) {
 			var sections = ['title', 'excerpt', 'content'];
 			var labels   = {
 				title:   aipsMultiDraftL10n.labelTitle,
 				excerpt: aipsMultiDraftL10n.labelExcerpt,
 				content: aipsMultiDraftL10n.labelContent
 			};
+			var currentLabel = aipsMultiDraftL10n.currentLabel || 'Current Value (Keep Existing)';
+
+			currentComponents = currentComponents || {};
+
+			var compareChoices = [
+				{
+					key: 'current',
+					label: currentLabel,
+					data: {
+						title: currentComponents.title || '',
+						excerpt: currentComponents.excerpt || '',
+						content: currentComponents.content || ''
+					}
+				}
+			];
+
+			variants.forEach(function(variant) {
+				compareChoices.push({
+					key: String(variant.index),
+					label: aipsMultiDraftL10n.variantLabel.replace('%d', variant.index),
+					data: variant
+				});
+			});
 
 			var html = '';
 
 			sections.forEach(function(section) {
 				html += '<div class="aips-mdc-section">';
 				html += '<h4 class="aips-mdc-section-label">' + AIPS.Templates.escape(labels[section]) + '</h4>';
-				html += '<div class="aips-mdc-columns aips-mdc-cols-' + variants.length + '">';
+				html += '<div class="aips-mdc-columns aips-mdc-cols-' + compareChoices.length + '">';
 
-				variants.forEach(function(variant, idx) {
-					var value      = variant[section] || '';
+				compareChoices.forEach(function(choice, idx) {
+					var value      = (choice.data && choice.data[section]) ? choice.data[section] : '';
 					var isSelected = idx === 0; // default: first variant selected
-					var varLabel   = aipsMultiDraftL10n.variantLabel.replace('%d', variant.index);
 
 					html += '<div class="aips-mdc-column' + (isSelected ? ' is-selected' : '') + '">';
 					html += '<label class="aips-mdc-column-header">';
 					html += '<input type="radio" class="aips-variant-select-radio"'
 						+ ' name="aips_variant_' + section + '"'
-						+ ' value="' + variant.index + '"'
+						+ ' value="' + AIPS.Templates.escape(choice.key) + '"'
 						+ ' data-section="' + AIPS.Templates.escape(section) + '"'
 						+ (isSelected ? ' checked' : '') + '>';
-					html += ' ' + AIPS.Templates.escape(varLabel);
+					html += ' ' + AIPS.Templates.escape(choice.label);
 					html += '</label>';
 
 					if (section === 'content') {
@@ -218,8 +257,8 @@
 				html += '</div>'; // .aips-mdc-columns
 				html += '</div>'; // .aips-mdc-section
 
-				// Default selection to first variant.
-				multiDraftState.selections[section] = 1;
+				// Default selection to current value to avoid accidental overwrite.
+				multiDraftState.selections[section] = 'current';
 			});
 
 			$('#aips-multi-draft-compare-body').html(html);
@@ -233,9 +272,9 @@
 		onVariantRadioChange: function(e) {
 			var $radio  = $(e.currentTarget);
 			var section = $radio.data('section');
-			var index   = parseInt($radio.val(), 10);
+			var selected = String($radio.val());
 
-			multiDraftState.selections[section] = index;
+			multiDraftState.selections[section] = selected;
 
 			// Visual feedback: highlight the chosen column.
 			$radio.closest('.aips-mdc-section')
@@ -255,8 +294,16 @@
 
 			// Build component map from current selections.
 			var components = {};
+			var currentValues = multiDraftState.currentComponents || {};
 			['title', 'excerpt', 'content'].forEach(function(section) {
-				var variantIndex = multiDraftState.selections[section] || 1;
+				var selectedChoice = String(multiDraftState.selections[section] || 'current');
+
+				if (selectedChoice === 'current') {
+					components[section] = currentValues[section] || '';
+					return;
+				}
+
+				var variantIndex = parseInt(selectedChoice, 10);
 				var found = null;
 				$.each(multiDraftState.variants, function(i, v) {
 					if (v.index === variantIndex) {
@@ -266,6 +313,8 @@
 				});
 				if (found) {
 					components[section] = found[section];
+				} else {
+					components[section] = currentValues[section] || '';
 				}
 			});
 
@@ -276,18 +325,29 @@
 					action:     'aips_apply_merged_draft',
 					nonce:      aipsMultiDraftL10n.nonce,
 					post_id:    multiDraftState.postId,
+					history_id: multiDraftState.historyId,
 					components: components
 				},
 				success: function(response) {
 					if (response.success) {
-						AIPS.Utilities.showToast(aipsMultiDraftL10n.applySuccess, 'success');
+						var updatedComponents = (response.data && response.data.updated_components) ? response.data.updated_components : [];
+						var isNoChangeApply = !updatedComponents.length;
+						var toastMessage = (response.data && response.data.message)
+							|| (isNoChangeApply ? aipsMultiDraftL10n.noChangesApplied : aipsMultiDraftL10n.applySuccess);
+
+						AIPS.Utilities.showToast(
+							toastMessage,
+							isNoChangeApply ? 'info' : 'success'
+						);
 						AIPS.closeMultiDraftModal();
 
 						// Refresh the post list if the page provides a loader.
-						if (typeof AIPS.loadDraftPosts === 'function') {
-							AIPS.loadDraftPosts();
-						} else {
-							location.reload();
+						if (!isNoChangeApply) {
+							if (typeof AIPS.loadDraftPosts === 'function') {
+								AIPS.loadDraftPosts();
+							} else {
+								location.reload();
+							}
 						}
 					} else {
 						AIPS.Utilities.showToast(

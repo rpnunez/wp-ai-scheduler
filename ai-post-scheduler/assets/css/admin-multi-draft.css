@@ -107,6 +107,7 @@
 /* Explicit 2- and 3-column helpers set from JS class names */
 .aips-mdc-cols-2 { grid-template-columns: 1fr 1fr; }
 .aips-mdc-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.aips-mdc-cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
 
 .aips-mdc-column {
 	padding: 14px 16px;
@@ -188,7 +189,8 @@
 @media screen and (max-width: 782px) {
 	.aips-mdc-columns,
 	.aips-mdc-cols-2,
-	.aips-mdc-cols-3 {
+	.aips-mdc-cols-3,
+	.aips-mdc-cols-4 {
 		grid-template-columns: 1fr;
 	}
 
