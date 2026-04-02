@@ -75,13 +75,15 @@ class AIPS_Structures_Controller {
             if (is_wp_error($result)) {
                 wp_send_json_error(array('message' => $result->get_error_message()));
             }
-            wp_send_json_success(array('message' => __('Structure updated.', 'ai-post-scheduler'), 'structure_id' => $id));
+            $structure = $this->repo->get_by_id($id);
+            wp_send_json_success(array('message' => __('Structure updated.', 'ai-post-scheduler'), 'structure_id' => $id, 'structure' => $structure));
         } else {
             $new_id = $manager->create_structure($name, $sections, $prompt_template, $description, $is_default == 1, $is_active == 1);
             if (is_wp_error($new_id)) {
                 wp_send_json_error(array('message' => $new_id->get_error_message()));
             }
-            wp_send_json_success(array('message' => __('Structure created.', 'ai-post-scheduler'), 'structure_id' => $new_id));
+            $structure = $this->repo->get_by_id($new_id);
+            wp_send_json_success(array('message' => __('Structure created.', 'ai-post-scheduler'), 'structure_id' => $new_id, 'structure' => $structure));
         }
     }
 
