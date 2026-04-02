@@ -171,11 +171,6 @@ class AIPS_Schedule_Processor {
     }
 
     /**
-     * Execute a schedule with locking mechanism.
-     *
-     * @param object $schedule Schedule object (merged with template).
-     */
-    /**
      * Execute a schedule with claim-first locking.
      *
      * LOCKING STRATEGY — claim-first (load-shedding):

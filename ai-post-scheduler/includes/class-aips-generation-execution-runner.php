@@ -15,7 +15,7 @@
  *   4. Always reset the correlation ID in a finally block so it cannot
  *      bleed into a subsequent job in the same cron batch.
  *
- * This class centralises that harness so each caller only needs to supply
+ * This class centralizes that harness so each caller only needs to supply
  * the work callable, a history-type label, metadata for error records, and
  * an optional domain-specific exception callback.
  *
