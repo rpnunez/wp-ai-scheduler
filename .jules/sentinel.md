@@ -72,3 +72,8 @@
 **Vulnerability:** Superglobals like `$_POST`, `$_GET`, and `$_REQUEST` were passed directly to sanitization functions (e.g., `sanitize_text_field`, `wp_kses_post`) without first being unslashed.
 **Learning:** WordPress automatically adds slashes to `$_POST`, `$_GET`, and `$_REQUEST` arrays. If these slashes are not removed using `wp_unslash()` before sanitization, it can lead to data corruption (e.g., literal backslashes being saved to the database) or potentially bypass certain sanitization filters, leading to XSS vulnerabilities.
 **Prevention:** Always apply `wp_unslash()` to values retrieved from `$_POST`, `$_GET`, or `$_REQUEST` immediately before passing them to any sanitization function.
+
+## 2026-03-24 - [HIGH] Fix Output Escaping on Generated Links in Onboarding Wizard
+**Vulnerability:** Unescaped usage of `get_permalink()` and `get_edit_post_link()` in `AIPS_Onboarding_Wizard::ajax_generate_post()` API JSON response.
+**Learning:** Returning unescaped URLs within JSON payloads, even if they originate from core WordPress functions, can be a potential risk if they contain malicious characters or javascript: URIs that an unsuspecting frontend might evaluate. It creates an XSS vector via API Response.
+**Prevention:** Always wrap URL outputs intended for API or JSON/AJAX responses with `esc_url_raw()` to ensure they are properly sanitized.
