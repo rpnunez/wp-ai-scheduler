@@ -296,6 +296,7 @@ class AIPS_Session_To_JSON {
 	 *
 	 * This is useful for very large sessions where returning the JSON string directly may
 	 * be impractical. The file will be created under wp_upload_dir()/aips-exports.
+	 * Logs an error if file permission changes fail.
 	 *
 	 * @param int  $history_id   The history item ID
 	 * @param bool $pretty_print Whether to format JSON with indentation
@@ -343,7 +344,9 @@ class AIPS_Session_To_JSON {
 		}
 		
 		// Try to set restrictive permissions
-		@chmod($filepath, 0644);
+		if (!chmod($filepath, 0644)) {
+			error_log('AIPS_Session_To_JSON: Failed to set permissions on export file: ' . $filepath);
+		}
 		
 		return array(
 			'path' => $filepath,
@@ -353,7 +356,8 @@ class AIPS_Session_To_JSON {
 	}
 	
 	/**
-	 * Create .htaccess file to protect export directory
+	 * Create .htaccess file to protect export directory.
+	 * Explicitly checks file creation success and logs errors instead of silencing them.
 	 *
 	 * @param string $dir Directory path
 	 */
@@ -369,19 +373,23 @@ class AIPS_Session_To_JSON {
 			$content .= "    Deny from all\n";
 			$content .= "</Files>\n";
 
-			@file_put_contents($htaccess_file, $content);
+			if (file_put_contents($htaccess_file, $content) === false) {
+				error_log('AIPS_Session_To_JSON: Failed to create .htaccess file in export directory: ' . $htaccess_file);
+			}
 		}
 		
 		if (!file_exists($index_file)) {
-			@file_put_contents($index_file, '<?php // Silence is golden');
+			if (file_put_contents($index_file, '<?php // Silence is golden') === false) {
+				error_log('AIPS_Session_To_JSON: Failed to create index.php file in export directory: ' . $index_file);
+			}
 		}
 	}
 	
 	/**
-	 * Clean up old export files
+	 * Clean up old export files.
 	 *
 	 * Removes files older than the specified age in seconds.
-	 * Should be called regularly via WP-Cron.
+	 * Should be called regularly via WP-Cron. Explicitly checks unlink success.
 	 *
 	 * @param int $max_age Maximum age in seconds (default: 1 hour)
 	 * @return array Array with 'deleted' count and 'errors' array
@@ -420,10 +428,11 @@ class AIPS_Session_To_JSON {
 			
 			// Delete if older than max age
 			if (($current_time - $file_time) > $max_age) {
-				if (@unlink($file)) {
+				if (unlink($file)) {
 					$result['deleted']++;
 				} else {
 					$result['errors'][] = 'Failed to delete: ' . basename($file);
+					error_log('AIPS_Session_To_JSON: Failed to delete old export file: ' . $file);
 				}
 			}
 		}

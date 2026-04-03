@@ -41,6 +41,10 @@ class AIPS_Logger {
         return $secret;
     }
 
+    /**
+     * Ensure the log directory exists and has correct security constraints.
+     * Logs errors if directory or protection files fail to create.
+     */
     private function ensure_directory_exists() {
         if ($this->dir_checked) {
             return;
@@ -50,9 +54,16 @@ class AIPS_Logger {
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
 
         if (!file_exists($log_dir)) {
-            wp_mkdir_p($log_dir);
-            file_put_contents($log_dir . '/.htaccess', 'deny from all');
-            file_put_contents($log_dir . '/index.php', '<?php // Silence is golden');
+            if (!wp_mkdir_p($log_dir)) {
+                error_log('AIPS_Logger: Failed to create log directory: ' . $log_dir);
+            } else {
+                if (file_put_contents($log_dir . '/.htaccess', 'deny from all') === false) {
+                    error_log('AIPS_Logger: Failed to create .htaccess in log directory: ' . $log_dir);
+                }
+                if (file_put_contents($log_dir . '/index.php', '<?php // Silence is golden') === false) {
+                    error_log('AIPS_Logger: Failed to create index.php in log directory: ' . $log_dir);
+                }
+            }
         }
         
         $this->dir_checked = true;
@@ -159,9 +170,17 @@ class AIPS_Logger {
         return array_values($file_lines);
     }
     
+    /**
+     * Clear the current log file.
+     *
+     * @return bool True if successful, false if deletion fails.
+     */
     public function clear_logs() {
         if (file_exists($this->log_file)) {
-            unlink($this->log_file);
+            if (!unlink($this->log_file)) {
+                error_log('AIPS_Logger: Failed to delete log file: ' . $this->log_file);
+                return false;
+            }
         }
         return true;
     }
