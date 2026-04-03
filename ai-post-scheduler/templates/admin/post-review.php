@@ -276,16 +276,16 @@ $templates = $template_repository->get_all();
 <!-- Post Preview Modal -->
 <div id="aips-post-preview-modal" class="aips-modal" style="display: none;">
 	<div class="aips-modal-overlay"></div>
-	<div class="aips-modal-content" style="width: 90%; max-width: 800px; height: 90vh;">
+	<div class="aips-modal-content">
 		<div class="aips-modal-header">
 			<h2><?php esc_html_e('Post Preview', 'ai-post-scheduler'); ?></h2>
 			<button type="button" class="aips-modal-close" aria-label="<?php esc_attr_e('Close', 'ai-post-scheduler'); ?>">
 				<span class="dashicons dashicons-no-alt"></span>
 			</button>
 		</div>
-		<div class="aips-modal-body" style="height: calc(100% - 60px); padding: 0;">
-			<div id="aips-preview-content-container" style="padding: 30px; height: 100%; overflow-y: auto; box-sizing: border-box; display: none;"></div>
-			<iframe id="aips-post-preview-iframe" src="" style="width: 100%; height: 100%; border: none; display: none;"></iframe>
+		<div class="aips-modal-body">
+			<div id="aips-preview-content-container" style="display: none;"></div>
+			<iframe id="aips-post-preview-iframe" src="" style="display: none;"></iframe>
 		</div>
 	</div>
 </div>
@@ -294,3 +294,62 @@ $templates = $template_repository->get_all();
 // Include the View Session modal partial
 include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 ?>
+
+<!-- =====================================================================
+     AIPS.Templates HTML blocks for admin-post-review.js
+     These <script type="text/html"> elements are read by AIPS.Templates.render()
+     and AIPS.Templates.renderRaw(). They are never executed as JavaScript.
+     ===================================================================== -->
+
+<!-- Template: loading spinner shown while the preview modal content is fetching -->
+<script type="text/html" id="aips-tmpl-post-review-loading">
+	<div class="aips-loading-spinner">
+		<span class="spinner is-active" aria-hidden="true"></span>
+		<p>{{text}}</p>
+	</div>
+</script>
+
+<!-- Template: empty state injected after the review form when all rows are removed -->
+<script type="text/html" id="aips-tmpl-post-review-empty-state">
+	<div class="aips-empty-state">
+		<span class="dashicons dashicons-yes-alt" aria-hidden="true"></span>
+		<h3>{{heading}}</h3>
+		<p>{{description}}</p>
+	</div>
+</script>
+
+<!-- Template: title heading inside the preview modal; auto-escaped by render() -->
+<script type="text/html" id="aips-tmpl-post-review-preview-title">
+	<h1 class="aips-preview-title">{{title}}</h1>
+</script>
+
+<!-- Template: featured image block; use renderRaw() with a pre-escaped src -->
+<script type="text/html" id="aips-tmpl-post-review-preview-image">
+	<div class="aips-preview-image">
+		<img src="{{src}}" alt="">
+	</div>
+</script>
+
+<!-- Template: excerpt block; use renderRaw() since excerpt may contain trusted HTML -->
+<script type="text/html" id="aips-tmpl-post-review-preview-excerpt">
+	<div class="aips-preview-excerpt">
+		<strong>Excerpt:</strong> {{excerpt}}
+	</div>
+</script>
+
+<!-- Template: post content body; use renderRaw() for trusted server-rendered HTML -->
+<script type="text/html" id="aips-tmpl-post-review-preview-body">
+	<div class="aips-preview-body">{{content}}</div>
+</script>
+
+<!-- Template: edit-post link footer; use renderRaw() with pre-escaped url and label -->
+<script type="text/html" id="aips-tmpl-post-review-preview-edit-link">
+	<div class="aips-preview-edit-link">
+		<a href="{{url}}" target="_blank" class="button button-primary">{{label}}</a>
+	</div>
+</script>
+
+<!-- Template: error notice shown when the AJAX preview request fails -->
+<script type="text/html" id="aips-tmpl-post-review-error">
+	<div class="notice notice-error inline"><p>{{message}}</p></div>
+</script>

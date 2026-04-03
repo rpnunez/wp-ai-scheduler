@@ -450,7 +450,7 @@ class AIPS_Admin_Assets {
             wp_enqueue_script(
                 'aips-admin-post-review',
                 AIPS_PLUGIN_URL . 'assets/js/admin-post-review.js',
-                array('aips-admin-script', 'aips-admin-view-session'),
+                array('aips-admin-script', 'aips-admin-view-session', 'aips-templates-script'),
                 AIPS_VERSION,
                 true
             );
