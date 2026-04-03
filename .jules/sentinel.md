@@ -77,3 +77,7 @@
 **Vulnerability:** Unescaped usage of `get_permalink()` and `get_edit_post_link()` in `ai-post-scheduler/includes/class-aips-onboarding-wizard.php` (JSON API response) and `ai-post-scheduler/includes/class-aips-notifications.php`.
 **Learning:** Returning unescaped URLs within JSON payloads or notification data structures, even if they originate from core WordPress functions, can be a potential risk if they contain malicious characters or javascript: URIs that an unsuspecting frontend might evaluate. Also, using the 'display' context (default) for `get_edit_post_link` can cause double-encoded ampersands.
 **Prevention:** Use `esc_url_raw()` to escape URLs being returned as data within API, AJAX responses, or internal data structures. Use the 'raw' context for `get_edit_post_link()` when the output is not immediately rendered as HTML.
+## 2024-05-24 - Array Sanitization TypeError Vulnerability
+**Vulnerability:** A type error vulnerability existed in `class-aips-structures-controller.php` where nested arrays from `$_POST['sections']` passed to `array_map('sanitize_text_field', ...)` would trigger a fatal error in PHP 8+.
+**Learning:** `array_map` with a scalar-expecting function like `sanitize_text_field` fails fatally in PHP 8+ when iterating over nested arrays maliciously injected via superglobals.
+**Prevention:** Rather than blindly applying `array_map` on raw inputs, iterate arrays using `foreach` and verify items with `is_scalar()` before casting to string and applying sanitization.
