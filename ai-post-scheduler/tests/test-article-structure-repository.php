@@ -11,6 +11,11 @@ class AIPS_Article_Structure_Repository_Test extends WP_UnitTestCase {
 	
 	public function setUp(): void {
 		parent::setUp();
+
+		if (isset($GLOBALS['wpdb']) && property_exists($GLOBALS['wpdb'], 'get_row_return_val')) {
+			$this->markTestSkipped('Database tests cannot run with mocked wpdb.');
+		}
+
 		$this->repository = new AIPS_Article_Structure_Repository();
 	}
 	

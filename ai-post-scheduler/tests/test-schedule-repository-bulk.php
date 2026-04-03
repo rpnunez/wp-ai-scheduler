@@ -25,6 +25,10 @@ class Test_AIPS_Schedule_Repository_Bulk extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
+		if (isset($GLOBALS['wpdb']) && property_exists($GLOBALS['wpdb'], 'get_row_return_val')) {
+			$this->markTestSkipped('Database tests cannot run with mocked wpdb.');
+		}
+
 		$this->repository = new AIPS_Schedule_Repository();
 
 		// Insert a template with a known post_quantity

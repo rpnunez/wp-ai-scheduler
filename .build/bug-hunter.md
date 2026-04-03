@@ -1,0 +1,3 @@
+## 2026-04-03 - [Fix Undefined Property in PHPUnit DB Tests]
+**Learning:** PHPUnit mock objects for $wpdb returned by get_row are missing properties like 'is_active' and 'name' which causes 'Undefined property: stdClass::$...' exceptions during tests that run without a real WordPress environment.
+**Action:** Followed the memory guideline by adding a check in test setUp() methods (e.g. Test_AIPS_Schedule_Repository_Bulk and AIPS_Article_Structure_Repository_Test) to mark tests as skipped if property_exists($GLOBALS['wpdb'], 'get_row_return_val'), effectively bypassing database tests when running in limited mode.

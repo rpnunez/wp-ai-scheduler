@@ -1362,3 +1362,13 @@ This refactoring resolves the "unexpected title prompts" issue by eliminating du
 * `AIPS_Notifications_Event_Handler` is strictly focused on intercepting WordPress hooks and transforming them into notification events.
 * Trade-off: Introduces slightly more coupling during construction (passing `$this` to the handler), but maintains 100% backward compatibility for the public API and hooks.
 **Tests:** The autoloader test suite was updated to cover the new class. Existing tests run with the same result (some skipped due to limited environment mocking, but syntax and autoloading fully functional).
+## 2026-04-03 - Decoupling AIPS_Unified_Schedule_Service Formatter Logic
+**Context:**  was handling both the retrieval of all schedule types and the formatting of those records for the UI, leading to high coupling.
+**Decision:** Extracted the presentation/formatting logic into a new  class and injected it into the service.
+**Consequence:** Single Responsibility Principle is better adhered to. The service only delegates retrieval, and the formatter standardizes the output.
+**Tests:** Modified  to ensure the new class is loaded, and ran the full suite.
+## 2026-04-03 - Decoupling AIPS_Unified_Schedule_Service Formatter Logic
+**Context:** AIPS_Unified_Schedule_Service was handling both the retrieval of all schedule types and the formatting of those records for the UI, leading to high coupling.
+**Decision:** Extracted the presentation/formatting logic into a new AIPS_Unified_Schedule_Formatter class and injected it into the service.
+**Consequence:** Single Responsibility Principle is better adhered to. The service only delegates retrieval, and the formatter standardizes the output.
+**Tests:** Modified test-autoloader.php to ensure the new class is loaded, and ran the full suite.
