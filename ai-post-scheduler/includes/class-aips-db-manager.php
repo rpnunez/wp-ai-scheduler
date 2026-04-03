@@ -233,6 +233,7 @@ class AIPS_DB_Manager {
             post_generation_next_run datetime DEFAULT NULL,
             post_generation_last_run datetime DEFAULT NULL,
             post_generation_is_active tinyint(1) DEFAULT 1,
+            post_generation_only_without_generated_posts tinyint(1) DEFAULT 0,
             post_status varchar(50) DEFAULT 'draft',
             post_category bigint(20) DEFAULT NULL,
             post_tags text,

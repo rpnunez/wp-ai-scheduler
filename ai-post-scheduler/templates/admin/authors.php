@@ -536,6 +536,14 @@ $site_ctx = AIPS_Site_Context::get();
 
             <div class="form-group">
                 <label>
+                    <input type="checkbox" id="post_generation_only_without_generated_posts" name="post_generation_only_without_generated_posts" value="1">
+                    <?php esc_html_e("Generate posts only for approved topics that haven't had a post generated yet?", 'ai-post-scheduler'); ?>
+                </label>
+                <p class="description"><?php esc_html_e('When enabled, scheduled generation skips approved topics that already have at least one generated post.', 'ai-post-scheduler'); ?></p>
+            </div>
+
+            <div class="form-group">
+                <label>
                     <input type="checkbox" id="is_active" name="is_active" checked>
                     <?php esc_html_e('Active', 'ai-post-scheduler'); ?>
                 </label>
