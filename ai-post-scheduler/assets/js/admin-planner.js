@@ -43,7 +43,11 @@
                 success: function(response) {
                     if (response.success) {
                         window.AIPS.renderTopics(response.data.topics);
-                        $('#planner-results').slideDown();
+                        $('#planner-results').slideDown(400, function() {
+                            $('html, body').animate({
+                                scrollTop: $('#planner-results').offset().top - 40
+                            }, 500);
+                        });
                     } else {
                         AIPS.Utilities.showToast(response.data.message, 'error');
                     }
@@ -77,7 +81,11 @@
 
             if (topics.length > 0) {
                 window.AIPS.renderTopics(topics, true); // true = append
-                $('#planner-results').slideDown();
+                $('#planner-results').slideDown(400, function() {
+                    $('html, body').animate({
+                        scrollTop: $('#planner-results').offset().top - 40
+                    }, 500);
+                });
                 $('#planner-manual-topics').val('');
             }
         },
@@ -395,6 +403,11 @@
                 return;
             }
 
+            // Save preference for next time
+            if (window.localStorage) {
+                localStorage.setItem('aips_planner_last_template', templateId);
+            }
+
             var $btn = $(this);
             $btn.prop('disabled', true);
             $btn.nextAll('.spinner').first().addClass('is-active');
@@ -479,6 +492,7 @@
 
             var templateId = $('#bulk-template').val();
             var startDate = $('#bulk-start-date').val();
+            var frequency = $('#bulk-frequency').val();
 
             if (!templateId) {
                 AIPS.Utilities.showToast('Please select a template.', 'warning');
@@ -487,6 +501,12 @@
             if (!startDate) {
                 AIPS.Utilities.showToast('Please select a start date.', 'warning');
                 return;
+            }
+
+            // Save preferences for next time
+            if (window.localStorage) {
+                localStorage.setItem('aips_planner_last_template', templateId);
+                localStorage.setItem('aips_planner_last_frequency', frequency);
             }
 
             var $btn = $(this);
@@ -502,7 +522,7 @@
                     topics: topics,
                     template_id: templateId,
                     start_date: startDate,
-                    frequency: $('#bulk-frequency').val()
+                    frequency: frequency
                 },
                 success: function(response) {
                     if (response.success) {
@@ -548,6 +568,20 @@
         $(document).on('keyup search', '#planner-topic-search', window.AIPS.filterTopics);
         $(document).on('click', '#planner-topic-search-clear', window.AIPS.clearTopicSearch);
         $(document).on('click', '.aips-remove-topic-btn', window.AIPS.removeTopic);
+
+        // Pre-fill last used preferences
+        if (window.localStorage) {
+            var lastTemplate = localStorage.getItem('aips_planner_last_template');
+            var lastFrequency = localStorage.getItem('aips_planner_last_frequency');
+
+            if (lastTemplate && $('#bulk-template option[value="' + lastTemplate + '"]').length > 0) {
+                $('#bulk-template').val(lastTemplate);
+            }
+
+            if (lastFrequency && $('#bulk-frequency option[value="' + lastFrequency + '"]').length > 0) {
+                $('#bulk-frequency').val(lastFrequency);
+            }
+        }
     });
 
 })(jQuery);

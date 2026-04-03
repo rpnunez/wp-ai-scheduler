@@ -194,3 +194,8 @@
 **Improvement:** Optimized the save flow for Article Structures and Prompt Sections. Previously, saving either entity triggered a full page reload (`location.reload()`), disrupting the user flow and causing context loss. The save functions now issue a success toast, seamlessly close the modal, and dynamically refresh the respective table (and select dropdowns) using an AJAX fetch.
 **Files Modified:** `ai-post-scheduler/assets/js/admin.js`
 **Outcome:** Enhances the user's workflow by creating a seamless, single-page application feel when modifying structures and sections, eliminating disruptive flashes and improving overall administrative efficiency.
+## 2026-02-09 - Planner Optimization
+**Target Feature:** Planner
+**Improvement:** Optimized the scheduling and generating flow by adding localStorage persistence for `template_id` and `frequency`. This prevents users from having to reselect these dropdowns on consecutive bulk actions. Added smooth scrolling to the `#planner-results` panel after generating or parsing manual topics, significantly improving context focus and UX flow.
+**Files Modified:** `ai-post-scheduler/assets/js/admin-planner.js`
+**Outcome:** The Planner requires fewer manual steps to bulk schedule topics and guides the user smoothly down the page after topic generation.
