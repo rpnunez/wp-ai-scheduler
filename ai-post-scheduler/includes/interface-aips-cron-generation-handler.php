@@ -2,11 +2,11 @@
 /**
  * Interface AIPS_Cron_Generation_Handler
  *
- * Defines the contract for classes that own a WordPress cron-driven
- * generation pipeline.  Each handler is responsible for registering its
- * own cron hook and calling process() from that hook.
+ * Defines the contract for classes that process WordPress cron-driven
+ * generation work. Cron hook registration is owned by the plugin bootstrap,
+ * which invokes process() through the registered callbacks.
  *
- * Having an explicit interface makes the cron registration pattern
+ * Having an explicit interface makes the processing contract
  * discoverable and testable, and opens the door to a future dispatcher
  * that can iterate registered handlers without knowing their concrete types.
  *
