@@ -72,8 +72,6 @@ class AIPS_Scheduler implements AIPS_Cron_Generation_Handler {
             $this->template_type_selector
         );
 
-        add_action('aips_generate_scheduled_posts', array($this, 'process'));
-        add_filter('cron_schedules', array($this, 'add_cron_intervals'));
     }
 
     /**

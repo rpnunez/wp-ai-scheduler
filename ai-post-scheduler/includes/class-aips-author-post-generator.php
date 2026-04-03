@@ -81,15 +81,12 @@ class AIPS_Author_Post_Generator implements AIPS_Cron_Generation_Handler {
 		$this->expansion_service = new AIPS_Topic_Expansion_Service();
 		$this->history_service = new AIPS_History_Service();
 		$this->runner = new AIPS_Generation_Execution_Runner($this->history_service, $this->logger);
-		
-		// Hook into WordPress cron
-		add_action('aips_generate_author_posts', array($this, 'process'));
 	}
 	
 	/**
 	 * Process post generation for all due authors.
 	 *
-	 * Called by WordPress cron on the scheduled interval.
+	 * Called by WordPress cron on the `aips_generate_author_posts` hook.
 	 * Implements AIPS_Cron_Generation_Handler::process().
 	 */
 	public function process(): void {

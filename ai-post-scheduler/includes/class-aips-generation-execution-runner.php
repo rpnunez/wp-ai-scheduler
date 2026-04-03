@@ -84,7 +84,7 @@ class AIPS_Generation_Execution_Runner {
 	 *                                     the harness boilerplate.
 	 * @return mixed Whatever the work callable returns, or WP_Error on caught Throwable.
 	 */
-	public function run(callable $work, $history_type, array $history_meta, $on_exception = null) {
+	public function run(callable $work, $history_type, array $history_meta, $on_exception = null): mixed {
 		$correlation_id = AIPS_Correlation_ID::generate();
 		$result = null;
 
