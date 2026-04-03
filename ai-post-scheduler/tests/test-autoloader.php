@@ -215,6 +215,7 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 	public function test_autoloader_loads_controller_classes() {
 		$controllers = array(
 			'AIPS_Schedule_Controller',
+			'AIPS_Unified_Schedule_Controller',
 			'AIPS_Settings',
 			'AIPS_Admin_Menu',
 		);
