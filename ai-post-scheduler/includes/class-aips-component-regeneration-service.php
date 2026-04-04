@@ -85,12 +85,16 @@ class AIPS_Component_Regeneration_Service {
 		$this->generator = new AIPS_Generator(null, $ai_service);
 		$this->image_service = new AIPS_Image_Service($ai_service);
 		$this->prompt_builder = new AIPS_Prompt_Builder($this->template_processor, $this->structure_manager);
+		$article_structure_section_builder = new AIPS_Prompt_Builder_Article_Structure_Section($this->template_processor, $this->prompt_builder, $this->structure_manager, null);
 		$this->post_content_prompt_builder = new AIPS_Prompt_Builder_Post_Content(
 			$this->template_processor,
-			new AIPS_Prompt_Builder_Article_Structure_Section($this->structure_manager, null, $this->template_processor)
+			$this->prompt_builder,
+			$this->structure_manager,
+			null,
+			$article_structure_section_builder
 		);
 		$this->post_title_prompt_builder = $this->prompt_builder->get_post_title_builder();
-		$this->post_featured_image_prompt_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor);
+		$this->post_featured_image_prompt_builder = new AIPS_Prompt_Builder_Post_Featured_Image($this->template_processor, $this->prompt_builder, $this->structure_manager, null);
 	}
 	
 	/**

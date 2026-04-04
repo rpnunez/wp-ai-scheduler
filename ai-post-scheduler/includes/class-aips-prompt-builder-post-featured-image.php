@@ -20,19 +20,7 @@ if (!defined('ABSPATH')) {
  *
  * Builds the AI prompt for featured image generation.
  */
-class AIPS_Prompt_Builder_Post_Featured_Image {
-
-	/**
-	 * @var AIPS_Template_Processor Template processor for prompt variables.
-	 */
-	private $template_processor;
-
-	/**
-	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
-	 */
-	public function __construct($template_processor = null) {
-		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-	}
+class AIPS_Prompt_Builder_Post_Featured_Image extends AIPS_Prompt_Builder_Base {
 
 	/**
 	 * Build the processed featured image prompt.
@@ -40,11 +28,13 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 	 * Returns an empty string when featured image generation is disabled, when the
 	 * source is not `ai_prompt`, or when no image prompt is available.
 	 *
-	 * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
-	 * @param string|null                    $topic Topic string for legacy flows.
+	 * @param object|AIPS_Generation_Context $primary_input Template object (legacy) or Generation Context.
+	 * @param mixed                          ...$args Optional topic value for legacy flows.
 	 * @return string
 	 */
-	public function build($template_or_context, $topic = null) {
+	public function build($primary_input, ...$args) {
+		$template_or_context = $primary_input;
+		$topic = isset($args[0]) ? $args[0] : null;
 		if ($template_or_context instanceof AIPS_Generation_Context) {
 			return $this->build_from_context($template_or_context);
 		}
@@ -74,7 +64,7 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 			return '';
 		}
 
-		return $this->template_processor->process($image_prompt, $context->get_topic());
+		return $this->get_template_processor()->process($image_prompt, $context->get_topic());
 	}
 
 	/**
@@ -93,6 +83,6 @@ class AIPS_Prompt_Builder_Post_Featured_Image {
 			return '';
 		}
 
-		return $this->template_processor->process($image_prompt, $topic);
+		return $this->get_template_processor()->process($image_prompt, $topic);
 	}
 }

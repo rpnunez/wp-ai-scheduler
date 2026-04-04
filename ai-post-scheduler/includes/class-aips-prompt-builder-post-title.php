@@ -20,19 +20,7 @@ if (!defined('ABSPATH')) {
  *
  * Builds the AI prompt for post title generation.
  */
-class AIPS_Prompt_Builder_Post_Title {
-
-	/**
-	 * @var AIPS_Template_Processor Template processor for prompt variables.
-	 */
-	private $template_processor;
-
-	/**
-	 * @param AIPS_Template_Processor|null $template_processor Optional template processor.
-	 */
-	public function __construct($template_processor = null) {
-		$this->template_processor = $template_processor ?: new AIPS_Template_Processor();
-	}
+class AIPS_Prompt_Builder_Post_Title extends AIPS_Prompt_Builder_Base {
 
 	/**
 	 * Build the complete prompt for title generation.
@@ -43,13 +31,15 @@ class AIPS_Prompt_Builder_Post_Title {
 	 *   1. Voice title prompt (if provided)
 	 *   2. Template/Context title prompt (if provided)
 	 *
-	 * @param object|AIPS_Generation_Context $template_or_context Template object (legacy) or Generation Context.
-	 * @param string|null                    $topic Optional topic to inject into prompts for legacy calls.
-	 * @param object|null                    $voice Optional voice object with overrides for legacy calls.
-	 * @param string                         $content Generated article content used as context.
+	 * @param object|AIPS_Generation_Context $primary_input Template object (legacy) or Generation Context.
+	 * @param mixed                          ...$args Optional topic, voice, and content values.
 	 * @return string
 	 */
-	public function build($template_or_context, $topic = null, $voice = null, $content = '') {
+	public function build($primary_input, ...$args) {
+		$template_or_context = $primary_input;
+		$topic = isset($args[0]) ? $args[0] : null;
+		$voice = isset($args[1]) ? $args[1] : null;
+		$content = isset($args[2]) ? $args[2] : '';
 		$title_instructions = '';
 
 		if ($template_or_context instanceof AIPS_Generation_Context) {
@@ -59,14 +49,14 @@ class AIPS_Prompt_Builder_Post_Title {
 			if ($context->get_type() === 'template' && $context->get_voice_id()) {
 				$voice_obj = $context->get_voice();
 				if ($voice_obj && !empty($voice_obj->title_prompt)) {
-					$title_instructions = $this->template_processor->process($voice_obj->title_prompt, $topic_str);
+					$title_instructions = $this->get_template_processor()->process($voice_obj->title_prompt, $topic_str);
 				}
 			}
 
 			if (empty($title_instructions)) {
 				$title_prompt = $context->get_title_prompt();
 				if (!empty($title_prompt)) {
-					$title_instructions = $this->template_processor->process($title_prompt, $topic_str);
+					$title_instructions = $this->get_template_processor()->process($title_prompt, $topic_str);
 				}
 			}
 
@@ -78,9 +68,9 @@ class AIPS_Prompt_Builder_Post_Title {
 		$template = $template_or_context;
 
 		if ($voice && !empty($voice->title_prompt)) {
-			$title_instructions = $this->template_processor->process($voice->title_prompt, $topic);
+			$title_instructions = $this->get_template_processor()->process($voice->title_prompt, $topic);
 		} elseif (!empty($template->title_prompt)) {
-			$title_instructions = $this->template_processor->process($template->title_prompt, $topic);
+			$title_instructions = $this->get_template_processor()->process($template->title_prompt, $topic);
 		}
 
 		$prompt = $this->build_base_prompt($title_instructions, $content);
