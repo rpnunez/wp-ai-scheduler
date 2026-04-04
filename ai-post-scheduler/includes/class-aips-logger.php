@@ -50,23 +50,25 @@ class AIPS_Logger {
             return;
         }
 
+        // Set early to prevent recursive calls when $this->log() is called below.
+        $this->dir_checked = true;
+
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
 
         if (!file_exists($log_dir)) {
             if (!wp_mkdir_p($log_dir)) {
+                // Cannot use $this->log() here — the log directory does not exist yet.
                 error_log('AIPS_Logger: Failed to create log directory: ' . $log_dir);
-            } else {
-                if (file_put_contents($log_dir . '/.htaccess', 'deny from all') === false) {
-                    error_log('AIPS_Logger: Failed to create .htaccess in log directory: ' . $log_dir);
-                }
-                if (file_put_contents($log_dir . '/index.php', '<?php // Silence is golden') === false) {
-                    error_log('AIPS_Logger: Failed to create index.php in log directory: ' . $log_dir);
-                }
+                return;
+            }
+            if (file_put_contents($log_dir . '/.htaccess', 'deny from all') === false) {
+                $this->log('Failed to create .htaccess in log directory: ' . $log_dir, 'warning');
+            }
+            if (file_put_contents($log_dir . '/index.php', '<?php // Silence is golden') === false) {
+                $this->log('Failed to create index.php in log directory: ' . $log_dir, 'warning');
             }
         }
-        
-        $this->dir_checked = true;
     }
     
     public function log($message, $level = 'info', $context = array()) {
@@ -178,6 +180,7 @@ class AIPS_Logger {
     public function clear_logs() {
         if (file_exists($this->log_file)) {
             if (!unlink($this->log_file)) {
+                // Cannot use $this->log() here — writing to the file that failed to be deleted is unreliable.
                 error_log('AIPS_Logger: Failed to delete log file: ' . $this->log_file);
                 return false;
             }

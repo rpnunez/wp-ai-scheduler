@@ -25,12 +25,18 @@ class AIPS_Session_To_JSON {
 	 * @var AIPS_History_Repository Repository for database operations
 	 */
 	private $history_repository;
-	
+
+	/**
+	 * @var AIPS_Logger Logger instance
+	 */
+	private $logger;
+
 	/**
 	 * Initialize the converter
 	 */
 	public function __construct() {
 		$this->history_repository = new AIPS_History_Repository();
+		$this->logger = new AIPS_Logger();
 	}
 	
 	/**
@@ -345,7 +351,7 @@ class AIPS_Session_To_JSON {
 		
 		// Try to set restrictive permissions
 		if (!chmod($filepath, 0644)) {
-			error_log('AIPS_Session_To_JSON: Failed to set permissions on export file: ' . $filepath);
+			$this->logger->log('Failed to set permissions on export file: ' . $filepath, 'warning');
 		}
 		
 		return array(
@@ -374,13 +380,13 @@ class AIPS_Session_To_JSON {
 			$content .= "</Files>\n";
 
 			if (file_put_contents($htaccess_file, $content) === false) {
-				error_log('AIPS_Session_To_JSON: Failed to create .htaccess file in export directory: ' . $htaccess_file);
+				$this->logger->log('Failed to create .htaccess file in export directory: ' . $htaccess_file, 'warning');
 			}
 		}
 		
 		if (!file_exists($index_file)) {
 			if (file_put_contents($index_file, '<?php // Silence is golden') === false) {
-				error_log('AIPS_Session_To_JSON: Failed to create index.php file in export directory: ' . $index_file);
+				$this->logger->log('Failed to create index.php file in export directory: ' . $index_file, 'warning');
 			}
 		}
 	}
@@ -414,7 +420,8 @@ class AIPS_Session_To_JSON {
 			$result['errors'][] = 'Failed to read export directory';
 			return $result;
 		}
-		
+
+		$logger = new AIPS_Logger();
 		foreach ($files as $file) {
 			if (!is_file($file)) {
 				continue;
@@ -432,7 +439,7 @@ class AIPS_Session_To_JSON {
 					$result['deleted']++;
 				} else {
 					$result['errors'][] = 'Failed to delete: ' . basename($file);
-					error_log('AIPS_Session_To_JSON: Failed to delete old export file: ' . $file);
+					$logger->log('Failed to delete old export file: ' . $file, 'warning');
 				}
 			}
 		}
