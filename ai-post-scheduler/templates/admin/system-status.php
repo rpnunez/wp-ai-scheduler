@@ -223,6 +223,104 @@ if (!defined('ABSPATH')) {
                 </div>
             </div>
 
+            <!-- Operator Runbook -->
+            <div class="aips-content-panel" style="margin-bottom: 20px;">
+                <div class="aips-panel-header">
+                    <h2>
+                        <span class="dashicons dashicons-media-document" style="margin-right: 5px;"></span>
+                        <?php esc_html_e('Operator Runbook: Queue &amp; Generation Incidents', 'ai-post-scheduler'); ?>
+                    </h2>
+                </div>
+                <div class="aips-panel-body">
+                    <p><?php esc_html_e('Use the following procedures to investigate and recover from common queue and generation incidents. Follow each section in order and stop when the issue is resolved.', 'ai-post-scheduler'); ?></p>
+
+                    <!-- RB-1 -->
+                    <h3 style="margin-top: 16px;">
+                        <span class="dashicons dashicons-search" style="vertical-align: middle;"></span>
+                        <?php esc_html_e('RB-1 — Stuck or Missing Generations', 'ai-post-scheduler'); ?>
+                    </h3>
+                    <ol>
+                        <li><?php esc_html_e('Check the "Queue Health" section above for stuck-job count and age.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Check "Scheduler Health" → WP-Cron events. If any hook shows 0 or duplicate instances, click "Flush WP-Cron Events" above.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Open History, filter by status = pending or partial, and note the correlation IDs.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('In History detail view, look for the last log entry to identify where the run stopped (ai_request, error, partial completion).', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('If AI Engine is unreachable, verify the API key in AI Engine settings and confirm the API quota has not been exhausted.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Use "Partial Generation Recovery" in the History detail view to resume any partially completed post.', 'ai-post-scheduler'); ?></li>
+                    </ol>
+
+                    <!-- RB-2 -->
+                    <h3 style="margin-top: 16px;">
+                        <span class="dashicons dashicons-warning" style="vertical-align: middle;"></span>
+                        <?php esc_html_e('RB-2 — High Failure Rate / Retry Saturation', 'ai-post-scheduler'); ?>
+                    </h3>
+                    <ol>
+                        <li><?php esc_html_e('Check "Queue Health" → Retry Saturation percentage. A value above 50 % is a strong signal of an upstream API problem.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Check "Generation Metrics" → Recent Outcomes for repeated error messages. Common causes: rate limit exceeded, model unavailable, invalid prompt.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Review AI Engine logs (Settings → AI Engine → Logs) for raw API error responses.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('If a specific template is failing, open that template and test with a simplified prompt to rule out prompt-level errors.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('If the issue is transient API congestion, temporarily pause active schedules and resume after the outage window.', 'ai-post-scheduler'); ?></li>
+                    </ol>
+
+                    <!-- RB-3 -->
+                    <h3 style="margin-top: 16px;">
+                        <span class="dashicons dashicons-block-default" style="vertical-align: middle;"></span>
+                        <?php esc_html_e('RB-3 — Circuit Breaker is Open', 'ai-post-scheduler'); ?>
+                    </h3>
+                    <ol>
+                        <li><?php esc_html_e('The circuit breaker opens after a configured number of consecutive AI failures to prevent runaway retry storms.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Check the underlying cause: review "Generation Metrics" → Recent Outcomes and AI Engine logs before resetting.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Once the root cause is resolved (API key valid, quota restored, model available), click the "Reset Circuit Breaker" button below.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('After resetting, monitor "Queue Health" for a few minutes to confirm failure rate returns to normal before enabling more schedules.', 'ai-post-scheduler'); ?></li>
+                    </ol>
+                    <?php if ( class_exists( 'AIPS_AI_Service' ) ) : ?>
+                    <div class="aips-btn-group" style="margin-top: 8px;">
+                        <button type="button" class="aips-btn aips-btn-secondary aips-reset-circuit-breaker">
+                            <span class="dashicons dashicons-update"></span>
+                            <?php esc_html_e('Reset Circuit Breaker', 'ai-post-scheduler'); ?>
+                        </button>
+                    </div>
+                    <div class="aips-reset-circuit-breaker-result" style="display:none; margin-top: 8px;"></div>
+                    <?php endif; ?>
+
+                    <!-- RB-4 -->
+                    <h3 style="margin-top: 16px;">
+                        <span class="dashicons dashicons-database" style="vertical-align: middle;"></span>
+                        <?php esc_html_e('RB-4 — Backlog Not Draining', 'ai-post-scheduler'); ?>
+                    </h3>
+                    <ol>
+                        <li><?php esc_html_e('Check "Queue Health" → Queue Backlog. A growing pending count indicates jobs are being created faster than they are consumed.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Verify WP-Cron is running: many hosts disable WP-Cron for busy sites. Consider adding a server-side cron to trigger wp-cron.php directly.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Check active schedule frequency. If you have many high-frequency schedules, the queue may be draining slower than it fills — consider reducing frequency or post quantity.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Use "Scheduler Health" → Active Schedules to audit and disable schedules that are no longer needed.', 'ai-post-scheduler'); ?></li>
+                    </ol>
+
+                    <!-- RB-5 -->
+                    <h3 style="margin-top: 16px;">
+                        <span class="dashicons dashicons-image-filter" style="vertical-align: middle;"></span>
+                        <?php esc_html_e('RB-5 — High Image Generation Failure Rate', 'ai-post-scheduler'); ?>
+                    </h3>
+                    <ol>
+                        <li><?php esc_html_e('Check "Generation Metrics" → Image Generation Failure Rate. Values above 30 % warrant investigation.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Verify the image generation model is enabled in AI Engine settings and the API key has image-generation permissions.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Check if image prompts in templates contain content that might be rejected by the moderation layer.', 'ai-post-scheduler'); ?></li>
+                        <li><?php esc_html_e('Use "Partial Generation Recovery" to regenerate featured images for posts where generation failed.', 'ai-post-scheduler'); ?></li>
+                    </ol>
+
+                    <p style="margin-top: 16px; color: #666; font-size: 13px;">
+                        <?php
+                        echo wp_kses(
+                            sprintf(
+                                /* translators: %s: link to docs/RUNBOOK.md on GitHub */
+                                __( 'Full runbook with escalation procedures: <a href="%s" target="_blank" rel="noopener noreferrer">docs/RUNBOOK.md</a>', 'ai-post-scheduler' ),
+                                'https://github.com/rpnunez/wp-ai-scheduler/blob/main/docs/RUNBOOK.md'
+                            ),
+                            array( 'a' => array( 'href' => array(), 'target' => array(), 'rel' => array() ) )
+                        );
+                        ?>
+                    </p>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>

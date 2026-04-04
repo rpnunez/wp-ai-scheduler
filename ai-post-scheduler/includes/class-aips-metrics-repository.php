@@ -73,6 +73,21 @@ class AIPS_Metrics_Repository {
 	const TRANSIENT_QUEUE = 'aips_metrics_queue';
 
 	/**
+	 * Transient key for cached queue-health metrics.
+	 */
+	const TRANSIENT_QUEUE_HEALTH = 'aips_metrics_queue_health';
+
+	/**
+	 * Age threshold in minutes after which a pending/partial job is considered stuck.
+	 */
+	const STUCK_JOB_THRESHOLD_MINUTES = 30;
+
+	/**
+	 * Lookback window in hours for recent-failure and retry-saturation signals.
+	 */
+	const RETRY_WINDOW_HOURS = 24;
+
+	/**
 	 * Transient TTL in seconds.
 	 */
 	const CACHE_TTL = 900; // 15 minutes
@@ -100,6 +115,7 @@ class AIPS_Metrics_Repository {
 	 * @return array {
 	 *     @type array  $generation   Generation reliability metrics.
 	 *     @type array  $queue_depth  Queue-depth surrogate indicators.
+	 *     @type array  $queue_health Queue-health indicators (backlog, stuck jobs, retry saturation, circuit breaker).
 	 *     @type string $collected_at ISO-8601 timestamp of when these metrics were computed.
 	 * }
 	 */
@@ -107,6 +123,7 @@ class AIPS_Metrics_Repository {
 		return array(
 			'generation'   => $this->get_generation_metrics( $window_days ),
 			'queue_depth'  => $this->get_queue_depth_metrics(),
+			'queue_health' => $this->get_queue_health_metrics(),
 			'collected_at' => gmdate( 'Y-m-d\TH:i:s\Z' ),
 		);
 	}
@@ -210,6 +227,129 @@ class AIPS_Metrics_Repository {
 	}
 
 	/**
+	 * Queue-health indicators: backlog, stuck jobs, retry saturation, and
+	 * circuit-breaker state.
+	 *
+	 * These signals are designed to help operators identify queued work that
+	 * is failing to make progress.  All queries are read-only against existing
+	 * tables; no schema changes are required.
+	 *
+	 * @return array {
+	 *     @type int        $pending_count              Jobs in 'pending' status right now.
+	 *     @type int        $partial_count              Jobs in 'partial' status right now.
+	 *     @type int        $stuck_count                Jobs in 'pending' or 'partial' status
+	 *                                                  created more than STUCK_JOB_THRESHOLD_MINUTES ago.
+	 *     @type int|null   $oldest_stuck_age_minutes   Age (minutes) of the oldest stuck job, or null if none.
+	 *     @type int        $failed_24h                 Jobs that transitioned to 'failed' in the last 24 hours.
+	 *     @type float      $retry_saturation_pct       Percentage of jobs in the last 24 hours that failed
+	 *                                                  (proxy for retry pressure; 0–100 or -1 if no data).
+	 *     @type array      $circuit_breaker            State dict from AIPS_Resilience_Service, or
+	 *                                                  array('state'=>'unknown') when unavailable.
+	 * }
+	 */
+	public function get_queue_health_metrics() {
+		$cached = get_transient( self::TRANSIENT_QUEUE_HEALTH );
+		if ( $cached !== false ) {
+			return $cached;
+		}
+
+		// --- Pending / partial backlog ---
+		$pending_count = (int) $this->wpdb->get_var(
+			"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'pending'"
+		);
+
+		$partial_count = (int) $this->wpdb->get_var(
+			"SELECT COUNT(*) FROM {$this->table_history} WHERE status = 'partial'"
+		);
+
+		// --- Stuck jobs (pending or partial, older than threshold) ---
+		$stuck_count = (int) $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT COUNT(*) FROM {$this->table_history}
+				WHERE status IN ('pending','partial')
+				  AND created_at <= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d MINUTE)",
+				self::STUCK_JOB_THRESHOLD_MINUTES
+			)
+		);
+
+		$oldest_stuck_age_minutes = null;
+		if ( $stuck_count > 0 ) {
+			$age_raw = $this->wpdb->get_var(
+				$this->wpdb->prepare(
+					"SELECT TIMESTAMPDIFF(MINUTE, MIN(created_at), CURRENT_TIMESTAMP())
+					FROM {$this->table_history}
+					WHERE status IN ('pending','partial')
+					  AND created_at <= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d MINUTE)",
+					self::STUCK_JOB_THRESHOLD_MINUTES
+				)
+			);
+			if ( $age_raw !== null ) {
+				$oldest_stuck_age_minutes = (int) $age_raw;
+			}
+		}
+
+		// --- Recent failures (last 24 h) ---
+		$failed_24h = (int) $this->wpdb->get_var(
+			$this->wpdb->prepare(
+				"SELECT COUNT(*) FROM {$this->table_history}
+				WHERE status = 'failed'
+				  AND created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR)",
+				self::RETRY_WINDOW_HOURS
+			)
+		);
+
+		// Retry saturation = failed / (completed + failed) over the same 24-h window.
+		// We intentionally exclude 'partial' from the denominator: partial jobs are
+		// still in-flight or abandoned, not cleanly completed or failed.
+		$window_row = $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT
+					SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
+					SUM(CASE WHEN status = 'failed'    THEN 1 ELSE 0 END) AS failed
+				FROM {$this->table_history}
+				WHERE status IN ('completed','failed')
+				  AND created_at >= DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR)",
+				self::RETRY_WINDOW_HOURS
+			)
+		);
+
+		$retry_saturation_pct = -1.0;
+		if ( $window_row ) {
+			$w_completed = (int) ( $window_row->completed ?? 0 );
+			$w_failed    = (int) ( $window_row->failed    ?? 0 );
+			$w_total     = $w_completed + $w_failed;
+			if ( $w_total > 0 ) {
+				$retry_saturation_pct = round( ( $w_failed / $w_total ) * 100, 1 );
+			}
+		}
+
+		// --- Circuit breaker state ---
+		$circuit_breaker = array( 'state' => 'unknown' );
+		if ( class_exists( 'AIPS_Resilience_Service' ) ) {
+			try {
+				$resilience      = new AIPS_Resilience_Service();
+				$circuit_breaker = $resilience->get_circuit_breaker_status();
+			} catch ( \Throwable $e ) {
+				// Non-fatal — leave as unknown.
+			}
+		}
+
+		$metrics = array(
+			'pending_count'             => $pending_count,
+			'partial_count'             => $partial_count,
+			'stuck_count'               => $stuck_count,
+			'oldest_stuck_age_minutes'  => $oldest_stuck_age_minutes,
+			'failed_24h'                => $failed_24h,
+			'retry_saturation_pct'      => $retry_saturation_pct,
+			'circuit_breaker'           => $circuit_breaker,
+		);
+
+		set_transient( self::TRANSIENT_QUEUE_HEALTH, $metrics, self::CACHE_TTL );
+
+		return $metrics;
+	}
+
+	/**
 	 * Invalidate all cached metrics.
 	 *
 	 * Removes every `aips_metrics_generation_*` transient stored by this class
@@ -261,6 +401,7 @@ class AIPS_Metrics_Repository {
 		}
 
 		delete_transient( self::TRANSIENT_QUEUE );
+		delete_transient( self::TRANSIENT_QUEUE_HEALTH );
 	}
 
 	// -----------------------------------------------------------------------
