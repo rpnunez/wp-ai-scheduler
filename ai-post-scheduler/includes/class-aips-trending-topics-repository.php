@@ -100,8 +100,11 @@ class AIPS_Trending_Topics_Repository {
         
         // Filter by status
         if (!empty($args['status'])) {
-            $where[] = 'status = %s';
-            $prepare_values[] = $args['status'];
+            $sanitized_status = sanitize_key($args['status']);
+            if ($sanitized_status !== '') {
+                $where[] = 'status = %s';
+                $prepare_values[] = $sanitized_status;
+            }
         }
         
         $where_clause = implode(' AND ', $where);
@@ -209,16 +212,45 @@ class AIPS_Trending_Topics_Repository {
     /**
      * Save researched topics to database.
      *
-     * Uses topic_exists() for per-record deduplication within the last 7 days.
+     * Prefetches existing topic titles in a single query to avoid N+1 DB calls.
+     * Within-batch duplicates are filtered via an in-memory map.
      *
-     * @param array $topics Array of topic data to save.
-     * @param string $niche Niche these topics belong to.
-     * @return int|false Number of topics inserted (may be less than input count if some are skipped due to validation or duplicates), or false on database error or empty input.
+     * @param array  $topics Array of topic data to save.
+     * @param string $niche  Niche these topics belong to.
+     * @return int|false Number of topics inserted (may be less than input count if some are skipped
+     *                   due to validation or duplicates), or false on database error or empty input.
      */
     public function save_research_batch($topics, $niche) {
         if (empty($topics) || !is_array($topics)) {
             return false;
         }
+
+        // Collect candidate titles, filtering obviously invalid entries up-front.
+        $candidate_titles = array();
+        foreach ($topics as $topic) {
+            if (!empty($topic['topic'])) {
+                $candidate_titles[] = $topic['topic'];
+            }
+        }
+
+        if (empty($candidate_titles)) {
+            return 0;
+        }
+
+        // Prefetch all existing topics for this niche within the dedup window in one query.
+        $placeholders = implode(',', array_fill(0, count($candidate_titles), '%s'));
+        $existing_rows = $this->wpdb->get_col(
+            $this->wpdb->prepare(
+                "SELECT topic FROM {$this->table_name}
+                WHERE niche = %s
+                AND researched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                AND topic IN ({$placeholders})",
+                array_merge(array($niche), $candidate_titles)
+            )
+        );
+        $existing_lower = $existing_rows
+            ? array_flip(array_map('strtolower', $existing_rows))
+            : array();
 
         $batch_data = array();
         // Track titles added in this batch to prevent within-batch duplicates.
@@ -237,7 +269,7 @@ class AIPS_Trending_Topics_Repository {
             }
 
             // Skip topics that already exist in the database for this niche.
-            if ($this->topic_exists($topic['topic'], $niche, 7)) {
+            if (isset($existing_lower[$topic_lower])) {
                 continue;
             }
 
@@ -370,6 +402,12 @@ class AIPS_Trending_Topics_Repository {
         $keywords_json = is_array($data['keywords']) 
             ? wp_json_encode($data['keywords']) 
             : '[]';
+
+        // Normalize status: fall back to 'new' when sanitize_key yields an empty string.
+        $status_value = sanitize_key($data['status']);
+        if ($status_value === '') {
+            $status_value = 'new';
+        }
         
         $result = $this->wpdb->insert(
             $this->table_name,
@@ -379,7 +417,7 @@ class AIPS_Trending_Topics_Repository {
                 'score' => absint($data['score']),
                 'reason' => sanitize_text_field($data['reason']),
                 'keywords' => $keywords_json,
-                'status' => sanitize_key($data['status']),
+                'status' => $status_value,
                 'researched_at' => $data['researched_at'],
             ),
             array('%s', '%s', '%d', '%s', '%s', '%s', '%s')
@@ -415,7 +453,12 @@ class AIPS_Trending_Topics_Repository {
                     $update_data[$field] = absint($data[$field]);
                     $format[] = '%d';
                 } elseif ($field === 'status') {
-                    $update_data[$field] = sanitize_key($data[$field]);
+                    $sanitized_status = sanitize_key($data[$field]);
+                    if ($sanitized_status === '') {
+                        // Skip empty/invalid status values; do not overwrite existing status.
+                        continue;
+                    }
+                    $update_data[$field] = $sanitized_status;
                     $format[] = '%s';
                 } else {
                     $update_data[$field] = sanitize_text_field($data[$field]);

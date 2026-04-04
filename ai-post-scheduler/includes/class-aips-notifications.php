@@ -819,7 +819,10 @@ class AIPS_Notifications {
 			'message' => sprintf(__('Scheduled research found %1$d new topic(s) for niche "%2$s".', 'ai-post-scheduler'), $count, $niche),
 			'url'     => AIPS_Admin_Menu_Helper::get_page_url('research'),
 			'level'   => 'info',
-			'meta'    => $payload,
+			'meta'    => array(
+				'niche' => $niche,
+				'count' => $count,
+			),
 			'dedupe_key'    => 'research_topics_ready_' . sanitize_key($niche) . '_' . gmdate('YmdH'),
 			'dedupe_window' => 300,
 		));

@@ -721,9 +721,9 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
     }
 
     /**
-     * Test save_research_batch skips topics that already exist.
+     * Test save_research_batch deduplication skips pre-existing topics via prefetch.
      */
-    public function test_save_research_batch_skips_existing_topics() {
+    public function test_save_research_batch_dedup_via_prefetch() {
         // Pre-insert a topic that should be skipped.
         $this->repository->create(array(
             'niche'         => 'DedupeNiche',
