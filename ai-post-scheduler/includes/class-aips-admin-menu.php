@@ -131,8 +131,8 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
-            __('Generated Posts', 'ai-post-scheduler'),
-            __('Generated Posts', 'ai-post-scheduler'),
+            __('Content', 'ai-post-scheduler'),
+            __('Content', 'ai-post-scheduler'),
             'manage_options',
             'aips-generated-posts',
             array($this, 'render_generated_posts_page')
@@ -330,25 +330,6 @@ class AIPS_Admin_Menu {
     public function render_generated_posts_page() {
         $controller = new AIPS_Generated_Posts_Controller();
         $controller->render_page();
-    }
-
-    /**
-     * Render the Post Review page.
-     *
-     * Includes the post review template file.
-     *
-     * @return void
-     */
-    public function render_post_review_page() {
-        // Get the globally-initialized Post Review handler to avoid duplicate AJAX registration
-        global $aips_post_review_handler;
-        if (!isset($aips_post_review_handler)) {
-            // Fallback: repository only (AJAX handlers already registered in main init)
-            $post_review_handler = null;
-        } else {
-            $post_review_handler = $aips_post_review_handler;
-        }
-        include AIPS_PLUGIN_DIR . 'templates/admin/post-review.php';
     }
 
     /*
