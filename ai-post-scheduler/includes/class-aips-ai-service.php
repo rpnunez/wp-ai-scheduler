@@ -22,9 +22,14 @@ if (!defined('ABSPATH')) {
 class AIPS_AI_Service {
     
     /**
-     * @var mixed AI Engine instance
+     * @var mixed AI Engine simple API instance ($mwai)
      */
     private $ai_engine;
+
+    /**
+     * @var mixed AI Engine core instance ($mwai_core) used for run_query()
+     */
+    private $core_engine;
     
     /**
      * @var AIPS_Logger Logger instance
@@ -71,11 +76,12 @@ class AIPS_AI_Service {
     }
     
     /**
-     * Get the AI Engine instance.
+     * Get the AI Engine simple API instance ($mwai).
      *
-     * Lazy-loads the AI Engine and caches it for reuse.
+     * Lazy-loads the AI Engine and caches it for reuse. Used for the
+     * simpleXxxQuery fallback paths.
      *
-     * @return mixed|null The AI Engine instance or null if not available.
+     * @return mixed|null The AI Engine simple API instance or null if not available.
      */
     private function get_ai_engine() {
         if ($this->ai_engine === null) {
@@ -85,20 +91,37 @@ class AIPS_AI_Service {
 
         return $this->ai_engine;
     }
-    
+
+    /**
+     * Get the AI Engine core instance ($mwai_core).
+     *
+     * Returns $mwai_core which exposes run_query() for the typed query-object API.
+     *
+     * @return mixed|null The AI Engine core instance or null if not available.
+     */
+    private function get_core_engine() {
+        if ($this->core_engine === null) {
+            global $mwai_core;
+            $this->core_engine = $mwai_core;
+        }
+
+        return $this->core_engine;
+    }
+
     /**
      * Check if AI Engine is available and ready to use.
      *
      * @return bool True if AI Engine is available, false otherwise.
      */
     public function is_available() {
-        return $this->get_ai_engine() !== null;
+        return $this->get_core_engine() !== null;
     }
     
     /**
      * Generate text content using AI.
      *
      * Sends a text prompt to the AI Engine and returns the generated content.
+     * Uses the Meow_MWAI_Query_Text query-object API via $mwai_core->run_query().
      * Includes retry logic, circuit breaker, and rate limiting.
      *
      * @param string $prompt  The prompt to send to the AI.
@@ -106,22 +129,21 @@ class AIPS_AI_Service {
      * @return string|WP_Error The generated content or WP_Error on failure.
      */
     public function generate_text($prompt, $options = array()) {
-        $ai = $this->get_ai_engine();
-        
-        if (!$ai) {
+        if (!$this->is_available()) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
             $this->log_call('text', $prompt, $options, $error);
             $this->emit_integration_error_notification('text', $error, $options);
             return $error;
         }
-        
-        $params = $this->prepare_options($options);
-        
+
         // Execute safely with retry, circuit breaker, and rate limiting
-        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options, $params) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options) {
             try {
-                // Use simpleTextQuery API method
-                $result = $ai->simpleTextQuery($prompt, $params);
+                $core  = $this->get_core_engine();
+                $query = new Meow_MWAI_Query_Text($prompt);
+                $this->apply_query_settings($query, $options);
+                $reply  = $core->run_query($query);
+                $result = $reply->result;
 
                 if ($result && !empty($result)) {
                     $this->log_call('text', $prompt, $options, null, $result);
@@ -169,9 +191,8 @@ class AIPS_AI_Service {
      * @return array|WP_Error The parsed JSON data as an array, or WP_Error on failure.
      */
     public function generate_json($prompt, $options = array()) {
-        // Check if AI Engine is available using consistent availability check
         $ai = $this->get_ai_engine();
-        
+
         if (!$ai) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 
@@ -180,14 +201,7 @@ class AIPS_AI_Service {
 
             return $error;
         }
-        
-        // If $ai doesn't have simpleJsonQuery, fall back to text-based JSON
-        if (!method_exists($ai, 'simpleJsonQuery')) {
-            $this->logger->log('Using fallback JSON generation (simpleJsonQuery not available)', 'info');
 
-            return $this->fallback_json_generation($prompt, $options);
-        }
-        
         $params = $this->prepare_options($options);
         
         // Execute safely with retry, circuit breaker, and rate limiting
@@ -337,6 +351,7 @@ class AIPS_AI_Service {
      * Generate an image using AI.
      *
      * Sends an image prompt to the AI Engine and returns the generated image URL.
+     * Uses the Meow_MWAI_Query_Image query-object API via $mwai_core->run_query().
      * Includes retry logic, circuit breaker, and rate limiting.
      *
      * @param string $prompt  The image generation prompt.
@@ -344,9 +359,7 @@ class AIPS_AI_Service {
      * @return string|WP_Error The image URL or WP_Error on failure.
      */
     public function generate_image($prompt, $options = array()) {
-        $ai = $this->get_ai_engine();
-        
-        if (!$ai) {
+        if (!$this->is_available()) {
             $error = new WP_Error('ai_unavailable', __('AI Engine plugin is not available.', 'ai-post-scheduler'));
 
             $this->log_call('image', $prompt, $options, $error);
@@ -356,18 +369,13 @@ class AIPS_AI_Service {
         }
 
         // Execute safely with retry, circuit breaker, and rate limiting
-        $result = $this->resilience_service->execute_safely(function() use ($ai, $prompt, $options) {
+        $result = $this->resilience_service->execute_safely(function() use ($prompt, $options) {
             try {
-                // Build params array for simpleImageQuery
-                $params = array();
-                
-                // Pass through any options as params
-                if (!empty($options)) {
-                    $params = $options;
-                }
-                
-                // Use simpleImageQuery API method
-                $image_url = $ai->simpleImageQuery($prompt, $params);
+                $core  = $this->get_core_engine();
+                $query = new Meow_MWAI_Query_Image($prompt);
+                $this->apply_query_settings($query, $options);
+                $reply     = $core->run_query($query);
+                $image_url = $reply->result;
 
                 if (!$image_url || empty($image_url)) {
                     $error = new WP_Error('empty_response', __('AI Engine returned an empty response for image generation.', 'ai-post-scheduler'));
@@ -378,7 +386,7 @@ class AIPS_AI_Service {
                     return $error;
                 }
 
-                // Handle array response (some AI engines return arrays)
+                // Handle array response (some AI engines return arrays).
                 if (is_array($image_url) && !empty($image_url[0])) {
                     $image_url = $image_url[0];
                 }
@@ -396,6 +404,7 @@ class AIPS_AI_Service {
                 $this->resilience_service->record_success();
 
                 return $image_url;
+
             } catch (Exception $e) {
                 $error = new WP_Error('generation_failed', $e->getMessage());
 
@@ -489,55 +498,56 @@ class AIPS_AI_Service {
     }
 
     /**
-     * Apply optional AI Engine query settings when available.
+     * Apply all AI Engine query settings via typed setter methods.
      *
-     * @param object $query   The AI Engine query object.
+     * Sets standard parameters (model, env_id, max_tokens, temperature) and
+     * optional parameters (context, instructions, messages, max_results, api_key,
+     * embeddings_env_id) on the query object using the Meow AI Engine PHP class API.
+     *
+     * @see https://ai.thehiddendocs.com/php-classes/
+     *
+     * @param object $query   The AI Engine query object (e.g. Meow_MWAI_Query_Text).
      * @param array  $options Options passed to the AI request.
      * @return void
      */
-    private function apply_optional_query_settings($query, $options) {
-        foreach (self::OPTIONAL_QUERY_OPTION_KEYS as $key) {
-            if (!isset($options[$key])) {
-                continue;
-            }
+    private function apply_query_settings($query, $options) {
+        // Resolve effective values, falling back to plugin-level defaults.
+        $model       = !empty($options['model'])       ? $options['model']
+                     : get_option('aips_ai_model', '');
+        $env_id      = !empty($options['env_id'])       ? $options['env_id']
+                     : (!empty($options['envId'])        ? $options['envId'] : get_option('aips_ai_env_id', ''));
+        $max_tokens  = isset($options['maxTokens'])     ? $options['maxTokens']
+                     : (isset($options['max_tokens'])    ? $options['max_tokens'] : 2000);
+        $temperature = isset($options['temperature'])   ? $options['temperature'] : 0.7;
 
-            switch ($key) {
-                case 'context':
-                    if (method_exists($query, 'set_context')) {
-                        $query->set_context($options[$key]);
-                    }
-                    break;
-                case 'instructions':
-                    if (method_exists($query, 'set_instructions')) {
-                        $query->set_instructions($options[$key]);
-                    }
-                    break;
-                case 'messages':
-                    if (method_exists($query, 'set_messages')) {
-                        $query->set_messages($options[$key]);
-                    }
-                    break;
-                case 'env_id':
-                    if (method_exists($query, 'set_env_id')) {
-                        $query->set_env_id($options[$key]);
-                    }
-                    break;
-                case 'embeddings_env_id':
-                    if (method_exists($query, 'set_embeddings_env_id')) {
-                        $query->set_embeddings_env_id($options[$key]);
-                    }
-                    break;
-                case 'max_results':
-                    if (method_exists($query, 'set_max_results')) {
-                        $query->set_max_results($options[$key]);
-                    }
-                    break;
-                case 'api_key':
-                    if (method_exists($query, 'set_api_key')) {
-                        $query->set_api_key($options[$key]);
-                    }
-                    break;
-            }
+        // Standard settings.
+        if (!empty($model)) {
+            $query->set_model($model);
+        }
+        if (!empty($env_id)) {
+            $query->set_env_id($env_id);
+        }
+        $query->set_max_tokens($max_tokens);
+        $query->set_temperature($temperature);
+
+        // Optional settings.
+        if (!empty($options['context'])) {
+            $query->set_context($options['context']);
+        }
+        if (!empty($options['instructions'])) {
+            $query->set_instructions($options['instructions']);
+        }
+        if (!empty($options['messages'])) {
+            $query->set_messages($options['messages']);
+        }
+        if (!empty($options['embeddings_env_id'])) {
+            $query->set_embeddings_env_id($options['embeddings_env_id']);
+        }
+        if (isset($options['max_results'])) {
+            $query->set_max_results($options['max_results']);
+        }
+        if (!empty($options['api_key'])) {
+            $query->set_api_key($options['api_key']);
         }
     }
 
