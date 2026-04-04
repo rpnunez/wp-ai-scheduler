@@ -1,153 +1,135 @@
-# AI Post Scheduler - WordPress Plugin
+# AI Post Scheduler
 
-Schedule AI-generated posts using Meow Apps AI Engine. Build reusable templates, research topics, bulk-schedule content, and monitor every AI call from one dashboard.
+AI Post Scheduler is a WordPress plugin that automates editorial workflows with AI-generated content. It integrates with Meow Apps AI Engine to create, schedule, review, and monitor posts through a WordPress admin interface.
 
-## 🚀 Quick Start for Development
+## About
 
-### Using Docker (Recommended)
+This project is designed for teams that want repeatable, auditable content automation inside WordPress. The plugin supports both template-driven generation and author/topic workflows, with history tracking and scheduled execution via WordPress cron.
 
-Get up and running in minutes with our Docker development environment:
+Core goals:
+- Reduce manual work in content planning and drafting.
+- Keep AI generation configurable through reusable admin tools.
+- Preserve visibility with logs, review flows, and system status checks.
+
+## Features
+
+- Template-based post generation with reusable prompt variables.
+- Voice and article-structure management for consistent output.
+- AI-assisted topic research and scoring.
+- Flexible scheduling for automated generation workflows.
+- Author and topic pipelines for persona-driven content.
+- Generated-post review and component regeneration tools.
+- History logging and observability for AI calls and lifecycle events.
+- Admin notifications and system-status tooling.
+
+## Dependencies
+
+Runtime dependencies:
+- WordPress.
+- Meow Apps AI Engine plugin (required for generation).
+
+Development dependencies:
+- Composer.
+- PHPUnit.
+- Docker (recommended for local development).
+
+## Requirements
+
+- PHP 8.2+
+- WordPress 5.8+
+- MySQL/MariaDB
+
+## Project Structure
+
+The plugin code lives in [ai-post-scheduler/](ai-post-scheduler/).
+
+```text
+ai-post-scheduler/
+├── ai-post-scheduler.php    # Plugin bootstrap
+├── includes/                # Core PHP classes (controllers, services, repositories)
+├── templates/               # Admin templates
+├── assets/                  # Admin CSS/JS
+├── tests/                   # PHPUnit tests
+└── readme.txt               # WordPress plugin readme
+```
+
+## Development
+
+### Quick Start (Docker, Recommended)
 
 ```bash
-# One command to rule them all
 ./start-dev.sh
 ```
 
-That's it! In 2-5 minutes you'll have:
-- ✅ WordPress 6.4 with PHP 8.2
-- ✅ MariaDB 10.6 database
-- ✅ Plugin installed and activated
-- ✅ Xdebug ready for debugging
-- ✅ phpMyAdmin for database management
+This provisions WordPress, database services, plugin activation, and debugging support.
 
-**Access your development environment:**
-- **WordPress**: http://localhost:8080
-- **Admin**: http://localhost:8080/wp-admin (admin/admin)
-- **phpMyAdmin**: http://localhost:8082
+Local URLs:
+- WordPress: http://localhost:8080
+- Admin: http://localhost:8080/wp-admin (admin/admin)
+- phpMyAdmin: http://localhost:8082
 
-**Start debugging in VS Code:**
-1. Open project in VS Code
-2. Press `F5`
-3. Select "Listen for Xdebug (Docker)"
-4. Set breakpoints and start coding!
-
-📚 **Full Documentation:**
-- [Docker Development Guide](DOCKER_DEV_README.md) - Complete setup and usage
-- [Quick Reference](DOCKER_QUICKREF.md) - Command cheatsheet
-- [Troubleshooting](DOCKER_TROUBLESHOOTING.md) - Common issues and solutions
-- [Docker vs XAMPP](DOCKER_VS_XAMPP.md) - Why Docker is better
-
-### Alternative Setup
-
-If you prefer traditional development or can't use Docker:
-1. See [COPILOT_SETUP_STEPS.md](COPILOT_SETUP_STEPS.md) for manual setup
-2. See plugin's [readme.txt](ai-post-scheduler/readme.txt) for installation instructions
-
-## 📦 Features
-
-- **Template Builder**: Create reusable prompt templates with dynamic variables
-- **Voices & Structures**: Define writing personas and article outlines
-- **AI-Powered Research**: Discover and score trending topics automatically
-- **Bulk Scheduling**: Schedule multiple posts at once with the Planner
-- **Flexible Scheduling**: Hourly, daily, weekly, custom frequencies
-- **Generation History**: Track all AI calls with detailed logs
-- **Featured Images**: Automated AI-generated featured images
-- **System Monitoring**: Health checks for environment, database, and cron
-
-## 🛠️ Development
-
-### Daily Workflow with Docker
+### Daily Workflow
 
 ```bash
-# Start environment
+# Start services
 make up
 
-# View logs
+# Follow logs
 make logs
 
-# Run tests
-make test
-
-# Enter container shell
+# Open a shell in the app container
 make shell
 
-# Stop environment
+# Stop services
 make down
 ```
 
-### Testing
+### Manual/Non-Docker Setup
+
+- See [COPILOT_SETUP_STEPS.md](COPILOT_SETUP_STEPS.md) for local setup options.
+- See [ai-post-scheduler/readme.txt](ai-post-scheduler/readme.txt) for plugin installation details.
+
+### Debugging (VS Code)
+
+1. Start the Docker environment.
+2. Press `F5` in VS Code.
+3. Select `Listen for Xdebug (Docker)`.
+
+## Testing
+
+Run test commands from [ai-post-scheduler/](ai-post-scheduler/):
 
 ```bash
-# Run all tests
+cd ai-post-scheduler
+
+# Full test suite
 composer test
 
-# Run with coverage
+# Verbose output
+composer test:verbose
+
+# Coverage
 composer test:coverage
 
-# Run specific test file
-vendor/bin/phpunit tests/test-specific.php
+# Single test file
+vendor/bin/phpunit tests/test-template-processor.php
 ```
 
-### Code Structure
+## Documentation
 
-```
-ai-post-scheduler/
-├── includes/                # Core PHP classes
-│   ├── class-aips-*.php    # All classes use AIPS_ prefix
-│   ├── Repositories/       # Database layer
-│   ├── Services/           # Business logic
-│   └── Controllers/        # Request handlers
-├── templates/              # Admin UI templates
-├── assets/                 # CSS, JS files
-├── tests/                  # PHPUnit tests
-└── migrations/             # Database migrations
-```
+- [docs/FEATURE_LIST.md](docs/FEATURE_LIST.md)
+- [docs/HOOKS.md](docs/HOOKS.md)
+- [docs/MIGRATIONS.md](docs/MIGRATIONS.md)
+- [docs/SETUP.md](docs/SETUP.md)
+- [ai-post-scheduler/CHANGELOG.md](ai-post-scheduler/CHANGELOG.md)
 
-## 📋 Requirements
+## Contributing
 
-- **WordPress**: 5.8 or higher
-- **PHP**: 8.2 or higher
-- **Dependencies**: Meow Apps AI Engine plugin (required)
+1. Create a branch.
+2. Make focused changes.
+3. Run tests.
+4. Open a pull request.
 
-## 🤝 Contributing
+## License
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `make test`
-5. Submit a pull request
-
-## 📖 Documentation
-
-- [Architectural Improvements](docs/ARCHITECTURAL_IMPROVEMENTS.md)
-- [PSR-4 Refactoring Plan](docs/PSR4_REFACTORING_PLAN.md)
-- [Testing Guide](docs/TESTING.md)
-- [Changelog](CHANGELOG.md)
-
-## 🐛 Troubleshooting
-
-**Docker Issues?**
-- See [Docker Troubleshooting Guide](DOCKER_TROUBLESHOOTING.md)
-- Run `make help` for available commands
-
-**Xdebug Not Working?**
-- Ensure you're using the Docker setup
-- Press `F5` in VS Code to start listening
-- Check [Xdebug Troubleshooting](DOCKER_TROUBLESHOOTING.md#xdebug-issues)
-
-**Plugin Issues?**
-- Check [System Status](http://localhost:8080/wp-admin/admin.php?page=aips-system-status)
-- View logs: `make logs-web`
-- Ensure AI Engine is installed and configured
-
-## 📄 License
-
-GPLv2 or later
-
-## 🙏 Credits
-
-Built with ❤️ for WordPress developers who want to automate content creation with AI.
-
----
-
-**Ready to start? Run `./start-dev.sh` and start coding in minutes! 🚀**
+GPLv2 or later.
