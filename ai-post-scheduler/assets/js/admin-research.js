@@ -591,7 +591,7 @@
             var topic = $btn.data('topic');
             var niche = $('#gap-niche').val();
 
-            $btn.prop('disabled', true).text(aipsResearchL10n.generatingIdeas || 'Generating...');
+            AIPS.Utilities.setButtonLoading($btn, aipsResearchL10n.generatingIdeas || 'Generating...');
 
             $.ajax({
                 url: ajaxurl,
@@ -617,7 +617,7 @@
                     AIPS.Utilities.showToast('An error occurred while generating topics.', 'error');
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text(aipsResearchL10n.generateIdeas || 'Generate Ideas');
+                    AIPS.Utilities.resetButton($btn);
                 }
             });
         },
