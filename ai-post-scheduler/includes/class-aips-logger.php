@@ -41,21 +41,34 @@ class AIPS_Logger {
         return $secret;
     }
 
+    /**
+     * Ensure the log directory exists and has correct security constraints.
+     * Logs errors if directory or protection files fail to create.
+     */
     private function ensure_directory_exists() {
         if ($this->dir_checked) {
             return;
         }
 
+        // Set early to prevent recursive calls when $this->log() is called below.
+        $this->dir_checked = true;
+
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/aips-logs';
 
         if (!file_exists($log_dir)) {
-            wp_mkdir_p($log_dir);
-            file_put_contents($log_dir . '/.htaccess', 'deny from all');
-            file_put_contents($log_dir . '/index.php', '<?php // Silence is golden');
+            if (!wp_mkdir_p($log_dir)) {
+                // Cannot use $this->log() here — the log directory does not exist yet.
+                error_log('AIPS_Logger: Failed to create log directory: ' . $log_dir);
+                return;
+            }
+            if (file_put_contents($log_dir . '/.htaccess', 'deny from all') === false) {
+                $this->log('Failed to create .htaccess in log directory: ' . $log_dir, 'warning');
+            }
+            if (file_put_contents($log_dir . '/index.php', '<?php // Silence is golden') === false) {
+                $this->log('Failed to create index.php in log directory: ' . $log_dir, 'warning');
+            }
         }
-        
-        $this->dir_checked = true;
     }
     
     public function log($message, $level = 'info', $context = array()) {
@@ -159,9 +172,18 @@ class AIPS_Logger {
         return array_values($file_lines);
     }
     
+    /**
+     * Clear the current log file.
+     *
+     * @return bool True if successful, false if deletion fails.
+     */
     public function clear_logs() {
         if (file_exists($this->log_file)) {
-            unlink($this->log_file);
+            if (!unlink($this->log_file)) {
+                // Cannot use $this->log() here — writing to the file that failed to be deleted is unreliable.
+                error_log('AIPS_Logger: Failed to delete log file: ' . $this->log_file);
+                return false;
+            }
         }
         return true;
     }
