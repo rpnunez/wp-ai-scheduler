@@ -60,47 +60,115 @@ return new AIPS_Resilience_Service();
 }
 
 // -----------------------------------------------------------------------
-// extract_error_code_from_message
+// extract_error_code_from_message — message-pattern based
 // -----------------------------------------------------------------------
 
-public function test_extract_error_code_finds_non_retryable_code_in_plain_message() {
-$code = AIPS_Resilience_Service::extract_error_code_from_message(
-'OpenAI error: invalid_api_key — check your credentials.'
-);
-$this->assertSame( 'invalid_api_key', $code );
+/**
+ * "High demand" messages from Meow AI Engine are transient — must be retryable.
+ */
+public function test_extract_error_code_high_demand_message_returns_empty() {
+    $code = AIPS_Resilience_Service::extract_error_code_from_message(
+        'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.'
+    );
+    $this->assertSame( '', $code, '"High demand" is transient and must NOT be classified as non-retryable' );
 }
 
-public function test_extract_error_code_finds_immediate_open_code_in_plain_message() {
-$code = AIPS_Resilience_Service::extract_error_code_from_message(
-'You have exceeded your current quota (insufficient_quota). Please check your plan.'
-);
-$this->assertSame( 'insufficient_quota', $code );
+/**
+ * Empty response messages are transient — must remain retryable.
+ */
+public function test_extract_error_code_empty_response_message_returns_empty() {
+    $code = AIPS_Resilience_Service::extract_error_code_from_message(
+        'AI Engine returned an empty response.'
+    );
+    $this->assertSame( '', $code, '"Empty response" is transient and must NOT be classified as non-retryable' );
 }
 
-public function test_extract_error_code_returns_empty_string_for_unknown_message() {
-$code = AIPS_Resilience_Service::extract_error_code_from_message(
-'Unexpected network error. Please retry later.'
-);
-$this->assertSame( '', $code );
+/**
+ * "Incorrect API key" message → invalid_api_key (non-retryable).
+ */
+public function test_extract_error_code_incorrect_api_key_message() {
+    $code = AIPS_Resilience_Service::extract_error_code_from_message(
+        'Incorrect API key provided: sk-xxx. You can find your API key at https://platform.openai.com/account/api-keys.'
+    );
+    $this->assertSame( 'invalid_api_key', $code );
 }
 
+/**
+ * "Invalid API key" message variant → invalid_api_key.
+ */
+public function test_extract_error_code_invalid_api_key_message() {
+    $code = AIPS_Resilience_Service::extract_error_code_from_message(
+        'Invalid API key. Please check your credentials.'
+    );
+    $this->assertSame( 'invalid_api_key', $code );
+}
+
+/**
+ * "Exceeded your current quota" → insufficient_quota (immediate open).
+ */
+public function test_extract_error_code_exceeded_quota_message() {
+    $code = AIPS_Resilience_Service::extract_error_code_from_message(
+        'You exceeded your current quota, please check your plan and billing details.'
+    );
+    $this->assertSame( 'insufficient_quota', $code );
+}
+
+/**
+ * "Maximum context length" → context_length_exceeded (non-retryable).
+ */
+public function test_extract_error_code_context_length_message() {
+    $code = AIPS_Resilience_Service::extract_error_code_from_message(
+        "This model's maximum context length is 4097 tokens. Please reduce the length of your messages."
+    );
+    $this->assertSame( 'context_length_exceeded', $code );
+}
+
+/**
+ * "Model does not exist" → model_not_found (non-retryable).
+ */
+public function test_extract_error_code_model_not_found_message() {
+    $code = AIPS_Resilience_Service::extract_error_code_from_message(
+        'The model `gpt-5-fake` does not exist.'
+    );
+    $this->assertSame( 'model_not_found', $code );
+}
+
+/**
+ * Generic unknown transient error still returns empty (retryable).
+ */
+public function test_extract_error_code_returns_empty_for_unknown_transient_message() {
+    $code = AIPS_Resilience_Service::extract_error_code_from_message(
+        'Unexpected network error. Please retry later.'
+    );
+    $this->assertSame( '', $code );
+}
+
+/**
+ * JSON-embedded error block → code extracted from JSON.
+ */
 public function test_extract_error_code_parses_json_error_block() {
-$message = 'Error 400: {"error":{"message":"Invalid API key","type":"invalid_request_error","code":"invalid_api_key"}}';
-$code    = AIPS_Resilience_Service::extract_error_code_from_message( $message );
-$this->assertSame( 'invalid_api_key', $code );
+    $message = 'Error 400: {"error":{"message":"Incorrect API key provided.","type":"invalid_request_error","code":"invalid_api_key"}}';
+    $code    = AIPS_Resilience_Service::extract_error_code_from_message( $message );
+    $this->assertSame( 'invalid_api_key', $code );
 }
 
+/**
+ * JSON-embedded error block with type but no code field.
+ */
 public function test_extract_error_code_parses_json_error_type_when_no_code() {
-$message = 'Error 400: {"error":{"message":"Context limit","type":"context_length_exceeded"}}';
-$code    = AIPS_Resilience_Service::extract_error_code_from_message( $message );
-$this->assertSame( 'context_length_exceeded', $code );
+    $message = 'Error 400: {"error":{"message":"Context limit","type":"context_length_exceeded"}}';
+    $code    = AIPS_Resilience_Service::extract_error_code_from_message( $message );
+    $this->assertSame( 'context_length_exceeded', $code );
 }
 
+/**
+ * Pattern matching is case-insensitive.
+ */
 public function test_extract_error_code_is_case_insensitive() {
-$code = AIPS_Resilience_Service::extract_error_code_from_message(
-'Error: Context_Length_Exceeded for this request.'
-);
-$this->assertSame( 'context_length_exceeded', $code );
+    $code = AIPS_Resilience_Service::extract_error_code_from_message(
+        'Error: Maximum Context Length reached for this request.'
+    );
+    $this->assertSame( 'context_length_exceeded', $code );
 }
 
 // -----------------------------------------------------------------------

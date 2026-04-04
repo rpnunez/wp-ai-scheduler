@@ -23,6 +23,10 @@ class AIPS_Resilience_Service {
      * Error codes that represent permanent "user error" conditions (4xx equivalent).
      * Retrying these wastes tokens and time — the loop exits immediately on a match.
      *
+     * These codes are returned by OpenAI/compatible providers and may appear either as
+     * structured JSON fields ({"error":{"code":"..."}}) or as substrings within
+     * human-readable exception messages forwarded by Meow AI Engine.
+     *
      * @var string[]
      */
     const NON_RETRYABLE_CODES = array(
@@ -42,6 +46,53 @@ class AIPS_Resilience_Service {
      */
     const IMMEDIATE_OPEN_CODES = array(
         'insufficient_quota',
+    );
+
+    /**
+     * Message-based pattern map.
+     *
+     * Meow AI Engine forwards the raw provider error message as the PHP exception
+     * message — there is no structured error code to inspect.  These patterns match
+     * the English-language strings that OpenAI (and compatible providers) actually
+     * send so that free-text messages can be mapped to canonical internal codes.
+     *
+     * Each entry: 'substring_pattern' => 'canonical_code'
+     * Patterns are matched case-insensitively via stripos().
+     *
+     * Transient errors ("high demand", "rate limit exceeded", "overloaded") are
+     * intentionally ABSENT — they should be retried normally.
+     *
+     * @var array<string, string>
+     */
+    const MESSAGE_PATTERNS = array(
+        // ---- Permanent auth / configuration errors ----
+        'incorrect api key'             => 'invalid_api_key',
+        'invalid api key'               => 'invalid_api_key',
+        'no api key provided'           => 'invalid_api_key',
+        'api key not found'             => 'invalid_api_key',
+        // ---- Quota / billing errors (immediate open) ----
+        'exceeded your current quota'   => 'insufficient_quota',
+        'you have exceeded your quota'  => 'insufficient_quota',
+        'insufficient_quota'            => 'insufficient_quota',
+        'quota exceeded'                => 'insufficient_quota',
+        'billing_not_active'            => 'billing_not_active',
+        'account is not active'         => 'billing_not_active',
+        // ---- Context / token limit errors ----
+        'maximum context length'        => 'context_length_exceeded',
+        'context_length_exceeded'       => 'context_length_exceeded',
+        'context window'                => 'context_length_exceeded',
+        'token limit'                   => 'context_length_exceeded',
+        "reduce the length of your messages" => 'context_length_exceeded',
+        // ---- Model errors ----
+        'model not found'               => 'model_not_found',
+        'does not exist'                => 'model_not_found',
+        'model_not_found'               => 'model_not_found',
+        // ---- Content policy errors ----
+        'content policy'                => 'content_policy_violation',
+        'violates our usage policies'   => 'content_policy_violation',
+        'content_policy_violation'      => 'content_policy_violation',
+        // ---- Invalid request errors ----
+        'invalid_request_error'         => 'invalid_request_error',
     );
 
     /**
@@ -371,37 +422,61 @@ class AIPS_Resilience_Service {
     /**
      * Attempt to extract a structured provider error code from an exception message.
      *
-     * The Meow AI Engine forwards the raw provider (OpenAI, etc.) error as the
-     * exception message, often containing a JSON blob.  This method scans for
-     * known code strings so callers can pass a meaningful code to record_failure().
+     * Meow AI Engine forwards the raw provider (OpenAI, etc.) error as the PHP
+     * exception message — there is no guaranteed structured error code field.
+     * This method uses a two-step approach:
+     *
+     * 1. Scan the raw message text for known human-readable patterns (MESSAGE_PATTERNS).
+     *    This is the primary path because Meow AI Engine typically surfaces plain-text
+     *    OpenAI/provider error strings.
+     *
+     * 2. If the message contains a JSON blob (OpenAI-style {"error":{"code":...}}),
+     *    extract the code/type field and map it through MESSAGE_PATTERNS and the
+     *    known code lists for a final lookup.
+     *
+     * Transient errors ("This model is currently experiencing high demand", empty
+     * responses, rate-limit retries) intentionally return '' so the retry loop
+     * continues normally.
      *
      * @param string $message Raw exception or error message.
-     * @return string Provider error code, or '' when none can be identified.
+     * @return string Canonical provider error code, or '' when none can be identified.
      */
     public static function extract_error_code_from_message($message) {
-        $all_codes = array_merge(self::NON_RETRYABLE_CODES, self::IMMEDIATE_OPEN_CODES);
-
-        foreach ($all_codes as $code) {
-            if (stripos($message, $code) !== false) {
+        // Step 1: Message pattern matching (primary — covers Meow AI Engine free-text errors)
+        foreach (self::MESSAGE_PATTERNS as $pattern => $code) {
+            if (stripos($message, $pattern) !== false) {
                 return $code;
             }
         }
 
-        // Attempt to decode a JSON payload embedded in the message (OpenAI style)
+        // Step 2: JSON blob embedded in the message (OpenAI API response body style)
         $json_start = strpos($message, '{');
         if ($json_start !== false) {
             $json_str = substr($message, $json_start);
             $decoded  = json_decode($json_str, true);
             if (is_array($decoded)) {
-                // e.g. {"error": {"code": "invalid_api_key", ...}}
-                $code_val = '';
+                // e.g. {"error": {"code": "invalid_api_key", "type": "...", "message": "..."}}
+                $raw_code = '';
                 if (!empty($decoded['error']['code'])) {
-                    $code_val = (string) $decoded['error']['code'];
+                    $raw_code = (string) $decoded['error']['code'];
                 } elseif (!empty($decoded['error']['type'])) {
-                    $code_val = (string) $decoded['error']['type'];
+                    $raw_code = (string) $decoded['error']['type'];
                 }
-                if ($code_val !== '') {
-                    return $code_val;
+
+                if ($raw_code !== '') {
+                    // Check against known code lists first (exact match)
+                    $all_codes = array_merge(self::NON_RETRYABLE_CODES, self::IMMEDIATE_OPEN_CODES);
+                    if (in_array($raw_code, $all_codes, true)) {
+                        return $raw_code;
+                    }
+                    // Fall through to pattern matching on the extracted code string itself
+                    foreach (self::MESSAGE_PATTERNS as $pattern => $code) {
+                        if (stripos($raw_code, $pattern) !== false) {
+                            return $code;
+                        }
+                    }
+                    // Return the raw code from JSON as-is (may be useful for logging)
+                    return $raw_code;
                 }
             }
         }
