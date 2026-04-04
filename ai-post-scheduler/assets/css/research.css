@@ -228,3 +228,68 @@
 .aips-gap-analysis-controls input {
     min-width: 300px;
 }
+
+/* Trending-topic post count badge */
+.aips-post-count-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    margin-top: 4px;
+    background-color: #2271b1;
+    color: #fff;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    vertical-align: middle;
+}
+
+.aips-post-count-badge:hover {
+    background-color: #135e96;
+}
+
+.aips-post-count-badge .dashicons {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+    vertical-align: text-top;
+}
+
+/* Trending-topic status chip */
+.aips-topic-status-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 4px 4px 0 0;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: capitalize;
+    vertical-align: middle;
+}
+
+.aips-topic-status-chip.aips-topic-status-new {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #90caf9;
+}
+
+.aips-topic-status-chip.aips-topic-status-scheduled {
+    background-color: #fff3e0;
+    color: #e65100;
+    border: 1px solid #ffe0b2;
+}
+
+.aips-topic-status-chip.aips-topic-status-generated {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+}
+
+/* Trending-topic posts modal table */
+#aips-trending-topic-posts-content table {
+    margin-top: 10px;
+}
+
+#aips-trending-topic-posts-content .button {
+    margin-right: 5px;
+}

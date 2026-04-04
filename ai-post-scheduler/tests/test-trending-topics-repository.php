@@ -695,6 +695,51 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
     }
 
     /**
+     * Test update_status_bulk updates status for multiple topics.
+     */
+    public function test_update_status_bulk_updates_multiple_topics() {
+        $id1 = $this->repository->create(array(
+            'niche'  => 'StatusBulk',
+            'topic'  => 'Bulk Topic 1',
+            'score'  => 80,
+            'status' => 'new',
+        ));
+        $id2 = $this->repository->create(array(
+            'niche'  => 'StatusBulk',
+            'topic'  => 'Bulk Topic 2',
+            'score'  => 85,
+            'status' => 'new',
+        ));
+
+        $updated = $this->repository->update_status_bulk(array($id1, $id2), 'generated');
+
+        $this->assertEquals(2, $updated);
+        $topic1 = $this->repository->get_by_id($id1);
+        $topic2 = $this->repository->get_by_id($id2);
+        $this->assertEquals('generated', $topic1['status']);
+        $this->assertEquals('generated', $topic2['status']);
+    }
+
+    /**
+     * Test update_status_bulk returns false for invalid status values.
+     */
+    public function test_update_status_bulk_rejects_invalid_status() {
+        $id = $this->repository->create(array(
+            'niche'  => 'StatusBulkInvalid',
+            'topic'  => 'Bulk Invalid Topic',
+            'score'  => 80,
+            'status' => 'new',
+        ));
+
+        $updated = $this->repository->update_status_bulk(array($id), '');
+
+        $this->assertFalse($updated);
+
+        $topic = $this->repository->get_by_id($id);
+        $this->assertEquals('new', $topic['status']);
+    }
+
+    /**
      * Test get_all filters by status.
      */
     public function test_get_all_filters_by_status() {
@@ -745,5 +790,57 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
         $titles = array_column($all, 'topic');
         $this->assertContains('Brand New Topic', $titles);
         $this->assertCount(2, $all); // 1 pre-existing + 1 new
+    }
+
+    /**
+     * Test generated post counts are grouped by trending topic ID.
+     */
+    public function test_get_generated_post_counts_returns_grouped_counts() {
+        $topic_id_one = $this->repository->create(array(
+            'niche' => 'CountNiche',
+            'topic' => 'Count Topic 1',
+            'score' => 80,
+        ));
+        $topic_id_two = $this->repository->create(array(
+            'niche' => 'CountNiche',
+            'topic' => 'Count Topic 2',
+            'score' => 85,
+        ));
+
+        $post_id_one = self::factory()->post->create(array('post_status' => 'draft'));
+        $post_id_two = self::factory()->post->create(array('post_status' => 'publish'));
+
+        add_post_meta($post_id_one, '_aips_trending_topic_id', $topic_id_one);
+        add_post_meta($post_id_two, '_aips_trending_topic_id', $topic_id_one);
+
+        $counts = $this->repository->get_generated_post_counts(array($topic_id_one, $topic_id_two));
+
+        $this->assertArrayHasKey($topic_id_one, $counts);
+        $this->assertEquals(2, $counts[$topic_id_one]);
+        $this->assertArrayNotHasKey($topic_id_two, $counts);
+    }
+
+    /**
+     * Test generated posts lookup returns linked posts for a topic.
+     */
+    public function test_get_generated_posts_by_topic_id_returns_linked_posts() {
+        $topic_id = $this->repository->create(array(
+            'niche' => 'PostListNiche',
+            'topic' => 'Post List Topic',
+            'score' => 80,
+        ));
+
+        $post_id = self::factory()->post->create(array(
+            'post_title' => 'Linked Trending Topic Post',
+            'post_status' => 'draft',
+        ));
+
+        add_post_meta($post_id, '_aips_trending_topic_id', $topic_id);
+
+        $posts = $this->repository->get_generated_posts_by_topic_id($topic_id);
+
+        $this->assertNotEmpty($posts);
+        $this->assertEquals($post_id, (int) $posts[0]['post_id']);
+        $this->assertEquals('Linked Trending Topic Post', $posts[0]['post_title']);
     }
 }
