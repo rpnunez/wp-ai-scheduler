@@ -30,13 +30,19 @@ class AIPS_AI_Edit_Controller {
 	 * @var AIPS_History_Repository
 	 */
 	private $history_repository;
-	
+
+	/**
+	 * @var AIPS_Logger
+	 */
+	private $logger;
+
 	/**
 	 * Constructor
 	 */
 	public function __construct() {
-		$this->service = new AIPS_Component_Regeneration_Service();
+		$this->service            = new AIPS_Component_Regeneration_Service();
 		$this->history_repository = new AIPS_History_Repository();
+		$this->logger             = new AIPS_Logger();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));
@@ -646,13 +652,13 @@ class AIPS_AI_Edit_Controller {
 		} else {
 			// Stored component statuses are absent or malformed; fall back to a minimal
 			// update that at least clears the image-incomplete and recoverable flags.
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log(
+			$this->logger->log(
 				sprintf(
-					'AIPS aips_recover_post_image: could not decode component_statuses for post %d (raw: %s); using fallback.',
+					'aips_recover_post_image: could not decode component_statuses for post %d (raw: %s); using fallback.',
 					$post_id,
 					$raw_statuses_json
-				)
+				),
+				'warning'
 			);
 			$post_manager->update_generation_status_meta(
 				$post_id,

@@ -66,32 +66,24 @@
         success: function(response) {
           if (response && response.success) {
             var $row = $btn.closest('tr');
-            var resolvedLabel = (config.recoverImageResolved) ? config.recoverImageResolved : AIPS._recoveredLabel;
             $row.find('.aips-badge-info, .aips-badge-warning').first().replaceWith(
-              '<span class="aips-badge aips-badge-success">' + resolvedLabel + '</span>'
+              '<span class="aips-badge aips-badge-success">' + config.recoverImageResolved + '</span>'
             );
             $btn.remove();
           } else {
-            var errorLabel = (config.recoverImageError) ? config.recoverImageError : AIPS._recoverErrorLabel;
             var msg = (response && response.data && response.data.message)
               ? response.data.message
-              : errorLabel;
+              : config.recoverImageError;
             alert(msg);
             $btn.prop('disabled', false).removeClass('aips-btn-loading');
           }
         },
         error: function() {
-          var errorLabel = (config.recoverImageError) ? config.recoverImageError : AIPS._recoverErrorLabel;
-          alert(errorLabel);
+          alert(config.recoverImageError);
           $btn.prop('disabled', false).removeClass('aips-btn-loading');
         },
       });
     },
-
-    /** @type {string} Fallback resolved label (overridden by aipsGeneratedPostsConfig.recoverImageResolved). */
-    _recoveredLabel: 'Resolved',
-    /** @type {string} Fallback error message (overridden by aipsGeneratedPostsConfig.recoverImageError). */
-    _recoverErrorLabel: 'Image recovery failed. Please try again.',
   });
 
   // Initialize on document ready
