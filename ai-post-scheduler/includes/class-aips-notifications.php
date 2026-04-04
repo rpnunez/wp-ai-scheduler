@@ -820,9 +820,20 @@ class AIPS_Notifications {
 	 * @return void
 	 */
 	public function circuit_breaker_opened(array $payload) {
-		$error_code = !empty($payload['error_code']) ? $payload['error_code'] : '';
-		$failures   = isset($payload['failures'])  ? (int) $payload['failures'] : 0;
-		$reason     = !empty($payload['reason'])    ? $payload['reason'] : __('failure threshold reached', 'ai-post-scheduler');
+		$error_code  = !empty($payload['error_code'])  ? $payload['error_code']  : '';
+		$failures    = isset($payload['failures'])     ? (int) $payload['failures']  : 0;
+		$threshold   = isset($payload['threshold'])    ? (int) $payload['threshold'] : 0;
+		$reason_code = !empty($payload['reason_code']) ? $payload['reason_code'] : 'threshold_reached';
+
+		if ('immediate_open' === $reason_code) {
+			/* translators: %s: provider error code slug (e.g. "insufficient_quota") */
+			$reason = sprintf(__('immediate circuit open triggered by error code "%s"', 'ai-post-scheduler'), $error_code);
+		} elseif ($threshold > 0) {
+			/* translators: 1: number of failures recorded 2: failure threshold */
+			$reason = sprintf(__('failure threshold reached (%1$d/%2$d)', 'ai-post-scheduler'), $failures, $threshold);
+		} else {
+			$reason = __('failure threshold reached', 'ai-post-scheduler');
+		}
 
 		$title   = __('Circuit breaker opened', 'ai-post-scheduler');
 		$message = sprintf(

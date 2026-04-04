@@ -377,11 +377,11 @@ class AIPS_Resilience_Service {
             // Fire notification action once per transition to open
             if (!$was_already_open) {
                 do_action('aips_circuit_breaker_opened', array(
-                    'failures'   => $this->circuit_breaker_state['failures'],
-                    'threshold'  => $threshold,
-                    'error_code' => $error_code,
-                    'reason'     => $reason,
-                    'dedupe_key' => 'circuit_breaker_opened',
+                    'failures'    => $this->circuit_breaker_state['failures'],
+                    'threshold'   => $threshold,
+                    'error_code'  => $error_code,
+                    'reason_code' => $immediate_open ? 'immediate_open' : 'threshold_reached',
+                    'dedupe_key'    => 'circuit_breaker_opened',
                     'dedupe_window' => 1800,
                 ));
             }
