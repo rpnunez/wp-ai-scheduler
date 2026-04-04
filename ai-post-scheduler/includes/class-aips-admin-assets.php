@@ -669,6 +669,20 @@ class AIPS_Admin_Assets {
             );
         }
 
+        if (strpos($hook, 'aips-taxonomy') !== false) {
+            wp_enqueue_script(
+                'aips-admin-taxonomy',
+                AIPS_PLUGIN_URL . 'assets/js/taxonomy.js',
+                array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-taxonomy', 'aipsL10n', array(
+                'nonce' => wp_create_nonce('aips_ajax_nonce'),
+            ));
+        }
+
         if (strpos($hook, 'aips-sources') !== false) {
             wp_enqueue_script(
                 'aips-admin-sources',

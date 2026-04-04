@@ -318,10 +318,13 @@ final class AI_Post_Scheduler {
             new AIPS_Structures_Controller();
             // Prompt Sections admin controller (CRUD endpoints for Prompt Sections UI)
             new AIPS_Prompt_Sections_Controller();
-            
+
             // Authors feature controllers
             new AIPS_Authors_Controller();
             new AIPS_Author_Topics_Controller();
+
+            // Taxonomy controller (AJAX endpoints for taxonomy generation management)
+            new AIPS_Taxonomy_Controller();
 
             // AI Edit + Calendar controllers (AJAX endpoints)
             new AIPS_AI_Edit_Controller();
