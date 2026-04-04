@@ -65,19 +65,6 @@ class AIPS_Template_Repository {
     }
     
     /**
-     * Get templates by voice ID.
-     *
-     * @param int $voice_id Voice ID.
-     * @return array Array of template objects using this voice.
-     */
-    public function get_by_voice($voice_id) {
-        return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT * FROM {$this->table_name} WHERE voice_id = %d ORDER BY name ASC",
-            $voice_id
-        ));
-    }
-    
-    /**
      * Search templates by name.
      *
      * @param string $search_term Search term.
