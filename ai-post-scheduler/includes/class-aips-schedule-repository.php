@@ -158,9 +158,10 @@ class AIPS_Schedule_Repository {
             'is_active' => isset($data['is_active']) && 1 === absint($data['is_active']) ? 1 : 0,
             'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
             'topic' => isset($data['topic']) ? sanitize_text_field($data['topic']) : '',
+            'schedule_type' => isset($data['schedule_type']) ? sanitize_key($data['schedule_type']) : 'post_generation',
         );
         
-        $format = array('%d', '%s', '%s', '%s', '%d', '%s', '%s');
+        $format = array('%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s');
         
         if (isset($data['article_structure_id'])) {
             $insert_data['article_structure_id'] = !empty($data['article_structure_id']) ? absint($data['article_structure_id']) : null;
@@ -245,6 +246,26 @@ class AIPS_Schedule_Repository {
         if (isset($data['schedule_history_id'])) {
             $update_data['schedule_history_id'] = !empty($data['schedule_history_id']) ? absint($data['schedule_history_id']) : null;
             $format[] = '%d';
+        }
+
+        if (isset($data['schedule_type'])) {
+            $update_data['schedule_type'] = sanitize_key($data['schedule_type']);
+            $format[] = '%s';
+        }
+
+        if (isset($data['circuit_state'])) {
+            $update_data['circuit_state'] = sanitize_key($data['circuit_state']);
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('last_error', $data)) {
+            $update_data['last_error'] = !empty($data['last_error']) ? sanitize_textarea_field($data['last_error']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('batch_progress', $data)) {
+            $update_data['batch_progress'] = !empty($data['batch_progress']) ? wp_unslash($data['batch_progress']) : null;
+            $format[] = '%s';
         }
         
         if (empty($update_data)) {
@@ -333,6 +354,49 @@ class AIPS_Schedule_Repository {
      */
     public function set_active($id, $is_active) {
         return $this->update($id, array('is_active' => $is_active));
+    }
+
+    /**
+     * Persist batch progress for a schedule.
+     *
+     * Records how many posts in a multi-post batch have been generated so
+     * that an interrupted run can resume from the correct index on the next
+     * cron invocation.
+     *
+     * @param int $id        Schedule ID.
+     * @param int $completed Number of posts successfully generated so far.
+     * @param int $total     Total posts expected for this batch.
+     * @param int $last_index Zero-based index of the last successfully generated post.
+     * @return bool True on success, false on failure.
+     */
+    public function update_batch_progress($id, $completed, $total, $last_index) {
+        $progress = wp_json_encode(array(
+            'completed'  => absint($completed),
+            'total'      => absint($total),
+            'last_index' => absint($last_index),
+        ));
+        return $this->update($id, array('batch_progress' => $progress));
+    }
+
+    /**
+     * Clear batch progress for a schedule once a batch finishes successfully.
+     *
+     * @param int $id Schedule ID.
+     * @return bool True on success, false on failure.
+     */
+    public function clear_batch_progress($id) {
+        return $this->update($id, array('batch_progress' => null));
+    }
+
+    /**
+     * Store the last error message that caused a schedule run to fail.
+     *
+     * @param int    $id      Schedule ID.
+     * @param string $message Error message text.
+     * @return bool True on success, false on failure.
+     */
+    public function update_last_error($id, $message) {
+        return $this->update($id, array('last_error' => $message));
     }
 
     /**

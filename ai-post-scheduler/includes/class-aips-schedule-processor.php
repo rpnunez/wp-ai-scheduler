@@ -357,12 +357,66 @@ class AIPS_Schedule_Processor {
         $successful_post_ids = array();
         $errors = array();
 
-        for ($i = 0; $i < $post_quantity; $i++) {
+        // ── Resumable batch progress ────────────────────────────────────────
+        // Determine where to start the loop.  When a previous automated run
+        // was interrupted mid-batch, batch_progress holds the last completed
+        // state.  We resume from last_index+1 so we never re-generate posts
+        // that already exist, and we count previously completed posts toward
+        // the total so the batch finishes at the right size.
+        $start_index       = 0;
+        $prior_completed   = 0;
+
+        if (!$is_manual && !empty($schedule->batch_progress)) {
+            $saved = json_decode($schedule->batch_progress, true);
+            if (
+                is_array($saved) &&
+                isset($saved['completed'], $saved['total'], $saved['last_index']) &&
+                (int) $saved['total'] === $post_quantity &&
+                (int) $saved['completed'] < $post_quantity
+            ) {
+                $prior_completed = (int) $saved['completed'];
+                $start_index     = (int) $saved['last_index'] + 1;
+            }
+        }
+
+        for ($i = $start_index; $i < $post_quantity; $i++) {
             $result = $this->generator->generate_post($context);
             if (is_wp_error($result)) {
                 $errors[] = $result;
+                // Store the error text for operator visibility and circuit-breaker
+                // future use, then stop the batch so progress is preserved.
+                if (!$is_manual) {
+                    $this->repository->update_last_error($schedule->schedule_id, $result->get_error_message());
+                }
+                break;
             } else {
                 $successful_post_ids[] = $result;
+                // Persist progress after every successful generation so that a
+                // mid-batch crash still records how far we got.
+                if (!$is_manual && $post_quantity > 1) {
+                    $completed_so_far = $prior_completed + count($successful_post_ids);
+                    $this->repository->update_batch_progress(
+                        $schedule->schedule_id,
+                        $completed_so_far,
+                        $post_quantity,
+                        $i
+                    );
+                }
+            }
+        }
+
+        // Determine whether the full batch finished.
+        $total_completed = $prior_completed + count($successful_post_ids);
+        $batch_finished  = empty($errors) && $total_completed >= $post_quantity;
+
+        if (!$is_manual) {
+            if ($batch_finished && $post_quantity > 1) {
+                // All posts generated — wipe the progress marker so the next
+                // scheduled run starts a fresh batch.
+                $this->repository->clear_batch_progress($schedule->schedule_id);
+            } elseif (empty($errors) && $post_quantity === 1) {
+                // Single-post schedule — nothing to track; clear any stale progress.
+                $this->repository->clear_batch_progress($schedule->schedule_id);
             }
         }
 

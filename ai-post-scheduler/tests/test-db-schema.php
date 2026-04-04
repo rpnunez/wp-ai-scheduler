@@ -272,4 +272,128 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		// Clean up
 		$wpdb->query($wpdb->prepare("DELETE FROM {$table_name} WHERE id = %d", $template->id));
 	}
+
+	/**
+	 * Test that aips_schedule table has the new health & progress columns.
+	 */
+	public function test_schedule_table_has_health_and_progress_columns() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_schedule';
+
+		$columns = $wpdb->get_results( "SHOW COLUMNS FROM {$table_name}" );
+		$column_names = array_map( function ( $col ) {
+			return $col->Field;
+		}, $columns );
+
+		$expected = array( 'schedule_type', 'circuit_state', 'last_error', 'batch_progress' );
+
+		foreach ( $expected as $col ) {
+			$this->assertContains( $col, $column_names, "Column '{$col}' should exist in aips_schedule table" );
+		}
+	}
+
+	/**
+	 * Test default values for new schedule columns.
+	 */
+	public function test_schedule_health_columns_default_values() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_schedule';
+
+		// Need a template to satisfy the FK-like NOT NULL constraint.
+		$template_id = $wpdb->insert_id;
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_templates',
+			array(
+				'name'            => 'Schema Default Test Template',
+				'prompt_template' => 'Write about defaults',
+				'is_active'       => 1,
+			)
+		);
+		$template_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert(
+			$table_name,
+			array(
+				'template_id' => $template_id,
+				'frequency'   => 'daily',
+				'next_run'    => '2030-01-01 00:00:00',
+				'is_active'   => 1,
+			)
+		);
+		$schedule_id = (int) $wpdb->insert_id;
+
+		$row = $wpdb->get_row( $wpdb->prepare(
+			"SELECT schedule_type, circuit_state, last_error, batch_progress FROM {$table_name} WHERE id = %d",
+			$schedule_id
+		) );
+
+		$this->assertNotNull( $row, 'Inserted schedule should be retrievable' );
+		$this->assertEquals( 'post_generation', $row->schedule_type, 'schedule_type should default to post_generation' );
+		$this->assertEquals( 'closed', $row->circuit_state, 'circuit_state should default to closed' );
+		$this->assertNull( $row->last_error, 'last_error should default to NULL' );
+		$this->assertNull( $row->batch_progress, 'batch_progress should default to NULL' );
+
+		// Clean up
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_name} WHERE id = %d", $schedule_id ) );
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}aips_templates WHERE id = %d", $template_id ) );
+	}
+
+	/**
+	 * Test that batch_progress and last_error can be stored and retrieved.
+	 */
+	public function test_schedule_batch_progress_and_last_error_persist() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aips_schedule';
+
+		$wpdb->insert(
+			$wpdb->prefix . 'aips_templates',
+			array(
+				'name'            => 'Batch Progress Test Template',
+				'prompt_template' => 'Write about batch',
+				'is_active'       => 1,
+			)
+		);
+		$template_id = (int) $wpdb->insert_id;
+
+		$wpdb->insert(
+			$table_name,
+			array(
+				'template_id' => $template_id,
+				'frequency'   => 'daily',
+				'next_run'    => '2030-01-01 00:00:00',
+				'is_active'   => 1,
+			)
+		);
+		$schedule_id = (int) $wpdb->insert_id;
+
+		$progress = wp_json_encode( array( 'completed' => 3, 'total' => 10, 'last_index' => 2 ) );
+		$error    = 'AI service timeout';
+
+		$wpdb->update(
+			$table_name,
+			array(
+				'batch_progress' => $progress,
+				'last_error'     => $error,
+			),
+			array( 'id' => $schedule_id )
+		);
+
+		$row = $wpdb->get_row( $wpdb->prepare(
+			"SELECT batch_progress, last_error FROM {$table_name} WHERE id = %d",
+			$schedule_id
+		) );
+
+		$this->assertNotNull( $row );
+
+		$decoded = json_decode( $row->batch_progress, true );
+		$this->assertIsArray( $decoded, 'batch_progress should be valid JSON' );
+		$this->assertEquals( 3, $decoded['completed'] );
+		$this->assertEquals( 10, $decoded['total'] );
+		$this->assertEquals( 2, $decoded['last_index'] );
+		$this->assertEquals( $error, $row->last_error, 'last_error should be stored and retrievable' );
+
+		// Clean up
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table_name} WHERE id = %d", $schedule_id ) );
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}aips_templates WHERE id = %d", $template_id ) );
+	}
 }
