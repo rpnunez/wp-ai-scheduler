@@ -394,8 +394,27 @@ class AIPS_Schedule_Processor {
                 );
 
                 if ($is_valid_cursor) {
-                    $prior_completed = $saved_completed;
-                    $start_index     = $saved_last_index + 1;
+                    // When the cursor includes the IDs of already-generated posts,
+                    // use count(post_ids) as the authoritative completed count.
+                    // This prevents re-generating the last post if the process
+                    // crashed after creation but before the cursor was updated.
+                    $saved_post_ids = isset($saved['post_ids']) && is_array($saved['post_ids'])
+                        ? array_map('absint', $saved['post_ids'])
+                        : array();
+
+                    if (!empty($saved_post_ids)) {
+                        // New cursor format: post_ids is the authoritative source.
+                        // Even if $saved_completed disagrees (e.g. a crash wrote the
+                        // post but not the cursor), count(post_ids) reflects the true
+                        // number of already-created posts.
+                        $successful_post_ids = $saved_post_ids;
+                        $prior_completed     = count($saved_post_ids);
+                        $start_index         = count($saved_post_ids);
+                    } else {
+                        // Legacy cursor (no post_ids): resume from the recorded index.
+                        $prior_completed = $saved_completed;
+                        $start_index     = $saved_last_index + 1;
+                    }
                 } else {
                     // Ignore and clear inconsistent saved progress so the
                     // schedule can restart instead of getting stuck on an
@@ -430,14 +449,19 @@ class AIPS_Schedule_Processor {
             } else {
                 $successful_post_ids[] = $result;
                 // Persist progress after every successful generation so that a
-                // mid-batch crash still records how far we got.
+                // mid-batch crash still records how far we got.  Storing the
+                // accumulated post IDs makes the cursor atomic with creation:
+                // if a crash occurs after the post is created but before this
+                // write lands, the next run uses count(post_ids) as the start
+                // index instead of last_index+1, preventing duplicate posts.
                 if (!$is_manual && $post_quantity > 1) {
                     $completed_so_far = $prior_completed + count($successful_post_ids);
                     $this->repository->update_batch_progress(
                         $schedule->schedule_id,
                         $completed_so_far,
                         $post_quantity,
-                        $i
+                        $i,
+                        $successful_post_ids
                     );
                 }
             }

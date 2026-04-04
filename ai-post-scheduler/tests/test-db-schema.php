@@ -365,7 +365,7 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		);
 		$schedule_id = (int) $wpdb->insert_id;
 
-		$progress  = wp_json_encode( array( 'completed' => 3, 'total' => 10, 'last_index' => 2 ) );
+		$progress  = wp_json_encode( array( 'completed' => 3, 'total' => 10, 'last_index' => 2, 'post_ids' => array( 101, 102, 103 ) ) );
 		$run_state = wp_json_encode( array(
 			'status'        => 'partial',
 			'error_code'    => 'ai_timeout',
@@ -396,6 +396,8 @@ class Test_AIPS_DB_Schema extends WP_UnitTestCase {
 		$this->assertEquals( 3, $decoded_progress['completed'] );
 		$this->assertEquals( 10, $decoded_progress['total'] );
 		$this->assertEquals( 2, $decoded_progress['last_index'] );
+		$this->assertArrayHasKey( 'post_ids', $decoded_progress, 'batch_progress should contain post_ids' );
+		$this->assertEquals( array( 101, 102, 103 ), $decoded_progress['post_ids'], 'batch_progress.post_ids should round-trip correctly' );
 
 		$decoded_state = json_decode( $row->run_state, true );
 		$this->assertIsArray( $decoded_state, 'run_state should be valid JSON' );

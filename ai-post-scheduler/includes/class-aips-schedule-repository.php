@@ -386,22 +386,30 @@ class AIPS_Schedule_Repository {
      * that an interrupted run can resume from the correct index on the next
      * cron invocation.
      *
+     * Storing the generated post IDs in the cursor makes resumption more
+     * robust: if the process crashes after a post is created but before this
+     * method runs, the next cron tick uses `count(post_ids)` as the
+     * authoritative completed count and pre-populates the post-ID list, so
+     * the batch resumes from the right position without creating duplicates.
+     *
      * This method writes directly to the DB without invalidating the
      * `aips_pending_schedule_stats` transient because it is called once per
      * successfully generated post and the transient is not affected by
      * in-flight progress data.
      *
-     * @param int $id        Schedule ID.
-     * @param int $completed Number of posts successfully generated so far.
-     * @param int $total     Total posts expected for this batch.
-     * @param int $last_index Zero-based index of the last successfully generated post.
+     * @param int   $id        Schedule ID.
+     * @param int   $completed Number of posts successfully generated so far.
+     * @param int   $total     Total posts expected for this batch.
+     * @param int   $last_index Zero-based index of the last successfully generated post.
+     * @param array $post_ids  IDs of all posts generated so far (prior runs + current session).
      * @return bool True on success, false on failure.
      */
-    public function update_batch_progress($id, $completed, $total, $last_index) {
+    public function update_batch_progress($id, $completed, $total, $last_index, $post_ids = array()) {
         $progress = wp_json_encode(array(
             'completed'  => absint($completed),
             'total'      => absint($total),
             'last_index' => absint($last_index),
+            'post_ids'   => array_values(array_map('absint', $post_ids)),
         ));
         $result = $this->wpdb->update(
             $this->schedule_table,
