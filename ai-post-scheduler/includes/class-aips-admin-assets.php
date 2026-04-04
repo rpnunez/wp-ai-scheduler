@@ -153,6 +153,13 @@ class AIPS_Admin_Assets {
             'runOneScheduleConfirm'            => __('This will run 1 schedule. Are you sure?', 'ai-post-scheduler'),
             /* translators: %d: number of schedules to run */
             'runMultipleSchedulesConfirm'      => __('This will run %d schedules. Are you sure?', 'ai-post-scheduler'),
+            // Unified schedule bulk delete
+            'deleteSchedulesHeading'           => __('Delete Schedules', 'ai-post-scheduler'),
+            'noDeletableSchedulesSelected'     => __('None of the selected schedules can be deleted.', 'ai-post-scheduler'),
+            'deleteSchedulesListIntro'         => __('The following schedules will be deleted:', 'ai-post-scheduler'),
+            'deleteSchedulesFinalConfirm'      => __('This action cannot be undone. Continue?', 'ai-post-scheduler'),
+            /* translators: %d: number of selected schedules that are not deletable */
+            'deleteSchedulesSkipNotice'        => __('%d selected schedule(s) cannot be deleted and will be skipped.', 'ai-post-scheduler'),
             // Template summary panel
             'autoGenerateFromContent'          => __('Auto-generate from content', 'ai-post-scheduler'),
             'noneOption'                       => __('None', 'ai-post-scheduler'),

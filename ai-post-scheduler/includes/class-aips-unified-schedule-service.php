@@ -175,6 +175,43 @@ class AIPS_Unified_Schedule_Service {
 	}
 
 	/**
+	 * Delete a specific schedule when the schedule type supports deletion.
+	 *
+	 * Currently only template schedules are deletable.
+	 *
+	 * @param int    $id   Numeric ID.
+	 * @param string $type One of the TYPE_* constants.
+	 * @return true|WP_Error
+	 */
+	public function delete($id, $type) {
+		switch ($type) {
+			case self::TYPE_TEMPLATE:
+				$scheduler = new AIPS_Scheduler();
+				if ($scheduler->delete_schedule($id)) {
+					return true;
+				}
+
+				return new WP_Error(
+					'delete_failed',
+					__('Failed to delete schedule.', 'ai-post-scheduler')
+				);
+
+			case self::TYPE_AUTHOR_TOPIC:
+			case self::TYPE_AUTHOR_POST:
+				return new WP_Error(
+					'not_deletable',
+					__('This schedule type cannot be deleted.', 'ai-post-scheduler')
+				);
+
+			default:
+				return new WP_Error(
+					'invalid_type',
+					__('Invalid schedule type.', 'ai-post-scheduler')
+				);
+		}
+	}
+
+	/**
 	 * Get run-history log entries for a schedule.
 	 *
 	 * @param int    $id    Numeric ID.
