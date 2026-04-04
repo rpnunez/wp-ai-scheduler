@@ -513,14 +513,135 @@
                 $btn.removeData('aips-btn-original');
             }
             $btn.prop('disabled', false);
+        },
+
+        // ── String / escaping helpers ───────────────────────────────────────────
+
+        /**
+         * Escape a plain-text value for safe insertion as HTML content.
+         *
+         * Uses a temporary <div> element and the browser's own textContent
+         * setter so the browser handles all entity encoding natively.
+         * Returns an empty string for null / undefined input.
+         *
+         * @param  {*}      text - Value to escape (coerced to string if needed).
+         * @return {string} HTML-safe string.
+         */
+        escapeHtml: function(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            var div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        },
+
+        /**
+         * Escape a plain-text value for safe use in an HTML attribute.
+         *
+         * Escapes &, ", ', <, >, and control characters (CR, LF, TAB) that are
+         * meaningful inside attribute values.  Do not pass already-encoded
+         * entities — they will be double-encoded.
+         *
+         * @param  {*}      text - Value to escape (coerced to string if needed).
+         * @return {string} Attribute-safe string.
+         */
+        escapeAttribute: function(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            var entityMap = {
+                '&':  '&amp;',
+                '"':  '&quot;',
+                "'":  '&#039;',
+                '<':  '&lt;',
+                '>':  '&gt;',
+                '\r': '&#13;',
+                '\n': '&#10;',
+                '\t': '&#9;'
+            };
+            return String(text).replace(/[&"'<>\r\n\t]/g, function(match) {
+                return entityMap[match];
+            });
+        },
+
+        /**
+         * Sanitize a URL value for safe use in an href attribute.
+         *
+         * Validates the protocol and rejects dangerous schemes (javascript:,
+         * data:, vbscript:, file:).  Absolute http(s) URLs are normalised via
+         * the URL constructor; root-relative paths are returned as-is.
+         * Returns an empty string for any value that does not match an allowed
+         * pattern.
+         *
+         * @param  {*}      url - URL value to sanitize (coerced to string).
+         * @return {string} Safe URL string, or '' when the input is invalid.
+         */
+        sanitizeUrl: function(url) {
+            if (!url) {
+                return '';
+            }
+            var urlStr = String(url).trim();
+            if (!urlStr) {
+                return '';
+            }
+            var dangerous = ['javascript:', 'data:', 'vbscript:', 'file:'];
+            var lower = urlStr.toLowerCase();
+            for (var i = 0; i < dangerous.length; i++) {
+                if (lower.indexOf(dangerous[i]) === 0) {
+                    return '';
+                }
+            }
+            if (urlStr.indexOf('http://') === 0 || urlStr.indexOf('https://') === 0) {
+                try {
+                    return new URL(urlStr).href;
+                } catch (e) {
+                    return '';
+                }
+            }
+            if (urlStr.indexOf('/') === 0) {
+                return urlStr;
+            }
+            return '';
+        },
+
+        /**
+         * Convert a string to Title Case.
+         *
+         * Lowercases the full input, replaces underscores and hyphens with
+         * spaces, then capitalises the first letter of every word.  Suitable
+         * for converting slug-style values ("in_progress", "well-researched")
+         * or mixed-case labels into human-readable headings.
+         *
+         * @param  {*}      text - Value to convert (coerced to string).
+         * @return {string} Title-cased string.
+         */
+        toTitleCase: function(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            return String(text)
+                .toLowerCase()
+                .replace(/[_-]/g, ' ')
+                .replace(/\b\w/g, function(letter) {
+                    return letter.toUpperCase();
+                });
         }
     };
 
     // ---------------------------------------------------------------------------
-    // Backward-compatibility shim: AIPS.showToast → AIPS.Utilities.showToast
+    // Backward-compatibility shims
     // ---------------------------------------------------------------------------
     window.AIPS.showToast = function(message, type, opts) {
         window.AIPS.Utilities.showToast(message, type, opts);
+    };
+
+    window.AIPS.escapeHtml = function(text) {
+        return window.AIPS.Utilities.escapeHtml(text);
+    };
+
+    window.AIPS.escapeAttribute = function(text) {
+        return window.AIPS.Utilities.escapeAttribute(text);
     };
 
     $(document).ready(function() {

@@ -1519,10 +1519,10 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        var msg = AIPS.escapeHtml(response.data.message || 'Post generated successfully!');
+                        var msg = AIPS.Utilities.escapeHtml(response.data.message || 'Post generated successfully!');
 
                         if (response.data.edit_url) {
-                            msg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
+                            msg += ' <a href="' + AIPS.Utilities.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
                         }
 
                         AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
@@ -2391,9 +2391,9 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        var msg = AIPS.escapeHtml(response.data.message || 'Executed successfully!');
+                        var msg = AIPS.Utilities.escapeHtml(response.data.message || 'Executed successfully!');
                         if (response.data.edit_url) {
-                            msg += ' <a href="' + AIPS.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
+                            msg += ' <a href="' + AIPS.Utilities.escapeAttribute(response.data.edit_url) + '" target="_blank">Edit Post</a>';
                         }
                         AIPS.Utilities.showToast(msg, 'success', { isHtml: true, duration: 8000 });
                     } else {
@@ -3284,54 +3284,6 @@
         },
 
         /**
-         * Escape a plain-text string for safe insertion as HTML content.
-         *
-         * Uses a temporary `<div>` element and the browser's own `textContent`
-         * setter to perform the escaping, which handles all HTML special
-         * characters correctly without a manual entity map.
-         *
-         * @param  {string} text - Raw text to escape.
-         * @return {string} HTML-safe string, or an empty string if `text` is falsy.
-         */
-        escapeHtml: function(text) {
-            if (!text) return '';
-            var div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        },
-
-        /**
-         * Escape text for safe use in HTML attributes.
-         * 
-         * This function expects raw text input and will escape special characters
-         * to prevent XSS attacks. It uses a two-pass approach: first replacing 
-         * ampersands, then other characters, to avoid double-encoding. 
-         * Do not use this function on text that already contains HTML entities, 
-         * as they will be double-encoded.
-         * 
-         * @param {string} text - Raw text to escape
-         * @return {string} Escaped text safe for HTML attributes
-         */
-        escapeAttribute: function(text) {
-            if (!text) return '';
-            // First pass: replace ampersands to avoid double-encoding
-            text = text.replace(/&/g, '&amp;');
-            // Second pass: replace other special characters
-            var entityMap = {
-                '"': '&quot;',
-                "'": '&#39;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '\r': '&#13;',
-                '\n': '&#10;',
-                '\t': '&#9;'
-            };
-            return text.replace(/["'<>\r\n\t]/g, function(match) {
-                return entityMap[match];
-            });
-        },
-
-        /**
          * Close the nearest ancestor `.aips-modal` of the clicked element, or
          * hide all open modals if the click did not originate from inside one.
          *
@@ -3920,9 +3872,9 @@
             // Build the variable tags
             var html = '';
             variables.forEach(function(varName) {
-                html += '<span class="aips-ai-var-tag" data-variable="{{' + AIPS.escapeHtml(varName) + '}}" title="' + aipsAdminL10n.clickToCopy + '">';
+                html += '<span class="aips-ai-var-tag" data-variable="{{' + AIPS.Utilities.escapeHtml(varName) + '}}" title="' + aipsAdminL10n.clickToCopy + '">';
                 html += '<span class="dashicons dashicons-tag"></span>';
-                html += '{{' + AIPS.escapeHtml(varName) + '}}';
+                html += '{{' + AIPS.Utilities.escapeHtml(varName) + '}}';
                 html += '</span>';
             });
 

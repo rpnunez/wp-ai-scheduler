@@ -50,25 +50,6 @@
         },
 
         /**
-         * Escape a value for safe insertion into HTML content.
-         *
-         * @param {*} text Value to escape.
-         * @returns {string} Escaped HTML-safe text.
-         */
-        escapeHtml: function(text) {
-            if (text === null || text === undefined) {
-                return '';
-            }
-
-            return String(text)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        },
-
-        /**
          * Handle submission of the "New Research" form.
          *
          * @param {Event} e Submit event.
@@ -599,13 +580,13 @@
                     }));
                 } else {
                     var cardHtml = '';
-                    cardHtml += '<div class="aips-gap-card priority-' + AIPS.escapeHtml(priorityClass) + '">';
-                    cardHtml += '<span class="aips-gap-badge ' + AIPS.escapeHtml(priorityClass) + '">' + AIPS.escapeHtml(gap.priority) + ' Priority</span>';
-                    cardHtml += '<h4>' + AIPS.escapeHtml(gap.missing_topic) + '</h4>';
-                    cardHtml += '<p class="aips-gap-reason">' + AIPS.escapeHtml(gap.reason) + '</p>';
-                    cardHtml += '<p class="aips-gap-intent">Intent: ' + AIPS.escapeHtml(gap.search_intent) + '</p>';
+                    cardHtml += '<div class="aips-gap-card priority-' + AIPS.Utilities.escapeHtml(priorityClass) + '">';
+                    cardHtml += '<span class="aips-gap-badge ' + AIPS.Utilities.escapeHtml(priorityClass) + '">' + AIPS.Utilities.escapeHtml(gap.priority) + ' Priority</span>';
+                    cardHtml += '<h4>' + AIPS.Utilities.escapeHtml(gap.missing_topic) + '</h4>';
+                    cardHtml += '<p class="aips-gap-reason">' + AIPS.Utilities.escapeHtml(gap.reason) + '</p>';
+                    cardHtml += '<p class="aips-gap-intent">Intent: ' + AIPS.Utilities.escapeHtml(gap.search_intent) + '</p>';
                     cardHtml += '<div class="aips-gap-actions">';
-                    cardHtml += '<button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="' + AIPS.escapeHtml(gap.missing_topic) + '">' + (aipsResearchL10n.generateIdeas || 'Generate Ideas') + '</button>';
+                    cardHtml += '<button class="aips-btn aips-btn-sm aips-btn-secondary generate-gap-ideas" data-topic="' + AIPS.Utilities.escapeHtml(gap.missing_topic) + '">' + (aipsResearchL10n.generateIdeas || 'Generate Ideas') + '</button>';
                     cardHtml += '</div></div>';
                     $grid.append(cardHtml);
                 }
@@ -726,7 +707,7 @@
                 return;
             }
 
-            var esc = AIPS.Templates ? AIPS.Templates.escape : AIPS.escapeHtml;
+            var esc = AIPS.Templates ? AIPS.Templates.escape : AIPS.Utilities.escapeHtml;
 
             var rowsHtml = posts.map(function(post) {
                 var actionsHtml = '';

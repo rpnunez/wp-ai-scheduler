@@ -305,7 +305,7 @@
 					name: esc(item.name),
 					taxonomy_type: item.taxonomy_type,
 					status: item.status,
-					status_label: esc(this.toTitleCase(item.status)),
+					status_label: esc(AIPS.Utilities.toTitleCase(item.status)),
 					generated_at: esc(item.created_at),
 					actions: actions
 				});
@@ -626,20 +626,6 @@
 			var label = normalizedCount === 1 ? aipsTaxonomyL10n.item : aipsTaxonomyL10n.items;
 
 			$('#aips-taxonomy-result-count').text(normalizedCount + ' ' + label);
-		},
-
-		/**
-		 * Convert a status string to Title Case for display.
-		 *
-		 * @param {string} status Status string.
-		 * @return {string} Title-cased string.
-		 */
-		toTitleCase: function(status) {
-			return String(status || '')
-				.replace(/_/g, ' ')
-				.replace(/\b\w/g, function(letter) {
-					return letter.toUpperCase();
-				});
 		}
 	});
 

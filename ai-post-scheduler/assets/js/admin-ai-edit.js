@@ -782,8 +782,8 @@
 			// Meta information
 			var $meta = $('<div class="aips-revision-meta"></div>');
 			$meta.append('<span class="dashicons dashicons-backup"></span>');
-			$meta.append('<span class="aips-revision-source">' + window.AIPS.escapeHtml(revisionLabel) + '</span>');
-			$meta.append('<span class="aips-revision-timestamp">' + window.AIPS.escapeHtml(timestamp) + '</span>');
+			$meta.append('<span class="aips-revision-source">' + window.AIPS.Utilities.escapeHtml(revisionLabel) + '</span>');
+			$meta.append('<span class="aips-revision-timestamp">' + window.AIPS.Utilities.escapeHtml(timestamp) + '</span>');
 			$content.append($meta);
 			
 			// Value preview
@@ -791,7 +791,7 @@
 			
 			if (componentType === 'featured_image') {
 				if (revision.value && revision.value.url) {
-					$value.html('<img src="' + window.AIPS.escapeHtml(revision.value.url) + '" alt="Revision" class="aips-revision-value-image" />');
+					$value.html('<img src="' + window.AIPS.Utilities.escapeHtml(revision.value.url) + '" alt="Revision" class="aips-revision-value-image" />');
 				} else {
 					$value.text('No image');
 				}
@@ -918,20 +918,6 @@
 				$input.trigger('input');
 			}
 		},
-		
-		/**
-		 * Escape HTML for safe rendering
-		 */
-		escapeHtml: function(text) {
-			var map = {
-				'&': '&amp;',
-				'<': '&lt;',
-				'>': '&gt;',
-				'"': '&quot;',
-				"'": '&#039;'
-			};
-			return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
-		}
 		
 	});
 	
