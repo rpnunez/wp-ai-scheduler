@@ -610,6 +610,20 @@ class AIPS_Post_Review {
 				);
 				continue;
 			}
+
+			// Verify the post is in the review queue
+			if (!$this->history_service->post_has_history_and_completed($post_id)) {
+				$failed_count++;
+				$history->record(
+					'warning',
+					sprintf(__('Cannot regenerate post ID %d: Not in review queue', 'ai-post-scheduler'), $post_id),
+					null,
+					null,
+					array('post_id' => $post_id)
+				);
+				continue;
+			}
+
 			// Get the template
 			$template = $template_repository->get_by_id($history_item->template_id);
 
