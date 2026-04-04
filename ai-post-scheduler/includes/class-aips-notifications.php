@@ -267,6 +267,13 @@ class AIPS_Notifications {
 				'level'         => 'info',
 				'dedupe_window' => 300,
 			),
+			'research_topics_ready' => array(
+				'label'         => __('Research Topics Ready', 'ai-post-scheduler'),
+				'description'   => __('Scheduled research completed and new trending topics are available.', 'ai-post-scheduler'),
+				'default_mode'  => self::MODE_DB_ONLY,
+				'level'         => 'info',
+				'dedupe_window' => 300,
+			),
 		);
 	}
 
@@ -794,6 +801,30 @@ class AIPS_Notifications {
 			'url'     => AIPS_Admin_Menu_Helper::get_page_url('authors'),
 			'level'   => 'info',
 			'meta'    => $payload,
+		));
+	}
+
+	/**
+	 * Send a research-topics-ready notification.
+	 *
+	 * @param array $payload Research payload.
+	 * @return void
+	 */
+	public function research_topics_ready(array $payload) {
+		$count = isset($payload['count']) ? (int) $payload['count'] : 0;
+		$niche = !empty($payload['niche']) ? sanitize_text_field($payload['niche']) : __('N/A', 'ai-post-scheduler');
+
+		$this->dispatch_notification('research_topics_ready', array(
+			'title'   => sprintf(__('Research topics ready (%d)', 'ai-post-scheduler'), $count),
+			'message' => sprintf(__('Scheduled research found %1$d new topic(s) for niche "%2$s".', 'ai-post-scheduler'), $count, $niche),
+			'url'     => AIPS_Admin_Menu_Helper::get_page_url('research'),
+			'level'   => 'info',
+			'meta'    => array(
+				'niche' => $niche,
+				'count' => $count,
+			),
+			'dedupe_key'    => 'research_topics_ready_' . sanitize_key($niche) . '_' . gmdate('YmdH'),
+			'dedupe_window' => 300,
 		));
 	}
 

@@ -525,10 +525,21 @@ class AIPS_Schedule_Processor {
         if (!$is_manual) {
             $this->handle_post_execution_cleanup($schedule, $overall_result);
         } else {
-             // For manual runs, we invalidate cache but don't delete one-time schedules automatically?
-             // The original code for run_schedule_now didn't delete one-time schedules or update next_run.
-             // It just invalidated the cache.
-             $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+            $this->template_type_selector->invalidate_count_cache($schedule->schedule_id);
+
+            // For successful manual runs, record last_run so the Schedules page
+            // reflects the execution instead of staying frozen on "Past due".
+            // For once-schedules, also deactivate: next_run is still in the past
+            // so the cron would otherwise fire it again on the next trigger.
+            if (!is_wp_error($overall_result)) {
+                $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
+                if ($schedule->frequency === 'once') {
+                    $this->repository->update($schedule->schedule_id, array(
+                        'is_active' => 0,
+                        'status'    => 'completed',
+                    ));
+                }
+            }
         }
 
         // Handle Logging and Events based on Result

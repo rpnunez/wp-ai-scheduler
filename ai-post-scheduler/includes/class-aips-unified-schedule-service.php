@@ -72,18 +72,41 @@ class AIPS_Unified_Schedule_Service {
 			$schedules = array_merge($schedules, $this->get_author_post_schedules());
 		}
 
-		// Sort by next_run ascending, nulls last.
-		usort($schedules, function ($a, $b) {
-			if (empty($a['next_run']) && empty($b['next_run'])) {
-				return 0;
+		// Sort by run proximity for better operator UX:
+		// 1) active upcoming schedules (soonest first)
+		// 2) active past-due schedules (least overdue first)
+		// 3) inactive/unscheduled rows (last)
+		$now_ts = current_time('timestamp');
+		usort($schedules, function ($a, $b) use ($now_ts) {
+			$a_active = !empty($a['is_active']);
+			$b_active = !empty($b['is_active']);
+
+			$a_ts = !empty($a['next_run']) ? strtotime($a['next_run']) : false;
+			$b_ts = !empty($b['next_run']) ? strtotime($b['next_run']) : false;
+
+			$a_group = 2;
+			if ($a_active && $a_ts !== false) {
+				$a_group = ($a_ts >= $now_ts) ? 0 : 1;
 			}
-			if (empty($a['next_run'])) {
-				return 1;
+
+			$b_group = 2;
+			if ($b_active && $b_ts !== false) {
+				$b_group = ($b_ts >= $now_ts) ? 0 : 1;
 			}
-			if (empty($b['next_run'])) {
-				return -1;
+
+			if ($a_group !== $b_group) {
+				return $a_group - $b_group;
 			}
-			return strcmp($a['next_run'], $b['next_run']);
+
+			if (($a_group === 0 || $a_group === 1) && $a_ts !== false && $b_ts !== false) {
+				return $a_ts - $b_ts;
+			}
+
+			if (!empty($a['title']) && !empty($b['title'])) {
+				return strcasecmp((string) $a['title'], (string) $b['title']);
+			}
+
+			return 0;
 		});
 
 		return $schedules;

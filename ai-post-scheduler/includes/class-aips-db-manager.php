@@ -214,10 +214,12 @@ class AIPS_DB_Manager {
             score int(11) NOT NULL DEFAULT 50,
             reason text DEFAULT NULL,
             keywords text DEFAULT NULL,
+            status varchar(20) NOT NULL DEFAULT 'new',
             researched_at datetime NOT NULL,
             PRIMARY KEY  (id),
             KEY niche_idx (niche),
             KEY score_idx (score),
+            KEY status_idx (status),
             KEY researched_at_idx (researched_at)
         ) $charset_collate;";
 
