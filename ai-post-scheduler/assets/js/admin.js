@@ -560,7 +560,7 @@
             AIPS.Utilities.confirm('Are you sure you want to clone this template?', 'Confirm', [
                 { label: aipsAdminL10n.confirmCancelButton, className: 'aips-btn aips-btn-primary' },
                 { label: 'Yes, clone', className: 'aips-btn aips-btn-danger-solid', action: function() {
-                    $btn.prop('disabled', true).text('Cloning...');
+                    AIPS.Utilities.setButtonLoading($btn, 'Cloning...');
 
                     $.ajax({
                         url: aipsAjax.ajaxUrl,
@@ -575,12 +575,12 @@
                                 location.reload();
                             } else {
                                 AIPS.Utilities.showToast(response.data.message, 'error');
-                                $btn.prop('disabled', false).text('Clone');
+                                AIPS.Utilities.resetButton($btn);
                             }
                         },
                         error: function() {
                             AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
-                            $btn.prop('disabled', false).text('Clone');
+                            AIPS.Utilities.resetButton($btn);
                         }
                     });
                 }}
@@ -1869,7 +1869,7 @@
          */
         bulkDeleteSchedules: function(ids) {
             var $applyBtn = $('#aips-schedule-bulk-apply');
-            $applyBtn.prop('disabled', true).text('Deleting...');
+            AIPS.Utilities.setButtonLoading($applyBtn, 'Deleting...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1897,7 +1897,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $applyBtn.text('Apply');
+                    AIPS.Utilities.resetButton($applyBtn);
                     AIPS.updateScheduleBulkActions();
                 }
             });
@@ -1915,7 +1915,7 @@
          */
         bulkToggleSchedules: function(ids, isActive) {
             var $applyBtn = $('#aips-schedule-bulk-apply');
-            $applyBtn.prop('disabled', true).text(isActive ? 'Activating...' : 'Pausing...');
+            AIPS.Utilities.setButtonLoading($applyBtn, isActive ? 'Activating...' : 'Pausing...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1961,7 +1961,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $applyBtn.text('Apply');
+                    AIPS.Utilities.resetButton($applyBtn);
                     AIPS.updateScheduleBulkActions();
                 }
             });
@@ -1978,7 +1978,7 @@
          */
         bulkRunNowSchedules: function(ids) {
             var $applyBtn = $('#aips-schedule-bulk-apply');
-            $applyBtn.prop('disabled', true).text('Running...');
+            AIPS.Utilities.setButtonLoading($applyBtn, 'Running...');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
@@ -1999,7 +1999,7 @@
                     AIPS.Utilities.showToast(aipsAdminL10n.errorTryAgain, 'error');
                 },
                 complete: function() {
-                    $applyBtn.text('Apply');
+                    AIPS.Utilities.resetButton($applyBtn);
                     AIPS.updateScheduleBulkActions();
                 }
             });
@@ -2175,7 +2175,7 @@
          */
         unifiedBulkRunNow: function(items) {
             var $applyBtn = $('#aips-unified-bulk-apply');
-            $applyBtn.prop('disabled', true).text('Running…');
+            AIPS.Utilities.setButtonLoading($applyBtn, 'Running…');
 
             $.ajax({
                 url: aipsAjax.ajaxUrl,
