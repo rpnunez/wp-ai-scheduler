@@ -125,7 +125,7 @@ class AIPS_Logger {
         fseek($fp, 0, SEEK_END);
         $filesize = ftell($fp);
 
-        if ($filesize <= 0) {
+        if ($filesize === false || $filesize <= 0) {
             fclose($fp);
             return array();
         }
@@ -200,9 +200,10 @@ class AIPS_Logger {
         $log_files = array();
         
         foreach ($files as $file) {
+            $fsize = filesize($file);
             $log_files[] = array(
                 'name' => basename($file),
-                'size' => size_format(filesize($file)),
+                'size' => $fsize !== false ? size_format($fsize) : 'Unknown',
                 'modified' => date('Y-m-d H:i:s', filemtime($file)),
             );
         }
