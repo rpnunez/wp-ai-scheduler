@@ -172,8 +172,9 @@ class AIPS_Resilience_Service {
             $last_error = $result;
             $error_code = $result->get_error_code();
 
-            // Do not retry permanent "user error" conditions — retrying wastes tokens.
-            if (in_array($error_code, self::NON_RETRYABLE_CODES, true)) {
+            // Do not retry permanent "user error" conditions or immediate-open codes — retrying wastes tokens.
+            $non_retryable = array_merge(self::NON_RETRYABLE_CODES, self::IMMEDIATE_OPEN_CODES);
+            if (in_array($error_code, $non_retryable, true)) {
                 $this->logger->log("Non-retryable error '{$error_code}', aborting retry loop", 'error', array(
                     'type'       => $type,
                     'error_code' => $error_code,

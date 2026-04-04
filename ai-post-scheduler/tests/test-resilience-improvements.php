@@ -217,6 +217,24 @@ $this->assertInstanceOf( WP_Error::class, $result );
 $this->assertSame( 1, $calls, 'Should not retry a non-retryable error' );
 }
 
+public function test_execute_with_retry_calls_function_once_for_immediate_open_error() {
+$service = $this->make_retry_service( 3 );
+$calls   = 0;
+
+$result = $service->execute_with_retry(
+function() use ( &$calls ) {
+$calls++;
+return new WP_Error( 'insufficient_quota', 'You exceeded your current quota' );
+},
+'text',
+'prompt',
+array()
+);
+
+$this->assertInstanceOf( WP_Error::class, $result );
+$this->assertSame( 1, $calls, 'IMMEDIATE_OPEN_CODES should abort the retry loop on first attempt' );
+}
+
 public function test_execute_with_retry_retries_for_retryable_error() {
 $service = $this->make_retry_service( 3 );
 $calls   = 0;
