@@ -832,7 +832,7 @@ class AIPS_Notifications {
 			$reason
 		);
 
-		$status_url = class_exists('AIPS_Admin_Menu_Helper') ? AIPS_Admin_Menu_Helper::get_page_url('system_status') : '';
+		$status_url = AIPS_Admin_Menu_Helper::get_page_url('system_status');
 
 		$this->dispatch_notification('circuit_breaker_opened', array(
 			'title'         => $title,
@@ -876,7 +876,7 @@ class AIPS_Notifications {
 			$period
 		);
 
-		$status_url = class_exists('AIPS_Admin_Menu_Helper') ? AIPS_Admin_Menu_Helper::get_page_url('system_status') : '';
+		$status_url = AIPS_Admin_Menu_Helper::get_page_url('system_status');
 
 		$this->dispatch_notification('rate_limit_reached', array(
 			'title'         => $title,
