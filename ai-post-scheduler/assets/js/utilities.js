@@ -133,6 +133,9 @@
          *   @param {string}   [buttons[].className] - CSS class(es) for the button (e.g. 'aips-btn aips-btn-danger-solid').
          *   @param {Function} [buttons[].action]   - Callback invoked when this button is clicked.
          *                                            If omitted the modal simply closes.
+         * @param {Object} [opts]                     - Optional behavior flags.
+         * @param {boolean} [opts.closeOnEscape=true] - Whether Escape should close the dialog.
+         * @param {boolean} [opts.closeOnBackdrop=true] - Whether clicking the backdrop should close the dialog.
          *
          * @example
          * // Simple one-button alert
@@ -149,8 +152,12 @@
          *     ]
          * );
          */
-        confirm: function(message, heading, buttons) {
+        confirm: function(message, heading, buttons, opts) {
             heading = heading || 'Notice';
+            opts = opts || {};
+
+            var closeOnEscape = opts.closeOnEscape !== false;
+            var closeOnBackdrop = opts.closeOnBackdrop !== false;
 
             if (!buttons || !buttons.length) {
                 buttons = [
@@ -216,19 +223,52 @@
             // Focus the first button for accessibility
             $footer.find('button').first().trigger('focus');
 
-            // Close on Escape key
-            $(document).on('keydown.aips-confirm', function(e) {
-                if (e.key === 'Escape') {
-                    closeDialog();
-                }
-            });
+            // Close on Escape key when enabled.
+            if (closeOnEscape) {
+                $(document).on('keydown.aips-confirm', function(e) {
+                    if (e.key === 'Escape') {
+                        closeDialog();
+                    }
+                });
+            }
 
-            // Close when clicking the backdrop (outside the dialog)
-            $overlay.on('click', function(e) {
-                if ($(e.target).is($overlay)) {
-                    closeDialog();
+            // Close when clicking the backdrop (outside the dialog) when enabled.
+            if (closeOnBackdrop) {
+                $overlay.on('click', function(e) {
+                    if ($(e.target).is($overlay)) {
+                        closeDialog();
+                    }
+                });
+            }
+        },
+
+        /**
+         * Shows an acknowledge-required alert dialog that remains visible
+         * until the user explicitly clicks OK.
+         *
+         * @param {string} message            - Alert body text.
+         * @param {string} [heading='Notice'] - Alert heading.
+         * @param {string} [okLabel='OK']     - Label for the acknowledge button.
+         * @param {Function} [onAcknowledge]  - Optional callback after OK.
+         */
+        alertAcknowledge: function(message, heading, okLabel, onAcknowledge) {
+            var buttonLabel = okLabel || 'OK';
+
+            this.confirm(
+                message,
+                heading || 'Notice',
+                [
+                    {
+                        label: buttonLabel,
+                        className: 'aips-btn aips-btn-primary',
+                        action: onAcknowledge
+                    }
+                ],
+                {
+                    closeOnEscape: false,
+                    closeOnBackdrop: false
                 }
-            });
+            );
         },
 
         /**

@@ -581,6 +581,14 @@ if (!defined('ABSPATH')) {
 												<span class="dashicons dashicons-trash"></span>
 												<?php esc_html_e('Delete', 'ai-post-scheduler'); ?>
 											</button>
+											<button type="button"
+												class="aips-btn aips-btn-sm aips-btn-secondary aips-generate-variants-btn"
+												data-post-id="<?php echo esc_attr($item->post_id); ?>"
+												data-history-id="<?php echo esc_attr($item->id); ?>"
+												title="<?php esc_attr_e('Generate multiple draft variants to compare side-by-side', 'ai-post-scheduler'); ?>">
+												<span class="dashicons dashicons-randomize"></span>
+												<?php esc_html_e('Compare', 'ai-post-scheduler'); ?>
+											</button>
 										</div>
 									</td>
 								</tr>
@@ -694,4 +702,7 @@ include AIPS_PLUGIN_DIR . 'templates/partials/view-session-modal.php';
 
 // Include the AI Edit modal partial
 include AIPS_PLUGIN_DIR . 'templates/partials/ai-edit-modal.php';
+
+// Include the Multi-Draft Compare modal partial
+include AIPS_PLUGIN_DIR . 'templates/partials/multi-draft-modal.php';
 ?>

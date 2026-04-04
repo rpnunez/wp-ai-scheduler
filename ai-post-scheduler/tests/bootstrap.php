@@ -495,6 +495,46 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         }
     }
 
+    if (!function_exists('wp_update_post')) {
+        /**
+         * Limited-mode mock of wp_update_post().
+         *
+         * Updates the $test_posts global used by get_post() so tests can verify
+         * field changes without a real database. Only post_title, post_excerpt,
+         * and post_content are handled. All other WordPress-specific side-effects
+         * (revisions, terms, meta, hooks) are intentionally omitted.
+         *
+         * @param array $postarr   Post data array; must include 'ID'.
+         * @param bool  $wp_error  Return WP_Error on failure (instead of 0).
+         * @param bool  $fire_after_hooks Ignored in limited mode.
+         * @return int|WP_Error Updated post ID or WP_Error on failure.
+         */
+        function wp_update_post($postarr = array(), $wp_error = false, $fire_after_hooks = true) {
+            global $test_posts;
+            $post_id = isset($postarr['ID']) ? (int) $postarr['ID'] : 0;
+            if (!$post_id) {
+                return $wp_error ? new WP_Error('invalid_post', 'Invalid post ID.') : 0;
+            }
+            if (!isset($test_posts)) {
+                $test_posts = array();
+            }
+            if (!isset($test_posts[$post_id])) {
+                $test_posts[$post_id] = new stdClass();
+                $test_posts[$post_id]->ID = $post_id;
+            }
+            if (isset($postarr['post_title'])) {
+                $test_posts[$post_id]->post_title = $postarr['post_title'];
+            }
+            if (isset($postarr['post_excerpt'])) {
+                $test_posts[$post_id]->post_excerpt = $postarr['post_excerpt'];
+            }
+            if (isset($postarr['post_content'])) {
+                $test_posts[$post_id]->post_content = $postarr['post_content'];
+            }
+            return $post_id;
+        }
+    }
+
     if (!function_exists('get_permalink')) {
         function get_permalink($post = 0, $leavename = false) {
             return 'http://example.com/?p=' . $post;
@@ -683,10 +723,23 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             if (!isset($current_user_id) || !isset($test_users[$current_user_id])) {
                 return false;
             }
-            // Check if user has admin role
             $role = $test_users[$current_user_id];
-            if ($role === 'administrator' && $capability === 'manage_options') {
-                return true;
+            if ($role === 'administrator') {
+                // Administrators hold broad capabilities including manage_options,
+                // edit_posts (plural, 'can edit any post type'), edit_post (singular,
+                // 'can edit this specific post'), and edit_others_posts.
+                $admin_caps = array('manage_options', 'edit_posts', 'edit_post', 'edit_others_posts');
+                if (in_array($capability, $admin_caps, true)) {
+                    return true;
+                }
+            }
+            if (in_array($role, array('author', 'editor'), true)) {
+                // Authors and editors can edit posts (edit_posts) and,
+                // for simplicity in limited mode, any individual post (edit_post).
+                $author_caps = array('edit_posts', 'edit_post');
+                if (in_array($capability, $author_caps, true)) {
+                    return true;
+                }
             }
             return false;
         }
@@ -1043,6 +1096,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-generator.php',
         'class-aips-component-regeneration-service.php',
         'class-aips-ai-edit-controller.php',
+        'class-aips-multi-draft-controller.php',
         // History service layer
         'class-aips-history-type.php',
         'class-aips-utilities.php',

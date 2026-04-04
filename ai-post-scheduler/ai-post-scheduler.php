@@ -326,6 +326,8 @@ final class AI_Post_Scheduler {
             // AI Edit + Calendar controllers (AJAX endpoints)
             new AIPS_AI_Edit_Controller();
             new AIPS_Calendar_Controller();
+            // Multi-draft generation controller (variant compare & merge)
+            new AIPS_Multi_Draft_Controller();
             // Sources controller (AJAX endpoints for trusted sources management)
             new AIPS_Sources_Controller();
             // Dev Tools
