@@ -274,15 +274,15 @@ class AIPS_Bulk_Generator_Service {
 				);
 			} else {
 				$success_count++;
-				$post_id    = is_array( $result ) ? $result : (int) $result;
-				$post_ids[] = $post_id;
+				$post_id_or_ids = is_array( $result ) ? $result : (int) $result;
+				$post_ids[]     = $post_id_or_ids;
 				$history->record(
 					'activity',
 					/* translators: %s: post ID */
-					sprintf( __( 'Post %s generated successfully', 'ai-post-scheduler' ), is_array( $post_id ) ? implode( ',', $post_id ) : $post_id ),
+					sprintf( __( 'Post %s generated successfully', 'ai-post-scheduler' ), is_array( $post_id_or_ids ) ? implode( ',', $post_id_or_ids ) : $post_id_or_ids ),
 					null,
 					null,
-					array( 'item' => $item, 'post_id' => $post_id )
+					array( 'item' => $item, 'post_id' => $post_id_or_ids )
 				);
 			}
 		}

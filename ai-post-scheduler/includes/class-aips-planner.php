@@ -1,21 +1,21 @@
 <?php
 if (!defined('ABSPATH')) {
-	exit;
+    exit;
 }
 
 class AIPS_Planner {
 
-	/**
-	 * @var AIPS_Bulk_Generator_Service Shared bulk generation harness.
-	 */
-	private $bulk_generator_service;
+    /**
+     * @var AIPS_Bulk_Generator_Service Shared bulk generation harness.
+     */
+    private $bulk_generator_service;
 
-	public function __construct() {
-		$this->bulk_generator_service = $this->make_bulk_generator_service();
-		add_action('wp_ajax_aips_generate_topics', array($this, 'ajax_generate_topics'));
-		add_action('wp_ajax_aips_bulk_schedule', array($this, 'ajax_bulk_schedule'));
-		add_action('wp_ajax_aips_bulk_generate_now', array($this, 'ajax_bulk_generate_now'));
-	}
+    public function __construct() {
+        $this->bulk_generator_service = $this->make_bulk_generator_service();
+        add_action('wp_ajax_aips_generate_topics', array($this, 'ajax_generate_topics'));
+        add_action('wp_ajax_aips_bulk_schedule', array($this, 'ajax_bulk_schedule'));
+        add_action('wp_ajax_aips_bulk_generate_now', array($this, 'ajax_bulk_generate_now'));
+    }
 
     public function ajax_generate_topics() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -184,6 +184,25 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));
         }
 
+        // Enforce the bulk limit BEFORE the expensive template lookup so the
+        // error is returned immediately (this also preserves original method ordering
+        // that existing tests depend on).
+        $max_bulk = absint(apply_filters('aips_bulk_run_now_limit', 5));
+        if ($max_bulk < 1) {
+            $max_bulk = 5;
+        }
+        if (count($topics) > $max_bulk) {
+            wp_send_json_error(array(
+                'message' => sprintf(
+                    /* translators: 1: selected count, 2: max allowed */
+                    __('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation, or use "Schedule Selected Topics" instead.', 'ai-post-scheduler'),
+                    count($topics),
+                    $max_bulk
+                ),
+            ));
+            return;
+        }
+
         $template = $this->get_template_by_id($template_id);
 
         if (!$template) {
@@ -196,12 +215,14 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('AI Engine is not available.', 'ai-post-scheduler')));
         }
 
+        // Pass a matching limit so the service never rejects (pre-check already done above).
         $result = $this->bulk_generator_service->run(
             $topics,
             function ( $topic ) use ( $generator, $template ) {
                 return $generator->generate_post($template, null, $topic);
             },
             array(
+                'limit_default'   => $max_bulk,
                 'history_type'    => 'bulk_generate_now',
                 'trigger_name'    => 'ajax_bulk_generate_now',
                 'user_action'     => 'bulk_generate_now',
@@ -216,18 +237,6 @@ class AIPS_Planner {
                 },
             )
         );
-
-        if ($result->was_limited) {
-            wp_send_json_error(array(
-                'message' => sprintf(
-                    /* translators: 1: selected count, 2: max allowed */
-                    __('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation, or use "Schedule Selected Topics" instead.', 'ai-post-scheduler'),
-                    $result->failed_count,
-                    $result->max_bulk
-                ),
-            ));
-            return;
-        }
 
         if (empty($result->post_ids) && !empty($result->errors)) {
             wp_send_json_error(array(
