@@ -50,15 +50,30 @@ class AIPS_Author_Topics_Controller {
 	private $history_service;
 
 	/**
-	 * Initialize the controller.
+	 * @var AIPS_Topic_Expansion_Service Service for topic expansion/similarity
 	 */
-	public function __construct() {
-		$this->repository = new AIPS_Author_Topics_Repository();
-		$this->logs_repository = new AIPS_Author_Topic_Logs_Repository();
+	private $expansion_service;
+
+	/**
+	 * @var AIPS_History_Repository Repository for history data
+	 */
+	private $history_repository;
+
+	/**
+	 * Initialize the controller.
+	 *
+	 * @param AIPS_Topic_Expansion_Service|null $expansion_service  Topic expansion service.
+	 * @param AIPS_History_Repository|null      $history_repository History repository.
+	 */
+	public function __construct($expansion_service = null, $history_repository = null) {
+		$this->repository          = new AIPS_Author_Topics_Repository();
+		$this->logs_repository     = new AIPS_Author_Topic_Logs_Repository();
 		$this->feedback_repository = new AIPS_Feedback_Repository();
-		$this->post_generator = new AIPS_Author_Post_Generator();
-		$this->penalty_service = new AIPS_Topic_Penalty_Service();
-		$this->history_service = new AIPS_History_Service();
+		$this->post_generator      = new AIPS_Author_Post_Generator();
+		$this->penalty_service     = new AIPS_Topic_Penalty_Service();
+		$this->history_service     = new AIPS_History_Service();
+		$this->expansion_service   = $expansion_service ?: new AIPS_Topic_Expansion_Service();
+		$this->history_repository  = $history_repository ?: new AIPS_History_Repository();
 
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_approve_topic', array($this, 'ajax_approve_topic'));
@@ -650,7 +665,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid topic or author ID.', 'ai-post-scheduler')));
 		}
 
-		$expansion_service = new AIPS_Topic_Expansion_Service();
+		$expansion_service = $this->expansion_service;
 		$similar_topics = $expansion_service->find_similar_topics($topic_id, $author_id, $limit);
 
 		// Enrich with topic details
@@ -684,7 +699,7 @@ class AIPS_Author_Topics_Controller {
 			wp_send_json_error(array('message' => __('Invalid author ID.', 'ai-post-scheduler')));
 		}
 
-		$expansion_service = new AIPS_Topic_Expansion_Service();
+		$expansion_service = $this->expansion_service;
 		$suggestions = $expansion_service->suggest_related_topics($author_id, $limit);
 
 		wp_send_json_success(array('suggestions' => $suggestions));
@@ -702,7 +717,7 @@ class AIPS_Author_Topics_Controller {
 
 		$author_id = isset($_POST['author_id']) ? absint($_POST['author_id']) : 0;
 
-		$expansion_service = new AIPS_Topic_Expansion_Service();
+		$expansion_service = $this->expansion_service;
 		if ($author_id > 0) {
 			$stats = $expansion_service->batch_compute_approved_embeddings($author_id);
 		} else {
@@ -1006,7 +1021,7 @@ class AIPS_Author_Topics_Controller {
 		}
 
 		// Use the history repository to get the estimate based on historical performance
-		$history_repository = new AIPS_History_Repository();
+		$history_repository = $this->history_repository;
 		$estimate           = $history_repository->get_estimated_generation_time(20);
 
 		$per_post_seconds   = $estimate['per_post_seconds'];

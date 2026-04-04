@@ -33,10 +33,13 @@ class AIPS_AI_Edit_Controller {
 	
 	/**
 	 * Constructor
+	 *
+	 * @param AIPS_Component_Regeneration_Service|null $service            Regeneration service.
+	 * @param AIPS_History_Repository|null             $history_repository History repository.
 	 */
-	public function __construct() {
-		$this->service = new AIPS_Component_Regeneration_Service();
-		$this->history_repository = new AIPS_History_Repository();
+	public function __construct($service = null, $history_repository = null) {
+		$this->service            = $service ?: new AIPS_Component_Regeneration_Service();
+		$this->history_repository = $history_repository ?: new AIPS_History_Repository();
 		
 		// Register AJAX endpoints
 		add_action('wp_ajax_aips_get_post_components', array($this, 'ajax_get_post_components'));
