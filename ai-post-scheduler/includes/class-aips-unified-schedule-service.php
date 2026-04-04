@@ -154,11 +154,14 @@ class AIPS_Unified_Schedule_Service {
 	/**
 	 * Get run-history log entries for a schedule.
 	 *
-	 * @param int    $id   Numeric ID.
-	 * @param string $type One of the TYPE_* constants.
+	 * @param int    $id    Numeric ID.
+	 * @param string $type  One of the TYPE_* constants.
+	 * @param int    $limit Max entries to return; 0 = no limit.
 	 * @return array Normalised log entry arrays.
 	 */
-	public function get_history($id, $type) {
+	public function get_history($id, $type, $limit = 0) {
+		$limit = absint($limit);
+
 		switch ($type) {
 			case self::TYPE_TEMPLATE:
 				$schedule = $this->schedule_repository->get_by_id($id);
@@ -167,7 +170,8 @@ class AIPS_Unified_Schedule_Service {
 				}
 				$logs = $this->history_repository->get_logs_by_history_id(
 					absint($schedule->schedule_history_id),
-					array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR)
+					array(AIPS_History_Type::ACTIVITY, AIPS_History_Type::ERROR),
+					$limit
 				);
 				return $this->format_history_logs($logs);
 
@@ -175,7 +179,7 @@ class AIPS_Unified_Schedule_Service {
 				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
 					$id,
 					array('author_topic_generation'),
-					100
+					$limit > 0 ? $limit : 100
 				);
 				return $this->format_history_logs($logs);
 
@@ -183,7 +187,7 @@ class AIPS_Unified_Schedule_Service {
 				$logs = $this->history_repository->get_author_schedule_logs_by_event_types(
 					$id,
 					array('topic_post_generation'),
-					100
+					$limit > 0 ? $limit : 100
 				);
 				return $this->format_history_logs($logs);
 

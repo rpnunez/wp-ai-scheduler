@@ -10,12 +10,26 @@ $status_filter = isset($status_filter) ? $status_filter : (isset($_GET['status']
 $search_query  = isset($search_query) ? $search_query : (isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '');
 
 if (isset($history_handler)) {
-    $history = $history_handler->get_history(array(
-        'page'   => $current_page,
-        'status' => $status_filter,
-        'search' => $search_query,
-        'fields' => 'list',
-    ));
+    if (!isset($history) || !is_array($history)) {
+        $history = $history_handler->get_history(array(
+            'page'   => $current_page,
+            'status' => $status_filter,
+            'search' => $search_query,
+            'fields' => 'list',
+        ));
+    }
+    if (!isset($stats)) {
+        $stats = $history_handler->get_stats();
+    }
+}
+
+if (!isset($stats) || !is_array($stats)) {
+    $stats = array(
+        'total' => 0,
+        'completed' => 0,
+        'failed' => 0,
+        'success_rate' => 0,
+    );
 }
 
 $items       = isset($history['items']) ? $history['items'] : array();

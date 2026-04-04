@@ -144,6 +144,12 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
             return $url;
         }
     }
+    if (!function_exists("esc_js")) {
+        function esc_js($text) {
+            return addslashes($text);
+        }
+    }
+
     
     if (!function_exists('plugin_dir_path')) {
         function plugin_dir_path($file) {
