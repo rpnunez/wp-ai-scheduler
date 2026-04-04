@@ -365,7 +365,11 @@ class AIPS_Session_To_JSON {
 	 * Create .htaccess file to protect export directory.
 	 * Explicitly checks file creation success and logs errors instead of silencing them.
 	 *
+	 * Creates an .htaccess and index.php file to prevent direct directory listing
+	 * and access to the JSON export files. Logs errors on write failures.
+	 *
 	 * @param string $dir Directory path
+	 * @return void
 	 */
 	private function create_htaccess_protection($dir) {
 		$htaccess_file = trailingslashit($dir) . '.htaccess';
@@ -435,6 +439,11 @@ class AIPS_Session_To_JSON {
 			
 			// Delete if older than max age
 			if (($current_time - $file_time) > $max_age) {
+				if (!is_writable($file)) {
+					$result['errors'][] = 'File is not writable: ' . basename($file);
+					continue;
+				}
+
 				if (unlink($file)) {
 					$result['deleted']++;
 				} else {
