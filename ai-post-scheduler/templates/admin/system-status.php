@@ -273,13 +273,11 @@ if (!defined('ABSPATH')) {
                         <li><?php esc_html_e('After resetting, monitor "Queue Health" for a few minutes to confirm failure rate returns to normal before enabling more schedules.', 'ai-post-scheduler'); ?></li>
                     </ol>
                     <?php if ( class_exists( 'AIPS_AI_Service' ) ) : ?>
-                    <div class="aips-btn-group" style="margin-top: 8px;">
-                        <button type="button" class="aips-btn aips-btn-secondary aips-reset-circuit-breaker">
-                            <span class="dashicons dashicons-update"></span>
-                            <?php esc_html_e('Reset Circuit Breaker', 'ai-post-scheduler'); ?>
-                        </button>
+                    <div class="notice notice-warning inline" style="margin-top: 8px;">
+                        <p>
+                            <?php esc_html_e('Circuit breaker reset is not available from this screen yet. Resolve the underlying AI service issue first, then use the plugin’s implemented recovery/reset workflow when available.', 'ai-post-scheduler'); ?>
+                        </p>
                     </div>
-                    <div class="aips-reset-circuit-breaker-result" style="display:none; margin-top: 8px;"></div>
                     <?php endif; ?>
 
                     <!-- RB-4 -->
@@ -312,7 +310,7 @@ if (!defined('ABSPATH')) {
                             sprintf(
                                 /* translators: %s: link to docs/RUNBOOK.md on GitHub */
                                 __( 'Full runbook with escalation procedures: <a href="%s" target="_blank" rel="noopener noreferrer">docs/RUNBOOK.md</a>', 'ai-post-scheduler' ),
-                                'https://github.com/rpnunez/wp-ai-scheduler/blob/main/docs/RUNBOOK.md'
+                                esc_url( 'https://github.com/rpnunez/wp-ai-scheduler/blob/main/docs/RUNBOOK.md' )
                             ),
                             array( 'a' => array( 'href' => array(), 'target' => array(), 'rel' => array() ) )
                         );
