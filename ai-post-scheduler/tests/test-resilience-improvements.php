@@ -10,57 +10,57 @@
 
 class Test_AIPS_Resilience_Improvements extends WP_UnitTestCase {
 
-// -----------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------
+	// -----------------------------------------------------------------------
+	// Helpers
+	// -----------------------------------------------------------------------
 
-/**
- * Create a resilience service with circuit breaker ENABLED and a low threshold.
- *
- * @param int $threshold Circuit breaker failure threshold.
- * @return AIPS_Resilience_Service
- */
-private function make_cb_enabled_service( $threshold = 3 ) {
-$GLOBALS['aips_test_options'] = array(
-'aips_enable_circuit_breaker'    => true,
-'aips_circuit_breaker_threshold' => $threshold,
-'aips_circuit_breaker_timeout'   => 300,
-'aips_enable_retry'              => true,
-'aips_retry_max_attempts'        => 3,
-'aips_retry_initial_delay'       => 0,
-'aips_retry_jitter'              => false,
-'aips_enable_rate_limiting'      => false,
-);
+	/**
+	 * Create a resilience service with circuit breaker ENABLED and a low threshold.
+	 *
+	 * @param int $threshold Circuit breaker failure threshold.
+	 * @return AIPS_Resilience_Service
+	 */
+	private function make_cb_enabled_service( $threshold = 3 ) {
+		$GLOBALS['aips_test_options'] = array(
+			'aips_enable_circuit_breaker'    => true,
+			'aips_circuit_breaker_threshold' => $threshold,
+			'aips_circuit_breaker_timeout'   => 300,
+			'aips_enable_retry'              => true,
+			'aips_retry_max_attempts'        => 3,
+			'aips_retry_initial_delay'       => 0,
+			'aips_retry_jitter'              => false,
+			'aips_enable_rate_limiting'      => false,
+		);
 
-// Delete any persisted circuit-breaker state from previous test
-delete_transient( 'aips_circuit_breaker_state' );
+		// Delete any persisted circuit-breaker state from previous test.
+		delete_transient( 'aips_circuit_breaker_state' );
 
-return new AIPS_Resilience_Service();
-}
+		return new AIPS_Resilience_Service();
+	}
 
-/**
- * Create a resilience service with retry ENABLED but circuit breaker DISABLED.
- *
- * @param int $max_attempts Number of retry attempts.
- * @return AIPS_Resilience_Service
- */
-private function make_retry_service( $max_attempts = 3 ) {
-$GLOBALS['aips_test_options'] = array(
-'aips_enable_circuit_breaker' => false,
-'aips_enable_retry'           => true,
-'aips_retry_max_attempts'     => $max_attempts,
-'aips_retry_initial_delay'    => 0,
-'aips_retry_jitter'           => false,
-'aips_enable_rate_limiting'   => false,
-);
+	/**
+	 * Create a resilience service with retry ENABLED but circuit breaker DISABLED.
+	 *
+	 * @param int $max_attempts Number of retry attempts.
+	 * @return AIPS_Resilience_Service
+	 */
+	private function make_retry_service( $max_attempts = 3 ) {
+		$GLOBALS['aips_test_options'] = array(
+			'aips_enable_circuit_breaker' => false,
+			'aips_enable_retry'           => true,
+			'aips_retry_max_attempts'     => $max_attempts,
+			'aips_retry_initial_delay'    => 0,
+			'aips_retry_jitter'           => false,
+			'aips_enable_rate_limiting'   => false,
+		);
 
-delete_transient( 'aips_circuit_breaker_state' );
+		delete_transient( 'aips_circuit_breaker_state' );
 
-return new AIPS_Resilience_Service();
-}
+		return new AIPS_Resilience_Service();
+	}
 
-// -----------------------------------------------------------------------
-// extract_error_code_from_message — message-pattern based
+	// -----------------------------------------------------------------------
+	// extract_error_code_from_message — message-pattern based
 // -----------------------------------------------------------------------
 
 /**

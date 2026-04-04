@@ -523,7 +523,7 @@ class AIPS_System_Status {
             sprintf( __( 'Failure count: %d', 'ai-post-scheduler' ), $cb_failures ),
         );
         if ( $cb_last > 0 ) {
-            $cb_details[] = sprintf( __( 'Last failure: %s', 'ai-post-scheduler' ), date( 'Y-m-d H:i:s', $cb_last ) );
+            $cb_details[] = sprintf( __( 'Last failure: %s', 'ai-post-scheduler' ), wp_date( 'Y-m-d H:i:s', $cb_last ) );
         }
 
         $checks['circuit_breaker'] = array(
