@@ -51,6 +51,7 @@ class AIPS_System_Status {
 
     public function render_page() {
         $system_info = $this->get_system_info();
+        $vector_diagnostics = $this->get_vector_diagnostics_payload();
         $data_management = $this->get_data_management();
 
         if ( $data_management ) {
@@ -62,6 +63,105 @@ class AIPS_System_Status {
         }
 
         include AIPS_PLUGIN_DIR . 'templates/admin/system-status.php';
+    }
+
+    /**
+     * Build vector diagnostics payload for the System Status page and AJAX refreshes.
+     *
+     * @param bool $force_reachability_check Force a live Pinecone reachability check.
+     * @return array
+     */
+    public function get_vector_diagnostics_payload($force_reachability_check = false) {
+        $active_provider = sanitize_key((string) get_option('aips_vector_provider', 'local'));
+        if ($active_provider === '') {
+            $active_provider = 'local';
+        }
+
+        $pinecone_configured = trim((string) get_option('aips_pinecone_api_key', '')) !== ''
+            && trim((string) get_option('aips_pinecone_index_host', '')) !== '';
+
+        $stats = class_exists('AIPS_Vector_Service')
+            ? AIPS_Vector_Service::get_diagnostics_snapshot()
+            : array(
+                'window_started_at' => time(),
+                'upsert_success' => 0,
+                'upsert_error' => 0,
+                'query_success' => 0,
+                'query_error' => 0,
+                'last_error_message' => '',
+                'last_provider' => '',
+                'last_event_at' => 0,
+            );
+
+        $reachability = $this->get_pinecone_reachability($active_provider, $pinecone_configured, $force_reachability_check);
+
+        return array(
+            'active_provider' => $active_provider,
+            'pinecone_configured' => $pinecone_configured,
+            'pinecone_reachability' => $reachability,
+            'window_started_at' => absint($stats['window_started_at']),
+            'upsert_success' => absint($stats['upsert_success']),
+            'upsert_error' => absint($stats['upsert_error']),
+            'query_success' => absint($stats['query_success']),
+            'query_error' => absint($stats['query_error']),
+            'last_error_message' => isset($stats['last_error_message']) ? (string) $stats['last_error_message'] : '',
+            'last_provider' => isset($stats['last_provider']) ? (string) $stats['last_provider'] : '',
+            'last_event_at' => absint($stats['last_event_at']),
+        );
+    }
+
+    /**
+     * Determine Pinecone reachability, using a short cache by default.
+     *
+     * @param string $active_provider Active provider key.
+     * @param bool   $pinecone_configured Whether Pinecone credentials are configured.
+     * @param bool   $force_check Whether to bypass cache.
+     * @return array
+     */
+    private function get_pinecone_reachability($active_provider, $pinecone_configured, $force_check = false) {
+        if ($active_provider !== 'pinecone') {
+            return array(
+                'status' => 'info',
+                'label' => __('Not required in local mode', 'ai-post-scheduler'),
+                'details' => '',
+            );
+        }
+
+        if (!$pinecone_configured) {
+            return array(
+                'status' => 'warning',
+                'label' => __('Pinecone not configured', 'ai-post-scheduler'),
+                'details' => __('Add Pinecone API key and index host in Settings > AI Settings.', 'ai-post-scheduler'),
+            );
+        }
+
+        $cache_key = 'aips_pinecone_reachability_status';
+        if (!$force_check) {
+            $cached = get_transient($cache_key);
+            if (is_array($cached) && isset($cached['status']) && isset($cached['label'])) {
+                return $cached;
+            }
+        }
+
+        $provider = new AIPS_Vector_Provider_Pinecone();
+        $test = $provider->test_connection();
+
+        if (is_wp_error($test)) {
+            $result = array(
+                'status' => 'error',
+                'label' => __('Unreachable', 'ai-post-scheduler'),
+                'details' => $test->get_error_message(),
+            );
+        } else {
+            $result = array(
+                'status' => 'ok',
+                'label' => __('Reachable', 'ai-post-scheduler'),
+                'details' => __('Pinecone index responded successfully.', 'ai-post-scheduler'),
+            );
+        }
+
+        set_transient($cache_key, $result, 5 * MINUTE_IN_SECONDS);
+        return $result;
     }
 
     /**

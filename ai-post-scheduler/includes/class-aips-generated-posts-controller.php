@@ -49,6 +49,16 @@ class AIPS_Generated_Posts_Controller {
 	 * @var array Cache for topic titles to avoid N+1 queries
 	 */
 	private $topic_cache = array();
+
+	/**
+	 * @var AIPS_Embeddings_Service
+	 */
+	private $embeddings_service;
+
+	/**
+	 * @var AIPS_Vector_Service
+	 */
+	private $vector_service;
 	
 	/**
 	 * Initialize the controller
@@ -57,6 +67,8 @@ class AIPS_Generated_Posts_Controller {
 		$this->history_repository = new AIPS_History_Repository();
 		$this->schedule_repository = new AIPS_Schedule_Repository();
 		$this->post_review_repository = new AIPS_Post_Review_Repository();
+		$this->embeddings_service = new AIPS_Embeddings_Service();
+		$this->vector_service = new AIPS_Vector_Service();
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_post_session', array($this, 'ajax_get_post_session'));
@@ -77,8 +89,7 @@ class AIPS_Generated_Posts_Controller {
 		$author_id = isset($_GET['author_id']) ? absint($_GET['author_id']) : 0;
 		$template_id = isset($_GET['template_id']) ? absint($_GET['template_id']) : 0;
 
-		// Get completed history entries with post IDs (for Generated Posts tab)
-		$history = $this->history_repository->get_history(array(
+		$history_args = array(
 			'page' => $generated_page,
 			'per_page' => 20,
 			'status' => 'completed',
@@ -86,7 +97,19 @@ class AIPS_Generated_Posts_Controller {
 			'author_id' => $author_id,
 			'template_id' => $template_id,
 			'fields' => 'list', // Explicitly use lightweight list fields for UI listing
-		));
+		);
+
+		if (!empty($search_query)) {
+			$this->sync_recent_generated_post_vectors();
+			$semantic_post_ids = $this->find_semantic_post_ids($search_query, $author_id, $template_id, 150);
+			if (!empty($semantic_post_ids)) {
+				$history_args['post_ids'] = $semantic_post_ids;
+				$history_args['search'] = '';
+			}
+		}
+
+		// Get completed history entries with post IDs (for Generated Posts tab)
+		$history = $this->history_repository->get_history($history_args);
 		
 		// Get schedule data for each post
 		$posts_data = array();
@@ -184,6 +207,137 @@ class AIPS_Generated_Posts_Controller {
 		$controller = $this;
 		
 		include AIPS_PLUGIN_DIR . 'templates/admin/content.php';
+	}
+
+	/**
+	 * Find semantically relevant generated posts for a search query.
+	 *
+	 * @param string $search_query Query string.
+	 * @param int    $author_id Optional author filter.
+	 * @param int    $template_id Optional template filter.
+	 * @param int    $limit Max results.
+	 * @return array
+	 */
+	private function find_semantic_post_ids($search_query, $author_id = 0, $template_id = 0, $limit = 100) {
+		if (!$this->embeddings_service->is_embeddings_supported()) {
+			return array();
+		}
+
+		$embedding = $this->embeddings_service->generate_embedding($search_query);
+		if (is_wp_error($embedding) || !is_array($embedding) || empty($embedding)) {
+			return array();
+		}
+
+		$query_options = array(
+			'top_k' => absint($limit),
+			'filter' => array(),
+		);
+
+		if ($author_id > 0) {
+			$query_options['filter']['author_id'] = absint($author_id);
+		}
+
+		if ($template_id > 0) {
+			$query_options['filter']['template_id'] = absint($template_id);
+		}
+
+		$matches = $this->vector_service->query_neighbors('generated_posts', $embedding, $query_options);
+		if (is_wp_error($matches) || empty($matches)) {
+			return array();
+		}
+
+		$raw_threshold = get_option('aips_topic_similarity_threshold', 0.8);
+		$threshold = is_numeric($raw_threshold) ? min(1.0, max(0.1, (float) $raw_threshold)) : 0.8;
+
+		$post_ids = array();
+		foreach ($matches as $match) {
+			$score = isset($match['score']) ? (float) $match['score'] : 0.0;
+			if ($score < $threshold) {
+				continue;
+			}
+
+			if (!empty($match['metadata']['post_id'])) {
+				$post_ids[] = absint($match['metadata']['post_id']);
+				continue;
+			}
+
+			if (!empty($match['id']) && preg_match('/post_(\d+)/', (string) $match['id'], $id_match)) {
+				$post_ids[] = absint($id_match[1]);
+			}
+		}
+
+		$post_ids = array_values(array_unique(array_filter($post_ids)));
+		return $post_ids;
+	}
+
+	/**
+	 * Sync recently generated posts to the vector index.
+	 *
+	 * @return void
+	 */
+	private function sync_recent_generated_post_vectors() {
+		if (!$this->embeddings_service->is_embeddings_supported()) {
+			return;
+		}
+
+		if (get_transient('aips_generated_posts_vector_sync_recent')) {
+			return;
+		}
+
+		$recent_history = $this->history_repository->get_history(array(
+			'page' => 1,
+			'per_page' => 100,
+			'status' => 'completed',
+			'fields' => 'list',
+		));
+
+		if (empty($recent_history['items']) || !is_array($recent_history['items'])) {
+			return;
+		}
+
+		$vectors = array();
+		foreach ($recent_history['items'] as $item) {
+			$post_id = isset($item->post_id) ? absint($item->post_id) : 0;
+			if ($post_id <= 0) {
+				continue;
+			}
+
+			$post = get_post($post_id);
+			if (!$post) {
+				continue;
+			}
+
+			$text = trim(
+				$post->post_title . ' ' .
+				wp_strip_all_tags($post->post_excerpt) . ' ' .
+				wp_trim_words(wp_strip_all_tags($post->post_content), 120, '')
+			);
+
+			if ($text === '') {
+				continue;
+			}
+
+			$embedding = $this->embeddings_service->generate_embedding($text);
+			if (is_wp_error($embedding) || !is_array($embedding) || empty($embedding)) {
+				continue;
+			}
+
+			$vectors[] = array(
+				'id' => 'post_' . $post_id,
+				'values' => $embedding,
+				'metadata' => array(
+					'post_id' => $post_id,
+					'author_id' => isset($item->author_id) ? absint($item->author_id) : 0,
+					'template_id' => isset($item->template_id) ? absint($item->template_id) : 0,
+				),
+			);
+		}
+
+		if (!empty($vectors)) {
+			$this->vector_service->upsert_vectors('generated_posts', $vectors);
+		}
+
+		set_transient('aips_generated_posts_vector_sync_recent', 1, 5 * MINUTE_IN_SECONDS);
 	}
 
 	/**

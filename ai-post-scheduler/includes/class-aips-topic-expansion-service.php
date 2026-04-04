@@ -39,15 +39,21 @@ class AIPS_Topic_Expansion_Service {
 	 * @var AIPS_Logger Logger instance
 	 */
 	private $logger;
+
+	/**
+	 * @var AIPS_Vector_Service Vector retrieval service
+	 */
+	private $vector_service;
 	
 	/**
 	 * Initialize the topic expansion service.
 	 */
-	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null, $authors_repository = null) {
+	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null, $authors_repository = null, $vector_service = null) {
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logger = $logger ?: new AIPS_Logger();
 		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
+		$this->vector_service = $vector_service ?: new AIPS_Vector_Service(null, null, $this->logger);
 	}
 	
 	/**
@@ -89,6 +95,7 @@ class AIPS_Topic_Expansion_Service {
 		));
 		
 		if ($result !== false) {
+			$this->sync_topic_vector($topic, $embedding);
 			$this->logger->log('Computed embedding for topic ' . $topic_id, 'debug');
 			return true;
 		}
@@ -152,6 +159,14 @@ class AIPS_Topic_Expansion_Service {
 		
 		// Prepare candidate embeddings
 		$candidates = array();
+		$vector_records = array();
+
+		$target_topic = $this->topics_repository->get_by_id($topic_id);
+		$target_record = $this->build_topic_vector_record($target_topic, $target_embedding);
+		if (!empty($target_record)) {
+			$vector_records[] = $target_record;
+		}
+
 		foreach ($all_topics as $candidate_topic) {
 			// Skip the target topic itself
 			if ($candidate_topic->id == $topic_id) {
@@ -168,25 +183,93 @@ class AIPS_Topic_Expansion_Service {
 			}
 			
 			if ($embedding) {
+				$candidate_metadata = array(
+					'topic_id' => (int) $candidate_topic->id,
+					'author_id' => (int) $author_id,
+					'status' => (string) $candidate_topic->status,
+					'topic_title' => (string) $candidate_topic->topic_title,
+				);
+
 				$candidates[] = array(
 					'id' => $candidate_topic->id,
 					'embedding' => $embedding,
+					'metadata' => $candidate_metadata,
 					'data' => array(
 						'topic_title' => $candidate_topic->topic_title,
-						'status' => $candidate_topic->status
+						'status' => $candidate_topic->status,
 					)
 				);
+
+				$record = $this->build_topic_vector_record($candidate_topic, $embedding);
+				if (!empty($record)) {
+					$vector_records[] = $record;
+				}
 			}
+		}
+
+		if (!empty($vector_records)) {
+			$this->vector_service->upsert_vectors('author_topics', $vector_records);
 		}
 		
 		// Find nearest neighbors and filter by configured similarity threshold
 		$raw_threshold = get_option('aips_topic_similarity_threshold', 0.8);
 		$threshold = is_numeric($raw_threshold) ? min(1.0, max(0.1, (float) $raw_threshold)) : 0.8;
-		$neighbors = $this->embeddings_service->find_nearest_neighbors($target_embedding, $candidates, $limit);
 
-		return array_values(array_filter($neighbors, function($neighbor) use ($threshold) {
-			return isset($neighbor['similarity']) && $neighbor['similarity'] >= $threshold;
-		}));
+		$query_options = array(
+			'top_k' => $limit,
+			'candidates' => $candidates,
+			'filter' => array(
+				'author_id' => (int) $author_id,
+			),
+		);
+
+		if ($status !== null && $status !== '') {
+			$query_options['filter']['status'] = sanitize_key((string) $status);
+		}
+
+		$neighbors = $this->vector_service->query_neighbors('author_topics', $target_embedding, $query_options);
+		if (is_wp_error($neighbors)) {
+			$this->logger->log('Vector query failed in topic expansion: ' . $neighbors->get_error_message(), 'warning');
+			$neighbors = array();
+		}
+
+		$normalized = array();
+		foreach ($neighbors as $neighbor) {
+			$similarity = null;
+			if (isset($neighbor['similarity'])) {
+				$similarity = (float) $neighbor['similarity'];
+			} elseif (isset($neighbor['score'])) {
+				$similarity = (float) $neighbor['score'];
+			}
+
+			if ($similarity === null || $similarity < $threshold) {
+				continue;
+			}
+
+			$normalized_id = 0;
+			if (isset($neighbor['metadata']['topic_id'])) {
+				$normalized_id = absint($neighbor['metadata']['topic_id']);
+			} elseif (isset($neighbor['id'])) {
+				$normalized_id = absint($neighbor['id']);
+				if ($normalized_id === 0 && preg_match('/topic_(\d+)/', (string) $neighbor['id'], $id_matches)) {
+					$normalized_id = absint($id_matches[1]);
+				}
+			}
+
+			if ($normalized_id <= 0) {
+				continue;
+			}
+
+			$normalized[] = array(
+				'id' => $normalized_id,
+				'similarity' => $similarity,
+				'data' => isset($neighbor['metadata']) && is_array($neighbor['metadata'])
+					? $neighbor['metadata']
+					: (isset($neighbor['data']) && is_array($neighbor['data']) ? $neighbor['data'] : array()),
+			);
+		}
+
+		return $normalized;
 	}
 	
 	/**
@@ -354,6 +437,46 @@ class AIPS_Topic_Expansion_Service {
 		}
 
 		return $stats;
+	}
+
+	/**
+	 * Sync topic vector to provider for remote similarity search.
+	 *
+	 * @param object $topic Topic row.
+	 * @param array  $embedding Embedding vector.
+	 * @return void
+	 */
+	private function sync_topic_vector($topic, $embedding) {
+		$record = $this->build_topic_vector_record($topic, $embedding);
+		if (empty($record)) {
+			return;
+		}
+
+		$this->vector_service->upsert_vectors('author_topics', array($record));
+	}
+
+	/**
+	 * Build a topic vector record for provider upsert.
+	 *
+	 * @param object|null $topic Topic row.
+	 * @param array       $embedding Embedding vector.
+	 * @return array|null
+	 */
+	private function build_topic_vector_record($topic, $embedding) {
+		if (!$topic || empty($topic->id) || !is_array($embedding) || empty($embedding)) {
+			return null;
+		}
+
+		return array(
+			'id' => 'topic_' . absint($topic->id),
+			'values' => $embedding,
+			'metadata' => array(
+				'topic_id' => absint($topic->id),
+				'author_id' => isset($topic->author_id) ? absint($topic->author_id) : 0,
+				'status' => isset($topic->status) ? sanitize_key((string) $topic->status) : '',
+				'topic_title' => isset($topic->topic_title) ? sanitize_text_field((string) $topic->topic_title) : '',
+			),
+		);
 	}
 }
 
