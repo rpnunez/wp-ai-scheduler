@@ -79,6 +79,9 @@ $templates = $template_repository->get_all();
 						<?php endforeach; ?>
 					</select>
 					<button type="submit" class="aips-btn aips-btn-secondary"><?php esc_html_e('Filter', 'ai-post-scheduler'); ?></button>
+					<?php if (!empty($template_id)): ?>
+					<a href="<?php echo esc_url(remove_query_arg('template_id')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+					<?php endif; ?>
 					<?php endif; ?>
 				</div>
 				
