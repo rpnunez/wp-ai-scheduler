@@ -683,15 +683,26 @@ class AIPS_Post_Review {
 				sprintf(__('Bulk regenerate completed with %d failures', 'ai-post-scheduler'), $failed_count),
 				array('success_count' => $success_count, 'failed_count' => $failed_count)
 			);
+
+			wp_send_json_error(array(
+				'message'       => sprintf(
+					/* translators: 1: number of successful regenerations, 2: number of failures */
+					__('%1$d posts regeneration started successfully, %2$d failed.', 'ai-post-scheduler'),
+					$success_count,
+					$failed_count
+				),
+				'success_count' => $success_count,
+				'failed_count'  => $failed_count,
+			));
 		} else {
 			$history->complete_success(array('regenerated_count' => $success_count));
-		}
 
-		wp_send_json_success(array(
-			'message' => sprintf(__('%d posts regeneration started successfully.', 'ai-post-scheduler'), $success_count),
-			'success_count' => $success_count,
-			'failed_count' => $failed_count,
-		));
+			wp_send_json_success(array(
+				'message'       => sprintf(__('%d posts regeneration started successfully.', 'ai-post-scheduler'), $success_count),
+				'success_count' => $success_count,
+				'failed_count'  => $failed_count,
+			));
+		}
 	}
 
 	/**
