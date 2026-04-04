@@ -39,15 +39,21 @@ class AIPS_Topic_Expansion_Service {
 	 * @var AIPS_Logger Logger instance
 	 */
 	private $logger;
-	
+
+	/**
+	 * @var AIPS_History_Service History service for logging
+	 */
+	private $history_service;
+
 	/**
 	 * Initialize the topic expansion service.
 	 */
-	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null, $authors_repository = null) {
+	public function __construct($embeddings_service = null, $topics_repository = null, $logger = null, $authors_repository = null, $history_service = null) {
 		$this->embeddings_service = $embeddings_service ?: new AIPS_Embeddings_Service();
 		$this->topics_repository = $topics_repository ?: new AIPS_Author_Topics_Repository();
 		$this->logger = $logger ?: new AIPS_Logger();
 		$this->authors_repository = $authors_repository ?: new AIPS_Authors_Repository();
+		$this->history_service = $history_service ?: new AIPS_History_Service();
 	}
 	
 	/**
@@ -354,6 +360,158 @@ class AIPS_Topic_Expansion_Service {
 		}
 
 		return $stats;
+	}
+
+	/**
+	 * Process a batch of approved topics for embeddings generation.
+	 *
+	 * Uses ID-based pagination to avoid slow OFFSET queries. Processes topics
+	 * incrementally and returns progress information for re-scheduling.
+	 *
+	 * @param int $author_id         Author ID.
+	 * @param int $batch_size        Number of topics to process in this batch. Default 20.
+	 * @param int $last_processed_id Last processed topic ID for pagination. Default 0.
+	 * @return array|WP_Error Array with keys: success, failed, skipped, last_processed_id, done, processed_count.
+	 */
+	public function process_approved_embeddings_batch($author_id, $batch_size = 20, $last_processed_id = 0) {
+		// Validate batch size
+		$batch_size = max(1, min(100, $batch_size));
+
+		// Get or create history container for this author's embeddings processing
+		$history = $this->get_or_create_embeddings_history($author_id);
+
+		// Get the next batch of approved topics using ID-based pagination
+		$topics = $this->topics_repository->get_approved_for_generation($author_id, $batch_size, $last_processed_id);
+
+		$stats = array(
+			'success'           => 0,
+			'failed'            => 0,
+			'skipped'           => 0,
+			'last_processed_id' => $last_processed_id,
+			'done'              => empty($topics),
+			'processed_count'   => 0,
+		);
+
+		// If no topics returned, we're done
+		if (empty($topics)) {
+			$history->record(
+				'activity',
+				__('No topics found to process in this batch', 'ai-post-scheduler'),
+				array(
+					'event_type' => 'embeddings_batch_empty',
+					'event_status' => 'complete',
+				),
+				null,
+				array(
+					'author_id'         => $author_id,
+					'last_processed_id' => $last_processed_id,
+				)
+			);
+			return $stats;
+		}
+
+		// Process each topic in the batch
+		foreach ($topics as $topic) {
+			$stats['last_processed_id'] = $topic->id;
+			$stats['processed_count']++;
+
+			// Check if embedding already exists in metadata
+			$existing_embedding = $this->get_topic_embedding($topic->id);
+
+			if ($existing_embedding) {
+				$stats['skipped']++;
+				$history->record(
+					'activity',
+					sprintf(
+						__('Skipped topic ID %d (embedding already exists)', 'ai-post-scheduler'),
+						$topic->id
+					),
+					array(
+						'event_type' => 'embedding_skipped',
+						'event_status' => 'skipped',
+					),
+					null,
+					array(
+						'topic_id' => $topic->id,
+						'topic_title' => $topic->topic_title,
+					)
+				);
+				continue;
+			}
+
+			// Compute embedding for this topic
+			$result = $this->compute_topic_embedding($topic->id);
+
+			if (is_wp_error($result)) {
+				$stats['failed']++;
+				$history->record(
+					'warning',
+					sprintf(
+						__('Failed to compute embedding for topic ID %d: %s', 'ai-post-scheduler'),
+						$topic->id,
+						$result->get_error_message()
+					),
+					array(
+						'event_type' => 'embedding_failed',
+						'event_status' => 'failed',
+					),
+					null,
+					array(
+						'topic_id' => $topic->id,
+						'topic_title' => $topic->topic_title,
+						'error' => $result->get_error_message(),
+					)
+				);
+			} else {
+				$stats['success']++;
+				$history->record(
+					'activity',
+					sprintf(
+						__('Computed embedding for topic ID %d', 'ai-post-scheduler'),
+						$topic->id
+					),
+					array(
+						'event_type' => 'embedding_computed',
+						'event_status' => 'success',
+					),
+					null,
+					array(
+						'topic_id' => $topic->id,
+						'topic_title' => $topic->topic_title,
+					)
+				);
+			}
+		}
+
+		// Check if there are more topics to process
+		// We're done if we got fewer topics than requested
+		$stats['done'] = (count($topics) < $batch_size);
+
+		return $stats;
+	}
+
+	/**
+	 * Get or create a history container for author embeddings processing.
+	 *
+	 * Looks for an existing incomplete container for this author, or creates a new one.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return AIPS_History_Container History container instance.
+	 */
+	private function get_or_create_embeddings_history($author_id) {
+		// Try to find existing incomplete container for this author
+		$existing = $this->history_service->find_incomplete('author_embeddings', array(
+			'author_id' => $author_id,
+		));
+
+		if ($existing) {
+			return $existing;
+		}
+
+		// Create new history container
+		return $this->history_service->create('author_embeddings', array(
+			'author_id' => $author_id,
+		));
 	}
 }
 

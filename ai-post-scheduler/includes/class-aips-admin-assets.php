@@ -85,6 +85,14 @@ class AIPS_Admin_Assets {
             'schedulePageUrl' => AIPS_Admin_Menu_Helper::get_page_url('schedule'),
         ));
 
+        wp_enqueue_script(
+            'aips-admin-embeddings',
+            AIPS_PLUGIN_URL . 'assets/js/admin-embeddings.js',
+            array('jquery', 'aips-admin-script'),
+            AIPS_VERSION,
+            true
+        );
+
         wp_localize_script('aips-admin-script', 'aipsAdminL10n', array(
             'deleteStructureConfirm' => __('Are you sure you want to delete this structure?', 'ai-post-scheduler'),
             'saveStructureFailed' => __('Failed to save structure.', 'ai-post-scheduler'),
