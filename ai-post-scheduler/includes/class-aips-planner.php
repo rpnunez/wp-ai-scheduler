@@ -295,13 +295,4 @@ class AIPS_Planner {
         $templates = new AIPS_Templates();
         return $templates->get($template_id);
     }
-
-    public function render_page() {
-        // Just for consistency if we want to render the planner page separately,
-        // but currently we might include it in the main admin view.
-        $templates_obj = new AIPS_Templates();
-        $templates = $templates_obj->get_all(true); // Active only
-
-        include AIPS_PLUGIN_DIR . 'templates/admin/planner.php';
-    }
 }

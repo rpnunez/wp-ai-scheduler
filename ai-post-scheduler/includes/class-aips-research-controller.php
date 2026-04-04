@@ -719,34 +719,6 @@ class AIPS_Research_Controller {
         
         $this->logger->log("Scheduled research completed. Total topics: {$total_researched}", 'info');
     }
-    
-    /**
-     * Get research statistics for admin dashboard.
-     *
-     * @return array Statistics data.
-     */
-    public function get_research_stats() {
-        return $this->repository->get_stats();
-    }
-    
-    /**
-     * Get top trending topics for dashboard widget.
-     *
-     * @param int $count Number of topics to retrieve.
-     * @return array Top topics.
-     */
-    public function get_dashboard_topics($count = 5) {
-        $topics = $this->repository->get_top_topics($count, 7);
-        
-        // Parse keywords
-        foreach ($topics as &$topic) {
-            if (!empty($topic['keywords'])) {
-                $topic['keywords'] = json_decode($topic['keywords'], true);
-            }
-        }
-        
-        return $topics;
-    }
 
     /**
      * AJAX handler: Perform gap analysis.

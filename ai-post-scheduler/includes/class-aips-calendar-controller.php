@@ -40,15 +40,6 @@ class AIPS_Calendar_Controller {
 	}
 	
 	/**
-	 * Render the calendar page.
-	 *
-	 * @return void
-	 */
-	public function render_page() {
-		include AIPS_PLUGIN_DIR . 'templates/admin/calendar.php';
-	}
-	
-	/**
 	 * Get calendar events for a specific month.
 	 *
 	 * @param int $year  Year (e.g., 2026)
