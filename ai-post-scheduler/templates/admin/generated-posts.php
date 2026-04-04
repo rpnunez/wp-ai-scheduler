@@ -72,6 +72,9 @@ if (!defined('ABSPATH')) {
 								<span class="dashicons dashicons-filter"></span>
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
+							<?php if (!empty($author_id) || !empty($template_id)): ?>
+							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
 							<label class="screen-reader-text" for="post-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
@@ -280,6 +283,9 @@ if (!defined('ABSPATH')) {
 								<span class="dashicons dashicons-filter"></span>
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
+							<?php if (!empty($author_id) || !empty($template_id)): ?>
+							<a href="<?php echo esc_url(remove_query_arg(array('author_id', 'template_id'))); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">
 							<label class="screen-reader-text" for="aips-partial-search-input"><?php esc_html_e('Search Posts:', 'ai-post-scheduler'); ?></label>
@@ -437,6 +443,9 @@ if (!defined('ABSPATH')) {
 								<span class="dashicons dashicons-filter"></span>
 								<?php esc_html_e('Filter', 'ai-post-scheduler'); ?>
 							</button>
+							<?php if (!empty($template_id)): ?>
+							<a href="<?php echo esc_url(remove_query_arg('template_id')); ?>" class="aips-btn aips-btn-sm aips-btn-ghost"><?php esc_html_e('Clear Filters', 'ai-post-scheduler'); ?></a>
+							<?php endif; ?>
 							<?php endif; ?>
 						</div>
 						<div class="aips-filter-right">

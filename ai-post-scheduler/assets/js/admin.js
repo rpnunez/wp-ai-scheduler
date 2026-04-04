@@ -2426,6 +2426,7 @@
             var id    = $btn.data('id');
             var type  = $btn.data('type');
             var name  = $btn.data('name') || id;
+            var limit = $btn.data('limit') || 0;
 
             if (!id || !type) { return; }
 
@@ -2435,7 +2436,7 @@
             var $empty   = $modal.find('#aips-schedule-history-empty');
             var $list    = $modal.find('#aips-schedule-history-list');
 
-            $title.text('Previous Runs: ' + name);
+            $title.text('Recent History: ' + name);
             $loading.show();
             $empty.hide();
             $list.hide().empty();
@@ -2448,7 +2449,8 @@
                     action: 'aips_get_unified_schedule_history',
                     nonce: aipsAjax.nonce,
                     id: id,
-                    type: type
+                    type: type,
+                    limit: limit
                 },
                 success: function(response) {
                     $loading.hide();
