@@ -2,7 +2,7 @@
 /**
  * Partial Generations Tab Template
  *
- * Tab 2 panel for the Generated Posts admin page.
+ * Tab 2 panel for the Content admin page.
  * Displays posts with one or more missing generated components.
  *
  * @var AIPS_Generated_Posts_Controller $controller
@@ -20,7 +20,7 @@
  */
 
 if (!defined('ABSPATH')) {
-exit;
+	exit;
 }
 ?>
 			<!-- Filter Bar -->

@@ -2,7 +2,7 @@
 /**
  * Pending Review Tab Template
  *
- * Tab 3 panel for the Generated Posts admin page.
+ * Tab 3 panel for the Content admin page.
  * Displays draft posts awaiting review before publishing.
  *
  * @var AIPS_Generated_Posts_Controller $controller
@@ -17,7 +17,7 @@
  */
 
 if (!defined('ABSPATH')) {
-exit;
+	exit;
 }
 ?>
 			<!-- Filter Bar -->
