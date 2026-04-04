@@ -131,11 +131,29 @@ class AIPS_Admin_Menu {
 
         add_submenu_page(
             'ai-post-scheduler',
-            __('Generated Posts', 'ai-post-scheduler'),
-            __('Generated Posts', 'ai-post-scheduler'),
+            __('Content', 'ai-post-scheduler'),
+            __('Content', 'ai-post-scheduler'),
             'manage_options',
             'aips-generated-posts',
             array($this, 'render_generated_posts_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Partial Generations', 'ai-post-scheduler'),
+            __('Partial Generations', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-partial-generations',
+            array($this, 'render_partial_generations_page')
+        );
+
+        add_submenu_page(
+            'ai-post-scheduler',
+            __('Pending Review', 'ai-post-scheduler'),
+            __('Pending Review', 'ai-post-scheduler'),
+            'manage_options',
+            'aips-pending-review',
+            array($this, 'render_pending_review_page')
         );
 
         add_submenu_page(
@@ -333,16 +351,25 @@ class AIPS_Admin_Menu {
     }
 
     /**
-     * Render the Post Review page.
+     * Render the Partial Generations page.
      *
-     * Redirects to the Pending Review tab on the Generated Posts page.
-     * Post review content was merged into Generated Posts (Tab 3) and the
-     * standalone post-review.php template has been removed.
+     * Redirects to the Partial Generations tab on the Content page.
      *
      * @return void
      */
-    public function render_post_review_page() {
-        // Post review is now rendered as Tab 3 of the Generated Posts page.
+    public function render_partial_generations_page() {
+        wp_safe_redirect( AIPS_Admin_Menu_Helper::get_page_url( 'generated_posts' ) . '#aips-partial-generations' );
+        exit;
+    }
+
+    /**
+     * Render the Pending Review page.
+     *
+     * Redirects to the Pending Review tab on the Content page.
+     *
+     * @return void
+     */
+    public function render_pending_review_page() {
         wp_safe_redirect( AIPS_Admin_Menu_Helper::get_page_url( 'generated_posts' ) . '#aips-pending-review' );
         exit;
     }
