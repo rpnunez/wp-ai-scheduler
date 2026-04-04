@@ -12,9 +12,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$research_controller = new AIPS_Research_Controller();
-$stats = $research_controller->get_research_stats();
 $repository = new AIPS_Trending_Topics_Repository();
+$stats = $repository->get_stats();
 $niches = $repository->get_niche_list();
 $templates = (new AIPS_Template_Repository())->get_all(array('active' => 1));
 $interval_calculator = new AIPS_Interval_Calculator();

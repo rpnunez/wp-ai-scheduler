@@ -35,10 +35,12 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
             score int(11) NOT NULL DEFAULT 50,
             reason text DEFAULT NULL,
             keywords text DEFAULT NULL,
+            status varchar(20) NOT NULL DEFAULT 'new',
             researched_at datetime NOT NULL,
             PRIMARY KEY  (id),
             KEY niche_idx (niche),
             KEY score_idx (score),
+            KEY status_idx (status),
             KEY researched_at_idx (researched_at)
         ) {$charset_collate};";
         
@@ -645,5 +647,103 @@ class Test_Trending_Topics_Repository extends WP_UnitTestCase {
     public function test_delete_bulk_all_invalid_ids() {
         $result = $this->repository->delete_bulk(array(0, -1, 'invalid'));
         $this->assertEquals(0, $result);
+    }
+
+    /**
+     * Test create stores the status field correctly.
+     */
+    public function test_create_stores_status() {
+        $topic_id = $this->repository->create(array(
+            'niche'   => 'StatusTest',
+            'topic'   => 'Status Topic',
+            'score'   => 80,
+            'status'  => 'used',
+        ));
+
+        $topic = $this->repository->get_by_id($topic_id);
+        $this->assertEquals('used', $topic['status']);
+    }
+
+    /**
+     * Test create defaults status to 'new'.
+     */
+    public function test_create_defaults_status_to_new() {
+        $topic_id = $this->repository->create(array(
+            'niche'  => 'StatusTest',
+            'topic'  => 'Default Status Topic',
+            'score'  => 80,
+        ));
+
+        $topic = $this->repository->get_by_id($topic_id);
+        $this->assertEquals('new', $topic['status']);
+    }
+
+    /**
+     * Test update can change the status field.
+     */
+    public function test_update_status_field() {
+        $topic_id = $this->repository->create(array(
+            'niche'  => 'StatusTest',
+            'topic'  => 'Update Status Topic',
+            'score'  => 80,
+        ));
+
+        $this->repository->update($topic_id, array('status' => 'scheduled'));
+
+        $topic = $this->repository->get_by_id($topic_id);
+        $this->assertEquals('scheduled', $topic['status']);
+    }
+
+    /**
+     * Test get_all filters by status.
+     */
+    public function test_get_all_filters_by_status() {
+        $this->repository->create(array(
+            'niche'  => 'StatusFilter',
+            'topic'  => 'New Topic',
+            'score'  => 80,
+            'status' => 'new',
+        ));
+        $this->repository->create(array(
+            'niche'  => 'StatusFilter',
+            'topic'  => 'Used Topic',
+            'score'  => 85,
+            'status' => 'used',
+        ));
+
+        $new_topics = $this->repository->get_all(array('niche' => 'StatusFilter', 'status' => 'new'));
+        $this->assertCount(1, $new_topics);
+        $this->assertEquals('new', $new_topics[0]['status']);
+
+        $used_topics = $this->repository->get_all(array('niche' => 'StatusFilter', 'status' => 'used'));
+        $this->assertCount(1, $used_topics);
+        $this->assertEquals('used', $used_topics[0]['status']);
+    }
+
+    /**
+     * Test save_research_batch deduplication skips pre-existing topics via prefetch.
+     */
+    public function test_save_research_batch_dedup_via_prefetch() {
+        // Pre-insert a topic that should be skipped.
+        $this->repository->create(array(
+            'niche'         => 'DedupeNiche',
+            'topic'         => 'Pre-existing Topic',
+            'score'         => 80,
+            'researched_at' => current_time('mysql'),
+        ));
+
+        $topics = array(
+            array('topic' => 'Pre-existing Topic', 'score' => 90, 'reason' => 'dup'),
+            array('topic' => 'Brand New Topic',    'score' => 85, 'reason' => 'new'),
+        );
+
+        $saved = $this->repository->save_research_batch($topics, 'DedupeNiche');
+
+        // Only the truly new topic should be inserted.
+        $this->assertEquals(1, $saved);
+        $all = $this->repository->get_by_niche('DedupeNiche', 20, 30);
+        $titles = array_column($all, 'topic');
+        $this->assertContains('Brand New Topic', $titles);
+        $this->assertCount(2, $all); // 1 pre-existing + 1 new
     }
 }
