@@ -361,6 +361,28 @@ class Test_AIPS_Bulk_Generator_Service extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'Something broke', $result->errors[0] );
 	}
 
+	/**
+	 * When $item is an array and no error_formatter is provided, the default
+	 * formatter must NOT trigger "Array to string conversion" and must produce
+	 * a useful JSON-encoded identifier rather than the literal word "Array".
+	 */
+	public function test_default_error_format_uses_json_encode_for_array_item() {
+		$items = array( array( 'id' => 7, 'topic' => 'AI News' ) );
+
+		$result = $this->service->run(
+			$items,
+			$this->fn_failure( 'gen_failed', 'Something broke' )
+		);
+
+		$this->assertCount( 1, $result->errors );
+		// Must contain the error message.
+		$this->assertStringContainsString( 'Something broke', $result->errors[0] );
+		// Must NOT contain the literal "Array:" which indicates strval() was used.
+		$this->assertStringNotContainsString( 'Array:', $result->errors[0] );
+		// Must include the JSON-encoded item so it is actually informative.
+		$this->assertStringContainsString( '"id":7', $result->errors[0] );
+	}
+
 	// -------------------------------------------------------------------------
 	// History interaction
 	// -------------------------------------------------------------------------

@@ -31,6 +31,8 @@ if (!defined('ABSPATH')) {
  * Class AIPS_Bulk_Generation_Result
  *
  * Immutable value object produced by a single bulk-generation run.
+ * All properties are public readonly — they can be read like normal
+ * public properties but cannot be mutated after construction.
  * Controllers inspect the fields and build their own JSON response.
  */
 class AIPS_Bulk_Generation_Result {
@@ -40,7 +42,7 @@ class AIPS_Bulk_Generation_Result {
 	 *
 	 * @var int
 	 */
-	public $success_count;
+	public readonly int $success_count;
 
 	/**
 	 * Number of items that failed (validation failures count here too).
@@ -50,21 +52,21 @@ class AIPS_Bulk_Generation_Result {
 	 *
 	 * @var int
 	 */
-	public $failed_count;
+	public readonly int $failed_count;
 
 	/**
 	 * Human-readable error strings, one entry per failed item.
 	 *
 	 * @var string[]
 	 */
-	public $errors;
+	public readonly array $errors;
 
 	/**
 	 * IDs of every post that was created/regenerated in this run.
 	 *
 	 * @var int[]
 	 */
-	public $post_ids;
+	public readonly array $post_ids;
 
 	/**
 	 * True when the batch was larger than the configured limit.
@@ -74,7 +76,7 @@ class AIPS_Bulk_Generation_Result {
 	 *
 	 * @var bool
 	 */
-	public $was_limited;
+	public readonly bool $was_limited;
 
 	/**
 	 * The effective bulk limit that was applied.
@@ -84,7 +86,7 @@ class AIPS_Bulk_Generation_Result {
 	 *
 	 * @var int
 	 */
-	public $max_bulk;
+	public readonly int $max_bulk;
 
 	/**
 	 * Constructor.
@@ -150,7 +152,11 @@ class AIPS_Bulk_Generation_Result {
  *   user_message   string   Message for record_user_action().
  *   error_formatter callable($item, $error_message): string
  *                           Formats per-item failure strings.
- *                           Default: "{$item}: {$error_message}".
+ *                           Default: JSON-encodes non-scalar items to avoid
+ *                           "Array to string conversion" warnings.
+ *                           **Required** when $items contains non-scalar values
+ *                           (arrays or objects); omitting it triggers
+ *                           _doing_it_wrong() and falls back to wp_json_encode().
  */
 class AIPS_Bulk_Generator_Service {
 
@@ -262,9 +268,21 @@ class AIPS_Bulk_Generator_Service {
 
 			if ( is_wp_error( $result ) ) {
 				$failed_count++;
-				$error_msg = $error_formatter
-					? call_user_func( $error_formatter, $item, $result->get_error_message() )
-					: sprintf( '%s: %s', strval( $item ), $result->get_error_message() );
+
+				if ( $error_formatter ) {
+					$error_msg = call_user_func( $error_formatter, $item, $result->get_error_message() );
+				} elseif ( ! is_scalar( $item ) ) {
+					// Non-scalar item without a formatter: warn the developer and fall back
+					// to a JSON representation to avoid "Array to string conversion" notices.
+					_doing_it_wrong(
+						__METHOD__,
+						'AIPS_Bulk_Generator_Service::run() received a non-scalar item without an error_formatter option. Provide an error_formatter to generate meaningful error messages.',
+						'1.8.0'
+					);
+					$error_msg = sprintf( '%s: %s', wp_json_encode( $item ), $result->get_error_message() );
+				} else {
+					$error_msg = sprintf( '%s: %s', (string) $item, $result->get_error_message() );
+				}
 				$errors[]  = $error_msg;
 				$history->record(
 					'warning',
