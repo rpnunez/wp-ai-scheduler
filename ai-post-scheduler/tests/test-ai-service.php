@@ -318,31 +318,6 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
         };
     }
 
-    /**
-     * Helper: create a mock $mwai that captures simpleTextQuery params.
-     *
-     * Used to exercise the simpleTextQuery fallback path (when $mwai_core is null).
-     *
-     * @param stdClass $capture Object whose `params` property is populated on call.
-     * @param string   $return_value Value returned by simpleTextQuery.
-     * @return object Anonymous mock.
-     */
-    private function make_text_query_mock(stdClass $capture, $return_value = 'generated text') {
-        return new class($capture, $return_value) {
-            private $capture;
-            private $return_value;
-            public function __construct($capture, $return_value) {
-                $this->capture      = $capture;
-                $this->return_value = $return_value;
-            }
-            public function simpleTextQuery($prompt, $params) {
-                $this->capture->prompt = $prompt;
-                $this->capture->params = $params;
-                return $this->return_value;
-            }
-        };
-    }
-
     // ---------------------------------------------------------
     // Query-object path: verify setter calls on Meow_MWAI_Query_Text
     // ---------------------------------------------------------
@@ -598,162 +573,133 @@ class Test_AIPS_AI_Service extends WP_UnitTestCase {
     }
 
     // ---------------------------------------------------------
-    // simpleTextQuery fallback path tests (when $mwai_core is null)
+    // Query-object path tests for prepare_options normalization
+    // (previously exercised via simpleTextQuery fallback, now via run_query)
     // ---------------------------------------------------------
 
     /**
-     * Test that maxTokens passed directly overrides the built-in default of 2000
-     * via the simpleTextQuery fallback path.
+     * Test that maxTokens passed directly overrides the built-in default of 2000.
      */
     public function test_prepare_options_maxTokens_overrides_default() {
-        global $mwai, $mwai_core;
-        $original_mwai      = $mwai;
-        $original_mwai_core = $mwai_core;
+        global $mwai_core;
+        $original = $mwai_core;
 
         $capture   = new stdClass();
-        $capture->params = null;
-        $mwai      = $this->make_text_query_mock($capture);
-        $mwai_core = null;
+        $mwai_core = $this->make_core_engine_mock($capture);
 
         try {
             $service = new AIPS_AI_Service();
             $result  = $service->generate_text('Prompt', array('maxTokens' => 5000));
 
             $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
-            $this->assertSame(5000, $capture->params['maxTokens'], 'maxTokens should override the 2000 default.');
+            $this->assertSame(5000, $capture->query->max_tokens, 'maxTokens should override the 2000 default via set_max_tokens().');
         } finally {
-            $mwai      = $original_mwai;
-            $mwai_core = $original_mwai_core;
+            $mwai_core = $original;
         }
     }
 
     /**
-     * Test that legacy max_tokens is normalized to maxTokens and forwarded to the engine
-     * via the simpleTextQuery fallback path.
+     * Test that legacy max_tokens is normalised and forwarded via set_max_tokens().
      */
     public function test_prepare_options_legacy_max_tokens_accepted() {
-        global $mwai, $mwai_core;
-        $original_mwai      = $mwai;
-        $original_mwai_core = $mwai_core;
+        global $mwai_core;
+        $original = $mwai_core;
 
         $capture   = new stdClass();
-        $capture->params = null;
-        $mwai      = $this->make_text_query_mock($capture);
-        $mwai_core = null;
+        $mwai_core = $this->make_core_engine_mock($capture);
 
         try {
             $service = new AIPS_AI_Service();
             $result  = $service->generate_text('Prompt', array('max_tokens' => 3000));
 
             $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
-            $this->assertSame(3000, $capture->params['maxTokens'], 'Legacy max_tokens should be normalized to maxTokens.');
+            $this->assertSame(3000, $capture->query->max_tokens, 'Legacy max_tokens should be forwarded via set_max_tokens().');
         } finally {
-            $mwai      = $original_mwai;
-            $mwai_core = $original_mwai_core;
+            $mwai_core = $original;
         }
     }
 
     /**
-     * Test that legacy env_id is normalized to envId and forwarded to the engine
-     * via the simpleTextQuery fallback path.
+     * Test that legacy env_id is normalised and forwarded via set_env_id().
      */
     public function test_prepare_options_legacy_env_id_accepted() {
-        global $mwai, $mwai_core;
-        $original_mwai      = $mwai;
-        $original_mwai_core = $mwai_core;
+        global $mwai_core;
+        $original = $mwai_core;
 
         $capture   = new stdClass();
-        $capture->params = null;
-        $mwai      = $this->make_text_query_mock($capture);
-        $mwai_core = null;
+        $mwai_core = $this->make_core_engine_mock($capture);
 
         try {
             $service = new AIPS_AI_Service();
             $result  = $service->generate_text('Prompt', array('env_id' => 'legacy-env'));
 
             $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
-            $this->assertSame('legacy-env', $capture->params['envId'], 'Legacy env_id should be normalized to envId.');
+            $this->assertSame('legacy-env', $capture->query->env_id, 'Legacy env_id should be forwarded via set_env_id().');
         } finally {
-            $mwai      = $original_mwai;
-            $mwai_core = $original_mwai_core;
+            $mwai_core = $original;
         }
     }
 
     /**
-     * Test that envId passed directly is forwarded to the engine unchanged
-     * via the simpleTextQuery fallback path.
+     * Test that envId (camelCase) is normalised and forwarded via set_env_id().
      */
     public function test_prepare_options_envId_direct_accepted() {
-        global $mwai, $mwai_core;
-        $original_mwai      = $mwai;
-        $original_mwai_core = $mwai_core;
+        global $mwai_core;
+        $original = $mwai_core;
 
         $capture   = new stdClass();
-        $capture->params = null;
-        $mwai      = $this->make_text_query_mock($capture);
-        $mwai_core = null;
+        $mwai_core = $this->make_core_engine_mock($capture);
 
         try {
             $service = new AIPS_AI_Service();
             $result  = $service->generate_text('Prompt', array('envId' => 'direct-env'));
 
             $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
-            $this->assertSame('direct-env', $capture->params['envId'], 'envId should be forwarded as-is.');
+            $this->assertSame('direct-env', $capture->query->env_id, 'envId should be normalised and forwarded via set_env_id().');
         } finally {
-            $mwai      = $original_mwai;
-            $mwai_core = $original_mwai_core;
+            $mwai_core = $original;
         }
     }
 
     /**
-     * Test that the default maxTokens of 2000 is used when no token option is supplied
-     * via the simpleTextQuery fallback path.
+     * Test that the default maxTokens of 2000 is used when no token option is supplied.
      */
     public function test_prepare_options_default_maxTokens_used_when_not_specified() {
-        global $mwai, $mwai_core;
-        $original_mwai      = $mwai;
-        $original_mwai_core = $mwai_core;
+        global $mwai_core;
+        $original = $mwai_core;
 
         $capture   = new stdClass();
-        $capture->params = null;
-        $mwai      = $this->make_text_query_mock($capture);
-        $mwai_core = null;
+        $mwai_core = $this->make_core_engine_mock($capture);
 
         try {
             $service = new AIPS_AI_Service();
             $result  = $service->generate_text('Prompt');
 
             $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
-            $this->assertSame(2000, $capture->params['maxTokens'], 'Default maxTokens should be 2000.');
+            $this->assertSame(2000, $capture->query->max_tokens, 'Default max_tokens of 2000 should be set via set_max_tokens().');
         } finally {
-            $mwai      = $original_mwai;
-            $mwai_core = $original_mwai_core;
+            $mwai_core = $original;
         }
     }
 
     /**
-     * Test that model is forwarded to the engine when provided
-     * via the simpleTextQuery fallback path.
+     * Test that model is forwarded to the engine when provided.
      */
     public function test_prepare_options_model_forwarded_to_engine() {
-        global $mwai, $mwai_core;
-        $original_mwai      = $mwai;
-        $original_mwai_core = $mwai_core;
+        global $mwai_core;
+        $original = $mwai_core;
 
         $capture   = new stdClass();
-        $capture->params = null;
-        $mwai      = $this->make_text_query_mock($capture);
-        $mwai_core = null;
+        $mwai_core = $this->make_core_engine_mock($capture);
 
         try {
             $service = new AIPS_AI_Service();
             $result  = $service->generate_text('Prompt', array('model' => 'gpt-4'));
 
             $this->assertNotInstanceOf('WP_Error', $result, 'Expected successful generation, got WP_Error.');
-            $this->assertSame('gpt-4', $capture->params['model'], 'model should be forwarded to the engine.');
+            $this->assertSame('gpt-4', $capture->query->model, 'model should be forwarded via set_model().');
         } finally {
-            $mwai      = $original_mwai;
-            $mwai_core = $original_mwai_core;
+            $mwai_core = $original;
         }
     }
 
