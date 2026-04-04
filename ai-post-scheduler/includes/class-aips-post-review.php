@@ -502,28 +502,76 @@ class AIPS_Post_Review {
 			$post_id = isset($item['post_id']) ? absint($item['post_id']) : 0;
 			$history_id = isset($item['history_id']) ? absint($item['history_id']) : 0;
 
-			if (!$post_id || !$history_id) {
+			if (!$history_id) {
 				$failed_count++;
 				continue;
 			}
+
+			// Get the history item and derive a trusted post ID from it.
+			$history_item = $this->history_service->get_by_id($history_id);
+
+			if (!$history_item || !$history_item->template_id) {
+				$failed_count++;
+				$history->record(
+					'warning',
+					sprintf(__('Cannot regenerate post ID %d: History item not found or no template associated', 'ai-post-scheduler'), $post_id),
+					null,
+					null,
+					array('post_id' => $post_id, 'history_id' => $history_id)
+				);
+				continue;
+			}
+
+			$history_post_id = isset($history_item->post_id) ? absint($history_item->post_id) : 0;
+			if (!$history_post_id) {
+				$failed_count++;
+				$history->record(
+					'warning',
+					sprintf(__('Cannot regenerate: History record %d has no associated post ID', 'ai-post-scheduler'), $history_id),
+					null,
+					null,
+					array('history_id' => $history_id)
+				);
+				continue;
+			}
+
+			// If a client-supplied post_id was provided, ensure it matches the history record.
+			if ($post_id && $post_id !== $history_post_id) {
+				$failed_count++;
+				$history->record(
+					'warning',
+					sprintf(
+						__('Skipping regeneration: Client post ID %1$d does not match history post ID %2$d', 'ai-post-scheduler'),
+						$post_id,
+						$history_post_id
+					),
+					null,
+					null,
+					array(
+						'post_id'      => $post_id,
+						'history_id'   => $history_id,
+						'history_post' => $history_post_id,
+					)
+				);
+				continue;
+			}
+
+			// From this point on, only use the trusted post ID from the history record.
+			$post_id = $history_post_id;
 
 			// Verify the post exists and is a draft
 			$post = get_post($post_id);
 			if (!$post || $post->post_status !== 'draft') {
 				$failed_count++;
-				$history->record('warning', sprintf(__('Cannot regenerate post ID %d: Not found or not a draft', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
+				$history->record(
+					'warning',
+					sprintf(__('Cannot regenerate post ID %d: Not found or not a draft', 'ai-post-scheduler'), $post_id),
+					null,
+					null,
+					array('post_id' => $post_id)
+				);
 				continue;
 			}
-
-			// Get the history item
-			$history_item = $this->history_service->get_by_id($history_id);
-
-			if (!$history_item || !$history_item->template_id) {
-				$failed_count++;
-				$history->record('warning', sprintf(__('Cannot regenerate post ID %d: History item not found or no template associated', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
-				continue;
-			}
-
 			// Get the template
 			$template = $template_repository->get_by_id($history_item->template_id);
 
