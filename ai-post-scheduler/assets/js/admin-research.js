@@ -844,16 +844,16 @@
             }
 
             AIPS.Utilities.confirm(
-                'Generate ' + AIPS.researchSelectedTopics.length + ' post(s) immediately from selected topics?',
-                'Confirm Generation',
+                aipsResearchL10n.confirmGenerationMessage.replace('%d', AIPS.researchSelectedTopics.length),
+                aipsResearchL10n.confirmGenerationTitle,
                 [
-                    { label: 'Cancel', className: 'aips-btn aips-btn-secondary' },
+                    { label: aipsResearchL10n.cancelButton, className: 'aips-btn aips-btn-secondary' },
                     {
-                        label: 'Generate Now',
+                        label: aipsResearchL10n.generateNowButton,
                         className: 'aips-btn aips-btn-primary',
                         action: function() {
                             var $btn = $('#aips-generate-selected-topics');
-                            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> Generating...');
+                            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update aips-spin"></span> ' + aipsResearchL10n.generatingButton);
 
                             AIPS.runResearchBulkGenerateWithProgress($btn, {
                                 action: 'aips_generate_trending_topics_bulk',

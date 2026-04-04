@@ -432,6 +432,11 @@ class AIPS_Admin_Assets {
             'statusNew' => __('New', 'ai-post-scheduler'),
             'statusScheduled' => __('Scheduled', 'ai-post-scheduler'),
             'statusGenerated' => __('Generated', 'ai-post-scheduler'),
+            'confirmGenerationTitle' => __('Confirm Generation', 'ai-post-scheduler'),
+            'confirmGenerationMessage' => __('Generate %d post(s) immediately from selected topics?', 'ai-post-scheduler'),
+            'cancelButton' => __('Cancel', 'ai-post-scheduler'),
+            'generateNowButton' => __('Generate Now', 'ai-post-scheduler'),
+            'generatingButton' => __('Generating...', 'ai-post-scheduler'),
         ));
 
         // Planner Page Scripts
