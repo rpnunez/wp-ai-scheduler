@@ -355,6 +355,68 @@ class AIPS_Topic_Expansion_Service {
 
 		return $stats;
 	}
+
+	/**
+	 * Process a batch of approved topics for embeddings generation.
+	 *
+	 * Uses ID-based pagination to avoid slow OFFSET queries. Processes topics
+	 * incrementally and returns progress information for re-scheduling.
+	 *
+	 * @param int $author_id         Author ID.
+	 * @param int $batch_size        Number of topics to process in this batch. Default 20.
+	 * @param int $last_processed_id Last processed topic ID for pagination. Default 0.
+	 * @return array|WP_Error Array with keys: success, failed, skipped, last_processed_id, done, processed_count.
+	 */
+	public function process_approved_embeddings_batch($author_id, $batch_size = 20, $last_processed_id = 0) {
+		// Validate batch size
+		$batch_size = max(1, min(100, $batch_size));
+
+		// Get the next batch of approved topics using ID-based pagination
+		$topics = $this->topics_repository->get_approved_for_generation($author_id, $batch_size, $last_processed_id);
+
+		$stats = array(
+			'success'           => 0,
+			'failed'            => 0,
+			'skipped'           => 0,
+			'last_processed_id' => $last_processed_id,
+			'done'              => empty($topics),
+			'processed_count'   => 0,
+		);
+
+		// If no topics returned, we're done
+		if (empty($topics)) {
+			return $stats;
+		}
+
+		// Process each topic in the batch
+		foreach ($topics as $topic) {
+			$stats['last_processed_id'] = $topic->id;
+			$stats['processed_count']++;
+
+			// Check if embedding already exists in metadata
+			$existing_embedding = $this->get_topic_embedding($topic->id);
+
+			if ($existing_embedding) {
+				$stats['skipped']++;
+				continue;
+			}
+
+			// Compute embedding for this topic
+			$result = $this->compute_topic_embedding($topic->id);
+
+			if (is_wp_error($result)) {
+				$stats['failed']++;
+			} else {
+				$stats['success']++;
+			}
+		}
+
+		// Check if there are more topics to process
+		// We're done if we got fewer topics than requested
+		$stats['done'] = (count($topics) < $batch_size);
+
+		return $stats;
+	}
 }
 
 

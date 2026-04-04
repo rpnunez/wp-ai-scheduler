@@ -344,6 +344,11 @@ final class AI_Post_Scheduler {
 
         $aips_author_post_generator = new AIPS_Author_Post_Generator();
         add_action('aips_generate_author_posts', array($aips_author_post_generator, 'process'));
+
+        // Embeddings background worker
+        $aips_embeddings_cron = new AIPS_Embeddings_Cron();
+        add_action('aips_process_author_embeddings', array($aips_embeddings_cron, 'process_author_embeddings'));
+
         new AIPS_Notifications();
 		new AIPS_Partial_Generation_State_Reconciler();
 
