@@ -146,6 +146,10 @@ class AIPS_Schedule_Repository {
      *     @type string $next_run              Next run datetime in MySQL format.
      *     @type int    $is_active             Active status (1 or 0).
      *     @type string $topic                 Optional topic for generation.
+     *     @type string $schedule_type         Optional schedule type discriminator (default: post_generation).
+     *     @type string $circuit_state         Optional circuit-breaker state (open|half_open|closed). Defaults to 'closed'.
+     *     @type string $run_state             Optional JSON string capturing current run outcome. Defaults to NULL.
+     *     @type string $batch_progress        Optional JSON string for resumable batch cursor. Defaults to NULL.
      * }
      * @return int|false The inserted ID on success, false on failure.
      */
@@ -170,6 +174,23 @@ class AIPS_Schedule_Repository {
         
         if (isset($data['rotation_pattern'])) {
             $insert_data['rotation_pattern'] = !empty($data['rotation_pattern']) ? sanitize_text_field($data['rotation_pattern']) : null;
+            $format[] = '%s';
+        }
+
+        if (isset($data['circuit_state'])) {
+            $allowed_circuit_states = array('open', 'half_open', 'closed');
+            $state = sanitize_key($data['circuit_state']);
+            $insert_data['circuit_state'] = in_array($state, $allowed_circuit_states, true) ? $state : 'closed';
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('run_state', $data)) {
+            $insert_data['run_state'] = !empty($data['run_state']) ? wp_unslash($data['run_state']) : null;
+            $format[] = '%s';
+        }
+
+        if (array_key_exists('batch_progress', $data)) {
+            $insert_data['batch_progress'] = !empty($data['batch_progress']) ? wp_unslash($data['batch_progress']) : null;
             $format[] = '%s';
         }
         
@@ -254,7 +275,9 @@ class AIPS_Schedule_Repository {
         }
 
         if (isset($data['circuit_state'])) {
-            $update_data['circuit_state'] = sanitize_key($data['circuit_state']);
+            $allowed_circuit_states = array('open', 'half_open', 'closed');
+            $state = sanitize_key($data['circuit_state']);
+            $update_data['circuit_state'] = in_array($state, $allowed_circuit_states, true) ? $state : 'closed';
             $format[] = '%s';
         }
 
