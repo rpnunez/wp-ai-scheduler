@@ -29,6 +29,26 @@ class AIPS_System_Status {
      */
     const IMAGE_FAIL_WARN_THRESHOLD = 30;
 
+    /**
+     * Number of stuck jobs at or above which the status is 'warning'.
+     */
+    const QUEUE_STUCK_WARN_THRESHOLD = 1;
+
+    /**
+     * Number of stuck jobs at or above which the status escalates to 'error'.
+     */
+    const QUEUE_STUCK_ERROR_THRESHOLD = 5;
+
+    /**
+     * Retry-saturation percentage at or above which the status is 'warning' (0–100).
+     */
+    const QUEUE_RETRY_WARN_THRESHOLD = 20;
+
+    /**
+     * Retry-saturation percentage above which the status escalates to 'error'.
+     */
+    const QUEUE_RETRY_ERROR_THRESHOLD = 50;
+
     public function render_page() {
         $system_info = $this->get_system_info();
         $data_management = $this->get_data_management();
@@ -76,6 +96,7 @@ class AIPS_System_Status {
             'filesystem'         => $this->check_filesystem(),
             'cron'               => $this->check_cron(),
             'scheduler health'   => $this->check_scheduler_health(),
+            'queue health'       => $this->check_queue_health(),
             'generation metrics' => $this->check_generation_metrics(),
             'notifications'      => $this->check_notifications(),
             'logs'               => $this->check_logs(),
@@ -361,6 +382,158 @@ class AIPS_System_Status {
                 'status' => 'info',
             );
         }
+
+        return $checks;
+    }
+
+    /**
+     * Queue health checks.
+     *
+     * Surfaces backlog, stuck-job signals, retry saturation, and circuit-breaker
+     * state so operators can identify queued work that is failing to make progress.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function check_queue_health() {
+        if ( ! class_exists( 'AIPS_Metrics_Repository' ) ) {
+            return array(
+                'unavailable' => array(
+                    'label'  => __( 'Queue Health', 'ai-post-scheduler' ),
+                    'value'  => __( 'Metrics repository not available', 'ai-post-scheduler' ),
+                    'status' => 'info',
+                ),
+            );
+        }
+
+        $metrics_repo = new AIPS_Metrics_Repository();
+        $qh           = $metrics_repo->get_queue_health_metrics();
+
+        $checks = array();
+
+        // --- Pending / partial backlog ---
+        $backlog_total  = $qh['pending_count'] + $qh['partial_count'];
+        $backlog_status = $backlog_total === 0 ? 'ok' : 'info';
+        $checks['queue_backlog'] = array(
+            'label'   => __( 'Queue Backlog', 'ai-post-scheduler' ),
+            'value'   => sprintf(
+                /* translators: 1: pending job count, 2: partial job count */
+                __( '%1$d pending, %2$d partial', 'ai-post-scheduler' ),
+                $qh['pending_count'],
+                $qh['partial_count']
+            ),
+            'status'  => $backlog_status,
+            'details' => $backlog_total > 0 ? array(
+                __( 'Pending jobs are waiting to run; partial jobs started but did not complete.', 'ai-post-scheduler' ),
+                __( 'If counts are unexpectedly high, check WP-Cron is running and AI Engine is reachable.', 'ai-post-scheduler' ),
+            ) : array(),
+        );
+
+        // --- Stuck jobs ---
+        $stuck        = $qh['stuck_count'];
+        $stuck_status = 'ok';
+        if ( $stuck >= self::QUEUE_STUCK_ERROR_THRESHOLD ) {
+            $stuck_status = 'error';
+        } elseif ( $stuck >= self::QUEUE_STUCK_WARN_THRESHOLD ) {
+            $stuck_status = 'warning';
+        }
+
+        $stuck_value = $stuck > 0
+            ? sprintf(
+                /* translators: 1: count of stuck jobs, 2: age in minutes of the oldest stuck job */
+                _n(
+                    '%1$d job stuck (oldest: %2$d min)',
+                    '%1$d jobs stuck (oldest: %2$d min)',
+                    $stuck,
+                    'ai-post-scheduler'
+                ),
+                $stuck,
+                $qh['oldest_stuck_age_minutes'] ?? 0
+            )
+            : __( 'None', 'ai-post-scheduler' );
+
+        $stuck_details = $stuck > 0 ? array(
+            sprintf(
+                /* translators: %d: threshold in minutes */
+                __( 'A job is considered stuck when it remains in pending/partial status for more than %d minutes.', 'ai-post-scheduler' ),
+                AIPS_Metrics_Repository::STUCK_JOB_THRESHOLD_MINUTES
+            ),
+            __( 'To recover: check the History log for correlation IDs, verify AI Engine is responding, then use Flush WP-Cron Events if cron events are missing.', 'ai-post-scheduler' ),
+        ) : array();
+
+        $checks['stuck_jobs'] = array(
+            'label'   => __( 'Stuck Jobs', 'ai-post-scheduler' ),
+            'value'   => $stuck_value,
+            'status'  => $stuck_status,
+            'details' => $stuck_details,
+        );
+
+        // --- Retry saturation (failure rate over last 24 h) ---
+        if ( $qh['retry_saturation_pct'] >= 0 ) {
+            $sat     = $qh['retry_saturation_pct'];
+            $sat_status = 'ok';
+            if ( $sat > self::QUEUE_RETRY_ERROR_THRESHOLD ) {
+                $sat_status = 'error';
+            } elseif ( $sat >= self::QUEUE_RETRY_WARN_THRESHOLD ) {
+                $sat_status = 'warning';
+            }
+
+            $checks['retry_saturation'] = array(
+                'label'   => __( 'Retry Saturation (24h failure rate)', 'ai-post-scheduler' ),
+                'value'   => $sat . '%',
+                'status'  => $sat_status,
+                'details' => array(
+                    sprintf(
+                        /* translators: %d: number of failed jobs in last 24 hours */
+                        __( 'Failed jobs in last 24 h: %d', 'ai-post-scheduler' ),
+                        $qh['failed_24h']
+                    ),
+                    __( 'A high failure rate often indicates API quota exhaustion, rate limits, or AI Engine configuration issues.', 'ai-post-scheduler' ),
+                ),
+            );
+        } else {
+            $checks['retry_saturation'] = array(
+                'label'  => __( 'Retry Saturation (24h failure rate)', 'ai-post-scheduler' ),
+                'value'  => __( 'No completed/failed jobs in last 24 h', 'ai-post-scheduler' ),
+                'status' => 'info',
+            );
+        }
+
+        // --- Circuit-breaker state ---
+        $cb       = $qh['circuit_breaker'];
+        $cb_state = isset( $cb['state'] ) ? $cb['state'] : 'unknown';
+
+        if ( $cb_state === 'open' ) {
+            $cb_status = 'error';
+            $cb_value  = __( 'OPEN — AI requests are blocked', 'ai-post-scheduler' );
+        } elseif ( $cb_state === 'half_open' ) {
+            $cb_status = 'warning';
+            $cb_value  = __( 'HALF-OPEN — probing AI availability', 'ai-post-scheduler' );
+        } elseif ( $cb_state === 'closed' ) {
+            $cb_status = 'ok';
+            $cb_value  = __( 'Closed (healthy)', 'ai-post-scheduler' );
+        } else {
+            $cb_status = 'info';
+            $cb_value  = __( 'Unknown (circuit breaker may be disabled)', 'ai-post-scheduler' );
+        }
+
+        $cb_details = array();
+        if ( isset( $cb['failures'] ) ) {
+            $cb_details[] = sprintf(
+                /* translators: %d: consecutive failure count */
+                __( 'Consecutive failures: %d', 'ai-post-scheduler' ),
+                (int) $cb['failures']
+            );
+        }
+        if ( $cb_state === 'open' || $cb_state === 'half_open' ) {
+            $cb_details[] = __( 'To reset: use "Reset Circuit Breaker" on this page, or navigate to Settings → AI Engine.', 'ai-post-scheduler' );
+        }
+
+        $checks['circuit_breaker'] = array(
+            'label'   => __( 'Circuit Breaker', 'ai-post-scheduler' ),
+            'value'   => $cb_value,
+            'status'  => $cb_status,
+            'details' => $cb_details,
+        );
 
         return $checks;
     }
