@@ -1047,6 +1047,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-schedule-processor.php',
         'class-aips-scheduler.php',
         'class-aips-schedule-controller.php',
+        'class-aips-unified-schedule-controller.php',
         'class-aips-planner.php',
         'class-aips-history.php',
         'class-aips-settings.php',
