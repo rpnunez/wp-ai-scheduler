@@ -498,11 +498,11 @@ class AIPS_History_Repository {
         ");
 
         $stats = array(
-            'total' => (int) $results->total,
-            'completed' => (int) $results->completed,
-            'failed' => (int) $results->failed,
-            'processing' => (int) $results->processing,
-            'partial' => (int) $results->partial,
+            'total' => isset($results->total) ? (int) $results->total : 0,
+            'completed' => isset($results->completed) ? (int) $results->completed : 0,
+            'failed' => isset($results->failed) ? (int) $results->failed : 0,
+            'processing' => isset($results->processing) ? (int) $results->processing : 0,
+            'partial' => isset($results->partial) ? (int) $results->partial : 0,
         );
         
         $stats['success_rate'] = $stats['total'] > 0 
