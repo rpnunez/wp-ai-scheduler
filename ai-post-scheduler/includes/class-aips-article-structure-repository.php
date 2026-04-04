@@ -76,19 +76,6 @@ class AIPS_Article_Structure_Repository {
 	}
 	
 	/**
-	 * Get article structure by name.
-	 *
-	 * @param string $name Structure name.
-	 * @return object|null Structure object or null if not found.
-	 */
-	public function get_by_name($name) {
-		return $this->wpdb->get_row($this->wpdb->prepare(
-			"SELECT * FROM {$this->table_name} WHERE name = %s",
-			$name
-		));
-	}
-	
-	/**
 	 * Create a new article structure.
 	 *
 	 * @param array $data {
