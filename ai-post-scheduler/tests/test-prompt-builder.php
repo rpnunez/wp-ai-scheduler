@@ -544,4 +544,47 @@ class Test_AIPS_Prompt_Builder extends WP_UnitTestCase {
 		// Clean up
 		$voice_service->delete($voice_id);
 	}
+
+	/**
+	 * Regression test: AI variable placeholders in title prompts must be substituted
+	 * before the prompt is sent to the AI model.
+	 *
+	 * When a template uses AI variables (e.g. {{PHPTopic}}) in its title prompt and
+	 * those placeholders are NOT replaced prior to the AI call, the model receives raw
+	 * {{VariableName}} syntax in its instructions. It then responds with only the
+	 * variable value — a single word — instead of a full title.
+	 *
+	 * @see class-aips-generator.php generate_title_from_context()
+	 */
+	public function test_title_prompt_ai_variables_are_substituted() {
+		$template_processor = new AIPS_Template_Processor();
+		$title_builder      = new AIPS_Prompt_Builder_Post_Title($template_processor);
+
+		// Simulate a template whose title prompt contains an AI variable.
+		$template = (object) array(
+			'title_prompt'         => 'Write a compelling title about {{PHPTopic}} for senior developers.',
+			'prompt_template'      => 'Write about {{topic}}',
+			'article_structure_id' => null,
+		);
+
+		$content       = 'This article explores PHP 9.4 release candidate features in depth.';
+		$raw_prompt    = $title_builder->build($template, null, null, $content);
+
+		// The prompt builder does NOT resolve AI variables — it only handles system vars.
+		// Verify the placeholder is still present in the raw prompt.
+		$this->assertStringContainsString('{{PHPTopic}}', $raw_prompt, 'Title prompt should still contain the AI variable placeholder after build().');
+
+		// Now simulate what generate_title_from_context() must do: apply resolved AI
+		// variables via process_with_ai_variables() before sending to the AI service.
+		$resolved_ai_variables = array( 'PHPTopic' => 'PHP 9.4 Release Candidate' );
+		$final_prompt = $template_processor->process_with_ai_variables(
+			$raw_prompt,
+			null,
+			$resolved_ai_variables
+		);
+
+		// The placeholder must be fully resolved in the prompt that reaches the AI.
+		$this->assertStringNotContainsString('{{PHPTopic}}', $final_prompt, 'AI variable placeholder must be substituted before the prompt reaches the AI model.');
+		$this->assertStringContainsString('PHP 9.4 Release Candidate', $final_prompt, 'Resolved AI variable value must appear in the final title prompt.');
+	}
 }
