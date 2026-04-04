@@ -1,15 +1,21 @@
 <?php
 if (!defined('ABSPATH')) {
-    exit;
+	exit;
 }
 
 class AIPS_Planner {
 
-    public function __construct() {
-        add_action('wp_ajax_aips_generate_topics', array($this, 'ajax_generate_topics'));
-        add_action('wp_ajax_aips_bulk_schedule', array($this, 'ajax_bulk_schedule'));
-        add_action('wp_ajax_aips_bulk_generate_now', array($this, 'ajax_bulk_generate_now'));
-    }
+	/**
+	 * @var AIPS_Bulk_Generator_Service Shared bulk generation harness.
+	 */
+	private $bulk_generator_service;
+
+	public function __construct() {
+		$this->bulk_generator_service = $this->make_bulk_generator_service();
+		add_action('wp_ajax_aips_generate_topics', array($this, 'ajax_generate_topics'));
+		add_action('wp_ajax_aips_bulk_schedule', array($this, 'ajax_bulk_schedule'));
+		add_action('wp_ajax_aips_bulk_generate_now', array($this, 'ajax_bulk_generate_now'));
+	}
 
     public function ajax_generate_topics() {
         check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -178,23 +184,6 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('Missing required fields.', 'ai-post-scheduler')));
         }
 
-        // Enforce a bulk limit for synchronous generation to avoid PHP timeouts
-        $max_bulk = apply_filters('aips_bulk_run_now_limit', 5);
-        $max_bulk = absint($max_bulk);
-        if (0 === $max_bulk) {
-            $max_bulk = 5;
-        }
-        if (count($topics) > $max_bulk) {
-            wp_send_json_error(array(
-                'message' => sprintf(
-                    /* translators: 1: selected count, 2: max allowed */
-                    __('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation, or use "Schedule Selected Topics" instead.', 'ai-post-scheduler'),
-                    count($topics),
-                    $max_bulk
-                ),
-            ));
-        }
-
         $template = $this->get_template_by_id($template_id);
 
         if (!$template) {
@@ -207,45 +196,65 @@ class AIPS_Planner {
             wp_send_json_error(array('message' => __('AI Engine is not available.', 'ai-post-scheduler')));
         }
 
-        $post_ids = array();
-        $errors = array();
+        $result = $this->bulk_generator_service->run(
+            $topics,
+            function ( $topic ) use ( $generator, $template ) {
+                return $generator->generate_post($template, null, $topic);
+            },
+            array(
+                'history_type'    => 'bulk_generate_now',
+                'trigger_name'    => 'ajax_bulk_generate_now',
+                'user_action'     => 'bulk_generate_now',
+                'user_message'    => sprintf(
+                    /* translators: %d: number of topics */
+                    __('User initiated bulk generation for %d topics', 'ai-post-scheduler'),
+                    count($topics)
+                ),
+                'error_formatter' => function ( $topic, $msg ) {
+                    /* translators: 1: topic string, 2: error message */
+                    return sprintf(__('Topic "%1$s": %2$s', 'ai-post-scheduler'), $topic, $msg);
+                },
+            )
+        );
 
-        foreach ($topics as $topic) {
-            // Using legacy signature which generates a context inside AIPS_Generator
-            $result = $generator->generate_post($template, null, $topic);
-
-            if (is_wp_error($result)) {
-                $errors[] = sprintf(__('Topic "%1$s": %2$s', 'ai-post-scheduler'), $topic, $result->get_error_message());
-            } else {
-                $post_ids[] = is_array($result) ? $result : (int) $result;
-            }
+        if ($result->was_limited) {
+            wp_send_json_error(array(
+                'message' => sprintf(
+                    /* translators: 1: selected count, 2: max allowed */
+                    __('Too many topics selected (%1$d). Please select no more than %2$d at a time for immediate generation, or use "Schedule Selected Topics" instead.', 'ai-post-scheduler'),
+                    $result->failed_count,
+                    $result->max_bulk
+                ),
+            ));
+            return;
         }
 
-        if (empty($post_ids) && !empty($errors)) {
+        if (empty($result->post_ids) && !empty($result->errors)) {
             wp_send_json_error(array(
                 'message' => __('All topic generations failed.', 'ai-post-scheduler'),
-                'errors'  => $errors,
+                'errors'  => $result->errors,
             ));
+            return;
         }
 
         $message = sprintf(
             /* translators: %d: number of posts */
-            _n('%d post generated successfully!', '%d posts generated successfully!', count($post_ids), 'ai-post-scheduler'),
-            count($post_ids)
+            _n('%d post generated successfully!', '%d posts generated successfully!', count($result->post_ids), 'ai-post-scheduler'),
+            count($result->post_ids)
         );
 
-        if (!empty($errors)) {
+        if (!empty($result->errors)) {
             $message .= ' ' . sprintf(
                 /* translators: %d: number of failed topics */
-                _n('(%d failed)', '(%d failed)', count($errors), 'ai-post-scheduler'),
-                count($errors)
+                _n('(%d failed)', '(%d failed)', count($result->errors), 'ai-post-scheduler'),
+                count($result->errors)
             );
         }
 
         wp_send_json_success(array(
             'message'  => $message,
-            'post_ids' => $post_ids,
-            'errors'   => $errors,
+            'post_ids' => $result->post_ids,
+            'errors'   => $result->errors,
         ));
     }
 
@@ -256,6 +265,15 @@ class AIPS_Planner {
      */
     protected function make_generator() {
         return new AIPS_Generator();
+    }
+
+    /**
+     * Factory method for AIPS_Bulk_Generator_Service. Overrideable in tests.
+     *
+     * @return AIPS_Bulk_Generator_Service
+     */
+    protected function make_bulk_generator_service() {
+        return new AIPS_Bulk_Generator_Service();
     }
 
     /**
