@@ -22,6 +22,7 @@ class AIPS_Settings {
         add_action('admin_init', array($this, 'register_settings'));
         add_action('wp_ajax_aips_test_connection', array($this, 'ajax_test_connection'));
         add_action('wp_ajax_aips_notifications_data_hygiene', array($this, 'ajax_notifications_data_hygiene'));
+        add_action('wp_ajax_aips_reset_circuit_breaker', array($this, 'ajax_reset_circuit_breaker'));
     }
 
     /**
@@ -905,6 +906,30 @@ class AIPS_Settings {
                 'preferences_changed'=> $preferences_changed ? 1 : 0,
             ),
         ));
+    }
+
+    /**
+     * AJAX handler: Reset the AI circuit breaker.
+     *
+     * Requires manage_options capability and a valid nonce.
+     *
+     * @return void
+     */
+    public function ajax_reset_circuit_breaker() {
+        check_ajax_referer('aips_reset_circuit_breaker', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Unauthorized access.', 'ai-post-scheduler')));
+        }
+
+        if (!class_exists('AIPS_Resilience_Service')) {
+            wp_send_json_error(array('message' => __('Resilience service not available.', 'ai-post-scheduler')));
+        }
+
+        $resilience = new AIPS_Resilience_Service();
+        $resilience->reset_circuit_breaker();
+
+        wp_send_json_success(array('message' => __('Circuit breaker has been reset.', 'ai-post-scheduler')));
     }
 
     /**

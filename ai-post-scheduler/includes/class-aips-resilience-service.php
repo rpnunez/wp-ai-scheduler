@@ -20,6 +20,31 @@ if (!defined('ABSPATH')) {
 class AIPS_Resilience_Service {
 
     /**
+     * Error codes that represent permanent "user error" conditions (4xx equivalent).
+     * Retrying these wastes tokens and time — the loop exits immediately on a match.
+     *
+     * @var string[]
+     */
+    const NON_RETRYABLE_CODES = array(
+        'invalid_api_key',
+        'context_length_exceeded',
+        'model_not_found',
+        'invalid_request_error',
+        'content_policy_violation',
+        'billing_not_active',
+    );
+
+    /**
+     * Error codes that should immediately open the circuit breaker without waiting
+     * for the failure threshold to be reached.
+     *
+     * @var string[]
+     */
+    const IMMEDIATE_OPEN_CODES = array(
+        'insufficient_quota',
+    );
+
+    /**
      * @var AIPS_Logger Logger instance
      */
     private $logger;
@@ -94,6 +119,17 @@ class AIPS_Resilience_Service {
             }
 
             $last_error = $result;
+            $error_code = $result->get_error_code();
+
+            // Do not retry permanent "user error" conditions — retrying wastes tokens.
+            if (in_array($error_code, self::NON_RETRYABLE_CODES, true)) {
+                $this->logger->log("Non-retryable error '{$error_code}', aborting retry loop", 'error', array(
+                    'type'       => $type,
+                    'error_code' => $error_code,
+                    'error'      => $result->get_error_message(),
+                ));
+                break;
+            }
 
             // If we've reached max attempts, return the error
             if ($attempt >= $max_attempts) {
@@ -252,8 +288,12 @@ class AIPS_Resilience_Service {
 
     /**
      * Record a failed request for circuit breaker.
+     *
+     * @param string $error_code Optional. Provider error code.  If this matches one of the
+     *                           IMMEDIATE_OPEN_CODES (e.g. 'insufficient_quota'), the circuit
+     *                           is opened right away without waiting for the failure threshold.
      */
-    public function record_failure() {
+    public function record_failure($error_code = '') {
         $cb_config = $this->config->get_circuit_breaker_config();
 
         if (!$cb_config['enabled']) {
@@ -265,13 +305,35 @@ class AIPS_Resilience_Service {
         $this->circuit_breaker_state['failures']++;
         $this->circuit_breaker_state['last_failure_time'] = time();
 
-        // Open circuit if threshold exceeded
-        if ($this->circuit_breaker_state['failures'] >= $threshold) {
+        // Determine whether to open the circuit
+        $immediate_open = !empty($error_code) && in_array($error_code, self::IMMEDIATE_OPEN_CODES, true);
+        $threshold_reached = $this->circuit_breaker_state['failures'] >= $threshold;
+
+        if ($immediate_open || $threshold_reached) {
+            $was_already_open = $this->circuit_breaker_state['state'] === 'open';
             $this->circuit_breaker_state['state'] = 'open';
-            $this->logger->log('Circuit breaker opened after reaching failure threshold', 'error', array(
-                'failures' => $this->circuit_breaker_state['failures'],
-                'threshold' => $threshold,
+
+            $reason = $immediate_open
+                ? sprintf('immediate open due to error code: %s', $error_code)
+                : sprintf('failure threshold reached (%d/%d)', $this->circuit_breaker_state['failures'], $threshold);
+
+            $this->logger->log('Circuit breaker opened — ' . $reason, 'error', array(
+                'failures'   => $this->circuit_breaker_state['failures'],
+                'threshold'  => $threshold,
+                'error_code' => $error_code,
             ));
+
+            // Fire notification action once per transition to open
+            if (!$was_already_open) {
+                do_action('aips_circuit_breaker_opened', array(
+                    'failures'   => $this->circuit_breaker_state['failures'],
+                    'threshold'  => $threshold,
+                    'error_code' => $error_code,
+                    'reason'     => $reason,
+                    'dedupe_key' => 'circuit_breaker_opened',
+                    'dedupe_window' => 1800,
+                ));
+            }
         }
 
         $this->save_circuit_breaker_state();
@@ -300,6 +362,51 @@ class AIPS_Resilience_Service {
      */
     public function get_circuit_breaker_status() {
         return $this->circuit_breaker_state;
+    }
+
+    // ========================================
+    // Error Code Helpers
+    // ========================================
+
+    /**
+     * Attempt to extract a structured provider error code from an exception message.
+     *
+     * The Meow AI Engine forwards the raw provider (OpenAI, etc.) error as the
+     * exception message, often containing a JSON blob.  This method scans for
+     * known code strings so callers can pass a meaningful code to record_failure().
+     *
+     * @param string $message Raw exception or error message.
+     * @return string Provider error code, or '' when none can be identified.
+     */
+    public static function extract_error_code_from_message($message) {
+        $all_codes = array_merge(self::NON_RETRYABLE_CODES, self::IMMEDIATE_OPEN_CODES);
+
+        foreach ($all_codes as $code) {
+            if (stripos($message, $code) !== false) {
+                return $code;
+            }
+        }
+
+        // Attempt to decode a JSON payload embedded in the message (OpenAI style)
+        $json_start = strpos($message, '{');
+        if ($json_start !== false) {
+            $json_str = substr($message, $json_start);
+            $decoded  = json_decode($json_str, true);
+            if (is_array($decoded)) {
+                // e.g. {"error": {"code": "invalid_api_key", ...}}
+                $code_val = '';
+                if (!empty($decoded['error']['code'])) {
+                    $code_val = (string) $decoded['error']['code'];
+                } elseif (!empty($decoded['error']['type'])) {
+                    $code_val = (string) $decoded['error']['type'];
+                }
+                if ($code_val !== '') {
+                    return $code_val;
+                }
+            }
+        }
+
+        return '';
     }
 
     // ========================================
@@ -340,6 +447,15 @@ class AIPS_Resilience_Service {
                 'max' => $max_requests,
                 'period' => $period,
             ));
+
+            do_action('aips_rate_limit_reached', array(
+                'current_requests' => count($requests),
+                'max_requests'     => $max_requests,
+                'period_seconds'   => $period,
+                'dedupe_key'       => 'rate_limit_reached',
+                'dedupe_window'    => 900,
+            ));
+
             return false;
         }
 

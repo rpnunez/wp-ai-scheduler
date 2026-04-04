@@ -136,9 +136,10 @@ class AIPS_AI_Service {
                 return $error;
 
             } catch (Exception $e) {
-                $this->resilience_service->record_failure();
+                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $this->resilience_service->record_failure($provider_code);
 
-                $error = new WP_Error('generation_failed', $e->getMessage());
+                $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
                 $this->log_call('text', $prompt, $options, $error);
                 return $error;
             }
@@ -397,10 +398,11 @@ class AIPS_AI_Service {
 
                 return $image_url;
             } catch (Exception $e) {
-                $error = new WP_Error('generation_failed', $e->getMessage());
+                $provider_code = AIPS_Resilience_Service::extract_error_code_from_message($e->getMessage());
+                $error = new WP_Error($provider_code ?: 'generation_failed', $e->getMessage());
 
                 $this->log_call('image', $prompt, $options, $error);
-                $this->resilience_service->record_failure();
+                $this->resilience_service->record_failure($provider_code);
 
                 return $error;
             }

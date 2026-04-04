@@ -55,6 +55,14 @@ if (!defined('ABSPATH')) {
                                                     <textarea class="aips-form-input" rows="10" readonly style="font-family: monospace; font-size: 12px;"><?php echo esc_textarea(implode("\n", $check['details'])); ?></textarea>
                                                 </div>
                                             <?php endif; ?>
+                                            <?php if (!empty($check['cb_open'])) : ?>
+                                                <br>
+                                                <button type="button" class="aips-btn aips-btn-sm aips-btn-secondary aips-reset-circuit-breaker" style="margin-top: 6px;">
+                                                    <span class="dashicons dashicons-controls-repeat"></span>
+                                                    <?php esc_html_e('Reset Circuit', 'ai-post-scheduler'); ?>
+                                                </button>
+                                                <span class="aips-reset-circuit-result" style="display:none; margin-left: 8px;"></span>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <?php if ($check['status'] === 'ok') : ?>
@@ -238,6 +246,30 @@ jQuery(document).ready(function($) {
             ? <?php echo wp_json_encode( __( 'Hide Details', 'ai-post-scheduler' ) ); ?>
             : <?php echo wp_json_encode( __( 'Show Details', 'ai-post-scheduler' ) ); ?>;
         $(this).text(text);
+    });
+
+    // Reset Circuit Breaker
+    $(document).on('click', '.aips-reset-circuit-breaker', function(e) {
+        e.preventDefault();
+        var $btn    = $(this);
+        var $result = $btn.siblings('.aips-reset-circuit-result');
+        $btn.prop('disabled', true);
+        $.post(ajaxurl, {
+            action: 'aips_reset_circuit_breaker',
+            nonce:  <?php echo wp_json_encode( wp_create_nonce( 'aips_reset_circuit_breaker' ) ); ?>
+        }, function(response) {
+            if (response && response.success) {
+                $result.text(<?php echo wp_json_encode( __( 'Circuit reset. Reload the page to confirm.', 'ai-post-scheduler' ) ); ?>).show();
+                $btn.hide();
+            } else {
+                var msg = (response && response.data && response.data.message) ? response.data.message : <?php echo wp_json_encode( __( 'Reset failed.', 'ai-post-scheduler' ) ); ?>;
+                $result.text(msg).show();
+                $btn.prop('disabled', false);
+            }
+        }).fail(function() {
+            $result.text(<?php echo wp_json_encode( __( 'Request failed. Please try again.', 'ai-post-scheduler' ) ); ?>).show();
+            $btn.prop('disabled', false);
+        });
     });
 });
 </script>
