@@ -11,7 +11,7 @@
 	window.AIPS = window.AIPS || {};
 	var AIPS = window.AIPS;
 
-	Object.assign(AIPS, {
+	AIPS.Taxonomy = {
 		/**
 		 * Selected post IDs for taxonomy generation.
 		 */
@@ -563,11 +563,11 @@
 			e.preventDefault();
 			$('#aips-taxonomy-search').val('').trigger('search');
 		}
-	});
+	};
 
 	// Initialize on document ready
 	$(document).ready(function() {
-		AIPS.init();
+		AIPS.Taxonomy.init();
 	});
 
 })(jQuery);
