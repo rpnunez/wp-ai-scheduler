@@ -677,6 +677,43 @@ class AIPS_Admin_Assets {
             );
         }
 
+        if (strpos($hook, 'aips-taxonomy') !== false) {
+            wp_enqueue_style(
+                'aips-authors-style',
+                AIPS_PLUGIN_URL . 'assets/css/authors.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-admin-taxonomy',
+                AIPS_PLUGIN_URL . 'assets/js/taxonomy.js',
+                array('jquery', 'aips-utilities-script', 'aips-templates-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-admin-taxonomy', 'aipsTaxonomyL10n', array(
+                'nonce'                  => wp_create_nonce('aips_ajax_nonce'),
+                'selectTaxonomyType'     => __('Please select a taxonomy type.', 'ai-post-scheduler'),
+                'selectPost'             => __('Please select at least one post.', 'ai-post-scheduler'),
+                'selectAction'           => __('Please select an action.', 'ai-post-scheduler'),
+                'selectItem'             => __('Please select at least one item.', 'ai-post-scheduler'),
+                'confirmBulkAction'      => __('Are you sure you want to %s %d items?', 'ai-post-scheduler'),
+                'confirmDelete'          => __('Are you sure you want to delete this item?', 'ai-post-scheduler'),
+                'confirmCreateTerm'      => __('Create this term in WordPress?', 'ai-post-scheduler'),
+                'generating'             => __('Generating...', 'ai-post-scheduler'),
+                'generate'               => __('Generate', 'ai-post-scheduler'),
+                'actionFailed'           => __('Action failed.', 'ai-post-scheduler'),
+                'generationFailed'       => __('Generation failed.', 'ai-post-scheduler'),
+                'deleteFailed'           => __('Delete failed.', 'ai-post-scheduler'),
+                'termCreationFailed'     => __('Term creation failed.', 'ai-post-scheduler'),
+                'updateFailed'           => __('Update failed.', 'ai-post-scheduler'),
+                'item'                   => __('item', 'ai-post-scheduler'),
+                'items'                  => __('items', 'ai-post-scheduler'),
+            ));
+        }
+
         if (strpos($hook, 'aips-sources') !== false) {
             wp_enqueue_script(
                 'aips-admin-sources',

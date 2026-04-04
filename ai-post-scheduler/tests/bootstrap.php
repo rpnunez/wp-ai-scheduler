@@ -1032,6 +1032,7 @@ if (file_exists(WP_TESTS_DIR . '/includes/functions.php')) {
         'class-aips-prompt-builder-article-structure-section.php',
         'class-aips-prompt-builder-topic.php',
         'class-aips-prompt-builder-authors.php',
+        'class-aips-prompt-builder-taxonomy.php',
         'class-aips-article-structure-manager.php',
         'class-aips-template-type-selector.php',
         'class-aips-interval-calculator.php',
