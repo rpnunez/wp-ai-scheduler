@@ -229,18 +229,20 @@ class AIPS_Autoloader_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that file paths are constructed correctly
+	 * Test that the PSR-4 and legacy AIPS_ classmap loaders coexist.
+	 *
+	 * AIPS_Config (legacy classmap) and AIPS\Support\AutoloadSmoke (PSR-4)
+	 * must both be resolvable in the same runtime.
 	 */
-	public function test_autoloader_file_paths() {
-		$class_name = 'AIPS_Test_Class';
-		$class_file = AIPS_Autoloader::convert_class_name_to_filename($class_name);
-		$expected_path = AIPS_PLUGIN_DIR . 'includes/' . $class_file;
-		
-		// Verify path structure
-		$this->assertStringContainsString(
-			'includes/class-aips-test-class.php',
-			$expected_path,
-			'Path should follow expected structure'
+	public function test_dual_loader_coexistence() {
+		$this->assertTrue(
+			class_exists( 'AIPS_Config' ),
+			'Legacy classmap class AIPS_Config must be resolvable'
+		);
+
+		$this->assertTrue(
+			class_exists( 'AIPS\\Support\\AutoloadSmoke' ),
+			'PSR-4 class AIPS\\Support\\AutoloadSmoke must be resolvable'
 		);
 	}
 }
