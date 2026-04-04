@@ -637,11 +637,33 @@ class AIPS_AI_Edit_Controller {
 
 		// On success, update component statuses so the post is no longer marked incomplete
 		// for the image component and clear the recoverable flag.
-		$post_manager = new AIPS_Post_Manager();
-		$statuses     = json_decode((string) get_post_meta($post_id, 'aips_post_generation_component_statuses', true), true);
+		$post_manager        = new AIPS_Post_Manager();
+		$raw_statuses_json   = (string) get_post_meta($post_id, 'aips_post_generation_component_statuses', true);
+		$statuses            = json_decode($raw_statuses_json, true);
 		if (is_array($statuses)) {
 			$statuses['featured_image'] = true;
 			$post_manager->update_generation_status_meta($post_id, $statuses, null);
+		} else {
+			// Stored component statuses are absent or malformed; fall back to a minimal
+			// update that at least clears the image-incomplete and recoverable flags.
+			$this->logger->log(
+				sprintf(
+					'aips_recover_post_image: could not decode component_statuses for post %d (raw: %s); using fallback.',
+					$post_id,
+					$raw_statuses_json
+				),
+				'warning'
+			);
+			$post_manager->update_generation_status_meta(
+				$post_id,
+				array(
+					'post_title'     => true,
+					'post_excerpt'   => true,
+					'post_content'   => true,
+					'featured_image' => true,
+				),
+				false
+			);
 		}
 
 		// Fire reconciliation hook so other listeners (e.g. state reconciler) can react.
