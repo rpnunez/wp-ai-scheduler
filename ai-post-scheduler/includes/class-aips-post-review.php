@@ -29,13 +29,19 @@ class AIPS_Post_Review {
 	 * @var AIPS_History_Service Service for history logging
 	 */
 	private $history_service;
+
+	/**
+	 * @var AIPS_Bulk_Generator_Service Shared bulk generation harness
+	 */
+	private $bulk_generator_service;
 	
 	/**
 	 * Initialize the post review handler.
 	 */
 	public function __construct() {
-		$this->repository = new AIPS_Post_Review_Repository();
-		$this->history_service = new AIPS_History_Service();
+		$this->repository             = new AIPS_Post_Review_Repository();
+		$this->history_service        = new AIPS_History_Service();
+		$this->bulk_generator_service = new AIPS_Bulk_Generator_Service( $this->history_service );
 		
 		// Register AJAX handlers
 		add_action('wp_ajax_aips_get_draft_posts', array($this, 'ajax_get_draft_posts'));
@@ -459,6 +465,14 @@ class AIPS_Post_Review {
 	
 	/**
 	 * AJAX handler to regenerate multiple posts.
+	 *
+	 * Delegates the batch harness (soft limit, history, loop) to
+	 * AIPS_Bulk_Generator_Service.  Per-item validation guards are moved into
+	 * the $generate_fn closure so they return WP_Error (counted as failures)
+	 * rather than using continue statements.
+	 *
+	 * The `aips_post_review_bulk_regenerate_max_batch` filter controls how many
+	 * items are processed in one request (soft truncation).
 	 */
 	public function ajax_bulk_regenerate_posts() {
 		check_ajax_referer('aips_ajax_nonce', 'nonce');
@@ -473,248 +487,188 @@ class AIPS_Post_Review {
 			wp_send_json_error(array('message' => __('No posts selected.', 'ai-post-scheduler')));
 		}
 
-		// Determine batch size and limit the number of items processed in a single request.
-		$total_requested   = count($items);
-		$max_batch_size    = apply_filters('aips_post_review_bulk_regenerate_max_batch', 5);
-		$items_to_process  = $items;
-		$batch_was_limited = false;
+		$total_requested = count($items);
+		$history_service = $this->history_service;
+		$generator       = new AIPS_Generator();
+		$template_repo   = new AIPS_Template_Repository();
 
-		if ($max_batch_size > 0 && $total_requested > $max_batch_size) {
-			$items_to_process  = array_slice($items, 0, $max_batch_size);
-			$batch_was_limited = true;
-		}
+		$result = $this->bulk_generator_service->run(
+			$items,
+			function ( $item ) use ( $history_service, $generator, $template_repo ) {
+				if (!is_array($item)) {
+					return new WP_Error(
+						'invalid_item',
+						__('Invalid item format.', 'ai-post-scheduler')
+					);
+				}
 
-		// Create history container for bulk regenerate operation
-		$history = $this->history_service->create('bulk_regenerate', array(
-			'user_id'        => get_current_user_id(),
-			'source'         => 'manual_ui',
-			'trigger'        => 'ajax_bulk_regenerate_posts',
-			'entity_type'    => 'draft_posts',
-			// Track how many posts were requested for regeneration, even if we process a subset.
-			'entity_count'   => $total_requested,
-			'processed_count' => count($items_to_process),
-		));
+				$post_id    = isset($item['post_id'])    ? absint($item['post_id'])    : 0;
+				$history_id = isset($item['history_id']) ? absint($item['history_id']) : 0;
 
-		$history->record_user_action(
-			'bulk_regenerate_posts',
-			sprintf(
-				/* translators: 1: number of requested draft posts, 2: number of processed draft posts */
-				__('User initiated bulk regenerate for %1$d draft posts (processing %2$d in this batch)', 'ai-post-scheduler'),
-				$total_requested,
-				count($items_to_process)
-			),
-			array(
-				'item_count'      => $total_requested,
-				'processed_count' => count($items_to_process),
-			)
-		);
+				if (!$history_id) {
+					return new WP_Error(
+						'missing_history_id',
+						__('Missing history ID.', 'ai-post-scheduler')
+					);
+				}
 
-		if ($batch_was_limited) {
-			$history->record_activity(
-				'bulk_regenerate_batch_limited',
-				sprintf(
-					/* translators: 1: max batch size, 2: total requested items */
-					__('Bulk regenerate batch limited to %1$d items out of %2$d requested to avoid timeouts.', 'ai-post-scheduler'),
-					$max_batch_size,
-					$total_requested
-				),
-				array(
-					'max_batch_size'   => $max_batch_size,
-					'total_requested'  => $total_requested,
-					'processed_in_batch' => count($items_to_process),
-				)
-			);
-		}
+				$history_item = $history_service->get_by_id($history_id);
 
-		$success_count = 0;
-		$failed_count = 0;
-		$generator = new AIPS_Generator();
-		$template_repository = new AIPS_Template_Repository();
+				if (!$history_item || !$history_item->template_id) {
+					return new WP_Error(
+						'no_history',
+						sprintf(
+							/* translators: %d: history record ID */
+							__('History item not found or no template associated (history ID: %d)', 'ai-post-scheduler'),
+							$history_id
+						)
+					);
+				}
 
-		foreach ($items_to_process as $item) {
-			if (!is_array($item)) {
-				$failed_count++;
-				continue;
-			}
+				$history_post_id = isset($history_item->post_id) ? absint($history_item->post_id) : 0;
+				if (!$history_post_id) {
+					return new WP_Error(
+						'no_post_id',
+						sprintf(
+							/* translators: %d: history record ID */
+							__('History record %d has no associated post ID', 'ai-post-scheduler'),
+							$history_id
+						)
+					);
+				}
 
-			$post_id = isset($item['post_id']) ? absint($item['post_id']) : 0;
-			$history_id = isset($item['history_id']) ? absint($item['history_id']) : 0;
+				// Validate any client-supplied post_id against the trusted history value.
+				if ($post_id && $post_id !== $history_post_id) {
+					return new WP_Error(
+						'post_mismatch',
+						sprintf(
+							/* translators: 1: client post ID, 2: history post ID */
+							__('Post ID mismatch: client %1$d does not match history %2$d', 'ai-post-scheduler'),
+							$post_id,
+							$history_post_id
+						)
+					);
+				}
 
-			if (!$history_id) {
-				$failed_count++;
-				continue;
-			}
+				// Use the trusted ID from the history record from here on.
+				$post_id = $history_post_id;
 
-			// Get the history item and derive a trusted post ID from it.
-			$history_item = $this->history_service->get_by_id($history_id);
+				$post = get_post($post_id);
+				if (!$post || $post->post_status !== 'draft') {
+					return new WP_Error(
+						'not_draft',
+						sprintf(
+							/* translators: %d: post ID */
+							__('Post ID %d not found or not a draft', 'ai-post-scheduler'),
+							$post_id
+						)
+					);
+				}
 
-			if (!$history_item || !$history_item->template_id) {
-				$failed_count++;
-				$history->record(
-					'warning',
-					sprintf(__('Cannot regenerate post ID %d: History item not found or no template associated', 'ai-post-scheduler'), $post_id),
-					null,
-					null,
-					array('post_id' => $post_id, 'history_id' => $history_id)
-				);
-				continue;
-			}
+				if (!$history_service->post_has_history_and_completed($post_id)) {
+					return new WP_Error(
+						'not_in_queue',
+						sprintf(
+							/* translators: %d: post ID */
+							__('Post ID %d is not in the review queue', 'ai-post-scheduler'),
+							$post_id
+						)
+					);
+				}
 
-			$history_post_id = isset($history_item->post_id) ? absint($history_item->post_id) : 0;
-			if (!$history_post_id) {
-				$failed_count++;
-				$history->record(
-					'warning',
-					sprintf(__('Cannot regenerate: History record %d has no associated post ID', 'ai-post-scheduler'), $history_id),
-					null,
-					null,
-					array('history_id' => $history_id)
-				);
-				continue;
-			}
+				$template = $template_repo->get_by_id($history_item->template_id);
+				if (!$template) {
+					return new WP_Error(
+						'no_template',
+						sprintf(
+							/* translators: %d: post ID */
+							__('Template not found for post ID %d', 'ai-post-scheduler'),
+							$post_id
+						)
+					);
+				}
 
-			// If a client-supplied post_id was provided, ensure it matches the history record.
-			if ($post_id && $post_id !== $history_post_id) {
-				$failed_count++;
-				$history->record(
-					'warning',
-					sprintf(
-						__('Skipping regeneration: Client post ID %1$d does not match history post ID %2$d', 'ai-post-scheduler'),
-						$post_id,
-						$history_post_id
-					),
-					null,
-					null,
-					array(
-						'post_id'      => $post_id,
-						'history_id'   => $history_id,
-						'history_post' => $history_post_id,
-					)
-				);
-				continue;
-			}
+				if (!current_user_can('delete_post', $post_id)) {
+					return new WP_Error(
+						'no_permission',
+						sprintf(
+							/* translators: %d: post ID */
+							__('Insufficient permissions to regenerate post ID %d', 'ai-post-scheduler'),
+							$post_id
+						)
+					);
+				}
 
-			// From this point on, only use the trusted post ID from the history record.
-			$post_id = $history_post_id;
+				if (!wp_delete_post($post_id, true)) {
+					return new WP_Error(
+						'delete_failed',
+						sprintf(
+							/* translators: %d: post ID */
+							__('Failed to delete old post ID %d for regeneration', 'ai-post-scheduler'),
+							$post_id
+						)
+					);
+				}
 
-			// Verify the post exists and is a draft
-			$post = get_post($post_id);
-			if (!$post || $post->post_status !== 'draft') {
-				$failed_count++;
-				$history->record(
-					'warning',
-					sprintf(__('Cannot regenerate post ID %d: Not found or not a draft', 'ai-post-scheduler'), $post_id),
-					null,
-					null,
-					array('post_id' => $post_id)
-				);
-				continue;
-			}
+				$history_service->update_history_record($history_id, array(
+					'status'        => 'pending',
+					'post_id'       => null,
+					'error_message' => null,
+				));
 
-			// Verify the post is in the review queue
-			if (!$this->history_service->post_has_history_and_completed($post_id)) {
-				$failed_count++;
-				$history->record(
-					'warning',
-					sprintf(__('Cannot regenerate post ID %d: Not in review queue', 'ai-post-scheduler'), $post_id),
-					null,
-					null,
-					array('post_id' => $post_id)
-				);
-				continue;
-			}
+				$regen_result = $generator->generate_post($template);
 
-			// Get the template
-			$template = $template_repository->get_by_id($history_item->template_id);
-
-			if (!$template) {
-				$failed_count++;
-				$history->record('warning', sprintf(__('Cannot regenerate post ID %d: Template not found', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
-				continue;
-			}
-
-			// Check per-post capability
-			if (!current_user_can('delete_post', $post_id)) {
-				$failed_count++;
-				$history->record('warning', sprintf(__('Cannot regenerate post ID %d: Insufficient permissions', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
-				continue;
-			}
-
-			$delete_result = wp_delete_post($post_id, true);
-
-			if (!$delete_result) {
-				$failed_count++;
-				$history->record('warning', sprintf(__('Failed to delete old post ID %d for regeneration', 'ai-post-scheduler'), $post_id), null, null, array('post_id' => $post_id));
-				continue;
-			}
-
-			// Update history status to pending for regeneration
-			$this->history_service->update_history_record($history_id, array(
-				'status' => 'pending',
-				'post_id' => null,
-				'error_message' => null,
-			));
-
-			// Trigger regeneration
-			$result = $generator->generate_post($template);
-
-			if (is_wp_error($result)) {
-				$failed_count++;
-				$history->record(
-					'warning',
-					sprintf(__('Post regeneration failed for history ID %d: %s', 'ai-post-scheduler'), $history_id, $result->get_error_message()),
-					array('event_type' => 'post_regenerated', 'event_status' => 'failed'),
-					null,
-					array('history_id' => $history_id, 'error' => $result->get_error_message())
-				);
-			} else {
-				$success_count++;
-				$history->record(
-					'activity',
-					sprintf(__('Post regenerated from review queue for history ID %d', 'ai-post-scheduler'), $history_id),
-					array('event_type' => 'post_regenerated', 'event_status' => 'success'),
-					null,
-					array('history_id' => $history_id, 'new_post_id' => $result)
-				);
+				if (is_wp_error($regen_result)) {
+					return $regen_result;
+				}
 
 				/**
 				 * Fires after a post is regenerated from the review queue.
 				 *
-				 * @param int $history_id History ID of the post being regenerated.
+				 * @param int $history_id History ID of the regenerated post.
 				 */
 				do_action('aips_post_review_regenerated', $history_id);
-			}
-		}
 
-		$history->record('activity', sprintf(__('Bulk regenerate completed: %d started, %d failed', 'ai-post-scheduler'), $success_count, $failed_count), null, null, array(
-			'regenerated_count' => $success_count,
-			'failed_count' => $failed_count,
-			'requested_count' => count($items)
-		));
+				return $regen_result;
+			},
+			array(
+				'limit_filter' => 'aips_post_review_bulk_regenerate_max_batch',
+				'limit_mode'   => 'soft',
+				'history_type' => 'bulk_regenerate',
+				'history_meta' => array(
+					'entity_type'  => 'draft_posts',
+					'entity_count' => $total_requested,
+				),
+				'trigger_name' => 'ajax_bulk_regenerate_posts',
+				'user_action'  => 'bulk_regenerate_posts',
+				'user_message' => sprintf(
+					/* translators: %d: number of draft posts */
+					__('User initiated bulk regenerate for %d draft posts', 'ai-post-scheduler'),
+					$total_requested
+				),
+			)
+		);
 
-		if ($failed_count > 0) {
-			$history->complete_failure(
-				sprintf(__('Bulk regenerate completed with %d failures', 'ai-post-scheduler'), $failed_count),
-				array('success_count' => $success_count, 'failed_count' => $failed_count)
-			);
-
+		if ($result->failed_count > 0) {
 			wp_send_json_error(array(
 				'message'       => sprintf(
 					/* translators: 1: number of successful regenerations, 2: number of failures */
 					__('%1$d posts regeneration started successfully, %2$d failed.', 'ai-post-scheduler'),
-					$success_count,
-					$failed_count
+					$result->success_count,
+					$result->failed_count
 				),
-				'success_count' => $success_count,
-				'failed_count'  => $failed_count,
+				'success_count' => $result->success_count,
+				'failed_count'  => $result->failed_count,
 			));
 		} else {
-			$history->complete_success(array('regenerated_count' => $success_count));
-
 			wp_send_json_success(array(
-				'message'       => sprintf(__('%d posts regeneration started successfully.', 'ai-post-scheduler'), $success_count),
-				'success_count' => $success_count,
-				'failed_count'  => $failed_count,
+				'message'       => sprintf(
+					/* translators: %d: number of posts */
+					__('%d posts regeneration started successfully.', 'ai-post-scheduler'),
+					$result->success_count
+				),
+				'success_count' => $result->success_count,
+				'failed_count'  => $result->failed_count,
 			));
 		}
 	}

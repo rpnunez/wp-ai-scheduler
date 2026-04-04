@@ -354,11 +354,7 @@ class AIPS_Unified_Schedule_Service {
 			$result[] = array(
 				'id'          => absint($author->id),
 				'type'        => self::TYPE_AUTHOR_TOPIC,
-				'title'       => sprintf(
-					/* translators: Author name */
-					__('%s – Topic Generation', 'ai-post-scheduler'),
-					$author->name
-				),
+				'title'       => $author->name,
 				'subtitle'    => isset($author->field_niche) ? $author->field_niche : '',
 				'cron_hook'   => 'aips_generate_author_topics',
 				'frequency'   => $author->topic_generation_frequency,
@@ -426,11 +422,7 @@ class AIPS_Unified_Schedule_Service {
 			$result[] = array(
 				'id'          => absint($author->id),
 				'type'        => self::TYPE_AUTHOR_POST,
-				'title'       => sprintf(
-					/* translators: Author name */
-					__('%s – Post Generation', 'ai-post-scheduler'),
-					$author->name
-				),
+				'title'       => $author->name,
 				'subtitle'    => $author->field_niche,
 				'cron_hook'   => 'aips_generate_author_posts',
 				'frequency'   => $author->post_generation_frequency,
