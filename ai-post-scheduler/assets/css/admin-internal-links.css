@@ -1,0 +1,223 @@
+/**
+ * Internal Links Admin Page — Scoped Styles
+ *
+ * Relies on shared primitives from admin.css (aips-btn, aips-table,
+ * aips-modal-*, etc.). Only page-specific overrides live here.
+ *
+ * @package AI_Post_Scheduler
+ * @since 2.2.0
+ */
+
+/* -----------------------------------------------------------------------
+   Stats Summary Bar
+----------------------------------------------------------------------- */
+.aips-internal-links-stats {
+	display: flex;
+	gap: 24px;
+	flex-wrap: wrap;
+}
+
+.aips-stat-item {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	min-width: 100px;
+}
+
+.aips-stat-value {
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1;
+	color: #1d2327;
+}
+
+.aips-stat-label {
+	font-size: 12px;
+	color: #646970;
+	margin-top: 4px;
+}
+
+.aips-stat-indexed .aips-stat-value  { color: #00a32a; }
+.aips-stat-pending .aips-stat-value  { color: #996800; }
+.aips-stat-error   .aips-stat-value  { color: #d63638; }
+
+/* -----------------------------------------------------------------------
+   Step headings for Generate tab
+----------------------------------------------------------------------- */
+.aips-il-generate-layout {
+	display: flex;
+	flex-direction: column;
+	gap: 28px;
+}
+
+.aips-il-step {
+	padding: 20px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #fff;
+}
+
+.aips-il-step-heading {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 14px;
+	font-weight: 600;
+	margin: 0 0 16px;
+}
+
+.aips-il-step-number {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: #2271b1;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+	flex-shrink: 0;
+}
+
+/* -----------------------------------------------------------------------
+   Post selector autocomplete
+----------------------------------------------------------------------- */
+.aips-il-post-selector {
+	position: relative;
+	max-width: 480px;
+}
+
+.aips-il-suggestions-dropdown {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background: #fff;
+	border: 1px solid #8c8f94;
+	border-top: none;
+	border-radius: 0 0 4px 4px;
+	box-shadow: 0 4px 8px rgba(0,0,0,.1);
+	z-index: 9999;
+	max-height: 260px;
+	overflow-y: auto;
+}
+
+.aips-il-suggestion-item {
+	padding: 8px 12px;
+	cursor: pointer;
+	font-size: 13px;
+}
+
+.aips-il-suggestion-item:hover,
+.aips-il-suggestion-item.is-active {
+	background: #f0f6fc;
+}
+
+.aips-il-suggestion-item .aips-il-suggestion-excerpt {
+	color: #646970;
+	font-size: 11px;
+	margin-top: 2px;
+}
+
+.aips-il-post-preview {
+	margin-top: 12px;
+	padding: 10px 14px;
+	background: #f6f7f7;
+	border-left: 3px solid #2271b1;
+	border-radius: 2px;
+	max-width: 600px;
+}
+
+/* -----------------------------------------------------------------------
+   Settings row (Max Links + Min Similarity)
+----------------------------------------------------------------------- */
+.aips-il-settings-row {
+	display: flex;
+	gap: 24px;
+	flex-wrap: wrap;
+	align-items: center;
+	margin-bottom: 16px;
+}
+
+.aips-il-settings-row label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+}
+
+/* -----------------------------------------------------------------------
+   Similarity score bar in related posts table
+----------------------------------------------------------------------- */
+.aips-il-score-bar-wrap {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.aips-il-score-bar {
+	height: 8px;
+	border-radius: 4px;
+	background: #e0e0e0;
+	width: 100px;
+	overflow: hidden;
+}
+
+.aips-il-score-bar-fill {
+	height: 100%;
+	border-radius: 4px;
+	background: #2271b1;
+	transition: width 0.3s;
+}
+
+.aips-il-score-value {
+	font-size: 12px;
+	color: #646970;
+	min-width: 36px;
+}
+
+/* -----------------------------------------------------------------------
+   Step actions
+----------------------------------------------------------------------- */
+.aips-il-step-actions {
+	margin-top: 16px;
+	display: flex;
+	gap: 8px;
+}
+
+/* -----------------------------------------------------------------------
+   Preview content area in modal
+----------------------------------------------------------------------- */
+.aips-il-preview-content {
+	font-size: 14px;
+	line-height: 1.7;
+	max-width: 820px;
+	padding: 8px 0;
+}
+
+.aips-il-preview-content a {
+	color: #2271b1;
+	text-decoration: underline;
+}
+
+/* -----------------------------------------------------------------------
+   Status badges (reuse shared .aips-badge; add semantic colours here)
+----------------------------------------------------------------------- */
+.aips-badge-indexed { background: #e9f5ec; color: #00a32a; }
+.aips-badge-pending { background: #fcf0c8; color: #7a5300; }
+.aips-badge-error   { background: #fce8e8; color: #d63638; }
+
+/* -----------------------------------------------------------------------
+   Pagination
+----------------------------------------------------------------------- */
+.aips-pagination {
+	display: flex;
+	gap: 4px;
+	margin-top: 12px;
+	justify-content: center;
+}
+
+.aips-pagination button {
+	min-width: 32px;
+}

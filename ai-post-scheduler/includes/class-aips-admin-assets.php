@@ -703,5 +703,46 @@ class AIPS_Admin_Assets {
                 true
             );
         }
+
+        // Internal Links Page Scripts & Styles
+        if (strpos($hook, 'aips-internal-links') !== false) {
+            wp_enqueue_style(
+                'aips-internal-links-style',
+                AIPS_PLUGIN_URL . 'assets/css/admin-internal-links.css',
+                array('aips-admin-style'),
+                AIPS_VERSION
+            );
+
+            wp_enqueue_script(
+                'aips-internal-links-script',
+                AIPS_PLUGIN_URL . 'assets/js/admin-internal-links.js',
+                array('jquery', 'aips-admin-script', 'aips-utilities-script'),
+                AIPS_VERSION,
+                true
+            );
+
+            wp_localize_script('aips-internal-links-script', 'aipsInternalLinksL10n', array(
+                'loading'           => __('Loading…', 'ai-post-scheduler'),
+                'loadError'         => __('Failed to load data.', 'ai-post-scheduler'),
+                'noPostsFound'      => __('No posts found.', 'ai-post-scheduler'),
+                'noRelatedFound'    => __('No related posts found above the similarity threshold.', 'ai-post-scheduler'),
+                'indexNow'          => __('Index Now', 'ai-post-scheduler'),
+                'indexing'          => __('Indexing…', 'ai-post-scheduler'),
+                'indexAllPosts'     => __('Index All Posts', 'ai-post-scheduler'),
+                'confirmIndexAll'   => __('Queue all published posts for embedding indexing? This may take a while.', 'ai-post-scheduler'),
+                'searching'         => __('Searching…', 'ai-post-scheduler'),
+                'findRelatedPosts'  => __('Find Related Posts', 'ai-post-scheduler'),
+                'generatingPreview' => __('Generating preview…', 'ai-post-scheduler'),
+                'previewLinks'      => __('Preview Links', 'ai-post-scheduler'),
+                'saving'            => __('Saving…', 'ai-post-scheduler'),
+                'applySave'         => __('Apply &amp; Save', 'ai-post-scheduler'),
+                'selectPostFirst'   => __('Please select a post first.', 'ai-post-scheduler'),
+                'selectAtLeastOne'  => __('Please select at least one related post.', 'ai-post-scheduler'),
+                'errorGeneric'      => __('An error occurred. Please try again.', 'ai-post-scheduler'),
+                'statusIndexed'     => __('Indexed', 'ai-post-scheduler'),
+                'statusPending'     => __('Pending', 'ai-post-scheduler'),
+                'statusError'       => __('Error', 'ai-post-scheduler'),
+            ));
+        }
     }
 }

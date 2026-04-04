@@ -101,6 +101,33 @@ class AIPS_Settings {
             'sanitize_callback' => array($this, 'sanitize_similarity_threshold'),
             'default' => 0.8
         ));
+
+        register_setting('aips_settings', 'aips_pinecone_api_key', array(
+            'sanitize_callback' => 'sanitize_text_field',
+        ));
+        register_setting('aips_settings', 'aips_pinecone_index_name', array(
+            'sanitize_callback' => 'sanitize_text_field',
+        ));
+        register_setting('aips_settings', 'aips_pinecone_namespace', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => 'aips',
+        ));
+        register_setting('aips_settings', 'aips_pinecone_region', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default'           => 'us-east-1',
+        ));
+        register_setting('aips_settings', 'aips_internal_links_top_n', array(
+            'sanitize_callback' => 'absint',
+            'default'           => 10,
+        ));
+        register_setting('aips_settings', 'aips_internal_links_min_score', array(
+            'sanitize_callback' => array($this, 'sanitize_similarity_threshold'),
+            'default'           => 0.75,
+        ));
+        register_setting('aips_settings', 'aips_internal_links_auto_index', array(
+            'sanitize_callback' => 'absint',
+            'default'           => 0,
+        ));
         
         // -----------------------------------------------------------------------
         // General section: Default Post Status, Default Category
@@ -220,6 +247,72 @@ class AIPS_Settings {
             array($this, 'unsplash_access_key_field_callback'),
             'aips-settings',
             'aips_api_keys_section'
+        );
+
+        // -----------------------------------------------------------------------
+        // Integrations section: Pinecone / Internal Links
+        // -----------------------------------------------------------------------
+        add_settings_section(
+            'aips_integrations_section',
+            __('Integrations', 'ai-post-scheduler'),
+            array($this, 'integrations_section_callback'),
+            'aips-settings'
+        );
+
+        add_settings_field(
+            'aips_pinecone_api_key',
+            __('Pinecone API Key', 'ai-post-scheduler'),
+            array($this, 'pinecone_api_key_field_callback'),
+            'aips-settings',
+            'aips_integrations_section'
+        );
+
+        add_settings_field(
+            'aips_pinecone_index_name',
+            __('Pinecone Index Name', 'ai-post-scheduler'),
+            array($this, 'pinecone_index_name_field_callback'),
+            'aips-settings',
+            'aips_integrations_section'
+        );
+
+        add_settings_field(
+            'aips_pinecone_namespace',
+            __('Pinecone Namespace', 'ai-post-scheduler'),
+            array($this, 'pinecone_namespace_field_callback'),
+            'aips-settings',
+            'aips_integrations_section'
+        );
+
+        add_settings_field(
+            'aips_pinecone_region',
+            __('Pinecone Region', 'ai-post-scheduler'),
+            array($this, 'pinecone_region_field_callback'),
+            'aips-settings',
+            'aips_integrations_section'
+        );
+
+        add_settings_field(
+            'aips_internal_links_top_n',
+            __('Internal Links — Max Results', 'ai-post-scheduler'),
+            array($this, 'internal_links_top_n_field_callback'),
+            'aips-settings',
+            'aips_integrations_section'
+        );
+
+        add_settings_field(
+            'aips_internal_links_min_score',
+            __('Internal Links — Min Similarity', 'ai-post-scheduler'),
+            array($this, 'internal_links_min_score_field_callback'),
+            'aips-settings',
+            'aips_integrations_section'
+        );
+
+        add_settings_field(
+            'aips_internal_links_auto_index',
+            __('Auto-Index on Save', 'ai-post-scheduler'),
+            array($this, 'internal_links_auto_index_field_callback'),
+            'aips-settings',
+            'aips_integrations_section'
         );
 
         // -----------------------------------------------------------------------
@@ -1101,5 +1194,145 @@ class AIPS_Settings {
             // Even though the prompt is hardcoded ("Say Hello World"), the AI response should be treated as untrusted.
             wp_send_json_success(array('message' => __('Connection successful! AI response: ', 'ai-post-scheduler') . esc_html($result)));
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Integrations section callbacks
+    // -------------------------------------------------------------------------
+
+    /**
+     * Render the description for the Integrations settings section.
+     *
+     * @return void
+     */
+    public function integrations_section_callback() {
+        echo '<p>' . esc_html__('Configure Pinecone vector database credentials for Semantic Internal Linking.', 'ai-post-scheduler') . '</p>';
+        ?>
+        <p>
+            <button type="button" id="aips-test-pinecone-connection" class="button button-secondary">
+                <?php esc_html_e('Test Pinecone Connection', 'ai-post-scheduler'); ?>
+            </button>
+            <span id="aips-pinecone-test-result" style="margin-left:10px;"></span>
+        </p>
+        <script>
+        jQuery(function($){
+            $('#aips-test-pinecone-connection').on('click', function(){
+                var $btn = $(this);
+                var $result = $('#aips-pinecone-test-result');
+                $btn.prop('disabled', true);
+                $result.text('<?php echo esc_js(__('Testing…', 'ai-post-scheduler')); ?>');
+                $.post(ajaxurl, {
+                    action: 'aips_test_pinecone_connection',
+                    nonce:  '<?php echo esc_js(wp_create_nonce('aips_ajax_nonce')); ?>',
+                }, function(response){
+                    $btn.prop('disabled', false);
+                    if (response.success) {
+                        $result.css('color','green').text(response.data.message + ' (vectors: ' + response.data.vector_count + ')');
+                    } else {
+                        $result.css('color','red').text(response.data.message);
+                    }
+                }).fail(function(){
+                    $btn.prop('disabled', false);
+                    $result.css('color','red').text('<?php echo esc_js(__('Request failed.', 'ai-post-scheduler')); ?>');
+                });
+            });
+        });
+        </script>
+        <?php
+    }
+
+    /**
+     * Render the Pinecone API Key field.
+     *
+     * @return void
+     */
+    public function pinecone_api_key_field_callback() {
+        $value = get_option('aips_pinecone_api_key', '');
+        ?>
+        <input type="password" name="aips_pinecone_api_key" value="<?php echo esc_attr($value); ?>" class="regular-text" autocomplete="new-password">
+        <p class="description"><?php esc_html_e('Your Pinecone API key. Found in the Pinecone console under API Keys.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Pinecone Index Name field.
+     *
+     * @return void
+     */
+    public function pinecone_index_name_field_callback() {
+        $value = get_option('aips_pinecone_index_name', '');
+        ?>
+        <input type="text" name="aips_pinecone_index_name" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="e.g. wp-posts">
+        <p class="description"><?php esc_html_e('The name of your Pinecone index.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Pinecone Namespace field.
+     *
+     * @return void
+     */
+    public function pinecone_namespace_field_callback() {
+        $value = get_option('aips_pinecone_namespace', 'aips');
+        ?>
+        <input type="text" name="aips_pinecone_namespace" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="aips">
+        <p class="description"><?php esc_html_e('Optional namespace to partition vectors within the index. Defaults to "aips".', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Pinecone Region field.
+     *
+     * @return void
+     */
+    public function pinecone_region_field_callback() {
+        $value = get_option('aips_pinecone_region', 'us-east-1');
+        ?>
+        <input type="text" name="aips_pinecone_region" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="us-east-1">
+        <p class="description"><?php esc_html_e('Cloud region for the index, e.g. us-east-1. Used to build the index host URL.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Internal Links — Max Results field.
+     *
+     * @return void
+     */
+    public function internal_links_top_n_field_callback() {
+        $value = (int) get_option('aips_internal_links_top_n', 10);
+        ?>
+        <input type="number" name="aips_internal_links_top_n" value="<?php echo esc_attr($value); ?>" min="1" max="20" class="small-text">
+        <p class="description"><?php esc_html_e('Maximum number of related posts to return when searching for link candidates. Default: 10.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Internal Links — Min Similarity field.
+     *
+     * @return void
+     */
+    public function internal_links_min_score_field_callback() {
+        $raw   = get_option('aips_internal_links_min_score', 0.75);
+        $value = is_numeric($raw) ? min(1.0, max(0.0, (float) $raw)) : 0.75;
+        ?>
+        <input type="number" name="aips_internal_links_min_score" value="<?php echo esc_attr($value); ?>" min="0" max="1" step="0.01" class="small-text">
+        <p class="description"><?php esc_html_e('Minimum similarity score (0–1) for a post to appear as a link candidate. Default: 0.75.', 'ai-post-scheduler'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Auto-Index on Save field.
+     *
+     * @return void
+     */
+    public function internal_links_auto_index_field_callback() {
+        $value = (int) get_option('aips_internal_links_auto_index', 0);
+        ?>
+        <input type="hidden" name="aips_internal_links_auto_index" value="0">
+        <label>
+            <input type="checkbox" name="aips_internal_links_auto_index" value="1" <?php checked(1, $value); ?>>
+            <?php esc_html_e('Automatically queue posts for re-indexing when they are saved or updated.', 'ai-post-scheduler'); ?>
+        </label>
+        <?php
     }
 }
