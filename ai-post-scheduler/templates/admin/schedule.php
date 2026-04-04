@@ -256,12 +256,14 @@ if (!function_exists('aips_next_run_relative')) {
 							<?php endif; ?>
 						</td>
 						<td class="column-next-run">
-							<?php if ($next_run_ts): ?>
+							<?php if (!$is_active): ?>
+							<div class="cell-meta aips-muted"><?php esc_html_e('N/A', 'ai-post-scheduler'); ?></div>
+							<?php elseif ($next_run_ts): ?>
 							<div class="cell-primary aips-next-run-countdown" title="<?php echo esc_attr(date_i18n($date_format, $next_run_ts)); ?>">
 								<?php echo esc_html(aips_next_run_relative($next_run_ts)); ?>
 							</div>
 							<div class="cell-meta aips-muted" style="font-size:11px;"><?php echo esc_html(date_i18n($date_format, $next_run_ts)); ?></div>
-							<?php if ($next_run_ts < time() && $is_active): ?>
+							<?php if ($next_run_ts < time()): ?>
 							<div class="cell-meta" style="color:var(--aips-warning);font-size:11px;"><?php esc_html_e('Due — runs on next cron trigger', 'ai-post-scheduler'); ?></div>
 							<?php endif; ?>
 							<?php else: ?>

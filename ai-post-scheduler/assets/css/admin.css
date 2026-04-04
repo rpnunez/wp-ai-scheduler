@@ -502,7 +502,7 @@
 	display: flex;
 	gap: var(--aips-space-2);
 	align-items: center;
-	flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
 /* History table: checkbox column background (integrate with table) */

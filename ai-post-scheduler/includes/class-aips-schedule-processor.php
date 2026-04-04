@@ -385,8 +385,16 @@ class AIPS_Schedule_Processor {
 
             // For successful manual runs, record last_run so the Schedules page
             // reflects the execution instead of staying frozen on "Past due".
+            // For once-schedules, also deactivate: next_run is still in the past
+            // so the cron would otherwise fire it again on the next trigger.
             if (!is_wp_error($overall_result)) {
                 $this->repository->update_last_run($schedule->schedule_id, current_time('mysql'));
+                if ($schedule->frequency === 'once') {
+                    $this->repository->update($schedule->schedule_id, array(
+                        'is_active' => 0,
+                        'status'    => 'completed',
+                    ));
+                }
             }
         }
 
