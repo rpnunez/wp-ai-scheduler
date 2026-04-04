@@ -152,11 +152,25 @@ if (!defined('ABSPATH')) {
 						</tbody>
 					</table>
 					<?php else: ?>
-					<div class="aips-empty-state">
-						<div class="dashicons dashicons-saved aips-empty-state-icon" aria-hidden="true"></div>
-						<h3 class="aips-empty-state-title"><?php esc_html_e('No Partial Generations', 'ai-post-scheduler'); ?></h3>
-						<p class="aips-empty-state-description"><?php esc_html_e('Posts with missing generated components will appear here so you can review and repair them.', 'ai-post-scheduler'); ?></p>
-					</div>
+						<?php if (!empty($search_query)): ?>
+						<div class="aips-empty-state">
+							<div class="dashicons dashicons-search aips-empty-state-icon" aria-hidden="true"></div>
+							<h3 class="aips-empty-state-title"><?php esc_html_e('No Posts Found', 'ai-post-scheduler'); ?></h3>
+							<p class="aips-empty-state-description"><?php esc_html_e('No partial generations match your search criteria. Try a different search term.', 'ai-post-scheduler'); ?></p>
+							<div class="aips-empty-state-actions">
+								<a href="<?php echo esc_url(remove_query_arg('s')); ?>" class="aips-btn aips-btn-primary">
+									<span class="dashicons dashicons-dismiss"></span>
+									<?php esc_html_e('Clear Search', 'ai-post-scheduler'); ?>
+								</a>
+							</div>
+						</div>
+						<?php else: ?>
+						<div class="aips-empty-state">
+							<div class="dashicons dashicons-saved aips-empty-state-icon" aria-hidden="true"></div>
+							<h3 class="aips-empty-state-title"><?php esc_html_e('No Partial Generations', 'ai-post-scheduler'); ?></h3>
+							<p class="aips-empty-state-description"><?php esc_html_e('Posts with missing generated components will appear here so you can review and repair them.', 'ai-post-scheduler'); ?></p>
+						</div>
+						<?php endif; ?>
 					<?php endif; ?>
 				</div>
 
