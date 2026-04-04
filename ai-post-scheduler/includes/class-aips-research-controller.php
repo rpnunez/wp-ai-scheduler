@@ -358,6 +358,7 @@ class AIPS_Research_Controller {
                 wp_send_json_error(array(
                     'message' => __('Schedules were created but topic statuses could not be updated. Please reload the library.', 'ai-post-scheduler'),
                 ));
+                return;
             }
 
             // Restore per-topic hook for backward compatibility.
@@ -668,7 +669,7 @@ class AIPS_Research_Controller {
                 $history->complete_success(array(
                     'success_count' => $success_count,
                     'failed_count' => 0,
-                    'batch_was_limited' => $batch_was_limited,
+                    'batch_limited' => $batch_was_limited,
                     'total_requested' => $total_requested,
                     'processed_in_batch' => count($topics_to_process),
                     'status_updated_count' => (int) $status_updated,
