@@ -106,6 +106,6 @@ class Test_AIPS_Scheduler_Resilience extends WP_UnitTestCase {
         }
 
         // 5. Run the scheduler
-        $this->scheduler->process_scheduled_posts();
+        $this->scheduler->process();
     }
 }
