@@ -15,9 +15,19 @@
 	var AIPS = window.AIPS;
 
 	/**
-	 * Admin Embeddings module
+	 * @namespace AIPS.Embeddings
 	 */
-	Object.assign(AIPS, {
+	AIPS.Embeddings = {
+
+		/**
+		 * Placeholder initialisation hook for the Embeddings namespace.
+		 *
+		 * Called on `document.ready`. Currently a no-op; reserved for any
+		 * future setup that must run once the DOM is ready.
+		 */
+		init: function() {
+			// Nothing needed on init currently; reserved for future use.
+		},
 
 		/**
 		 * Queue embeddings computation for an author.
@@ -58,6 +68,6 @@
 			});
 		}
 
-	});
+	};
 
 })(jQuery);

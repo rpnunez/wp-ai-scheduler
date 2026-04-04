@@ -51,7 +51,7 @@ Background action hook that processes topic embeddings in batches for a single a
 
 ## UI Helper Function
 
-### JavaScript: `AIPS.queueEmbeddings(authorId, batchSize)`
+### JavaScript: `AIPS.Embeddings.queueEmbeddings(authorId, batchSize)`
 
 **Parameters**:
 - `authorId` (number): Author ID (0 for all authors)
@@ -60,10 +60,10 @@ Background action hook that processes topic embeddings in batches for a single a
 **Example Usage**:
 ```javascript
 // Queue embeddings for a specific author
-AIPS.queueEmbeddings(42, 20);
+AIPS.Embeddings.queueEmbeddings(42, 20);
 
 // Queue embeddings for all authors
-AIPS.queueEmbeddings(0, 20);
+AIPS.Embeddings.queueEmbeddings(0, 20);
 ```
 
 ## Database Method Updates
@@ -171,13 +171,58 @@ add_action('aips_author_embeddings_completed', function($author_id, $result) {
 2. `ai-post-scheduler/assets/js/admin-embeddings.js`
    - UI helper function for queueing jobs
 
+## History Container Logging
+
+The embeddings background worker uses the History Container pattern for comprehensive activity logging.
+
+### History Type: `author_embeddings`
+
+A history container is created (or reused if incomplete) for each author's embeddings processing run.
+
+**Container Metadata**:
+- `author_id`: The author ID being processed
+
+**Events Logged**:
+
+1. **Batch Start** (`embeddings_batch_start`)
+   - Records when a batch begins processing
+   - Includes `batch_size` and `last_processed_id`
+
+2. **Batch Complete** (`embeddings_batch_complete`)
+   - Records batch completion statistics
+   - Includes success/failed/skipped counts
+
+3. **Embedding Computed** (`embedding_computed`)
+   - Records successful embedding computation for a topic
+   - Includes `topic_id` and `topic_title`
+
+4. **Embedding Skipped** (`embedding_skipped`)
+   - Records when a topic already has an embedding
+   - Includes `topic_id` and `topic_title`
+
+5. **Embedding Failed** (`embedding_failed`)
+   - Records computation failures
+   - Includes `topic_id`, `topic_title`, and error message
+
+6. **Batch Empty** (`embeddings_batch_empty`)
+   - Records when no topics are found in a batch
+
+**Example History Query**:
+```php
+// Get embeddings history for an author
+$history_service = new AIPS_History_Service();
+$containers = $history_service->find_by_type('author_embeddings', array(
+    'author_id' => 42,
+));
+```
+
 ## Testing
 
 To test the implementation:
 
 1. **Queue a job via JavaScript console**:
    ```javascript
-   AIPS.queueEmbeddings(0, 20); // Queue all authors
+   AIPS.Embeddings.queueEmbeddings(0, 20); // Queue all authors
    ```
 
 2. **Check scheduled events**:

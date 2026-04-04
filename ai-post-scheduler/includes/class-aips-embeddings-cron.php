@@ -31,14 +31,21 @@ class AIPS_Embeddings_Cron {
 	private $logger;
 
 	/**
+	 * @var AIPS_History_Service History service for logging
+	 */
+	private $history_service;
+
+	/**
 	 * Initialize the cron handler.
 	 *
 	 * @param AIPS_Topic_Expansion_Service|null $expansion_service Topic expansion service.
 	 * @param AIPS_Logger|null                  $logger            Logger instance.
+	 * @param AIPS_History_Service|null         $history_service   History service.
 	 */
-	public function __construct($expansion_service = null, $logger = null) {
+	public function __construct($expansion_service = null, $logger = null, $history_service = null) {
 		$this->expansion_service = $expansion_service ?: new AIPS_Topic_Expansion_Service();
 		$this->logger = $logger ?: new AIPS_Logger();
+		$this->history_service = $history_service ?: new AIPS_History_Service();
 	}
 
 	/**
@@ -70,6 +77,29 @@ class AIPS_Embeddings_Cron {
 			'info'
 		);
 
+		// Get or create history container for this author's embeddings processing
+		$history = $this->get_or_create_history_container($author_id);
+
+		// Record batch start
+		$history->record(
+			'activity',
+			sprintf(
+				__('Processing embeddings batch: batch_size=%d, last_processed_id=%d', 'ai-post-scheduler'),
+				$batch_size,
+				$last_processed_id
+			),
+			array(
+				'event_type' => 'embeddings_batch_start',
+				'event_status' => 'processing',
+			),
+			null,
+			array(
+				'author_id'         => $author_id,
+				'batch_size'        => $batch_size,
+				'last_processed_id' => $last_processed_id,
+			)
+		);
+
 		// Process the batch
 		$result = $this->expansion_service->process_approved_embeddings_batch(
 			$author_id,
@@ -87,10 +117,48 @@ class AIPS_Embeddings_Cron {
 				'error'
 			);
 
+			// Log error to history
+			$history->record_error(
+				sprintf(
+					__('Embeddings batch processing failed: %s', 'ai-post-scheduler'),
+					$result->get_error_message()
+				),
+				array(
+					'author_id' => $author_id,
+					'error_code' => 'EMBEDDINGS_BATCH_FAILED',
+				),
+				$result
+			);
+
 			// Delete progress transient on error
 			delete_transient("aips_embeddings_progress_{$author_id}");
 			return;
 		}
+
+		// Record batch completion
+		$history->record(
+			'activity',
+			sprintf(
+				__('Batch completed: %d success, %d failed, %d skipped', 'ai-post-scheduler'),
+				$result['success'],
+				$result['failed'],
+				$result['skipped']
+			),
+			array(
+				'event_type' => 'embeddings_batch_complete',
+				'event_status' => 'success',
+			),
+			null,
+			array(
+				'author_id'         => $author_id,
+				'success'           => $result['success'],
+				'failed'            => $result['failed'],
+				'skipped'           => $result['skipped'],
+				'last_processed_id' => $result['last_processed_id'],
+				'done'              => $result['done'],
+				'processed_count'   => $result['processed_count'],
+			)
+		);
 
 		// Store progress in transient for UI tracking
 		$progress_data = array(
@@ -129,12 +197,44 @@ class AIPS_Embeddings_Cron {
 				'info'
 			);
 
+			// Complete the history container
+			$history->complete_success(array(
+				'author_id' => $author_id,
+				'total_success' => $result['success'],
+				'total_failed' => $result['failed'],
+				'total_skipped' => $result['skipped'],
+			));
+
 			// Delete progress transient on completion
 			delete_transient("aips_embeddings_progress_{$author_id}");
 
 			// Fire completion action hook
 			do_action('aips_author_embeddings_completed', $author_id, $result);
 		}
+	}
+
+	/**
+	 * Get or create a history container for author embeddings processing.
+	 *
+	 * Looks for an existing incomplete container for this author, or creates a new one.
+	 *
+	 * @param int $author_id Author ID.
+	 * @return AIPS_History_Container History container instance.
+	 */
+	private function get_or_create_history_container($author_id) {
+		// Try to find existing incomplete container for this author
+		$existing = $this->history_service->find_incomplete('author_embeddings', array(
+			'author_id' => $author_id,
+		));
+
+		if ($existing) {
+			return $existing;
+		}
+
+		// Create new history container
+		return $this->history_service->create('author_embeddings', array(
+			'author_id' => $author_id,
+		));
 	}
 
 	/**
