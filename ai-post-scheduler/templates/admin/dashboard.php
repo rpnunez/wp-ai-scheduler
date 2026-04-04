@@ -37,7 +37,7 @@ if (!defined('ABSPATH')) {
                 </div>
             </a>
 
-            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('post_review')); ?>" class="aips-summary-card" style="text-decoration: none; color: inherit;">
+            <a href="<?php echo esc_url(AIPS_Admin_Menu_Helper::get_page_url('generated_posts') . '#aips-pending-review'); ?>" class="aips-summary-card" style="text-decoration: none; color: inherit;">
                 <div class="dashicons dashicons-visibility aips-summary-icon" aria-hidden="true"></div>
                 <div class="aips-summary-content">
                     <span class="aips-summary-number"><?php echo esc_html($pending_reviews); ?></span>

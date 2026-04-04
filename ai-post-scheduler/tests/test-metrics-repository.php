@@ -281,4 +281,120 @@ class Test_AIPS_Metrics_Repository extends WP_UnitTestCase {
 
 		$this->assertSame( 1, $m['window_days'] );
 	}
+
+	// -----------------------------------------------------------------------
+	// get_queue_health_metrics()
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Shape test: all required keys must be present.
+	 */
+	public function test_get_queue_health_metrics_contains_required_keys() {
+		$repo = $this->make_repo();
+		$qh   = $repo->get_queue_health_metrics();
+
+		$expected_keys = array(
+			'pending_count',
+			'partial_count',
+			'stuck_count',
+			'oldest_stuck_age_minutes',
+			'failed_24h',
+			'retry_saturation_pct',
+			'circuit_breaker',
+		);
+
+		foreach ( $expected_keys as $key ) {
+			$this->assertArrayHasKey( $key, $qh, "Missing key: {$key}" );
+		}
+	}
+
+	/**
+	 * Integer fields must be integers.
+	 */
+	public function test_get_queue_health_metrics_integer_fields() {
+		$repo = $this->make_repo();
+		$qh   = $repo->get_queue_health_metrics();
+
+		$this->assertIsInt( $qh['pending_count'],  'pending_count must be int' );
+		$this->assertIsInt( $qh['partial_count'],  'partial_count must be int' );
+		$this->assertIsInt( $qh['stuck_count'],    'stuck_count must be int' );
+		$this->assertIsInt( $qh['failed_24h'],     'failed_24h must be int' );
+	}
+
+	/**
+	 * oldest_stuck_age_minutes must be null or int.
+	 */
+	public function test_oldest_stuck_age_is_null_or_int() {
+		$repo = $this->make_repo();
+		$qh   = $repo->get_queue_health_metrics();
+
+		$this->assertTrue(
+			$qh['oldest_stuck_age_minutes'] === null || is_int( $qh['oldest_stuck_age_minutes'] ),
+			'oldest_stuck_age_minutes must be null or int'
+		);
+	}
+
+	/**
+	 * retry_saturation_pct must be a float.
+	 */
+	public function test_retry_saturation_pct_is_float() {
+		$repo = $this->make_repo();
+		$qh   = $repo->get_queue_health_metrics();
+
+		$this->assertIsFloat( $qh['retry_saturation_pct'] );
+	}
+
+	/**
+	 * circuit_breaker must be an array with a 'state' key.
+	 */
+	public function test_circuit_breaker_is_array_with_state_key() {
+		$repo = $this->make_repo();
+		$qh   = $repo->get_queue_health_metrics();
+
+		$this->assertIsArray( $qh['circuit_breaker'] );
+		$this->assertArrayHasKey( 'state', $qh['circuit_breaker'] );
+	}
+
+	/**
+	 * When no data exists, pending/partial/stuck/failed counts must be 0,
+	 * oldest_stuck_age_minutes must be null, and retry_saturation_pct must
+	 * be -1.0 (no-data sentinel).
+	 */
+	public function test_queue_health_defaults_when_no_data() {
+		$repo = $this->make_repo();
+		$qh   = $repo->get_queue_health_metrics();
+
+		$this->assertSame( 0, $qh['pending_count'],  'pending_count default' );
+		$this->assertSame( 0, $qh['partial_count'],  'partial_count default' );
+		$this->assertSame( 0, $qh['stuck_count'],    'stuck_count default' );
+		$this->assertNull( $qh['oldest_stuck_age_minutes'],  'oldest_stuck_age_minutes default' );
+		$this->assertSame( 0, $qh['failed_24h'],     'failed_24h default' );
+		$this->assertSame( -1.0, $qh['retry_saturation_pct'], 'retry_saturation_pct sentinel' );
+	}
+
+	/**
+	 * get_baseline_metrics() must include a 'queue_health' key with the correct shape.
+	 */
+	public function test_get_baseline_metrics_includes_queue_health() {
+		$repo    = $this->make_repo();
+		$metrics = $repo->get_baseline_metrics();
+
+		$this->assertArrayHasKey( 'queue_health', $metrics );
+		$this->assertIsArray( $metrics['queue_health'] );
+		$this->assertArrayHasKey( 'pending_count', $metrics['queue_health'] );
+	}
+
+	/**
+	 * invalidate_cache() must not throw for TRANSIENT_QUEUE_HEALTH.
+	 */
+	public function test_invalidate_cache_clears_queue_health_transient() {
+		$repo = $this->make_repo();
+		// Populate the cache.
+		$repo->get_queue_health_metrics();
+		// Invalidate — must not throw.
+		$repo->invalidate_cache();
+		// After invalidation a fresh call must still return a valid shape.
+		$qh = $repo->get_queue_health_metrics();
+		$this->assertArrayHasKey( 'pending_count', $qh );
+	}
 }

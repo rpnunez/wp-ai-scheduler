@@ -274,7 +274,7 @@
             // AIPS admin page) → bare English fallbacks.  Never couple to aipsAuthorsL10n.
             var l10n = options.l10n || window.aipsUtilitiesL10n || {};
 
-            var title        = options.title        || 'Processing\u2026';
+            var title        = options.title        || 'Processing…';
             var message      = options.message      || '';
             var totalSeconds = options.totalSeconds  > 0 ? options.totalSeconds : 30;
             var stallAt      = (options.stallAt !== undefined) ? options.stallAt : 92;
@@ -381,7 +381,7 @@
                             .css('width', '100%')
                             .attr('aria-valuenow', '100')
                             .addClass('aips-progress-bar-fill--indeterminate');
-                        var overdueMsg = l10n.takingLonger || 'Taking a little bit longer than expected\u2026';
+                        var overdueMsg = l10n.takingLonger || 'Taking a little bit longer than expected…';
                         $statusLine.text(overdueMsg);
                         $liveRegion.text(overdueMsg); // Announce to screen readers.
                     }

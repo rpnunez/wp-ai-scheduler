@@ -358,34 +358,6 @@ class AIPS_History_Repository {
             $post_id
         ));
     }
-
-    /**
-     * Get all history records that share the given correlation ID.
-     *
-     * Returns an array of lightweight history objects (id, uuid, correlation_id,
-     * post_id, template_id, author_id, topic_id, status, creation_method,
-     * created_at, completed_at) sorted oldest-first so callers can replay the
-     * execution timeline in order.
-     *
-     * @param string $correlation_id The correlation ID to search for.
-     * @return array Array of history record objects (empty if none found).
-     */
-    public function get_by_correlation_id($correlation_id) {
-        $correlation_id = sanitize_text_field((string) $correlation_id);
-
-        if ($correlation_id === '') {
-            return array();
-        }
-
-        return $this->wpdb->get_results($this->wpdb->prepare(
-            "SELECT id, uuid, correlation_id, post_id, template_id, author_id, topic_id,
-                    status, creation_method, generated_title, error_message, created_at, completed_at
-             FROM {$this->table_name}
-             WHERE correlation_id = %s
-             ORDER BY created_at ASC",
-            $correlation_id
-        ));
-    }
     
     /**
      * Add a log entry to a history item.
