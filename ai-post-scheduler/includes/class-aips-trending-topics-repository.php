@@ -67,6 +67,7 @@ class AIPS_Trending_Topics_Repository {
             'offset' => 0,
             'date_from' => '',
             'fresh_only' => false,
+            'status' => '',
         );
         
         $args = wp_parse_args($args, $defaults);
@@ -95,6 +96,12 @@ class AIPS_Trending_Topics_Repository {
         // Filter fresh topics only (researched within last 7 days)
         if ($args['fresh_only']) {
             $where[] = 'researched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)';
+        }
+        
+        // Filter by status
+        if (!empty($args['status'])) {
+            $where[] = 'status = %s';
+            $prepare_values[] = $args['status'];
         }
         
         $where_clause = implode(' AND ', $where);
@@ -202,6 +209,8 @@ class AIPS_Trending_Topics_Repository {
     /**
      * Save researched topics to database.
      *
+     * Uses topic_exists() for per-record deduplication within the last 7 days.
+     *
      * @param array $topics Array of topic data to save.
      * @param string $niche Niche these topics belong to.
      * @return int|false Number of topics inserted (may be less than input count if some are skipped due to validation or duplicates), or false on database error or empty input.
@@ -210,36 +219,29 @@ class AIPS_Trending_Topics_Repository {
         if (empty($topics) || !is_array($topics)) {
             return false;
         }
-        
-        // Extract topic titles for duplicate checking
-        $topic_titles = array_column($topics, 'topic');
-        if (empty($topic_titles)) {
-            return 0;
-        }
-
-        // Check for existing topics in this niche within last 7 days to prevent duplicates
-        $placeholders = implode(',', array_fill(0, count($topic_titles), '%s'));
-        $query = $this->wpdb->prepare(
-            "SELECT topic FROM {$this->table_name}
-            WHERE niche = %s
-            AND researched_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            AND topic IN ($placeholders)",
-            array_merge(array($niche), $topic_titles)
-        );
-
-        $existing_topics = $this->wpdb->get_col($query);
-        $existing_topics = $existing_topics ? array_map('strtolower', $existing_topics) : array();
 
         $batch_data = array();
-        
+        // Track titles added in this batch to prevent within-batch duplicates.
+        $seen_in_batch = array();
+
         foreach ($topics as $topic) {
-            // Skip duplicates
-            if (in_array(strtolower($topic['topic']), $existing_topics)) {
+            if (empty($topic['topic'])) {
                 continue;
             }
 
-            // Add to existing list to prevent duplicates within the batch itself
-            $existing_topics[] = strtolower($topic['topic']);
+            $topic_lower = strtolower($topic['topic']);
+
+            // Skip within-batch duplicates.
+            if (isset($seen_in_batch[$topic_lower])) {
+                continue;
+            }
+
+            // Skip topics that already exist in the database for this niche.
+            if ($this->topic_exists($topic['topic'], $niche, 7)) {
+                continue;
+            }
+
+            $seen_in_batch[$topic_lower] = true;
 
             $batch_data[] = array(
                 'niche' => $niche,
@@ -247,10 +249,11 @@ class AIPS_Trending_Topics_Repository {
                 'score' => $topic['score'],
                 'reason' => isset($topic['reason']) ? $topic['reason'] : '',
                 'keywords' => isset($topic['keywords']) ? $topic['keywords'] : array(),
+                'status' => isset($topic['status']) ? $topic['status'] : 'new',
                 'researched_at' => isset($topic['researched_at']) ? $topic['researched_at'] : current_time('mysql'),
             );
         }
-        
+
         if (empty($batch_data)) {
             return 0;
         }
@@ -273,7 +276,7 @@ class AIPS_Trending_Topics_Repository {
 
         $values = array();
         $placeholders = array();
-        $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, researched_at) VALUES ";
+        $query = "INSERT INTO {$this->table_name} (niche, topic, score, reason, keywords, status, researched_at) VALUES ";
 
         foreach ($topics as $data) {
             // Validate required fields.
@@ -297,6 +300,7 @@ class AIPS_Trending_Topics_Repository {
                 $keywords_json = '[]';
             }
 
+            $status = isset($data['status']) ? sanitize_key($data['status']) : 'new';
             $researched_at = isset($data['researched_at']) ? $data['researched_at'] : current_time('mysql');
 
             array_push(
@@ -306,9 +310,10 @@ class AIPS_Trending_Topics_Repository {
                 $score,
                 $reason,
                 $keywords_json,
+                $status,
                 $researched_at
             );
-            $placeholders[] = "(%s, %s, %d, %s, %s, %s)";
+            $placeholders[] = "(%s, %s, %d, %s, %s, %s, %s)";
         }
 
         if (empty($placeholders)) {
@@ -344,6 +349,7 @@ class AIPS_Trending_Topics_Repository {
             'score' => 50,
             'reason' => '',
             'keywords' => array(),
+            'status' => 'new',
             'researched_at' => current_time('mysql'),
         );
         
@@ -367,9 +373,10 @@ class AIPS_Trending_Topics_Repository {
                 'score' => absint($data['score']),
                 'reason' => sanitize_text_field($data['reason']),
                 'keywords' => $keywords_json,
+                'status' => sanitize_key($data['status']),
                 'researched_at' => $data['researched_at'],
             ),
-            array('%s', '%s', '%d', '%s', '%s', '%s')
+            array('%s', '%s', '%d', '%s', '%s', '%s', '%s')
         );
         
         if ($result === false) {
@@ -387,7 +394,7 @@ class AIPS_Trending_Topics_Repository {
      * @return bool True on success, false on failure.
      */
     public function update($id, $data) {
-        $allowed_fields = array('topic', 'score', 'reason', 'keywords', 'niche');
+        $allowed_fields = array('topic', 'score', 'reason', 'keywords', 'niche', 'status');
         $update_data = array();
         $format = array();
         
@@ -401,6 +408,9 @@ class AIPS_Trending_Topics_Repository {
                 } elseif ($field === 'score') {
                     $update_data[$field] = absint($data[$field]);
                     $format[] = '%d';
+                } elseif ($field === 'status') {
+                    $update_data[$field] = sanitize_key($data[$field]);
+                    $format[] = '%s';
                 } else {
                     $update_data[$field] = sanitize_text_field($data[$field]);
                     $format[] = '%s';
